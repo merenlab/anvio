@@ -22,15 +22,6 @@ from Oligotyping.utils.utils import Run
 from Oligotyping.utils.utils import pretty_print as pp 
 
 
-class Entry:
-    def __init__(self, sequence, start, CIGAR_str):
-        self.sequence = sequence
-        self.start = start
-        self.end = start + len(sequence)
-        self.length = self.end - self.start
-        self.num_divergence = 0 # divergence from the consensus
-        self.p_divergence = 0.0 # num_divergence / length
-
 
 class SamProfiler:
     def __init__(self, sam_file_path):
