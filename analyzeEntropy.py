@@ -22,15 +22,13 @@ from Oligotyping.utils.utils import Run
 from Oligotyping.utils.utils import pretty_print as pp 
 
 
-
 class SamProfiler:
     def __init__(self, sam_file_path):
         self.bam = None
         self.sam_file_path = args.input_file
         self.Sorted = args.sorted # we're masking sorted
         self.indexed = args.indexed
-        self.references = None
-        self.lengths = None
+        self.references = {}
         self.mapped = None
 
         self.list_contigs_and_exit = args.list_contigs
@@ -46,21 +44,8 @@ class SamProfiler:
 
         self.init()
 
-        if self.list_contigs_and_exit:
-            print
-            print "%d contigs found in the BAM file:" % (len(self.references))
-            print
-            for i in range(0, len(self.references)):
-                print "\t- %s (%s)" % (self.references[i], pp(int(self.lengths[i])))
-            print
-
-            sys.exit()
-
-        if self.contigs_of_interest != ['']:
-            indexes_of_interest = [self.references.index(r) for r in self.references if r in self.contigs_of_interest]
-            self.references = [self.references[i] for i in indexes_of_interest]
-            self.lengths = [self.lengths[i] for i in indexes_of_interest]
-            self.comm.info('Contigs selected for analysis', ','.join(self.references))
+        if self.contigs_of_interest:
+            self.comm.info('Contigs selected for analysis', ','.join(self.references.keys()))
 
 
         self.column_entropy_profiles = {}
@@ -85,7 +70,6 @@ class SamProfiler:
             self.progress.end()
             self.comm.info('Indexed BAM File', self.sam_file_sorted_path)
 
-
         self.progress.new('READ')
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.sam_file_sorted_path, 'rb')
@@ -93,41 +77,88 @@ class SamProfiler:
 
         self.comm.info('Input BAM file', self.sam_file_sorted_path)
 
-        self.references = self.bam.references
-        self.lengths = self.bam.lengths
+        references = self.bam.references
+        lengths = self.bam.lengths
+
+        if self.contigs_of_interest:
+            indexes = [references.index(r) for r in self.contigs_of_interest if r in references]
+            references = [references[i] for i in indexes]
+            lengths = [lengths[i] for i in indexes]
+ 
+        for i in range(0, len(references)):
+            ref = references[i]
+            length = lengths[i]
+            self.references[ref] = {"length": length}
+
         self.num_reads_mapped = self.bam.mapped
 
-        self.comm.info('References', ','.join(['"%s (%s)"' % (self.references[i], pp(int(self.lengths[i]))) \
-                                    for i in range(0, len(self.references) if len(self.references) < 5 else 5)])) 
+        self.comm.info('References', ','.join(['"%s (%s)"' % (ref, pp(int(self.references[ref]['length']))) \
+                                    for ref in self.references.keys()[0:5]])) 
         self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
-            
+
+        self.progress.new('Analyzing Coverage Stats')
+        for reference in self.references:
+            self.progress.update('"%s" ...' % (reference))
+            coverage = []
+
+            for pileupcolumn in self.bam.pileup(reference):
+                coverage.append(pileupcolumn.n)
+
+            self.references[reference]['min_coverage'] = numpy.median(coverage) / 2
+            self.references[reference]['max_coverage'] = numpy.max(coverage)
+            self.references[reference]['median_coverage'] = numpy.median(coverage)
+            self.references[reference]['mean_coverage'] = numpy.mean(coverage)
+        self.progress.end()
+
+        # BASIC CONTIG STATS
+        refs_sorted_by_occurence = sorted([(self.references[ref]['length'], ref) for ref in self.references], reverse=True)
+
+        fields = ["length", "mean_coverage", "median_coverage", "min_coverage", "max_coverage"]
+        text_output = ""
+        text_output += '\t'.join(["%-30s" % field for field in ["contig"] + fields]) + '\n'
+        for tpl in refs_sorted_by_occurence:
+            reference = tpl[1]
+            ref_obj = self.references[reference]
+            text_output += "\t".join(["%-30s" % reference] + ["%-30s" % pp(int(ref_obj[field])) for field in fields]) + "\n"
+
+        self.contigs_basic_stats = self.sam_file_path + '-CONTIGS.txt'
+        f = open(self.contigs_basic_stats, 'w').write(text_output)
+        self.comm.info('Contigs basic stats', self.contigs_basic_stats)
+
+        if self.list_contigs_and_exit:
+            print
+            print "%d contigs found in the BAM file:" % (len(self.references))
+            print
+            print text_output
+            sys.exit()
+           
 
     def generate_column_entropy_profile(self):
-        for i in range(0, len(self.references)):
-            reference = self.references[i]
-            self.progress.new('Analyzing Contig "%s" (%d of %d)' % (reference, i + 1, len(self.references)))
+        ref_keys = self.references.keys()
+        for i in range(0, len(ref_keys)):
+            reference = ref_keys[i]
+            ref_obj = self.references[ref_keys[i]]
+            self.progress.new('Analyzing Contig "%s" (%d of %d)' % (reference, i + 1, len(ref_keys)))
 
             self.column_entropy_profiles[reference] = {}
             ep = self.column_entropy_profiles[reference]
 
-            coverage = []
-
-            self.progress.update('Analyzing coverage ...')
-            for pileupcolumn in self.bam.pileup(reference):
-                coverage.append(pileupcolumn.n)
-
-            min_coverage = numpy.median(coverage) / 2
-            contig_max_coverage = numpy.max(coverage)
-            contig_median_coverage = numpy.median(coverage)
-
-            self.progress.update('working on %s (%d of %d) // AC: %d :: MC: %d' % (reference, i + 1, len(self.references), numpy.mean(coverage), min_coverage))
+            self.progress.update('working on %s (%d of %d) // AC: %d :: MC: %d' % (reference,
+                                                                                   i + 1,
+                                                                                   len(ref_keys),
+                                                                                   ref_obj['mean_coverage'],
+                                                                                   ref_obj['min_coverage']))
 
             for pileupcolumn in self.bam.pileup(reference):
                 if pileupcolumn.pos % 500 == 0:
-                    self.progress.update('Generating Entropy Profiles: %s (%.2f%%)' % (pp(pileupcolumn.pos), pileupcolumn.pos * 100.0 / self.lengths[i]))
+                    self.progress.update('Generating Entropy Profiles: %s (%.2f%%)' % (pp(pileupcolumn.pos),
+                                                                                       pileupcolumn.pos * 100.0 / ref_obj['length']))
 
                 column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
-                ep[pileupcolumn.pos] = ColumnEntropyProfile(column, pileupcolumn.pos, contig_max_coverage, contig_median_coverage)
+                ep[pileupcolumn.pos] = ColumnEntropyProfile(column,
+                                                            pileupcolumn.pos,
+                                                            ref_obj['max_coverage'],
+                                                            ref_obj['median_coverage'])
 
             self.progress.end()
 
@@ -207,6 +238,7 @@ class ColumnEntropyProfile:
         if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
             self.entropy = 0
             self.normalized_entropy = 0
+            self.competing_nucleotides = ''
             return
 
         if len(column) < 100:
