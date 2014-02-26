@@ -32,7 +32,7 @@ class SamProfiler:
         self.mapped = None
 
         self.list_contigs_and_exit = args.list_contigs
-        self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')]
+        self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
 
         if self.Sorted:
             self.sam_file_sorted_path = self.sam_file_path
