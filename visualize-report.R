@@ -32,6 +32,10 @@ for(contig in levels(df$contig)){
     df_contig <- df[df$contig == contig, ]
     dfx <- df_contig[df_contig$entropy_n > 0, ]
 
+    if(nrow(dfx) == 0){
+        dfx <- df_contig[nrow(df_contig), ]
+        }
+
     p <- ggplot(data=dfx, aes(x=pos, y=entropy_n, color=competing_nt, group=competing_nt, fill=competing_nt))
     p <- p + geom_bar(stat="identity") + geom_point(aes(size=coverage))
     p <- p + geom_line(size=0.2)
