@@ -49,6 +49,7 @@ class SamProfiler:
 
 
         self.column_entropy_profiles = {}
+        self.contig_entropy_profiles = {}
         self.generate_column_entropy_profile()
         self.generate_report()
 
@@ -122,8 +123,9 @@ class SamProfiler:
             text_output += "\t".join(["%-30s" % reference] + ["%-30s" % pp(int(ref_obj[field])) for field in fields]) + "\n"
 
         self.contigs_basic_stats = self.sam_file_path + '-CONTIGS.txt'
-        f = open(self.contigs_basic_stats, 'w').write(text_output)
-        self.comm.info('Contigs basic stats', self.contigs_basic_stats)
+        if not (os.path.exists(self.contigs_basic_stats) and self.contigs_of_interest):
+            f = open(self.contigs_basic_stats, 'w').write(text_output)
+            self.comm.info('Contigs basic stats', self.contigs_basic_stats)
 
         if self.list_contigs_and_exit:
             print
@@ -141,6 +143,7 @@ class SamProfiler:
             self.progress.new('Analyzing Contig "%s" (%d of %d)' % (reference, i + 1, len(ref_keys)))
 
             self.column_entropy_profiles[reference] = {}
+            
             ep = self.column_entropy_profiles[reference]
 
             self.progress.update('working on %s (%d of %d) // AC: %d :: MC: %d' % (reference,
@@ -155,10 +158,13 @@ class SamProfiler:
                                                                                        pileupcolumn.pos * 100.0 / ref_obj['length']))
 
                 column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
+
                 ep[pileupcolumn.pos] = ColumnEntropyProfile(column,
                                                             pileupcolumn.pos,
                                                             ref_obj['max_coverage'],
                                                             ref_obj['median_coverage'])
+
+            self.contig_entropy_profiles[reference] = ContigEntropy(ref_obj, ep).summarize()
 
             self.progress.end()
 
@@ -166,9 +172,13 @@ class SamProfiler:
 
 
     def generate_report(self):
-        self.report_file_path = self.sam_file_path + '-REPORT.txt'
-        f = open(self.report_file_path, 'w')
-        f.write('%s\n' % ('\t'.join(["contig", "pos", "coverage", "entropy", "entropy_n", "competing_nt", "freq_A", "freq_T", "freq_C", "freq_G", "stars"])))
+        self.columns_report_file_path = self.sam_file_path + '-COLUMNS-REPORT.txt'
+        self.contigs_report_file_path = self.sam_file_path + '-CONTIGS-REPORT.txt'
+
+        columns_report = open(self.columns_report_file_path, 'w')
+        contigs_report = open(self.contigs_report_file_path, 'w')
+
+        columns_report.write('%s\n' % ('\t'.join(["contig", "pos", "coverage", "entropy", "entropy_n", "competing_nt", "freq_A", "freq_T", "freq_C", "freq_G", "stars"])))
         for reference in self.column_entropy_profiles:
             self.progress.new('Reporting: "%s"' % (reference))
             ep = self.column_entropy_profiles[reference]
@@ -182,6 +192,8 @@ class SamProfiler:
                 if position % 500 == 0:
                     self.progress.update('%.2f%%' % (i * 100.0 / len(positions)))
                 column = ep[position]
+                if column.entropy == 0:
+                    continue
                 info_line = '%s\t%.7d\t%d\t%.3f\t%.3f\t%s\t%s\t%s' % (reference,
                                                  column.pos,
                                                  column.coverage,
@@ -191,12 +203,35 @@ class SamProfiler:
                                                  '\t'.join(['%.2f' % (0.0 if not column.nucleotide_frequencies.has_key(n) else column.nucleotide_frequencies[n]) for n in 'ATCG']),
                                                  '*' * int((column.entropy * 50) * (column.coverage * 1.0 / max_coverage))) 
 
-                f.write(info_line + '\n')
+                columns_report.write(info_line + '\n')
             self.progress.end()
-        self.comm.info("Report", self.report_file_path)
-        f.close()
+        self.comm.info("Columns Report", self.columns_report_file_path)
+        columns_report.close()
 
         
+        contigs_report.write('%s\n' % ('\t'.join(["contig", "average_entropy", "average_normalized_entropy"])))
+        for reference in self.references:
+            cp = self.contig_entropy_profiles[reference]
+            info_line = '%s\t%.4f\t%.4f' % (reference,
+                                            cp['average_entropy'],
+                                            cp['average_normalized_entropy']) 
+            contigs_report.write(info_line + '\n')
+        self.comm.info("Contigs Report", self.contigs_report_file_path)
+        contigs_report.close()
+
+
+class ContigEntropy:
+    def __init__(self, reference, entropy_profile):
+        self.entropy_profile = entropy_profile
+        self.reference = reference
+
+    def summarize(self):
+        average_entropy = sum(e.entropy for e in self.entropy_profile.values()) * 1000.0 / self.reference['length']
+        average_normalized_entropy = sum(e.normalized_entropy for e in self.entropy_profile.values()) * 1000.0 / self.reference['length']
+        return {'average_entropy': average_entropy,
+                'average_normalized_entropy': average_normalized_entropy}
+
+
 class ColumnEntropyProfile:
     def __init__(self, column, pos, contig_max_coverage, contig_median_coverage):
         self.pos = pos
