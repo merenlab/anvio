@@ -101,15 +101,23 @@ class SamProfiler:
         for reference in self.references:
             self.progress.update('"%s" ...' % (reference))
             coverage = []
+            bad_refs = []
 
             for pileupcolumn in self.bam.pileup(reference):
                 coverage.append(pileupcolumn.n)
 
-            self.references[reference]['min_coverage'] = numpy.median(coverage) / 2
-            self.references[reference]['max_coverage'] = numpy.max(coverage)
-            self.references[reference]['median_coverage'] = numpy.median(coverage)
-            self.references[reference]['mean_coverage'] = numpy.mean(coverage)
+            if not coverage:
+                bad_refs.append(reference)
+            else:
+                self.references[reference]['min_coverage'] = numpy.median(coverage) / 2
+                self.references[reference]['max_coverage'] = numpy.max(coverage)
+                self.references[reference]['median_coverage'] = numpy.median(coverage)
+                self.references[reference]['mean_coverage'] = numpy.mean(coverage)
         self.progress.end()
+
+        # FIXME CLEARING BAD CONTIGS
+        for reference in bad_refs:
+            self.references.pop(reference)
 
         # BASIC CONTIG STATS
         refs_sorted_by_occurence = sorted([(self.references[ref]['length'], ref) for ref in self.references], reverse=True)
