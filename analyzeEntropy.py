@@ -30,9 +30,15 @@ class SamProfiler:
         self.indexed = args.indexed
         self.references = {}
         self.mapped = None
+        self.contigs_of_interest = None
 
         self.list_contigs_and_exit = args.list_contigs
-        self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
+
+        if args.contigs:
+            if os.path.exists(args.contigs):
+                self.contigs_of_interest = [c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')]
+            else:
+                self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
 
         if self.Sorted:
             self.sam_file_sorted_path = self.sam_file_path
@@ -98,10 +104,10 @@ class SamProfiler:
         self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
 
         self.progress.new('Analyzing Coverage Stats')
+        bad_refs = []
         for reference in self.references:
             self.progress.update('"%s" ...' % (reference))
             coverage = []
-            bad_refs = []
 
             for pileupcolumn in self.bam.pileup(reference):
                 coverage.append(pileupcolumn.n)
@@ -306,10 +312,11 @@ if __name__ == '__main__':
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
                         help = 'Whend declared, lists contigs in the BAM file and\
                                 exits without any further analysis.')
-    parser.add_argument('--contigs', default = '',
+    parser.add_argument('--contigs', default = None,
                         help = 'It is possible to analyze only a group of contigs from\
                                 a given BAM file. Contigs of interest can be specified\
-                                using a comma separated list')
+                                using a comma separated list, or in a text file where\
+                                each line contains a contig name.')
 
     args = parser.parse_args()
     
