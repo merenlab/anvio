@@ -192,7 +192,8 @@ class SamProfiler:
         columns_report = open(self.columns_report_file_path, 'w')
         contigs_report = open(self.contigs_report_file_path, 'w')
 
-        columns_report.write('%s\n' % ('\t'.join(["contig", "pos", "coverage", "entropy", "entropy_n", "competing_nt", "freq_A", "freq_T", "freq_C", "freq_G", "stars"])))
+        columns_report.write('%s\n' % ('\t'.join(["contig", "pos", "coverage", "entropy", "entropy_n", "competing_nt", "competing_nucleotide_ratio", "freq_A", "freq_T", "freq_C", "freq_G", "stars"])))
+
         for reference in self.column_entropy_profiles:
             self.progress.new('Reporting: "%s"' % (reference))
             ep = self.column_entropy_profiles[reference]
@@ -206,14 +207,17 @@ class SamProfiler:
                 if position % 500 == 0:
                     self.progress.update('%.2f%%' % (i * 100.0 / len(positions)))
                 column = ep[position]
-                if column.entropy == 0:
-                    continue
-                info_line = '%s\t%.7d\t%d\t%.3f\t%.3f\t%s\t%s\t%s' % (reference,
+
+                #if column.entropy == 0:
+                #    continue
+
+                info_line = '%s\t%.7d\t%d\t%.3f\t%.3f\t%s\t%.2f\t%s\t%s' % (reference,
                                                  column.pos,
                                                  column.coverage,
                                                  column.entropy,
                                                  column.normalized_entropy,
                                                  column.competing_nucleotides,
+                                                 column.competing_nucleotide_ratio,
                                                  '\t'.join(['%.2f' % (0.0 if not column.nucleotide_frequencies.has_key(n) else column.nucleotide_frequencies[n]) for n in 'ATCG']),
                                                  '*' * int((column.entropy * 50) * (column.coverage * 1.0 / max_coverage))) 
 
@@ -257,6 +261,7 @@ class ColumnEntropyProfile:
         self.entropy = 0.0
         self.normalized_entropy = 0.0
         self.competing_nucleotides = ''
+        self.competing_nucleotide_ratio = 0
 
         nucleotides = list(set(column))
         self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
@@ -284,20 +289,30 @@ class ColumnEntropyProfile:
         n2 = nucleotides_sorted_by_occurence[1]
         self.competing_nucleotides = ''.join(sorted([n1, n2]))
 
+        if 'N' in self.competing_nucleotides or 'n' in self.competing_nucleotides:
+            self.entropy = 0
+            self.normalized_entropy = 0
+            self.competing_nucleotides = ''
+            return
+
         if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
             self.entropy = 0
             self.normalized_entropy = 0
             self.competing_nucleotides = ''
             return
 
-        if len(column) < 100:
-            self.entropy = entropy(column)
+        if len(column) < 4:
+            self.entropy = 0
             self.normalized_entropy = 0
+            self.competing_nucleotides = ''
             return
 
         self.competing_nucleotides = ''.join(sorted([n1, n2]))
         self.entropy = entropy(column)
-        self.normalized_entropy = self.entropy * (self.coverage * 1.0 / contig_max_coverage)
+        self.competing_nucleotide_ratio = self.nucleotide_frequencies[self.competing_nucleotides[0]]
+        self.normalized_entropy = self.entropy * (self.coverage * 1.0 / self.contig_median_coverage)
+        if self.normalized_entropy > 1:
+            self.normalized_entropy = 1
 
 if __name__ == '__main__':
     import argparse
