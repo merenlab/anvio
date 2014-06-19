@@ -16,13 +16,13 @@ import numpy
 import pysam
 import random
 import operator
-from Oligotyping.lib.entropy import entropy
-from Oligotyping.utils.utils import Progress
-from Oligotyping.utils.utils import Run 
-from Oligotyping.utils.utils import pretty_print as pp 
+from PaPi.utils import Progress
+from PaPi.utils import Run 
+from PaPi.utils import pretty_print as pp 
 
 
-class BamProfiler:
+class BAMProfiler:
+    """Creates an über class for BAM file operations"""
     def __init__(self, sam_file_path):
         self.bam = None
         self.sam_file_path = args.input_file
@@ -61,21 +61,6 @@ class BamProfiler:
 
 
     def init(self):
-        if not self.Sorted:
-            self.progress.new('SORT')
-            self.progress.update('Sorting BAM File... May take a while depending on the size.')
-            pysam.sort(self.sam_file_path, self.sam_file_path + '-sorted')
-            self.sam_file_sorted_path = self.sam_file_path + '-sorted.bam'
-            self.indexed = False
-            self.progress.end()
-            self.comm.info('Sorted BAM File', self.sam_file_sorted_path)
-
-        if not self.indexed:
-            self.progress.new('INDEX')
-            self.progress.update('Analyzing BAM File.')
-            pysam.index(self.sam_file_sorted_path)
-            self.progress.end()
-            self.comm.info('Indexed BAM File', self.sam_file_sorted_path)
 
         self.progress.new('READ')
         self.progress.update('Reading BAM File')

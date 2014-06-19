@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+# Copyright (C) 2014, A. Murat Eren
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option)
+# any later version.
+#
+# Please read the COPYING file.
+
+import pysam
+from PaPi.utils import Progress
+from PaPi.utils import Run 
+from PaPi.utils import pretty_print as pp 
+
+
+def init_bam_file(input_file_path, already_sorted = False):
+        if not already_sorted:
+            self.progress.new('SORT')
+            self.progress.update('Sorting BAM File... May take a while depending on the size.')
+            pysam.sort(input_file_path, input_file_path + '-sorted')
+            self.sam_file_sorted_path = self.sam_file_path + '-sorted.bam'
+            self.indexed = False
+            self.progress.end()
+            self.comm.info('Sorted BAM File', self.sam_file_sorted_path)
+
+        self.progress.new('INDEX')
+        self.progress.update('Indexing BAM File...')
+        pysam.index(self.sam_file_sorted_path)
+        self.progress.end()
+        self.comm.info('Indexed BAM File', self.sam_file_sorted_path)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Sort/Index BAM files')
+    parser.add_argument('input_file', metavar = 'FILE PATH',
+                        help = 'BAM file to analyze')
+    parser.add_argument('--sorted', action = 'store_true', default = False,
+                        help = 'Flag to define whether BAM file is already sorted')
+    #parser.add_argument('--overwrite', action = 'store_true', default = False,
+    #                    help = 'When used, the sorted BAM file overwrites the original\
+    #                    file. Do not use if you are not sure')
+
+    args = parser.parse_args()

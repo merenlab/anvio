@@ -10,16 +10,15 @@
 #
 # Please read the COPYING file.
 
+import os
+import PaPi.profiler
+
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='BAM file profiler for entropy analysis')
+    parser = argparse.ArgumentParser(description='Main entropy point for Post-Assembly Metagenomics Pipeline')
     parser.add_argument('input_file', metavar = 'FILE PATH',
-                        help = 'SAM file to analyze')
-    parser.add_argument('--sorted', action = 'store_true', default = False,
-                        help = 'Flag to define whether BAM file is already sorted')
-    parser.add_argument('--indexed', action = 'store_true', default = False,
-                        help = 'Flag to define whether BAM file is already indexed')
+                        help = 'Sorted and indexed BAM file to analyze')
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
                         help = 'Whend declared, lists contigs in the BAM file and\
                                 exits without any further analysis.')
@@ -35,6 +34,6 @@ if __name__ == '__main__':
         print 'No such file: "%s"' % args.input_file
         sys.exit()
 
-    profiler = SamProfiler(args)
-    profiler.generate_column_entropy_profile()
-    profiler.generate_report()
+    profiler = PaPi.profiler.BAMProfiler(args)
+    #profiler.generate_column_entropy_profile()
+    #profiler.generate_report()

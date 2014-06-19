@@ -21,30 +21,40 @@ from Oligotyping.utils.utils import Progress
 from Oligotyping.utils.utils import Run 
 from Oligotyping.utils.utils import pretty_print as pp 
 
+from scipy import log2 as log
+from numpy import sqrt
 
-class SamProfiler:
-    def __init__(self, sam_file_path):
-        self.bam = None
-        self.sam_file_path = args.input_file
-        self.Sorted = args.sorted # we're masking sorted
-        self.indexed = args.indexed
-        self.references = {}
-        self.mapped = None
-        self.contigs_of_interest = None
+VALID_CHARS = {'nucleotide': set(['A', 'T', 'C', 'G', '-']),
+               'amino_acid': set(['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V', '-'])}
 
-        self.list_contigs_and_exit = args.list_contigs
 
-        if args.contigs:
-            if os.path.exists(args.contigs):
-                self.contigs_of_interest = [c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')]
-            else:
-                self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
+def entropy(l, l_qual = None, expected_qual_score = 40, amino_acid_sequences = False, sqrt_norm = False):
+    l = l.upper() 
+    
+    valid_chars = VALID_CHARS['amino_acid'] if amino_acid_sequences else VALID_CHARS['nucleotide']
 
-        if self.Sorted:
-            self.sam_file_sorted_path = self.sam_file_path
-        else: 
-            self.sam_file_sorted_path = None
+    if sqrt_norm:
+        l_normalized = ''
+        for char in valid_chars:
+            l_normalized += char * int(round(sqrt(l.count(char))))
+        l = l_normalized
 
+
+    E_Cs = []
+    for char in valid_chars:
+        P_C = (l.count(char) * 1.0 / len(l)) + 0.0000000000000000001
+        E_Cs.append(P_C * log(P_C))
+   
+    if l_qual:
+        # return weighted entropy
+        return -(sum(E_Cs) * (l_qual['mean'] / expected_qual_score))
+    else:
+        # return un-weighted entropy
+        return -(sum(E_Cs))
+
+
+class Entropy:
+    def __init__(self, bam):
         self.progress = Progress()
         self.comm = Run()
 
