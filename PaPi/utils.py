@@ -1,5 +1,5 @@
 # -*- coding: utf-8
-
+#
 # Copyright (C) 2010 - 2012, A. Murat Eren
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -9,8 +9,15 @@
 #
 # Please read the COPYING file.
 
+import os
 import sys
+import time
+import fcntl
+import termios 
+import struct
 import cPickle
+
+from PaPi.constants import pretty_names
 
 class Progress:
     def __init__(self):
@@ -81,7 +88,7 @@ class Progress:
         if not self.verbose:
             return
         self.clear()
-        self.write('\r[%s]Ê%s' % (self.pid, msg))
+        self.write('\r[%s] %s' % (self.pid, msg))
 
     
     def end(self):
@@ -148,3 +155,39 @@ def pretty_print(n):
             ret.append(',')
     ret.reverse()
     return ''.join(ret[1:]) if ret[0] == ',' else ''.join(ret)
+
+
+def get_date():
+    return time.strftime("%d %b %y %H:%M:%S", time.localtime())
+
+
+def get_terminal_size():
+    """function was taken from http://stackoverflow.com/a/566752"""
+    def ioctl_GWINSZ(fd):
+        try:
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ,
+        '1234'))
+        except:
+            return None
+        return cr
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+    if not cr:
+        try:
+            cr = (os.environ['LINES'], os.environ['COLUMNS'])
+        except:
+            cr = (25, 80)
+    return int(cr[1]), int(cr[0])
+
+
+def get_pretty_name(key):
+    if pretty_names.has_key(key):
+        return pretty_names[key]
+    else:
+        return key

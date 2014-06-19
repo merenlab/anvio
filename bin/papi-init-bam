@@ -10,27 +10,40 @@
 #
 # Please read the COPYING file.
 
+import sys
 import pysam
 from PaPi.utils import Progress
 from PaPi.utils import Run 
 from PaPi.utils import pretty_print as pp 
 
 
-def init_bam_file(input_file_path, already_sorted = False):
-        if not already_sorted:
-            self.progress.new('SORT')
-            self.progress.update('Sorting BAM File... May take a while depending on the size.')
-            pysam.sort(input_file_path, input_file_path + '-sorted')
-            self.sam_file_sorted_path = self.sam_file_path + '-sorted.bam'
-            self.indexed = False
-            self.progress.end()
-            self.comm.info('Sorted BAM File', self.sam_file_sorted_path)
+def init_bam_file(input_file_path, output_file_path = None, already_sorted = False):
+        progress = Progress()
+        run = Run()
 
-        self.progress.new('INDEX')
-        self.progress.update('Indexing BAM File...')
-        pysam.index(self.sam_file_sorted_path)
-        self.progress.end()
-        self.comm.info('Indexed BAM File', self.sam_file_sorted_path)
+        if not output_file_path:
+            output_file_path = input_file_path + '-sorted'
+
+        if not already_sorted:
+            progress.new('SORT')
+            progress.update('Sorting BAM File... May take a while depending on the size.')
+            pysam.sort(input_file_path, output_file_path)
+            progress.end()
+            run.info('Sorted BAM File', output_file_path)
+            sorted_file_path = output_file_path + '.bam'
+            if not os.path.exists(sorted_file_path):
+                sys.stderr.write('\n\n\tERROR: Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :(')
+        else:
+            sorted_file_path = input_file_path
+
+
+        progress.new('INDEX')
+        progress.update('Indexing BAM File...')
+        pysam.index(sorted_file_path)
+        progress.end()
+        run.info('Indexed BAM File', sorted_file_path)
+
+        sys.stderr.write('\n\n\tUse this file as input for papi: "%s"\n\n' % sorted_file_path)
 
 
 if __name__ == '__main__':
@@ -41,8 +54,13 @@ if __name__ == '__main__':
                         help = 'BAM file to analyze')
     parser.add_argument('--sorted', action = 'store_true', default = False,
                         help = 'Flag to define whether BAM file is already sorted')
+    parser.add_argument('-o', '--output-file', default = None,
+                        help = 'Output file path for sorted/indexed BAM file')
     #parser.add_argument('--overwrite', action = 'store_true', default = False,
     #                    help = 'When used, the sorted BAM file overwrites the original\
     #                    file. Do not use if you are not sure')
 
     args = parser.parse_args()
+    sys.exit(init_bam_file(input_file_path = args.input_file,
+                           output_file_path = args.output_file,
+                           already_sorted = args.sorted))
