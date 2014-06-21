@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8
 
-# Copyright (C) 2010 - 2012, A. Murat Eren
+# Copyright (C) 2014, A. Murat Eren
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free
@@ -16,10 +15,9 @@ import numpy
 import pysam
 import random
 import operator
-from Oligotyping.lib.entropy import entropy
-from Oligotyping.utils.utils import Progress
-from Oligotyping.utils.utils import Run 
-from Oligotyping.utils.utils import pretty_print as pp 
+from PaPi.utils import Progress
+from PaPi.utils import Run 
+from PaPi.utils import pretty_print as pp 
 
 from scipy import log2 as log
 from numpy import sqrt
@@ -53,146 +51,105 @@ def entropy(l, l_qual = None, expected_qual_score = 40, amino_acid_sequences = F
         return -(sum(E_Cs))
 
 
-class Entropy:
-    def __init__(self, bam):
-        self.progress = Progress()
-        self.comm = Run()
+class Auxiliary:
+    def __init__(self, reference, pileup, reference_essentials):
+        self.reference = reference
+        self.pileup = pileup
+        self.essentials = reference_essentials
 
-        self.init()
+        self.auxiliary = {}
 
-        if self.contigs_of_interest:
-            self.comm.info('Contigs selected for analysis', ','.join(self.references.keys()))
+    def report(self):
+        column_entropy_profile = {}
+        for pileupcolumn in self.pileup:
+            column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
+
+            column_entropy_profile[pileupcolumn.pos] = ColumnEntropyProfile(column,
+                                                        pileupcolumn.pos,
+                                                        self.essentials['max_coverage'],
+                                                        self.essentials['median_coverage'])
 
 
-        self.column_entropy_profiles = {}
-        self.contig_entropy_profiles = {}
-        self.generate_column_entropy_profile()
-        self.generate_report()
+        average_entropy = sum(e.entropy * 100.0 for e in column_entropy_profile.values()) / self.essentials['length']
+        average_normalized_entropy = sum(e.normalized_entropy * 100.0 for e in column_entropy_profile.values()) / self.essentials['length']
+        rep_seq = ''.join([column_entropy_profile[i].consensus_nucleotide if column_entropy_profile.has_key(i) else 'N'\
+                                             for i in range(0, max(column_entropy_profile.keys()))])
+
+        self.auxiliary['average_entropy'] = average_entropy
+        self.auxiliary['average_normalized_entropy'] = average_normalized_entropy
+        self.auxiliary['rep_seq'] = rep_seq
+        
+        return self.auxiliary
 
 
-    def init(self):
-        if not self.Sorted:
-            self.progress.new('SORT')
-            self.progress.update('Sorting BAM File... May take a while depending on the size.')
-            pysam.sort(self.sam_file_path, self.sam_file_path + '-sorted')
-            self.sam_file_sorted_path = self.sam_file_path + '-sorted.bam'
-            self.indexed = False
-            self.progress.end()
-            self.comm.info('Sorted BAM File', self.sam_file_sorted_path)
+class ColumnEntropyProfile:
+    def __init__(self, column, pos, contig_max_coverage, contig_median_coverage):
+        self.pos = pos
+        self.contig_max_coverage = contig_max_coverage
+        self.coverage = len(column)
+        self.nucleotide_counts = {}
+        self.nucleotide_frequencies = {}
+        self.consensus_nucleotide = None
+        self.entropy = 0.0
+        self.n2n1ratio = 0
+        self.normalized_entropy = 0.0
+        self.competing_nucleotides = ''
+        self.competing_nucleotide_ratio = 0
 
-        if not self.indexed:
-            self.progress.new('INDEX')
-            self.progress.update('Analyzing BAM File.')
-            pysam.index(self.sam_file_sorted_path)
-            self.progress.end()
-            self.comm.info('Indexed BAM File', self.sam_file_sorted_path)
+        nucleotides = list(set(column))
+        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
+        nucleotides_sorted_by_occurence = [x[0] for x in sorted(self.nucleotide_counts.iteritems(), key=operator.itemgetter(1), reverse=True)]
 
-        self.progress.new('READ')
-        self.progress.update('Reading BAM File')
-        self.bam = pysam.Samfile(self.sam_file_sorted_path, 'rb')
-        self.progress.end()
+        if len(nucleotides_sorted_by_occurence) == 1:
+            # no variation.
+            self.entropy = 0
+            self.normalized_entropy = 0
+            self.consensus_nucleotide = column[0]
+            return
 
-        self.comm.info('Input BAM file', self.sam_file_sorted_path)
+        if len(nucleotides_sorted_by_occurence) > 2:
+            self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
 
-        references = self.bam.references
-        lengths = self.bam.lengths
+            n1 = nucleotides_sorted_by_occurence[0]
+            n2 = nucleotides_sorted_by_occurence[1]
+            self.n2n1ratio = self.nucleotide_counts[n2] / self.nucleotide_counts[n1] * 1.0
 
-        if self.contigs_of_interest:
-            indexes = [references.index(r) for r in self.contigs_of_interest if r in references]
-            references = [references[i] for i in indexes]
-            lengths = [lengths[i] for i in indexes]
- 
-        for i in range(0, len(references)):
-            ref = references[i]
-            length = lengths[i]
-            self.references[ref] = {"length": length}
+            column = ''.join([n for n in column if n in [n1, n2]])
 
-        self.num_reads_mapped = self.bam.mapped
+        nucleotides = list(set(column))
+        denominator = float(len(column))
+        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
+        nucleotides_sorted_by_occurence = [x[0] for x in sorted(self.nucleotide_counts.iteritems(), key=operator.itemgetter(1), reverse=True)]
+        self.nucleotide_frequencies = dict([(n, self.nucleotide_counts[n] * 1.0 / denominator) for n in nucleotides])
+        n1 = nucleotides_sorted_by_occurence[0]
+        n2 = nucleotides_sorted_by_occurence[1]
+        self.consensus_nucleotide = n1
+        self.competing_nucleotides = ''.join(sorted([n1, n2]))
 
-        self.comm.info('References', ','.join(['"%s (%s)"' % (ref, pp(int(self.references[ref]['length']))) \
-                                    for ref in self.references.keys()[0:5]])) 
-        self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
+        if 'N' in self.competing_nucleotides or 'n' in self.competing_nucleotides:
+            self.entropy = 0
+            self.normalized_entropy = 0
+            self.competing_nucleotides = ''
+            return
 
-        self.progress.new('Analyzing Coverage Stats')
-        bad_refs = []
-        for reference in self.references:
-            self.progress.update('"%s" ...' % (reference))
-            coverage = []
+        if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
+            self.entropy = 0
+            self.normalized_entropy = 0
+            self.competing_nucleotides = ''
+            return
 
-            for pileupcolumn in self.bam.pileup(reference):
-                coverage.append(pileupcolumn.n)
+        if len(column) < 4:
+            self.entropy = 0
+            self.normalized_entropy = 0
+            self.competing_nucleotides = ''
+            return
 
-            if not coverage:
-                bad_refs.append(reference)
-            else:
-                self.references[reference]['min_coverage'] = numpy.median(coverage) / 2
-                self.references[reference]['max_coverage'] = numpy.max(coverage)
-                self.references[reference]['median_coverage'] = numpy.median(coverage)
-                self.references[reference]['mean_coverage'] = numpy.mean(coverage)
-        self.progress.end()
-
-        # FIXME CLEARING BAD CONTIGS
-        for reference in bad_refs:
-            self.references.pop(reference)
-
-        # BASIC CONTIG STATS
-        refs_sorted_by_occurence = sorted([(self.references[ref]['length'], ref) for ref in self.references], reverse=True)
-
-        fields = ["length", "mean_coverage", "median_coverage", "min_coverage", "max_coverage"]
-        text_output = ""
-        text_output += '\t'.join(["%-30s" % field for field in ["contig"] + fields]) + '\n'
-        for tpl in refs_sorted_by_occurence:
-            reference = tpl[1]
-            ref_obj = self.references[reference]
-            text_output += "\t".join(["%-30s" % reference] + ["%-30s" % pp(int(ref_obj[field])) for field in fields]) + "\n"
-
-        self.contigs_basic_stats = self.sam_file_path + '-CONTIGS.txt'
-        if not (os.path.exists(self.contigs_basic_stats) and self.contigs_of_interest):
-            f = open(self.contigs_basic_stats, 'w').write(text_output)
-            self.comm.info('Contigs basic stats', self.contigs_basic_stats)
-
-        if self.list_contigs_and_exit:
-            print
-            print "%d contigs found in the BAM file:" % (len(self.references))
-            print
-            print text_output
-            sys.exit()
-           
-
-    def generate_column_entropy_profile(self):
-        ref_keys = self.references.keys()
-        for i in range(0, len(ref_keys)):
-            reference = ref_keys[i]
-            ref_obj = self.references[ref_keys[i]]
-            self.progress.new('Analyzing Contig "%s" (%d of %d)' % (reference, i + 1, len(ref_keys)))
-
-            self.column_entropy_profiles[reference] = {}
-            
-            ep = self.column_entropy_profiles[reference]
-
-            self.progress.update('working on %s (%d of %d) // AC: %d :: MC: %d' % (reference,
-                                                                                   i + 1,
-                                                                                   len(ref_keys),
-                                                                                   ref_obj['mean_coverage'],
-                                                                                   ref_obj['min_coverage']))
-
-            for pileupcolumn in self.bam.pileup(reference):
-                if pileupcolumn.pos % 500 == 0:
-                    self.progress.update('Generating Entropy Profiles: %s (%.2f%%)' % (pp(pileupcolumn.pos),
-                                                                                       pileupcolumn.pos * 100.0 / ref_obj['length']))
-
-                column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
-
-                ep[pileupcolumn.pos] = ColumnEntropyProfile(column,
-                                                            pileupcolumn.pos,
-                                                            ref_obj['max_coverage'],
-                                                            ref_obj['median_coverage'])
-
-            self.contig_entropy_profiles[reference] = ContigEntropy(ref_obj, ep).summarize()
-
-            self.progress.end()
-
-        self.comm.info('Stuff is processed', True)
+        self.competing_nucleotides = ''.join(sorted([n1, n2]))
+        self.entropy = entropy(column)
+        self.competing_nucleotide_ratio = self.nucleotide_frequencies[self.competing_nucleotides[0]]
+        self.normalized_entropy = self.entropy * (self.coverage * 1.0 / contig_median_coverage)
+        if self.normalized_entropy > 1:
+            self.normalized_entropy = 1
 
 
     def generate_report(self):
@@ -248,105 +205,4 @@ class Entropy:
         contigs_report.close()
 
 
-class ContigEntropy:
-    def __init__(self, reference, entropy_profile):
-        self.entropy_profile = entropy_profile
-        self.reference = reference
 
-    def summarize(self):
-        average_entropy = sum(e.entropy for e in self.entropy_profile.values()) * 1000.0 / self.reference['length']
-        average_normalized_entropy = sum(e.normalized_entropy for e in self.entropy_profile.values()) * 1000.0 / self.reference['length']
-        return {'average_entropy': average_entropy,
-                'average_normalized_entropy': average_normalized_entropy}
-
-
-class ColumnEntropyProfile:
-    def __init__(self, column, pos, contig_max_coverage, contig_median_coverage):
-        self.pos = pos
-        self.contig_max_coverage = contig_max_coverage
-        self.contig_median_coverage = contig_median_coverage
-        self.coverage = len(column)
-        self.nucleotide_counts = {}
-        self.nucleotide_frequencies = {}
-        self.entropy = 0.0
-        self.normalized_entropy = 0.0
-        self.competing_nucleotides = ''
-        self.competing_nucleotide_ratio = 0
-
-        nucleotides = list(set(column))
-        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
-        nucleotides_sorted_by_occurence = [x[0] for x in sorted(self.nucleotide_counts.iteritems(), key=operator.itemgetter(1), reverse=True)]
-
-        if len(nucleotides_sorted_by_occurence) == 1:
-            self.entropy = 0
-            self.normalized_entropy = 0
-            return
-
-        if len(nucleotides_sorted_by_occurence) > 2:
-            self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
-
-            n1 = nucleotides_sorted_by_occurence[0]
-            n2 = nucleotides_sorted_by_occurence[1]
-
-            column = ''.join([n for n in column if n in [n1, n2]])
-
-        nucleotides = list(set(column))
-        denominator = len(column)
-        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
-        nucleotides_sorted_by_occurence = [x[0] for x in sorted(self.nucleotide_counts.iteritems(), key=operator.itemgetter(1), reverse=True)]
-        self.nucleotide_frequencies = dict([(n, self.nucleotide_counts[n] * 1.0 / denominator) for n in nucleotides])
-        n1 = nucleotides_sorted_by_occurence[0]
-        n2 = nucleotides_sorted_by_occurence[1]
-        self.competing_nucleotides = ''.join(sorted([n1, n2]))
-
-        if 'N' in self.competing_nucleotides or 'n' in self.competing_nucleotides:
-            self.entropy = 0
-            self.normalized_entropy = 0
-            self.competing_nucleotides = ''
-            return
-
-        if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
-            self.entropy = 0
-            self.normalized_entropy = 0
-            self.competing_nucleotides = ''
-            return
-
-        if len(column) < 4:
-            self.entropy = 0
-            self.normalized_entropy = 0
-            self.competing_nucleotides = ''
-            return
-
-        self.competing_nucleotides = ''.join(sorted([n1, n2]))
-        self.entropy = entropy(column)
-        self.competing_nucleotide_ratio = self.nucleotide_frequencies[self.competing_nucleotides[0]]
-        self.normalized_entropy = self.entropy * (self.coverage * 1.0 / self.contig_median_coverage)
-        if self.normalized_entropy > 1:
-            self.normalized_entropy = 1
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(description='BAM file profiler for entropy analysis')
-    parser.add_argument('input_file', metavar = 'FILE PATH',
-                        help = 'SAM file to analyze')
-    parser.add_argument('--sorted', action = 'store_true', default = False,
-                        help = 'Flag to define whether BAM file is already sorted')
-    parser.add_argument('--indexed', action = 'store_true', default = False,
-                        help = 'Flag to define whether BAM file is already indexed')
-    parser.add_argument('--list-contigs', action = 'store_true', default = False,
-                        help = 'Whend declared, lists contigs in the BAM file and\
-                                exits without any further analysis.')
-    parser.add_argument('--contigs', default = None,
-                        help = 'It is possible to analyze only a group of contigs from\
-                                a given BAM file. Contigs of interest can be specified\
-                                using a comma separated list, or in a text file where\
-                                each line contains a contig name.')
-
-    args = parser.parse_args()
-    
-    if not os.path.exists(args.input_file):
-        print 'No such file: "%s"' % args.input_file
-        sys.exit()
-
-    rofiler = SamProfiler(args)
