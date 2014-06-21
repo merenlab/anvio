@@ -11,12 +11,14 @@
 # Please read the COPYING file.
 
 import os
+import sys
 import PaPi.profiler
+from PaPi.utils import ConfigError
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Main entropy point for Post-Assembly Metagenomics Pipeline')
+    parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
     parser.add_argument('input_file', metavar = 'FILE PATH',
                         help = 'Sorted and indexed BAM file to analyze')
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
@@ -34,6 +36,11 @@ if __name__ == '__main__':
         print 'No such file: "%s"' % args.input_file
         sys.exit()
 
-    profiler = PaPi.profiler.BAMProfiler(args)
+    try:
+        profiler = PaPi.profiler.BAMProfiler(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+
     #profiler.generate_column_entropy_profile()
     #profiler.generate_report()

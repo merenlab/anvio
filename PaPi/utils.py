@@ -13,11 +13,67 @@ import os
 import sys
 import time
 import fcntl
-import termios 
+import string
 import struct
 import cPickle
+import termios 
+import itertools
 
 from PaPi.constants import pretty_names
+
+
+complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
+                               'tgcayrkmvhdbTGCAYRKMVHDB')
+
+
+def rev_comp(seq):
+    return seq.translate(complements)[::-1]
+
+
+class KMers:
+    def __init__(self):
+        self.kmers = {}
+        
+        self.get_kmers(k = 4)
+
+    def get_kmers(self, k):
+        arg = ['ATCG'] * k
+        kmers = set()
+        
+        for item in itertools.product(*arg):
+            kmer = ''.join(item)
+            if rev_comp(kmer) not in kmers:
+                kmers.add(kmer)
+        
+        self.kmers[k] = kmers
+
+
+    def get_kmer_frequency(self, sequence, k = 4):
+        sequence = sequence.upper()
+
+        if len(sequence) < k:
+            return None
+
+        if not self.kmers.has_key(k):
+            self.get_kmers(k)
+        
+        kmers = self.kmers[k]
+        frequencies = dict(zip(kmers, [0] * len(kmers)))
+        
+        for i in range(0, len(sequence) - (k - 1)):
+            kmer = sequence[i:i + k]
+            
+            # FIXME: this can be faster/better
+            if len([n for n in kmer if n not in 'ATCG']):
+                continue
+
+            if frequencies.has_key(kmer):
+                frequencies[kmer] += 1
+            else:
+                frequencies[rev_comp(kmer)] += 1
+           
+        return frequencies
+
 
 class Progress:
     def __init__(self):
@@ -191,3 +247,12 @@ def get_pretty_name(key):
         return pretty_names[key]
     else:
         return key
+
+
+class ConfigError(Exception):
+    def __init__(self, e = None):
+        Exception.__init__(self)
+        self.e = e
+        return
+    def __str__(self):
+        return 'Config Error: %s' % self.e

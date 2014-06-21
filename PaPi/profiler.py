@@ -19,16 +19,17 @@ import operator
 from PaPi.utils import Progress
 from PaPi.utils import Run 
 from PaPi.utils import pretty_print as pp 
-
+import PaPi.utils as utils
+from PaPi.contig_stats_essential import Essential
+from PaPi.contig_stats_auxiliary import Auxiliary
+from PaPi.contig_composition import Composition
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
-    def __init__(self, sam_file_path):
+    def __init__(self, args):
         self.bam = None
-        self.sam_file_path = args.input_file
-        self.Sorted = args.sorted # we're masking sorted
-        self.indexed = args.indexed
-        self.references = {}
+        self.input_file_path = args.input_file
+        self.references_dict = {}
         self.mapped = None
         self.contigs_of_interest = None
 
@@ -40,78 +41,82 @@ class BAMProfiler:
             else:
                 self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
 
-        if self.Sorted:
-            self.sam_file_sorted_path = self.sam_file_path
-        else: 
-            self.sam_file_sorted_path = None
-
         self.progress = Progress()
         self.comm = Run()
 
         self.init()
-
-        if self.contigs_of_interest:
-            self.comm.info('Contigs selected for analysis', ','.join(self.references.keys()))
-
-
-        self.column_entropy_profiles = {}
-        self.contig_entropy_profiles = {}
-        self.generate_column_entropy_profile()
-        self.generate_report()
+        self.profile()
+        #self.report()
 
 
     def init(self):
-
-        self.progress.new('READ')
+        self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = pysam.Samfile(self.sam_file_sorted_path, 'rb')
+        self.bam = pysam.Samfile(self.input_file_path, 'rb')
         self.progress.end()
 
-        self.comm.info('Input BAM file', self.sam_file_sorted_path)
+        self.comm.info('Input BAM file', self.input_file_path)
 
-        references = self.bam.references
-        lengths = self.bam.lengths
+        self.references = self.bam.references
+        self.lengths = self.bam.lengths
+
+        if self.list_contigs_and_exit:
+            print "\nContigs in the file:\n"
+            for (reference, length) in zip(self.references, self.lengths):
+                print "\t- %s (%s)" % (reference, pp(int(length)))
+            print
+            sys.exit()
 
         if self.contigs_of_interest:
-            indexes = [references.index(r) for r in self.contigs_of_interest if r in references]
-            references = [references[i] for i in indexes]
-            lengths = [lengths[i] for i in indexes]
+            indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
+            self.references = [self.references[i] for i in indexes]
+            self.lengths = [self.lengths[i] for i in indexes]
+            l = len(self.references)
+            self.comm.info('Contigs selected for analysis', ', '.join(self.references[0:3]) \
+                                                                + ' ... (%d) more' % (l-3) if l > 3 else '')
  
-        for i in range(0, len(references)):
-            ref = references[i]
-            length = lengths[i]
-            self.references[ref] = {"length": length}
+        try:
+            self.num_reads_mapped = self.bam.mapped
+        except ValueError:
+            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
 
-        self.num_reads_mapped = self.bam.mapped
-
-        self.comm.info('References', ','.join(['"%s (%s)"' % (ref, pp(int(self.references[ref]['length']))) \
-                                    for ref in self.references.keys()[0:5]])) 
+        self.comm.info('Total num references', pp(len(self.references))) 
         self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
 
-        self.progress.new('Analyzing Coverage Stats')
-        bad_refs = []
-        for reference in self.references:
-            self.progress.update('"%s" ...' % (reference))
-            coverage = []
 
-            for pileupcolumn in self.bam.pileup(reference):
-                coverage.append(pileupcolumn.n)
+    def profile(self):
+        self.progress.new('Profiling the BAM file')
 
-            if not coverage:
-                bad_refs.append(reference)
-            else:
-                self.references[reference]['min_coverage'] = numpy.median(coverage) / 2
-                self.references[reference]['max_coverage'] = numpy.max(coverage)
-                self.references[reference]['median_coverage'] = numpy.median(coverage)
-                self.references[reference]['mean_coverage'] = numpy.mean(coverage)
+        # Go through each reference, populate references dictionary...
+        for i in range(0, len(self.references)):
+            reference = self.references[i]
+            self.references_dict[reference] = {}
+
+            #fill in basics
+            self.progress.update('Essential stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
+            self.references_dict[reference]['essential'] = Essential(reference, self.bam.pileup(reference)).report()
+            self.references_dict[reference]['essential']['length'] = self.lengths[i]
+
+            # fill in entropy and representatives
+            self.progress.update('Auxiliary stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
+            self.references_dict[reference]['auxiliary'] = Auxiliary(reference, self.bam.pileup(reference),
+                                                                     self.references_dict[reference]['essential']).report()
+
+            # fill in tetranucleotide frequency
+            self.progress.update('Computing TFN for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
+            self.references_dict[reference]['composition'] = Composition(reference, self.references_dict[reference]['auxiliary']).report()
+
+
         self.progress.end()
 
-        # FIXME CLEARING BAD CONTIGS
-        for reference in bad_refs:
-            self.references.pop(reference)
+        print self.references_dict
+        print len(self.references_dict['contig_8']['essential']['coverage'])
+        print len(self.references_dict['contig_8']['auxiliary']['rep_seq'])
+        print self.references_dict['contig_8']['essential']['length']
 
+    def report(self):
         # BASIC CONTIG STATS
-        refs_sorted_by_occurence = sorted([(self.references[ref]['length'], ref) for ref in self.references], reverse=True)
+        refs_sorted_by_occurence = sorted([(self.references[ref]['basics']['length'], ref) for ref in self.references], reverse=True)
 
         fields = ["length", "mean_coverage", "median_coverage", "min_coverage", "max_coverage"]
         text_output = ""
@@ -121,7 +126,7 @@ class BAMProfiler:
             ref_obj = self.references[reference]
             text_output += "\t".join(["%-30s" % reference] + ["%-30s" % pp(int(ref_obj[field])) for field in fields]) + "\n"
 
-        self.contigs_basic_stats = self.sam_file_path + '-CONTIGS.txt'
+        self.contigs_basic_stats = self.input_file_path + '-CONTIGS.txt'
         if not (os.path.exists(self.contigs_basic_stats) and self.contigs_of_interest):
             f = open(self.contigs_basic_stats, 'w').write(text_output)
             self.comm.info('Contigs basic stats', self.contigs_basic_stats)
