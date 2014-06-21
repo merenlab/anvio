@@ -110,9 +110,7 @@ class BAMProfiler:
         self.progress.end()
 
         print self.references_dict
-        print len(self.references_dict['contig_8']['essential']['coverage'])
-        print len(self.references_dict['contig_8']['auxiliary']['rep_seq'])
-        print self.references_dict['contig_8']['essential']['length']
+
 
     def report(self):
         # BASIC CONTIG STATS

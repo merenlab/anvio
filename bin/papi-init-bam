@@ -10,6 +10,7 @@
 #
 # Please read the COPYING file.
 
+import os
 import sys
 import pysam
 from PaPi.utils import Progress
