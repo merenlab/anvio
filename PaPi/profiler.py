@@ -33,6 +33,7 @@ class BAMProfiler:
         self.mapped = None
         self.contigs_of_interest = None
         self.min_contig_length = args.min_contig_length
+        self.min_mean_coverage = args.min_mean_coverage
 
         self.list_contigs_and_exit = args.list_contigs
 
@@ -58,8 +59,8 @@ class BAMProfiler:
 
         self.comm.info('Input BAM file', self.input_file_path)
 
-        self.references = self.bam.references
-        self.raw_lengths = self.bam.lengths
+        self.references = self.bam.references[0:10]
+        self.raw_lengths = self.bam.lengths[0:10]
 
         try:
             self.num_reads_mapped = self.bam.mapped
@@ -124,7 +125,25 @@ class BAMProfiler:
             self.comm.info('Total number of contigs after M', pp(len(self.references)))
             self.progress.new('Profiling the BAM file')
 
- 
+
+        # this is also important. here we are going to remove any contig with a mean coverage less than C; mean
+        # coverage info is stored in ['essential']['mean_coverage']. the mean coverage does not include areas
+        # where zero reads mapped. 
+        self.progress.update('Screening coverage for each contig ...')
+        references_to_discard = set()
+        for reference in self.references_dict:
+            if self.references_dict[reference]['essential']['mean_coverage'] < self.min_mean_coverage:
+                references_to_discard.add(reference)
+
+        if len(references_to_discard):
+            for reference in references_to_discard:
+                self.references_dict.pop(reference)
+            self.references = self.references_dict.keys()
+            self.progress.end()
+            self.comm.info('Total number of contigs after C', pp(len(self.references)))
+            self.progress.new('Profiling the BAM file')
+
+
         for i in range(0, len(self.references)):
             reference = self.references[i]
             # fill in entropy and representatives
