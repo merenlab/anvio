@@ -21,8 +21,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
     parser.add_argument('input_file', metavar = 'FILE PATH',
                         help = 'Sorted and indexed BAM file to analyze')
+    parser.add_argument('-o', '--output-directory', default = None,
+                        help = 'The directory for output files to be stored.')
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
-                        help = 'Whend declared, lists contigs in the BAM file and\
+                        help = 'When declared, lists contigs in the BAM file and\
                                 exits without any further analysis.')
     parser.add_argument('-M', '--min-contig-length', default = 10000, type=int,
                         help = 'Minimum length of contigs in a BAM file to analyze. The\
