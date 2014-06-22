@@ -61,6 +61,12 @@ class BAMProfiler:
         self.references = self.bam.references
         self.raw_lengths = self.bam.lengths
 
+        try:
+            self.num_reads_mapped = self.bam.mapped
+        except ValueError:
+            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
+
+        self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
         self.comm.info('Total number of contigs in file', pp(len(self.references)))
 
         if self.list_contigs_and_exit:
@@ -74,8 +80,7 @@ class BAMProfiler:
             indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
             self.references = [self.references[i] for i in indexes]
             self.raw_lengths = [self.raw_lengths[i] for i in indexes]
-            l = len(self.references)
-            self.comm.info('Contigs selected for analysis', ', '.join(self.references[0:3]) + (' ... (%d) more' % (l-3) if l > 3 else '')) 
+            self.comm.info('Total num contigs selected for analysis', pp(len(self.references)))
 
         contigs_longer_than_M = set()
         for i in range(0, len(self.references)):
@@ -86,16 +91,7 @@ class BAMProfiler:
         else:
             self.references = [self.references[i] for i in contigs_longer_than_M]
             self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
-            l = len(self.references)
-            self.comm.info('Contigs longer than M', ', '.join(self.references[0:3]) + (' ... (%d) more' % (l-3) if l > 3 else '')) 
- 
-        try:
-            self.num_reads_mapped = self.bam.mapped
-        except ValueError:
-            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
-
-        self.comm.info('Total num references', pp(len(self.references))) 
-        self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
+            self.comm.info('Contigs longer than M', len(self.references))
 
 
     def profile(self):
@@ -129,7 +125,8 @@ class BAMProfiler:
             self.progress.new('Profiling the BAM file')
 
  
-        for reference in self.references_dict:
+        for i in range(0, len(self.references)):
+            reference = self.references[i]
             # fill in entropy and representatives
             self.progress.update('Auxiliary stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
             self.references_dict[reference]['auxiliary'] = Auxiliary(reference, self.bam.pileup(reference),
