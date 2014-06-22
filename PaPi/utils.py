@@ -18,6 +18,7 @@ import struct
 import cPickle
 import termios 
 import itertools
+import multiprocessing
 
 from PaPi.constants import pretty_names
 
@@ -73,6 +74,86 @@ class KMers:
                 frequencies[rev_comp(kmer)] += 1
            
         return frequencies
+
+
+
+
+class Multiprocessing:
+    def __init__(self, target_function, num_thread = None):
+        self.cpu_count = multiprocessing.cpu_count()
+        self.num_thread = num_thread or (self.cpu_count - (int(round(self.cpu_count / 10.0)) or 1))
+        self.target_function = target_function
+        self.processes = []
+        self.manager = multiprocessing.Manager()
+
+
+    def get_data_chunks(self, data_array, spiral = False):
+        data_chunk_size = (len(data_array) / self.num_thread) or 1
+        data_chunks = []
+        
+        if len(data_array) <= self.num_thread:
+            return [[chunk] for chunk in data_array]
+
+        if spiral:
+            for i in range(0, self.num_thread):
+                data_chunks.append([data_array[j] for j in range(i, len(data_array), self.num_thread)])
+            
+            return data_chunks
+        else:
+            for i in range(0, self.num_thread):
+                if i == self.num_thread - 1:
+                    data_chunks.append(data_array[i * data_chunk_size:])
+                else:
+                    data_chunks.append(data_array[i * data_chunk_size:i * data_chunk_size + data_chunk_size])
+
+        return data_chunks
+
+                
+    def run(self, args, name = None):
+        t = multiprocessing.Process(name = name,
+                                    target = self.target_function,
+                                    args = args)
+        self.processes.append(t)
+        t.start()
+
+
+    def get_empty_shared_array(self):
+        return self.manager.list()
+
+
+    def get_empty_shared_dict(self):
+        return self.manager.dict()
+
+    
+    def get_shared_integer(self):
+        return self.manager.Value('i', 0)
+
+
+    def run_processes(self, processes_to_run, progress_obj = None):
+        tot_num_processes = len(processes_to_run)
+        sent_to_run = 0
+        while 1:
+            NumRunningProceses = lambda: len([p for p in self.processes if p.is_alive()])
+            
+            if NumRunningProceses() < self.num_thread and processes_to_run:
+                for i in range(0, self.num_thread - NumRunningProceses()):
+                    if len(processes_to_run):
+                        sent_to_run += 1
+                        self.run(processes_to_run.pop())
+
+            if not NumRunningProceses() and not processes_to_run:
+                # let the blastn program finish writing all output files.
+                # FIXME: this is ridiculous. find a better solution.
+                time.sleep(1)
+                break
+
+            if progress_obj:
+                progress_obj.update('%d of %d done in %d threads (currently running processes: %d)'\
+                                                         % (sent_to_run - NumRunningProceses(),
+                                                            tot_num_processes,
+                                                            self.num_thread,
+                                                            NumRunningProceses()))
+            time.sleep(1)
 
 
 class Progress:
