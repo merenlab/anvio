@@ -32,6 +32,7 @@ class BAMProfiler:
         self.references_dict = {}
         self.mapped = None
         self.contigs_of_interest = None
+        self.min_contig_length = args.min_contig_length
 
         self.list_contigs_and_exit = args.list_contigs
 
@@ -58,11 +59,13 @@ class BAMProfiler:
         self.comm.info('Input BAM file', self.input_file_path)
 
         self.references = self.bam.references
-        self.lengths = self.bam.lengths
+        self.raw_lengths = self.bam.lengths
+
+        self.comm.info('Total number of contigs in file', pp(len(self.references)))
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
-            for (reference, length) in zip(self.references, self.lengths):
+            for (reference, length) in zip(self.references, self.raw_lengths):
                 print "\t- %s (%s)" % (reference, pp(int(length)))
             print
             sys.exit()
@@ -70,10 +73,21 @@ class BAMProfiler:
         if self.contigs_of_interest:
             indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
             self.references = [self.references[i] for i in indexes]
-            self.lengths = [self.lengths[i] for i in indexes]
+            self.raw_lengths = [self.raw_lengths[i] for i in indexes]
             l = len(self.references)
-            self.comm.info('Contigs selected for analysis', ', '.join(self.references[0:3]) \
-                                                                + ' ... (%d) more' % (l-3) if l > 3 else '')
+            self.comm.info('Contigs selected for analysis', ', '.join(self.references[0:3]) + (' ... (%d) more' % (l-3) if l > 3 else '')) 
+
+        contigs_longer_than_M = set()
+        for i in range(0, len(self.references)):
+            if self.raw_lengths[i] > self.min_contig_length:
+                contigs_longer_than_M.add(i)
+        if not len(contigs_longer_than_M):
+            raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+        else:
+            self.references = [self.references[i] for i in contigs_longer_than_M]
+            self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
+            l = len(self.references)
+            self.comm.info('Contigs longer than M', ', '.join(self.references[0:3]) + (' ... (%d) more' % (l-3) if l > 3 else '')) 
  
         try:
             self.num_reads_mapped = self.bam.mapped
@@ -95,8 +109,27 @@ class BAMProfiler:
             #fill in basics
             self.progress.update('Essential stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
             self.references_dict[reference]['essential'] = Essential(reference, self.bam.pileup(reference)).report()
-            self.references_dict[reference]['essential']['length'] = self.lengths[i]
 
+        # this is important:
+        # paired-end libraries with large inserts can cover long areas with large empty areas in between. after
+        # analyzing the coverage across each contig, we know the actual lenght of real nucleotides (this information
+        # is held by ['essential']['length']). so we will further eliminate contigs that are kinda useless:
+        self.progress.update('Screening actual contig lengths ...')
+        references_to_discard = set()
+        for reference in self.references_dict:
+            if self.references_dict[reference]['essential']['length'] < self.min_contig_length:
+                references_to_discard.add(reference)
+
+        if len(references_to_discard):
+            for reference in references_to_discard:
+                self.references_dict.pop(reference)
+            self.references = self.references_dict.keys()
+            self.progress.end()
+            self.comm.info('Total number of contigs after M', pp(len(self.references)))
+            self.progress.new('Profiling the BAM file')
+
+ 
+        for reference in self.references_dict:
             # fill in entropy and representatives
             self.progress.update('Auxiliary stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
             self.references_dict[reference]['auxiliary'] = Auxiliary(reference, self.bam.pileup(reference),

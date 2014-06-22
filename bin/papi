@@ -24,6 +24,14 @@ if __name__ == '__main__':
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
                         help = 'Whend declared, lists contigs in the BAM file and\
                                 exits without any further analysis.')
+    parser.add_argument('-M', '--min-contig-length', default = 10000, type=int,
+                        help = 'Minimum length of contigs in a BAM file to analyze. The\
+                                minimum length should be long enough for tetranucleotide\
+                                frequency analysis to be meaningful. The default is\
+                                %(default)d, and we advise to never go below 5,000.')
+    parser.add_argument('-C', '--min-mean-coverage', default = 5, type=int,
+                        help = 'Minimum mean coverage for contigs to be kept in the\
+                                analysis.')
     parser.add_argument('--contigs', default = None,
                         help = 'It is possible to analyze only a group of contigs from\
                                 a given BAM file. Contigs of interest can be specified\
