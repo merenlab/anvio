@@ -15,6 +15,7 @@ import sys
 import numpy
 import pysam
 import random
+import cPickle
 import operator
 from PaPi.utils import Progress
 from PaPi.utils import Run 
@@ -27,35 +28,102 @@ from PaPi.contig_composition import Composition
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
-    def __init__(self, args):
-        self.bam = None
-        self.input_file_path = args.input_file
-        self.output_directory = args.output_directory
-        self.references_dict = {}
-        self.mapped = None
-        self.contigs_of_interest = None
-        self.no_trehading = False
-        self.number_of_threads = 4
-        self.min_contig_length = args.min_contig_length
-        self.min_mean_coverage = args.min_mean_coverage
+    def __init__(self, args = None):
+        if args:
+            self.args = args
+            self.input_file_path = args.input_file
+            self.serialized_profile_path = args.profile
+            self.output_directory = args.output_directory
+            self.list_contigs_and_exit = args.list_contigs
+            self.min_contig_length = args.min_contig_length
+            self.min_mean_coverage = args.min_mean_coverage
+            self.number_of_threads = 4 
+            self.no_trehading = False
 
-        self.list_contigs_and_exit = args.list_contigs
-
-        if args.contigs:
-            if os.path.exists(args.contigs):
-                self.contigs_of_interest = [c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')]
+            if args.contigs:
+                if os.path.exists(args.contigs):
+                    self.contigs_of_interest = [c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')]
+                else:
+                    self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
             else:
-                self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
+                self.contigs_of_interest = None
+
+        else:
+            self.args = args
+            self.input_file_path = None 
+            self.serialized_profile_path = None 
+            self.output_directory = None 
+            self.list_contigs_and_exit = None 
+            self.min_contig_length = 10000 
+            self.min_mean_coverage = 10
+            # FIXME: Parameterize these two:
+            self.number_of_threads = 4 
+            self.no_trehading = False
+
+        self.bam = None
+        self.references_dict = {}
 
         self.progress = Progress()
         self.comm = Run()
 
-        self.init()
-        self.profile()
+
+    def run(self):
+        self.check_args()
+
+        if self.input_file_path:
+            self.init_profile_from_BAM()
+            self.profile()
+            self.store_profile()
+        else:
+            self.init_serialized_profile()
+
         #self.report()
 
 
-    def init(self):
+    def init_serialized_profile(self):
+        self.progress.new('Init')
+        self.progress.update('Reading serialized profile')
+        self.references_dict = cPickle.load(open(self.serialized_profile_path))
+        self.progress.end()
+        self.comm.info('References are loaded from profile', self.serialized_profile_path)
+
+        self.progress.new('Init')
+        self.progress.update('Initializing the output directory ...')
+        self.init_output_directory()
+        self.progress.end()
+        self.comm.info('Output directory', self.output_directory)
+
+        self.references = self.references_dict.keys()
+        self.lengths = [self.references_dict[reference]['essential']['length'] for reference in self.references]
+
+        self.comm.info('Total number of contigs in profile', pp(len(self.references)))
+
+        if self.list_contigs_and_exit:
+            print "\nContigs in the file:\n"
+            for (reference, length) in zip(self.references, self.lengths):
+                print "\t- %s (%s)" % (reference, pp(int(length)))
+            print
+            sys.exit()
+
+        if self.contigs_of_interest:
+            indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
+            self.references = [self.references[i] for i in indexes]
+            self.lengths = [self.lengths[i] for i in indexes]
+            self.comm.info('Total num contigs selected for analysis', pp(len(self.references)))
+
+        contigs_longer_than_M = set()
+        for i in range(0, len(self.references)):
+            if self.lengths[i] > self.min_contig_length:
+                contigs_longer_than_M.add(i)
+        if not len(contigs_longer_than_M):
+            raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+        else:
+            self.references = [self.references[i] for i in contigs_longer_than_M]
+            self.raw_lengths = [self.lengths[i] for i in contigs_longer_than_M]
+            self.comm.info('Contigs with raw length longer than M', len(self.references))
+
+
+    def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
@@ -120,7 +188,7 @@ class BAMProfiler:
 
 
     def generate_output_destination(self, postfix, directory = False):
-        return_path = os.path.join(self.output_dir, postfix)
+        return_path = os.path.join(self.output_directory, postfix)
 
         if directory == True:
             if os.path.exists(return_path):
@@ -187,6 +255,8 @@ class BAMProfiler:
         else:
             self.progress.end()
 
+        if not len(self.references):
+            raise utils.ConfigError, "0 contigs passed minimum contig length parameter."
 
         self.progress.new('Filtering contigs based on mean coverage')
         # this is also important. here we are going to remove any contig with a mean coverage less than C; mean
@@ -207,6 +277,8 @@ class BAMProfiler:
         else:
             self.progress.end()
 
+        if not len(self.references):
+            raise utils.ConfigError, "0 contigs passed minimum mean coverage parameter."
 
         # QA/QC is done. Now we go into Auxiliary analyses.
         self.progress.new('Computing auxiliary stats')
@@ -273,7 +345,38 @@ class BAMProfiler:
         # Profiling is done.
 
 
+    def store_profile(self):
+        output_file = self.generate_output_destination('PROFILE.cPickle')
+        self.progress.new('Storing Profile')
+        self.progress.update('Serializing information for %s contigs ...' % pp(len(self.references_dict)))
+        cPickle.dump(self.references_dict, open(output_file, 'w'))
+        self.progress.end()
+        self.comm.info('Serialized contigs profile', output_file)
+
+
+    def load_profile(self):
+        pass
+
+
     def report(self):
         # time to report stuff:
         #
         # TNF matrix. basic stats. representative sequences file (phymbll?). 
+        pass
+
+
+    def check_args(self):
+        if (not self.input_file_path) and (not self.serialized_profile_path):
+            raise utils.ConfigError, "You must declare either an input file, or a serialized profile."
+        if self.input_file_path and self.serialized_profile_path:
+            raise utils.ConfigError, "You can't declare both an input file and a serialized profile."
+        if self.serialized_profile_path and (not self.output_directory):
+            raise utils.ConfigError, "When loading serialized profiles, you need to declare an output directory."
+        if self.input_file_path and not os.path.exists(self.input_file_path):
+            raise utils.ConfigError, "No such file: '%s'" % self.input_file_path
+        if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
+            raise utils.ConfigError, "No such file: '%s'" % self.serialized_profile_path
+        if not self.min_mean_coverage > 0:
+            raise utils.ConfigError, "Minimum mean coverage must be 1 or larger"
+        if not self.min_contig_length > 0:
+            raise utils.ConfigError, "Minimum contig length must be 1 or larger (although using anything below 5,000 is kinda silly)."

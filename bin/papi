@@ -19,8 +19,12 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
-    parser.add_argument('input_file', metavar = 'FILE PATH',
+    parser.add_argument('-i', '--input_file', metavar = 'PATH', default = None,
                         help = 'Sorted and indexed BAM file to analyze')
+    parser.add_argument('-d', '--profile', default = None, metavar = 'PATH',
+                        help = 'Serialized profile. When declared, the profiling step\
+                                will be skipped and the serialized profile will be\
+                                loaded')
     parser.add_argument('-o', '--output-directory', default = None,
                         help = 'The directory for output files to be stored.')
     parser.add_argument('--list-contigs', action = 'store_true', default = False,
@@ -39,15 +43,13 @@ if __name__ == '__main__':
                                 a given BAM file. Contigs of interest can be specified\
                                 using a comma separated list, or in a text file where\
                                 each line contains a contig name.')
+    
 
     args = parser.parse_args()
-    
-    if not os.path.exists(args.input_file):
-        print 'No such file: "%s"' % args.input_file
-        sys.exit()
 
     try:
         profiler = PaPi.profiler.BAMProfiler(args)
+        profiler.run()
     except ConfigError, e:
         print e
         sys.exit(-1)
