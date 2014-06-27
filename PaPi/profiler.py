@@ -17,10 +17,9 @@ import pysam
 import random
 import cPickle
 import operator
-from PaPi.utils import Progress
-from PaPi.utils import Run 
-from PaPi.utils import pretty_print as pp 
+import subprocess
 import PaPi.utils as utils
+from PaPi.utils import pretty_print as pp
 from PaPi.contig_stats_essential import Essential
 from PaPi.contig_stats_auxiliary import Auxiliary
 from PaPi.contig_composition import Composition
@@ -38,7 +37,7 @@ class BAMProfiler:
             self.min_contig_length = args.min_contig_length
             self.min_mean_coverage = args.min_mean_coverage
             self.number_of_threads = 4 
-            self.no_trehading = False
+            self.no_trehading = True
 
             if args.contigs:
                 if os.path.exists(args.contigs):
@@ -63,8 +62,8 @@ class BAMProfiler:
         self.bam = None
         self.references_dict = {}
 
-        self.progress = Progress()
-        self.comm = Run()
+        self.progress = utils.Progress()
+        self.comm = utils.Run()
 
 
     def run(self):
@@ -77,7 +76,7 @@ class BAMProfiler:
         else:
             self.init_serialized_profile()
 
-        #self.report()
+        self.report()
 
 
     def init_serialized_profile(self):
@@ -359,10 +358,48 @@ class BAMProfiler:
 
 
     def report(self):
-        # time to report stuff:
-        #
-        # TNF matrix. basic stats. representative sequences file (phymbll?). 
-        pass
+        # generate a sorted list of references based on length
+        self.references = [t[1] for t in sorted([(self.references_dict[k]['essential']['length'], k)\
+                                                for k in self.references], reverse = True)]
+
+        self.progress.new('Generating reports')
+        self.progress.update('TNF matrix for contigs')
+        TNF_matrix_file_path = self.generate_output_destination('TETRANUCLEOTIDE-FREQ-MATRIX.txt')
+        output = open(TNF_matrix_file_path, 'w')
+        kmers = sorted(self.references_dict[self.references[0]]['composition']['tnf'].keys())
+        output.write('contigs\t%s\n' % ('\t'.join(kmers)))
+        for reference in self.references:
+            output.write('%s\t' % (reference))
+            output.write('%s\n' % '\t'.join([str(self.references_dict[reference]['composition']['tnf'][kmer]) for kmer in kmers]))
+        output.close()
+        self.progress.end()
+        self.comm.info('Tetranucleotide frequency matrix', TNF_matrix_file_path)
+
+
+        self.progress.new('Generating reports')
+        self.progress.update('Generating the tree of contigs')
+        newick_tree_file_path = self.generate_output_destination('TNF-NEWICK-TREE.txt')
+        env = os.environ.copy()
+        subprocess.call(['papi-TNF-matrix-to-newick.R', '-o', newick_tree_file_path, TNF_matrix_file_path], env = env)
+        self.progress.end()
+        self.comm.info('Tree file for contigs', newick_tree_file_path)
+
+
+        # metadata
+        self.progress.new('Generating reports')
+        self.progress.update('Metadata for contigs')
+        metadata_fields = [('essential', 'length'), ('essential', 'mean_coverage'), ('essential', 'std_coverage'), 
+                           ('composition', 'GC_content')]
+        metadata = self.generate_output_destination('METADATA.txt')
+        output = open(metadata, 'w')
+        output.write('contigs\t%s\n' % ('\t'.join([m[1] for m in metadata_fields])))
+        for reference in self.references:
+            metadata_line = [self.references_dict[reference][major][minor] for major, minor in metadata_fields]
+            output.write('%s\n' % '\t'.join([reference] + ['%.4f' % x for x in metadata_line]))
+        output.close()
+        self.progress.end()
+        self.comm.info('Metadata file', metadata)
+
 
 
     def check_args(self):
