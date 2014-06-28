@@ -86,12 +86,6 @@ class BAMProfiler:
         self.progress.end()
         self.comm.info('References are loaded from profile', self.serialized_profile_path)
 
-        self.progress.new('Init')
-        self.progress.update('Initializing the output directory ...')
-        self.init_output_directory()
-        self.progress.end()
-        self.comm.info('Output directory', self.output_directory)
-
         self.references = self.references_dict.keys()
         self.lengths = [self.references_dict[reference]['essential']['length'] for reference in self.references]
 
@@ -121,6 +115,12 @@ class BAMProfiler:
             self.raw_lengths = [self.lengths[i] for i in contigs_longer_than_M]
             self.comm.info('Contigs with raw length longer than M', len(self.references))
 
+        self.progress.new('Init')
+        self.progress.update('Initializing the output directory ...')
+        self.init_output_directory()
+        self.progress.end()
+        self.comm.info('Output directory', self.output_directory)
+
 
     def init_profile_from_BAM(self):
         self.progress.new('Init')
@@ -128,12 +128,6 @@ class BAMProfiler:
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
         self.progress.end()
         self.comm.info('Input BAM file', self.input_file_path)
-
-        self.progress.new('Init')
-        self.progress.update('Initializing the output directory ...')
-        self.init_output_directory()
-        self.progress.end()
-        self.comm.info('Output directory', self.output_directory)
 
         self.references = self.bam.references
         self.raw_lengths = self.bam.lengths
@@ -169,6 +163,12 @@ class BAMProfiler:
             self.references = [self.references[i] for i in contigs_longer_than_M]
             self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
             self.comm.info('Contigs with raw length longer than M', len(self.references))
+
+        self.progress.new('Init')
+        self.progress.update('Initializing the output directory ...')
+        self.init_output_directory()
+        self.progress.end()
+        self.comm.info('Output directory', self.output_directory)
 
 
     def init_output_directory(self):
