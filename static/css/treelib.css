@@ -1,0 +1,116 @@
+body {
+    font-family: Arial;
+    font-size: 10px;
+}
+
+div#treeContainer {
+    position: block;
+    width:100%;
+    height:100%;
+    background-color:white;
+    border:0px;
+    margin:0px;
+}
+
+div#treeControls {
+    opacity:0.75;
+}
+
+
+
+#zoomControls {
+    padding: 0px;
+    width:50px;
+    list-style:none;
+    margin:0;
+}
+
+#zoomControls li {
+    width:50px; height:50px;
+    background-size:contain;
+    background-repeat:stretch;
+    opacity:0.75;
+    position:relative;
+    z-index: 20;
+}
+
+#zoomControls li:hover {
+    cursor:pointer;
+}
+
+#zoomControls .zoom-in { background-image:url(../images/zoom-in.svg); }
+#zoomControls .zoom-in:hover { background-image:url(../images/zoom-in_sel.svg); }
+#zoomControls .zoom-out { background-image:url(../images/zoom-out.svg); }
+#zoomControls .zoom-out:hover { background-image:url(../images/zoom-out_sel.svg); }
+#zoomControls .pan-left { background-image:url(../images/pan-left.svg); }
+#zoomControls .pan-left:hover { background-image:url(../images/pan-left_sel.svg); }
+#zoomControls .pan-11 { background-image:url(../images/pan-11.svg); }
+#zoomControls .pan-11:hover { background-image:url(../images/pan-11_sel.svg); }
+#zoomControls .pan-up { background-image:url(../images/pan-up.svg); }
+#zoomControls .pan-up:hover { background-image:url(../images/pan-up_sel.svg); }
+#zoomControls .pan-down { background-image:url(../images/pan-down.svg); }
+#zoomControls .pan-down:hover { background-image:url(../images/pan-down_sel.svg); }
+#zoomControls .pan-right { background-image:url(../images/pan-right.svg); }
+#zoomControls .pan-right:hover { background-image:url(../images/pan-right_sel.svg); }
+
+div#treeContainer svg {
+    position: absolute;
+    left:0px;
+    top:0px;
+    width:100%;
+    height:100%;
+}
+
+.noclose .ui-dialog-titlebar-close
+{
+    display:none;
+}
+/*
+    .ui-dialog
+    {
+        opacity: 0.8;
+    }
+    .ui-dialog:hover
+    {
+        opacity: 1;
+    }
+*/
+.colorpicker {
+    background-color: #FFF;
+    border: 1px solid;
+    border-color: #000;
+    width: 14px;
+    height: 14px;
+    margin: auto;
+}
+
+.colorpicker:hover {
+    border: 2px solid;
+}
+
+#groups-table td {
+    text-align: center;
+    margin: 3px;
+}
+
+.delete-button {
+    cursor: auto;
+    opacity: 0.7;
+}
+.delete-button:hover {
+    cursor: hand;
+    cursor: pointer;
+    opacity: 1;
+}
+
+
+#loading{
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -50px;
+    margin-left: -50px;
+    width: 100px;
+    height: 100px;
+}

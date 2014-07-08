@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Viewer</title>
+        <link rel="stylesheet" href="css/treelib.css" type="text/css" />
+        <link rel="stylesheet" href="css/colpick.css" type="text/css" />
+        <link rel="stylesheet" href="css/atooltip.css" type="text/css" />
+        <link rel="stylesheet" href="css/jquery-ui.css" />
+        <link rel="stylesheet" href="css/jquery.ui.dialog-collapse.css" />
+
+        <script type="text/javascript" src="js/jquery.js"></script>
+        <script type="text/javascript" src="js/jquery-svgpan.js"></script>
+        <script type="text/javascript" src="js/colpick.js"></script>
+        <script type="text/javascript" src="js/jquery.atooltip.js"></script>
+        <script type="text/javascript" src="js/jquery-ui.js"></script>
+        <script type="text/javascript" src="js/jquery.ui.dialog-collapse.js"></script>
+        <script type="text/javascript" src="js/randomColor.js"></script>
+        <script type="text/javascript">
+        var SELECTED = new Array();
+
+        var newick;
+        var metadata;
+        var parameter_count;
+
+        var group_counter = 0; // for id
+        var group_count = 0; 
+
+        var taxonomy_ids = new Array();
+        var taxonomy_colors = new Array();
+
+        function draw_tree_callback() {
+        	if (typeof newick === 'undefined' || typeof metadata=== 'undefined') {
+        		setTimeout(draw_tree_callback, 200)
+        	}
+        	else
+        	{
+        		draw_tree($('#tree_type').val());
+        	}
+        }
+
+        function newGroup() {
+            group_counter++;
+            group_count++;
+
+            SELECTED[group_counter] = [];
+
+            var clone = $('#group-template').clone();
+            clone.appendTo('#groups-table');
+            clone.attr('id', '');
+            clone.css('display', '');
+            
+
+            var color = randomColor();
+
+            clone.find('.colorpicker').css('background-color', color);
+            clone.find('.colorpicker').attr('color', color);
+            clone.find('.colorpicker').attr('id', 'group_color_' + group_counter);
+            clone.find('.colorpicker').colpick({
+                layout:'hex',
+                submit:0,
+                colorScheme:'light',
+                onChange:function(hsb,hex,rgb,el,bySetColor) {
+                    $(el).css('background-color','#'+hex);
+                    $(el).attr('color','#'+hex);
+
+                    if(!bySetColor) $(el).val(hex);
+                }
+            }).keyup(function(){
+                $(this).colpickSetColor(this.value);
+            });
+
+            clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
+            clone.find('input[type=text]').attr('value', "Group " + group_counter).attr('id', 'group_name_' + group_counter);
+            clone.find('.contig_count').attr('id', 'contig_count_' + group_counter);
+        }
+
+        function deleteGroup(elm) {
+            if (confirm('Are you sure you want to delete this group?'))
+            {
+                var id = $(elm).closest('tr').find('input[type=radio]').attr('value');
+                $(elm).closest('tr').remove();
+                $('input[type=radio]').last().prop('checked', true);
+                group_count--;
+
+                for (var i=0; i < SELECTED[id].length; i++)
+                {
+                    $("#line" + SELECTED[id][i]).css('stroke', LINE_COLOR);
+                    $("#arc" + SELECTED[id][i]).css('stroke', LINE_COLOR);  
+                }
+
+                SELECTED[id] = [];
+            } 
+        }
+
+        function submitGroups() {
+            var output = {};
+            for (var gid=1; gid <= group_counter; gid++)
+            {
+                if (SELECTED[gid].length > 0)
+                {
+                    var group_name = $('#group_name_'+gid).val();
+
+                    output[group_name] = new Array();
+                    for (var i=0; i < SELECTED[gid].length; i++)
+                    {
+                        if (id_to_node_map[SELECTED[gid][i]].IsLeaf())
+                            output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
+                    }
+                }
+            }
+
+            $.post("/submit", { groups: JSON.stringify(output)} );
+        }
+        </script>
+    </head>
+    <body>
+        <div id="treelib-widget">
+            <div id="treeContainer" ondblclick="mouse_zoom_in(event);" oncontextmenu="mouse_zoom_out(event); return false">
+                <div id="treeControls">
+                    Type: 
+                    <select id="tree_type">
+                        <option value="phylogram">Phylogram</option>
+                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                    </select>
+                    <br />
+                    Draw Angle: <input type="text" value="0" size="2" id="angle-min"> to <input type="text" value="350" size="2" id="angle-max"><br />
+                    <label><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value" onclick="$('#edge_length_normalization_factor').attr('disabled',!this.checked)">Edge length normalization: <input type="text" id="edge_length_normalization_factor" value="100" size="2" disabled></label><br />
+                    <label><input type="checkbox" id="draw_reference_lines" name="checkbox" value="value">Draw reference lines</label>
+
+
+                    <br /><br />
+                    <b>Metadata Settings</b><br /><br />
+                    <table id="table_metadata">
+                        <tr>
+                            <td>Color</td>
+                            <td>Normalization</td>
+                            <td>Height</td>
+                        </tr>
+                    </table>
+                    <br /><b>Taxonomy Settings</b><br /><br />
+                    <table id="table_taxonomy">
+                        <tr>
+                            <td>Name</td>
+                            <td>Palette</td>
+                            <td>Height</td>
+                        </tr>
+                    </table>
+
+                    <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;
+                </div>
+                <div id="groups">
+                <table id="groups-table">
+                    <tr>
+                        <td>Select</td>
+                        <td>Color</td>
+                        <td>Name</td>
+                        <td>Contigs</td>
+                        <td></td>
+                    </tr>
+                    <tr id="group-template" style="display: none;">
+                        <td><input type="radio" name="active_group" value="0" checked></td>
+                        <td><div id="group_color" class="colorpicker"></td>
+                        <td><input type="text" size="12" id="group_name" value="" ></td>
+                        <td><span class="contig_count">0</span></td>
+                        <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup(this);"></span></td>
+                    </tr>
+                </table>
+                <input type="button" onClick="newGroup();" value="New group"> <input type="button" onClick="submitGroups();" value="Submit groups">
+                </div>
+                <div id="zoomDialog">
+                    <ul id="zoomControls">
+                        <li class="zoom-in" onmousedown="start_zoom(); zoom_in()" ondblclick="event.stopPropagation()" onmouseup="stop_zoom();" onmouseout="stop_zoom();" />
+                        <li class="zoom-out" onmousedown="start_zoom(); zoom_out()" ondblclick="event.stopPropagation()" onmouseup="stop_zoom();" onmouseout="stop_zoom();" />
+                        <li class="pan-11" onmousedown="pan_btn('11')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
+                        <li class="pan-up" onmousedown="pan_btn('u')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
+                        <li class="pan-left" onmousedown="pan_btn('l')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
+                        <li class="pan-right" onmousedown="pan_btn('r')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
+                        <li class="pan-down" onmousedown="pan_btn('d')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
+                    </ul>
+                </div>
+                <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
+                    <g id="viewport"></g>
+                </svg>
+            </div>
+        </div>
+
+
+    <div>
+    </div>
+<script type="text/javascript">
+    newGroup();
+</script>
+<script type="text/javascript" src="js/treelib.js"></script>  
+<script type="text/javascript">
+
+$(function() {
+		$("#zoomDialog").dialog({
+			resizable: false, 
+			width: 'auto', 
+			collapseEnabled: true,
+			closeOnEscape: false,
+			beforeclose: function (event, ui) { return false; },
+			dialogClass: "noclose",
+			title: "Zoom",
+			position: 
+			{ 
+				my: "right center",
+				at: "right center", 
+				of: window 
+			}
+		});
+
+
+		$("#treeControls").dialog({
+			resizable: false, 
+			width: 'auto', 
+			collapseEnabled: true,
+			closeOnEscape: false,
+            collision: "fit",
+			beforeclose: function (event, ui) { return false; },
+			dialogClass: "noclose",
+			title: "Tree Settings",
+			position: 
+			{ 
+				my: "left bottom",
+				at: "left center", 
+				of: window 
+			}
+		});
+
+		$("#groups").dialog({
+			resizable: false, 
+			width: 'auto', 
+			collapseEnabled: true,
+			closeOnEscape: false,
+			beforeclose: function (event, ui) { return false; },
+			dialogClass: "noclose",
+			title: "Groups",
+			position: 
+			{ 
+				my: "left top",
+				at: "left center", 
+				of: window 
+			}
+		});
+	});
+
+	// load data
+	$.ajax({
+		type: 'GET',
+		url: '/data/tree', 
+		success: function(data) {
+			newick = data;
+		}
+	});
+
+	$.ajax({
+		type: 'GET',
+		url: '/data/meta',
+		success:  function(data) {
+			metadata = eval(data);
+
+			parameter_count = metadata[0].length;
+
+            // clear taxonomy ids
+            taxonomy_ids = [];
+			for (var i=1; i < parameter_count; i++)
+			{
+                // check if taxonomy string or int
+                if (!isNumber(metadata[1][i]))
+                {
+                    taxonomy_ids.push(i);
+                    taxonomy_colors[i] = new Array();
+                    
+                    var metadata_row_str = '<tr>'+
+                    '<td>{name}</td>'+
+                    '<td><input type="button" value="Edit palette"></td>'+
+                    '<td><input type="text" size="2" id="height{id}" value="5"></td>'+
+                    '</tr>';
+
+                    metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
+                    metadata_row_str = metadata_row_str.replace(new RegExp('{name}', 'g'), metadata[0][i]);
+
+                    $('#table_taxonomy tr:last').after(metadata_row_str);
+                }
+                else
+                {
+                    var metadata_row_str = '<tr>'+
+                    '<td><div id="picker{id}" class="colorpicker"></td>'+
+                    '<td>'+
+                    '    <select id="normalization{id}">'+
+                    '        <option value="none">none</option>'+
+                    '        <option value="sqrt">Square root</option>'+
+                    '        <option value="log">Logarithm</option>'+
+                    '    </select>'+
+                    '</td>'+
+                    '<td><input type="text" size="2" id="height{id}" value="50"></td>'+
+                    '</tr>';
+
+                    metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                    $('#table_metadata tr:last').after(metadata_row_str);
+                }
+            }
+
+            $("#treeControls").dialog("option", "position", { my: "left center-25%", at: "left center", of: window });
+            $("#groups").dialog("option", "position", { my: "left top", at: "left bottom", of: "#treeControls" });
+
+            $('.colorpicker').each(function(index, element) {
+            	var color = randomColor();
+
+            	$(element).css('background-color', color);
+            	$(element).attr('color', color);
+            });
+
+            $('.colorpicker').colpick({
+            	layout:'hex',
+            	submit:0,
+            	colorScheme:'light',
+            	onChange:function(hsb,hex,rgb,el,bySetColor) {
+            		$(el).css('background-color','#'+hex);
+            		$(el).attr('color','#'+hex);
+
+            		if(!bySetColor) $(el).val(hex);
+            	}
+            }).keyup(function(){
+            	$(this).colpickSetColor(this.value);
+            });
+        }   
+    });	
+
+</script>
+</body>
+</html>
