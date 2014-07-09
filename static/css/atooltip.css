@@ -1,0 +1,50 @@
+/* 
+	Required Styles
+*/
+#aToolTip {
+	position: absolute;
+	display: none;
+	z-index: 50000;
+}
+
+	#aToolTip .aToolTipContent {
+		position:relative;
+		margin:0;
+		padding:0;
+	}
+/* 
+	END: Required Styles
+*/
+/**
+	Default Theme
+*/
+.defaultTheme {
+	border:2px solid #444;
+	background:#555;
+	color:#fff;
+	margin:0;
+	padding:6px 12px;	
+	
+	-moz-border-radius: 12px 12px 12px 0;
+	-webkit-border-radius: 12px 12px 12px 0;
+	-khtml-border-radius: 12px 12px 12px 0;
+	border-radius: 12px 12px 12px 0;
+	
+	-moz-box-shadow: 2px 2px 5px #111; /* for Firefox 3.5+ */
+	-webkit-box-shadow: 2px 2px 5px #111; /* for Safari and Chrome */
+	box-shadow: 2px 2px 5px #111; /* for Safari and Chrome */
+}
+	
+	.defaultTheme #aToolTipCloseBtn {
+		display:block;
+		height:18px;
+		width:18px;
+		background:url(../images/closeBtn.png) no-repeat;
+		text-indent:-9999px;
+		outline:none;
+		position:absolute;
+		top:-20px;
+		right:-30px;
+		margin:2px;
+		padding:4px;
+	}

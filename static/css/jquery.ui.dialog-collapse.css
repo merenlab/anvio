@@ -1,0 +1,17 @@
+/*
+ * JQuery UI Dialog extend to add collapse capability CSS.
+ *
+ * Copyright 2013.  Marko Martinović
+ * http://www.techytalk.info
+ */
+
+.ui-dialog .ui-dialog-titlebar-collapse,
+.ui-dialog .ui-dialog-titlebar-collapse-restore {
+	position: absolute;
+	right: 0.3em;
+	top: 50%;
+	width: 21px;
+	margin: -10px 0 0 0;
+	padding: 1px;
+	height: 20px;
+}

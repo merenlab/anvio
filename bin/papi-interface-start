@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2014, 
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import webbrowser
+import base64
+from bottle import route, run, static_file, redirect, request, BaseRequest
+
+# increase maximum size of form data to 100 MB
+BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
+
+@route('/')
+def redirect_to_app():
+	redirect('/app/index.html')
+
+@route('/app/:filename#.*#')
+def send_static(filename):
+    return static_file(filename, root='../static/')
+
+@route('/data/<name>')
+def send_data(name):
+	if name == "tree":
+		return static_file("TREE.txt", root='./')
+	elif name == "meta":
+		return static_file("asd.txt", root='./')
+
+@route('/submit', method='POST')
+def get_data():
+	print request.forms.get('groups')
+
+	svg_file = open('tmp.svg', 'w')
+	svg_file.write(base64.b64decode(request.forms.get('svg')))
+	svg_file.close()
+
+
+
+if __name__ == "__main__":
+	webbrowser.open_new("http://127.0.0.1:8080")
+	run(host='127.0.0.1', port=8080, quiet=True)
+
+
