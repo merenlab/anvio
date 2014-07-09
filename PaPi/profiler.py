@@ -44,6 +44,7 @@ class BAMProfiler:
                     self.contigs_of_interest = [c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')]
                 else:
                     self.contigs_of_interest = [c.strip() for c in args.contigs.split(',')] if args.contigs else None
+
             else:
                 self.contigs_of_interest = None
 
@@ -78,10 +79,17 @@ class BAMProfiler:
 
         self.report()
 
+        runinfo_serialized = self.generate_output_destination('RUNINFO.cPickle')
+        self.comm.info('Runinfo Serialized', runinfo_serialized)
+        self.comm.store_info_dict(runinfo_serialized)
+        self.comm.quit()
+
 
     def init_serialized_profile(self):
         self.progress.new('Init')
         self.progress.update('Reading serialized profile')
+
+        
         self.references_dict = cPickle.load(open(self.serialized_profile_path))
         self.progress.end()
         self.comm.info('References are loaded from profile', self.serialized_profile_path)
@@ -137,6 +145,15 @@ class BAMProfiler:
         except ValueError:
             raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
 
+        self.progress.new('Init')
+        self.progress.update('Initializing the output directory ...')
+        self.init_output_directory()
+        self.progress.end()
+
+        runinfo = self.generate_output_destination('RUNINFO')
+        self.comm.init_info_file_obj(runinfo)
+        self.comm.info('Output directory', self.output_directory)
+
         self.comm.info('Total reads mapped', pp(int(self.num_reads_mapped)))
         self.comm.info('Total number of contigs in file', pp(len(self.references)))
 
@@ -163,12 +180,6 @@ class BAMProfiler:
             self.references = [self.references[i] for i in contigs_longer_than_M]
             self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
             self.comm.info('Contigs with raw length longer than M', len(self.references))
-
-        self.progress.new('Init')
-        self.progress.update('Initializing the output directory ...')
-        self.init_output_directory()
-        self.progress.end()
-        self.comm.info('Output directory', self.output_directory)
 
 
     def init_output_directory(self):
