@@ -110,7 +110,13 @@
                 }
             }
 
-            $.post("/submit", { groups: JSON.stringify(output)} );
+            // tooltip contains unescaped html charachters which isn't compatible with svg specification.
+            $('path').each(function(index, elm) { $(elm).attr('title', ''); });
+
+            $.post("/submit", { 
+                groups: JSON.stringify(output), 
+                svg: Base64.encode($('#svg')[0].outerHTML)
+            });
         }
         </script>
     </head>
@@ -265,6 +271,7 @@ $(function() {
 
             // clear taxonomy ids
             taxonomy_ids = [];
+
 			for (var i=1; i < parameter_count; i++)
 			{
                 // check if taxonomy string or int
@@ -272,6 +279,7 @@ $(function() {
                 {
                     taxonomy_ids.push(i);
                     taxonomy_colors[i] = new Array();
+                    //taxonomy_names.push
                     
                     var metadata_row_str = '<tr>'+
                     '<td>{name}</td>'+
