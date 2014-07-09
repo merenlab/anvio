@@ -6,6 +6,7 @@
 var w=window,d=document,e=d.documentElement,g=d.getElementsByTagName('body')[0],x=w.innerWidth||e.clientWidth||g.clientWidth,y=w.innerHeight||e.clientHeight||g.clientHeight;
 var VIEWER_WIDTH = x;
 var VIEWER_HEIGHT = y;
+
 var ZOOM_IN = 1.33;
 var ZOOM_OUT = 0.75;
 
@@ -643,9 +644,6 @@ Tree.prototype.Parse = function(str)
 	var q = null;
 
 	var edge_length_norm = $('#edge_length_normalization')[0].checked;
-	var edge_length_norm_factor = parseFloat($('#edge_length_normalization_factor').val());
-
-	edge_length_norm_factor = Math.pow(edge_length_norm_factor, 2);
 
 	this.error = 0;
 	
@@ -729,7 +727,7 @@ Tree.prototype.Parse = function(str)
 							// nnormalization of edge lengths
 							if (edge_length_norm)
 							{
-								curnode.edge_length =Math.sqrt(parseFloat(token[i]) * edge_length_norm_factor) / edge_length_norm_factor;
+								curnode.edge_length =Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
 							}
 							else
 							{
@@ -819,7 +817,7 @@ Tree.prototype.Parse = function(str)
 								// nnormalization of edge lengths
 								if (edge_length_norm)
 								{
-									curnode.edge_length =Math.sqrt(parseFloat(token[i]) * edge_length_norm_factor) / edge_length_norm_factor;
+									curnode.edge_length =Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
 								}
 								else
 								{
@@ -2135,7 +2133,6 @@ function draw_tree_labels(nexus, t, drawing_type) {
 *  http://www.webtoolkit.info/
 *
 **/
- 
 var Base64 = {
  
     // private property
@@ -2449,12 +2446,13 @@ function draw_tree(drawing_type)
 		}
 
 		var draw_offset = new Array();
+		var margin = parseFloat($('#layer-margin').val());
 
 		draw_offset[0] = max_tree_radius;
 
 		for (var pindex=1; pindex < parameter_count; pindex++)
 		{
-			draw_offset[pindex] = draw_offset[pindex-1] + parseFloat($('#height' + pindex).val());
+			draw_offset[pindex] = margin + draw_offset[pindex-1] + parseFloat($('#height' + pindex).val());
 		}
 /*
 		for (var i = 0; i < draw_offset.length; i++)
@@ -2534,7 +2532,7 @@ function draw_tree(drawing_type)
 									q.id, 
 									q.angle - angle_per_leaf / 2, 
 									q.angle + angle_per_leaf / 2, 
-									draw_offset[pindex-1],
+									draw_offset[pindex-1] + margin,
 									draw_offset[pindex], 
 									0, 
 									color, 
@@ -2547,8 +2545,8 @@ function draw_tree(drawing_type)
 								q.id, 
 								q.angle - angle_per_leaf / 2, 
 								q.angle + angle_per_leaf / 2, 
-								draw_offset[pindex-1],
-								(isTaxonomy) ? draw_offset[pindex] : draw_offset[pindex-1] + metadata_dict[q.label][pindex], 
+								draw_offset[pindex-1] + margin,
+								(isTaxonomy) ? draw_offset[pindex] : draw_offset[pindex-1] + metadata_dict[q.label][pindex] + margin, 
 								0, 
 								color, 
 								metadata_title[q.label], 
@@ -2567,8 +2565,7 @@ function draw_tree(drawing_type)
 			}
 			q = n.Next();
 		}
-		
-				
+
 		// Scale to fit window
 		var bbox = svg.getBBox();
 		
