@@ -236,7 +236,6 @@ class Progress:
 
 
 class Run:
-    """a class that keeps info about an oligotyping run, and deal with the console output"""
     def __init__(self, info_file_path = None, verbose = True):
         if info_file_path:
             self.init_info_file_obj(info_file_path)
