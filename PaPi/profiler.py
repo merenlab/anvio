@@ -414,7 +414,7 @@ class BAMProfiler:
 
         fields = [m[1] for m in metadata_fields]
         metadata_txt.write('contigs\t%s\n' % ('\t'.join(fields)))
-        metadata_json_buffer.append(['contigs'] + fields)
+        metadata_json_buffer.append([''] + fields)
 
         for reference in self.references:
             l = [self.references_dict[reference][major][minor] for major, minor in metadata_fields]
