@@ -59,12 +59,16 @@ raw_data <- data.matrix(raw_data)
 dcols<-vegdist(t(raw_data), method=options$distance, na.rm=TRUE)
 hc <- hclust(dcols, method=options$method)
 phy <- hclust2phylog(hc, add.tools = TRUE)
+write.tree(as.phylo(phy), file=options$output_file_prefix)
+
+# now read that tree you just wrote
+output_tree <- readChar(options$output_file_prefix, file.info(options$output_file_prefix)$size)
 
 # convert temporary names into originals
 for(contig_name in contig_names){
-    phy$tre <- gsub(conversion[conversion$old == contig_name, ]$new, contig_name, phy$tre)
+    output_tree <- gsub(conversion[conversion$old == contig_name, ]$new, contig_name, output_tree)
 }
 
-output <- file(options$output_file_prefix)
-writeLines(phy$tre, output)
-close(output)
+updated_output_path <- file(options$output_file_prefix)
+writeLines(output_tree, updated_output_path)
+close(updated_output_path)
