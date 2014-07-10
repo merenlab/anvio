@@ -114,3 +114,11 @@ div#treeContainer svg {
     width: 100px;
     height: 100px;
 }
+#contig_name_dialog {
+    text-align: center;
+}
+
+#contig_names {
+    width: 90%;
+    height: 200px;
+}

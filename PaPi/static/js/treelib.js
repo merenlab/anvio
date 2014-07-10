@@ -218,7 +218,7 @@ function drawLine(svg_id, p, p0, p1)
 						contigs++;
 				}
 
-				$('#contig_count_' + gid).text(contigs);
+				$('#contig_count_' + gid).val(contigs);
 			}
 			/*
 

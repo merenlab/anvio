@@ -45,6 +45,23 @@
         	}
         }
 
+        function showContigNames(gid)
+        {
+            var names = new Array();
+
+            for (var j=0; j < SELECTED[gid].length; j++)
+            {
+                if (id_to_node_map[SELECTED[gid][j]].IsLeaf())
+                {
+                    names.push(id_to_node_map[SELECTED[gid][j]].label);
+                }
+            }
+
+            $('#contig_names').val(names.join("\n"));
+            $('#contig_name_dialog').dialog('open');
+            $('#contig_names').click(); // focus & select all
+        }
+
         function newGroup() {
             group_counter++;
             group_count++;
@@ -78,7 +95,7 @@
 
             clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
             clone.find('input[type=text]').attr('value', "Group " + group_counter).attr('id', 'group_name_' + group_counter);
-            clone.find('.contig_count').attr('id', 'contig_count_' + group_counter);
+            clone.find('input[type=button]').attr('id', 'contig_count_' + group_counter).click(function() { showContigNames(group_counter); });
         }
 
         function deleteGroup(elm) {
@@ -179,7 +196,7 @@
                         <td><input type="radio" name="active_group" value="0" checked></td>
                         <td><div id="group_color" class="colorpicker"></td>
                         <td><input type="text" size="12" id="group_name" value="" ></td>
-                        <td><span class="contig_count">0</span></td>
+                        <td><input type="button" value="0" title="Click for contig names"></td>
                         <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup(this);"></span></td>
                     </tr>
                 </table>
@@ -195,6 +212,11 @@
                         <li class="pan-right" onmousedown="pan_btn('r')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
                         <li class="pan-down" onmousedown="pan_btn('d')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();" />
                     </ul>
+                </div>
+                <div id="contig_name_dialog">
+                    <textarea id="contig_names" onclick="this.focus();this.select()" readonly="readonly"></textarea>
+                    <br />
+                    <input type="button" value="Close window" onclick="$('#contig_name_dialog').dialog('close');">
                 </div>
                 <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                     <g id="viewport"></g>
@@ -261,6 +283,22 @@ $(function() {
 				of: window 
 			}
 		});
+
+        $("#contig_name_dialog").dialog({
+            resizable: true, 
+            width: 'auto', 
+            collapseEnabled: true,
+            closeOnEscape: false,
+            beforeclose: function (event, ui) { return false; },
+            dialogClass: "noclose",
+            title: "Contig Names",
+            position: 
+            { 
+                my: "center",
+                at: "center", 
+                of: window 
+            }
+        }).dialog('close');
 	});
 
 	// load data
@@ -292,11 +330,10 @@ $(function() {
                 {
                     taxonomy_ids.push(i);
                     taxonomy_colors[i] = new Array();
-                    //taxonomy_names.push
                     
                     var metadata_row_str = '<tr>'+
                     '<td>{name}</td>'+
-                    '<td><input type="text" size="2" id="height{id}" value="5"></td>'+
+                    '<td><input type="text" size="2" id="height{id}" value="30"></td>'+
                     '</tr>';
 
                     metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
