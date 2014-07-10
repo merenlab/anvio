@@ -81,7 +81,7 @@ class BAMProfiler:
         self.report()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cPickle')
-        self.run.info('Runinfo Serialized', runinfo_serialized)
+        self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized)
         self.run.quit()
 
@@ -93,12 +93,12 @@ class BAMProfiler:
         
         self.references_dict = cPickle.load(open(self.serialized_profile_path))
         self.progress.end()
-        self.run.info('References are loaded from profile', self.serialized_profile_path)
+        self.run.info('profile_loaded_from', self.serialized_profile_path)
 
         self.references = self.references_dict.keys()
         self.lengths = [self.references_dict[reference]['essential']['length'] for reference in self.references]
 
-        self.run.info('Total number of contigs in profile', pp(len(self.references)))
+        self.run.info('num_contigs', pp(len(self.references)))
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
@@ -111,7 +111,7 @@ class BAMProfiler:
             indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
             self.references = [self.references[i] for i in indexes]
             self.lengths = [self.lengths[i] for i in indexes]
-            self.run.info('Total num contigs selected for analysis', pp(len(self.references)))
+            self.run.info('num_contigs_selected_for_analysis', pp(len(self.references)))
 
         contigs_longer_than_M = set()
         for i in range(0, len(self.references)):
@@ -122,13 +122,13 @@ class BAMProfiler:
         else:
             self.references = [self.references[i] for i in contigs_longer_than_M]
             self.raw_lengths = [self.lengths[i] for i in contigs_longer_than_M]
-            self.run.info('Contigs with raw length longer than M', len(self.references))
+            self.run.info('contigs_raw_longer_than_M', len(self.references))
 
         self.progress.new('Init')
         self.progress.update('Initializing the output directory ...')
         self.init_output_directory()
         self.progress.end()
-        self.run.info('Output directory', self.output_directory)
+        self.run.info('output_dir', self.output_directory)
 
 
     def init_profile_from_BAM(self):
@@ -136,7 +136,7 @@ class BAMProfiler:
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
         self.progress.end()
-        self.run.info('Input BAM file', self.input_file_path)
+        self.run.info('input_bam', self.input_file_path)
 
         self.references = self.bam.references
         self.raw_lengths = self.bam.lengths
@@ -153,10 +153,10 @@ class BAMProfiler:
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
-        self.run.info('Output directory', self.output_directory)
+        self.run.info('output_dir', self.output_directory)
 
-        self.run.info('Total reads mapped', pp(int(self.num_reads_mapped)))
-        self.run.info('Total number of contigs in file', pp(len(self.references)))
+        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
+        self.run.info('num_contigs', pp(len(self.references)))
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
@@ -169,7 +169,7 @@ class BAMProfiler:
             indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
             self.references = [self.references[i] for i in indexes]
             self.raw_lengths = [self.raw_lengths[i] for i in indexes]
-            self.run.info('Total num contigs selected for analysis', pp(len(self.references)))
+            self.run.info('num_contigs_selected_for_analysis', pp(len(self.references)))
 
         contigs_longer_than_M = set()
         for i in range(0, len(self.references)):
@@ -180,7 +180,7 @@ class BAMProfiler:
         else:
             self.references = [self.references[i] for i in contigs_longer_than_M]
             self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
-            self.run.info('Contigs with raw length longer than M', len(self.references))
+            self.run.info('contigs_raw_longer_than_M', len(self.references))
 
 
     def init_output_directory(self):
@@ -267,7 +267,7 @@ class BAMProfiler:
                 self.references_dict.pop(reference)
             self.references = self.references_dict.keys()
             self.progress.end()
-            self.run.info('Total number of contigs after precise M elimination', pp(len(self.references)))
+            self.run.info('contigs_precise_longer_than_M', pp(len(self.references)))
         else:
             self.progress.end()
 
@@ -289,7 +289,7 @@ class BAMProfiler:
                 self.references_dict.pop(reference)
             self.references = self.references_dict.keys()
             self.progress.end()
-            self.run.info('Total number of contigs after C', pp(len(self.references)))
+            self.run.info('contigs_after_C', pp(len(self.references)))
         else:
             self.progress.end()
 
@@ -367,7 +367,7 @@ class BAMProfiler:
         self.progress.update('Serializing information for %s contigs ...' % pp(len(self.references_dict)))
         cPickle.dump(self.references_dict, open(output_file, 'w'))
         self.progress.end()
-        self.run.info('Serialized contigs profile', output_file)
+        self.run.info('profile_dict', output_file)
 
 
     def load_profile(self):
@@ -390,7 +390,7 @@ class BAMProfiler:
             output.write('%s\n' % '\t'.join([str(self.references_dict[reference]['composition']['tnf'][kmer]) for kmer in kmers]))
         output.close()
         self.progress.end()
-        self.run.info('Tetra-nucleotide frequency matrix', TNF_matrix_file_path)
+        self.run.info('tnf_matrix', TNF_matrix_file_path)
 
 
         self.progress.new('Generating reports')
