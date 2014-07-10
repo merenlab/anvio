@@ -20,7 +20,7 @@ import shutil
 import cPickle
 import argparse
 import webbrowser
-from bottle import route, run, static_file, redirect, request, BaseRequest
+from bottle import route, run, static_file, redirect, request, BaseRequest, response
 
 import PaPi.fastalib as u
 # get the absolute path for static directory under PaPi
@@ -60,10 +60,18 @@ def redirect_to_app():
 
 @route('/app/:filename#.*#')
 def send_static(filename):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     return static_file(filename, root=static_dir)
 
 @route('/data/<name>')
 def send_data(name):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     if name == "tree":
         return static_file(runinfo_dict['tnf_tree'], root ='/')
     elif name == "meta":
