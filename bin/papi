@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     try:
         profiler = PaPi.profiler.BAMProfiler(args)
-        profiler.run()
+        profiler._run()
     except ConfigError, e:
         print e
         sys.exit(-1)
