@@ -513,7 +513,6 @@ function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_c
             });
 	}
 
-	console.log(rect);
 	var svg = document.getElementById(svg_id);
 	svg.appendChild(rect);
 }

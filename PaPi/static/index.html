@@ -152,13 +152,17 @@
                             <td>Height</td>
                         </tr>
                     </table>
-                    <br /><b>Taxonomy Settings</b><br /><br />
+                    <br />
+
+                    <div id="table_taxonomy_container">
+                    <b>Taxonomy Settings</b><br /><br />
                     <table id="table_taxonomy">
                         <tr>
                             <td>Name</td>
                             <td>Height</td>
                         </tr>
                     </table>
+                    </div>
 
                     <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;
                 </div>
@@ -298,6 +302,7 @@ $(function() {
                     metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
                     metadata_row_str = metadata_row_str.replace(new RegExp('{name}', 'g'), metadata[0][i]);
 
+                    $('#table_taxonomy_container').show();
                     $('#table_taxonomy tr:last').after(metadata_row_str);
                 }
                 else
@@ -317,6 +322,11 @@ $(function() {
                     metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
 
                     $('#table_metadata tr:last').after(metadata_row_str);
+                }
+
+                if (taxonomy_ids.length == 0)
+                {
+                    $('#table_taxonomy_container').hide();
                 }
             }
 
