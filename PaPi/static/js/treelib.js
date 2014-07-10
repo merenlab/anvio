@@ -1757,8 +1757,12 @@ CircleTreeDrawer.prototype.CalcCoordinates = function()
 	
 
 	this.leaf_count = 0;
+
+	var angle_max = parseFloat($('#angle-max').val());
+	var angle_min = parseFloat($('#angle-min').val());
+
+	this.leaf_angle = Math.toRadians(Math.abs(angle_max - angle_min)) / this.t.num_leaves;
 	//this.leaf_angle = 2 * Math.PI / this.t.num_leaves;
-	this.leaf_angle = Math.PI / this.t.num_leaves;
 
 	this.leaf_radius = this.settings.width/2;
 	this.node_gap = this.leaf_radius / this.t.root.depth;
@@ -1897,7 +1901,7 @@ CirclePhylogramDrawer.prototype.CalcCoordinates = function()
 	var angle_max = parseFloat($('#angle-max').val());
 	var angle_min = parseFloat($('#angle-min').val());
 
-	this.leaf_angle = Math.toRadians(angle_max - angle_min) / this.t.num_leaves;
+	this.leaf_angle = Math.toRadians(Math.abs(angle_max - angle_min)) / this.t.num_leaves;
 	//this.leaf_angle = 2 * Math.PI / this.t.num_leaves;
 	
 	n = new NodeIterator(this.t.root);
