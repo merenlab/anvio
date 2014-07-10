@@ -51,6 +51,52 @@ function distance(p0, p1)
 	return Math.sqrt(Math.pow(p1['x'] - p0['x'],2) + Math.pow(p1['y'] + p0['y'],2));
 }
 //--------------------------------------------------------------------------------------------------
+function drawLegend()
+{
+
+	var left = total_radius + 100;
+	var top = 20 - total_radius;
+
+	for (var i = 0; i < taxonomy_ids.length; i++)
+	{
+		// collect taxonomy data
+		var pindex = taxonomy_ids[i];
+		var taxonomy_title = metadata[0][pindex];
+
+		var names = new Array();
+		var colors = new Array();
+
+		for (var name in taxonomy_colors[pindex])
+		{
+			names.push(name);
+			colors.push(taxonomy_colors[pindex][name]);
+		}
+
+		drawRectangle('viewport', left-10, top-20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
+
+		drawText('viewport', {'x': left, 'y': top}, taxonomy_title, '16px');
+
+		for (var j=0; j < names.length; j++) 
+		{
+			top = top + 20;
+			drawRectangle('viewport', left, top, 16, 16, colors[j], 1, 'black', 
+				null,
+				function() { 
+					// mouseenter
+					$(this).css('stroke-width', '2');
+				},
+				function() { 
+					// mouseleave
+					$(this).css('stroke-width', '1');
+				}, true);
+
+			drawText('viewport', {'x': left + 30, 'y': top + 8}, names[j], '12px');
+		}
+		top = top + 70;
+	}
+}
+
+
 function drawLine(svg_id, p, p0, p1)
 {
 	var line = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -285,7 +331,7 @@ function drawLine(svg_id, p, p0, p1)
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string)
+function drawText(svg_id, p, string, font_size)
 {
 
 	var text = document.createElementNS('http://www.w3.org/2000/svg','text');
@@ -293,6 +339,7 @@ function drawText(svg_id, p, string)
 	text.setAttribute('style','alignment-baseline:middle');
 	text.setAttribute('x', p['x']);
 	text.setAttribute('y', p['y']);
+	text.setAttribute('font-size', font_size);
 	
 	var textNode=document.createTextNode(string)
 	text.appendChild(textNode);
@@ -438,28 +485,35 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 	svg.appendChild(pie);
 }
 
-function drawRectangle(svg_id, id, p, height, width, angle, offset, color)
+function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave, pick_color)
 {
-	var new_x = p['x'] + Math.cos(angle * Math.PI / 180) * offset;
-	var new_y =  p['y'] + Math.sin(angle * Math.PI / 180) * offset;
-
 	var rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-	//newLine.setAttribute('id','node' + p.id);
-	rect.setAttribute('class', "rect" + id);
+	rect.setAttribute('fill', fill);
+	rect.setAttribute('stroke-width', stroke_width);
+	rect.setAttribute('stroke', stroke_color);
 
-	
-	rect.setAttribute('fill', color);
-	rect.setAttribute('stroke-width', '0');
-
-	rect.setAttribute('x', new_x);
-	rect.setAttribute('y', new_y - height / 2);
+	rect.setAttribute('x', x);
+	rect.setAttribute('y', y);
 	rect.setAttribute('width', width);
 	rect.setAttribute('height', height);
-	if (angle != 0)
-	{
-		rect.setAttribute('transform', 'rotate(' + angle + ' ' + new_x + ' ' + new_y + ')');
-	}	
 
+	$(rect).click(f_click);
+	$(rect).mouseenter(f_mouseenter);
+	$(rect).mouseleave(f_mouseleave);
+
+	if (pick_color)
+	{
+		$(rect).colpick({
+            	layout:'hex',
+            	submit:0,
+            	colorScheme:'light',
+            	onChange:function(hsb,hex,rgb,el,bySetColor) {
+            		$(el).css('fill','#'+hex);
+            	}
+            });
+	}
+
+	console.log(rect);
 	var svg = document.getElementById(svg_id);
 	svg.appendChild(rect);
 }
@@ -2423,7 +2477,7 @@ function draw_tree(drawing_type)
 		// font size
 		var cssStyle = document.createElementNS('http://www.w3.org/2000/svg','style');
 		cssStyle.setAttribute('type','text/css');
-		
+	/*	
 		var font_size = Math.floor(td.settings.height/t.num_leaves);
 		font_size = Math.max(font_size, 1);
 
@@ -2431,7 +2485,7 @@ function draw_tree(drawing_type)
 		cssStyle.appendChild(style);
 		
 		svg.appendChild(cssStyle);
-
+*/
 		// max radius
 		var max_tree_radius=0;
 
@@ -2565,6 +2619,8 @@ function draw_tree(drawing_type)
 			}
 			q = n.Next();
 		}
+
+		drawLegend();
 
 		// Scale to fit window
 		var bbox = svg.getBBox();
