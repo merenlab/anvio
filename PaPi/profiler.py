@@ -430,6 +430,17 @@ class BAMProfiler:
         self.run.info('metadata_json', metadata_json.name)
 
 
+        # contigs FASTA
+        self.progress.new('Generating reports')
+        self.progress.update('Consensus FASTA file for contigs')
+        contigs_fasta = open(self.generate_output_destination('CONTIGS-CONSENSUS.fa'), 'w')
+        for reference in self.references:
+            contigs_fasta.write(">%s\n%s\n" % (reference,
+                                               self.references_dict[reference]['auxiliary']['rep_seq'].strip('N')))
+        contigs_fasta.close()
+        self.progress.end()
+        self.run.info('contigs_fasta', contigs_fasta.name)
+
 
     def check_args(self):
         if (not self.input_file_path) and (not self.serialized_profile_path):
