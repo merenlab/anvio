@@ -38,8 +38,33 @@ if(length(arguments$args) != 1) {
 	matrix_file <- arguments$args
 }
 
-raw_data <- t(data.matrix(read.table(matrix_file, header = TRUE, row.names = 1,sep="\t")))
+raw_data <- data.frame(t(data.matrix(read.table(matrix_file, header = TRUE, row.names = 1,sep="\t", check.names = FALSE))), check.names = FALSE)
+
+# generate a data frame to hold old and new contig names.. this is just because that
+# fucking hclust2phylog function does not have a check.names parameter. all the shitty
+# code that follows could have been avoided otherwise. this will cause a lot of
+# performance issues as well.
+contig_names <- names(raw_data) 
+conversion <- data.frame(old = character(), new = character(), stringsAsFactors=FALSE)
+N <- 0
+for(contig_name in contig_names){
+    N = N + 1
+    conversion[N, ] <- c(contig_name, paste('contig', sprintf("%09d", N), sep="_"))
+}
+
+# put temoprary names in
+names(raw_data) <- conversion$new
+raw_data <- data.matrix(raw_data)
+
 dcols<-vegdist(t(raw_data), method=options$distance, na.rm=TRUE)
 hc <- hclust(dcols, method=options$method)
 phy <- hclust2phylog(hc, add.tools = TRUE)
-write.tree(as.phylo(phy), file=options$output_file_prefix)
+
+# convert temporary names into originals
+for(contig_name in contig_names){
+    phy$tre <- gsub(conversion[conversion$old == contig_name, ]$new, contig_name, phy$tre)
+}
+
+output <- file(options$output_file_prefix)
+writeLines(phy$tre, output)
+close(output)
