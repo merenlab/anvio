@@ -67,6 +67,38 @@ function drawLegend() {
 	}
 }
 
+function drawGroupLegend() {
+	var left = 0 - total_radius - 300; // draw on the left top
+	var top = 20 - total_radius;
+
+	var groups_to_draw = new Array();
+	for (var gid = 1; gid <= group_counter; gid++) {
+		if(SELECTED[gid].length > 0) {
+			groups_to_draw.push(gid);
+		}
+	}
+
+	if (groups_to_draw.length==0)
+		return;
+
+	drawRectangle('viewport', left - 10, top - 20, (groups_to_draw.length + 2.5) * 20, 200, 'white', 1, 'black');
+	drawText('viewport', {
+		'x': left,
+		'y': top
+	}, "Groups", '16px');
+
+	for (var j = 0; j < groups_to_draw.length; j++) {
+		gid = groups_to_draw[j];
+		top = top + 20;
+
+		drawRectangle('viewport', left, top, 16, 16, $('#group_color_' + gid).attr('color'), 1, 'black');
+		drawText('viewport', {
+			'x': left + 30,
+			'y': top + 8
+		}, $('#group_name_' + gid).val(), '12px');
+	}
+}
+
 
 function drawLine(svg_id, p, p0, p1) {
 	var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');

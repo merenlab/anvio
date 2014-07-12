@@ -256,6 +256,9 @@ function deleteGroup(elm) {
 }
 
 function submitGroups() {
+    // draw group list to output svg
+    drawGroupLegend();
+
     var output = {};
     for (var gid = 1; gid <= group_counter; gid++) {
         if (SELECTED[gid].length > 0) {
