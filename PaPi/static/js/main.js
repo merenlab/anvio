@@ -256,31 +256,45 @@ function deleteGroup(elm) {
 }
 
 function submitGroups() {
-    // draw group list to output svg
-    drawGroupLegend();
-
     var output = {};
+    var msg_group_count = 0;
+    var msg_contig_count = 0;
+
     for (var gid = 1; gid <= group_counter; gid++) {
         if (SELECTED[gid].length > 0) {
+            msg_group_count++;
             var group_name = $('#group_name_' + gid).val();
 
             output[group_name] = new Array();
             for (var i = 0; i < SELECTED[gid].length; i++) {
-                if (id_to_node_map[SELECTED[gid][i]].IsLeaf())
+                if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
                     output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
+                    msg_contig_count++;
+                }
             }
         }
     }
 
-    // tooltip contains unescaped html charachters which isn't compatible with svg specification.
-    $('path').each(function(index, elm) {
-        $(elm).attr('title', '');
-    });
+    if (confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
+        // draw group list to output svg
+        drawGroupLegend();
 
-    $.post("/submit", {
-        groups: JSON.stringify(output),
-        svg: Base64.encode($('#svg')[0].outerHTML)
-    });
+        // tooltip contains unescaped html charachters which isn't compatible with svg specification.
+        $('path').each(function(index, elm) {
+            $(elm).attr('title', '');
+        });
+
+        // disable group controls
+        $('#group-template input[type=radio]').prop('checked', true);
+        $('#groups-table input[type=radio]').attr("disabled", true);
+        $('#submit-groups').attr("disabled", true);
+
+        $.post("/submit", {
+            groups: JSON.stringify(output),
+            svg: Base64.encode($('#svg')[0].outerHTML)
+        });
+
+    }
 }
 
 
