@@ -183,7 +183,7 @@ function drawLine(svg_id, p, p0, p1) {
 				'y': 0
 			}),
 			total_radius,
-			0,
+			(p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
 			group_color,
 			'',
 			0.3,
@@ -368,9 +368,9 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 	// generate path string
 
 	var path = new Array("M", ax, ay, // start point
-		"A", inner_radius, inner_radius, 0, large_arc_flag, (large_arc_flag == 1) ? 0 : 1, bx, by, // inner arc
+		"A", inner_radius, inner_radius, 0, large_arc_flag, 1, bx, by, // inner arc
 		"L", cx, cy, // line 1
-		"A", outer_radius, outer_radius, 0, large_arc_flag, (large_arc_flag == 1) ? 1 : 0, dx, dy, // outer arc
+		"A", outer_radius, outer_radius, 0, large_arc_flag, 0, dx, dy, // outer arc
 		"Z"); // close path line 2
 
 	pie.setAttribute('id', 'path_' + id);
