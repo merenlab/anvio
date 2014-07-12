@@ -22,6 +22,7 @@ function drawLegend() {
 			colors.push(taxonomy_colors[pindex][name]);
 		}
 
+		// draw border
 		drawRectangle('viewport', left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
 
 		drawText('viewport', {
@@ -30,8 +31,10 @@ function drawLegend() {
 		}, taxonomy_title, '16px');
 
 		for (var j = 0; j < names.length; j++) {
+			var name = names[j];
+
 			top = top + 20;
-			drawRectangle('viewport', left, top, 16, 16, colors[j], 1, 'black',
+			var rect = drawRectangle('viewport', left, top, 16, 16, colors[j], 1, 'black',
 				null,
 				function() {
 					// mouseenter
@@ -40,7 +43,17 @@ function drawLegend() {
 				function() {
 					// mouseleave
 					$(this).css('stroke-width', '1');
-				}, true);
+				});
+
+			$(rect).colpick({
+				layout: 'hex',
+				submit: 0,
+				colorScheme: 'light',
+				onChange:function(hsb, hex, rgb, el, bySetColor) {
+					$(el).css('fill', '#' + hex);
+					taxonomy_colors[pindex][name] = '#' + hex;
+				}
+			});
 
 			drawText('viewport', {
 				'x': left + 30,
@@ -344,7 +357,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 	svg.appendChild(pie);
 }
 
-function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave, pick_color) {
+function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave) {
 	var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 	rect.setAttribute('fill', fill);
 	rect.setAttribute('stroke-width', stroke_width);
@@ -359,19 +372,10 @@ function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_c
 	$(rect).mouseenter(f_mouseenter);
 	$(rect).mouseleave(f_mouseleave);
 
-	if (pick_color) {
-		$(rect).colpick({
-			layout: 'hex',
-			submit: 0,
-			colorScheme: 'light',
-			onChange: function(hsb, hex, rgb, el, bySetColor) {
-				$(el).css('fill', '#' + hex);
-			}
-		});
-	}
-
 	var svg = document.getElementById(svg_id);
 	svg.appendChild(rect);
+
+	return rect;
 }
 
 //--------------------------------------------------------------------------------------------------
