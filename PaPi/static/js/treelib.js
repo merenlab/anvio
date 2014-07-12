@@ -19,8 +19,9 @@ function drawLegend() {
 
 		for (var name in taxonomy_colors[pindex]) {
 			names.push(name);
-			colors.push(taxonomy_colors[pindex][name]);
 		}
+
+		names.sort();
 
 		// draw border
 		drawRectangle('viewport', left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
@@ -34,7 +35,7 @@ function drawLegend() {
 			var name = names[j];
 
 			top = top + 20;
-			var rect = drawRectangle('viewport', left, top, 16, 16, colors[j], 1, 'black',
+			var rect = drawRectangle('viewport', left, top, 16, 16, taxonomy_colors[pindex][name], 1, 'black',
 				null,
 				function() {
 					// mouseenter
@@ -45,13 +46,15 @@ function drawLegend() {
 					$(this).css('stroke-width', '1');
 				});
 
+			rect.setAttribute('name', name);
+
 			$(rect).colpick({
 				layout: 'hex',
 				submit: 0,
 				colorScheme: 'light',
-				onChange:function(hsb, hex, rgb, el, bySetColor) {
+				onChange: function(hsb, hex, rgb, el, bySetColor) {
 					$(el).css('fill', '#' + hex);
-					taxonomy_colors[pindex][name] = '#' + hex;
+					taxonomy_colors[pindex][$(el).attr('name')] = '#' + hex;
 				}
 			});
 
