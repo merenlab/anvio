@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+# Copyright (C) 2014, Marine Biological Laboratory
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option)
+# any later version.
+#
+# Please read the COPYING file.
+
+import os
+import sys
+import json
+import PaPi.utils
+
+def main(input_file, output_file):
+    open(output_file, 'w').write(json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()]))
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Converts a TAB-delimited file into a JSON object')
+    parser.add_argument('input_file', metavar = 'FILE PATH',
+                        help = 'TAB-delimited file to convert')
+    parser.add_argument('-o', '--output-file', default = None,
+                        help = 'Output file')
+
+    args = parser.parse_args()
+    if not os.path.exists(args.input_file):
+        print 'Input file "%s" is not accesssible.' % args.input_file
+        sys.exit(-1)
+    if not args.output_file:
+        if args.input_file.endswith('.txt'):
+            args.output_file = args.input_file[:-4] + '.json'
+        else:
+            args.output_file = args.input_file + '.json'
+    if not os.access(os.path.dirname(args.output_file) or '.', os.W_OK):
+        print 'No write permission to write file "%s".' % args.output_file
+        sys.exit(-1)
+
+    try:
+        PaPi.utils.is_file_tab_delimited(args.input_file)
+    except PaPi.utils.ConfigError, e:
+        print e
+        sys.exit(-1)
+
+    sys.exit(main(args.input_file, args.output_file))
