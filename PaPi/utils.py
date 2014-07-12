@@ -178,7 +178,7 @@ class Progress:
 
     def new(self, pid):
         if self.pid:
-            raise LibError, "Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid)
+            raise ConfigError, "Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid)
 
         if not self.verbose:
             return
@@ -328,10 +328,29 @@ def get_pretty_name(key):
     else:
         return key
 
+def is_file_tab_delimited(file_path):
+    f = open(file_path)
+    line = f.readline()
+    if len(line.split('\t')) == 1:
+        raise ConfigError, "File '%s' does not seem to have TAB characters.\
+                            Did you export this file on MAC using EXCEL? :(" % file_path
+
+    f.seek(0)
+    if len(set([len(line.split('\t')) for line in f.readlines()])) != 1:
+        raise ConfigError, "Not all lines in the file '%s' have equal number of fields..." % file_path
+
+    f.close()
+    return True
+
 
 class ConfigError(Exception):
     def __init__(self, e = None):
         Exception.__init__(self)
+        while 1:
+            if e.find("  ") > -1:
+                e = e.replace("  ", " ")
+            else:
+                break
         self.e = e
         return
     def __str__(self):
