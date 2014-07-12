@@ -1394,7 +1394,7 @@ function draw_tree(drawing_type) {
 
 	for (var index = 1; index < metadata.length; index++) {
 		var params = metadata[index];
-		metadata_dict[params[0]] = params;
+		metadata_dict[params[0]] = params.slice(0); // to avoid reference between metadata and after normalization metadata
 
 		var title = [];
 		title.push("<b>" + metadata[index][0] + "</b>");
