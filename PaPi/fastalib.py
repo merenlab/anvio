@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# v.140216
+# v.140713
 
 # Copyright (C) 2011, Marine Biological Laboratory
 #
@@ -81,6 +81,10 @@ class SequenceSource():
         self.unique_next_hash = 0
 
         self.file_pointer = open(self.fasta_file_path)
+
+        if not self.file_pointer.read(1) == '>':
+            raise FastaLibError, "File '%s' does not seem to be a FASTA file." % self.fasta_file_path
+
         self.file_pointer.seek(0)
         
         if self.lazy_init:
@@ -320,6 +324,20 @@ class QualSource:
         self.quals_int = None
         self.ids = []
         self.file_pointer.seek(0)
+
+
+class FastaLibError(Exception):
+    def __init__(self, e = None):
+        Exception.__init__(self)
+        while 1:
+            if e.find("  ") > -1:
+                e = e.replace("  ", " ")
+            else:
+                break
+        self.e = e
+        return
+    def __str__(self):
+        return 'Fasta Lib Error: %s' % self.e
 
 
 if __name__ == '__main__':
