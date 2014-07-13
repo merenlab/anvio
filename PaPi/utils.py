@@ -12,6 +12,7 @@
 import os
 import sys
 import time
+import json
 import fcntl
 import string
 import struct
@@ -21,6 +22,7 @@ import itertools
 import multiprocessing
 
 from PaPi.constants import pretty_names
+import PaPi.fastalib as u
 
 
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
@@ -341,6 +343,30 @@ def is_file_tab_delimited(file_path):
 
     f.close()
     return True
+
+def is_file_json_formatted(file_path):
+    try:
+        json.load(open(file_path))
+    except ValueError, e:
+        raise ConfigError, "File '%s' does seem to be a properly formatted JSON\
+                            file ('%s', cries the library)." % (file_path, e)
+
+    return True
+
+def is_file_fasta_formatted(file_path):
+    try:
+        f = u.SequenceSource(file_path)
+    except u.FastaLibError, e:
+        raise ConfigError, "Someone is not happy with your FASTA file '%s' (this is\
+                            what the lib says: '%s'." % (file_path, e)
+
+    f.close()
+
+    return True
+
+
+def get_json_obj_from_TAB_delim_metadata(input_file):
+    return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
 class ConfigError(Exception):
