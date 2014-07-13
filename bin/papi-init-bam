@@ -51,7 +51,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Sort/Index BAM files')
-    parser.add_argument('input_file', metavar = 'FILE PATH',
+    parser.add_argument('input_file', metavar = 'BAM_FILE',
                         help = 'BAM file to analyze')
     parser.add_argument('--sorted', action = 'store_true', default = False,
                         help = 'Flag to define whether BAM file is already sorted')
