@@ -369,6 +369,16 @@ def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
+def get_all_ids_from_fasta(input_file):
+    fasta = u.SequenceSource(input_file)
+    ids = []
+    
+    while fasta.next():
+        ids.append(fasta.id) 
+
+    return ids
+
+
 class ConfigError(Exception):
     def __init__(self, e = None):
         Exception.__init__(self)
