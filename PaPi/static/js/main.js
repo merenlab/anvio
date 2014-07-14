@@ -34,7 +34,7 @@ var taxonomy_colors = new Array();
 
 $(document).ready(function() {
 
-    // create "Group 1"
+    // create "Group_1"
     newGroup();
 
     // common settings for dialogs
@@ -233,7 +233,7 @@ function newGroup() {
     });
 
     clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
-    clone.find('input[type=text]').attr('value', "Group " + group_counter).attr('id', 'group_name_' + group_counter);
+    clone.find('input[type=text]').attr('value', "Group_" + group_counter).attr('id', 'group_name_' + group_counter);
     clone.find('input[type=button]').attr('id', 'contig_count_' + group_counter).click(function() {
         showContigNames(group_counter);
     });
