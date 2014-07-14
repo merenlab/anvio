@@ -414,7 +414,7 @@ class BAMProfiler:
         contigs_fasta = open(self.generate_output_destination('CONTIGS-CONSENSUS.fa'), 'w')
         for contig in self.contigs:
             contigs_fasta.write(">%s\n%s\n" % (contig,
-                                               self.contigs_dict[contig]['auxiliary']['rep_seq'].strip('N')))
+                                               self.contigs_dict[contig]['auxiliary']['rep_seq']))
         contigs_fasta.close()
         self.progress.end()
         self.run.info('contigs_fasta', contigs_fasta.name)
