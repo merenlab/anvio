@@ -25,7 +25,7 @@ class Essential:
 
         if not coverage:
             self.basics['coverage'] = [] 
-            self.basics['length'] = 0 
+            self.basics['explicit_length'] = 0 
             self.basics['min_coverage'] = 0
             self.basics['max_coverage'] = 0
             self.basics['median_coverage'] = 0
@@ -33,7 +33,8 @@ class Essential:
             self.basics['std_coverage'] = 0
         else:
             self.basics['coverage'] = coverage
-            self.basics['length'] = len(coverage) 
+            # explicit_length identifies positions with actual reads mapped 
+            self.basics['explicit_length'] = len(coverage) 
             self.basics['min_coverage'] = numpy.min(coverage)
             self.basics['max_coverage'] = numpy.max(coverage)
             self.basics['median_coverage'] = numpy.median(coverage)
