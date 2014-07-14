@@ -99,7 +99,6 @@ function drawGroupLegend() {
 	}
 }
 
-
 function drawLine(svg_id, p, p0, p1) {
 	var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 	line.setAttribute('id', 'line' + p.id);
@@ -120,12 +119,16 @@ function drawLine(svg_id, p, p0, p1) {
 		if (group_id < 1)
 			return;
 
+		var group_color = $('#group_color_' + group_id).attr('color');
+
 		for (var i = 0; i < child_nodes.length; i++) {
 			var pos = $.inArray(child_nodes[i], SELECTED[group_id]);
 			if (pos == -1) {
 				SELECTED[group_id].push(child_nodes[i]);
+				$('.path_' + child_nodes[i] + "_background").css('fill', group_color);
 			} else {
 				SELECTED[group_id].splice(pos, 1);
+				$('.path_' + child_nodes[i] + "_background").css('fill', '#FFFFFF');
 			}
 
 			// remove nodes from other groups
@@ -261,6 +264,7 @@ function drawText(svg_id, p, string, font_size) {
 	text.setAttribute('x', p['x']);
 	text.setAttribute('y', p['y']);
 	text.setAttribute('font-size', font_size);
+	text.setAttribute('pointer-events', 'none');
 
 	var textNode = document.createTextNode(string)
 	text.appendChild(textNode);
@@ -270,12 +274,14 @@ function drawText(svg_id, p, string, font_size) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawRotatedText(svg_id, p, string, angle, align) {
+function drawRotatedText(svg_id, p, string, angle, align, font_size) {
 	var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 	//newLine.setAttribute('id','node' + p.id);
 	text.setAttribute('style', 'alignment-baseline:middle');
 	text.setAttribute('x', p['x']);
 	text.setAttribute('y', p['y']);
+	text.setAttribute('pointer-events', 'none');
+	text.setAttribute('font-size', font_size);
 
 	switch (align) {
 		case 'left':
@@ -374,6 +380,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 		"Z"); // close path line 2
 
 	pie.setAttribute('id', 'path_' + id);
+	pie.setAttribute('class', 'path_' + id);
 	pie.setAttribute('fill', color);
 	pie.setAttribute('stroke-width', '0');
 	pie.setAttribute('shape-rendering', 'auto');
@@ -381,7 +388,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 	pie.setAttribute('d', path.join(" "));
 	pie.setAttribute('fill-opacity', fill_opacity);
 
-	if (content.length > 0) {
+	if (content !== null && content.length > 0) {
 		pie.setAttribute('title', content);
 	}
 
@@ -1519,28 +1526,28 @@ function draw_tree(drawing_type) {
 		td.Draw();
 
 		// calculate max radius of tree
-		var max_tree_radius = 0;
+		var tree_radius = 0;
 
 		var n = new NodeIterator(t.root);
 		var q = n.Begin();
 
 		while (q != null) {
-			if (q.radius > max_tree_radius)
-				max_tree_radius = q.radius;
+			if (q.radius > tree_radius)
+				tree_radius = q.radius;
 			q = n.Next();
 		}
 
 		//
-		var draw_offset = new Array();
+		var layer_boundaries = new Array();
 		var margin = parseFloat($('#layer-margin').val());
 
-		draw_offset[0] = max_tree_radius;
+		layer_boundaries.push( [0, tree_radius] );
 
 		for (var pindex = 1; pindex < parameter_count; pindex++) {
-			draw_offset[pindex] = margin + draw_offset[pindex - 1] + parseFloat($('#height' + pindex).val());
+			layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
 		}
 
-		total_radius = draw_offset[draw_offset.length - 1];
+		total_radius = layer_boundaries[layer_boundaries.length - 1][1];
 
 
 		// label leaves...
@@ -1586,8 +1593,8 @@ function draw_tree(drawing_type) {
 									q.id,
 									q.angle - angle_per_leaf / 2,
 									q.angle + angle_per_leaf / 2,
-									draw_offset[pindex - 1] + margin,
-									draw_offset[pindex],
+									layer_boundaries[pindex][0],
+									layer_boundaries[pindex][1],
 									0,
 									color,
 									tooltip,
@@ -1599,13 +1606,39 @@ function draw_tree(drawing_type) {
 								q.id,
 								q.angle - angle_per_leaf / 2,
 								q.angle + angle_per_leaf / 2,
-								draw_offset[pindex - 1] + margin, (isTaxonomy) ? draw_offset[pindex] : draw_offset[pindex - 1] + metadata_dict[q.label][pindex] + margin,
+								layer_boundaries[pindex][0], 
+								(isTaxonomy) ? layer_boundaries[pindex][1] : layer_boundaries[pindex][0] + metadata_dict[q.label][pindex],
 								0,
 								color,
 								tooltip,
 								1,
 								true);
 						}
+
+
+						drawPie('viewport',
+							q.id + "_background",
+							q.angle - angle_per_leaf / 2,
+							q.angle + angle_per_leaf / 2,
+							layer_boundaries[1][0],
+							total_radius,
+							0,
+							'#FFFFFF',
+							null,
+							0.2,
+							false);	
+
+						drawPie('viewport',
+							q.id + "_background",
+							q.angle - angle_per_leaf / 2,
+							q.angle + angle_per_leaf / 2,
+							total_radius,
+							total_radius + margin * 2,
+							0,
+							'#FFFFFF',
+							null,
+							1,
+							false);	
 
 						break;
 					case 'cladogram':
