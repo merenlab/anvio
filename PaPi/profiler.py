@@ -62,7 +62,7 @@ class BAMProfiler:
             self.no_trehading = False
 
         self.bam = None
-        self.references_dict = {}
+        self.contigs_dict = {}
 
         self.progress = utils.Progress()
         self.run = utils.Run()
@@ -91,38 +91,38 @@ class BAMProfiler:
         self.progress.update('Reading serialized profile')
 
         
-        self.references_dict = cPickle.load(open(self.serialized_profile_path))
+        self.contigs_dict = cPickle.load(open(self.serialized_profile_path))
         self.progress.end()
         self.run.info('profile_loaded_from', self.serialized_profile_path)
 
-        self.references = self.references_dict.keys()
-        self.lengths = [self.references_dict[reference]['essential']['length'] for reference in self.references]
+        self.contigs = self.contigs_dict.keys()
+        self.lengths = [self.contigs_dict[contig]['essential']['length'] for contig in self.contigs]
 
-        self.run.info('num_contigs', pp(len(self.references)))
+        self.run.info('num_contigs', pp(len(self.contigs)))
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
-            for (reference, length) in zip(self.references, self.lengths):
-                print "\t- %s (%s)" % (reference, pp(int(length)))
+            for (contig, length) in zip(self.contigs, self.lengths):
+                print "\t- %s (%s)" % (contig, pp(int(length)))
             print
             sys.exit()
 
         if self.contigs_of_interest:
-            indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
-            self.references = [self.references[i] for i in indexes]
+            indexes = [self.contigs.index(r) for r in self.contigs_of_interest if r in self.contigs]
+            self.contigs = [self.contigs[i] for i in indexes]
             self.lengths = [self.lengths[i] for i in indexes]
-            self.run.info('num_contigs_selected_for_analysis', pp(len(self.references)))
+            self.run.info('num_contigs_selected_for_analysis', pp(len(self.contigs)))
 
         contigs_longer_than_M = set()
-        for i in range(0, len(self.references)):
+        for i in range(0, len(self.contigs)):
             if self.lengths[i] > self.min_contig_length:
                 contigs_longer_than_M.add(i)
         if not len(contigs_longer_than_M):
             raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
         else:
-            self.references = [self.references[i] for i in contigs_longer_than_M]
-            self.raw_lengths = [self.lengths[i] for i in contigs_longer_than_M]
-            self.run.info('contigs_raw_longer_than_M', len(self.references))
+            self.contigs = [self.contigs[i] for i in contigs_longer_than_M]
+            self.contig_lenghts = [self.lengths[i] for i in contigs_longer_than_M]
+            self.run.info('contigs_raw_longer_than_M', len(self.contigs))
 
         self.progress.new('Init')
         self.progress.update('Initializing the output directory ...')
@@ -138,8 +138,8 @@ class BAMProfiler:
         self.progress.end()
         self.run.info('input_bam', self.input_file_path)
 
-        self.references = self.bam.references
-        self.raw_lengths = self.bam.lengths
+        self.contigs = self.bam.references
+        self.contig_lenghts = self.bam.lengths
 
         try:
             self.num_reads_mapped = self.bam.mapped
@@ -156,31 +156,31 @@ class BAMProfiler:
         self.run.info('output_dir', self.output_directory)
 
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
-        self.run.info('num_contigs', pp(len(self.references)))
+        self.run.info('num_contigs', pp(len(self.contigs)))
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
-            for (reference, length) in zip(self.references, self.raw_lengths):
-                print "\t- %s (%s)" % (reference, pp(int(length)))
+            for (contig, length) in zip(self.contigs, self.contig_lenghts):
+                print "\t- %s (%s)" % (contig, pp(int(length)))
             print
             sys.exit()
 
         if self.contigs_of_interest:
-            indexes = [self.references.index(r) for r in self.contigs_of_interest if r in self.references]
-            self.references = [self.references[i] for i in indexes]
-            self.raw_lengths = [self.raw_lengths[i] for i in indexes]
-            self.run.info('num_contigs_selected_for_analysis', pp(len(self.references)))
+            indexes = [self.contigs.index(r) for r in self.contigs_of_interest if r in self.contigs]
+            self.contigs = [self.contigs[i] for i in indexes]
+            self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
+            self.run.info('num_contigs_selected_for_analysis', pp(len(self.contigs)))
 
         contigs_longer_than_M = set()
-        for i in range(0, len(self.references)):
-            if self.raw_lengths[i] > self.min_contig_length:
+        for i in range(0, len(self.contigs)):
+            if self.contig_lenghts[i] > self.min_contig_length:
                 contigs_longer_than_M.add(i)
         if not len(contigs_longer_than_M):
             raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
         else:
-            self.references = [self.references[i] for i in contigs_longer_than_M]
-            self.raw_lengths = [self.raw_lengths[i] for i in contigs_longer_than_M]
-            self.run.info('contigs_raw_longer_than_M', len(self.references))
+            self.contigs = [self.contigs[i] for i in contigs_longer_than_M]
+            self.contig_lenghts = [self.contig_lenghts[i] for i in contigs_longer_than_M]
+            self.run.info('contigs_raw_longer_than_M', len(self.contigs))
 
 
     def init_output_directory(self):
@@ -218,144 +218,122 @@ class BAMProfiler:
         """Big deal function"""
 
         self.progress.new('Profiling the BAM file for Essential Stats')
-        # So we start with essential stats. In the section below, we will simply go through each reference (contig),
-        # in the BAM file and populate the references dictionary for the first time. There are two major sections,
+        # So we start with essential stats. In the section below, we will simply go through each contig (contig),
+        # in the BAM file and populate the contigs dictionary for the first time. There are two major sections,
         # one for no_threading option, and the other with multiple threads.
         if self.no_trehading:
-            for i in range(0, len(self.references)):
-                reference = self.references[i]
-                self.references_dict[reference] = {}
+            for i in range(0, len(self.contigs)):
+                contig = self.contigs[i]
+                self.contigs_dict[contig] = {}
 
                 #fill in basics
-                self.progress.update('Essential stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
-                self.references_dict[reference]['essential'] = Essential(reference, self.bam.pileup(reference)).report()
+                self.progress.update('Essential stats for "%s" (%d of %d) ...' % (contig, i + 1, len(self.contigs)))
+                self.contigs_dict[contig]['essential'] = Essential(contig, self.bam.pileup(contig)).report()
+                self.contigs_dict[contig]['essential']['length'] = self.contig_lenghts[i]
 
         else:
-            def worker(reference, shared_references_dict):
-                shared_references_dict[reference] = Essential(reference, self.bam.pileup(reference)).report()
+            def worker(contig, shared_contigs_dict):
+                shared_contigs_dict[contig] = Essential(contig, self.bam.pileup(contig)).report()
 
             mp = utils.Multiprocessing(worker, self.number_of_threads)
-            shared_references_dict = mp.get_empty_shared_dict()
+            shared_contigs_dict = mp.get_empty_shared_dict()
 
             # arrange processes
             processes_to_run = []
-            for reference in self.references:
-                processes_to_run.append((reference, shared_references_dict),)
+            for contig in self.contigs:
+                processes_to_run.append((contig, shared_contigs_dict),)
 
             # start the main loop to run all processes
             mp.run_processes(processes_to_run, self.progress)
-            for reference in self.references:
-                self.references_dict[reference] = {}
-                self.references_dict[reference]['essential'] = shared_references_dict.pop(reference)
+            for contig in self.contigs:
+                self.contigs_dict[contig] = {}
+                self.contigs_dict[contig]['essential'] = shared_contigs_dict.pop(contig)
         self.progress.end()
 
 
-        # breath in, breath out. filtering based on M and C starts.
-        self.progress.new('Filtering contigs based on min-length')
-        # this is important:
-        # paired-end libraries with large inserts can cover long areas with large empty areas in between. after
-        # analyzing the coverage across each contig, we know the actual lenght of real nucleotides (this information
-        # is held by ['essential']['length']). so we will further eliminate contigs that are kinda useless:
-        self.progress.update('Screening actual contig lengths ...')
-        references_to_discard = set()
-        for reference in self.references_dict:
-            if self.references_dict[reference]['essential']['length'] < self.min_contig_length:
-                references_to_discard.add(reference)
-
-        if len(references_to_discard):
-            for reference in references_to_discard:
-                self.references_dict.pop(reference)
-            self.references = self.references_dict.keys()
-            self.progress.end()
-            self.run.info('contigs_precise_longer_than_M', pp(len(self.references)))
-        else:
-            self.progress.end()
-
-        if not len(self.references):
-            raise utils.ConfigError, "0 contigs passed minimum contig length parameter."
-
+        # filtering based on C starts.
         self.progress.new('Filtering contigs based on mean coverage')
         # this is also important. here we are going to remove any contig with a mean coverage less than C; mean
         # coverage info is stored in ['essential']['mean_coverage']. the mean coverage does not include areas
         # where zero reads mapped. 
         self.progress.update('Screening coverage for each contig ...')
-        references_to_discard = set()
-        for reference in self.references_dict:
-            if self.references_dict[reference]['essential']['mean_coverage'] < self.min_mean_coverage:
-                references_to_discard.add(reference)
+        contigs_to_discard = set()
+        for contig in self.contigs_dict:
+            if self.contigs_dict[contig]['essential']['mean_coverage'] < self.min_mean_coverage:
+                contigs_to_discard.add(contig)
 
-        if len(references_to_discard):
-            for reference in references_to_discard:
-                self.references_dict.pop(reference)
-            self.references = self.references_dict.keys()
+        if len(contigs_to_discard):
+            for contig in contigs_to_discard:
+                self.contigs_dict.pop(contig)
+            self.contigs = self.contigs_dict.keys()
             self.progress.end()
-            self.run.info('contigs_after_C', pp(len(self.references)))
+            self.run.info('contigs_after_C', pp(len(self.contigs)))
         else:
             self.progress.end()
 
-        if not len(self.references):
+        if not len(self.contigs):
             raise utils.ConfigError, "0 contigs passed minimum mean coverage parameter."
 
         # QA/QC is done. Now we go into Auxiliary analyses.
         self.progress.new('Computing auxiliary stats')
         if self.no_trehading:
-            for i in range(0, len(self.references)):
-                reference = self.references[i]
+            for i in range(0, len(self.contigs)):
+                contig = self.contigs[i]
                 # fill in entropy and representatives
-                self.progress.update('Auxiliary stats for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
-                self.references_dict[reference]['auxiliary'] = Auxiliary(reference,
-                                                                         self.bam.pileup(reference),
-                                                                         self.references_dict[reference]['essential']\
+                self.progress.update('Auxiliary stats for "%s" (%d of %d) ...' % (contig, i + 1, len(self.contigs)))
+                self.contigs_dict[contig]['auxiliary'] = Auxiliary(contig,
+                                                                         self.bam.pileup(contig),
+                                                                         self.contigs_dict[contig]['essential']\
                                                                          ).report()
         else:
-            def worker(reference, shared_references_dict):
-                shared_references_dict[reference] = Auxiliary(reference,
-                                                              self.bam.pileup(reference),
-                                                              self.references_dict[reference]['essential']\
+            def worker(contig, shared_contigs_dict):
+                shared_contigs_dict[contig] = Auxiliary(contig,
+                                                              self.bam.pileup(contig),
+                                                              self.contigs_dict[contig]['essential']\
                                                               ).report()
 
             mp = utils.Multiprocessing(worker, self.number_of_threads)
-            shared_references_dict = mp.get_empty_shared_dict()
+            shared_contigs_dict = mp.get_empty_shared_dict()
 
             # arrange processes
             processes_to_run = []
-            for reference in self.references:
-                processes_to_run.append((reference, shared_references_dict),)
+            for contig in self.contigs:
+                processes_to_run.append((contig, shared_contigs_dict),)
 
             # start the main loop to run all processes
             mp.run_processes(processes_to_run, self.progress)
-            for reference in self.references:
-                self.references_dict[reference]['auxiliary'] = shared_references_dict.pop(reference)
+            for contig in self.contigs:
+                self.contigs_dict[contig]['auxiliary'] = shared_contigs_dict.pop(contig)
         self.progress.end()
 
 
         # it is time to fill in the tetranucleotide frequency info per contig
         self.progress.new('TNF Stats')
         if self.no_trehading:
-            for i in range(0, len(self.references)):
-                reference = self.references[i]
-                self.progress.update('Computing TNF for "%s" (%d of %d) ...' % (reference, i + 1, len(self.references)))
-                self.references_dict[reference]['composition'] = Composition(reference,
-                                                                             self.references_dict[reference]['auxiliary']\
+            for i in range(0, len(self.contigs)):
+                contig = self.contigs[i]
+                self.progress.update('Computing TNF for "%s" (%d of %d) ...' % (contig, i + 1, len(self.contigs)))
+                self.contigs_dict[contig]['composition'] = Composition(contig,
+                                                                             self.contigs_dict[contig]['auxiliary']\
                                                                              ).report()
         else:
-            def worker(reference, shared_references_dict):
-                shared_references_dict[reference] = Composition(reference,
-                                                                self.references_dict[reference]['auxiliary']\
+            def worker(contig, shared_contigs_dict):
+                shared_contigs_dict[contig] = Composition(contig,
+                                                                self.contigs_dict[contig]['auxiliary']\
                                                                 ).report()
 
             mp = utils.Multiprocessing(worker, self.number_of_threads)
-            shared_references_dict = mp.get_empty_shared_dict()
+            shared_contigs_dict = mp.get_empty_shared_dict()
 
             # arrange processes
             processes_to_run = []
-            for reference in self.references:
-                processes_to_run.append((reference, shared_references_dict),)
+            for contig in self.contigs:
+                processes_to_run.append((contig, shared_contigs_dict),)
 
             # start the main loop to run all processes
             mp.run_processes(processes_to_run, self.progress)
-            for reference in self.references:
-                self.references_dict[reference]['composition'] = shared_references_dict.pop(reference)
+            for contig in self.contigs:
+                self.contigs_dict[contig]['composition'] = shared_contigs_dict.pop(contig)
         self.progress.end()
 
         # Profiling is done.
@@ -364,8 +342,8 @@ class BAMProfiler:
     def store_profile(self):
         output_file = self.generate_output_destination('PROFILE.cPickle')
         self.progress.new('Storing Profile')
-        self.progress.update('Serializing information for %s contigs ...' % pp(len(self.references_dict)))
-        cPickle.dump(self.references_dict, open(output_file, 'w'))
+        self.progress.update('Serializing information for %s contigs ...' % pp(len(self.contigs_dict)))
+        cPickle.dump(self.contigs_dict, open(output_file, 'w'))
         self.progress.end()
         self.run.info('profile_dict', output_file)
 
@@ -375,19 +353,19 @@ class BAMProfiler:
 
 
     def report(self):
-        # generate a sorted list of references based on length
-        self.references = [t[1] for t in sorted([(self.references_dict[k]['essential']['length'], k)\
-                                                for k in self.references], reverse = True)]
+        # generate a sorted list of contigs based on length
+        self.contigs = [t[1] for t in sorted([(self.contigs_dict[k]['essential']['length'], k)\
+                                                for k in self.contigs], reverse = True)]
 
         self.progress.new('Generating reports')
         self.progress.update('TNF matrix for contigs')
         TNF_matrix_file_path = self.generate_output_destination('TETRANUCLEOTIDE-FREQ-MATRIX.txt')
         output = open(TNF_matrix_file_path, 'w')
-        kmers = sorted(self.references_dict[self.references[0]]['composition']['tnf'].keys())
+        kmers = sorted(self.contigs_dict[self.contigs[0]]['composition']['tnf'].keys())
         output.write('contigs\t%s\n' % ('\t'.join(kmers)))
-        for reference in self.references:
-            output.write('%s\t' % (reference))
-            output.write('%s\n' % '\t'.join([str(self.references_dict[reference]['composition']['tnf'][kmer]) for kmer in kmers]))
+        for contig in self.contigs:
+            output.write('%s\t' % (contig))
+            output.write('%s\n' % '\t'.join([str(self.contigs_dict[contig]['composition']['tnf'][kmer]) for kmer in kmers]))
         output.close()
         self.progress.end()
         self.run.info('tnf_matrix', TNF_matrix_file_path)
@@ -416,9 +394,9 @@ class BAMProfiler:
         metadata_txt.write('contigs\t%s\n' % ('\t'.join(fields)))
         metadata_json_buffer.append([''] + fields)
 
-        for reference in self.references:
-            l = [self.references_dict[reference][major][minor] for major, minor in metadata_fields]
-            fields = [reference] + ['%.4f' % x for x in l]
+        for contig in self.contigs:
+            l = [self.contigs_dict[contig][major][minor] for major, minor in metadata_fields]
+            fields = [contig] + ['%.4f' % x for x in l]
             metadata_txt.write('%s\n' % '\t'.join(fields))
             metadata_json_buffer.append(fields)
 
@@ -434,9 +412,9 @@ class BAMProfiler:
         self.progress.new('Generating reports')
         self.progress.update('Consensus FASTA file for contigs')
         contigs_fasta = open(self.generate_output_destination('CONTIGS-CONSENSUS.fa'), 'w')
-        for reference in self.references:
-            contigs_fasta.write(">%s\n%s\n" % (reference,
-                                               self.references_dict[reference]['auxiliary']['rep_seq'].strip('N')))
+        for contig in self.contigs:
+            contigs_fasta.write(">%s\n%s\n" % (contig,
+                                               self.contigs_dict[contig]['auxiliary']['rep_seq'].strip('N')))
         contigs_fasta.close()
         self.progress.end()
         self.run.info('contigs_fasta', contigs_fasta.name)
