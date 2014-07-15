@@ -431,9 +431,9 @@ class BAMProfiler:
             raise utils.ConfigError, "No such file: '%s'" % self.input_file_path
         if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
             raise utils.ConfigError, "No such file: '%s'" % self.serialized_profile_path
-        if not self.min_mean_coverage => 0:
+        if not self.min_mean_coverage >= 0:
             raise utils.ConfigError, "Minimum mean coverage must be 0 or larger."
-        if not self.min_contig_length => 0:
+        if not self.min_contig_length >= 0:
             raise utils.ConfigError, "Minimum contig length must be 0 or larger (although using anything\
                                       below 5,000 is kinda silly, UNLESS you are working with mappings of\
                                       multiple samples to a single assembly)."
