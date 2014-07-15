@@ -394,17 +394,19 @@ class ConfigError(Exception):
 def get_chunks(contig_length, desired_length):
     num_chunks = contig_length / desired_length
 
-    # if the last chunk is going to be too small,
-    # don't split it
-    if (contig_length % desired_length) < (desired_length / 2):
-        num_chunks -= 1
-
     if num_chunks < 2:
         return [(0, contig_length)]
 
     chunks = []
-    for i in range(0, num_chunks - 1):
+    for i in range(0, num_chunks):
         chunks.append((i * desired_length, (i + 1) * desired_length),)
     chunks.append(((i + 1) * desired_length, contig_length),)
+
+    if (chunks[-1][1] - chunks[-1][0]) < (desired_length / 2):
+        # last chunk is too small :/ merge it to the previous one.
+        last_tuple = (chunks[-2][0], contig_length)
+        chunks.pop()
+        chunks.pop()
+        chunks.append(last_tuple)
 
     return chunks
