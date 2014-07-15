@@ -1,10 +1,17 @@
-/**
+ /**
  *
  * Javascript library to display phylogenetic trees
  *
  */
 
 //--------------------------------------------------------------------------------------------------
+function createGroup(parent, group_id) {
+	var svgObject = document.getElementById(parent);
+	var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+	g.setAttribute('id', group_id);
+	svgObject.appendChild(g);
+}
+
 function drawLegend() {
 	var left = total_radius + 100;
 	var top = 20 - total_radius;
@@ -23,10 +30,13 @@ function drawLegend() {
 
 		names.sort();
 
-		// draw border
-		drawRectangle('viewport', left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
+		var group_id = 'legend_' + i;
+		createGroup('viewport', group_id);
 
-		drawText('viewport', {
+		// draw border
+		drawRectangle(group_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
+
+		drawText(group_id, {
 			'x': left,
 			'y': top
 		}, taxonomy_title, '16px');
@@ -35,7 +45,7 @@ function drawLegend() {
 			var name = names[j];
 
 			top = top + 20;
-			var rect = drawRectangle('viewport', left, top, 16, 16, taxonomy_colors[pindex][name], 1, 'black',
+			var rect = drawRectangle(group_id, left, top, 16, 16, taxonomy_colors[pindex][name], 1, 'black',
 				null,
 				function() {
 					// mouseenter
@@ -58,7 +68,7 @@ function drawLegend() {
 				}
 			});
 
-			drawText('viewport', {
+			drawText(group_id, {
 				'x': left + 30,
 				'y': top + 8
 			}, names[j], '12px');
@@ -81,8 +91,10 @@ function drawGroupLegend() {
 	if (groups_to_draw.length==0)
 		return;
 
-	drawRectangle('viewport', left - 10, top - 20, (groups_to_draw.length + 2.5) * 20, 200, 'white', 1, 'black');
-	drawText('viewport', {
+	createGroup('viewport', 'group_legend');
+
+	drawRectangle('group_legend', left - 10, top - 20, (groups_to_draw.length + 2.5) * 20, 200, 'white', 1, 'black');
+	drawText('group_legend', {
 		'x': left,
 		'y': top
 	}, "Groups", '16px');
@@ -91,8 +103,8 @@ function drawGroupLegend() {
 		gid = groups_to_draw[j];
 		top = top + 20;
 
-		drawRectangle('viewport', left, top, 16, 16, $('#group_color_' + gid).attr('color'), 1, 'black');
-		drawText('viewport', {
+		drawRectangle('group_legend', left, top, 16, 16, $('#group_color_' + gid).attr('color'), 1, 'black');
+		drawText('group_legend', {
 			'x': left + 30,
 			'y': top + 8
 		}, $('#group_name_' + gid).val(), '12px');
@@ -125,10 +137,13 @@ function drawLine(svg_id, p, p0, p1) {
 			var pos = $.inArray(child_nodes[i], SELECTED[group_id]);
 			if (pos == -1) {
 				SELECTED[group_id].push(child_nodes[i]);
-				$('.path_' + child_nodes[i] + "_background").css('fill', group_color);
+				$('.path_' + child_nodes[i] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
+				$('.path_' + child_nodes[i] + "_outer_ring").css('fill', group_color);
+
 			} else {
 				SELECTED[group_id].splice(pos, 1);
-				$('.path_' + child_nodes[i] + "_background").css('fill', '#FFFFFF');
+				$('.path_' + child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
+				$('.path_' + child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
 			}
 
 			// remove nodes from other groups
@@ -1415,8 +1430,8 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 	TreeDrawer.prototype.Draw.call(this);
 
 	// move drawing to centre of viewport
-	var viewport = document.getElementById(this.settings.svg_id);
-	viewport.setAttribute('transform', 'translate(' + (this.settings.width + this.root_length) / 2 + ' ' + this.settings.height / 2 + ')');
+	//var viewport = document.getElementById(this.settings.svg_id);
+	//viewport.setAttribute('transform', 'translate(' + (this.settings.width + this.root_length) / 2 + ' ' + this.settings.height / 2 + ')');
 }
 
 function draw_tree(drawing_type) {
@@ -1509,13 +1524,12 @@ function draw_tree(drawing_type) {
 		}
 
 		// create new group
-		var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-		g.setAttribute('id', 'viewport');
-		svg.appendChild(g);
+		createGroup('svg', 'viewport');
 
+		createGroup('viewport', 'tree_group');
 
 		td.Init(t, {
-			svg_id: 'viewport',
+			svg_id: 'tree_group',
 			width: VIEWER_WIDTH,
 			height: VIEWER_HEIGHT,
 			fontHeight: 10,
@@ -1545,6 +1559,7 @@ function draw_tree(drawing_type) {
 
 		for (var pindex = 1; pindex < parameter_count; pindex++) {
 			layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
+			createGroup('viewport', 'layer_' + pindex);
 		}
 
 		total_radius = layer_boundaries[layer_boundaries.length - 1][1];
@@ -1568,7 +1583,7 @@ function draw_tree(drawing_type) {
 					case 'circle':
 					case 'circlephylogram':
 						if (draw_reference_lines)
-							drawDottedLine('viewport', q.angle, q.radius, total_radius);
+							drawDottedLine('tree_group', q.angle, q.radius, total_radius);
 
 						for (var pindex = 1; pindex < parameter_count; pindex++) {
 
@@ -1589,7 +1604,7 @@ function draw_tree(drawing_type) {
 							}
 
 							if (!isTaxonomy) {
-								drawPie('viewport',
+								drawPie('layer_' + pindex,
 									q.id,
 									q.angle - angle_per_leaf / 2,
 									q.angle + angle_per_leaf / 2,
@@ -1602,7 +1617,7 @@ function draw_tree(drawing_type) {
 									true);
 							}
 
-							drawPie('viewport',
+							drawPie('layer_' + pindex,
 								q.id,
 								q.angle - angle_per_leaf / 2,
 								q.angle + angle_per_leaf / 2,
@@ -1613,23 +1628,22 @@ function draw_tree(drawing_type) {
 								tooltip,
 								1,
 								true);
+
+							drawPie('viewport',
+								q.id + "_background",
+								q.angle - angle_per_leaf / 2,
+								q.angle + angle_per_leaf / 2,
+								layer_boundaries[pindex-1][1],
+								layer_boundaries[pindex][1],
+								0,
+								'#FFFFFF',
+								null,
+								0.0,
+								false);	
 						}
 
-
 						drawPie('viewport',
-							q.id + "_background",
-							q.angle - angle_per_leaf / 2,
-							q.angle + angle_per_leaf / 2,
-							layer_boundaries[1][0],
-							total_radius,
-							0,
-							'#FFFFFF',
-							null,
-							0.2,
-							false);	
-
-						drawPie('viewport',
-							q.id + "_background",
+							q.id + "_outer_ring",
 							q.angle - angle_per_leaf / 2,
 							q.angle + angle_per_leaf / 2,
 							total_radius,

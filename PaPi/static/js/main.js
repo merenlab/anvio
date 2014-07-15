@@ -212,7 +212,6 @@ function newGroup() {
     clone.attr('id', '');
     clone.css('display', '');
 
-
     var color = randomColor();
 
     clone.find('.colorpicker').css('background-color', color);
@@ -278,6 +277,22 @@ function submitGroups() {
     if (confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
         // draw group list to output svg
         drawGroupLegend();
+
+        // move group highlights to new svg groups
+        for (var gid = 1; gid <= group_counter; gid++) {
+
+            createGroup('viewport', 'selected_group_' + gid);
+
+            for (var j = 0; j < SELECTED[gid].length; j++) {
+                if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                    $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
+                    $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
+                }
+            }
+        }
+
+        // remove ungrouped backgrounds.
+        $('#viewport > path').remove();
 
         // tooltip contains unescaped html charachters which isn't compatible with svg specification.
         $('path').each(function(index, elm) {
