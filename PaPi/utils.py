@@ -78,8 +78,6 @@ class KMers:
         return frequencies
 
 
-
-
 class Multiprocessing:
     def __init__(self, target_function, num_thread = None):
         self.cpu_count = multiprocessing.cpu_count()
@@ -202,7 +200,7 @@ class Progress:
         if self.verbose:
             sys.stderr.write(self.color_prefix + c + self.color_postfix)
             sys.stderr.flush()
-            
+
 
     def reset(self):
         self.clear()
@@ -229,7 +227,7 @@ class Progress:
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))
 
-    
+
     def end(self):
         self.pid = None
         if not self.verbose:
@@ -391,3 +389,22 @@ class ConfigError(Exception):
         return
     def __str__(self):
         return 'Config Error: %s' % self.e
+
+
+def get_chunks(contig_length, desired_length):
+    num_chunks = contig_length / desired_length
+
+    # if the last chunk is going to be too small,
+    # don't split it
+    if (contig_length % desired_length) < (desired_length / 2):
+        num_chunks -= 1
+
+    if num_chunks < 2:
+        return [(0, contig_length)]
+
+    chunks = []
+    for i in range(0, num_chunks - 1):
+        chunks.append((i * desired_length, (i + 1) * desired_length),)
+    chunks.append(((i + 1) * desired_length, contig_length),)
+
+    return chunks
