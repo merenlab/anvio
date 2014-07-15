@@ -111,6 +111,27 @@ function drawGroupLegend() {
 	}
 }
 
+function redrawGroupColors() {
+    for (var gid = 1; gid <= group_counter; gid++) {
+
+		var group_color = $('#group_color_' + gid).attr('color');
+
+	    for (var j = 0; j < SELECTED[gid].length; j++) {
+	        if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+				$('.path_' + SELECTED[gid][j] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
+				$('.path_' + SELECTED[gid][j] + "_outer_ring").css('fill', group_color);
+	        }
+	        $("#line" + SELECTED[gid][j]).css('stroke', group_color);
+			$("#arc" + SELECTED[gid][j]).css('stroke', group_color);
+			$("#line" + SELECTED[gid][j]).css('stroke-width', '2');
+			$("#arc" + SELECTED[gid][j]).css('stroke-width', '2');
+    	}
+
+
+    }
+
+}
+
 function drawLine(svg_id, p, p0, p1) {
 	var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 	line.setAttribute('id', 'line' + p.id);
@@ -1667,6 +1688,8 @@ function draw_tree(drawing_type) {
 		}
 
 		drawLegend();
+
+		redrawGroupColors();
 
 		// Scale to fit window
 		var bbox = svg.getBBox();

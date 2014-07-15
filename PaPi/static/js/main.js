@@ -226,6 +226,9 @@ function newGroup() {
             $(el).attr('color', '#' + hex);
 
             if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            redrawGroupColors();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
