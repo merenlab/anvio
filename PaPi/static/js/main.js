@@ -25,8 +25,11 @@ var parameter_count;
 var group_counter = 0; // for id
 var group_count = 0;
 
-var taxonomy_ids = new Array();
-var taxonomy_colors = new Array();
+var categorical_data_ids = new Array();
+var categorical_data_colors = new Array();
+
+var stack_bar_ids = new Array();
+var stack_bar_colors = new Array();
 
 //---------------------------------------------------------
 //  Init
@@ -93,27 +96,56 @@ $(document).ready(function() {
 
             parameter_count = metadata[0].length;
 
-            // clear taxonomy ids
-            taxonomy_ids = [];
+            categorical_data_ids = [];
+            separated_data_ids = [];
 
             for (var i = 1; i < parameter_count; i++) {
-                // check if taxonomy string or int
-                if (!isNumber(metadata[1][i])) {
-                    taxonomy_ids.push(i);
-                    taxonomy_colors[i] = new Array();
+                if (metadata[1][i].indexOf(';') > -1) // stack data
+                {
+                    stack_bar_ids.push(i);
+                    stack_bar_colors[i] = new Array();
 
-                    var metadata_row_str = '<tr>' +
+                    for (var j=0; j < metadata[1][i].split(";").length; j++)
+                    {
+                        stack_bar_colors[i].push(randomColor());
+                    }
+
+                    var stack_bar_row_str = '<tr>' +
+                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 7) ? metadata[0][i].slice(0,7) + "..." : metadata[0][i]) + '</td>' +
+                        '<td>' +
+                        '    <select id="normalization{id}">' +
+                        '        <option value="none">none</option>' +
+                        '        <option value="sqrt">Square root</option>' +
+                        '        <option value="log">Logarithm</option>' +
+                        '    </select>' +
+                        '</td>' +
+                        '<td><input type="text" size="2" id="height{id}" value="50"></td>' +
+                        '</tr>';
+
+                    stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                    $('#table_stack_bar_container').show();
+                    $('#table_stack_bar tr:last').after(stack_bar_row_str);
+                }
+                else if (!isNumber(metadata[1][i])) // categorical data
+                { 
+                    categorical_data_ids.push(i);
+                    categorical_data_colors[i] = new Array();
+
+                    var categorical_data_row_str = '<tr>' +
                         '<td>{name}</td>' +
                         '<td><input type="text" size="2" id="height{id}" value="30"></td>' +
                         '</tr>';
 
-                    metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
-                    metadata_row_str = metadata_row_str.replace(new RegExp('{name}', 'g'), metadata[0][i]);
+                    categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
+                    categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{name}', 'g'), metadata[0][i]);
 
-                    $('#table_taxonomy_container').show();
-                    $('#table_taxonomy tr:last').after(metadata_row_str);
-                } else {
-                    var metadata_row_str = '<tr>' +
+                    $('#table_categorical_data_container').show();
+                    $('#table_categorical_data tr:last').after(categorical_data_row_str);
+                } 
+                else // numerical data
+                { 
+                    var numerical_data_row_str = '<tr>' +
                         '<td><div id="picker{id}" class="colorpicker"></td>' +
                         '<td>' +
                         '    <select id="normalization{id}">' +
@@ -125,18 +157,29 @@ $(document).ready(function() {
                         '<td><input type="text" size="2" id="height{id}" value="50"></td>' +
                         '</tr>';
 
-                    metadata_row_str = metadata_row_str.replace(new RegExp('{id}', 'g'), i);
+                    numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
 
-                    $('#table_metadata tr:last').after(metadata_row_str);
+                    $('#table_numerical_data_container').show();
+                    $('#table_numerical_data tr:last').after(numerical_data_row_str);
                 }
 
-                if (taxonomy_ids.length == 0) {
-                    $('#table_taxonomy_container').hide();
+                if (categorical_data_ids.length == 0) {
+                    $('#table_categorical_data_container').hide();
                 }
+                
+                if (stack_bar_ids.length == 0) {
+                    $('#table_stack_bar_container').hide();
+                }
+
+                if (parameter_count - (categorical_data_ids.length + stack_bar_ids.length) == 1)
+                {
+                    $('table_numerical_data_container').hide();
+                }
+
             }
 
             $("#treeControls").dialog("option", "position", {
-                my: "left center-25%",
+                my: "left center",
                 at: "left center",
                 of: window
             });
@@ -237,6 +280,8 @@ function newGroup() {
     clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
     clone.find('input[type=text]').attr('value', "Group_" + group_counter).attr('id', 'group_name_' + group_counter);
     clone.find('input[type=button]').attr('id', 'contig_count_' + group_counter).click(function() {
+        if (this.value == '0')
+            return;
         showContigNames(group_counter);
     });
 }

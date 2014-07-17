@@ -41,21 +41,36 @@
                     <label><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">Edge length normalization</label><br />
                     <label><input type="checkbox" id="draw_reference_lines" name="checkbox" value="value">Draw reference lines</label>
                     <br /><br />
-                    <b>Metadata Settings</b>
-                    <br /><br />
-                    <table id="table_metadata">
-                        <tr>
-                            <td>Color</td>
-                            <td>Normalization</td>
-                            <td>Height</td>
-                        </tr>
-                    </table>
+                    <div id="table_numerical_data_container" style="display: none">
+                        <b>Numerical Data Settings</b>
+                        <br /><br />
+                        <table id="table_numerical_data">
+                            <tr>
+                                <td>Color</td>
+                                <td>Normalization</td>
+                                <td>Height</td>
+                            </tr>
+                        </table>
+                    </div>
                     <br />
-                    <div id="table_taxonomy_container">
-                        <b>Taxonomy Settings</b><br /><br />
-                        <table id="table_taxonomy">
+                    <div id="table_categorical_data_container" style="display: none">
+                        <b>Categorical Data Settings</b>
+                        <br /><br />
+                        <table id="table_categorical_data">
                             <tr>
                                 <td>Name</td>
+                                <td>Height</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <br />
+                    <div id="table_stack_bar_container" style="display: none">
+                        <b>Stack Bar Settings</b>
+                        <br /><br />
+                        <table id="table_stack_bar">
+                            <tr>
+                                <td>Name</td>
+                                <td>Normalization</td>
                                 <td>Height</td>
                             </tr>
                         </table>
