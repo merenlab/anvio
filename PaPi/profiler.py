@@ -327,7 +327,7 @@ class BAMProfiler:
 
         metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
 
-        metadata_fields = ['contigs', 'length', 'mean_coverage', 'std_coverage', 'GC_content', 'parent']
+        metadata_fields = ['contigs', 'length', 'mean_coverage', 'std_coverage', 'GC_content', '__parent__']
         metadata_txt.write('%s\n' % ('\t'.join(metadata_fields)))
 
         F = lambda x: '%.4f' % x
