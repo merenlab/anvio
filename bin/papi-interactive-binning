@@ -100,10 +100,14 @@ class RuninfoIO:
             try:
                 assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
             except:
-                # FIXME: tell the user which file F's it up.
+                S = lambda x, y: "agrees" if x == y else "does not agree"
                 raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
                                                metadata needs to match perfectly. It seems it is not the\
-                                               case for the input you provided."
+                                               case for the input you provided (the metadata %s with the tree,\
+                                               the tree %s with the fasta, the fasta %s with the metadata;\
+                                               HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
+                                                          S(contigs_in_fasta, contigs_in_tree),
+                                                          S(contigs_in_metadata, contigs_in_fasta))
 
             # convert metadata into json.
             self.convert_metadata_into_json()
