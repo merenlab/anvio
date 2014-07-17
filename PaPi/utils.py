@@ -34,12 +34,14 @@ def rev_comp(seq):
 
 
 class KMers:
-    def __init__(self):
+    def __init__(self, k = 4):
         self.kmers = {}
+        self.k = k
         
-        self.get_kmers(k = 4)
+        self.get_kmers()
 
-    def get_kmers(self, k):
+    def get_kmers(self):
+        k = self.k
         arg = ['ATCG'] * k
         kmers = set()
         
@@ -51,7 +53,8 @@ class KMers:
         self.kmers[k] = kmers
 
 
-    def get_kmer_frequency(self, sequence, k = 4):
+    def get_kmer_frequency(self, sequence):
+        k = self.k
         sequence = sequence.upper()
 
         if len(sequence) < k:

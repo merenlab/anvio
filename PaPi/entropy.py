@@ -9,77 +9,9 @@
 #
 # Please read the COPYING file.
 
-import os
-import sys
-import numpy
-import pysam
-import random
 import operator
-from PaPi.utils import Progress
-from PaPi.utils import Run 
-from PaPi.utils import pretty_print as pp 
-
 from scipy import log2 as log
 from numpy import sqrt
-
-VALID_CHARS = {'nucleotide': set(['A', 'T', 'C', 'G', '-']),
-               'amino_acid': set(['A', 'R', 'N', 'D', 'C', 'E', 'Q', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V', '-'])}
-
-
-def entropy(l, l_qual = None, expected_qual_score = 40, amino_acid_sequences = False, sqrt_norm = False):
-    l = l.upper() 
-    
-    valid_chars = VALID_CHARS['amino_acid'] if amino_acid_sequences else VALID_CHARS['nucleotide']
-
-    if sqrt_norm:
-        l_normalized = ''
-        for char in valid_chars:
-            l_normalized += char * int(round(sqrt(l.count(char))))
-        l = l_normalized
-
-
-    E_Cs = []
-    for char in valid_chars:
-        P_C = (l.count(char) * 1.0 / len(l)) + 0.0000000000000000001
-        E_Cs.append(P_C * log(P_C))
-   
-    if l_qual:
-        # return weighted entropy
-        return -(sum(E_Cs) * (l_qual['mean'] / expected_qual_score))
-    else:
-        # return un-weighted entropy
-        return -(sum(E_Cs))
-
-
-class Auxiliary:
-    def __init__(self, reference, pileup, reference_essentials):
-        self.reference = reference
-        self.pileup = pileup
-        self.essentials = reference_essentials
-
-        self.auxiliary = {}
-
-    def report(self):
-        column_entropy_profile = {}
-        for pileupcolumn in self.pileup:
-            column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
-
-            column_entropy_profile[pileupcolumn.pos] = ColumnEntropyProfile(column,
-                                                        pileupcolumn.pos,
-                                                        self.essentials['max_coverage'],
-                                                        self.essentials['median_coverage'])
-
-
-        average_entropy = sum(e.entropy * 100.0 for e in column_entropy_profile.values()) / self.essentials['length']
-        average_normalized_entropy = sum(e.normalized_entropy * 100.0 for e in column_entropy_profile.values()) / self.essentials['length']
-        rep_seq = ''.join([column_entropy_profile[i].consensus_nucleotide if column_entropy_profile.has_key(i) else 'N'\
-                                             for i in range(0, max(column_entropy_profile.keys()))])
-
-        self.auxiliary['average_entropy'] = average_entropy
-        self.auxiliary['average_normalized_entropy'] = average_normalized_entropy
-        self.auxiliary['rep_seq'] = rep_seq
-        
-        return self.auxiliary
 
 
 class ColumnEntropyProfile:
@@ -205,4 +137,27 @@ class ColumnEntropyProfile:
         contigs_report.close()
 
 
+def entropy(l, l_qual = None, expected_qual_score = 40, sqrt_norm = False):
+    l = l.upper() 
+    
+    valid_chars = set(['A', 'T', 'C', 'G', '-'])
+
+    if sqrt_norm:
+        l_normalized = ''
+        for char in valid_chars:
+            l_normalized += char * int(round(sqrt(l.count(char))))
+        l = l_normalized
+
+
+    E_Cs = []
+    for char in valid_chars:
+        P_C = (l.count(char) * 1.0 / len(l)) + 0.0000000000000000001
+        E_Cs.append(P_C * log(P_C))
+   
+    if l_qual:
+        # return weighted entropy
+        return -(sum(E_Cs) * (l_qual['mean'] / expected_qual_score))
+    else:
+        # return un-weighted entropy
+        return -(sum(E_Cs))
 
