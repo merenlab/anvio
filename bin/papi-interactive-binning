@@ -174,17 +174,19 @@ def send_data(name):
 @route('/submit', method='POST')
 def get_data():
     bins = json.loads(request.forms.get('groups'))
+    svg = base64.b64decode(request.forms.get('svg'))
+
+    if svg:
+        # take care of the SVG.
+        svg_output_path = os.path.join(d.runinfo['output_dir'], 'BINS.svg')
+        print '* Storing SVG data into "%s"' % svg_output_path
+        svg_output = open(svg_output_path, 'w')
+        svg_output.write(svg)
+        svg_output.close()
+        d.runinfo['bins_svg'] = svg_output_path
 
     if not bins:
         return
-
-    # take care of the SVG.
-    svg_output_path = os.path.join(d.runinfo['output_dir'], 'BINS.svg')
-    print '* Storing SVG data into "%s"' % svg_output_path
-    svg_output = open(svg_output_path, 'w')
-    svg_output.write(base64.b64decode(request.forms.get('svg')))
-    svg_output.close()
-    d.runinfo['bins_svg'] = svg_output_path
 
     # take care of bins.. start by removing the bins dir if it exists.
     bins_dir = os.path.join(d.runinfo['output_dir'], 'BINS')
