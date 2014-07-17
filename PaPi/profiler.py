@@ -235,31 +235,50 @@ class BAMProfiler:
             contig = Contig(contig_name)
             contig.length = self.contig_lenghts[i]
 
+
+            self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
+                                                                      i + 1,
+                                                                      len(self.contig_names),
+                                                                      pp(int(contig.length))))
+
+            # populate contig with empty split objects and 
             for j in range(0, len(contig_splits)):
                 start, end = contig_splits[j]
-                self.progress.new('Profiling "%s" (%d of %d) (%s nts) (splits: %d of %d)' % (contig.name,
-                                                                                             i + 1,
-                                                                                             len(self.contig_names),
-                                                                                             pp(int(contig.length)),
-                                                                                             j + 1,
-                                                                                             len(contig_splits)))
-                split = Split(contig.name, self.bam, start, end, self.progress)
+                split_order = j + 1
+                split = Split(contig.name, split_order, start, end)
                 contig.splits.append(split)
+
+            # analyze coverage for each split
+            contig.analyze_coverage(self.bam, self.progress)
+
+            # now we can learn about the mean coverage of the contig.
+            discarded_contigs_due_to_C = set([])
+            contig_mean_cov = contig.get_mean_self_coverage(self.progress)
+            if contig_mean_cov < self.min_mean_coverage:
+                # discard this contig and continue
+                discarded_contigs_due_to_C.add(contig.name)
                 self.progress.end()
+                continue
 
+            contig.analyze_auxiliary(self.bam, self.progress)
 
-            self.progress.new('Computing TFN for "%s" (%d of %d) (%s nts)'% (contig.name,
-                                                                             i + 1,
-                                                                             len(self.contig_names),
-                                                                             pp(int(contig.length))))
-            self.progress.update('...')
-            contig.set_tnf()
+            contig.analyze_composition(self.bam, self.progress)
+
+            contig.analyze_tnf(self.progress)
+
             self.progress.end()
 
+            # add contig to the dict.
             self.contigs[contig_name] = contig
 
-        # FIXME: NO FILTERING BASED ON C
-        # Profiling is done.
+        if not len(self.contigs):
+            raise utils.ConfigError, "0 contigs passed minimum mean coverage parameter (%d)." % self.min_mean_coverage
+
+        if discarded_contigs_due_to_C:
+            self.run.info('contigs_after_C', pp(len(self.contigs)))
+
+        if len(self.contigs) < 3:
+            raise utils.ConfigError, "Less than 3 contigs left in your analysis. PaPi can't really do much with this :/ Bye."
 
 
     def store_profile(self):

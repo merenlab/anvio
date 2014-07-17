@@ -21,14 +21,37 @@ kmers = KMers()
 class Contig:
     def __init__(self, name):
         self.name = name
-        self.length = 0
         self.splits = []
+        self.length = 0
+        self.mean_coverage = 0.0
         self.tnf = {}
+
+
+    def analyze_coverage(self, bam, progress):
+        for split in self.splits:
+            progress.update('Coverage (split: %d of %d)' % (split.order, len(self.splits)))
+            split.coverage = Coverage(split, bam)
+
+
+    def analyze_auxiliary(self, bam, progress):
+        for split in self.splits:
+            progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
+                                 % (split.order, len(self.splits), self.mean_coverage, split.coverage.mean))
+            split.auxiliary = Auxiliary(split, bam)
+
+
+    def analyze_composition(self, bam, progress):
+        for split in self.splits:
+            progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
+            split.composition = Composition(split, bam)
+
 
     def get_rep_seq(self):
         return ''.join([s.auxiliary.rep_seq for s in self.splits])
 
-    def set_tnf(self):
+
+    def analyze_tnf(self, progress):
+        progress.update('TNF')
         rep_seq = self.get_rep_seq()
 
         if rep_seq.count('N') == len(rep_seq):
@@ -40,37 +63,43 @@ class Contig:
         else:
             self.tnf = kmers.get_kmer_frequency(rep_seq)
 
+    def get_mean_self_coverage(self, progress):
+        progress.update('Computing mean coverage for contig from splits')
+        self.mean_coverage = sum([split.coverage.mean * split.length / self.length for split in self.splits])
+        return self.mean_coverage 
+
 
 class Split:
-    def __init__(self, parent, bam, start, end, progress):
-        self.name = '_'.join([parent, 'split', start.__str__(), end.__str__()])
+    def __init__(self, parent, order, start, end):
+        self.name = '_'.join([parent, 'split', '%04d' % order, start.__str__(), end.__str__()])
         self.parent = parent
         self.end = end
+        self.order = order
         self.start = start
         self.length = end - start
         self.explicit_length = 0
 
-        progress.update('Analyzing coverage ...')
-        self.coverage = Coverage(self, bam.pileup(parent, start, end))
-        progress.update('Analyzing auxiliary stats ...')
-        self.auxiliary = Auxiliary(self, bam.pileup(parent, start, end))
-        progress.update('Analyzing composition ...')
-        self.composition = Composition(self, bam.pileup(parent, start, end))
+        #progress.update('Analyzing coverage ...')
+        #self.coverage = Coverage(self, bam.pileup(parent, start, end))
+        #progress.update('Analyzing auxiliary stats ...')
+        #self.auxiliary = Auxiliary(self, bam.pileup(parent, start, end))
+        #progress.update('Analyzing composition ...')
+        #self.composition = Composition(self, bam.pileup(parent, start, end))
 
 
 class Auxiliary:
-    def __init__(self, split, pileup):
+    def __init__(self, split, bam):
         self.rep_seq = ''
         self.split = split
         self.average_entropy = 0.0
         self.average_normalized_entropy = 0.0
 
-        self.run(pileup)
+        self.run(bam)
 
 
-    def run(self, pileup):
+    def run(self, bam):
         column_entropy_profile = {}
-        for pileupcolumn in pileup:
+        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
             if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
                 continue
 
@@ -93,7 +122,7 @@ class Auxiliary:
 
 
 class Composition:
-    def __init__(self, split, pileup):
+    def __init__(self, split, bam):
         self.split = split
         self.A = 0
         self.T = 0
@@ -126,7 +155,7 @@ class Composition:
     
 
 class Coverage:
-    def __init__(self, split, pileup):
+    def __init__(self, split, bam):
         self.split = split
         self.c = []
         self.min = 0
@@ -135,10 +164,11 @@ class Coverage:
         self.mean = 0.0
         self.median = 0.0
 
-        self.run(pileup)
+        self.run(bam)
 
-    def run(self, pileup):
-        for pileupcolumn in pileup:
+
+    def run(self, bam):
+        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
             if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
                 continue
 
