@@ -65,6 +65,7 @@ class RuninfoIO:
                                                RUNINFO dict. Please refer to the documentation."
 
             self.runinfo = cPickle.load(open(args.runinfo))
+            self.convert_metadata_into_json()
             self.runinfo['self_path'] = args.runinfo
 
         else:
@@ -105,10 +106,7 @@ class RuninfoIO:
                                                case for the input you provided."
 
             # convert metadata into json.
-            f = tempfile.NamedTemporaryFile(delete=False)
-            f.write(PaPi.utils.get_json_obj_from_TAB_delim_metadata(self.runinfo['metadata_txt']))
-            f.close()
-            self.runinfo['metadata_json'] = f.name
+            self.convert_metadata_into_json()
 
             if not os.path.exists(self.runinfo['output_dir']):
                 os.makedirs(self.runinfo['output_dir'])
@@ -117,9 +115,18 @@ class RuninfoIO:
         while fasta.next():
             self.contigs[fasta.id] = fasta.seq
 
+
     def update_runinfo_on_disk(self):
         path = self.runinfo.pop('self_path')
         cPickle.dump(self.runinfo, open(path, 'w'))
+
+
+    def convert_metadata_into_json(self):
+        # convert metadata into json.
+        f = tempfile.NamedTemporaryFile(delete=False)
+        f.write(PaPi.utils.get_json_obj_from_TAB_delim_metadata(self.runinfo['metadata_txt']))
+        f.close()
+        self.runinfo['metadata_json'] = f.name
 
 
     def end(self):
