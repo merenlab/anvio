@@ -55,6 +55,7 @@ class RuninfoIO:
     def __init__(self, args):
         self.runinfo = {}
         self.contigs = {}
+        self.contig_lengths = {}
 
         self.cwd = os.getcwd()
 
@@ -131,6 +132,7 @@ class RuninfoIO:
         fasta = u.SequenceSource(self.runinfo['contigs_fasta'])
         while fasta.next():
             self.contigs[fasta.id] = fasta.seq
+            self.contig_lengths[fasta.id] = len(fasta.seq)
 
 
     def update_runinfo_on_disk(self):
