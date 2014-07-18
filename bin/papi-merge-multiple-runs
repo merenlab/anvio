@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2014, PaPi Authors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import os
+import sys
+import pysam
+import cPickle
+import PaPi.utils
+from PaPi.utils import pretty_print as pp 
+
+
+class MultipleRuns:
+    def __init__(self, args):
+        self.progress = PaPi.utils.Progress()
+        self.run = PaPi.utils.Run()
+        self.runinfo_dict_paths = args.input
+        self.runinfo_dicts = []
+        self.output_dir = args.output_dir
+
+    def sanity_check(self):
+        if not len(self.runinfo_dict_paths) > 1:
+            raise PaPi.utils.ConfigError, "You need to provide at least 2 RUNINFO.cPickle files for this program\
+                                           to be useful."
+
+        missing = [p for p in self.runinfo_dict_paths if not os.path.exists(p)]
+        if missing:
+            raise PaPi.utils.ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
+                                                                 ', '.join(missing))
+
+        improper = []
+        for p in self.runinfo_dict_paths:
+            try:
+                self.runinfo_dicts.append(cPickle.load(open(p)))
+            except:
+                improper.append(p)
+        if improper:
+            raise PaPi.utils.ConfigError, "%s seem to be properly formatted cPickle objects: %s. Are you\
+                                           sure these are PaPi RUNINFO.cPickle files?" % \
+                                           ('Some RUNINFO files do not' if len(improper) > 1 else "RUNINFO file does not",
+                                            ', '.join(improper))
+
+        missing_path = [r['metadata_txt'] for r in self.runinfo_dicts if not os.path.exists(r['metadata_txt'])]
+        if missing_path:
+            raise PaPi.utils.ConfigError, "%d of %d files you provided have bad file paths. Maybe these RUNINFO.cPickle\
+                                          files were generated on another machine? If that is the case, please run\
+                                          'papi-reset-output-dir' script on them." % \
+                                                                    (len(missing_path), len(self.runinfo_dicts))
+
+        self.output_dir = PaPi.utils.ABS(self.output_dir)
+        PaPi.utils.gen_output_directory(self.output_dir)
+
+
+    def merge(self):
+        self.sanity_check()
+        pass
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Merge multiple PaPi runs to do cross-sectional or timeseries comparisons')
+    parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
+                        help = 'PaPi RUNINFO files to create a merged output')
+    parser.add_argument('-o', '--output-dir', default = None,
+                        help = 'Output directory for merged output')
+
+    args = parser.parse_args()
+
+    try:
+        MultipleRuns(args).merge()
+    except PaPi.utils.ConfigError, e:
+        print e
+        sys.exit(-1)
+
