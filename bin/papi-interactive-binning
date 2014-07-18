@@ -22,6 +22,7 @@ import argparse
 import tempfile
 import webbrowser
 
+from multiprocessing import Process 
 from bottle import route, run, static_file, redirect, request, BaseRequest, response
 from Bio import Phylo
 
@@ -64,7 +65,19 @@ class RuninfoIO:
                                                declare any of '-f', '-m', or '-t' parameters if you have a\
                                                RUNINFO dict. Please refer to the documentation."
 
+            if not os.path.exists(args.runinfo):
+                raise PaPi.utils.ConfigError, "'%s'? No such file." % (args.runinfo)
+
             self.runinfo = cPickle.load(open(args.runinfo))
+
+            if not self.runinfo.has_key('metadata_txt'):
+                raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cPickle." % (args.runinfo)
+
+            if not os.path.exists(self.runinfo['metadata_txt']):
+                raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
+                                               run from another computer, please run 'papi-reset-output-dir'\
+                                               script on RUNINFO.cPickle." % (args.runinfo)
+
             self.convert_metadata_into_json()
             self.runinfo['self_path'] = args.runinfo
 
