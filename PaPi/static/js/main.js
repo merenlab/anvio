@@ -31,6 +31,7 @@ var categorical_data_colors = new Array();
 var stack_bar_ids = new Array();
 var stack_bar_colors = new Array();
 
+var has_parent_layer = false;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -100,7 +101,22 @@ $(document).ready(function() {
             separated_data_ids = [];
 
             for (var i = 1; i < parameter_count; i++) {
-                if (metadata[1][i].indexOf(';') > -1) // stack data
+                if (metadata[0][i] == '__parent__') // parent
+                {
+                    has_parent_layer = true;
+
+                    var parent_row_str = '<tr style="display:none">' +
+                        '<td></td>' +
+                        '<td></td>' +
+                        '<td></td>' +
+                        '<td><input type="text" size="2" id="height{id}" value="30"></td>' +
+                        '</tr>';
+
+                    parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                    $('#tbody_layers').prepend(parent_row_str);                    
+                }
+                else if (metadata[1][i].indexOf(';') > -1) // stack data
                 {
                     stack_bar_ids.push(i);
                     stack_bar_colors[i] = new Array();
@@ -301,6 +317,12 @@ function deleteGroup(elm) {
         for (var i = 0; i < SELECTED[id].length; i++) {
             $("#line" + SELECTED[id][i]).css('stroke', LINE_COLOR);
             $("#arc" + SELECTED[id][i]).css('stroke', LINE_COLOR);
+
+            if (id_to_node_map[SELECTED[id][i]].IsLeaf())
+            {
+                $('.path_' + SELECTED[id][i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
+                $('.path_' + SELECTED[id][i] + "_outer_ring").css('fill', '#FFFFFF');
+            }
         }
 
         SELECTED[id] = [];

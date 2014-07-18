@@ -1604,7 +1604,22 @@ function draw_tree(drawing_type) {
 		title.push("<b>" + metadata[index][0] + "</b>");
 		for (var pindex = 1; pindex < params.length; pindex++) 
         {
-			title.push("<b>" + metadata[0][pindex] + ": </b>" + metadata[index][pindex]);
+            if (has_parent_layer && pindex==1) 
+            {   
+                if (metadata[index][pindex] == '')
+                {
+                    title.push("<b>Parent: </b>n/a");
+                }
+                else
+                {
+                    title.push("<b>Parent: </b>" + metadata[index][pindex]);
+                }
+                
+            }
+            else
+            {
+                title.push("<b>" + metadata[0][pindex] + ": </b>" + metadata[index][pindex]);
+            }
 		}
 
 		metadata_title[params[0]] = title;
@@ -1617,6 +1632,10 @@ function draw_tree(drawing_type) {
     {
 		for (var pindex = 1; pindex < parameter_count; pindex++) 
         {
+            if (has_parent_layer && pindex==1) // skip normalization for parent layer
+            {
+                continue;
+            }    
 			if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
             {
                 continue;
@@ -1663,12 +1682,15 @@ function draw_tree(drawing_type) {
 	for (var id in metadata_dict) {
 		for (var pindex = 1; pindex < metadata_dict[id].length; pindex++) 
         {
-            if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+            if (has_parent_layer && pindex==1) // skip normalization for parent layer
             {
                 continue;
             }
-
-            if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
+            else if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+            {
+                continue;
+            }
+            else if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
             {
                 var total = 0;
 
@@ -1685,8 +1707,10 @@ function draw_tree(drawing_type) {
                 }
                 continue;
             }
-
-			metadata_dict[id][pindex] = (parseFloat(metadata_dict[id][pindex]) * parseFloat($('#height' + pindex).val())) / parseFloat(param_max[pindex]);
+            else // numerical data
+            {
+                metadata_dict[id][pindex] = (parseFloat(metadata_dict[id][pindex]) * parseFloat($('#height' + pindex).val())) / parseFloat(param_max[pindex]);
+            }
 		}
 	}
 
@@ -1781,6 +1805,12 @@ function draw_tree(drawing_type) {
 		var edge_length_norm = $('#edge_length_normalization')[0].checked;
         createGroup('tree_group', 'dotted_lines');
 
+        // parent things
+        var prev_parent_color = 'black';
+        var prev_parent_name = '';
+        var prev_parent_items = new Array();
+        var parent_count = 0;
+
 		while (q != null) {
 			if (q.IsLeaf()) {
 				switch (drawing_type) {
@@ -1789,14 +1819,15 @@ function draw_tree(drawing_type) {
 						if (edge_length_norm)
 							drawDottedLine('dotted_lines', q.angle, q.radius, total_radius);
 
-						for (var pindex = 1; pindex < parameter_count; pindex++) {    
+						for (var pindex = 1; pindex < parameter_count; pindex++) {
+
+                            var isParent = (pindex == 1 && has_parent_layer) ? true : false;
+                            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
+                            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
 
 							var tooltip_arr = metadata_title[q.label].slice(0);
 							tooltip_arr[pindex] = '<font color="lime">' + tooltip_arr[pindex] + '</font>'
 							var tooltip = tooltip_arr.join('<br />\n');
-
-							var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
-                            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
 
                             if(isStackBar)
                             {
@@ -1818,39 +1849,84 @@ function draw_tree(drawing_type) {
                                 } 
                         
                             }
-                            else
+                            else if(isCategorical)
                             {
-                                var color;
+                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined')
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
 
-                                if (isCategorical) {
-                                    if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined')
-                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
-
-                                    color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
-                                } else {
-                                    color = $('#picker' + pindex).attr('color');
-                                }
-
-                                if (!isCategorical) {
-                                    drawPie('layer_background_' + pindex,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[pindex][0],
-                                        layer_boundaries[pindex][1],
-                                        0,
-                                        color,
-                                        tooltip,
-                                        0.3,
-                                        true);
-                                }
+                                var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
 
                                 drawPie('layer_' + pindex,
                                     q.id,
                                     q.angle - angle_per_leaf / 2,
                                     q.angle + angle_per_leaf / 2,
                                     layer_boundaries[pindex][0], 
-                                    (isCategorical) ? layer_boundaries[pindex][1] : layer_boundaries[pindex][0] + metadata_dict[q.label][pindex],
+                                    layer_boundaries[pindex][1],
+                                    0,
+                                    color,
+                                    tooltip,
+                                    1,
+                                    true);
+                            }
+                            else if (isParent)
+                            {
+                                if (metadata_dict[q.label][1] == '')
+                                    continue;
+
+                                var color = prev_parent_color;
+
+                                if (prev_parent_name != metadata_dict[q.label][1])
+                                {
+                                    if (prev_parent_color == 'black')
+                                    {
+                                        var color = 'red';
+                                    }
+                                    else
+                                    {
+                                        var color = 'black';
+                                    }
+                                    prev_parent_items = new Array();
+                                    parent_count++;
+                                }
+
+                                drawPie('layer_' + pindex,
+                                    q.id + "_parent",
+                                    q.angle - angle_per_leaf / 2,
+                                    q.angle + angle_per_leaf / 2,
+                                    layer_boundaries[pindex][0], 
+                                    layer_boundaries[pindex][1],
+                                    0,
+                                    color,
+                                    tooltip,
+                                    1,
+                                    true);
+
+                                prev_parent_color = color;
+                                prev_parent_name = metadata_dict[q.label][1];
+                                prev_parent_items.push(q.id + "_parent");
+                            }
+                            else // numerical
+                            {
+                                var color = color = $('#picker' + pindex).attr('color');
+
+                                drawPie('layer_background_' + pindex,
+                                    q.id,
+                                    q.angle - angle_per_leaf / 2,
+                                    q.angle + angle_per_leaf / 2,
+                                    layer_boundaries[pindex][0],
+                                    layer_boundaries[pindex][1],
+                                    0,
+                                    color,
+                                    tooltip,
+                                    0.3,
+                                    true);
+
+                                drawPie('layer_' + pindex,
+                                    q.id,
+                                    q.angle - angle_per_leaf / 2,
+                                    q.angle + angle_per_leaf / 2,
+                                    layer_boundaries[pindex][0], 
+                                    layer_boundaries[pindex][0] + metadata_dict[q.label][pindex],
                                     0,
                                     color,
                                     tooltip,
@@ -1858,18 +1934,19 @@ function draw_tree(drawing_type) {
                                     true);
                             }
 
-							drawPie('viewport',
-								q.id + "_background",
-								q.angle - angle_per_leaf / 2,
-								q.angle + angle_per_leaf / 2,
-								layer_boundaries[pindex-1][1],
-								layer_boundaries[pindex][1],
-								0,
-								'#FFFFFF',
-								null,
-								0.0,
-								false);	
 						}
+
+                        drawPie('viewport',
+                            q.id + "_background",
+                            q.angle - angle_per_leaf / 2,
+                            q.angle + angle_per_leaf / 2,
+                            layer_boundaries[0][1],
+                            total_radius,
+                            0,
+                            '#FFFFFF',
+                            null,
+                            0.0,
+                            false); 
 
 						drawPie('viewport',
 							q.id + "_outer_ring",
@@ -1894,6 +1971,16 @@ function draw_tree(drawing_type) {
 			}
 			q = n.Next();
 		}
+        
+        // parent count odd-even check
+        
+        if ((parent_count % 2) == 1)
+        {
+            for (var i = 0; i < prev_parent_items.length; i++)
+            {
+                $('#path_' + prev_parent_items[i]).css('fill', LINE_COLOR);
+            }
+        }
 
 		drawLegend();
 
