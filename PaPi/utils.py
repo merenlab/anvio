@@ -28,6 +28,8 @@ import PaPi.fastalib as u
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
 
+# absolute path anonymous:
+ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
 
 def rev_comp(seq):
     return seq.translate(complements)[::-1]
@@ -413,3 +415,18 @@ def get_chunks(contig_length, desired_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def gen_output_directory(output_directory, progress=None):
+    if not os.path.exists(output_directory):
+        try:
+            os.makedirs(output_directory)
+        except:
+            if progress:
+                progress.end()
+            raise ConfigError, "Output directory does not exist (attempt to create one failed as well): '%s'" % \
+                                                            (output_directory)
+    if not os.access(output_directory, os.W_OK):
+        if progress:
+            progress.end()
+        raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
