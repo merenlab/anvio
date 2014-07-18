@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 """
-Copyright (C) 2014, PaPi Team
+Copyright (C) 2014, PaPi Authors
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -89,11 +89,10 @@ class RuninfoIO:
                                                '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                                more detailed information on them."
 
-            ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
-            self.runinfo['tnf_tree'] = ABS(args.tree)
-            self.runinfo['contigs_fasta'] = ABS(args.fasta_file)
-            self.runinfo['metadata_txt'] = ABS(args.metadata)
-            self.runinfo['output_dir'] = ABS(args.output_dir)
+            self.runinfo['tnf_tree'] = PaPi.utils.ABS(args.tree)
+            self.runinfo['contigs_fasta'] = PaPi.utils.ABS(args.fasta_file)
+            self.runinfo['metadata_txt'] = PaPi.utils.ABS(args.metadata)
+            self.runinfo['output_dir'] = PaPi.utils.ABS(args.output_dir)
 
             # sanity of the metadata
             #PaPi.utils.is_file_json_formatted(args.metadata)
@@ -126,8 +125,8 @@ class RuninfoIO:
             # convert metadata into json.
             self.convert_metadata_into_json()
 
-            if not os.path.exists(self.runinfo['output_dir']):
-                os.makedirs(self.runinfo['output_dir'])
+            PaPi.utils.gen_output_directory(self.runinfo['output_dir'])
+
 
         fasta = u.SequenceSource(self.runinfo['contigs_fasta'])
         while fasta.next():

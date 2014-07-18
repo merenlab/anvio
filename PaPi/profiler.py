@@ -197,16 +197,7 @@ class BAMProfiler:
         else:
             self.output_directory = Absolute(self.output_directory)
 
-        if not os.path.exists(self.output_directory):
-            try:
-                os.makedirs(self.output_directory)
-            except:
-                self.progress.end()
-                raise utils.ConfigError, "Output directory does not exist (attempt to create one failed as well): '%s'" % \
-                                                                (self.output_directory)
-        if not os.access(self.output_directory, os.W_OK):
-            self.progress.end()
-            raise utils.ConfigError, "You do not have write permission for the output directory: '%s'" % self.output_directory
+        utils.gen_output_directory(self.output_directory, self.progress)
 
 
     def generate_output_destination(self, postfix, directory = False):
