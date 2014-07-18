@@ -18,6 +18,7 @@ import string
 import struct
 import cPickle
 import termios 
+import textwrap
 import itertools
 import multiprocessing
 
@@ -393,7 +394,7 @@ class ConfigError(Exception):
         self.e = e
         return
     def __str__(self):
-        return 'Config Error: %s' % self.e
+        return 'Config Error: %s' % textwrap.fill(self.e, 80)
 
 
 def get_chunks(contig_length, desired_length):
