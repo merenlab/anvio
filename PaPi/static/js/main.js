@@ -111,7 +111,8 @@ $(document).ready(function() {
                     }
 
                     var stack_bar_row_str = '<tr>' +
-                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 7) ? metadata[0][i].slice(0,7) + "..." : metadata[0][i]) + '</td>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
                         '<td>' +
                         '    <select id="normalization{id}">' +
                         '        <option value="none">none</option>' +
@@ -124,8 +125,7 @@ $(document).ready(function() {
 
                     stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
 
-                    $('#table_stack_bar_container').show();
-                    $('#table_stack_bar tr:last').after(stack_bar_row_str);
+                    $('#tbody_layers').append(stack_bar_row_str);
                 }
                 else if (!isNumber(metadata[1][i])) // categorical data
                 { 
@@ -133,19 +133,22 @@ $(document).ready(function() {
                     categorical_data_colors[i] = new Array();
 
                     var categorical_data_row_str = '<tr>' +
-                        '<td>{name}</td>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
                         '<td><input type="text" size="2" id="height{id}" value="30"></td>' +
                         '</tr>';
 
                     categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
-                    categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{name}', 'g'), metadata[0][i]);
 
-                    $('#table_categorical_data_container').show();
-                    $('#table_categorical_data tr:last').after(categorical_data_row_str);
+                    $('#tbody_layers').append(categorical_data_row_str);
                 } 
                 else // numerical data
                 { 
                     var numerical_data_row_str = '<tr>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
                         '<td><div id="picker{id}" class="colorpicker"></td>' +
                         '<td>' +
                         '    <select id="normalization{id}">' +
@@ -159,24 +162,21 @@ $(document).ready(function() {
 
                     numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
 
-                    $('#table_numerical_data_container').show();
-                    $('#table_numerical_data tr:last').after(numerical_data_row_str);
+                    $('#tbody_layers').append(numerical_data_row_str);
                 }
-
-                if (categorical_data_ids.length == 0) {
-                    $('#table_categorical_data_container').hide();
-                }
-                
-                if (stack_bar_ids.length == 0) {
-                    $('#table_stack_bar_container').hide();
-                }
-
-                if (parameter_count - (categorical_data_ids.length + stack_bar_ids.length) == 1)
-                {
-                    $('table_numerical_data_container').hide();
-                }
-
             }
+
+            // make table sortable
+            var fixHelperModified = function(e, tr) {
+                    var $originals = tr.children();
+                    var $helper = tr.clone();
+                    $helper.children().each(function(index) {
+                        $(this).width($originals.eq(index).width());
+                    });
+                    return $helper;
+                };
+
+            $("#table_layers>tbody").sortable({helper: fixHelperModified}).disableSelection();
 
             $("#treeControls").dialog("option", "position", {
                 my: "left center",
@@ -227,6 +227,11 @@ function draw_tree_callback(){
 
         // enable tooltips.
         $('path[title]').aToolTip();
+
+        // remove title attributes after tooltips enabled
+        $('path').each(function(index, elm) {
+            $(elm).attr('title', '');
+        });
     }
 }
 
@@ -341,11 +346,6 @@ function submitGroups() {
 
         // remove ungrouped backgrounds.
         $('#viewport > path').remove();
-
-        // tooltip contains unescaped html charachters which isn't compatible with svg specification.
-        $('path').each(function(index, elm) {
-            $(elm).attr('title', '');
-        });
 
         // disable group controls
         $('#group-template input[type=radio]').prop('checked', true);

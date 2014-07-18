@@ -39,40 +39,23 @@
                     Draw Angle: <input type="text" value="0" size="2" id="angle-min"> to <input type="text" value="350" size="2" id="angle-max"><br />
                     Margin between layers: <input type="text" value="5" size="2" id="layer-margin"><br />
                     <label><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">Edge length normalization</label><br />
-                    <label><input type="checkbox" id="draw_reference_lines" name="checkbox" value="value">Draw reference lines</label>
                     <br /><br />
-                    <div id="table_numerical_data_container" style="display: none">
-                        <b>Numerical Data Settings</b>
+                    <div id="table_layers_container">
+                        <b>Layer Settings</b>
                         <br /><br />
-                        <table id="table_numerical_data">
+                        <table id="table_layers">
+                        <thead>
                             <tr>
+                                <td></td>
+                                <td>Name</td>
                                 <td>Color</td>
                                 <td>Normalization</td>
                                 <td>Height</td>
                             </tr>
-                        </table>
-                    </div>
-                    <br />
-                    <div id="table_categorical_data_container" style="display: none">
-                        <b>Categorical Data Settings</b>
-                        <br /><br />
-                        <table id="table_categorical_data">
-                            <tr>
-                                <td>Name</td>
-                                <td>Height</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <br />
-                    <div id="table_stack_bar_container" style="display: none">
-                        <b>Stack Bar Settings</b>
-                        <br /><br />
-                        <table id="table_stack_bar">
-                            <tr>
-                                <td>Name</td>
-                                <td>Normalization</td>
-                                <td>Height</td>
-                            </tr>
+                        </thead>
+                        <tbody id="tbody_layers">
+                            
+                        </tbody>
                         </table>
                     </div>
                     <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;

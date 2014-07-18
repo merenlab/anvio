@@ -1513,6 +1513,73 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 	//viewport.setAttribute('transform', 'translate(' + (this.settings.width + this.root_length) / 2 + ' ' + this.settings.height / 2 + ')');
 }
 
+function reorderLayers() {
+    /*
+    -  order steps:
+    -  find order map
+    -  change id arrays (categorical_data_ids, stack_bar_ids + color arrays)
+    -  swap metadata columns 
+    -  give new id to ui elements on table
+    -  rest of the code should work
+    */
+
+    var order_map = {};
+    var reverse_order_map = {};
+    $('#tbody_layers tr').each(function(index,element) {
+        //heightX is common in each row
+        var index = index + 1;
+        var old_index = parseInt($(element).find("input[type=text]").attr("id").replace("height", ""));
+
+        order_map[old_index] = index;
+        reverse_order_map[index] = old_index;
+    });
+
+    // convert categorical data arrays
+    var new_categorical_data_colors = new Array();
+    for (var i=0; i < categorical_data_ids.length; i++)
+    {
+        var old_index = categorical_data_ids[i];
+        var new_index = order_map[categorical_data_ids[i]];
+
+        categorical_data_ids[i] = new_index;
+        new_categorical_data_colors[new_index] = categorical_data_colors[old_index];
+    }
+    categorical_data_colors = new_categorical_data_colors.splice(0);
+
+    // convert stack bar arrays
+    var new_stack_bar_colors = new Array();
+    for (var i=0; i < stack_bar_ids.length; i++)
+    {
+        var old_index = stack_bar_ids[i];
+        var new_index = order_map[stack_bar_ids[i]];
+
+        stack_bar_ids[i] = new_index;
+        new_stack_bar_colors[new_index] = stack_bar_colors[old_index];
+    }
+    stack_bar_colors = new_stack_bar_colors.splice(0);
+
+    // swap metadata columns
+    for (var i=0; i < metadata.length; i++)
+    {
+        var new_line = new Array();
+        new_line.push(metadata[i][0]);
+
+        for (var pindex = 1; pindex < parameter_count; pindex++)
+        {
+            new_line.push(metadata[i][reverse_order_map[pindex]]);
+        }
+
+        metadata[i] = new_line.splice(0);
+    }
+
+    // give new ids to ui elements
+    $('#tbody_layers tr').each(function(index,element) {
+        $(element).find("input[type=text]").attr("id", "height" + (index+1));
+        $(element).find("select").attr("id", "normalization" + (index+1));
+        $(element).find(".colorpicker").attr("id", "picker" + (index+1));
+    });
+}
+
 function draw_tree(drawing_type) {
 
 	id_to_node_map = new Array();
@@ -1521,7 +1588,10 @@ function draw_tree(drawing_type) {
 	newick = newick.trim(newick);
 	t.Parse(newick);
 
-	// parse metadata
+    // call order function 
+    reorderLayers();
+
+	// generate tooltip text before normalization
 	var metadata_title = new Array();
 	var metadata_dict = new Array();
 
@@ -1681,8 +1751,9 @@ function draw_tree(drawing_type) {
 			q = n.Next();
 		}
 
-		//
-		var layer_boundaries = new Array();
+        // calculate layer boundries
+		
+        var layer_boundaries = new Array();
 		var margin = parseFloat($('#layer-margin').val());
 
 		layer_boundaries.push( [0, tree_radius] );
@@ -1690,6 +1761,7 @@ function draw_tree(drawing_type) {
 		for (var pindex = 1; pindex < parameter_count; pindex++) {
 			layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
 			createGroup('viewport', 'layer_' + pindex);
+            createGroup('viewport', 'layer_background_' + pindex);
 		}
 
 		total_radius = layer_boundaries[layer_boundaries.length - 1][1];
@@ -1706,16 +1778,18 @@ function draw_tree(drawing_type) {
 
 		angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
 
-		var draw_reference_lines = $('#draw_reference_lines')[0].checked;
+		var edge_length_norm = $('#edge_length_normalization')[0].checked;
+        createGroup('tree_group', 'dotted_lines');
+
 		while (q != null) {
 			if (q.IsLeaf()) {
 				switch (drawing_type) {
 					case 'circle':
 					case 'circlephylogram':
-						if (draw_reference_lines)
-							drawDottedLine('tree_group', q.angle, q.radius, total_radius);
+						if (edge_length_norm)
+							drawDottedLine('dotted_lines', q.angle, q.radius, total_radius);
 
-						for (var pindex = 1; pindex < parameter_count; pindex++) {
+						for (var pindex = 1; pindex < parameter_count; pindex++) {    
 
 							var tooltip_arr = metadata_title[q.label].slice(0);
 							tooltip_arr[pindex] = '<font color="lime">' + tooltip_arr[pindex] + '</font>'
@@ -1758,7 +1832,7 @@ function draw_tree(drawing_type) {
                                 }
 
                                 if (!isCategorical) {
-                                    drawPie('layer_' + pindex,
+                                    drawPie('layer_background_' + pindex,
                                         q.id,
                                         q.angle - angle_per_leaf / 2,
                                         q.angle + angle_per_leaf / 2,

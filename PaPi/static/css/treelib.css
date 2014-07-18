@@ -1,3 +1,7 @@
+.drag-icon {
+    cursor:move;
+}
+
 body {
     font-family: Arial;
     font-size: 10px;
@@ -13,7 +17,8 @@ div#treeContainer {
 }
 
 div#treeControls {
-    opacity:0.75;
+    overflow:hidden;
+    display: block;
 }
 
 #zoomControls {
