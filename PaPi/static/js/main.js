@@ -114,7 +114,41 @@ $(document).ready(function() {
 
                     parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
 
-                    $('#tbody_layers').prepend(parent_row_str);                    
+                    $('#tbody_layers').prepend(parent_row_str);
+
+                    // remove all single parents from metadata
+
+                    var parent_count_dict = {};
+                    for (var j=1; j < metadata.length; j++)
+                    {
+                        if (metadata[j][i]=='')
+                            continue;
+
+                        if (typeof parent_count_dict[metadata[j][i]] === 'undefined')
+                        {
+                            parent_count_dict[metadata[j][i]] = 1;
+                        }
+                        else
+                        {
+                            parent_count_dict[metadata[j][i]]++;
+                        }
+                    }
+
+                    $.each(parent_count_dict, function(parent_name, count)
+                    {
+                        if (count==1)
+                        {
+                            for (var j=1; j < metadata.length; j++)
+                            {
+                                if (metadata[j][i]==parent_name)
+                                {
+                                    metadata[j][i]='';
+                                }
+                            }
+                        }
+                    });
+
+                    // all clear
                 }
                 else if (metadata[1][i].indexOf(';') > -1) // stack data
                 {
