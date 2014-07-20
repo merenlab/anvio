@@ -217,7 +217,7 @@ class MultipleRuns:
         # should not appear in the METADATA file earlier). OK. First, lets put sequences in:
         parents_dict = {}
         for i in range(0, num_splits):
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 10 == 0 or (i + 1) == num_splits:
                 self.progress.update('Generating merged split consensus sequences :: %.2f%%' % ((i + 1) * 100.0/ num_splits))
 
             split_name = self.split_names[i]
@@ -232,8 +232,7 @@ class MultipleRuns:
         parents = parents_dict.keys()
         num_parents = len(parents)
         for i in range(0, num_parents):
-            if (i + 1) % 10 == 0:
-                self.progress.update('Computing TNF for merged splits :: %.2f%%' % ((i + 1) * 100.0/ num_parents))
+            self.progress.update('Computing TNF for merged splits :: %.2f%%' % ((i + 1) * 100.0/ num_parents))
 
             parent = parents[i]
             parents_dict[parent]['tnf'] = kmers.get_kmer_frequency(parents_dict[parent]['seq'])
