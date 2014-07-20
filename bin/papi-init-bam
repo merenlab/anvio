@@ -13,6 +13,7 @@
 import os
 import sys
 import pysam
+import PaPi.utils as utils
 from PaPi.utils import Progress
 from PaPi.utils import Run 
 from PaPi.utils import pretty_print as pp 
@@ -22,8 +23,16 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         progress = Progress()
         run = Run()
 
-        if not output_file_path:
+        input_file_path = utils.ABS(input_file_path)
+        if output_file_path:
+            output_file_path = utils.ABS(output_file_path)
+        else:
             output_file_path = input_file_path + '-sorted'
+
+        output_directory = os.path.dirname(output_file_path)
+
+        if not os.access(output_directory, os.W_OK):
+            raise utils.ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
 
         if not already_sorted:
             progress.new('SORT')
@@ -33,7 +42,7 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
             run.info('Sorted BAM File', output_file_path)
             sorted_file_path = output_file_path + '.bam'
             if not os.path.exists(sorted_file_path):
-                sys.stderr.write('\n\n\tERROR: Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :(')
+                raise utils.ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
         else:
             sorted_file_path = input_file_path
 
@@ -44,7 +53,7 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         progress.end()
         run.info('Indexed BAM File', sorted_file_path)
 
-        sys.stderr.write('\n\n\tUse this file as input for papi: "%s"\n\n' % sorted_file_path)
+        sys.stderr.write('\n\n\tUse this file as input for PaPi: "%s"\n\n' % sorted_file_path)
 
 
 if __name__ == '__main__':
@@ -62,6 +71,11 @@ if __name__ == '__main__':
     #                    file. Do not use if you are not sure')
 
     args = parser.parse_args()
-    sys.exit(init_bam_file(input_file_path = args.input_file,
-                           output_file_path = args.output_file,
-                           already_sorted = args.sorted))
+
+    try:
+        sys.exit(init_bam_file(input_file_path = args.input_file,
+                               output_file_path = args.output_file,
+                               already_sorted = args.sorted))
+    except utils.ConfigError, e:
+        print e
+        sys.exit(-1)
