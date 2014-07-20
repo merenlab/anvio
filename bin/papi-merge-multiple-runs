@@ -17,33 +17,44 @@ import sys
 import pysam
 import cPickle
 import hashlib
+import subprocess
 import PaPi.utils
+import PaPi.contig
+import PaPi.fastalib as u
 from PaPi.utils import pretty_print as pp 
 
+kmers = PaPi.utils.KMers()
 
 class MultipleRuns:
     def __init__(self, args):
         self.progress = PaPi.utils.Progress()
         self.run = PaPi.utils.Run()
-        self.runinfo_dict_paths = args.input
-        self.runinfo_dicts = []
+
+        self.project_names = []
+        self.project_runinfos = {}
+        self.project_runinfo_dict_paths = args.input
+        self.runinfo_dict = {}
+        self.contigs = {}
         self.profiles = []
         self.output_dir = args.output_dir
 
     def sanity_check(self):
-        if not len(self.runinfo_dict_paths) > 1:
+        if not len(self.project_runinfo_dict_paths) > 1:
             raise PaPi.utils.ConfigError, "You need to provide at least 2 RUNINFO.cPickle files for this program\
                                            to be useful."
 
-        missing = [p for p in self.runinfo_dict_paths if not os.path.exists(p)]
+        missing = [p for p in self.project_runinfo_dict_paths if not os.path.exists(p)]
         if missing:
             raise PaPi.utils.ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
                                                                  ', '.join(missing))
 
         improper = []
-        for p in self.runinfo_dict_paths:
+        for p in self.project_runinfo_dict_paths:
             try:
-                self.runinfo_dicts.append(cPickle.load(open(p)))
+                runinfo = cPickle.load(open(p))
+                project_name = runinfo['project_name']
+                self.project_names.append(project_name)
+                self.project_runinfos[project_name] = runinfo
             except:
                 improper.append(p)
         if improper:
@@ -52,15 +63,16 @@ class MultipleRuns:
                                            ('Some RUNINFO files do not' if len(improper) > 1 else "RUNINFO file does not",
                                             ', '.join(improper))
 
-        missing_path = [r['metadata_txt'] for r in self.runinfo_dicts if not os.path.exists(r['metadata_txt'])]
+        missing_path = [self.project_runinfos[r]['metadata_txt'] for r in self.project_names\
+                                                     if not os.path.exists(self.project_runinfos[r]['metadata_txt'])]
         if missing_path:
             raise PaPi.utils.ConfigError, "%d of %d files you provided have bad file paths. Maybe these RUNINFO.cPickle\
                                           files were generated on another machine? If that is the case, please run\
                                           'papi-reset-output-dir' script on them." % \
-                                                                    (len(missing_path), len(self.runinfo_dicts))
+                                                                    (len(missing_path), len(self.project_runinfos))
 
         contigs = {}
-        for metadata in [r['metadata_txt'] for r in self.runinfo_dicts]:
+        for metadata in [self.project_runinfos[r]['metadata_txt'] for r in self.project_names]:
             contigs[metadata] = sorted([l.split('\t')[0] for l in open(metadata).readlines()[1:]])
 
         if len(set([contigs[m].__str__() for m in contigs])) > 1:
@@ -80,8 +92,213 @@ class MultipleRuns:
     def merge(self):
         self.sanity_check()
 
-        
-        pass
+        self.split_names = self.get_split_names()
+        self.metadata_fields, self.metadata_for_each_run = self.read_metadata_files()
+        self.split_parents = self.get_split_parents()
+
+        self.progress.new('Reading contigs into memory')
+        self.read_contigs()
+        self.progress.end()
+
+        self.run.info('output_dir', self.output_dir)
+        self.run.info('num_runs_processed', len(self.contigs))
+        self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
+        self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
+ 
+        self.progress.new('Analyzing contigs for consensus')
+        contigs_fasta = self.store_contigs_consensus()
+        self.progress.end()
+        self.run.info('contigs_fasta', contigs_fasta)
+ 
+        self.progress.new('Analyzing TNF of contigs')
+        tnf_matrix = self.store_contigs_tnf()
+        self.progress.end()
+        self.run.info('tnf_matrix', tnf_matrix)
+ 
+        self.progress.new('Generating TNF tree')
+        tnf_tree = self.generate_tnf_tree()
+        self.progress.end()
+        self.run.info('tnf_tree', tnf_tree)
+
+        self.store_project_runinfos_for_each_metadata_column()
+        self.progress.end()
+        self.run.quit()
+
+
+    def store_project_runinfos_for_each_metadata_column(self):
+        essential_fields = [f for f in self.metadata_fields if not f.startswith('__') and f != "contigs"]
+        auxiliary_fields = [f for f in self.metadata_fields if f.startswith('__')]
+
+        for essential_field in essential_fields:
+            self.progress.new('Storing RUNINFO dicts for each metadata column')
+            self.progress.update('%s ...' % essential_field)
+            metadata_output_path = os.path.join(self.output_dir, '-'.join(['METADATA', essential_field]) + '.txt')
+            metadata_output = open(metadata_output_path, 'w')
+            fields = '\t'.join(['contigs'] + self.project_names + auxiliary_fields)
+            metadata_output.write('%s\n' % fields)
+            for split_name in self.split_names:
+                line = '\t'.join([split_name] + [self.metadata_for_each_run[project][split_name][essential_field] for project in self.project_names] + [self.metadata_for_each_run[project][split_name][f] for f in auxiliary_fields])
+                metadata_output.write('%s\n' % line)
+            metadata_output.close()
+
+            self.progress.end()
+
+            runinfo_output_path = os.path.join(self.output_dir, '-'.join(['RUNINFO', essential_field]) + '.cPickle')
+            self.run.info('project_name', essential_field)
+            self.run.info('metadata_txt', metadata_output_path)
+            self.run.info('runinfo', runinfo_output_path)
+            self.run.store_info_dict(runinfo_output_path)
+
+    def generate_tnf_tree(self):
+        self.progress.update('...')
+        newick_tree_file_path = os.path.join(self.output_dir, 'TNF-NEWICK-TREE.txt')
+        env = os.environ.copy()
+        subprocess.call(['papi-TNF-matrix-to-newick.R', '-o', newick_tree_file_path, self.run.info_dict['tnf_matrix']], env = env)
+        return newick_tree_file_path
+
+
+    def get_split_parents(self):
+        parents = {}
+        m = self.metadata_for_each_run.values()[0]
+        for split in m:
+            parents[split] = m[split]["__parent__"]
+        return parents
+
+
+    def read_metadata_files(self):
+        metadata_for_each_run = {}
+        metadata_fields = open(self.project_runinfos.values()[0]['metadata_txt']).readline().strip().split('\t')
+
+        for project_runinfo in self.project_runinfos.values():
+            metadata = {}
+            metadata_path = project_runinfo['metadata_txt']
+            metadata_obj = open(metadata_path)
+
+            #skip the first line
+            metadata_obj.readline()
+
+            for line in metadata_obj.readlines():
+                fields = line.strip().split('\t')
+                metadata[fields[0]] = {}
+                for i in range(1, len(fields)):
+                    metadata_field = metadata_fields[i]
+                    metadata[fields[0]][metadata_field] = fields[i]
+            metadata_for_each_run[project_runinfo['project_name']] = metadata
+        return metadata_fields, metadata_for_each_run
+
+
+    def get_split_names(self):
+        return [line.strip().split('\t')[0] for line in open(self.project_runinfos[self.project_names[0]]['metadata_txt']).readlines()][1:]
+
+
+    def read_contigs(self):
+        for i in range(0, len(self.project_names)):
+            self.progress.update('%d of %d' % (i + 1, len(self.project_names)))
+            project_name = self.project_names[i]
+            runinfo = self.project_runinfos[project_name]
+            fasta = u.SequenceSource(runinfo['contigs_fasta'])
+            contigs = {}
+            while fasta.next():
+                contigs[fasta.id] = fasta.seq
+            self.contigs[project_name] = contigs
+
+
+    def store_contigs_tnf(self):
+        contigs_tnf = {}
+        num_splits = len(self.split_names)
+
+        # what we call contig, is actually a split. we can't run TNF analysis on a split; instead,
+        # we analyze TNF on the parent contig where each split is coming form. it is handled very
+        # clearly in papi-profiler, but unfortunately I have been doing some pretty horrible coding
+        # here for no reason. so, we alraedy identified which split is associated with what parent
+        # contig at this point. now we will generate a parents dict where we will keep properly
+        # merged split seqs and their TNF. because we will concatenate split seqs the way they are
+        # ordered, it is critical for metadata file to be sorted properly (a later split in order
+        # should not appear in the METADATA file earlier). OK. First, lets put sequences in:
+        parents_dict = {}
+        for i in range(0, num_splits):
+            if (i + 1) % 10 == 0:
+                self.progress.update('Generating merged split consensus sequences :: %.2f%%' % ((i + 1) * 100.0/ num_splits))
+
+            split_name = self.split_names[i]
+            parent = self.split_parents[split_name]
+            
+            if parents_dict.has_key(parent):
+                parents_dict[parent]['seq'] += self.consensus_splits[split_name]
+            else:
+                parents_dict[parent] = {'seq': self.consensus_splits[split_name]}
+
+        # ok. now parents_dict contains all the sequences. lets get TNF info:
+        parents = parents_dict.keys()
+        num_parents = len(parents)
+        for i in range(0, num_parents):
+            if (i + 1) % 10 == 0:
+                self.progress.update('Computing TNF for merged splits :: %.2f%%' % ((i + 1) * 100.0/ num_parents))
+
+            parent = parents[i]
+            parents_dict[parent]['tnf'] = kmers.get_kmer_frequency(parents_dict[parent]['seq'])
+
+
+        # now we are going to populate the TNF matrix with splits, but using their parent tnf:
+        self.progress.update('Storing the matrix ...')
+        TNF_matrix_file_path = os.path.join(self.output_dir, 'TETRANUCLEOTIDE-FREQ-MATRIX.txt')
+        output = open(TNF_matrix_file_path, 'w')
+        keys = kmers.kmers.values()[0]
+        output.write('contigs\t%s\n' % ('\t'.join(keys)))
+        for split_name in self.split_names:
+            parent = self.split_parents[split_name]
+            output.write('%s\t' % (split_name))
+            output.write('%s\n' % '\t'.join([str(parents_dict[parent]['tnf'][key]) for key in keys]))
+        output.close()
+
+        return TNF_matrix_file_path
+
+
+    def store_contigs_consensus(self):
+        self.consensus_splits = {}
+        num_splits = len(self.split_names)
+        for i in range(0, num_splits):
+            if (i + 1) % 10 == 0:
+                self.progress.update('%.2f%%' % ((i + 1) * 100.0/ num_splits))
+            
+            split_name = self.split_names[i]
+
+            sequences = set()
+
+            for run in self.contigs:
+                sequences.add(self.contigs[run][split_name])
+            contig_length = len(self.contigs[run][split_name])
+
+            if len(sequences) == 1:
+                # perfect. all consensus sequences recovered by PaPi profiler for each sample is identical
+                # this happens only when all reads from all samples were mapped on the contig.
+                self.consensus_splits[split_name] = sequences.pop()
+            else:
+                # this means there are more than one consensus sequences. they are going to be identical,
+                # except some of them will have N's because not all samples mapped at all regions of the
+                # consensus.
+                #
+                # (inline FIXME: ^^ this information is critical to retain and visualize.)
+                #
+                # now these need to be merged into contigs that have no N's.
+                #
+                new_consensus = ''
+                for j in range(0, contig_length):
+                    nt_list = [seq[j] for seq in sequences if seq[j] != 'N']
+                    if nt_list:
+                        new_consensus += nt_list[0]
+                    else:
+                        new_consensus += 'N'
+                self.consensus_splits[split_name] = new_consensus
+
+        self.progress.update('Storing contigs ...')
+        output_file_path = os.path.join(self.output_dir, 'CONTIGS-CONSENSUS.fa')
+        output = open(output_file_path, 'w')
+        for split_name in self.consensus_splits:
+            output.write('>%s\n%s\n' % (split_name, self.consensus_splits[split_name]))
+        output.close()
+
+        return output_file_path
 
 
 if __name__ == '__main__':
