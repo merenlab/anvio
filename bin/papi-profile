@@ -19,37 +19,67 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
-    parser.add_argument('-i', '--input_file', metavar = 'PATH', default = None,
-                        help = 'Sorted and indexed BAM file to analyze')
-    parser.add_argument('-d', '--profile', default = None, metavar = 'PATH',
-                        help = 'Serialized profile. When declared, the profiling step\
-                                will be skipped and the serialized profile will be\
-                                loaded')
-    parser.add_argument('-o', '--output-directory', default = None,
+    groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for PaPi profiler. You must\
+                                                  to declare either of these two.')
+    groupI.add_argument('-i', '--input-file', metavar = 'PATH', default = None,
+                        help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
+                                length of the file and parameters used for profiling.')
+    groupI.add_argument('-d', '--profile', default = None, metavar = 'PATH',
+                        help = 'Serialized profile. This file would be a result of a previous PaPi profiling\
+                                run. It is faster, and can be used to refine previously obtained results.')
+
+    groupM = parser.add_argument_group('EXTRAS', 'Parameters PoPi will make up if you do not declare.')
+    groupM.add_argument('-o', '--output-directory', default = None,
                         help = 'The directory for output files to be stored.')
-    parser.add_argument('--list-contigs', action = 'store_true', default = False,
-                        help = 'When declared, lists contigs in the BAM file and\
-                                exits without any further analysis.')
-    parser.add_argument('-M', '--min-contig-length', default = 10000, type=int,
+
+    groupM.add_argument('-p', '--project-name', metavar = 'NAME', default = None,
+                        help = 'It is important to set a project name (using only ASCII letters and digits\
+                                and without spaces) that is unique to a particular profile. If you do not\
+                                provide one PaPi will generate one for you based on the input BAM file\
+                                name (it usually is a good practice to not let software decide for these\
+                                kinds of things).')
+    groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
+                                        parameters will impact your analysis. You can always come back to them\
+                                        and update your profiles, but it is important to make sure defaults are\
+                                        reasonable for your project.')
+    groupQ.add_argument('-M', '--min-contig-length', metavar = "INTEGER", default = 10000, type=int,
                         help = 'Minimum length of contigs in a BAM file to analyze. The\
-                                minimum length should be long enough for tetranucleotide\
-                                frequency analysis to be meaningful. The default is\
-                                %(default)d, and we advise to never go below 5,000.')
-    parser.add_argument('-C', '--min-mean-coverage', default = 5, type=int,
+                                minimum length should be long enough for tetra-nucleotide\
+                                frequency analysis to be meaningful. There is no way to define a golden\
+                                number of minumum length that would be applicable to genomes found in all\
+                                environments, but we chose the default to be %(default)d, and have been happy\
+                                with it. You are welcome to experiment, but we advise to never go below 5,000.\
+                                You also should remember that the lower you go, the more time it will take to\
+                                analyze all contigs. You can use --list-contigs parameter to have an idea how\
+                                many contigs would be discarded for a given M.')
+    groupQ.add_argument('-C', '--min-mean-coverage', metavar = "INTEGER", default = 0, type=int,
                         help = 'Minimum mean coverage for contigs to be kept in the\
-                                analysis.')
-    parser.add_argument('-L', '--desired-contig-length', default = 20000, type=int,
+                                analysis. The default value is %(default)d, which is for your best interest\
+                                if you are going to profile muptiple BAM files which are then going to be\
+                                merged for a cross-sectional or time series analysis. Do not change it if\
+                                you are not sure')
+    groupQ.add_argument('--split-length', metavar = 'INTEGER', default = 20000, type=int,
                         help = 'Splitting very large contigs into multiple pieces improves\
                                 the efficacy of the visualization step. The default value\
                                 (%(default)d) will brake up any contig that is longer. If you\
-                                are not sure, we advise you to not go below 10,000. If you do\
+                                are not sure, we advise you to not go below 10,000. The lower you go,\
+                                the more complicated the tree will be, and will take more time and\
+                                computational resources to finish the analysis. Also this is not a case\
+                                of "the smaller the split size the more sensitive the results". If you do\
                                 not want your contigs to be split, you can either enter a very\
                                 large integer, or "-1".')
-    parser.add_argument('--contigs', default = None,
+
+    groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
+    groupC.add_argument('--list-contigs', action = 'store_true', default = False,
+                        help = 'When declared, the profiler would list contigs in the BAM file and\
+                                exit gracefully without any further analysis.')
+    groupC.add_argument('--contigs-of-interest', metavar = 'TXT_FILE', default = None,
                         help = 'It is possible to analyze only a group of contigs from\
-                                a given BAM file. Contigs of interest can be specified\
-                                using a comma separated list, or in a text file where\
-                                each line contains a contig name.')
+                                a given BAM file. If you provide a text file, in which every contig\
+                                of interest is listed line by line, the profiler would focus only on\
+                                those contigs in the BAM file and ignore the rest. This can be used\
+                                for debug purposes, or to focus on a particular group of contigs that\
+                                were identified as relevant during the interactive analysis.')
     
 
     args = parser.parse_args()
