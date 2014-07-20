@@ -40,11 +40,10 @@ class BAMProfiler:
             self.desired_contig_length = args.desired_contig_length
 
             if args.contigs:
-                if os.path.exists(args.contigs):
-                    self.contig_names_of_interest = set([c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')])
-                else:
-                    self.contig_names_of_interest = set([c.strip() for c in args.contigs.split(',')]) if args.contigs else None
-
+                if not os.path.exists(args.contigs):
+                    raise utils.ConfigError, "Contigs file (%s) is missing..." % (args.contigs)
+ 
+                self.contig_names_of_interest = set([c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')])
             else:
                 self.contig_names_of_interest = None
 
