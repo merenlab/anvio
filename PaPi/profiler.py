@@ -15,6 +15,7 @@ import sys
 import numpy
 import pysam
 import random
+import string
 import cPickle
 import operator
 import subprocess
@@ -37,13 +38,15 @@ class BAMProfiler:
             self.min_mean_coverage = args.min_mean_coverage
             self.number_of_threads = 4 
             self.no_trehading = True
-            self.desired_contig_length = args.desired_contig_length
+            self.split_length = args.split_length
+            self.project_name = args.project_name
 
-            if args.contigs:
-                if not os.path.exists(args.contigs):
-                    raise utils.ConfigError, "Contigs file (%s) is missing..." % (args.contigs)
+            if args.contigs_of_interest:
+                if not os.path.exists(args.contigs_of_interest):
+                    raise utils.ConfigError, "Contigs file (%s) is missing..." % (args.contigs_of_interest)
  
-                self.contig_names_of_interest = set([c.strip() for c in open(args.contigs).readlines() if c.strip() and not c.startswith('#')])
+                self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
+                                                                               if c.strip() and not c.startswith('#')])
             else:
                 self.contig_names_of_interest = None
 
@@ -58,7 +61,7 @@ class BAMProfiler:
             # FIXME: Parameterize these two:
             self.number_of_threads = 4 
             self.no_trehading = False
-            self.desired_contig_length = 20000
+            self.split_length = 20000
 
         self.bam = None
         self.contigs = {}
@@ -134,6 +137,12 @@ class BAMProfiler:
 
 
     def init_profile_from_BAM(self):
+        if self.project_name:
+            utils.check_project_name(self.project_name)
+        else:
+            self.project_name = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
+            utils.check_project_name(self.project_name)
+
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
@@ -155,6 +164,7 @@ class BAMProfiler:
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
+        self.run.info('project_name', self.project_name)
         self.run.info('output_dir', self.output_directory)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
@@ -184,7 +194,7 @@ class BAMProfiler:
             self.run.info('contigs_raw_longer_than_M', len(self.contig_names))
 
         # finally, compute contig splits.
-        self.contig_splits = [utils.get_chunks(self.contig_lenghts[i], self.desired_contig_length)\
+        self.contig_splits = [utils.get_chunks(self.contig_lenghts[i], self.split_length)\
                                                                  for i in range(0, len(self.contig_names))]
 
 
@@ -352,7 +362,8 @@ class BAMProfiler:
 
     def check_args(self):
         if (not self.input_file_path) and (not self.serialized_profile_path):
-            raise utils.ConfigError, "You must declare either an input file, or a serialized profile."
+            raise utils.ConfigError, "You must declare either an input file, or a serialized profile. Use '--help'\
+                                      to learn more about the command line parameters."
         if self.input_file_path and self.serialized_profile_path:
             raise utils.ConfigError, "You can't declare both an input file and a serialized profile."
         if self.serialized_profile_path and (not self.output_directory):
