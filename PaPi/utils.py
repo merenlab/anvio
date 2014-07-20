@@ -431,3 +431,13 @@ def gen_output_directory(output_directory, progress=None):
         if progress:
             progress.end()
         raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+
+
+def check_project_name(project_name):
+    allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
+    if project_name:
+        if len([c for c in project_name if c not in allowed_chars]):
+            raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
+                                limit the characters that make up the project name to ASCII letters,\
+                                digits, '_' and '-' (if you had not declared a project name and PaPi made\
+                                up one for you, please specify with '-p' parameter specifically)." % project_name
