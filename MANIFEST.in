@@ -1,1 +1,2 @@
 include *.txt *.md
+recursive-include PaPi/static *.css *.gif *.html *.js *.png *.svg
