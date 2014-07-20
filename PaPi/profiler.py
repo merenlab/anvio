@@ -325,18 +325,13 @@ class BAMProfiler:
         I = lambda x: '%d' % x
 
         for contig in self.contigs:
-            if len(self.contigs[contig].splits) > 1:
-                parent = contig
-            else:
-                parent = ""
-
             for split in self.contigs[contig].splits:
                 fields = [split.name,
                           I(split.length),
                           F(split.coverage.mean),
                           F(split.coverage.std),
                           F(split.composition.GC_content),
-                          parent] 
+                          contig] 
                 metadata_txt.write('%s\n' % '\t'.join(fields))
 
         metadata_txt.close()
