@@ -4,10 +4,11 @@ suppressPackageStartupMessages(library(ade4))
 suppressPackageStartupMessages(library(vegan))
 suppressPackageStartupMessages(library(gtools))
 suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(flashClust))
 
 # command line options
 option_list <- list(
-		make_option(c("-d", "--distance"), default="horn",
+		make_option(c("-d", "--distance"), default="euclidean",
 				help = 'Dissimilarity index for clustering of contigs based on their TNF profiles.
 						Default is "%default". Available indices are "manhattan", "euclidean", "canberra",
 						"bray", "kulczynski", "jaccard", "gower", "altGower", "morisita", "horn",
