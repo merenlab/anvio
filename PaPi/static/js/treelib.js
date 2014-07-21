@@ -404,7 +404,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
 	svg.appendChild(text);
 }
 
-function drawDottedLine(svg_id, angle, start_radius, end_radius) {
+function drawGuideLine(svg_id, angle, start_radius, end_radius) {
 	var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
 	var ax = Math.cos(angle) * start_radius;
@@ -419,7 +419,6 @@ function drawDottedLine(svg_id, angle, start_radius, end_radius) {
 	line.setAttribute('stroke', LINE_COLOR);
 	line.setAttribute('stroke-opacity', '0.2');
 	line.setAttribute('vector-effect', 'non-scaling-stroke');
-	line.setAttribute('stroke-dasharray', '1,1');
 	line.setAttribute('stroke-width', '1');
 
 	var svg = document.getElementById(svg_id);
@@ -1783,7 +1782,14 @@ function draw_tree(drawing_type) {
 		layer_boundaries.push( [0, tree_radius] );
 
 		for (var pindex = 1; pindex < parameter_count; pindex++) {
-			layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
+            if (has_parent_layer && pindex==1) // make parent layer a bit thinner than the rest.
+            {
+			    // FIXME: for now the scaling factor is 3, but it would be nice if this was                               v
+			    // parameterized:
+			    layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin * 3 ] );
+            } else {
+			    layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
+            }
 			createGroup('viewport', 'layer_' + pindex);
             createGroup('viewport', 'layer_background_' + pindex);
 		}
@@ -1804,10 +1810,13 @@ function draw_tree(drawing_type) {
 		angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
 
 		var edge_length_norm = $('#edge_length_normalization')[0].checked;
-        createGroup('tree_group', 'dotted_lines');
+        createGroup('tree_group', 'guide_lines');
 
         // parent things
-        var prev_parent_color = 'black';
+        var parent_odd = '#888888';
+        var parent_even = '#666666';
+        var parent_residual = '#AAAAAA';
+        var prev_parent_color = parent_odd;
         var prev_parent_name = '';
         var prev_parent_items = new Array();
         var parent_count = 0;
@@ -1818,7 +1827,7 @@ function draw_tree(drawing_type) {
 					case 'circle':
 					case 'circlephylogram':
 						if (edge_length_norm)
-							drawDottedLine('dotted_lines', q.angle, q.radius, beginning_of_layers);
+							drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
 
 						for (var pindex = 1; pindex < parameter_count; pindex++) {
 
@@ -1878,13 +1887,13 @@ function draw_tree(drawing_type) {
 
                                 if (prev_parent_name != metadata_dict[q.label][1])
                                 {
-                                    if (prev_parent_color == 'black')
+                                    if (prev_parent_color == parent_odd)
                                     {
-                                        var color = 'red';
+                                        var color = parent_even;
                                     }
                                     else
                                     {
-                                        var color = 'black';
+                                        var color = parent_odd;
                                     }
                                     prev_parent_items = new Array();
                                     parent_count++;
@@ -1942,7 +1951,7 @@ function draw_tree(drawing_type) {
                             q.angle - angle_per_leaf / 2,
                             q.angle + angle_per_leaf / 2,
                             layer_boundaries[0][1],
-                            total_radius,
+                            total_radius + margin,
                             0,
                             '#FFFFFF',
                             null,
@@ -1953,8 +1962,10 @@ function draw_tree(drawing_type) {
 							q.id + "_outer_ring",
 							q.angle - angle_per_leaf / 2,
 							q.angle + angle_per_leaf / 2,
-							total_radius,
-							total_radius + margin * 2,
+							total_radius + margin,
+                            // FIXME: for now the scaling factor is 4, but obviously this should be
+                            // parameterized at some point:
+							total_radius + margin * 4,
 							0,
 							'#FFFFFF',
 							null,
@@ -1979,7 +1990,7 @@ function draw_tree(drawing_type) {
         {
             for (var i = 0; i < prev_parent_items.length; i++)
             {
-                $('#path_' + prev_parent_items[i]).css('fill', LINE_COLOR);
+                $('#path_' + prev_parent_items[i]).css('fill', parent_residual);
             }
         }
 
