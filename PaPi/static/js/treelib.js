@@ -1782,13 +1782,16 @@ function draw_tree(drawing_type) {
 		layer_boundaries.push( [0, tree_radius] );
 
 		for (var pindex = 1; pindex < parameter_count; pindex++) {
+
+            var layer_margin = (parseFloat($('#height' + pindex).val())==0) ? 0 : margin;
+
             if (has_parent_layer && pindex==1) // make parent layer a bit thinner than the rest.
             {
 			    // FIXME: for now the scaling factor is 3, but it would be nice if this was                               v
 			    // parameterized:
 			    layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin * 3 ] );
             } else {
-			    layer_boundaries.push( [ layer_boundaries[pindex-1][1] + margin, layer_boundaries[pindex-1][1] + margin + parseFloat($('#height' + pindex).val()) ] );
+			    layer_boundaries.push( [ layer_boundaries[pindex-1][1] + layer_margin, layer_boundaries[pindex-1][1] + layer_margin + parseFloat($('#height' + pindex).val()) ] );
             }
 			createGroup('viewport', 'layer_' + pindex);
             createGroup('viewport', 'layer_background_' + pindex);

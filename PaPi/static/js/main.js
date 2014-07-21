@@ -407,6 +407,7 @@ function submitGroups() {
         $('#group-template input[type=radio]').prop('checked', true);
         $('#groups-table input[type=radio]').attr("disabled", true);
         $('#submit-groups').attr("disabled", true);
+        $('#btn_new_group').attr("disabled", true);
 
         $.post("/submit", {
             groups: JSON.stringify(output),
