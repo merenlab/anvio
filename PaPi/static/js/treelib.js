@@ -1789,6 +1789,7 @@ function draw_tree(drawing_type) {
 		}
 
 		total_radius = layer_boundaries[layer_boundaries.length - 1][1];
+        beginning_of_layers = layer_boundaries[0][1];
 
 
 		// label leaves...
@@ -1817,7 +1818,7 @@ function draw_tree(drawing_type) {
 					case 'circle':
 					case 'circlephylogram':
 						if (edge_length_norm)
-							drawDottedLine('dotted_lines', q.angle, q.radius, total_radius);
+							drawDottedLine('dotted_lines', q.angle, q.radius, beginning_of_layers);
 
 						for (var pindex = 1; pindex < parameter_count; pindex++) {
 
