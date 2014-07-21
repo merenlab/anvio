@@ -1789,7 +1789,7 @@ function draw_tree(drawing_type) {
 		}
 
 		total_radius = layer_boundaries[layer_boundaries.length - 1][1];
-        beginning_of_layers = layer_boundaries[0][1];
+		beginning_of_layers = layer_boundaries[0][1];
 
 
 		// label leaves...
