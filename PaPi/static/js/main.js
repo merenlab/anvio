@@ -32,6 +32,7 @@ var stack_bar_ids = new Array();
 var stack_bar_colors = new Array();
 
 var has_parent_layer = false;
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -282,6 +283,9 @@ function draw_tree_callback(){
         $('path').each(function(index, elm) {
             $(elm).attr('title', '');
         });
+
+        // enable export as svg button
+        $('#btn_export_svg').attr('disabled', false);
     }
 }
 
@@ -363,46 +367,55 @@ function deleteGroup(elm) {
     }
 }
 
-function submitGroups() {
-    var output = {};
-    var msg_group_count = 0;
-    var msg_contig_count = 0;
+function submitGroups(only_svg) {
 
-    for (var gid = 1; gid <= group_counter; gid++) {
-        if (SELECTED[gid].length > 0) {
-            msg_group_count++;
-            var group_name = $('#group_name_' + gid).val();
+    if (!only_svg) {
+        var output = {};
+        var msg_group_count = 0;
+        var msg_contig_count = 0;
 
-            output[group_name] = new Array();
-            for (var i = 0; i < SELECTED[gid].length; i++) {
-                if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
-                    output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
-                    msg_contig_count++;
+        for (var gid = 1; gid <= group_counter; gid++) {
+            if (SELECTED[gid].length > 0) {
+                msg_group_count++;
+                var group_name = $('#group_name_' + gid).val();
+
+                output[group_name] = new Array();
+                for (var i = 0; i < SELECTED[gid].length; i++) {
+                    if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
+                        output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
+                        msg_contig_count++;
+                    }
                 }
+            }
+        }
+
+        if (!confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
+            return;
+        }
+    }
+
+
+    // draw group list to output svg
+    drawGroupLegend();
+
+    // move group highlights to new svg groups
+    for (var gid = 1; gid <= group_counter; gid++) {
+
+        createGroup('viewport', 'selected_group_' + gid);
+
+        for (var j = 0; j < SELECTED[gid].length; j++) {
+            if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
+                $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
             }
         }
     }
 
-    if (confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
-        // draw group list to output svg
-        drawGroupLegend();
+    // remove ungrouped backgrounds.
+    var detached_paths = $('#viewport > path').detach();
 
-        // move group highlights to new svg groups
-        for (var gid = 1; gid <= group_counter; gid++) {
-
-            createGroup('viewport', 'selected_group_' + gid);
-
-            for (var j = 0; j < SELECTED[gid].length; j++) {
-                if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                    $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
-                    $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
-                }
-            }
-        }
-
-        // remove ungrouped backgrounds.
-        $('#viewport > path').remove();
-
+    if (!only_svg)
+    {
         // disable group controls
         $('#group-template input[type=radio]').prop('checked', true);
         $('#groups-table input[type=radio]').attr("disabled", true);
@@ -413,7 +426,17 @@ function submitGroups() {
             groups: JSON.stringify(output),
             svg: Base64.encode($('#svg')[0].outerHTML)
         });
+    }
+    else
+    {
+        $.post("/submit", {
+            groups: "{}",
+            svg: Base64.encode($('#svg')[0].outerHTML)
+        });
+        // add removed ungrouped backgrounds back
+        $(detached_paths).appendTo('#viewport');
 
+        $('#group_legend').remove();
     }
 }
 

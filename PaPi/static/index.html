@@ -58,7 +58,7 @@
                         </tbody>
                         </table>
                     </div>
-                    <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;
+                    <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;<input type="button" id="btn_export_svg" onclick="submitGroups(true);" value="Export as SVG" disabled="true">
                 </div>
                 <div id="groups" class="dialogs">
                     <table id="groups-table">
@@ -77,7 +77,7 @@
                             <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup(this);"></span></td>
                         </tr>
                     </table>
-                    <input id="btn_new_group" type="button" onClick="newGroup();" value="New group"> <input type="button" onClick="submitGroups();" value="Submit groups" id="submit-groups">
+                    <input id="btn_new_group" type="button" onClick="newGroup();" value="New group"> <input type="button" onClick="submitGroups(false);" value="Submit groups" id="submit-groups">
                 </div>
                 <div id="zoomDialog" class="dialogs">
                     <ul id="zoomControls">
