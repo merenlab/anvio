@@ -253,7 +253,7 @@ function drawLine(svg_id, p, p0, p1) {
             }
 
             $('#contig_count_' + gid).val(contigs);
-            $('#contig_length_' + gid).html(length_sum);
+            $('#contig_length_' + gid).html(readableNumber(length_sum));
         }
     });
 

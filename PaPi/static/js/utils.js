@@ -25,11 +25,20 @@ function strip(html)
 }
 
 //--------------------------------------------------------------------------------------------------
+// source: https://gist.github.com/cjthompson/9140248
+function readableNumber(num) {
+    var s = ['', 'K', 'M', 'B'];
+    var e = Math.floor(Math.log(num) / Math.log(1000));
+    return (num / Math.pow(1000, e)).toPrecision(3) + s[e];
+}
+
+//--------------------------------------------------------------------------------------------------
 function linePath(p0, p1)
 {
     var path = 'M ' + p0['x'] + ' ' + p0['y'] + ' ' + p1['x'] + ' ' + p1['y'];
     return path;
 }
+
 //--------------------------------------------------------------------------------------------------
 function distance(p0, p1)
 {
