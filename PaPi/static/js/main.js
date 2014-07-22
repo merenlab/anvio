@@ -20,6 +20,7 @@ var SELECTED = new Array();
 
 var newick;
 var metadata;
+var contig_lengths;
 var parameter_count;
 
 var group_counter = 0; // for id
@@ -86,6 +87,16 @@ $(document).ready(function() {
         url: '/data/tree?timestamp=' + new Date().getTime(),
         success: function(data) {
             newick = data;
+        }
+    });
+
+    // load contig lengths
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/contig_lengths?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            contig_lengths = data;
         }
     });
 
@@ -271,7 +282,7 @@ $(document).ready(function() {
 //---------------------------------------------------------
 
 function draw_tree_callback(){
-    if (typeof newick === 'undefined' || typeof metadata === 'undefined') {
+    if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
         setTimeout(draw_tree_callback, 200)
     } else {
         draw_tree($('#tree_type').val());
@@ -338,6 +349,7 @@ function newGroup() {
 
     clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
     clone.find('input[type=text]').attr('value', "Group_" + group_counter).attr('id', 'group_name_' + group_counter);
+    clone.find('.span_contig_length').attr('id', 'contig_length_' + group_counter);
     clone.find('input[type=button]').attr('id', 'contig_count_' + group_counter).click(function() {
         if (this.value == '0')
             return;

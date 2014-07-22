@@ -184,6 +184,12 @@ def send_data(name):
         return static_file(d.runinfo['tnf_tree'], root ='/')
     elif name == "meta":
         return static_file(d.runinfo['metadata_json'], root='/')
+    elif name == "contig_lengths":
+        return json.dumps(d.contig_lengths)
+
+@route('/data/contig/<contig_name>')
+def contig_info(contig_name):
+    return d.contigs[contig_name]
 
 @route('/submit', method='POST')
 def get_data():
