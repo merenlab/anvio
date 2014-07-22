@@ -1,7 +1,0 @@
-#!/usr/bin/env Rscript
-suppressPackageStartupMessages(library(ape))
-suppressPackageStartupMessages(library(ade4))
-suppressPackageStartupMessages(library(vegan))
-suppressPackageStartupMessages(library(gtools))
-suppressPackageStartupMessages(library(optparse))
-suppressPackageStartupMessages(library(flashClust))
