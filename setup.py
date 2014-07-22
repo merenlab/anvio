@@ -14,16 +14,9 @@ setup(
     packages = find_packages(),
     scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
 
-    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5'],
-
-    package_data = {
-        'PaPi': ['PaPi/static/index.html'],
-    },
-
-    data_files=[('static', ['static/index.html'])],
+    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2=>2.2'],
 
 
-    # metadata for upload to PyPI
     author = "A. Murat Eren",
     author_email = "a.murat.eren@gmail.com",
     description = "Post-assembly environmental genomics pipeline",
