@@ -17,10 +17,13 @@ import fcntl
 import string
 import struct
 import cPickle
+import hcluster
 import termios 
 import textwrap
 import itertools
 import multiprocessing
+
+from ete2 import Tree
 
 from PaPi.constants import pretty_names
 import PaPi.fastalib as u
@@ -334,6 +337,13 @@ def get_pretty_name(key):
     else:
         return key
 
+
+def is_file_exists(file_path):
+    if not os.path.exists(file_path):
+        raise ConfigError, "No such file: '%s' :/" % file_path
+    return True
+
+
 def is_file_tab_delimited(file_path):
     f = open(file_path)
     line = f.readline()
@@ -441,3 +451,65 @@ def check_project_name(project_name):
                                 limit the characters that make up the project name to ASCII letters,\
                                 digits, '_' and '-' (if you had not declared a project name and PaPi made\
                                 up one for you, please specify with '-p' parameter specifically)." % project_name
+
+
+def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean', clustering_method = 'complete'):
+    vectors = []
+    id_to_sample_dict = {}
+
+    is_file_exists(observation_matrix_path)
+    is_file_tab_delimited(observation_matrix_path)
+
+    if output_file_name:
+        output_file_name = ABS(output_file_name)
+        output_directory = os.path.dirname(output_file_name)
+        if not os.access(output_directory, os.W_OK):
+            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+    
+    input_matrix = open(observation_matrix_path)
+    input_matrix.readline()
+
+    line_counter = 0
+    for line in input_matrix.readlines():
+        fields = line.strip().split('\t')
+        id_to_sample_dict[line_counter] = fields[0]
+        vector = [float(x) for x in fields[1:]]
+        denominator = sum(vector)
+        normalized_vector = [p / denominator for p in vector]
+        vectors.append(normalized_vector)
+        line_counter += 1
+
+    distance_matrix = hcluster.pdist(vectors, clustering_distance)
+    
+    #clustering_result = hcluster.ward(distance_matrix)
+    clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
+    
+    tree = hcluster.to_tree(clustering_result)
+    
+    root = Tree()
+    root.dist = 0
+    root.name = "root"
+    item2node = {tree: root}
+    
+    to_visit = [tree]
+    while to_visit:
+        node = to_visit.pop()
+        cl_dist = node.dist / 2.0
+        for ch_node in [node.left, node.right]:
+            if ch_node:
+                ch = Tree()
+                ch.dist = cl_dist
+
+                if ch_node.is_leaf():
+                    ch.name = id_to_sample_dict[ch_node.id]
+                else:
+                    ch.name = 'Int' + str(ch_node.id)
+
+                item2node[node].add_child(ch)
+                item2node[ch_node] = ch
+                to_visit.append(ch_node)
+   
+    if output_file_name:
+        root.write(format=1, outfile=output_file_name) 
+
+    return root.write(format=1) 
