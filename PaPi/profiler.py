@@ -360,13 +360,6 @@ class BAMProfiler:
 
 
     def check_args(self):
-        env = os.environ.copy()
-        with open(os.devnull, "w") as fnull:
-            ret = subprocess.call(['papi-test-R-libs'], env = env, stdout=fnull, stderr=fnull)
-        if ret:
-            raise utils.ConfigError, "Before we start, PaPi uses certain R functions that are not available on\
-                                      your system. Please run 'papi-test-R-libs' and install necessary libraries\
-                                      depending on the output."
         if (not self.input_file_path) and (not self.serialized_profile_path):
             raise utils.ConfigError, "You must declare either an input file, or a serialized profile. Use '--help'\
                                       to learn more about the command line parameters."
