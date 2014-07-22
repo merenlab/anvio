@@ -34,6 +34,11 @@ var stack_bar_colors = new Array();
 
 var has_parent_layer = false;
 
+var context_menu_target_id = 0;
+
+var metadata_title;
+var metadata_dict;
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -271,6 +276,23 @@ $(document).ready(function() {
             }).keyup(function() {
                 $(this).colpickSetColor(this.value);
             });
+
+            // bind right click menu
+            $('body').bind('contextmenu', function(e) {
+                if (e.target.id.indexOf('path_')==-1)
+                    return true;
+
+                context_menu_target_id = e.target.id.replace('path_', '');
+                console.log(context_menu_target_id);
+
+                $('#control_contextmenu').show();
+                $('#control_contextmenu').offset({left:e.pageX-2,top:e.pageY-2});
+                return false;
+            });
+
+            $('body').bind('click', function() {
+                $('#control_contextmenu').hide();
+            });
         }
     });
 });
@@ -280,6 +302,32 @@ $(document).ready(function() {
 //---------------------------------------------------------
 //  ui callbacks
 //---------------------------------------------------------
+
+function menu_callback(action) {
+    var contig_name = id_to_node_map[context_menu_target_id].label;
+
+    switch (action) {
+        case 'content':
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    $("#contig_name_dialog").dialog("option", "title", contig_name);
+                    $('#contig_names').val(data);
+                    $('#contig_name_dialog').dialog('open');
+                    $('#contig_names').click(); // focus & select all
+                }
+            });
+            break;
+        case 'metadata':
+            $("#contig_name_dialog").dialog("option", "title", contig_name);
+            $('#contig_names').val(strip(metadata_title[contig_name].join('\n')));
+            $('#contig_name_dialog').dialog('open');
+            $('#contig_names').click(); // focus & select all
+            break;
+    }
+}
 
 function draw_tree_callback(){
     if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
@@ -309,6 +357,7 @@ function showContigNames(gid) {
         }
     }
 
+    $("#contig_name_dialog").dialog("option", "title", "Contig Names");
     $('#contig_names').val(names.join("\n"));
     $('#contig_name_dialog').dialog('open');
     $('#contig_names').click(); // focus & select all

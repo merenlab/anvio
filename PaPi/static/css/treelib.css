@@ -125,3 +125,35 @@ div#treeContainer svg {
     width: 90%;
     height: 200px;
 }
+
+#control_contextmenu {  
+    border:1px solid #ccc;  
+    background-color:#eee;  
+    width: 150px; 
+} 
+ 
+#control_contextmenu ul {  
+    list-style:none;  
+    padding:0;  
+    margin:0;  
+    cursor:pointer;  
+} 
+ 
+#control_contextmenu ul li {  
+    text-align:left;  
+    padding:3px 10px 3px 5px;  
+    margin:0;  
+    cursor:pointer;  
+    font-family:Arial;  
+    text-decoration:none;  
+    color:#333;  
+    font-size:12px;  
+    font-weight:bold;  
+} 
+
+#control_contextmenu ul li.selected, 
+#control_contextmenu ul li:hover {  
+    color:#fff;  
+    background-color:#f8b74b;  
+    cursor:pointer;  
+}

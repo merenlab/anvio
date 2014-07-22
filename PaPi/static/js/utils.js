@@ -17,6 +17,14 @@ function ctype_alnum (str)
 }
 
 //--------------------------------------------------------------------------------------------------
+function strip(html)
+{
+   var tmp = document.createElement("DIV");
+   tmp.innerHTML = html;
+   return tmp.textContent || tmp.innerText || "";
+}
+
+//--------------------------------------------------------------------------------------------------
 function linePath(p0, p1)
 {
     var path = 'M ' + p0['x'] + ' ' + p0['y'] + ' ' + p1['x'] + ' ' + p1['y'];

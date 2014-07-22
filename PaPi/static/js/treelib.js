@@ -1596,8 +1596,8 @@ function draw_tree(drawing_type) {
     reorderLayers();
 
     // generate tooltip text before normalization
-    var metadata_title = new Array();
-    var metadata_dict = new Array();
+    metadata_title = new Array();
+    metadata_dict = new Array();
 
     for (var index = 1; index < metadata.length; index++) 
     {
