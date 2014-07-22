@@ -88,14 +88,29 @@ class BAMProfiler:
         self.run.quit()
 
 
+    def set_project_name(self):
+        if self.project_name:
+            utils.check_project_name(self.project_name)
+        else:
+            if self.input_file_path:
+                self.input_file_path = utils.ABS(self.input_file_path)
+                self.project_name = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
+                utils.check_project_name(self.project_name)
+            if self.serialized_profile_path:
+                self.serialized_profile_path = utils.ABS(self.serialized_profile_path)
+                self.project_name = os.path.basename(os.path.dirname(self.serialized_profile_path))
+
+
     def init_serialized_profile(self):
+        self.set_project_name()
+        self.run.info('project_name', self.project_name)
+
         self.progress.new('Init')
         self.progress.update('Reading serialized profile')
         self.contigs = cPickle.load(open(self.serialized_profile_path))
         self.progress.end()
 
         self.run.info('profile_loaded_from', self.serialized_profile_path)
-
         self.run.info('num_contigs', pp(len(self.contigs)))
 
         if self.list_contigs_and_exit:
@@ -141,12 +156,7 @@ class BAMProfiler:
 
 
     def init_profile_from_BAM(self):
-        if self.project_name:
-            utils.check_project_name(self.project_name)
-        else:
-            self.project_name = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
-            utils.check_project_name(self.project_name)
-
+        self.set_project_name()
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
