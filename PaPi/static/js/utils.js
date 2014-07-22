@@ -27,7 +27,9 @@ function strip(html)
 //--------------------------------------------------------------------------------------------------
 // source: https://gist.github.com/cjthompson/9140248
 function readableNumber(num) {
-    var s = ['', 'K', 'M', 'B'];
+    if(num == 0)
+        return 0;
+    var s = ['', 'K', 'M', 'G'];
     var e = Math.floor(Math.log(num) / Math.log(1000));
     return (num / Math.pow(1000, e)).toPrecision(3) + s[e];
 }
