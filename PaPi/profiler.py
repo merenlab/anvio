@@ -116,6 +116,8 @@ class BAMProfiler:
                     self.contigs.pop(contig)
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contigs)))
 
+        self.check_contigs()
+
         contigs_to_discard = set()
         for contig in self.contigs.values():
             if contig.length < self.min_contig_length:
@@ -128,6 +130,8 @@ class BAMProfiler:
                 for contig in contigs_to_discard:
                     self.contigs.pop(contig)
                 self.run.info('contigs_raw_longer_than_M', len(self.contig_names))
+
+        self.check_contigs()
 
         self.progress.new('Init')
         self.progress.update('Initializing the output directory ...')
@@ -271,14 +275,10 @@ class BAMProfiler:
             # add contig to the dict.
             self.contigs[contig_name] = contig
 
-        if not len(self.contigs):
-            raise utils.ConfigError, "0 contigs passed minimum mean coverage parameter (%d)." % self.min_mean_coverage
-
         if discarded_contigs_due_to_C:
             self.run.info('contigs_after_C', pp(len(self.contigs)))
 
-        if len(self.contigs) < 3:
-            raise utils.ConfigError, "Less than 3 contigs left in your analysis. PaPi can't really do much with this :/ Bye."
+        self.check_contigs()
 
 
     def store_profile(self):
@@ -288,6 +288,15 @@ class BAMProfiler:
         cPickle.dump(self.contigs, open(output_file, 'w'))
         self.progress.end()
         self.run.info('profile_dict', output_file)
+
+
+    def check_contigs(self):
+        if not len(self.contigs):
+            raise utils.ConfigError, "0 contigs to work with. Bye."
+
+        if len(self.contigs) < 3:
+            raise utils.ConfigError, "Less than 3 contigs left in your analysis. PaPi can't really do much with this :/ Bye."
+        
 
 
     def report(self):
