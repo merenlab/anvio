@@ -313,8 +313,7 @@ class BAMProfiler:
         self.progress.new('Generating reports')
         self.progress.update('Generating the tree of contigs')
         newick_tree_file_path = self.generate_output_destination('TNF-NEWICK-TREE.txt')
-        env = os.environ.copy()
-        subprocess.call(['papi-TNF-matrix-to-newick.R', '-o', newick_tree_file_path, TNF_matrix_file_path], env = env)
+        utils.get_newick_tree_data(TNF_matrix_file_path, newick_tree_file_path)
         self.progress.end()
         self.run.info('tnf_tree', newick_tree_file_path)
 

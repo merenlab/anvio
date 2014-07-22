@@ -149,11 +149,11 @@ class MultipleRuns:
             self.run.info('runinfo', runinfo_output_path)
             self.run.store_info_dict(runinfo_output_path)
 
+
     def generate_tnf_tree(self):
         self.progress.update('...')
         newick_tree_file_path = os.path.join(self.output_dir, 'TNF-NEWICK-TREE.txt')
-        env = os.environ.copy()
-        subprocess.call(['papi-TNF-matrix-to-newick.R', '-o', newick_tree_file_path, self.run.info_dict['tnf_matrix']], env = env)
+        PaPi.utils.get_newick_tree_data(self.run.info_dict['tnf_matrix'], newick_tree_file_path)
         return newick_tree_file_path
 
 
