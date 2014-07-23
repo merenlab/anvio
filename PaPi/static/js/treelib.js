@@ -1578,7 +1578,9 @@ function reorderLayers() {
 
     // give new ids to ui elements
     $('#tbody_layers tr').each(function(index,element) {
-        $(element).find("input[type=text]").attr("id", "height" + (index+1));
+        $(element).find(".input-height").attr("id", "height" + (index+1));
+        $(element).find(".input-min").attr("id", "min" + (index+1));
+        $(element).find(".input-max").attr("id", "max" + (index+1));
         $(element).find("select").attr("id", "normalization" + (index+1));
         $(element).find(".colorpicker").attr("id", "picker" + (index+1));
     });
@@ -1627,6 +1629,53 @@ function draw_tree(drawing_type) {
         }
 
         metadata_title[params[0]] = title;
+    }
+
+    // filter numerical values (min & max)
+
+    for (var pindex=1; pindex < parameter_count; pindex++)
+    {
+        if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+            continue;
+        if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
+            continue;
+
+        var disabled = $('#min' + pindex).prop('disabled'); 
+
+        if (disabled)
+        {
+            var min = parseFloat(metadata[1][pindex]);
+            var max = parseFloat(metadata[1][pindex]);
+
+            for (var i = 2; i < metadata.length; i++)
+            {
+                if (parseFloat(metadata[i][pindex]) > max) {
+                    max = parseFloat(metadata[i][pindex]);
+                }
+                else if (parseFloat(metadata[i][pindex]) < min) {
+                    min = parseFloat(metadata[i][pindex]);
+                }
+            }
+
+            $('#min'+pindex).val(min).prop('disabled', false);
+            $('#max'+pindex).val(max).prop('disabled', false);
+        }
+        else
+        {
+            var min = parseFloat($('#min'+pindex).val());
+            var max = parseFloat($('#max'+pindex).val());
+
+            for (var i = 1; i < metadata.length; i++)
+            {
+                if (parseFloat(metadata[i][pindex]) > max) {
+                    metadata[i][pindex] = max;
+                }
+                else if (parseFloat(metadata[i][pindex]) < min) {
+                    metadata[i][pindex] = min;
+                }
+            }
+        }
+
     }
 
     // normalization

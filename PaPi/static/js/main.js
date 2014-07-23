@@ -126,7 +126,7 @@ $(document).ready(function() {
                         '<td></td>' +
                         '<td></td>' +
                         '<td></td>' +
-                        '<td><input type="text" size="2" id="height{id}" value="30"></td>' +
+                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></td>' +
                         '</tr>';
 
                     parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
@@ -187,7 +187,9 @@ $(document).ready(function() {
                         '        <option value="log">Logarithm</option>' +
                         '    </select>' +
                         '</td>' +
-                        '<td><input type="text" size="2" id="height{id}" value="50"></td>' +
+                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="50"></td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
                         '</tr>';
 
                     stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
@@ -204,7 +206,9 @@ $(document).ready(function() {
                         '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
                         '<td>n/a</td>' +
                         '<td>n/a</td>' +
-                        '<td><input type="text" size="2" id="height{id}" value="30"></td>' +
+                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
                         '</tr>';
 
                     categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
@@ -224,7 +228,9 @@ $(document).ready(function() {
                         '        <option value="log">Logarithm</option>' +
                         '    </select>' +
                         '</td>' +
-                        '<td><input type="text" size="2" id="height{id}" value="50"></td>' +
+                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></td>' +
+                        '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></td>' +
+                        '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></td>' +
                         '</tr>';
 
                     numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
