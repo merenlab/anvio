@@ -414,6 +414,8 @@ function deleteGroup(elm) {
         group_count--;
 
         for (var i = 0; i < SELECTED[id].length; i++) {
+            $("#line" + SELECTED[id][i]).css('stroke-width', '1');
+            $("#arc" + SELECTED[id][i]).css('stroke-width', '1');
             $("#line" + SELECTED[id][i]).css('stroke', LINE_COLOR);
             $("#arc" + SELECTED[id][i]).css('stroke', LINE_COLOR);
 
@@ -425,6 +427,11 @@ function deleteGroup(elm) {
         }
 
         SELECTED[id] = [];
+
+        if (group_count==0)
+        {
+            newGroup();
+        }
     }
 }
 
