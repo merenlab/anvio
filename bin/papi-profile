@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                 if you are going to profile muptiple BAM files which are then going to be\
                                 merged for a cross-sectional or time series analysis. Do not change it if\
                                 you are not sure')
-    groupQ.add_argument('--split-length', metavar = 'INTEGER', default = 20000, type=int,
+    groupQ.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
                         help = 'Splitting very large contigs into multiple pieces improves\
                                 the efficacy of the visualization step. The default value\
                                 (%(default)d) will brake up any contig that is longer. If you\

@@ -13,7 +13,7 @@ import copy
 import numpy
 
 from PaPi.utils import KMers
-from PaPi.entropy import ColumnEntropyProfile
+from PaPi.variability import ColumnProfile
 
 kmers = KMers()
 
@@ -71,7 +71,7 @@ class Contig:
 
 class Split:
     def __init__(self, parent, order, start, end):
-        self.name = '_'.join([parent, 'split', '%04d' % order, start.__str__(), end.__str__()])
+        self.name = '_'.join([parent, 'split', '%05d' % order])
         self.parent = parent
         self.end = end
         self.order = order
@@ -79,44 +79,38 @@ class Split:
         self.length = end - start
         self.explicit_length = 0
 
-        #progress.update('Analyzing coverage ...')
-        #self.coverage = Coverage(self, bam.pileup(parent, start, end))
-        #progress.update('Analyzing auxiliary stats ...')
-        #self.auxiliary = Auxiliary(self, bam.pileup(parent, start, end))
-        #progress.update('Analyzing composition ...')
-        #self.composition = Composition(self, bam.pileup(parent, start, end))
-
 
 class Auxiliary:
     def __init__(self, split, bam):
         self.rep_seq = ''
         self.split = split
-        self.average_entropy = 0.0
-        self.average_normalized_entropy = 0.0
+        self.variability = 0.0
 
         self.run(bam)
 
 
     def run(self, bam):
-        column_entropy_profile = {}
+        column_profile = {}
+        ratios = []
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
             if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
                 continue
 
             column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
 
-            column_entropy_profile[pileupcolumn.pos] = ColumnEntropyProfile(column,
-                                                        pileupcolumn.pos,
-                                                        self.split.coverage.max,
-                                                        self.split.coverage.median)
+            column_profile[pileupcolumn.pos] = ColumnProfile(column,
+                                                             pileupcolumn.pos)
 
+            c = column_profile[pileupcolumn.pos]
+            ratios.append((c.n2n1ratio, c.coverage), )
 
-        self.average_entropy = sum(e.entropy * 100.0 for e in column_entropy_profile.values()) / self.split.length
-        self.average_normalized_entropy = sum(e.normalized_entropy * 100.0 for e in column_entropy_profile.values()) / self.split.length
+        # take top 100 based on n2n1ratio, then take top 20 of those with highest coverage:
+        variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:100]], reverse=True)[0:50]
+        self.variability = sum([x[1] for x in variable_positions_with_high_cov])
 
         for i in range(self.split.start, self.split.end):
-            if column_entropy_profile.has_key(i):
-                self.rep_seq += column_entropy_profile[i].consensus_nucleotide
+            if column_profile.has_key(i):
+                self.rep_seq += column_profile[i].consensus_nucleotide
             else:
                 self.rep_seq += 'N'
 

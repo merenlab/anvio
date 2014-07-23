@@ -340,16 +340,14 @@ class BAMProfiler:
         # metadata
         self.progress.new('Generating reports')
         self.progress.update('Metadata for contigs')
-        metadata_fields = [('essential', 'length'), ('essential', 'mean_coverage'), ('essential', 'std_coverage'), 
-                           ('composition', 'GC_content')]
-
-        metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
-
-        metadata_fields = ['contigs', 'length', 'mean_coverage', 'std_coverage', 'GC_content', '__parent__']
-        metadata_txt.write('%s\n' % ('\t'.join(metadata_fields)))
 
         F = lambda x: '%.4f' % x
         I = lambda x: '%d' % x
+
+        metadata_fields_to_report = ['contigs', 'length', 'mean_coverage', 'std_coverage', 'GC_content', 'variability', '__parent__']
+
+        metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
+        metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
 
         for contig in self.contigs:
             for split in self.contigs[contig].splits:
@@ -358,6 +356,7 @@ class BAMProfiler:
                           F(split.coverage.mean),
                           F(split.coverage.std),
                           F(split.composition.GC_content),
+                          F(split.auxiliary.variability),
                           contig] 
                 metadata_txt.write('%s\n' % '\t'.join(fields))
 
