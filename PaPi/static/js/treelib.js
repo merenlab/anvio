@@ -237,6 +237,7 @@ function drawLine(svg_id, p, p0, p1) {
     });
 
     $(line).on('contextmenu', function(e) {
+        e.preventDefault();
         var group_id = $('input[type=radio]:checked').val();
 
         if (group_id < 1)
@@ -255,6 +256,7 @@ function drawLine(svg_id, p, p0, p1) {
             }
         }
         updateGroupWindow();
+        $('#line' + p.id).trigger('mouseleave');
         return false;
     });
 
@@ -535,6 +537,7 @@ function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
     });
 
     $(arc).on('contextmenu', function(e) {
+        e.preventDefault();
         $('#line' + p.id).trigger('contextmenu');
         return false;
     });
@@ -1596,11 +1599,13 @@ function draw_tree(drawing_type) {
     reorderLayers();
 
     // generate tooltip text before normalization
+    metadata_dict = new Array();
     metadata_title = new Array();
 
     for (var index = 1; index < metadata.length; index++) 
     {
         var params = metadata[index];
+        metadata_dict[params[0]] = params.slice(0);
 
         var title = [];
         title.push("<b>" + metadata[index][0] + "</b>");
@@ -1625,60 +1630,6 @@ function draw_tree(drawing_type) {
         }
 
         metadata_title[params[0]] = title;
-    }
-
-    // filter numerical values (min & max)
-
-    for (var pindex=1; pindex < parameter_count; pindex++)
-    {
-        if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
-            continue;
-        if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
-            continue;
-
-        var disabled = $('#min' + pindex).prop('disabled'); 
-
-        if (disabled)
-        {
-            var min = parseFloat(metadata[1][pindex]);
-            var max = parseFloat(metadata[1][pindex]);
-
-            for (var i = 2; i < metadata.length; i++)
-            {
-                if (parseFloat(metadata[i][pindex]) > max) {
-                    max = parseFloat(metadata[i][pindex]);
-                }
-                else if (parseFloat(metadata[i][pindex]) < min) {
-                    min = parseFloat(metadata[i][pindex]);
-                }
-            }
-
-            $('#min'+pindex).val(min).prop('disabled', false);
-            $('#max'+pindex).val(max).prop('disabled', false);
-        }
-        else
-        {
-            var min = parseFloat($('#min'+pindex).val());
-            var max = parseFloat($('#max'+pindex).val());
-
-            for (var i = 1; i < metadata.length; i++)
-            {
-                if (parseFloat(metadata[i][pindex]) > max) {
-                    metadata[i][pindex] = max;
-                }
-                else if (parseFloat(metadata[i][pindex]) < min) {
-                    metadata[i][pindex] = min;
-                }
-            }
-        }
-
-    }
-
-    var metadata_dict = new Array();
-    
-    for (var i=1; i < metadata.length; i++) {
-        var params = metadata[i];
-        metadata_dict[params[0]] = params.slice(0);
     }
 
     // normalization
@@ -1735,40 +1686,72 @@ function draw_tree(drawing_type) {
     }
 
     // calculate bar sizes according to given height
-    for (var id in metadata_dict) {
-        for (var pindex = 1; pindex < metadata_dict[id].length; pindex++) 
+    for (var pindex = 1; pindex < parameter_count; pindex++) 
+
+        if (has_parent_layer && pindex==1) // skip normalization for parent layer
         {
-            if (has_parent_layer && pindex==1) // skip normalization for parent layer
-            {
-                continue;
-            }
-            else if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
-            {
-                continue;
-            }
-            else if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
-            {
-                var total = 0;
 
-                for (var j=0; j < metadata_dict[id][pindex].length; j++)
+        }
+        else if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+        {
+
+        }
+        else
+        {
+            var min_max_disabled = $('#min' + pindex).prop('disabled');
+
+            var min = parseFloat($('#min' + pindex).val());
+            var max = parseFloat($('#max' + pindex).val());
+
+            var min_new;
+            var max_new;
+
+            for (var id in metadata_dict) {
+            {
+                if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
                 {
-                    total = total + parseFloat(metadata_dict[id][pindex][j]);
+                    var total = 0;
+
+                    for (var j=0; j < metadata_dict[id][pindex].length; j++)
+                    {
+                        total = total + parseFloat(metadata_dict[id][pindex][j]);
+                    }
+
+                    var multiplier = parseFloat($('#height' + pindex).val()) / total;
+
+                    for (var j=0; j < metadata_dict[id][pindex].length; j++)
+                    {
+                        metadata_dict[id][pindex][j] = metadata_dict[id][pindex][j] * multiplier;
+                    }
                 }
-
-                var multiplier = parseFloat($('#height' + pindex).val()) / total;
-
-                for (var j=0; j < metadata_dict[id][pindex].length; j++)
+                else // numerical data
                 {
-                    metadata_dict[id][pindex][j] = metadata_dict[id][pindex][j] * multiplier;
+                    var bar_size = parseFloat(metadata_dict[id][pindex]) * parseFloat($('#height' + pindex).val()) / parseFloat(param_max[pindex]);
+                    
+                    
+                    if (typeof min_new === 'undefined' || bar_size < min_new)
+                        min_new = bar_size;
+                    
+                    if (typeof max_new === 'undefined' || bar_size > max_new)
+                        max_new = bar_size;
+
+                    if (!min_max_disabled)
+                    {
+                        if (bar_size > max)
+                            bar_size = max;
+                        if (bar_size < min)
+                            bar_size = min;
+                    }
+
+                    metadata_dict[id][pindex] = bar_size;
                 }
-                continue;
             }
-            else // numerical data
-            {
-                metadata_dict[id][pindex] = (parseFloat(metadata_dict[id][pindex]) * parseFloat($('#height' + pindex).val())) / parseFloat(param_max[pindex]);
-            }
+            console.log(min_new, max_new);
+            $('#min' + pindex).val(min_new).prop('disabled', false);
+            $('#max' + pindex).val(max_new).prop('disabled', false);
         }
     }
+
 
     if (t.error != 0) {
         alert('Error parsing tree');
@@ -1886,8 +1869,7 @@ function draw_tree(drawing_type) {
                 switch (drawing_type) {
                     case 'circle':
                     case 'circlephylogram':
-                        if (edge_length_norm)
-                            drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
+                        drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
 
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 

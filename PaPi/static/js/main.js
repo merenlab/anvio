@@ -337,7 +337,7 @@ function menu_callback(action) {
 
 function draw_tree_callback(){
     if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
-        setTimeout(draw_tree_callback, 200)
+        setTimeout(draw_tree_callback, 200);
     } else {
         draw_tree($('#tree_type').val());
 
