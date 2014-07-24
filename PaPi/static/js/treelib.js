@@ -1599,12 +1599,10 @@ function draw_tree(drawing_type) {
 
     // generate tooltip text before normalization
     metadata_title = new Array();
-    metadata_dict = new Array();
 
     for (var index = 1; index < metadata.length; index++) 
     {
         var params = metadata[index];
-        metadata_dict[params[0]] = params.slice(0); // to avoid reference between metadata and after normalization metadata
 
         var title = [];
         title.push("<b>" + metadata[index][0] + "</b>");
@@ -1676,6 +1674,13 @@ function draw_tree(drawing_type) {
             }
         }
 
+    }
+
+    var metadata_dict = new Array();
+    
+    for (var i=1; i < metadata.length; i++) {
+        var params = metadata[i];
+        metadata_dict[params[0]] = params.slice(0);
     }
 
     // normalization
