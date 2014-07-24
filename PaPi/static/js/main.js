@@ -514,6 +514,24 @@ function submitGroups(only_svg) {
     }
 }
 
+function updateGroupWindow() { 
+    // count contigs and update group labels
+    for (var gid = 1; gid <= group_counter; gid++) {
+        var contigs = 0;
+        var length_sum = 0;
+
+        for (var j = 0; j < SELECTED[gid].length; j++) {
+            if (id_to_node_map[SELECTED[gid][j]].IsLeaf())
+            {
+                contigs++;
+                length_sum += parseInt(contig_lengths[id_to_node_map[SELECTED[gid][j]].label]);
+            }
+        }
+
+        $('#contig_count_' + gid).val(contigs);
+        $('#contig_length_' + gid).html(readableNumber(length_sum));
+    }
+}
 
 //---------------------------------------------------------
 //  zoom and scale functions

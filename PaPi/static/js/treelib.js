@@ -218,11 +218,6 @@ function drawLine(svg_id, p, p0, p1) {
                 SELECTED[group_id].push(child_nodes[i]);
                 $('.path_' + child_nodes[i] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
                 $('.path_' + child_nodes[i] + "_outer_ring").css('fill', group_color);
-
-            } else {
-                SELECTED[group_id].splice(pos, 1);
-                $('.path_' + child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
-                $('.path_' + child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
             }
 
             // remove nodes from other groups
@@ -236,25 +231,31 @@ function drawLine(svg_id, p, p0, p1) {
                     SELECTED[gid].splice(pos, 1);
                 }
             }
-
         }
 
-        // count contigs and update group labels
-        for (var gid = 1; gid <= group_counter; gid++) {
-            var contigs = 0;
-            var length_sum = 0;
+        updateGroupWindow();
+    });
 
-            for (var j = 0; j < SELECTED[gid].length; j++) {
-                if (id_to_node_map[SELECTED[gid][j]].IsLeaf())
-                {
-                    contigs++;
-                    length_sum += parseInt(contig_lengths[id_to_node_map[SELECTED[gid][j]].label]);
+    $(line).on('contextmenu', function(e) {
+        var group_id = $('input[type=radio]:checked').val();
+
+        if (group_id < 1)
+            return;
+
+        for (var i = 0; i < child_nodes.length; i++) {
+            $('.path_' + child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
+            $('.path_' + child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
+
+            // remove nodes from other groups
+            for (var gid = 1; gid <= group_counter; gid++) {
+                var pos = $.inArray(child_nodes[i], SELECTED[gid]);
+                if (pos > -1) {
+                    SELECTED[gid].splice(pos, 1);
                 }
             }
-
-            $('#contig_count_' + gid).val(contigs);
-            $('#contig_length_' + gid).html(readableNumber(length_sum));
         }
+        updateGroupWindow();
+        return false;
     });
 
     $(line).mouseenter(function() {
@@ -294,16 +295,8 @@ function drawLine(svg_id, p, p0, p1) {
         for (var index = 0; index < child_nodes.length; index++) {
             $("#line" + child_nodes[index]).css('stroke-width', '3');
             $("#arc" + child_nodes[index]).css('stroke-width', '3');
-
-
-
-            if ($.inArray(child_nodes[index], SELECTED[group_id]) > -1) {
-                $("#line" + child_nodes[index]).css('stroke', LINE_COLOR);
-                $("#arc" + child_nodes[index]).css('stroke', LINE_COLOR);
-            } else {
-                $("#line" + child_nodes[index]).css('stroke', group_color);
-                $("#arc" + child_nodes[index]).css('stroke', group_color);
-            }
+            $("#line" + child_nodes[index]).css('stroke', group_color);
+            $("#arc" + child_nodes[index]).css('stroke', group_color);
         }
     });
 
@@ -539,6 +532,11 @@ function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
 
     $(arc).click(function() {
         $('#line' + p.id).click();
+    });
+
+    $(arc).on('contextmenu', function(e) {
+        $('#line' + p.id).trigger('contextmenu');
+        return false;
     });
 
     $(arc).mouseenter(function() {
