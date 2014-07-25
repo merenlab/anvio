@@ -1759,9 +1759,14 @@ function draw_tree(drawing_type) {
 
             if (min_max_disabled)
             {
-                $('#min' + pindex).val(min_new).prop('disabled', false);
+                $('#min' + pindex).prop('disabled', false);
                 $('#max' + pindex).val(max_new).prop('disabled', false);        
             }
+
+            var min_max_str = "Min: " + min_new + " - Max: " + max_new;
+            $('#min' + pindex).attr('title', min_max_str);
+            $('#max' + pindex).attr('title', min_max_str);
+
         }
     }
 
