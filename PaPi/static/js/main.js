@@ -222,7 +222,7 @@ $(document).ready(function() {
                         '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
                         '<td><div id="picker{id}" class="colorpicker"></td>' +
                         '<td>' +
-                        '    <select id="normalization{id}">' +
+                        '    <select id="normalization{id}" onChange="clearMinMax(this)">' +
                         '        <option value="none">none</option>' +
                         '        <option value="sqrt">Square root</option>' +
                         '        <option value="log">Logarithm</option>' +

@@ -1687,14 +1687,14 @@ function draw_tree(drawing_type) {
 
     // calculate bar sizes according to given height
     for (var pindex = 1; pindex < parameter_count; pindex++) 
-
+    {
         if (has_parent_layer && pindex==1) // skip normalization for parent layer
         {
-
+            continue;
         }
         else if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
         {
-
+            continue;
         }
         else
         {
@@ -1703,10 +1703,10 @@ function draw_tree(drawing_type) {
             var min = parseFloat($('#min' + pindex).val());
             var max = parseFloat($('#max' + pindex).val());
 
-            var min_new;
-            var max_new;
+            var min_new = null;
+            var max_new = null;
 
-            for (var id in metadata_dict) {
+            for (var id in metadata_dict)
             {
                 if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
                 {
@@ -1726,29 +1726,42 @@ function draw_tree(drawing_type) {
                 }
                 else // numerical data
                 {
-                    var bar_size = parseFloat(metadata_dict[id][pindex]) * parseFloat($('#height' + pindex).val()) / parseFloat(param_max[pindex]);
-                    
-                    
-                    if (typeof min_new === 'undefined' || bar_size < min_new)
-                        min_new = bar_size;
-                    
-                    if (typeof max_new === 'undefined' || bar_size > max_new)
-                        max_new = bar_size;
-
+                    var bar_size = parseFloat(metadata_dict[id][pindex]);
+                                        
                     if (!min_max_disabled)
                     {
-                        if (bar_size > max)
-                            bar_size = max;
-                        if (bar_size < min)
-                            bar_size = min;
-                    }
+                        if (bar_size > max) {
+                            bar_size = max - min;
+                        }
+                        else if (bar_size < min) {
+                            bar_size = 0;
+                        }
+                        else {
+                            bar_size = bar_size - min;
+                        }
 
-                    metadata_dict[id][pindex] = bar_size;
+                        metadata_dict[id][pindex] = bar_size *  parseFloat($('#height' + pindex).val()) / (max - min);
+                    }
+                    else
+                    {  
+                        if ((min_new == null) || bar_size < min_new) {
+                            min_new = bar_size;
+                        }
+                        
+                        if ((max_new == null) || bar_size > max_new) {
+                            max_new = bar_size;
+                        }
+
+                        metadata_dict[id][pindex] = bar_size *  parseFloat($('#height' + pindex).val()) / param_max[pindex];
+                    }
                 }
             }
-            console.log(min_new, max_new);
-            $('#min' + pindex).val(min_new).prop('disabled', false);
-            $('#max' + pindex).val(max_new).prop('disabled', false);
+
+            if (min_max_disabled)
+            {
+                $('#min' + pindex).val(min_new).prop('disabled', false);
+                $('#max' + pindex).val(max_new).prop('disabled', false);        
+            }
         }
     }
 

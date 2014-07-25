@@ -25,6 +25,15 @@ function strip(html)
 }
 
 //--------------------------------------------------------------------------------------------------
+function clearMinMax(selectbox) 
+{
+    var id = $(selectbox).attr('id').replace('normalization', '');
+
+    $('#min' + id).val('0').prop('disabled', true);
+    $('#max' + id).val('0').prop('disabled', true);     
+}
+
+//--------------------------------------------------------------------------------------------------
 // source: https://gist.github.com/cjthompson/9140248
 function readableNumber(num) {
     if(num == 0)
