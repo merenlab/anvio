@@ -35,10 +35,16 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
     for line in input_matrix.readlines():
         fields = line.strip().split('\t')
         id_to_sample_dict[line_counter] = fields[0]
+        
         vector = [float(x) for x in fields[1:]]
+
         denominator = sum(vector)
-        normalized_vector = [p * 1000 / denominator for p in vector]
-        vectors.append(normalized_vector)
+        if denominator:
+            normalized_vector = [p * 1000 / denominator for p in vector]
+            vectors.append(normalized_vector)
+        else:
+            vectors.append(vector)
+
         line_counter += 1
 
     distance_matrix = hcluster.pdist(vectors, clustering_distance)
