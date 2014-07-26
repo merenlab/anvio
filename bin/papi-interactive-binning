@@ -24,7 +24,7 @@ import webbrowser
 
 from multiprocessing import Process 
 from bottle import route, run, static_file, redirect, request, BaseRequest, response
-from Bio import Phylo
+from ete2 import Tree
 
 import PaPi.utils
 import PaPi.fastalib as u
@@ -106,7 +106,8 @@ class RuninfoIO:
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cPickle')
 
-            contigs_in_tree = sorted([t.name for t in Phylo.parse(self.runinfo['tnf_tree'], "newick").next().get_terminals()])
+            tree = Tree(self.runinfo['tnf_tree'])
+            contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
             contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
             contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['contigs_fasta']))
 
