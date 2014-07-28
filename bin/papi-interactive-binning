@@ -79,6 +79,7 @@ class RuninfoIO:
                                                run from another computer, please run 'papi-reset-output-dir'\
                                                script on RUNINFO.cPickle." % (args.runinfo)
 
+            self.check_names_consistency()
             self.convert_metadata_into_json()
             self.runinfo['self_path'] = args.runinfo
 
@@ -105,25 +106,7 @@ class RuninfoIO:
             PaPi.utils.is_file_fasta_formatted(self.runinfo['contigs_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cPickle')
-
-            tree = Tree(self.runinfo['tnf_tree'])
-            contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
-            contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
-            contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['contigs_fasta']))
-
-            try:
-                assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
-            except:
-                S = lambda x, y: "agrees" if x == y else "does not agree"
-                raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
-                                               metadata needs to match perfectly. It seems it is not the\
-                                               case for the input you provided (the metadata %s with the tree,\
-                                               the tree %s with the fasta, the fasta %s with the metadata;\
-                                               HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
-                                                          S(contigs_in_fasta, contigs_in_tree),
-                                                          S(contigs_in_metadata, contigs_in_fasta))
-
-            # convert metadata into json.
+            self.check_names_consistency()
             self.convert_metadata_into_json()
 
             PaPi.utils.gen_output_directory(self.runinfo['output_dir'])
@@ -134,6 +117,24 @@ class RuninfoIO:
             self.contigs[fasta.id] = fasta.seq
             self.contig_lengths[fasta.id] = len(fasta.seq)
 
+
+    def check_names_consistency(self):
+       tree = Tree(self.runinfo['tnf_tree'])
+       contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
+       contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
+       contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['contigs_fasta']))
+
+       try:
+           assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
+       except:
+           S = lambda x, y: "agrees" if x == y else "does not agree"
+           raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
+                                          metadata needs to match perfectly. It seems it is not the\
+                                          case for the input you provided (the metadata %s with the tree,\
+                                          the tree %s with the fasta, the fasta %s with the metadata;\
+                                          HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
+                                                     S(contigs_in_fasta, contigs_in_tree),
+                                                     S(contigs_in_metadata, contigs_in_fasta))
 
     def update_runinfo_on_disk(self):
         path = self.runinfo.pop('self_path')
