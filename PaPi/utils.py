@@ -17,9 +17,10 @@ import fcntl
 import string
 import struct
 import cPickle
-import hcluster
 import termios 
+import hcluster
 import textwrap
+import tempfile
 import itertools
 import multiprocessing
 
@@ -339,9 +340,18 @@ def get_pretty_name(key):
 
 
 def is_file_exists(file_path):
+    if not file_path:
+        raise ConfigError, "No input file is declared..."
     if not os.path.exists(file_path):
         raise ConfigError, "No such file: '%s' :/" % file_path
     return True
+
+
+def is_output_file_writable(file_path):
+    if not file_path:
+        raise ConfigError, "No output file is declared..."
+    if not os.access(os.path.dirname(ABS(file_path)), os.W_OK):
+        raise ConfigError, "You do not have permission to generate the output file '%s'" % file_path
 
 
 def is_file_tab_delimited(file_path):
@@ -358,6 +368,7 @@ def is_file_tab_delimited(file_path):
     f.close()
     return True
 
+
 def is_file_json_formatted(file_path):
     try:
         json.load(open(file_path))
@@ -366,6 +377,7 @@ def is_file_json_formatted(file_path):
                             file ('%s', cries the library)." % (file_path, e)
 
     return True
+
 
 def is_file_fasta_formatted(file_path):
     try:
@@ -428,6 +440,17 @@ def get_chunks(contig_length, desired_length):
     return chunks
 
 
+def get_temp_directory_path():
+    return tempfile.mkdtemp()
+
+
+def get_temp_file_path():
+    f = tempfile.NamedTemporaryFile(delete=False)
+    temp_file_name = f.name
+    f.close()
+    return temp_file_name
+
+
 def gen_output_directory(output_directory, progress=None):
     if not os.path.exists(output_directory):
         try:
@@ -444,6 +467,16 @@ def gen_output_directory(output_directory, progress=None):
 
 
 def check_project_name(project_name):
+    allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
+    if project_name:
+        if len([c for c in project_name if c not in allowed_chars]):
+            raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
+                                limit the characters that make up the project name to ASCII letters,\
+                                digits, '_' and '-' (if you had not declared a project name and PaPi made\
+                                up one for you, please specify with '-p' parameter specifically)." % project_name
+
+
+def check_contig_names(project_name):
     allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
     if project_name:
         if len([c for c in project_name if c not in allowed_chars]):
