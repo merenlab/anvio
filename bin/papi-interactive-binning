@@ -19,7 +19,6 @@ import base64
 import shutil
 import cPickle
 import argparse
-import tempfile
 import webbrowser
 
 from multiprocessing import Process 
@@ -143,10 +142,11 @@ class RuninfoIO:
 
     def convert_metadata_into_json(self):
         # convert metadata into json.
-        f = tempfile.NamedTemporaryFile(delete=False)
+        temp_file_path = PaPi.utils.get_temp_file_path()
+        f = open(temp_file_path, 'w')
         f.write(PaPi.utils.get_json_obj_from_TAB_delim_metadata(self.runinfo['metadata_txt']))
         f.close()
-        self.runinfo['metadata_json'] = f.name
+        self.runinfo['metadata_json'] = temp_file_path
 
 
     def end(self):
