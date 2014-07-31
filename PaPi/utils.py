@@ -22,6 +22,7 @@ import hcluster
 import textwrap
 import tempfile
 import itertools
+import subprocess
 import multiprocessing
 
 from ete2 import Tree
@@ -391,6 +392,33 @@ def is_file_fasta_formatted(file_path):
     return True
 
 
+def is_program_exists(program):
+    """adapted from http://stackoverflow.com/a/377028"""
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return True
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return True
+
+    raise ConfigError, "'%s' is not found" % program
+
+
+def run_command(cmdline):
+    try:
+        if subprocess.call(cmdline, shell = True) < 0:
+            raise ConfigError, "command was terminated by signal: %d" % (-retcode)
+    except OSError, e:
+        raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
+
+
 def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
@@ -403,6 +431,25 @@ def get_all_ids_from_fasta(input_file):
         ids.append(fasta.id) 
 
     return ids
+
+
+def concatenate_files(dest_file, file_list):
+    if not dest_file:
+        raise ConfigError, "Destination cannot be empty."
+    if not len(file_list):
+        raise ConfigError, "File list cannot be empty."
+    for f in file_list:
+        is_file_exists(f)
+    is_output_file_writable(dest_file)
+
+    dest_file_obj = open(dest_file, 'w')
+    for chunk_path in file_list:
+        for line in open(chunk_path):
+            dest_file_obj.write(line)
+
+    dest_file_obj.close()
+    return dest_file
+
 
 
 class ConfigError(Exception):
@@ -451,7 +498,15 @@ def get_temp_file_path():
     return temp_file_name
 
 
-def gen_output_directory(output_directory, progress=None):
+def gen_output_directory(output_directory, progress=None, delete_if_exits = False):
+    if os.path.exists(output_directory) and delete_if_exits:
+        try:
+            os.rmtree(output_directory)
+        except:
+            if progress:
+                progress.end()
+            raise ConfigError, "I was instructed to remove this directory, but I failed: '%s' :/" % output_directory
+
     if not os.path.exists(output_directory):
         try:
             os.makedirs(output_directory)
