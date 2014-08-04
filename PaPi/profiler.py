@@ -28,6 +28,16 @@ from PaPi.contig import Split
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
     def __init__(self, args = None):
+        self.args = None
+        self.input_file_path = None 
+        self.serialized_profile_path = None 
+        self.output_directory = None 
+        self.list_contigs_and_exit = None 
+        self.min_contig_length = 10000 
+        self.min_mean_coverage = 10
+        self.split_length = 20000
+        self.contig_names_of_interest = None
+
         if args:
             self.args = args
             self.input_file_path = args.input_file
@@ -44,24 +54,9 @@ class BAMProfiler:
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
                     raise utils.ConfigError, "Contigs file (%s) is missing..." % (args.contigs_of_interest)
- 
+
                 self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                                if c.strip() and not c.startswith('#')])
-            else:
-                self.contig_names_of_interest = None
-
-        else:
-            self.args = args
-            self.input_file_path = None 
-            self.serialized_profile_path = None 
-            self.output_directory = None 
-            self.list_contigs_and_exit = None 
-            self.min_contig_length = 10000 
-            self.min_mean_coverage = 10
-            # FIXME: Parameterize these two:
-            self.number_of_threads = 4 
-            self.no_trehading = False
-            self.split_length = 20000
 
         self.bam = None
         self.contigs = {}
@@ -72,6 +67,10 @@ class BAMProfiler:
 
     def _run(self):
         self.check_args()
+
+        self.set_project_name()
+        self.run.info('project_name', self.project_name)
+        self.run.info('cmd_line', utils.get_cmd_line())
 
         if self.input_file_path:
             self.init_profile_from_BAM()
@@ -102,9 +101,6 @@ class BAMProfiler:
 
 
     def init_serialized_profile(self):
-        self.set_project_name()
-        self.run.info('project_name', self.project_name)
-
         self.progress.new('Init')
         self.progress.update('Reading serialized profile')
         self.contigs = cPickle.load(open(self.serialized_profile_path))
@@ -112,6 +108,12 @@ class BAMProfiler:
 
         self.run.info('profile_loaded_from', self.serialized_profile_path)
         self.run.info('num_contigs', pp(len(self.contigs)))
+
+        # we learn split length from the structure itself (and here we poorly assume that
+        # all contigs have the same split length). so command line argument of split
+        # length does not mean anything when the profile is loaded from a serialized
+        # file.
+        self.split_length = self.contigs.values()[0].split_length
 
         if self.list_contigs_and_exit:
             print "\nContigs in the file:\n"
@@ -137,14 +139,10 @@ class BAMProfiler:
         for contig in self.contigs.values():
             if contig.length < self.min_contig_length:
                 contigs_to_discard.add(contig.name)
-
         if len(contigs_to_discard):
-            if len(contigs_to_discard) == len(self.contigs):
-                raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
-            else:
-                for contig in contigs_to_discard:
-                    self.contigs.pop(contig)
-                self.run.info('contigs_raw_longer_than_M', len(self.contig_names))
+            for contig in contigs_to_discard:
+                self.contigs.pop(contig)
+            self.run.info('contigs_raw_longer_than_M', len(self.contigs))
 
         self.check_contigs()
 
@@ -156,7 +154,6 @@ class BAMProfiler:
 
 
     def init_profile_from_BAM(self):
-        self.set_project_name()
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
@@ -165,6 +162,8 @@ class BAMProfiler:
 
         self.contig_names = self.bam.references
         self.contig_lenghts = self.bam.lengths
+
+        utils.check_contig_names(self.contig_names)
 
         try:
             self.num_reads_mapped = self.bam.mapped
@@ -178,7 +177,6 @@ class BAMProfiler:
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
-        self.run.info('project_name', self.project_name)
         self.run.info('output_dir', self.output_directory)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
@@ -195,6 +193,7 @@ class BAMProfiler:
             self.contig_names = [self.contig_names[i] for i in indexes]
             self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
+            self.check_contigs()
 
         contigs_longer_than_M = set()
         for i in range(0, len(self.contig_names)):
@@ -240,7 +239,6 @@ class BAMProfiler:
         # So we start with essential stats. In the section below, we will simply go through each contig (contig),
         # in the BAM file and populate the contigs dictionary for the first time. There are two major sections,
         # one for no_threading option, and the other with multiple threads.
-        
         for i in range(0, len(self.contig_names)):
         
             contig_name = self.contig_names[i]
@@ -248,7 +246,7 @@ class BAMProfiler:
 
             contig = Contig(contig_name)
             contig.length = self.contig_lenghts[i]
-
+            contig.split_length = self.split_length
 
             self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
                                                                       i + 1,
@@ -306,10 +304,13 @@ class BAMProfiler:
 
         if len(self.contigs) < 3:
             raise utils.ConfigError, "Less than 3 contigs left in your analysis. PaPi can't really do much with this :/ Bye."
-        
 
 
     def report(self):
+        self.run.info('split_length', self.split_length)
+        self.run.info('min_contig_length', self.min_contig_length)
+        self.run.info('min_mean_coverage', self.min_mean_coverage)
+
         # generate a sorted list of contigs based on length
         self.contig_names = [t[1] for t in sorted([(self.contigs[k].length, k)\
                                                 for k in self.contigs], reverse = True)]
@@ -366,14 +367,19 @@ class BAMProfiler:
 
         # contigs FASTA
         self.progress.new('Generating reports')
-        self.progress.update('Consensus FASTA file for contigs')
+        self.progress.update('Consensus FASTA files for contigs and splits')
         contigs_fasta = open(self.generate_output_destination('CONTIGS-CONSENSUS.fa'), 'w')
+        splits_fasta = open(self.generate_output_destination('SPLITS-CONSENSUS.fa'), 'w')
         for contig in self.contig_names:
+            contigs_fasta.write(">%s\n%s\n" % (self.contigs[contig].name,
+                                               self.contigs[contig].get_rep_seq()))
             for split in self.contigs[contig].splits:
-                contigs_fasta.write(">%s\n%s\n" % (split.name,
-                                                   split.auxiliary.rep_seq))
+                splits_fasta.write(">%s\n%s\n" % (split.name,
+                                                  split.auxiliary.rep_seq))
         contigs_fasta.close()
+        splits_fasta.close()
         self.progress.end()
+        self.run.info('splits_fasta', splits_fasta.name)
         self.run.info('contigs_fasta', contigs_fasta.name)
 
 
@@ -383,6 +389,10 @@ class BAMProfiler:
                                       to learn more about the command line parameters."
         if self.input_file_path and self.serialized_profile_path:
             raise utils.ConfigError, "You can't declare both an input file and a serialized profile."
+        if self.serialized_profile_path and ('-L' in sys.argv or '--split-length' in sys.argv):
+            raise utils.ConfigError, "You can't change split size when you use a serialized profile as an input.\
+                                      Unfortunately, the only way to change the split size is to run the profiler\
+                                      on the BAM file from scratch."
         if self.serialized_profile_path and (not self.output_directory):
             raise utils.ConfigError, "When loading serialized profiles, you need to declare an output directory."
         if self.input_file_path and not os.path.exists(self.input_file_path):
