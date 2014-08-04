@@ -106,9 +106,9 @@ class MultipleRuns:
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
  
         self.progress.new('Analyzing contigs for consensus')
-        contigs_fasta = self.store_contigs_consensus()
+        splits_fasta = self.store_contigs_consensus()
         self.progress.end()
-        self.run.info('contigs_fasta', contigs_fasta)
+        self.run.info('splits_fasta', splits_fasta)
  
         self.progress.new('Analyzing TNF of contigs')
         tnf_matrix = self.store_contigs_tnf()
@@ -196,7 +196,7 @@ class MultipleRuns:
             self.progress.update('%d of %d' % (i + 1, len(self.project_names)))
             project_name = self.project_names[i]
             runinfo = self.project_runinfos[project_name]
-            fasta = u.SequenceSource(runinfo['contigs_fasta'])
+            fasta = u.SequenceSource(runinfo['splits_fasta'])
             contigs = {}
             while fasta.next():
                 contigs[fasta.id] = fasta.seq

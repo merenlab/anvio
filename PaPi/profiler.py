@@ -25,6 +25,9 @@ from PaPi.contig import Contig
 from PaPi.contig import Split
 
 
+__version__ = 0.1
+
+
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
     def __init__(self, args = None):
@@ -69,6 +72,7 @@ class BAMProfiler:
         self.check_args()
 
         self.set_project_name()
+        self.run.info('profiler_version', __version__)
         self.run.info('project_name', self.project_name)
         self.run.info('cmd_line', utils.get_cmd_line())
 

@@ -25,6 +25,7 @@ from multiprocessing import Process
 from bottle import route, run, static_file, redirect, request, BaseRequest, response
 from ete2 import Tree
 
+import PaPi.profiler
 import PaPi.utils
 import PaPi.fastalib as u
 # get the absolute path for static directory under PaPi
@@ -70,6 +71,11 @@ class RuninfoIO:
 
             self.runinfo = cPickle.load(open(args.runinfo))
 
+            if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
+                raise PaPi.utils.ConfigError, "RUNINFO.cPickle seems to be generated from an older version of PaPi\
+                                               profiler that is not compatible with the current interactive interface\
+                                               anymore. You need to re-run PaPi profiler on these projects."
+
             if not self.runinfo.has_key('metadata_txt'):
                 raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cPickle." % (args.runinfo)
 
@@ -90,7 +96,7 @@ class RuninfoIO:
                                                more detailed information on them."
 
             self.runinfo['tnf_tree'] = PaPi.utils.ABS(args.tree)
-            self.runinfo['contigs_fasta'] = PaPi.utils.ABS(args.fasta_file)
+            self.runinfo['splits_fasta'] = PaPi.utils.ABS(args.fasta_file)
             self.runinfo['metadata_txt'] = PaPi.utils.ABS(args.metadata)
             self.runinfo['output_dir'] = PaPi.utils.ABS(args.output_dir)
 
@@ -102,7 +108,7 @@ class RuninfoIO:
                                                say 'contigs', which is not the case for your metadata file\
                                                ('%s'). Please make sure this is a properly formatted metadata\
                                                file." % (self.runinfo['metadata_txt'])
-            PaPi.utils.is_file_fasta_formatted(self.runinfo['contigs_fasta'])
+            PaPi.utils.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cPickle')
             self.check_names_consistency()
@@ -111,7 +117,7 @@ class RuninfoIO:
             PaPi.utils.gen_output_directory(self.runinfo['output_dir'])
 
 
-        fasta = u.SequenceSource(self.runinfo['contigs_fasta'])
+        fasta = u.SequenceSource(self.runinfo['splits_fasta'])
         while fasta.next():
             self.contigs[fasta.id] = fasta.seq
             self.contig_lengths[fasta.id] = len(fasta.seq)
@@ -121,7 +127,7 @@ class RuninfoIO:
        tree = Tree(self.runinfo['tnf_tree'])
        contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
-       contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['contigs_fasta']))
+       contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['splits_fasta']))
 
        try:
            assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
