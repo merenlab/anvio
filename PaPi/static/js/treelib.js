@@ -1882,12 +1882,17 @@ function draw_tree(drawing_type) {
         var prev_parent_items = new Array();
         var parent_count = 0;
 
+        odd_even_flag = -1
         while (q != null) {
             if (q.IsLeaf()) {
+                odd_even_flag = odd_even_flag * -1;
                 switch (drawing_type) {
                     case 'circle':
                     case 'circlephylogram':
-                        drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
+                    
+                        // draw guidelines for every other leaf.
+                        if (odd_even_flag > 0)
+                            drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
 
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
