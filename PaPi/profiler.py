@@ -193,7 +193,7 @@ class BAMProfiler:
             self.contig_names = [self.contig_names[i] for i in indexes]
             self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
-            self.check_contigs()
+
 
         contigs_longer_than_M = set()
         for i in range(0, len(self.contig_names)):
@@ -368,19 +368,14 @@ class BAMProfiler:
         # contigs FASTA
         self.progress.new('Generating reports')
         self.progress.update('Consensus FASTA files for contigs and splits')
-        contigs_fasta = open(self.generate_output_destination('CONTIGS-CONSENSUS.fa'), 'w')
         splits_fasta = open(self.generate_output_destination('SPLITS-CONSENSUS.fa'), 'w')
         for contig in self.contig_names:
-            contigs_fasta.write(">%s\n%s\n" % (self.contigs[contig].name,
-                                               self.contigs[contig].get_rep_seq()))
             for split in self.contigs[contig].splits:
                 splits_fasta.write(">%s\n%s\n" % (split.name,
                                                   split.auxiliary.rep_seq))
-        contigs_fasta.close()
         splits_fasta.close()
         self.progress.end()
         self.run.info('splits_fasta', splits_fasta.name)
-        self.run.info('contigs_fasta', contigs_fasta.name)
 
 
     def check_args(self):
