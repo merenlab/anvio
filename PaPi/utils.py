@@ -433,6 +433,16 @@ def get_all_ids_from_fasta(input_file):
     return ids
 
 
+def get_cmd_line():
+    c_argv = []
+    for i in sys.argv:
+        if ' ' in i:
+            c_argv.append('"%s"' % i)
+        else:
+            c_argv.append(i)
+    return ' '.join(c_argv)
+
+
 def concatenate_files(dest_file, file_list):
     if not dest_file:
         raise ConfigError, "Destination cannot be empty."
@@ -531,14 +541,20 @@ def check_project_name(project_name):
                                 up one for you, please specify with '-p' parameter specifically)." % project_name
 
 
-def check_contig_names(project_name):
+def check_contig_names(contig_names):
     allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
-    if project_name:
-        if len([c for c in project_name if c not in allowed_chars]):
-            raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
-                                limit the characters that make up the project name to ASCII letters,\
-                                digits, '_' and '-' (if you had not declared a project name and PaPi made\
-                                up one for you, please specify with '-p' parameter specifically)." % project_name
+    all_characters_in_contig_names = set(''.join(contig_names))
+    characters_PaPi_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
+    if len(characters_PaPi_doesnt_like):
+        raise ConfigError, "The name of at least one contig in your BAM file %s PaPi does not\
+                            like (%s). Please go back to your original files and make sure that\
+                            the characters in contig names are limited to to ASCII letters,\
+                            digits. Names can also contain underscore ('_'), dash ('-') and dot ('.')\
+                            characters. PaPi knows how much work this may require for you to go back and\
+                            re-generate your BAM files and is very sorry for asking you to do that, however,\
+                            it is critical for later steps in the analysis." \
+                                % ("contains multiple characters" if len(characters_PaPi_doesnt_like) > 1 else "contains a character",
+                                   ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
 
 
 def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean', clustering_method = 'complete'):
