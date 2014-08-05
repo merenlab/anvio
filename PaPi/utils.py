@@ -61,7 +61,7 @@ class KMers:
         self.kmers[k] = kmers
 
 
-    def get_kmer_frequency(self, sequence):
+    def get_kmer_frequency(self, sequence, dist_metric_safe = True):
         k = self.k
         sequence = sequence.upper()
 
@@ -85,7 +85,15 @@ class KMers:
                 frequencies[kmer] += 1
             else:
                 frequencies[rev_comp(kmer)] += 1
-           
+
+        if dist_metric_safe:
+            # we don't want all kmer freq values to be zero. so the distance
+            # metrics wouldn't go crazy. instead we fill it with 1. which
+            # doesn't affect relative distances.
+            if sum(frequencies.values()) == 0:
+                words = self.kmers[self.k]
+                frequencies = dict(zip(words, [1] * len(words)))
+
         return frequencies
 
 
