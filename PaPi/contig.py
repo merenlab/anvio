@@ -54,14 +54,14 @@ class Contig:
         progress.update('TNF')
         rep_seq = self.get_rep_seq()
 
-        if rep_seq.count('N') == len(rep_seq):
+        self.tnf = kmers.get_kmer_frequency(rep_seq)
+
+        if sum(self.tnf.values()) == 0:
             # we don't want all kmer freq values to be zero. so the distance
             # metrics wouldn't go crazy. instead we fill it with 1. which
             # doesn't affect relative distances.
             words = kmers.kmers[kmers.k]
             self.tnf = dict(zip(words, [1] * len(words)))
-        else:
-            self.tnf = kmers.get_kmer_frequency(rep_seq)
 
     def get_mean_self_coverage(self, progress):
         progress.update('Computing mean coverage for contig from splits')
