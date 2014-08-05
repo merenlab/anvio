@@ -39,6 +39,8 @@ class MultipleRuns:
         self.output_dir = args.output_dir
 
     def sanity_check(self):
+        if not self.output_dir:
+            raise PaPi.utils.ConfigError, "Sorry. You must declare an output directory path."
         if not len(self.project_runinfo_dict_paths) > 1:
             raise PaPi.utils.ConfigError, "You need to provide at least 2 RUNINFO.cPickle files for this program\
                                            to be useful."
