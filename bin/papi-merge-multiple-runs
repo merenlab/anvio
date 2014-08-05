@@ -22,6 +22,7 @@ import PaPi.utils
 import PaPi.contig
 import PaPi.fastalib as u
 from PaPi.utils import pretty_print as pp 
+from PaPi.profiler import __version__
 
 kmers = PaPi.utils.KMers()
 
@@ -102,6 +103,7 @@ class MultipleRuns:
         self.read_contigs()
         self.progress.end()
 
+        self.run.info('profiler_version', __version__)
         self.run.info('output_dir', self.output_dir)
         self.run.info('num_runs_processed', len(self.contigs))
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
