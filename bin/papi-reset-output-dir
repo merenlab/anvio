@@ -16,24 +16,6 @@ import cPickle
 import PaPi.utils
 
 
-def reset_output_dir(runinfo_dict_path, cwd=None):
-    try:
-        runinfo_dict = cPickle.load(open(runinfo_dict_path))
-    except:
-        raise PaPi.utils.ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
-
-    cwd = os.getcwd()
-
-    new_output_dir = os.path.dirname(os.path.join(cwd, runinfo_dict_path))
-    old_output_dir = runinfo_dict['output_dir']
-
-    for key in runinfo_dict.keys():
-        if isinstance(runinfo_dict[key], str):
-            runinfo_dict[key] = runinfo_dict[key].replace(old_output_dir, new_output_dir)
-
-    cPickle.dump(runinfo_dict, open(runinfo_dict_path, 'w'))
-
-
 if __name__ == '__main__':
     import argparse
 
@@ -44,7 +26,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        sys.exit(reset_output_dir(args.runinfo_dict_path))
+        sys.exit(PaPi.utils.reset_output_dir(args.runinfo_dict_path))
     except PaPi.utils.ConfigError, e:
         print e
         sys.exit(-1)
