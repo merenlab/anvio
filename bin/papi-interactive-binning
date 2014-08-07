@@ -80,9 +80,11 @@ class RuninfoIO:
                 raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cPickle." % (args.runinfo)
 
             if not os.path.exists(self.runinfo['metadata_txt']):
-                raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
-                                               run from another computer, please run 'papi-reset-output-dir'\
-                                               script on RUNINFO.cPickle." % (args.runinfo)
+                self.runinfo = PaPi.utils.reset_output_dir(args.runinfo)
+                if not os.path.exists(self.runinfo['metadata_txt']):
+                    raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
+                                                   run from another computer, please run 'papi-reset-output-dir'\
+                                                   script on RUNINFO.cPickle." % (args.runinfo)
 
             self.check_names_consistency()
             self.convert_metadata_into_json()
