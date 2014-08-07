@@ -33,6 +33,7 @@ import PaPi.fastalib as u
 
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
+levels_of_taxonomy = ["phylum", "class", "order", "family", "genus", "species"]
 
 # absolute path anonymous:
 ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
@@ -364,6 +365,7 @@ def is_output_file_writable(file_path):
 
 
 def is_file_tab_delimited(file_path):
+    is_file_exists(file_path)
     f = open(file_path)
     line = f.readline()
     if len(line.split('\t')) == 1:
@@ -426,6 +428,21 @@ def run_command(cmdline):
     except OSError, e:
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
+
+def store_dict_as_TAB_delimited_file(d, output_path, headers):
+    is_output_file_writable(output_path)
+    f = open(output_path, 'w')
+    f.write('%s\n' % '\t'.join(headers))
+    for k in d.keys():
+        line = [k]
+        for header in headers[1:]:
+            line.append(d[k][header])
+        f.write('%s\n' % '\t'.join(line))
+    return output_path
+
+
+def get_header_fields_of_TAB_delim_file(file_path):
+    return open(file_path).readline().strip('\n').split('\t')
 
 def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
@@ -563,6 +580,34 @@ def check_contig_names(contig_names):
                             it is critical for later steps in the analysis." \
                                 % ("contains multiple characters" if len(characters_PaPi_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
+
+
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
+    is_file_tab_delimited(file_path)
+
+    f = open(file_path)
+
+    header_fields = f.readline().strip('\n').split('\t')
+
+    if expected_fields:
+        for field in expected_fields:
+            if field not in header_fields:
+                raise ConfigError, "The file '%s' does not contain the right type of header. It was expected\
+                                    to have these: '%s', however it had these: '%s'" % (file_path,
+                                                                                        ', '.join(expected_fields),
+                                                                                        ', '.join(header_fields[1:]))
+
+    d = {}
+
+    for line in f.readlines():
+        line_fields = line.strip('\n').split('\t')
+
+        d[line_fields[0]] = {}
+        e = d[line_fields[0]]
+        for i in range(1, len(header_fields)):
+            e[header_fields[i]] = line_fields[i]
+
+    return d
 
 
 def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean', clustering_method = 'complete'):
