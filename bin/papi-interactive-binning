@@ -41,6 +41,12 @@ parser.add_argument('-m', '--metadata', metavar = 'TXT', default = None,
                     help = 'TAB-delimited metadata file')
 parser.add_argument('-t', '--tree', metavar = 'NEWICK', default = None,
                     help = 'Newick tree of contigs')
+parser.add_argument('-T', '--taxonomy', metavar = "FILE", default = None,
+                    help = "TAB-delimited taxonomy file that contains phylum, class, order, family\
+                            genus and species annotations of each contig. Contig names has to match\
+                            with the ones in other files, obviously")
+parser.add_argument('-l', '--taxonomic-level', metavar = 'NAME', default = 'phylum',
+                    help = 'The level of taxonomy to annotate the tree. The default is %(default)s.')
 parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
                     help = 'Output directory for output storage')
 parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type=int,
@@ -56,6 +62,8 @@ class RuninfoIO:
         self.runinfo = {}
         self.contigs = {}
         self.contig_lengths = {}
+        self.taxonomy = None
+        self.taxonomic_level = None
 
         self.cwd = os.getcwd()
 
@@ -86,8 +94,6 @@ class RuninfoIO:
                                                    run from another computer, please run 'papi-reset-output-dir'\
                                                    script on RUNINFO.cPickle." % (args.runinfo)
 
-            self.check_names_consistency()
-            self.convert_metadata_into_json()
             self.runinfo['self_path'] = args.runinfo
 
         else:
@@ -113,11 +119,29 @@ class RuninfoIO:
             PaPi.utils.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cPickle')
-            self.check_names_consistency()
-            self.convert_metadata_into_json()
 
             PaPi.utils.gen_output_directory(self.runinfo['output_dir'])
 
+
+        # take care of taxonomy if a file is provided. otherwise self.taxonomy remain None
+        if args.taxonomy:
+            if not args.taxonomic_level:
+                raise PaPi.utils.ConfigError, "When a taxonomy file is declared, a taxonomic level to visualize\
+                                               has to be defined."
+
+            self.taxonomic_level = args.taxonomic_level.lower()
+
+            if self.taxonomic_level not in PaPi.utils.levels_of_taxonomy:
+                raise PaPi.utils.ConfigError, "The taxonomic level '%s' is not a valid one. Taxonomic level has\
+                                               to match one of these: %s" % (args.taxonomic_level,
+                                                                             PaPi.utils.levels_of_taxonomy)
+
+            PaPi.utils.is_file_tab_delimited(args.taxonomy)
+            self.taxonomy = PaPi.utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = PaPi.utils.levels_of_taxonomy)
+
+
+        self.check_names_consistency()
+        self.convert_metadata_into_json()
 
         fasta = u.SequenceSource(self.runinfo['splits_fasta'])
         while fasta.next():
@@ -126,22 +150,31 @@ class RuninfoIO:
 
 
     def check_names_consistency(self):
-       tree = Tree(self.runinfo['tnf_tree'])
-       contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
-       contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
-       contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['splits_fasta']))
+        tree = Tree(self.runinfo['tnf_tree'])
+        contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
+        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
+        contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['splits_fasta']))
 
-       try:
-           assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
-       except:
-           S = lambda x, y: "agrees" if x == y else "does not agree"
-           raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
-                                          metadata needs to match perfectly. It seems it is not the\
-                                          case for the input you provided (the metadata %s with the tree,\
-                                          the tree %s with the fasta, the fasta %s with the metadata;\
-                                          HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
-                                                     S(contigs_in_fasta, contigs_in_tree),
-                                                     S(contigs_in_metadata, contigs_in_fasta))
+        try:
+            assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
+        except:
+            S = lambda x, y: "agrees" if x == y else "does not agree"
+            raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
+                                           metadata needs to match perfectly. It seems it is not the\
+                                           case for the input you provided (the metadata %s with the tree,\
+                                           the tree %s with the fasta, the fasta %s with the metadata;\
+                                           HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
+                                                      S(contigs_in_fasta, contigs_in_tree),
+                                                      S(contigs_in_metadata, contigs_in_fasta))
+
+        if self.taxonomy:
+            contigs_in_taxonomy = sorted(self.taxonomy.keys())
+            try:
+                assert(contigs_in_taxonomy == contigs_in_fasta)
+            except:
+                raise PaPi.utils.ConfigError, "Contig names in taxonomy do not match with contig names found\
+                                               in other files. Bad news :/"
+
 
     def update_runinfo_on_disk(self):
         path = self.runinfo.pop('self_path')
@@ -149,10 +182,25 @@ class RuninfoIO:
 
 
     def convert_metadata_into_json(self):
-        # convert metadata into json.
+        metadata_file_path = self.runinfo['metadata_txt']
+
+        if self.taxonomy:
+            metadata_headers = PaPi.utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
+            metadata_dict = PaPi.utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
+            for contig in self.taxonomy:
+                metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
+
+            new_metatada_file_path = PaPi.utils.get_temp_file_path()
+            headers = ['contigs', self.taxonomic_level] + metadata_headers[1:]
+            PaPi.utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
+            metadata_file_path = new_metatada_file_path
+
+
+        json_obj = PaPi.utils.get_json_obj_from_TAB_delim_metadata(metadata_file_path)
+
         temp_file_path = PaPi.utils.get_temp_file_path()
         f = open(temp_file_path, 'w')
-        f.write(PaPi.utils.get_json_obj_from_TAB_delim_metadata(self.runinfo['metadata_txt']))
+        f.write(json_obj)
         f.close()
         self.runinfo['metadata_json'] = temp_file_path
 
