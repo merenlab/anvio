@@ -625,3 +625,23 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
         root.write(format=1, outfile=output_file_name) 
 
     return root.write(format=1) 
+
+
+def reset_output_dir(runinfo_dict_path, cwd=None):
+    try:
+        runinfo_dict = cPickle.load(open(runinfo_dict_path))
+    except:
+        raise PaPi.utils.ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
+
+    cwd = os.getcwd()
+
+    new_output_dir = os.path.dirname(os.path.join(cwd, runinfo_dict_path))
+    old_output_dir = runinfo_dict['output_dir']
+
+    for key in runinfo_dict.keys():
+        if isinstance(runinfo_dict[key], str):
+            runinfo_dict[key] = runinfo_dict[key].replace(old_output_dir, new_output_dir)
+
+    cPickle.dump(runinfo_dict, open(runinfo_dict_path, 'w'))
+    return runinfo_dict
+
