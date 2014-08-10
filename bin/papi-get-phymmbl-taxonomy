@@ -41,8 +41,8 @@ except PaPi.utils.ConfigError, e:
     sys.exit()
 
 parser = argparse.ArgumentParser(description='Taxonomic analysis of contigs')
-parser.add_argument('runinfo_dict', metavar = 'PATH', default = None,
-                    help = 'Serialized RUNINFO dictionary of a PaPi run.')
+parser.add_argument('contigs', metavar = 'PATH', default = None,
+                    help = 'FASTA formatted contigs file.')
 parser.add_argument('-p', '--phymmbl-binary', metavar = 'PATH', default = None,
                     help = 'Phymmbl binary on your system.')
 
@@ -51,7 +51,7 @@ args = parser.parse_args()
 run = PaPi.utils.Run()
 progress = PaPi.utils.Progress()
 
-PaPi.utils.is_file_exists(args.runinfo_dict)
+PaPi.utils.is_file_exists(args.contigs)
 
 if not args.phymmbl_binary:
     sys.stderr.write("You need to specify the full-path for PhymmBL binary.\n")
@@ -59,57 +59,19 @@ if not args.phymmbl_binary:
 
 PaPi.utils.is_file_exists(args.phymmbl_binary)
 
-try:
-    runinfo = cPickle.load(open(args.runinfo_dict))
-except:
-    sys.stderr.write("%s does not seem to be a proper cPickle object.\n" % args.runinfo_dict)
-    sys.exit(-1) 
-
-
-profile_dict = runinfo['profile_dict']
-PaPi.utils.is_file_exists(profile_dict)
-
-try:
-    PaPi.utils.is_file_exists(profile_dict)
-except:
-    sys.stderr.write("PROFILE dictionary is not where RUNINFO dict thinks it is :/ ('%s')\n" % profile_dict)
-    sys.exit(-1) 
-
-tmp_dir = os.path.join(os.path.dirname(PaPi.utils.ABS(args.runinfo_dict)), 'tmp')
+tmp_dir = os.path.join(os.path.dirname(PaPi.utils.ABS(args.contigs)), 'tmp')
 PaPi.utils.gen_output_directory(tmp_dir, delete_if_exits = True)
 parts_dir = os.path.join(tmp_dir, 'parts')
 PaPi.utils.gen_output_directory(parts_dir)
 
-run.info('project_name', runinfo['project_name'])
-progress.new('Reading profile dict')
-progress.update('%s ...' % profile_dict)
-profile = cPickle.load(open(profile_dict))
-progress.end()
+run.info('contigs', args.contigs)
 
-num_contigs = len(profile)
-num_splits = sum([len(c.splits) for c in profile.values()])
-
-run.info('num_contigs', num_contigs)
-run.info('num_splits', num_splits)
-
-progress.new('Storing representative sqeuences')
-progress.update('...')
-rep_seqs_for_splits_path = os.path.join(tmp_dir, 'split_reps.fa')
-rep_seqs_for_splits = open(rep_seqs_for_splits_path, 'w')
-for contig in profile.values():
-    for split in contig.splits:
-        rep_seqs_for_splits.write('>%s\n%s\n' % (split.name, split.auxiliary.rep_seq))
-rep_seqs_for_splits.close()
-progress.end()
-
-run.info('rep_seqs_stored', rep_seqs_for_splits_path)
-
-sge.input_file_path = rep_seqs_for_splits_path
+sge.input_file_path = args.contigs 
 sge.tmp_dir = parts_dir
 sge.progress = progress
 sge.run = run
 sge.input_is_fasta = True
-sge.merged_results_file_path = os.path.join(os.path.dirname(PaPi.utils.ABS(args.runinfo_dict)), 'PHYMBLL-RAW-OUTPUT.txt')
+sge.merged_results_file_path = os.path.join(os.path.dirname(PaPi.utils.ABS(args.contigs)), 'PHYMBLL-RAW-OUTPUT.txt')
 sge.binary = args.phymmbl_binary
 sge.command = 'perl %(binary)s %(part)s'
 sge.wild_card_for_partial_results = "results.01.phymm*part-*.txt"
@@ -124,7 +86,7 @@ except PaPi.utils.ConfigError, e:
 merged_output = open(sge.merged_results_file_path)
 
 # taxonomy goes like this: [phylum, class, order, family, genus, species]
-taxonomy_output = open(os.path.join(os.path.dirname(PaPi.utils.ABS(args.runinfo_dict)), 'TAXONOMY.txt'), 'w')
+taxonomy_output = open(os.path.join(os.path.dirname(PaPi.utils.ABS(args.contigs)), 'TAXONOMY.txt'), 'w')
 
 taxonomy_output.write('splits\tphylum\tclass\torder\tfamily\tgenus\tspecies\n')
 for line in merged_output.readlines():
