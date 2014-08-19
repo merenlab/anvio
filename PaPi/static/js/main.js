@@ -289,9 +289,31 @@ $(document).ready(function() {
                     return true;
 
                 context_menu_target_id = e.target.id.replace('path_', '');
-                console.log(context_menu_target_id);
 
                 $('#control_contextmenu').show();
+
+                var group_id = $('input[type=radio]:checked').val();
+
+                if (group_id > 0)
+                {
+                    var pos = $.inArray(parseInt(context_menu_target_id), SELECTED[group_id]);
+
+                    if (pos == -1) {
+                        $('#control_contextmenu #select').show();
+                        $('#control_contextmenu #remove').hide();
+                    }
+                    else
+                    {
+                        $('#control_contextmenu #select').hide();
+                        $('#control_contextmenu #remove').show();                        
+                    }
+                }
+                else
+                {
+                    $('#control_contextmenu #select').hide();
+                    $('#control_contextmenu #remove').hide();
+                }
+
                 $('#control_contextmenu').offset({left:e.pageX-2,top:e.pageY-2});
                 return false;
             });
@@ -313,6 +335,15 @@ function menu_callback(action) {
     var contig_name = id_to_node_map[context_menu_target_id].label;
 
     switch (action) {
+
+        case 'select':
+            $('#line' + context_menu_target_id).trigger('click');
+            break;
+
+        case 'remove':
+            $('#line' + context_menu_target_id).trigger('contextmenu');
+            break;
+
         case 'content':
             $.ajax({
                 type: 'GET',
@@ -326,6 +357,7 @@ function menu_callback(action) {
                 }
             });
             break;
+
         case 'metadata':
             $("#contig_name_dialog").dialog("option", "title", contig_name);
             $('#contig_names').val(strip(metadata_title[contig_name].join('\n')));
