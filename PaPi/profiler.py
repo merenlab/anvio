@@ -120,10 +120,8 @@ class BAMProfiler:
         self.split_length = self.contigs.values()[0].split_length
 
         if self.list_contigs_and_exit:
-            print "\nContigs in the file:\n"
-            for contig in self.contigs:
-                print "\t- %s (%s)" % (contig, pp(int(self.contigs[contig].length)))
-            print
+            for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
+                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
             sys.exit()
 
         if self.contig_names_of_interest:
@@ -186,10 +184,8 @@ class BAMProfiler:
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
         if self.list_contigs_and_exit:
-            print "\nContigs in the file:\n"
-            for (contig, length) in zip(self.contig_names, self.contig_lenghts):
-                print "\t- %s (%s)" % (contig, pp(int(length)))
-            print
+            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
+                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
             sys.exit()
 
         if self.contig_names_of_interest:
