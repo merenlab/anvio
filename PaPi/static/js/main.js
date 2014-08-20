@@ -196,7 +196,7 @@ $(document).ready(function() {
 
                     $('#tbody_layers').append(stack_bar_row_str);
                 }
-                else if (!isNumber(metadata[1][i])) // categorical data
+                else if (metadata[1][i] === '' || !isNumber(metadata[1][i])) // categorical data
                 { 
                     categorical_data_ids.push(i);
                     categorical_data_colors[i] = new Array();
