@@ -289,6 +289,14 @@ def get_data():
 
 port = parser.parse_args().port_number
 
+port = PaPi.utils.get_available_port_num(start = port)
+
+if not port:
+    print 'Error: PaPi failed to find a port number that is available :('
+    sys.exit(-1)
+else:
+    print '(using port number %d)' % port
+
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
 webbrowser.open_new("http://127.0.0.1:%d" % port)
