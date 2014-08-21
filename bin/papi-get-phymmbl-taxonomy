@@ -97,4 +97,4 @@ for line in merged_output.readlines():
     taxonomy_output.write('%s\n' % '\t'.join([fields[0], fields[7], fields[6], fields[5], fields[4], fields[3], fields[1]]))
 taxonomy_output.close()
 
-#os.remove(rep_seqs_for_splits_path)
+shutil.rmtree(sge.tmp_dir)
