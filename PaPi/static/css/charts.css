@@ -1,0 +1,139 @@
+@import url('normalize.css');
+
+#chart-container {
+    width: 1200px; //this is being overwritten though. 
+    margin: 0 auto 20px auto;
+    background: rgba(255,255,255,0.5);
+    box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+    padding: 20px 30px;
+}
+
+#chart-container h2 {
+    color: #444;
+    margin: 0 0 10px;
+    font-weight: 300;
+    padding: 10px;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+    font-size: 24px;
+}
+
+svg {
+    font-family: 'Lato', Arial, serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+}
+
+text.country-title {
+    font-size: 20px;
+}
+
+g.context g.brush rect.background {
+    fill: rgba(0,0,0,.1);
+}
+
+g.context g.axis path {
+    stroke-opacity: 0;
+}
+
+g.context g.axis line {
+    stroke-opacity: .1;
+}
+
+.axis path, .axis line {
+    fill: none;
+    stroke: #aaa;
+    shape-rendering: crispEdges;
+}
+
+.brush .extent {
+    stroke: black;
+    fill-opacity: .125;
+    shape-rendering: crispEdges;
+}
+
+g.context rect.background{
+    fill: rgb(200,200,255);
+    visibility: visible !important;
+}
+
+
+
+/* General Demo Style */
+body{
+    font-family: 'Lato', Arial, serif;
+    font-weight: 300;
+    font-size: 14px;
+    color: #888;
+    -webkit-font-smoothing: antialiased;
+}
+a{
+    color: #555;
+    text-decoration: none;
+}
+.container{
+    width: 100%;
+    position: relative;
+}
+.clr{
+    clear: both;
+    padding: 0;
+    height: 0;
+    margin: 0;
+}
+.main{
+    width: 90%;
+    margin: 0 auto;
+    position: relative;
+}
+.container > header{
+    margin: 10px;
+    padding: 20px 10px 10px 10px;
+    position: relative;
+    display: block;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+    text-align: center;
+}
+.container > header h1{
+    font-size: 30px;
+    line-height: 32px;
+    margin: 0;
+    position: relative;
+    font-weight: 300;
+    color: #666;
+    text-shadow: 1px 1px 1px rgba(255,255,255,0.7);
+}
+.container > header p{
+    margin: 0;
+    padding: 15px 0 5px 0;
+    color: #888;
+    text-shadow: 1px 1px 1px rgba(255,255,255,0.7);
+}
+/* Header Style */
+.codrops-top{
+    line-height: 24px;
+    font-size: 11px;
+    background: #fff;
+    background: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    z-index: 9999;
+    position: relative;
+    font-family: Cambria, Georgia, serif;
+    box-shadow: 1px 0px 2px rgba(0,0,0,0.2);
+}
+.codrops-top a{
+    padding: 0px 10px;
+    letter-spacing: 1px;
+    color: #333;
+    display: inline-block;
+}
+.codrops-top a:hover{
+    background: rgba(255,255,255,0.6);
+}
+.codrops-top span.right{
+    float: right;
+}
+.codrops-top span.right a{
+    float: left;
+    display: block;
+}
