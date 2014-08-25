@@ -92,25 +92,25 @@ function createCharts(){
                 }));
         
     }
-    
-    /* Let's create the context brush that will 
-            let us zoom and pan the chart */
-    var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());    
+
+
+    /* Context down below */
+    var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
     
     var contextAxis = d3.svg.axis()
-                            .scale(contextXScale)
-                            .tickSize(contextHeight)
-                            .orient("bottom");
+                .scale(contextXScale)
+                .tickSize(contextHeight)
+                .orient("bottom");
 
     var contextArea = d3.svg.area()
-                            .interpolate("monotone")
-                            .x(function(d) { return contextXScale(d); })
-                            .y0(contextHeight)
-                            .y1(0);
+                .interpolate("monotone")
+                .x(function(d) { return contextXScale(d); })
+                .y0(contextHeight)
+                .y1(0);
 
     var brush = d3.svg.brush()
-                                        .x(contextXScale)
-                                        .on("brush", onBrush);
+                .x(contextXScale)
+                .on("brush", onBrush);
 
     var context = svg.append("g")
                 .attr("class","context")
@@ -137,6 +137,9 @@ function createCharts(){
         }
     }
 }
+
+
+var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
 function Chart(options){
     this.chartData = options.coverage;
@@ -187,11 +190,19 @@ function Chart(options){
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
+    /* get the color */
+    if(this.id + 1 > base_colors.length){
+        color = base_colors[this.id % base_colors.length];
+    } else {
+        color = base_colors[this.id];
+    }
+
     /* We've created everything, let's actually add it to the page */
     this.chartContainer.append("path")
                                             .data([this.chartData])
                                             .attr("class", "chart")
                                             .attr("clip-path", "url(#clip-" + this.id + ")")
+                                            .style("fill", color)
                                             .attr("d", this.area);
                                     
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
