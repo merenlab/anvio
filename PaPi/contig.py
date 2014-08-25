@@ -91,13 +91,12 @@ class Auxiliary:
 
             column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
 
-            column_profile[pileupcolumn.pos] = ColumnProfile(column,
-                                                             pileupcolumn.pos)
+            column_profile[pileupcolumn.pos] = ColumnProfile(column, pileupcolumn.pos)
 
             c = column_profile[pileupcolumn.pos]
             ratios.append((c.n2n1ratio, c.coverage), )
 
-        # take top 100 based on n2n1ratio, then take top 20 of those with highest coverage:
+        # take top 100 based on n2n1ratio, then take top 50 of those with highest coverage:
         variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:100]], reverse=True)[0:50]
         self.variability = sum([x[1] for x in variable_positions_with_high_cov])
 
@@ -155,11 +154,18 @@ class Coverage:
 
 
     def run(self, bam):
+        coverage_profile = {}
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
             if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
                 continue
 
-            self.c.append(pileupcolumn.n)
+            coverage_profile[pileupcolumn.pos] = pileupcolumn.n
+
+        for i in range(self.split.start, self.split.end):
+            if coverage_profile.has_key(i):
+                self.c.append(coverage_profile[i])
+            else:
+                self.c.append(0)
 
         if self.c:
             self.split.explicit_length = len(self.c) 
