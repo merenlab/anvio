@@ -20,7 +20,7 @@ class ColumnProfile:
         self.coverage = len(column)
         self.nucleotide_counts = {}
         self.consensus_nucleotide = None
-        self.n2n1ratio = 0.0
+        self.n2n1ratio = 0
         self.competing_nucleotides = ''
 
         nucleotides = list(set(column))

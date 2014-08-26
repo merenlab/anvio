@@ -357,7 +357,7 @@ class BAMProfiler:
                           F(split.coverage.mean),
                           F(split.coverage.std),
                           F(split.composition.GC_content),
-                          F(split.auxiliary.variability),
+                          F(split.auxiliary.variability_score),
                           contig] 
                 metadata_txt.write('%s\n' % '\t'.join(fields))
 

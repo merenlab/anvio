@@ -77,7 +77,9 @@ class Auxiliary:
     def __init__(self, split, bam):
         self.rep_seq = ''
         self.split = split
-        self.variability = 0.0
+        self.variability_score = 0.0
+        self.v = []
+        self.competing_nucleotides = {}
 
         self.run(bam)
 
@@ -98,13 +100,20 @@ class Auxiliary:
 
         # take top 100 based on n2n1ratio, then take top 50 of those with highest coverage:
         variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:100]], reverse=True)[0:50]
-        self.variability = sum([x[1] for x in variable_positions_with_high_cov])
+        self.variability_score = sum([x[1] for x in variable_positions_with_high_cov])
 
         for i in range(self.split.start, self.split.end):
             if column_profile.has_key(i):
                 self.rep_seq += column_profile[i].consensus_nucleotide
+                self.v.append(column_profile[i].n2n1ratio)
+                if column_profile[i].n2n1ratio > 0:
+                    # here populating the dict with i - self.split start, instead if i, because I want to
+                    # have a record of the relative position of the competing nucleotide withing the context
+                    # of the split. i itself holds the position for the entire contig
+                    self.competing_nucleotides[i - self.split.start] = column_profile[i].competing_nucleotides
             else:
                 self.rep_seq += 'N'
+                self.v.append(0)
 
 
 class Composition:
