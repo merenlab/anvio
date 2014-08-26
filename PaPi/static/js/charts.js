@@ -5,37 +5,31 @@ var layers;
 var coverage;
 
 function getUrlVars() {
-	var map = {};
-	var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-		map[key] = value;
-	});
-	return map;
+    var map = {};
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        map[key] = value;
+    });
+    return map;
 }
 
 function loadAll() {
     contig_id = getUrlVars()["contig"];
+    layers = getUrlVars()["layers"];
 
     document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed";
 
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/charts/' + contig_id + '?timestamp=' + new Date().getTime(),
- 
-        /* function prototype for interactive-binning::bottle
-
-           @route('/data/charts/<contig_name>')
-           def charts(contig_name):
-               print contig_name
-               data = {'layers': ['contig_1', 'contig_2', ..., 'contig_N'],
-                       'coverage': 
-                          [c_1, c_2, ..., c_n]}
-               return json.dumps(data) */
-
+        url: '/data/charts/' + contig_id + '/' + layers,
         success: function(data) {
-            d = JSON.parse(data);
-            layers = d.layers;
-            coverage = d.coverage;
+            contig_data = JSON.parse(data);
+            layers = contig_data.layers;
+            coverage = contig_data.coverage;
+
+            if(layers.length == 0){
+                console.log('Warning: no layers returned')
+            }
 
             createCharts();
         }

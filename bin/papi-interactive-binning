@@ -21,7 +21,8 @@ import argparse
 import webbrowser
 
 from multiprocessing import Process 
-from bottle import route, run, static_file, redirect, request, BaseRequest, response
+from bottle import route, static_file, redirect, request, BaseRequest, response
+from bottle import run as run_server
 from ete2 import Tree
 
 import PaPi.profiler
@@ -52,6 +53,11 @@ parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type
                     help = 'Port number to use for communication; the default\
                             (%(default)d) should be OK for almost everyone.')
 
+
+
+progress = PaPi.utils.Progress()
+run = PaPi.utils.Run()
+
 #######################################################################################################################
 # Input handler
 #######################################################################################################################
@@ -59,7 +65,8 @@ parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type
 class RuninfoIO:
     def __init__(self, args):
         self.runinfo = {}
-        self.contigs = {}
+        self.contig_rep_seqs = {}
+        self.contigs_summary = {}
         self.contig_lengths = {}
         self.taxonomy = None
         self.taxonomic_level = None
@@ -92,6 +99,14 @@ class RuninfoIO:
                     raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
                                                    run from another computer, please run 'papi-reset-output-dir'\
                                                    script on RUNINFO.cp" % (args.runinfo)
+
+            ###########################################################################################################
+            # fill in self.contigs_summary
+            ###########################################################################################################
+            progress.new('Reading summary into memory')
+            progress.update('...')
+            self.contigs_summary = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_dict'])
+            progress.end()
 
             self.runinfo['self_path'] = args.runinfo
 
@@ -144,7 +159,7 @@ class RuninfoIO:
 
         fasta = u.SequenceSource(self.runinfo['splits_fasta'])
         while fasta.next():
-            self.contigs[fasta.id] = fasta.seq
+            self.contig_rep_seqs[fasta.id] = fasta.seq
             self.contig_lengths[fasta.id] = len(fasta.seq)
 
 
@@ -244,15 +259,27 @@ def send_data(name):
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
 
-@route('/data/charts/<contig_name>')
-def charts(contig_name):
+@route('/data/charts/<contig_name>/<layers>')
+def charts(contig_name, layers):
+    layers = layers.split(',')
     data = {'layers': [],
-            'coverage': []}
+             'coverage': []}
+
+    if not d.contigs_summary.has_key(contig_name):
+        return data
+
+    contig = d.contigs_summary[contig_name]
+    for layer in layers:
+        if not layer in contig:
+            continue
+        data['layers'].append(layer)
+        data['coverage'].append(contig[layer]['coverage'])
+
     return json.dumps(data)
 
 @route('/data/contig/<contig_name>')
 def contig_info(contig_name):
-    return d.contigs[contig_name]
+    return d.contig_rep_seqs[contig_name]
 
 @route('/submit', method='POST')
 def get_data():
@@ -282,7 +309,7 @@ def get_data():
         output_path = os.path.join(d.runinfo['output_dir'], 'BINS', bin + '.fa')
         output = open(output_path, 'w')
         for contig in bins[bin]:
-            output.write('>%s\n%s\n' % (contig, d.contigs[contig]))
+            output.write('>%s\n%s\n' % (contig, d.contig_rep_seqs[contig]))
         output.close()
         d.runinfo['bins'][bin] = output_path
 
@@ -305,6 +332,6 @@ else:
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
 webbrowser.open_new("http://127.0.0.1:%d" % port)
-run(host='127.0.0.1', port=port, quiet=True)
+run_server(host='127.0.0.1', port=port, quiet=True)
 
 

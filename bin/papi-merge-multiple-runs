@@ -144,6 +144,11 @@ class MultipleRuns:
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
  
+        self.progress.new('Generating merged summary')
+        profile_summary = self.merge_summaries()
+        self.progress.end()
+        self.run.info('profile_summary_dict', profile_summary)
+
         self.progress.new('Analyzing contigs for consensus')
         splits_fasta = self.store_contigs_consensus()
         self.progress.end()
@@ -187,6 +192,23 @@ class MultipleRuns:
             self.run.info('metadata_txt', metadata_output_path)
             self.run.info('runinfo', runinfo_output_path)
             self.run.store_info_dict(runinfo_output_path)
+
+
+    def merge_summaries(self):
+        merged_summary = {}
+        merged_summary_file_path = os.path.join(self.output_dir, 'SUMMARY.cp')
+        for runinfo in self.project_runinfos.values():
+            self.progress.update('Reading summary into memory for %s' % runinfo['project_name'])
+            summary = PaPi.utils.read_serialized_object(runinfo['profile_summary_dict'])
+            for split in summary:
+                if not merged_summary.has_key(split):
+                    merged_summary[split] = {}
+                merged_summary[split][runinfo['project_name']] = summary[split][runinfo['project_name']]
+
+        self.progress.update('Reading summary into memory for %s' % runinfo['project_name'])
+        PaPi.utils.write_serialized_object(merged_summary, merged_summary_file_path)
+
+        return merged_summary_file_path
 
 
     def generate_tnf_tree(self):

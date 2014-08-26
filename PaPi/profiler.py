@@ -297,6 +297,23 @@ class BAMProfiler:
         self.run.info('profile_dict', output_file)
 
 
+    def store_summarized_profile(self):
+        summary = {}
+        output_file = self.generate_output_destination('SUMMARY.cp')
+        self.progress.new('Computing summary')
+        self.progress.update('...')
+        for contig in self.contigs:
+            for split in self.contigs[contig].splits:
+                summary[split.name] = {self.project_name: {'coverage': split.coverage.c,
+                                                           'variability': split.auxiliary.v,
+                                                           'competing_nucleotides': split.auxiliary.competing_nucleotides}}
+                
+        self.progress.update('Serializing summary ...')
+        utils.write_serialized_object(summary, output_file)
+        self.progress.end()
+        self.run.info('profile_summary_dict', output_file)
+
+
     def check_contigs(self):
         if not len(self.contigs):
             raise utils.ConfigError, "0 contigs to work with. Bye."
