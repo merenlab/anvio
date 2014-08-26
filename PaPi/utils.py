@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import json
+import gzip
 import fcntl
 import socket
 import string
@@ -291,7 +292,7 @@ class Run:
 
 
     def store_info_dict(self, destination):
-        cPickle.dump(self.info_dict, open(destination, 'w'))
+        write_serialized_object(self.info_dict, destination)
 
 
     def quit(self):
@@ -359,6 +360,23 @@ def get_available_port_num(start = 8080, look_upto_next_num_ports = 100):
             return p
 
     return None
+
+
+def write_serialized_object(obj, output_file_path):
+    is_output_file_writable(output_file_path)
+    with gzip.GzipFile(output_file_path, 'w') as output_file:
+        cPickle.dump(obj, output_file)
+
+
+def read_serialized_object(input_file_path):
+    is_file_exists(input_file_path)
+    with gzip.open(input_file_path, 'rb') as input_file:
+        data = input_file.read()
+
+    try:
+        return cPickle.loads(data)
+    except:
+        raise PaPi.utils.ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
 
 
 def is_port_in_use(port):
@@ -697,10 +715,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
 
 
 def reset_output_dir(runinfo_dict_path, cwd=None):
-    try:
-        runinfo_dict = cPickle.load(open(runinfo_dict_path))
-    except:
-        raise PaPi.utils.ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
+    runinfo_dict = read_serialized_object(runinfo_dict_path)
 
     cwd = os.getcwd()
 
@@ -711,6 +726,6 @@ def reset_output_dir(runinfo_dict_path, cwd=None):
         if isinstance(runinfo_dict[key], str):
             runinfo_dict[key] = runinfo_dict[key].replace(old_output_dir, new_output_dir)
 
-    cPickle.dump(runinfo_dict, open(runinfo_dict_path, 'w'))
+    write_serialized_object(runinfo_dict, runinfo_dict_path)
     return runinfo_dict
 

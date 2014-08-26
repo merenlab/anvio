@@ -16,7 +16,6 @@ import numpy
 import pysam
 import random
 import string
-import cPickle
 import operator
 import subprocess
 import PaPi.utils as utils
@@ -85,7 +84,7 @@ class BAMProfiler:
 
         self.report()
 
-        runinfo_serialized = self.generate_output_destination('RUNINFO.cPickle')
+        runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
         self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized)
         self.run.quit()
@@ -107,7 +106,7 @@ class BAMProfiler:
     def init_serialized_profile(self):
         self.progress.new('Init')
         self.progress.update('Reading serialized profile')
-        self.contigs = cPickle.load(open(self.serialized_profile_path))
+        self.contigs = utils.read_serialized_object(self.serialized_profile_path)
         self.progress.end()
 
         self.run.info('profile_loaded_from', self.serialized_profile_path)
@@ -290,10 +289,10 @@ class BAMProfiler:
 
 
     def store_profile(self):
-        output_file = self.generate_output_destination('PROFILE.cPickle')
+        output_file = self.generate_output_destination('PROFILE.cp')
         self.progress.new('Storing Profile')
         self.progress.update('Serializing information for %s contigs ...' % pp(len(self.contigs)))
-        cPickle.dump(self.contigs, open(output_file, 'w'))
+        utils.write_serialized_object(self.contigs, output_file)
         self.progress.end()
         self.run.info('profile_dict', output_file)
 
