@@ -245,6 +245,12 @@ def send_data(name):
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
 
+@route('/data/charts/<contig_name>')
+def charts(contig_name):
+    data = {'layers': [],
+            'coverage': []}
+    return json.dumps(data)
+
 @route('/data/contig/<contig_name>')
 def contig_info(contig_name):
     return d.contigs[contig_name]
