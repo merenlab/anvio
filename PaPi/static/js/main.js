@@ -39,6 +39,9 @@ var context_menu_target_id = 0;
 var metadata_title;
 var metadata_dict;
 
+var metadata_swap_log = new Array();
+var metadata_swap_log_reverse = new Array();
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -330,6 +333,31 @@ $(document).ready(function() {
 //---------------------------------------------------------
 //  ui callbacks
 //---------------------------------------------------------
+
+function saveCurrentState() {
+    var state = {};
+
+    state['group_counter'] = group_counter;
+    state['group_count'] = group_count;
+
+    state['settings_html'] = $('#treeControls').html();
+    state['groups_html'] = $('#groups').html();
+
+    state['SELECTED'] = SELECTED;
+
+    state['categorical_data_ids'] = categorical_data_ids;
+    state['categorical_data_colors'] = categorical_data_colors;
+
+    state['stack_bar_colors'] = stack_bar_colors;
+    state['stack_bar_ids'] = stack_bar_ids;
+
+    state['metadata_swap_log'] = metadata_swap_log;
+    state['metadata_swap_log_reverse'] = metadata_swap_log_reverse;
+
+    $.post("/save_state", {
+        state: JSON.stringify(state),
+    });
+}
 
 function menu_callback(action) {
     var contig_name = id_to_node_map[context_menu_target_id].label;

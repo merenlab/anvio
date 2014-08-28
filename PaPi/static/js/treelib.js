@@ -1539,6 +1539,9 @@ function reorderLayers() {
         reverse_order_map[index] = old_index;
     });
 
+    metadata_swap_log.push(order_map);
+    metadata_swap_log_reverse.push(reverse_order_map);
+
     // convert categorical data arrays
     var new_categorical_data_colors = new Array();
     for (var i=0; i < categorical_data_ids.length; i++)
