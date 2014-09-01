@@ -205,7 +205,7 @@ class MultipleRuns:
                     merged_summary[split] = {}
                 merged_summary[split][runinfo['project_name']] = summary[split][runinfo['project_name']]
 
-        self.progress.update('Reading summary into memory for %s' % runinfo['project_name'])
+        self.progress.update('Serializing merged summary ...')
         PaPi.utils.write_serialized_object(merged_summary, merged_summary_file_path)
 
         return merged_summary_file_path
