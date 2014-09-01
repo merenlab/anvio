@@ -3,6 +3,7 @@ var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight 
 
 var layers;
 var coverage;
+var variability;
 
 function getUrlVars() {
     var map = {};
@@ -11,6 +12,7 @@ function getUrlVars() {
     });
     return map;
 }
+
 
 function loadAll() {
     contig_id = getUrlVars()["contig"];
@@ -24,14 +26,18 @@ function loadAll() {
         url: '/data/charts/' + contig_id + '/' + layers,
         success: function(data) {
             contig_data = JSON.parse(data);
+
             layers = contig_data.layers;
             coverage = contig_data.coverage;
+            variability = contig_data.variability;
+            competing_nucleotides = contig_data.competing_nucleotides;
 
             if(layers.length == 0){
                 console.log('Warning: no layers returned')
             }
 
             createCharts();
+
         }
     });
 }
@@ -41,8 +47,8 @@ function createCharts(){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
 
-    var margin = {top: 20, right: 10, bottom: 150, left: 50};
-    var width = VIEWER_WIDTH * .85;
+    var margin = {top: 20, right: 50, bottom: 150, left: 50};
+    var width = VIEWER_WIDTH * .80;
     var height = (150 * (layers.length + 1)) - margin.top - margin.bottom;
     var contextHeight = 50;
     var contextWidth = width;
@@ -51,10 +57,11 @@ function createCharts(){
             .attr("width", width + margin.left + margin.right)
             .attr("height", (height + margin.top + margin.bottom));
 
-    $('#chart-container').css("width", (width + 100) + "px");
+    $('#chart-container').css("width", (width + 150) + "px");
     
     var charts = [];
-    var maxDataPoint = 0;
+    var maxCoverage = 0;
+    var maxVariability = 0;
     
     var layersCount = layers.length;
     var chartHeight = height * (1 / layersCount);
@@ -64,22 +71,37 @@ function createCharts(){
             if (d.hasOwnProperty(prop)) {
                 d[prop] = parseFloat(d[prop]);
                 
-                if (d[prop] > maxDataPoint) {
-                    maxDataPoint = d[prop];
+                if (d[prop] > maxCoverage) {
+                    maxCoverage = d[prop];
                 }
             }
         }
-        
     });
 
+    variability.forEach(function(d) {
+        for (var prop in d) {
+            if (d.hasOwnProperty(prop)) {
+                d[prop] = parseFloat(d[prop]);
+                
+                if (d[prop] > maxVariability) {
+                    maxVariability = d[prop];
+                }
+            }
+        }
+    });
+
+    
     for(var i = 0; i < layersCount; i++){
         charts.push(new Chart({
                         name: layers[i],
                         coverage: coverage[i],
+                        variability: variability[i],
+                        competing_nucleotides: competing_nucleotides[i],
                         id: i,
                         width: width,
                         height: height * (1 / layersCount),
-                        maxDataPoint: maxDataPoint,
+                        maxCoverage: maxCoverage,
+                        maxVariability: maxVariability,
                         svg: svg,
                         margin: margin,
                         showBottomAxis: (i == layers.length - 1)
@@ -136,10 +158,13 @@ function createCharts(){
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
 function Chart(options){
-    this.chartData = options.coverage;
+    this.coverage = options.coverage;
+    this.variability = options.variability;
+    this.competing_nucleotides = options.competing_nucleotides;
     this.width = options.width;
     this.height = options.height;
-    this.maxDataPoint = options.maxDataPoint;
+    this.maxCoverage = options.maxCoverage;
+    this.maxVariability = options.maxVariability;
     this.svg = options.svg;
     this.id = options.id;
     this.name = options.name;
@@ -150,37 +175,40 @@ function Chart(options){
     
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
-                            .domain([0, this.chartData.length]);
+                            .domain([0, this.coverage.length]);
     
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
-                            .domain([0,this.maxDataPoint]);
+                            .domain([0,this.maxCoverage]);
+
+    this.yScaleLine = d3.scale.linear()
+                            .range([this.height, 0])
+                            .domain([0, this.maxVariability]);
+    
+    
     var xS = this.xScale;
     var yS = this.yScale;
+    var ySL = this.yScaleLine;
     
-    /* 
-        This is what creates the chart.
-        There are a number of interpolation options. 
-        'basis' smooths it the most, however, when working with a lot of data, this will slow it down 
-    */
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(i); })
                             .y0(this.height)
                             .y1(function(d) { return yS(d); });
-    /*
-        This isn't required - it simply creates a mask. If this wasn't here,
-        when we zoom/panned, we'd see the chart go off to the left under the y-axis 
-    */
-    this.svg.append("defs").append("clipPath")
-                                    .attr("id", "clip-" + this.id)
-                                    .append("rect")
-                                    .attr("width", this.width)
-                                    .attr("height", this.height);
+
+    this.line = d3.svg.line()
+    		.x(function(d, i) { return xS(i); })
+    		.y(function(d, i) { return ySL(d); })
+            .interpolate('step-before');
+
     /*
         Assign it a class so we can assign a fill color
         And position it on the page
     */
     this.chartContainer = this.svg.append("g")
+                        .attr('class',this.name.toLowerCase())
+                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.lineContainer = this.svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -191,14 +219,21 @@ function Chart(options){
         color = base_colors[this.id];
     }
 
-    /* We've created everything, let's actually add it to the page */
+    /* Add both into the page */
     this.chartContainer.append("path")
-                                            .data([this.chartData])
-                                            .attr("class", "chart")
-                                            .attr("clip-path", "url(#clip-" + this.id + ")")
-                                            .style("fill", color)
-                                            .attr("d", this.area);
+                              .data([this.coverage])
+                              .attr("class", "chart")
+                              .style("fill", color)
+                              .attr("d", this.area);
                                     
+    this.lineContainer.append("path")
+                              .data([this.variability])
+                              .attr("class", "line")
+                              .style("stroke", '#000000')
+                              .style("stroke-width", "1")
+                              .attr("d", this.line);
+
+    
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
 
     if(this.id == 0){
@@ -210,22 +245,29 @@ function Chart(options){
     
         
     this.yAxis = d3.svg.axis().scale(this.yScale).orient("left").ticks(5);
+    this.yAxisLine = d3.svg.axis().scale(this.yScaleLine).orient("right").ticks(5);
         
     this.chartContainer.append("g")
-                                            .attr("class", "y axis")
-                                            .attr("transform", "translate(-15,0)")
-                                            .call(this.yAxis);
-                                            
+                   .attr("class", "y axis")
+                   .attr("transform", "translate(-15,0)")
+                   .call(this.yAxis);
+
+    this.lineContainer.append("g")
+                   .attr("class", "y axis")
+                   .attr("transform", "translate(" + (this.width + 15) + ",0)")
+                   .call(this.yAxisLine);
+
     this.chartContainer.append("text")
-                                            .attr("class","country-title")
-                                            .attr("transform", "translate(0,20)")
-                                            .text(this.name);
+                   .attr("class","country-title")
+                   .attr("transform", "translate(0,20)")
+                   .text(this.name);
     
 }
     
 Chart.prototype.showOnly = function(b){
         this.xScale.domain(b);
-        this.chartContainer.select("path").data([this.chartData]).attr("d", this.area);
+        this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
+        this.lineContainer.select("path").data([this.variability]).attr("d", this.line);
         this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
 
