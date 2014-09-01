@@ -263,7 +263,9 @@ def send_data(name):
 def charts(contig_name, layers):
     layers = layers.split(',')
     data = {'layers': [],
-             'coverage': []}
+             'coverage': [],
+             'variability': [],
+             'competing_nucleotides': []}
 
     if not d.contigs_summary.has_key(contig_name):
         return data
@@ -274,6 +276,8 @@ def charts(contig_name, layers):
             continue
         data['layers'].append(layer)
         data['coverage'].append(contig[layer]['coverage'])
+        data['variability'].append(contig[layer]['variability'])
+        data['competing_nucleotides'].append(contig[layer]['competing_nucleotides'])
 
     return json.dumps(data)
 
