@@ -79,8 +79,10 @@ class BAMProfiler:
             self.init_profile_from_BAM()
             self.profile()
             self.store_profile()
+            self.store_summarized_profile()
         else:
             self.init_serialized_profile()
+            self.store_summarized_profile()
 
         self.report()
 
