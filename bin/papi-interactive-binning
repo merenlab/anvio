@@ -19,8 +19,9 @@ import base64
 import shutil
 import argparse
 import webbrowser
+import datetime
 
-from multiprocessing import Process 
+from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
 from bottle import run as run_server
 from ete2 import Tree
@@ -284,6 +285,17 @@ def charts(contig_name, layers):
 @route('/data/contig/<contig_name>')
 def contig_info(contig_name):
     return d.contig_rep_seqs[contig_name]
+
+@route('/save_state', method='POST')
+def save_state():
+    state = request.forms.get('state')
+
+    now = datetime.datetime.now()
+    state_output_path = os.path.join(d.runinfo['output_dir'], now.strftime("state-%Y-%m-%d-%H-%M-%S.json"))
+
+    state_output = open(state_output_path, 'w')
+    state_output.write(state)
+    state_output.close()
 
 @route('/submit', method='POST')
 def get_data():
