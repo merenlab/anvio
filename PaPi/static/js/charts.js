@@ -196,9 +196,9 @@ function Chart(options){
                             .y1(function(d) { return yS(d); });
 
     this.line = d3.svg.line()
-    		.x(function(d, i) { return xS(i); })
-    		.y(function(d, i) { return ySL(d); })
-            .interpolate('step-before');
+                            .x(function(d, i) { return xS(i); })
+                            .y(function(d, i) { return ySL(d); })
+                            .interpolate('step-before');
 
     /*
         Assign it a class so we can assign a fill color
@@ -209,6 +209,10 @@ function Chart(options){
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.lineContainer = this.svg.append("g")
+                        .attr('class',this.name.toLowerCase())
+                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.textContainer = this.svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -232,6 +236,20 @@ function Chart(options){
                               .style("stroke", '#000000')
                               .style("stroke-width", "1")
                               .attr("d", this.line);
+
+    this.textContainer.selectAll("text")
+                            .data(d3.entries(this.competing_nucleotides))
+                            .enter()
+                            .append("text")
+                            .attr("x", function (d) { return xS(d.key); })
+                            .attr("y", function (d) { return 0; })
+                            .attr("writing-mode", "tb")
+                            .attr("glyph-orientation-vertical", "0")
+                            .attr("fill", "red")
+                            .text(function (d) {
+                                return d.value;
+                            });
+
 
     
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
@@ -265,9 +283,10 @@ function Chart(options){
 }
     
 Chart.prototype.showOnly = function(b){
-        this.xScale.domain(b);
+        this.xScale.domain(b); var xS = this.xScale;
         this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
         this.lineContainer.select("path").data([this.variability]).attr("d", this.line);
+        this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
         this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
 
