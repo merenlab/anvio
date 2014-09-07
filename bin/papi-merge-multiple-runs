@@ -56,6 +56,7 @@ class MultipleRuns:
                 project_name, runinfo = self.read_runinfo_dict(p)
             except:
                 improper.append(p)
+                continue
 
             # if things are not where they should be, we attempt to reset the directory paths.
             if not os.path.exists(runinfo['metadata_txt']):
