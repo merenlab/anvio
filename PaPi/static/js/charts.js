@@ -157,6 +157,21 @@ function createCharts(){
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
+function get_comp_nt_color(nts){
+    if(nts == "CT" || nts == "TC")
+        return "red";
+    if(nts == "GA" || nts == "AG")
+        return "green";
+    if(nts == "AT" || nts == "TA")
+        return "blue";
+    if(nts == "CA" || nts == "AC")
+        return "purple";
+    if(nts == "GT" || nts == "TG")
+        return "orange";
+    else
+        return "black";
+}
+
 function Chart(options){
     this.coverage = options.coverage;
     this.variability = options.variability;
@@ -244,8 +259,9 @@ function Chart(options){
                             .attr("x", function (d) { return xS(d.key); })
                             .attr("y", function (d) { return 0; })
                             .attr("writing-mode", "tb")
+                            .attr("font-size", "7px")
                             .attr("glyph-orientation-vertical", "0")
-                            .attr("fill", "red")
+                            .attr("fill", function (d){return get_comp_nt_color(d.value);})
                             .text(function (d) {
                                 return d.value;
                             });
