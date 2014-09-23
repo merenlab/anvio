@@ -723,8 +723,8 @@ def reset_output_dir(runinfo_dict_path, cwd=None):
     old_output_dir = runinfo_dict['output_dir']
 
     for key in runinfo_dict.keys():
-        if isinstance(runinfo_dict[key], str):
-            runinfo_dict[key] = runinfo_dict[key].replace(old_output_dir, new_output_dir)
+        if isinstance(runinfo_dict[key], str) and runinfo_dict[key].startswith(old_output_dir):
+            runinfo_dict[key] = os.path.join(new_output_dir, os.path.basename(runinfo_dict[key]))
 
     write_serialized_object(runinfo_dict, runinfo_dict_path)
     return runinfo_dict
