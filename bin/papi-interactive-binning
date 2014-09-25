@@ -53,6 +53,8 @@ parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
 parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type=int,
                     help = 'Port number to use for communication; the default\
                             (%(default)d) should be OK for almost everyone.')
+parser.add_argument('-s', '--state', metavar = "FILE", default = None,
+                    help = "State file for loading previous session.")
 
 
 
@@ -73,6 +75,8 @@ class RuninfoIO:
         self.taxonomic_level = None
 
         self.cwd = os.getcwd()
+
+        self.state = args.state
 
         if args.runinfo:
             # runinfo dict provided: we don't want anything else
@@ -257,6 +261,10 @@ def send_data(name):
         return static_file(d.runinfo['tnf_tree'], root ='/')
     elif name == "meta":
         return static_file(d.runinfo['metadata_json'], root='/')
+    elif name == "state":
+        if d.state:
+            return static_file(PaPi.utils.ABS(d.state), root='/')
+        return "{}"
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
 

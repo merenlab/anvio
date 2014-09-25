@@ -111,32 +111,24 @@ $(document).ready(function() {
     $.ajax({
         type: 'GET',
         cache: false,
+        url: '/data/state?timestamp=' + new Date().getTime(),
+        success: function(state) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
         url: '/data/meta?timestamp=' + new Date().getTime(),
         success: function(data) {
+            state = eval(state);
             metadata = eval(data);
 
             parameter_count = metadata[0].length;
 
-            categorical_data_ids = [];
-            separated_data_ids = [];
-
-            for (var i = 1; i < parameter_count; i++) {
-                if (metadata[0][i] == '__parent__') // parent
+            // remove all single parents from metadata
+            for (var i = 1; i < parameter_count; i++) 
+            {
+                if (metadata[0][i] == '__parent__') 
                 {
                     has_parent_layer = true;
-
-                    var parent_row_str = '<tr style="display:none">' +
-                        '<td></td>' +
-                        '<td></td>' +
-                        '<td></td>' +
-                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></td>' +
-                        '</tr>';
-
-                    parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
-
-                    $('#tbody_layers').prepend(parent_row_str);
-
-                    // remove all single parents from metadata
 
                     var parent_count_dict = {};
                     for (var j=1; j < metadata.length; j++)
@@ -167,78 +159,152 @@ $(document).ready(function() {
                             }
                         }
                     });
-
-                    // all clear
                 }
-                else if (metadata[1][i].indexOf(';') > -1) // stack data
-                {
-                    stack_bar_ids.push(i);
-                    stack_bar_colors[i] = new Array();
+            }
+            // all clear
 
-                    for (var j=0; j < metadata[1][i].split(";").length; j++)
+            if (jQuery.isEmptyObject(state)) {
+                // state is empty, build ui using metadata
+
+                categorical_data_ids = [];
+                separated_data_ids = [];
+
+                for (var i = 1; i < parameter_count; i++) {
+                    if (metadata[0][i] == '__parent__') // parent
                     {
-                        stack_bar_colors[i].push(randomColor());
+                        var parent_row_str = '<tr style="display: none">' +
+                            '<td></td>' +
+                            '<td></td>' +
+                            '<td></td>' +
+                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></input></td>' +
+                            '</tr>';
+
+                        parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                        $('#tbody_layers').prepend(parent_row_str);
                     }
+                    else if (metadata[1][i].indexOf(';') > -1) // stack data
+                    {
+                        stack_bar_ids.push(i);
+                        stack_bar_colors[i] = new Array();
 
-                    var stack_bar_row_str = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
-                        '<td>' +
-                        '    <select id="normalization{id}">' +
-                        '        <option value="none">none</option>' +
-                        '        <option value="sqrt">Square root</option>' +
-                        '        <option value="log">Logarithm</option>' +
-                        '    </select>' +
-                        '</td>' +
-                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="50"></td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '</tr>';
+                        for (var j=0; j < metadata[1][i].split(";").length; j++)
+                        {
+                            stack_bar_colors[i].push(randomColor());
+                        }
 
-                    stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
+                        var stack_bar_row_str = '<tr>' +
+                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td>' +
+                            '    <select id="normalization{id}">' +
+                            '        <option value="none">none</option>' +
+                            '        <option value="sqrt">Square root</option>' +
+                            '        <option value="log">Logarithm</option>' +
+                            '    </select>' +
+                            '</td>' +
+                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="50"></input></td>' +
+                            '<td>n/a</td>' +
+                            '<td>n/a</td>' +
+                            '</tr>';
 
-                    $('#tbody_layers').append(stack_bar_row_str);
+                        stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                        $('#tbody_layers').append(stack_bar_row_str);
+                    }
+                    else if (metadata[1][i] === '' || !isNumber(metadata[1][i])) // categorical data
+                    { 
+                        categorical_data_ids.push(i);
+                        categorical_data_colors[i] = new Array();
+
+                        var categorical_data_row_str = '<tr>' +
+                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td>n/a</td>' +
+                            '<td>n/a</td>' +
+                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></input></td>' +
+                            '<td>n/a</td>' +
+                            '<td>n/a</td>' +
+                            '</tr>';
+
+                        categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                        $('#tbody_layers').append(categorical_data_row_str);
+                    } 
+                    else // numerical data
+                    { 
+                        var numerical_data_row_str = '<tr>' +
+                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td><div id="picker{id}" class="colorpicker"></td>' +
+                            '<td>' +
+                            '    <select id="normalization{id}" onChange="clearMinMax(this)">' +
+                            '        <option value="none">none</option>' +
+                            '        <option value="sqrt">Square root</option>' +
+                            '        <option value="log">Logarithm</option>' +
+                            '    </select>' +
+                            '</td>' +
+                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></input></td>' +
+                            '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></input></td>' +
+                            '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></input></td>' +
+                            '</tr>';
+
+                        numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
+
+                        $('#tbody_layers').append(numerical_data_row_str);
+                    }
                 }
-                else if (metadata[1][i] === '' || !isNumber(metadata[1][i])) // categorical data
-                { 
-                    categorical_data_ids.push(i);
-                    categorical_data_colors[i] = new Array();
 
-                    var categorical_data_row_str = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '</tr>';
+                $('.colorpicker').each(function(index, element) {
+                    var color = randomColor();
 
-                    categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
+                    $(element).css('background-color', color);
+                    $(element).attr('color', color);
+                });
+            } else {
+                // load state
 
-                    $('#tbody_layers').append(categorical_data_row_str);
-                } 
-                else // numerical data
-                { 
-                    var numerical_data_row_str = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
-                        '<td><div id="picker{id}" class="colorpicker"></td>' +
-                        '<td>' +
-                        '    <select id="normalization{id}" onChange="clearMinMax(this)">' +
-                        '        <option value="none">none</option>' +
-                        '        <option value="sqrt">Square root</option>' +
-                        '        <option value="log">Logarithm</option>' +
-                        '    </select>' +
-                        '</td>' +
-                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></td>' +
-                        '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></td>' +
-                        '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></td>' +
-                        '</tr>';
+                group_counter = state['group_counter'];
+                group_count = state['group_count'];
 
-                    numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
+                $('#treeControls').html(state['settings_html']);
+                $('#groups').html(state['groups_html']);
 
-                    $('#tbody_layers').append(numerical_data_row_str);
+                SELECTED = state['SELECTED'];
+
+                categorical_data_ids = state['categorical_data_ids'];
+                categorical_data_colors = state['categorical_data_colors'];
+
+                stack_bar_colors = state['stack_bar_colors'];
+                stack_bar_ids = state['stack_bar_ids'];
+
+                metadata_swap_log = state['metadata_swap_log'];
+                metadata_swap_log_reverse = state['metadata_swap_log_reverse'];
+
+                var positions = {};
+                for (var i=1; i < parameter_count; i++)
+                    positions[i] = i;
+
+                for (var i=0; i < state['metadata_swap_log_reverse'].length; i++)
+                {
+                    var new_positions = {};
+                    for (var j=1; j < parameter_count; j++)
+                    {
+                        new_positions[j] = positions[state['metadata_swap_log_reverse'][i][j]];
+                    }
+                    positions = new_positions;
+                }
+
+                for (var i=0; i < metadata.length; i++)
+                {
+                    var new_line = new Array();
+                    new_line.push(metadata[i][0]);
+
+                    for (var pindex = 1; pindex < parameter_count; pindex++)
+                    {
+                        new_line.push(metadata[i][positions[pindex]]);    
+                    }
+                    metadata[i] = new_line.splice(0);
                 }
             }
 
@@ -263,13 +329,6 @@ $(document).ready(function() {
                 my: "left top",
                 at: "left bottom",
                 of: "#treeControls"
-            });
-
-            $('.colorpicker').each(function(index, element) {
-                var color = randomColor();
-
-                $(element).css('background-color', color);
-                $(element).attr('color', color);
             });
 
             $('.colorpicker').colpick({
@@ -324,8 +383,8 @@ $(document).ready(function() {
             $('body').bind('click', function() {
                 $('#control_contextmenu').hide();
             });
-        }
-    });
+    }}); // meta
+    }}); // state
 });
 
 
@@ -339,6 +398,11 @@ function saveCurrentState() {
 
     state['group_counter'] = group_counter;
     state['group_count'] = group_count;
+
+    // update all attr='value' using .val() 
+    $('#treeControls input').each(function(){
+         $(this).attr('value',$(this).val());
+    });
 
     state['settings_html'] = $('#treeControls').html();
     state['groups_html'] = $('#groups').html();
