@@ -14,7 +14,7 @@ setup(
     packages = find_packages(),
     scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
 
-    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2=>2.2'],
+    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0'],
 
 
     author = "A. Murat Eren",
