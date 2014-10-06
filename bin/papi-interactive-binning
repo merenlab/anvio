@@ -355,11 +355,11 @@ else:
 
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
-webbrowser.open_new("http://127.0.0.1:%d" % port)
 
 try:
     server_process = Process(target=run_server, kwargs={'host': '127.0.0.1', 'port': port, 'quiet': True})
     server_process.start()
+    webbrowser.open_new("http://127.0.0.1:%d" % port)
     server_process.join()
 except KeyboardInterrupt:
     server_process.terminate()
