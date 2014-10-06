@@ -1,3 +1,6 @@
 bam
 .*
 *.pyc
+/build/
+/dist/
+/*.egg-info/
