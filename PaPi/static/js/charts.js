@@ -16,14 +16,13 @@ function getUrlVars() {
 
 function loadAll() {
     contig_id = getUrlVars()["contig"];
-    layers = getUrlVars()["layers"];
 
     document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed";
 
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/charts/' + contig_id + '/' + layers,
+        url: '/data/charts/' + contig_id,
         success: function(data) {
             contig_data = JSON.parse(data);
 
@@ -187,6 +186,7 @@ function Chart(options){
     this.showBottomAxis = options.showBottomAxis;
     
     var localName = this.name;
+    var num_data_points = this.variability.length;
     
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
@@ -212,7 +212,7 @@ function Chart(options){
 
     this.line = d3.svg.line()
                             .x(function(d, i) { return xS(i); })
-                            .y(function(d, i) { return ySL(d); })
+                            .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
     /*
