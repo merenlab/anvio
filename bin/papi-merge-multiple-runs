@@ -184,7 +184,10 @@ class MultipleRuns:
             fields = '\t'.join(['contigs'] + [GC_content] + self.project_names + auxiliary_fields)
             metadata_output.write('%s\n' % fields)
             for split_name in self.split_names:
-                line = '\t'.join([split_name] + [self.metadata_for_each_run[self.project_names[0]][split_name][GC_content]] + [self.metadata_for_each_run[project][split_name][essential_field] for project in self.project_names] + [self.metadata_for_each_run[project][split_name][f] for f in auxiliary_fields])
+                line = '\t'.join([split_name] +\
+                                 [self.metadata_for_each_run[self.project_names[0]][split_name][GC_content]] +\
+                                 [self.metadata_for_each_run[project][split_name][essential_field] for project in self.project_names] +\
+                                 [self.metadata_for_each_run[project][split_name][f] for f in auxiliary_fields])
                 metadata_output.write('%s\n' % line)
             metadata_output.close()
 
