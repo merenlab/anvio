@@ -18,6 +18,7 @@ import fcntl
 import socket
 import string
 import struct
+import shutil
 import cPickle
 import termios 
 import hcluster
@@ -578,7 +579,7 @@ def get_temp_file_path():
 def gen_output_directory(output_directory, progress=None, delete_if_exits = False):
     if os.path.exists(output_directory) and delete_if_exits:
         try:
-            os.rmtree(output_directory)
+            shutil.rmtree(output_directory)
         except:
             if progress:
                 progress.end()
@@ -596,6 +597,8 @@ def gen_output_directory(output_directory, progress=None, delete_if_exits = Fals
         if progress:
             progress.end()
         raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+
+    return output_directory
 
 
 def check_project_name(project_name):
