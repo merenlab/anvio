@@ -268,9 +268,8 @@ def send_data(name):
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
 
-@route('/data/charts/<contig_name>/<layers>')
-def charts(contig_name, layers):
-    layers = layers.split(',')
+@route('/data/charts/<contig_name>')
+def charts(contig_name):
     data = {'layers': [],
              'coverage': [],
              'variability': [],
@@ -279,14 +278,14 @@ def charts(contig_name, layers):
     if not d.contigs_summary.has_key(contig_name):
         return data
 
-    contig = d.contigs_summary[contig_name]
+    contigs = d.contigs_summary[contig_name]
+    layers = sorted(contigs.keys())
+
     for layer in layers:
-        if not layer in contig:
-            continue
         data['layers'].append(layer)
-        data['coverage'].append(contig[layer]['coverage'])
-        data['variability'].append(contig[layer]['variability'])
-        data['competing_nucleotides'].append(contig[layer]['competing_nucleotides'])
+        data['coverage'].append(contigs[layer]['coverage'])
+        data['variability'].append(contigs[layer]['variability'])
+        data['competing_nucleotides'].append(contigs[layer]['competing_nucleotides'])
 
     return json.dumps(data)
 
