@@ -376,7 +376,7 @@ def read_serialized_object(input_file_path):
     try:
         return cPickle.loads(data)
     except:
-        raise PaPi.utils.ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
+        raise ConfigError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
 
 
 def is_port_in_use(port):
