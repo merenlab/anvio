@@ -69,7 +69,7 @@ class RuninfoIO:
     def __init__(self, args):
         self.runinfo = {}
         self.contig_rep_seqs = {}
-        self.contigs_summary = {}
+        self.contigs_summary_index = {}
         self.contig_lengths = {}
         self.taxonomy = None
         self.taxonomic_level = None
@@ -110,7 +110,7 @@ class RuninfoIO:
             ###########################################################################################################
             progress.new('Reading summary into memory')
             progress.update('...')
-            self.contigs_summary = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_dict'])
+            self.contigs_summary_index = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_index'])
             progress.end()
 
             self.runinfo['self_path'] = args.runinfo
@@ -275,10 +275,11 @@ def charts(contig_name):
              'variability': [],
              'competing_nucleotides': []}
 
-    if not d.contigs_summary.has_key(contig_name):
+    print d.contigs_summary_index
+    if not d.contigs_summary_index.has_key(contig_name):
         return data
 
-    contigs = d.contigs_summary[contig_name]
+    contigs = PaPi.utils.read_serialized_object(d.contigs_summary_index[contig_name])
     layers = sorted(contigs.keys())
 
     for layer in layers:

@@ -16,6 +16,7 @@ import numpy
 import pysam
 import random
 import string
+import shutil
 import operator
 import subprocess
 import PaPi.utils as utils
@@ -24,7 +25,7 @@ from PaPi.contig import Contig
 from PaPi.contig import Split
 
 
-__version__ = 0.2
+__version__ = '0.2.1'
 
 
 class BAMProfiler:
@@ -300,20 +301,28 @@ class BAMProfiler:
 
 
     def store_summarized_profile(self):
-        summary = {}
-        output_file = self.generate_output_destination('SUMMARY.cp')
-        self.progress.new('Computing summary')
-        self.progress.update('...')
+        summary_index = {}
+        summary_index_output_path = self.generate_output_destination('SUMMARY.cp')
+        summary_dir = self.generate_output_destination('SUMMARY', directory=True)
+        self.progress.new('Storing summary files')
+
+        counter = 1
+
         for contig in self.contigs:
+            self.progress.update('working on contig %s of %s' % (pp(counter), pp(len(self.contigs))))
             for split in self.contigs[contig].splits:
-                summary[split.name] = {self.project_name: {'coverage': split.coverage.c,
-                                                           'variability': split.auxiliary.v,
-                                                           'competing_nucleotides': split.auxiliary.competing_nucleotides}}
-                
-        self.progress.update('Serializing summary ...')
-        utils.write_serialized_object(summary, output_file)
+                split_summary_path = self.generate_output_destination(os.path.join(summary_dir, '%.6d.cp' % counter))
+                utils.write_serialized_object({self.project_name: {'coverage': split.coverage.c,
+                                                                   'variability': split.auxiliary.v,
+                                                                   'competing_nucleotides': split.auxiliary.competing_nucleotides}},
+                                              split_summary_path)
+                summary_index[split.name] = split_summary_path
+                counter += 1
+
         self.progress.end()
-        self.run.info('profile_summary_dict', output_file)
+        self.run.info('profile_summary_dir', summary_dir)
+        utils.write_serialized_object(summary_index, summary_index_output_path)
+        self.run.info('profile_summary_index', summary_index_output_path)
 
 
     def check_contigs(self):
