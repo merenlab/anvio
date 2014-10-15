@@ -27,10 +27,10 @@ var group_counter = 0; // for id
 var group_count = 0;
 
 var categorical_data_ids = new Array();
-var categorical_data_colors = new Array();
+var categorical_data_colors = {};
 
 var stack_bar_ids = new Array();
-var stack_bar_colors = new Array();
+var stack_bar_colors = {};
 
 var has_parent_layer = false;
 
@@ -196,6 +196,7 @@ $(document).ready(function() {
                         var stack_bar_row_str = '<tr>' +
                             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                             '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td>n/a</td>' +
                             '<td>' +
                             '    <select id="normalization{id}">' +
                             '        <option value="none">none</option>' +
@@ -203,7 +204,7 @@ $(document).ready(function() {
                             '        <option value="log">Logarithm</option>' +
                             '    </select>' +
                             '</td>' +
-                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="50"></input></td>' +
+                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></input></td>' +
                             '<td>n/a</td>' +
                             '<td>n/a</td>' +
                             '</tr>';
@@ -215,14 +216,14 @@ $(document).ready(function() {
                     else if (metadata[1][i] === '' || !isNumber(metadata[1][i])) // categorical data
                     { 
                         categorical_data_ids.push(i);
-                        categorical_data_colors[i] = new Array();
+                        categorical_data_colors[i] = {};
 
                         var categorical_data_row_str = '<tr>' +
                             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                             '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
                             '<td>n/a</td>' +
                             '<td>n/a</td>' +
-                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></input></td>' +
+                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="30"></input></td>' +
                             '<td>n/a</td>' +
                             '<td>n/a</td>' +
                             '</tr>';
@@ -399,9 +400,30 @@ function saveCurrentState() {
     state['group_counter'] = group_counter;
     state['group_count'] = group_count;
 
-    // update all attr='value' using .val() 
-    $('#treeControls input').each(function(){
+    // update dom 
+    $(':text').each(function(){
          $(this).attr('value',$(this).val());
+    });
+
+    $('select').each(function(i, select) {
+        var selected = $(select).val();
+        $(select).find('option').removeAttr('selected').each(function(j, option) {
+            if($(option).val()==selected)
+            {
+                $(option).attr('selected', true);
+            }
+        });
+    });
+
+    $(':checkbox').each(function() {
+        if ($(this)[0].checked)
+        {
+            $(this).attr('checked', true);
+        }
+        else
+        {
+            $(this).removeAttr('checked');
+        }
     });
 
     state['settings_html'] = $('#treeControls').html();
