@@ -717,19 +717,15 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
     return root.write(format=1) 
 
 
-def reset_output_dir(runinfo_dict_path, cwd=None):
+def reset_output_dir(runinfo_dict_path, old_output_dir, new_output_dir):
     runinfo_dict = read_serialized_object(runinfo_dict_path)
-
-    cwd = os.getcwd()
-
-    new_output_dir = os.path.dirname(os.path.join(cwd, runinfo_dict_path))
-    old_output_dir = runinfo_dict['output_dir']
 
     for key in runinfo_dict.keys():
         if isinstance(runinfo_dict[key], str) and runinfo_dict[key].startswith(old_output_dir):
-            runinfo_dict[key] = os.path.join(new_output_dir, os.path.basename(runinfo_dict[key]))
+            runinfo_dict[key] = os.path.join(new_output_dir, runinfo_dict[key][len(old_output_dir):])
 
-    runinfo_dict['output_dir'] = new_output_dir
+    if runinfo_dict.has_key('output_dir'):
+        runinfo_dict['output_dir'] = new_output_dir
 
     write_serialized_object(runinfo_dict, runinfo_dict_path)
     return runinfo_dict

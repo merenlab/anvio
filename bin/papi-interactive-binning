@@ -89,6 +89,7 @@ class RuninfoIO:
                 raise PaPi.utils.ConfigError, "'%s'? No such file." % (args.runinfo)
 
             self.runinfo = PaPi.utils.read_serialized_object(args.runinfo)
+            
 
             if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
                 raise PaPi.utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
@@ -99,20 +100,23 @@ class RuninfoIO:
                 raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
 
             if not os.path.exists(self.runinfo['metadata_txt']):
-                self.runinfo = PaPi.utils.reset_output_dir(args.runinfo)
+                new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
+                old_output_dir = self.runinfo['output_dir']
+
+                self.runinfo = PaPi.utils.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
+
                 if not os.path.exists(self.runinfo['metadata_txt']):
                     raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
                                                    run from another computer, please run 'papi-reset-output-dir'\
                                                    script on RUNINFO.cp" % (args.runinfo)
 
-            ###########################################################################################################
-            # fill in self.contigs_summary
-            ###########################################################################################################
-            progress.new('Reading summary into memory')
-            progress.update('...')
-            self.contigs_summary_index = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_index'])
-            progress.end()
+                self.contigs_summary_index = PaPi.utils.reset_output_dir(self.runinfo['profile_summary_index'], old_output_dir, new_output_dir)
+            else:
+                self.contigs_summary_index = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_index'])
 
+            ###########################################################################################################
+            # we're done
+            ###########################################################################################################
             self.runinfo['self_path'] = args.runinfo
 
         else:
@@ -275,7 +279,6 @@ def charts(contig_name):
              'variability': [],
              'competing_nucleotides': []}
 
-    print d.contigs_summary_index
     if not d.contigs_summary_index.has_key(contig_name):
         return data
 

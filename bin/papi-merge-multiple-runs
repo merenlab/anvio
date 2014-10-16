@@ -60,10 +60,11 @@ class MultipleRuns:
 
             # if things are not where they should be, we attempt to reset the directory paths.
             if not os.path.exists(runinfo['metadata_txt']):
-                PaPi.utils.reset_output_dir(p)
+                new_output_dir = os.path.dirname(os.path.join(os.getcwd(), p))
+                old_output_dir = runinfo['output_dir']
 
-                # now directory paths are fixed in the RUNINFO file, lets read it again.
-                project_name, runinfo = self.read_runinfo_dict(p)
+                runinfo = PaPi.utils.reset_output_dir(p, old_output_dir, new_output_dir)
+                PaPi.utils.reset_output_dir(runinfo['profile_summary_index'], old_output_dir, new_output_dir)
 
                 # if the paths are still f'd up, store it as bad.
                 if not os.path.exists(runinfo['metadata_txt']):
@@ -71,7 +72,6 @@ class MultipleRuns:
 
             if not runinfo.has_key('profiler_version') or runinfo['profiler_version'] != PaPi.profiler.__version__:
                 bad_profiler_version.append(p)
-
 
         if improper:
             raise PaPi.utils.ConfigError, "%s seem to be properly formatted PaPi object: %s. Are you\
