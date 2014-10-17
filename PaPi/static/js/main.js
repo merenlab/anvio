@@ -13,6 +13,7 @@ var LINE_COLOR='#888888';
 var SCALE_MATRIX = 0;
 var id_to_node_map = new Array();
 var angle_per_leaf;
+var height_per_leaf;
 
 var total_radius = 0;
 

@@ -404,8 +404,25 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     svg.appendChild(text);
 }
 
+function drawStraightGuideLine(svg_id, xy, max_x)  {
+    var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+
+    line.setAttribute('x1', xy['x']);
+    line.setAttribute('y1', xy['y']);
+    line.setAttribute('x2', max_x);
+    line.setAttribute('y2', xy['y']);
+
+    line.setAttribute('stroke', LINE_COLOR);
+    line.setAttribute('stroke-opacity', '0.2');
+    line.setAttribute('vector-effect', 'non-scaling-stroke');
+    line.setAttribute('stroke-width', '1');
+
+    var svg = document.getElementById(svg_id);
+    svg.appendChild(line);
+}
+
 function drawGuideLine(svg_id, angle, start_radius, end_radius) {
-    var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
 
     var ax = Math.cos(angle) * start_radius;
     var ay = Math.sin(angle) * start_radius;
@@ -413,9 +430,11 @@ function drawGuideLine(svg_id, angle, start_radius, end_radius) {
     var bx = Math.cos(angle) * end_radius;
     var by = Math.sin(angle) * end_radius;
 
-    var path = new Array("M", ax, ay, "L", bx, by);
+    line.setAttribute('x1', ax);
+    line.setAttribute('y1', ay);
+    line.setAttribute('x2', bx);
+    line.setAttribute('y2', by); 
 
-    line.setAttribute('d', path.join(" "));
     line.setAttribute('stroke', LINE_COLOR);
     line.setAttribute('stroke-opacity', '0.2');
     line.setAttribute('vector-effect', 'non-scaling-stroke');
@@ -490,6 +509,26 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(pie);
+}
+
+function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content, fill_opacity, pointer_events) {
+    var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('id', 'path_' + id);
+    rect.setAttribute('class', 'path_' + id);
+    rect.setAttribute('fill', color);
+    rect.setAttribute('stroke-width', 0);
+    rect.setAttribute('fill-opacity', fill_opacity);
+
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y - height / 2); 
+    rect.setAttribute('width', width);
+    rect.setAttribute('height', height);
+
+    if (!pointer_events)
+        rect.setAttribute('pointer-events', 'none');
+
+    var svg = document.getElementById(svg_id);
+    svg.appendChild(rect);
 }
 
 function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave) {
@@ -1824,29 +1863,50 @@ function draw_tree(drawing_type) {
         td.Draw();
 
         // calculate max radius of tree
+        var layer_boundaries = new Array();
         var tree_radius = 0;
+        var tree_max_x = 0;
+        var tree_max_y = 0;
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 
-        while (q != null) {
-            if (q.radius > tree_radius)
-                tree_radius = q.radius;
-            q = n.Next();
-        }
+        switch (drawing_type) {
+            case 'phylogram':
+                while (q != null)
+                {
+                    if (q.xy.x > tree_max_x)
+                        tree_max_x = q.xy.x;
+                    if (q.xy.y > tree_max_y)
+                        tree_max_y = q.xy.y;
+                    q = n.Next();
+                }
+                layer_boundaries.push( [0, tree_max_x] );
+                break;
 
-        // calculate layer boundries
+            case 'circlephylogram':
+                while (q != null) 
+                {
+                    if (q.radius > tree_radius)
+                        tree_radius = q.radius;
+                    q = n.Next();
+                }
+                layer_boundaries.push( [0, tree_radius] );
+                break;
+        }  
         
-        var layer_boundaries = new Array();
         var margin = parseFloat($('#layer-margin').val());
 
-        layer_boundaries.push( [0, tree_radius] );
-
+        // calculate layer boundries
         for (var pindex = 1; pindex < parameter_count; pindex++) {
+
+            var isParent = (pindex == 1 && has_parent_layer) ? true : false;
+            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
+            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
 
             var layer_margin = (parseFloat($('#height' + pindex).val())==0) ? 0 : margin;
 
-            if (has_parent_layer && pindex==1) // make parent layer a bit thinner than the rest.
+            if (isParent) // make parent layer a bit thinner than the rest.
             {
                 // FIXME: for now the scaling factor is 3, but it would be nice if this was                               v
                 // parameterized:
@@ -1856,6 +1916,22 @@ function draw_tree(drawing_type) {
             }
             createGroup('viewport', 'layer_' + pindex);
             createGroup('viewport', 'layer_background_' + pindex);
+
+            if (drawing_type=='phylogram' && !isParent && !isCategorical && !isStackBar) // draw numerical bar backgroung for phylogram
+            {
+                var color = color = $('#picker' + pindex).attr('color');
+
+                drawPhylogramRectangle('layer_background_' + pindex,
+                    'all',
+                    layer_boundaries[pindex][0],
+                    tree_max_y / 2,
+                    tree_max_y,
+                    layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
+                    color,
+                    tooltip,
+                    0.3,
+                    true);
+            }
         }
 
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
@@ -1867,13 +1943,18 @@ function draw_tree(drawing_type) {
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 
-        //angle_per_leaf = 2 * Math.PI / t.num_leaves;
-        var angle_max = parseFloat($('#angle-max').val());
-        var angle_min = parseFloat($('#angle-min').val());
+        switch (drawing_type) {
+            case 'phylogram':
+                height_per_leaf = VIEWER_HEIGHT / (t.num_leaves - 1);
+                break;
+            case 'circlephylogram':
+                //angle_per_leaf = 2 * Math.PI / t.num_leaves;
+                var angle_max = parseFloat($('#angle-max').val());
+                var angle_min = parseFloat($('#angle-min').val());
+                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
+                break;
+        }
 
-        angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
-
-        var edge_length_norm = $('#edge_length_normalization')[0].checked;
         createGroup('tree_group', 'guide_lines');
 
         // parent things
@@ -1886,13 +1967,152 @@ function draw_tree(drawing_type) {
         var parent_count = 0;
 
         odd_even_flag = -1
-        while (q != null) {
-            if (q.IsLeaf()) {
-                odd_even_flag = odd_even_flag * -1;
-                switch (drawing_type) {
-                    case 'circle':
-                    case 'circlephylogram':
-                    
+
+        switch (drawing_type) {
+            case 'phylogram':
+                while (q != null) {
+                    if (q.IsLeaf()) {
+                        odd_even_flag = odd_even_flag * -1;
+
+                        if (odd_even_flag > 0)
+                            drawStraightGuideLine('guide_lines', q.xy, tree_max_x);
+
+                        for (var pindex = 1; pindex < parameter_count; pindex++) {
+
+                            var isParent = (pindex == 1 && has_parent_layer) ? true : false;
+                            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
+                            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
+
+                            var tooltip_arr = metadata_title[q.label].slice(0);
+                            tooltip_arr[pindex] = '<font color="lime">' + tooltip_arr[pindex] + '</font>'
+                            var tooltip = tooltip_arr.join('<br />\n');
+
+                            if(isStackBar)
+                            {
+                                var offset = 0;
+                                for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
+                                {
+                                    drawPhylogramRectangle('layer_' + pindex,
+                                        q.id,
+                                        layer_boundaries[pindex][0] + offset,
+                                        q.xy['y'],
+                                        height_per_leaf,
+                                        metadata_dict[q.label][pindex][j],
+                                        stack_bar_colors[pindex][j],
+                                        tooltip,
+                                        1,
+                                        true);
+                                    offset += metadata_dict[q.label][pindex][j];
+                                } 
+                        
+                            }
+                            else if(isCategorical)
+                            {
+                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined')
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+
+                                var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
+
+                                drawPhylogramRectangle('layer_' + pindex,
+                                    q.id,
+                                    layer_boundaries[pindex][0],
+                                    q.xy['y'],
+                                    height_per_leaf,
+                                    layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
+                                    color,
+                                    tooltip,
+                                    1,
+                                    true);
+                            }
+                            else if (isParent)
+                            {
+                                if (metadata_dict[q.label][1] == '')
+                                    continue;
+
+                                var color = prev_parent_color;
+
+                                if (prev_parent_name != metadata_dict[q.label][1])
+                                {
+                                    if (prev_parent_color == parent_odd)
+                                    {
+                                        var color = parent_even;
+                                    }
+                                    else
+                                    {
+                                        var color = parent_odd;
+                                    }
+                                    prev_parent_items = new Array();
+                                    parent_count++;
+                                }
+                                drawPhylogramRectangle('layer_' + pindex,
+                                    q.id + "_parent",
+                                    layer_boundaries[pindex][0],
+                                    q.xy['y'],
+                                    height_per_leaf,
+                                    layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
+                                    color,
+                                    tooltip,
+                                    1,
+                                    true);
+
+                                prev_parent_color = color;
+                                prev_parent_name = metadata_dict[q.label][1];
+                                prev_parent_items.push(q.id + "_parent");
+                            }
+                            else // numerical
+                            {
+                                var color = color = $('#picker' + pindex).attr('color');
+
+                                 drawPhylogramRectangle('layer_' + pindex,
+                                    q.id,
+                                    layer_boundaries[pindex][0],
+                                    q.xy['y'],
+                                    height_per_leaf,
+                                    metadata_dict[q.label][pindex],
+                                    color,
+                                    tooltip,
+                                    1,
+                                    true);
+                            }
+
+                        }
+
+                        /*
+                        drawPie('viewport',
+                            q.id + "_background",
+                            q.angle - angle_per_leaf / 2,
+                            q.angle + angle_per_leaf / 2,
+                            layer_boundaries[0][1],
+                            total_radius + margin,
+                            0,
+                            '#FFFFFF',
+                            null,
+                            0.0,
+                            false); 
+
+                        drawPie('viewport',
+                            q.id + "_outer_ring",
+                            q.angle - angle_per_leaf / 2,
+                            q.angle + angle_per_leaf / 2,
+                            total_radius + margin,
+                            // FIXME: for now the scaling factor is 4, but obviously this should be
+                            // parameterized at some point:
+                            total_radius + margin * 4,
+                            0,
+                            '#FFFFFF',
+                            null,
+                            1,
+                            false); 
+                        */
+                    }
+                    q = n.Next();
+                }
+                break;
+            case 'circlephylogram':
+                while (q != null) {
+                    if (q.IsLeaf()) {
+                        odd_even_flag = odd_even_flag * -1;
+
                         // draw guidelines for every other leaf.
                         if (odd_even_flag > 0)
                             drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
@@ -2039,19 +2259,12 @@ function draw_tree(drawing_type) {
                             null,
                             1,
                             false); 
-
-                        break;
-                    case 'cladogram':
-                    case 'rectanglecladogram':
-                    case 'phylogram':
-                    default:
-                        drawText('viewport', q.xy, metadata_dict[q.label]);
-                        break;
+                    }
+                    q = n.Next();
                 }
-            }
-            q = n.Next();
+                break;
         }
-        
+
         // parent count odd-even check
         
         if ((parent_count % 2) == 1)
@@ -2062,7 +2275,14 @@ function draw_tree(drawing_type) {
             }
         }
 
-        drawLegend();
+        switch (drawing_type) {
+            case 'phylogram':
+                break;
+            case 'circlephylogram':
+                drawLegend();
+                break;
+        }
+
 
         redrawGroupColors();
 
