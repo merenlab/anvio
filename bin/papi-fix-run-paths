@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+# Copyright (C) 2014, PaPi Authors
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option)
+# any later version.
+#
+# Please read the COPYING file.
+
+import os
+import sys
+import PaPi.utils as u
+import glob
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Fixes directory issues... If you are lucky!')
+    parser.add_argument('run', metavar = 'DIRECTORY PATH',
+                        help = 'Just give the directory path to a PaPi merged or profiled run..')
+
+    args = parser.parse_args()
+
+    run_dir = args.run
+
+    output_dir = None
+
+    for runinfo in glob.glob(os.path.join(run_dir, 'RUNINFO*cp')):
+        r = u.read_serialized_object(runinfo)
+        r = u.strip_prefix_from_dict_values(r, r['output_dir'])
+        u.write_serialized_object(r, runinfo)
+        output_dir = r['output_dir']
+
+    s = u.read_serialized_object(os.path.join(run_dir, 'SUMMARY.cp')) 
+    s = u.strip_prefix_from_dict_values(s, output_dir)
+    u.write_serialized_object(s, os.path.join(run_dir, 'SUMMARY.cp'))
+
+    print 'Congratulations! You probably have fixed whatever was wrong.'

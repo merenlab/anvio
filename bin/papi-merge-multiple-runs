@@ -24,6 +24,7 @@ from PaPi.utils import pretty_print as pp
 from PaPi.profiler import __version__
 
 kmers = PaPi.utils.KMers()
+P = lambda x, y: os.path.join(x['output_dir'], y)
 
 class MultipleRuns:
     def __init__(self, args):
@@ -51,6 +52,7 @@ class MultipleRuns:
         improper = []
         missing_path = []
         bad_profiler_version = []
+
         for p in self.project_runinfo_dict_paths:
             try:
                 project_name, runinfo = self.read_runinfo_dict(p)
@@ -59,15 +61,14 @@ class MultipleRuns:
                 continue
 
             # if things are not where they should be, we attempt to reset the directory paths.
-            if not os.path.exists(runinfo['metadata_txt']):
+            if not os.path.exists(P(runinfo, runinfo['metadata_txt'])):
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), p))
                 old_output_dir = runinfo['output_dir']
 
                 runinfo = PaPi.utils.reset_output_dir(p, old_output_dir, new_output_dir)
-                PaPi.utils.reset_output_dir(runinfo['profile_summary_index'], old_output_dir, new_output_dir)
 
                 # if the paths are still f'd up, store it as bad.
-                if not os.path.exists(runinfo['metadata_txt']):
+                if not os.path.exists(P(runinfo, runinfo['metadata_txt'])):
                     missing_path.append(p)
 
             if not runinfo.has_key('profiler_version') or runinfo['profiler_version'] != PaPi.profiler.__version__:
@@ -80,7 +81,7 @@ class MultipleRuns:
                                             ', '.join(improper))
 
         if missing_path:
-            raise PaPi.utils.ConfigError, "%d of %d files you provided have bad file paths:\n\n%s\n\n. PaPi tried to fix them, but\
+            raise PaPi.utils.ConfigError, "%d of %d files you provided have bad file paths: %s. PaPi tried to fix them, but\
                                            it failed. Maybe these RUNINFO.cp files were generated on another\
                                            machine? Or maybe they were edited manually? Well, PaPi is as lost as you\
                                            are at this point :(" % (len(missing_path),
@@ -111,7 +112,7 @@ class MultipleRuns:
         self.read_runinfo_dicts()
 
         contigs = {}
-        for metadata in [self.project_runinfos[r]['metadata_txt'] for r in self.project_names]:
+        for metadata in [P(self.project_runinfos[r], self.project_runinfos[r]['metadata_txt']) for r in self.project_names]:
             contigs[metadata] = sorted([l.split('\t')[0] for l in open(metadata).readlines()[1:]])
 
         if len(set([contigs[m].__str__() for m in contigs])) > 1:
@@ -141,6 +142,7 @@ class MultipleRuns:
 
         self.run.info('profiler_version', __version__)
         self.run.info('output_dir', self.output_dir)
+        self.run.info('cmd_line', PaPi.utils.get_cmd_line())
         self.run.info('num_runs_processed', len(self.contigs))
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
@@ -197,7 +199,7 @@ class MultipleRuns:
             self.run.info('project_name', essential_field)
             self.run.info('metadata_txt', metadata_output_path)
             self.run.info('runinfo', runinfo_output_path)
-            self.run.store_info_dict(runinfo_output_path)
+            self.run.store_info_dict(runinfo_output_path, strip_prefix = self.output_dir)
 
 
     def merge_split_summaries(self):
@@ -210,7 +212,8 @@ class MultipleRuns:
         # the for loop below
         run_sum_indices = {}
         for runinfo  in self.project_runinfos.values():
-            run_sum_indices[runinfo['project_name']] = PaPi.utils.read_serialized_object(runinfo['profile_summary_index'])
+            r = P(runinfo, runinfo['profile_summary_index'])
+            run_sum_indices[runinfo['project_name']] = PaPi.utils.read_serialized_object(r)
 
         for i in range(0, len(self.split_names)):
             self.progress.update('merging summaries for splits %s of %s' % (i + 1, len(self.split_names)))
@@ -218,7 +221,8 @@ class MultipleRuns:
 
             merged_summary = {}
             for runinfo in self.project_runinfos.values():
-                run_split_summary = PaPi.utils.read_serialized_object(run_sum_indices[runinfo['project_name']][split_name])
+                r = P(runinfo, run_sum_indices[runinfo['project_name']][split_name])
+                run_split_summary = PaPi.utils.read_serialized_object(r)
                 merged_summary[runinfo['project_name']] = run_split_summary[runinfo['project_name']]
 
             merged_split_summary_path = os.path.join(summary_dir, os.path.basename(run_sum_indices[runinfo['project_name']][split_name]))
@@ -248,11 +252,12 @@ class MultipleRuns:
 
     def read_metadata_files(self):
         metadata_for_each_run = {}
-        metadata_fields = open(self.project_runinfos.values()[0]['metadata_txt']).readline().strip().split('\t')
+        m = P(self.project_runinfos.values()[0], self.project_runinfos.values()[0]['metadata_txt'])
+        metadata_fields = open(m).readline().strip().split('\t')
 
         for project_runinfo in self.project_runinfos.values():
             metadata = {}
-            metadata_path = project_runinfo['metadata_txt']
+            metadata_path = P(project_runinfo, project_runinfo['metadata_txt'])
             metadata_obj = open(metadata_path)
 
             #skip the first line
@@ -269,7 +274,8 @@ class MultipleRuns:
 
 
     def get_split_names(self):
-        return [line.strip().split('\t')[0] for line in open(self.project_runinfos[self.project_names[0]]['metadata_txt']).readlines()][1:]
+        m = P(self.project_runinfos[self.project_names[0]], self.project_runinfos[self.project_names[0]]['metadata_txt'])
+        return [line.strip().split('\t')[0] for line in open(m).readlines()][1:]
 
 
     def read_contigs(self):
@@ -277,7 +283,7 @@ class MultipleRuns:
             self.progress.update('%d of %d' % (i + 1, len(self.project_names)))
             project_name = self.project_names[i]
             runinfo = self.project_runinfos[project_name]
-            fasta = u.SequenceSource(runinfo['splits_fasta'])
+            fasta = u.SequenceSource(P(runinfo, runinfo['splits_fasta']))
             contigs = {}
             while fasta.next():
                 contigs[fasta.id] = fasta.seq

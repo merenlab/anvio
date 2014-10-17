@@ -72,9 +72,7 @@ class BAMProfiler:
         self.check_args()
 
         self.set_project_name()
-        self.run.info('profiler_version', __version__)
-        self.run.info('project_name', self.project_name)
-        self.run.info('cmd_line', utils.get_cmd_line())
+
 
         if self.input_file_path:
             self.init_profile_from_BAM()
@@ -88,8 +86,11 @@ class BAMProfiler:
         self.report()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
+        self.run.info('profiler_version', __version__)
+        self.run.info('project_name', self.project_name)
+        self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('runinfo', runinfo_serialized)
-        self.run.store_info_dict(runinfo_serialized)
+        self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
         self.run.quit()
 
 
@@ -162,7 +163,6 @@ class BAMProfiler:
         self.progress.update('Reading BAM File')
         self.bam = pysam.Samfile(self.input_file_path, 'rb')
         self.progress.end()
-        self.run.info('input_bam', self.input_file_path)
 
         self.contig_names = self.bam.references
         self.contig_lenghts = self.bam.lengths
@@ -181,6 +181,7 @@ class BAMProfiler:
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
+        self.run.info('input_bam', self.input_file_path)
         self.run.info('output_dir', self.output_directory)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
@@ -321,7 +322,7 @@ class BAMProfiler:
 
         self.progress.end()
         self.run.info('profile_summary_dir', summary_dir)
-        utils.write_serialized_object(summary_index, summary_index_output_path)
+        utils.write_serialized_object(utils.strip_prefix_from_dict_values(summary_index, self.output_directory), summary_index_output_path)
         self.run.info('profile_summary_index', summary_index_output_path)
 
 

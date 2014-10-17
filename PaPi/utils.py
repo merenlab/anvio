@@ -292,13 +292,30 @@ class Run:
             sys.stderr.write(info_line)
 
 
-    def store_info_dict(self, destination):
+    def store_info_dict(self, destination, strip_prefix = None):
+
+        if strip_prefix:
+            # mostly to get rid of output_dir prefix in output file names.
+            # surprisingly enough, this is the best place to do it. live 
+            # and learn :/
+            self.info_dict = strip_prefix_from_dict_values(self.info_dict, strip_prefix)
+
         write_serialized_object(self.info_dict, destination)
 
 
     def quit(self):
         if self.info_file_obj:
             self.info_file_obj.close()
+
+
+def strip_prefix_from_dict_values(d, prefix):
+    for key in d.keys():
+        if key == 'output_dir':
+            continue
+        if isinstance(d[key], str) and d[key].startswith(prefix):
+            d[key] = d[key][len(prefix):].strip('/')
+
+    return d
 
 
 def pretty_print(n):
@@ -719,14 +736,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
 
 def reset_output_dir(runinfo_dict_path, old_output_dir, new_output_dir):
     runinfo_dict = read_serialized_object(runinfo_dict_path)
-
-    for key in runinfo_dict.keys():
-        if isinstance(runinfo_dict[key], str) and runinfo_dict[key].startswith(old_output_dir):
-            runinfo_dict[key] = os.path.join(new_output_dir, runinfo_dict[key][len(old_output_dir):])
-
-    if runinfo_dict.has_key('output_dir'):
-        runinfo_dict['output_dir'] = new_output_dir
-
+    runinfo_dict['output_dir'] = new_output_dir
     write_serialized_object(runinfo_dict, runinfo_dict_path)
     return runinfo_dict
 

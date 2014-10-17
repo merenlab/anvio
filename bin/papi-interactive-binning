@@ -57,7 +57,6 @@ parser.add_argument('-s', '--state', metavar = "FILE", default = None,
                     help = "State file for loading previous session.")
 
 
-
 progress = PaPi.utils.Progress()
 run = PaPi.utils.Run()
 
@@ -73,6 +72,7 @@ class RuninfoIO:
         self.contig_lengths = {}
         self.taxonomy = None
         self.taxonomic_level = None
+        self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
 
         self.cwd = os.getcwd()
 
@@ -99,20 +99,18 @@ class RuninfoIO:
             if not self.runinfo.has_key('metadata_txt'):
                 raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
 
-            if not os.path.exists(self.runinfo['metadata_txt']):
+            if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
                 old_output_dir = self.runinfo['output_dir']
 
                 self.runinfo = PaPi.utils.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
 
-                if not os.path.exists(self.runinfo['metadata_txt']):
-                    raise PaPi.utils.ConfigError, "File paths are broken in '%s'. If you transfered this PaPi\
-                                                   run from another computer, please run 'papi-reset-output-dir'\
-                                                   script on RUNINFO.cp" % (args.runinfo)
+                if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
+                    raise PaPi.utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\
+                                                   from another computer? Well. I really don't know what to\
+                                                   suggest at this point :/"
 
-                self.contigs_summary_index = PaPi.utils.reset_output_dir(self.runinfo['profile_summary_index'], old_output_dir, new_output_dir)
-            else:
-                self.contigs_summary_index = PaPi.utils.read_serialized_object(self.runinfo['profile_summary_index'])
+            self.contigs_summary_index = PaPi.utils.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
             ###########################################################################################################
             # we're done
@@ -166,17 +164,18 @@ class RuninfoIO:
         self.check_names_consistency()
         self.convert_metadata_into_json()
 
-        fasta = u.SequenceSource(self.runinfo['splits_fasta'])
+        fasta = u.SequenceSource(self.P(self.runinfo['splits_fasta']))
+
         while fasta.next():
             self.contig_rep_seqs[fasta.id] = fasta.seq
             self.contig_lengths[fasta.id] = len(fasta.seq)
 
 
     def check_names_consistency(self):
-        tree = Tree(self.runinfo['tnf_tree'])
+        tree = Tree(self.P(self.runinfo['tnf_tree']))
         contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
-        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['metadata_txt']).readlines()[1:]])
-        contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.runinfo['splits_fasta']))
+        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.P(self.runinfo['metadata_txt'])).readlines()[1:]])
+        contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
 
         try:
             assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
@@ -205,7 +204,7 @@ class RuninfoIO:
 
 
     def convert_metadata_into_json(self):
-        metadata_file_path = self.runinfo['metadata_txt']
+        metadata_file_path = self.P(self.runinfo['metadata_txt'])
 
         if self.taxonomy:
             metadata_headers = PaPi.utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
@@ -262,7 +261,7 @@ def send_data(name):
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     if name == "tree":
-        return static_file(d.runinfo['tnf_tree'], root ='/')
+        return static_file(d.P(d.runinfo['tnf_tree']), root ='/')
     elif name == "meta":
         return static_file(d.runinfo['metadata_json'], root='/')
     elif name == "state":
@@ -282,7 +281,7 @@ def charts(contig_name):
     if not d.contigs_summary_index.has_key(contig_name):
         return data
 
-    contigs = PaPi.utils.read_serialized_object(d.contigs_summary_index[contig_name])
+    contigs = PaPi.utils.read_serialized_object(d.P(d.contigs_summary_index[contig_name]))
     layers = sorted(contigs.keys())
 
     for layer in layers:
