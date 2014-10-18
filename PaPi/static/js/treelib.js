@@ -524,6 +524,10 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content,
     if (!pointer_events)
         rect.setAttribute('pointer-events', 'none');
 
+    if (content !== null && content.length > 0) {
+        rect.setAttribute('title', content);
+    }
+
     var svg = document.getElementById(svg_id);
     svg.appendChild(rect);
 }
@@ -1930,9 +1934,9 @@ function draw_tree(drawing_type) {
                     tree_max_y,
                     layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
                     color,
-                    tooltip,
+                    "",
                     0.3,
-                    true);
+                    false);
             }
         }
 

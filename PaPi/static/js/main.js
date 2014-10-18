@@ -494,13 +494,8 @@ function draw_tree_callback(){
     } else {
         draw_tree($('#tree_type').val());
 
-        // enable tooltips.
-        $('path[title]').aToolTip();
-
-        // remove title attributes after tooltips enabled
-        $('path').each(function(index, elm) {
-            $(elm).attr('title', '');
-        });
+        // enable tooltips and remove title attributes after tooltips enabled.
+        $('path[title], rect[title]').aToolTip().removeAttr('title');
 
         // enable export as svg button
         $('#btn_export_svg').attr('disabled', false);
