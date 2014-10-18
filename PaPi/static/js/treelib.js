@@ -187,9 +187,17 @@ function redrawGroupColors() {
 
 }
 
-function drawLine(svg_id, p, p0, p1) {
+function drawLine(svg_id, p, p0, p1, isArc) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    line.setAttribute('id', 'line' + p.id);
+
+    if (isArc) 
+    {
+        line.setAttribute('id', 'arc' + p.id);
+    }
+    else
+    {
+        line.setAttribute('id', 'line' + p.id);
+    }
 
     var n = new NodeIterator(p);
     var q = n.Begin();
@@ -276,20 +284,36 @@ function drawLine(svg_id, p, p0, p1) {
             p2 = p2.child.GetRightMostSibling();
         }
 
-        drawPie('viewport',
-            'hover',
-            p1.angle - angle_per_leaf / 2,
-            p2.angle + angle_per_leaf / 2,
-            distance(p.backarc, {
-                'x': 0,
-                'y': 0
-            }),
-            total_radius,
-            (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-            group_color,
-            '',
-            0.3,
-            false);
+        if (tree_type == 'circlephylogram')
+        {
+            drawPie('tree_group',
+                'hover',
+                p1.angle - angle_per_leaf / 2,
+                p2.angle + angle_per_leaf / 2,
+                distance(p.backarc, {
+                    'x': 0,
+                    'y': 0
+                }),
+                total_radius,
+                (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                group_color,
+                '',
+                0.3,
+                false);
+        }
+        else
+        {  
+            drawPhylogramRectangle('tree_group',
+                'hover',
+                p.ancestor.xy.x,
+                (p1.xy.y + p2.xy.y) / 2,
+                p2.xy.y - p1.xy.y + height_per_leaf,
+                total_radius - p.ancestor.xy.x,
+                group_color,
+                null,
+                0.3,
+                false);
+       }
 
         for (var index = 0; index < child_nodes.length; index++) {
             $("#line" + child_nodes[index]).css('stroke-width', '3');
@@ -510,6 +534,19 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 
 function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content, fill_opacity, pointer_events) {
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+    $(rect).click(function() {
+        $('#line' + id).trigger('click');
+    });
+
+    $(rect).mouseenter(function() {
+        $('#line' + id).trigger('mouseenter');
+    });
+    $(rect).mouseleave(function() {
+        $('#aToolTip').hide();
+        $('#line' + id).trigger('mouseleave');
+    });
+
     rect.setAttribute('id', 'path_' + id);
     rect.setAttribute('class', 'path_' + id);
     rect.setAttribute('fill', color);
@@ -1145,7 +1182,7 @@ RectangleTreeDrawer.prototype.DrawInternal = function(p) {
     p1['x'] = p0['x'];
     p1['y'] = pr['y'];
 
-    drawLine(this.settings.svg_id, p, p0, p1);
+    drawLine(this.settings.svg_id, p, p0, p1,true);
 }
 
 
@@ -1830,6 +1867,7 @@ function draw_tree(drawing_type) {
         // create new group
         createGroup('svg', 'viewport');
         createGroup('viewport', 'tree_group');
+        createGroup('tree_group', 'tree');
 
         switch (drawing_type) {
             case 'phylogram':
@@ -1839,7 +1877,7 @@ function draw_tree(drawing_type) {
                     td = new RectangleTreeDrawer();
                 }
                 td.Init(t, {
-                    svg_id: 'tree_group',
+                    svg_id: 'tree',
                     width: VIEWER_HEIGHT,
                     height: VIEWER_WIDTH,
                     fontHeight: 10,
@@ -1856,7 +1894,7 @@ function draw_tree(drawing_type) {
                     td = new CircleTreeDrawer();
                 }
                 td.Init(t, {
-                    svg_id: 'tree_group',
+                    svg_id: 'tree',
                     width: VIEWER_WIDTH,
                     height: VIEWER_HEIGHT,
                     fontHeight: 10,
@@ -1888,6 +1926,9 @@ function draw_tree(drawing_type) {
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_max_x] );
+                
+                // calculate height per leaf
+                height_per_leaf = VIEWER_WIDTH / (t.num_leaves - 1);
                 break;
 
             case 'circlephylogram':
@@ -1898,6 +1939,11 @@ function draw_tree(drawing_type) {
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_radius] );
+
+                // calculate angle per leaf
+                var angle_max = parseFloat($('#angle-max').val());
+                var angle_min = parseFloat($('#angle-min').val());
+                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
                 break;
         }  
         
@@ -1931,7 +1977,7 @@ function draw_tree(drawing_type) {
                     'all',
                     layer_boundaries[pindex][0],
                     tree_max_y / 2,
-                    tree_max_y,
+                    tree_max_y + height_per_leaf,
                     layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
                     color,
                     "",
@@ -1943,23 +1989,10 @@ function draw_tree(drawing_type) {
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
         beginning_of_layers = layer_boundaries[0][1];
 
-
         // label leaves...
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
-
-        switch (drawing_type) {
-            case 'phylogram':
-                height_per_leaf = VIEWER_WIDTH / (t.num_leaves - 1);
-                break;
-            case 'circlephylogram':
-                //angle_per_leaf = 2 * Math.PI / t.num_leaves;
-                var angle_max = parseFloat($('#angle-max').val());
-                var angle_min = parseFloat($('#angle-min').val());
-                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
-                break;
-        }
 
         createGroup('tree_group', 'guide_lines');
 
@@ -2000,7 +2033,7 @@ function draw_tree(drawing_type) {
                                 {
                                     drawPhylogramRectangle('layer_' + pindex,
                                         q.id,
-                                        layer_boundaries[pindex][0] + offset,
+                                        layer_boundaries[pindex][1] - offset - metadata_dict[q.label][pindex][j],
                                         q.xy['y'],
                                         height_per_leaf,
                                         metadata_dict[q.label][pindex][j],
@@ -2083,33 +2116,27 @@ function draw_tree(drawing_type) {
 
                         }
 
-                        /*
-                        drawPie('viewport',
+                        drawPhylogramRectangle('tree_group',
                             q.id + "_background",
-                            q.angle - angle_per_leaf / 2,
-                            q.angle + angle_per_leaf / 2,
                             layer_boundaries[0][1],
-                            total_radius + margin,
-                            0,
+                            q.xy['y'],
+                            height_per_leaf,
+                            total_radius + margin - layer_boundaries[0][1],
                             '#FFFFFF',
                             null,
                             0.0,
-                            false); 
+                            false);
 
-                        drawPie('viewport',
+                        drawPhylogramRectangle('tree_group',
                             q.id + "_outer_ring",
-                            q.angle - angle_per_leaf / 2,
-                            q.angle + angle_per_leaf / 2,
                             total_radius + margin,
-                            // FIXME: for now the scaling factor is 4, but obviously this should be
-                            // parameterized at some point:
-                            total_radius + margin * 4,
-                            0,
+                            q.xy['y'],
+                            height_per_leaf,
+                            margin * 4,
                             '#FFFFFF',
                             null,
                             1,
-                            false); 
-                        */
+                            false);
                     }
                     q = n.Next();
                 }

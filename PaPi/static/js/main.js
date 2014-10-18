@@ -14,6 +14,7 @@ var SCALE_MATRIX = 0;
 var id_to_node_map = new Array();
 var angle_per_leaf;
 var height_per_leaf;
+var tree_type;
 
 var total_radius = 0;
 
@@ -492,6 +493,7 @@ function draw_tree_callback(){
     if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
         setTimeout(draw_tree_callback, 200);
     } else {
+        tree_type = $('#tree_type').val()
         draw_tree($('#tree_type').val());
 
         // enable tooltips and remove title attributes after tooltips enabled.
@@ -623,7 +625,7 @@ function submitGroups(only_svg) {
     // move group highlights to new svg groups
     for (var gid = 1; gid <= group_counter; gid++) {
 
-        createGroup('viewport', 'selected_group_' + gid);
+        createGroup('tree_group', 'selected_group_' + gid);
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
             if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
@@ -634,7 +636,14 @@ function submitGroups(only_svg) {
     }
 
     // remove ungrouped backgrounds.
-    var detached_paths = $('#viewport > path').detach();
+    if (tree_type == 'circlephylogram')
+    {
+        var detached_paths = $('#tree_group > path').detach();        
+    }
+    else
+    {
+        var detached_paths = $('#tree_group > rect').detach();   
+    }
 
     if (!only_svg)
     {
@@ -656,7 +665,7 @@ function submitGroups(only_svg) {
             svg: Base64.encode($('#svg')[0].outerHTML)
         });
         // add removed ungrouped backgrounds back
-        $(detached_paths).appendTo('#viewport');
+        $(detached_paths).appendTo('#tree_group');
 
         $('#group_legend').remove();
     }
@@ -753,7 +762,7 @@ function pan_btn(dir) {
 
         // move drawing to centre of viewport
         var viewport = document.getElementById('viewport');
-        baseMatrix = [1 * SCALE_MATRIX, 0, 0, 1 * SCALE_MATRIX, 100, 100];
+        baseMatrix = [1 * SCALE_MATRIX, 0, 0, 1 * SCALE_MATRIX, VIEWER_WIDTH / 2, VIEWER_HEIGHT / 2];
         setMatrix(viewport, baseMatrix);
 
 
