@@ -12,10 +12,7 @@ function createGroup(parent, group_id) {
     svgObject.appendChild(g);
 }
 
-function drawLegend() {
-    var left = total_radius + 100;
-    var top = 20 - total_radius;
-
+function drawLegend(top, left) {
     var legend_counter=0;
     for (var i = 0; i < categorical_data_ids.length; i++) {
         // collect categorical
@@ -907,6 +904,7 @@ Tree.prototype.ComputeDepths = function() {
 }
 
 //--------------------------------------------------------------------------------------------------
+
 function TreeDrawer() {
     //this.t = tree;
 
@@ -938,7 +936,6 @@ TreeDrawer.prototype.Init = function(tree, settings) {
     */
 
 }
-
 
 //--------------------------------------------------------------------------------------------------
 TreeDrawer.prototype.CalcInternal = function(p) {
@@ -1820,26 +1817,6 @@ function draw_tree(drawing_type) {
 
         var td = null;
 
-        switch (drawing_type) {
-            case 'phylogram':
-                if (t.has_edge_lengths) {
-                    td = new PhylogramTreeDrawer();
-                } else {
-                    td = new RectangleTreeDrawer();
-                }
-                break;
-
-            case 'circlephylogram':
-                if (t.has_edge_lengths) {
-
-                    td = new CirclePhylogramDrawer();
-                } else {
-
-                    td = new CircleTreeDrawer();
-                }
-                break;
-        }
-
         // clear existing diagram, if any
         var svg = document.getElementById('svg');
         while (svg.hasChildNodes()) {
@@ -1848,16 +1825,41 @@ function draw_tree(drawing_type) {
 
         // create new group
         createGroup('svg', 'viewport');
-
         createGroup('viewport', 'tree_group');
 
-        td.Init(t, {
-            svg_id: 'tree_group',
-            width: VIEWER_WIDTH,
-            height: VIEWER_HEIGHT,
-            fontHeight: 10,
-            root_length: 0.1
-        });
+        switch (drawing_type) {
+            case 'phylogram':
+                if (t.has_edge_lengths) {
+                    td = new PhylogramTreeDrawer();
+                } else {
+                    td = new RectangleTreeDrawer();
+                }
+                td.Init(t, {
+                    svg_id: 'tree_group',
+                    width: VIEWER_HEIGHT,
+                    height: VIEWER_WIDTH,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
+                $('#tree_group').attr('transform', 'rotate(90)');
+                break;
+
+            case 'circlephylogram':
+                if (t.has_edge_lengths) {
+                    td = new CirclePhylogramDrawer();
+                } else {
+
+                    td = new CircleTreeDrawer();
+                }
+                td.Init(t, {
+                    svg_id: 'tree_group',
+                    width: VIEWER_WIDTH,
+                    height: VIEWER_HEIGHT,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
+                break;
+        }
 
         td.CalcCoordinates();
         td.Draw();
@@ -1914,8 +1916,8 @@ function draw_tree(drawing_type) {
             } else {
                 layer_boundaries.push( [ layer_boundaries[pindex-1][1] + layer_margin, layer_boundaries[pindex-1][1] + layer_margin + parseFloat($('#height' + pindex).val()) ] );
             }
-            createGroup('viewport', 'layer_' + pindex);
-            createGroup('viewport', 'layer_background_' + pindex);
+            createGroup('tree_group', 'layer_' + pindex);
+            createGroup('tree_group', 'layer_background_' + pindex);
 
             if (drawing_type=='phylogram' && !isParent && !isCategorical && !isStackBar) // draw numerical bar backgroung for phylogram
             {
@@ -1945,7 +1947,7 @@ function draw_tree(drawing_type) {
 
         switch (drawing_type) {
             case 'phylogram':
-                height_per_leaf = VIEWER_HEIGHT / (t.num_leaves - 1);
+                height_per_leaf = VIEWER_WIDTH / (t.num_leaves - 1);
                 break;
             case 'circlephylogram':
                 //angle_per_leaf = 2 * Math.PI / t.num_leaves;
@@ -2065,7 +2067,7 @@ function draw_tree(drawing_type) {
 
                                  drawPhylogramRectangle('layer_' + pindex,
                                     q.id,
-                                    layer_boundaries[pindex][0],
+                                    layer_boundaries[pindex][1] - metadata_dict[q.label][pindex],
                                     q.xy['y'],
                                     height_per_leaf,
                                     metadata_dict[q.label][pindex],
@@ -2277,9 +2279,10 @@ function draw_tree(drawing_type) {
 
         switch (drawing_type) {
             case 'phylogram':
+                drawLegend(0, 100);
                 break;
             case 'circlephylogram':
-                drawLegend();
+                drawLegend(20 - total_radius, total_radius + 100);
                 break;
         }
 
