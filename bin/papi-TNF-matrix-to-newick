@@ -38,12 +38,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
         
         vector = [float(x) for x in fields[1:]]
 
-        denominator = sum(vector)
-        if denominator:
-            normalized_vector = [p * 1000 / denominator for p in vector]
-            vectors.append(normalized_vector)
-        else:
-            vectors.append(vector)
+        vectors.append(vector)
 
         line_counter += 1
 
