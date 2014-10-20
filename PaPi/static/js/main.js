@@ -38,7 +38,7 @@ var has_parent_layer = false;
 
 var context_menu_target_id = 0;
 
-var metadata_title;
+var metadata_title = {};
 var metadata_dict;
 
 var metadata_swap_log = new Array();
@@ -463,9 +463,6 @@ function draw_tree_callback(){
     } else {
         tree_type = $('#tree_type').val()
         draw_tree($('#tree_type').val());
-
-        // enable tooltips and remove title attributes after tooltips enabled.
-        $('path[title], rect[title]').aToolTip().removeAttr('title');
 
         // enable export as svg button
         $('#btn_export_svg').attr('disabled', false);

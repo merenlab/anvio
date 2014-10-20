@@ -4,7 +4,6 @@
 #aToolTip {
 	pointer-events: none;
 	position: absolute;
-	display: none;
 	z-index: 50000;
 }
 
@@ -35,17 +34,3 @@
 	-webkit-box-shadow: 2px 2px 5px #111; /* for Safari and Chrome */
 	box-shadow: 2px 2px 5px #111; /* for Safari and Chrome */
 }
-	
-	.defaultTheme #aToolTipCloseBtn {
-		display:block;
-		height:18px;
-		width:18px;
-		background:url(../images/closeBtn.png) no-repeat;
-		text-indent:-9999px;
-		outline:none;
-		position:absolute;
-		top:-20px;
-		right:-30px;
-		margin:2px;
-		padding:4px;
-	}

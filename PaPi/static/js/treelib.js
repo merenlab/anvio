@@ -313,7 +313,6 @@ function lineMouseEnterHandler(event) {
             total_radius,
             (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
             group_color,
-            '',
             0.3,
             false);
     }
@@ -326,7 +325,6 @@ function lineMouseEnterHandler(event) {
             p2.xy.y - p1.xy.y + height_per_leaf,
             total_radius - p.ancestor.xy.x,
             group_color,
-            null,
             0.3,
             false);
    }
@@ -377,6 +375,37 @@ function lineMouseLeaveHandler(event) {
         $("#line" + p.child_nodes[i]).css('stroke', LINE_COLOR);
         $("#arc" + p.child_nodes[i]).css('stroke', LINE_COLOR);
     }
+}
+
+function mouseMoveHandler(event) {
+    var id = event.target.id.match(/path_(\d+)(_parent)?/);
+
+    var tooltip = document.getElementById('aToolTip');
+    if (tooltip)
+        tooltip.parentNode.removeChild(tooltip);
+
+    if (id)
+    {
+        id = id[1];
+
+        var layer_id = event.target.parentNode.id.match(/\d+/)[0];
+
+        var tooltip_arr = metadata_title[id_to_node_map[id].label].slice(0);
+        tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
+        var message = tooltip_arr.join('<br />\n');
+
+        var tooltip = document.createElement('div');
+        tooltip.setAttribute('id', 'aToolTip');
+        tooltip.setAttribute('class', 'defaultTheme');
+        tooltip.innerHTML = "<p class='aToolTipContent'>"+message+"</p>";
+
+        tooltip.style['top'] = (event.y+10) + 'px';
+        tooltip.style['left'] = (event.x+10) + 'px';
+
+        console.log(event);
+        document.body.appendChild(tooltip);
+    }
+
 }
 
 function drawLine(svg_id, p, p0, p1, isArc) {
@@ -496,7 +525,7 @@ function drawGuideLine(svg_id, id, angle, start_radius, end_radius) {
     svg.appendChild(line);
 }
 
-function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius, large_arc_flag, color, content, fill_opacity, pointer_events) {
+function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius, large_arc_flag, color, fill_opacity, pointer_events) {
     var pie = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
     if (start_angle > end_angle) {
@@ -540,10 +569,6 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
     pie.setAttribute('d', path.join(" "));
     pie.setAttribute('fill-opacity', fill_opacity);
 
-    if (content !== null && content.length > 0) {
-        pie.setAttribute('title', content);
-    }
-
     if (!pointer_events)
         pie.setAttribute('pointer-events', 'none');
 
@@ -551,7 +576,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
     svg.appendChild(pie);
 }
 
-function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content, fill_opacity, pointer_events) {
+function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opacity, pointer_events) {
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 
     rect.setAttribute('id', 'path_' + id);
@@ -567,10 +592,6 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content,
 
     if (!pointer_events)
         rect.setAttribute('pointer-events', 'none');
-
-    if (content !== null && content.length > 0) {
-        rect.setAttribute('title', content);
-    }
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(rect);
@@ -1670,7 +1691,6 @@ function draw_tree(drawing_type) {
 
     // generate tooltip text before normalization
     metadata_dict = new Array();
-    metadata_title = new Array();
 
     for (var index = 1; index < metadata.length; index++) 
     {
@@ -1996,7 +2016,6 @@ function draw_tree(drawing_type) {
                     tree_max_y + height_per_leaf,
                     layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
                     color,
-                    "",
                     0.3,
                     false);
             }
@@ -2038,10 +2057,6 @@ function draw_tree(drawing_type) {
                             var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
                             var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
 
-                            var tooltip_arr = metadata_title[q.label].slice(0);
-                            tooltip_arr[pindex] = '<font color="lime">' + tooltip_arr[pindex] + '</font>'
-                            var tooltip = tooltip_arr.join('<br />\n');
-
                             if(isStackBar)
                             {
                                 var offset = 0;
@@ -2054,7 +2069,6 @@ function draw_tree(drawing_type) {
                                         height_per_leaf,
                                         metadata_dict[q.label][pindex][j],
                                         stack_bar_colors[pindex][j],
-                                        tooltip,
                                         1,
                                         true);
                                     offset += metadata_dict[q.label][pindex][j];
@@ -2075,7 +2089,6 @@ function draw_tree(drawing_type) {
                                     height_per_leaf,
                                     layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
                                     color,
-                                    tooltip,
                                     1,
                                     true);
                             }
@@ -2106,7 +2119,6 @@ function draw_tree(drawing_type) {
                                     height_per_leaf,
                                     layer_boundaries[pindex][1] - layer_boundaries[pindex][0],
                                     color,
-                                    tooltip,
                                     1,
                                     true);
 
@@ -2125,7 +2137,6 @@ function draw_tree(drawing_type) {
                                     height_per_leaf,
                                     metadata_dict[q.label][pindex],
                                     color,
-                                    tooltip,
                                     1,
                                     true);
                             }
@@ -2139,7 +2150,6 @@ function draw_tree(drawing_type) {
                             height_per_leaf,
                             total_radius + margin - layer_boundaries[0][1],
                             '#FFFFFF',
-                            null,
                             0.0,
                             false);
 
@@ -2150,7 +2160,6 @@ function draw_tree(drawing_type) {
                             height_per_leaf,
                             margin * 4,
                             '#FFFFFF',
-                            null,
                             1,
                             false);
                     }
@@ -2172,10 +2181,6 @@ function draw_tree(drawing_type) {
                             var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
                             var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
 
-                            var tooltip_arr = metadata_title[q.label].slice(0);
-                            tooltip_arr[pindex] = '<font color="lime">' + tooltip_arr[pindex] + '</font>'
-                            var tooltip = tooltip_arr.join('<br />\n');
-
                             if(isStackBar)
                             {
                                 var offset = 0;
@@ -2189,7 +2194,6 @@ function draw_tree(drawing_type) {
                                         layer_boundaries[pindex][0] + offset + metadata_dict[q.label][pindex][j],
                                         0,
                                         stack_bar_colors[pindex][j],
-                                        tooltip,
                                         1,
                                         true);
                                     offset += metadata_dict[q.label][pindex][j];
@@ -2211,7 +2215,6 @@ function draw_tree(drawing_type) {
                                     layer_boundaries[pindex][1],
                                     0,
                                     color,
-                                    tooltip,
                                     1,
                                     true);
                             }
@@ -2244,7 +2247,6 @@ function draw_tree(drawing_type) {
                                     layer_boundaries[pindex][1],
                                     0,
                                     color,
-                                    tooltip,
                                     1,
                                     true);
 
@@ -2264,7 +2266,6 @@ function draw_tree(drawing_type) {
                                     layer_boundaries[pindex][1],
                                     0,
                                     color,
-                                    tooltip,
                                     0.3,
                                     true);
 
@@ -2276,7 +2277,6 @@ function draw_tree(drawing_type) {
                                     layer_boundaries[pindex][0] + metadata_dict[q.label][pindex],
                                     0,
                                     color,
-                                    tooltip,
                                     1,
                                     true);
                             }
@@ -2291,7 +2291,6 @@ function draw_tree(drawing_type) {
                             total_radius + margin,
                             0,
                             '#FFFFFF',
-                            null,
                             0.0,
                             false); 
 
@@ -2305,7 +2304,6 @@ function draw_tree(drawing_type) {
                             total_radius + margin * 4,
                             0,
                             '#FFFFFF',
-                            null,
                             1,
                             false); 
                     }
@@ -2352,5 +2350,6 @@ function draw_tree(drawing_type) {
         tree_group.addEventListener('contextmenu', lineContextMenuHandler, false);
         tree_group.addEventListener('mouseover',lineMouseEnterHandler, false);
         tree_group.addEventListener('mouseout', lineMouseLeaveHandler, false);
+        document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
     }
 }
