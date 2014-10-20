@@ -187,6 +187,198 @@ function redrawGroupColors() {
 
 }
 
+function lineClickHandler(event) {
+    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+
+    var group_id = $('input[type=radio]:checked').val();
+
+    if (group_id < 1)
+        return;
+
+    var group_color = $('#group_color_' + group_id).attr('color');
+
+    for (var i = 0; i < p.child_nodes.length; i++) {
+        var pos = $.inArray(p.child_nodes[i], SELECTED[group_id]);
+        if (pos == -1) {
+            SELECTED[group_id].push(p.child_nodes[i]);
+            $('.path_' + p.child_nodes[i] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
+            $('.path_' + p.child_nodes[i] + "_outer_ring").css('fill', group_color);
+        }
+
+        // remove nodes from other groups
+        for (var gid = 1; gid <= group_counter; gid++) {
+            // don't remove nodes from current group
+            if (gid == group_id)
+                continue;
+
+            var pos = $.inArray(p.child_nodes[i], SELECTED[gid]);
+            if (pos > -1) {
+                SELECTED[gid].splice(pos, 1);
+            }
+        }
+    }
+
+    updateGroupWindow();
+}
+
+function lineContextMenuHandler(event) {
+    event.preventDefault();
+    if (event.target.id.indexOf('path_') > -1) // if layer -> show popup
+    {
+        context_menu_target_id = event.target.id.replace('path_', '');
+
+        $('#control_contextmenu').show();
+
+        var group_id = $('input[type=radio]:checked').val();
+
+        if (group_id > 0)
+        {
+            var pos = $.inArray(parseInt(context_menu_target_id), SELECTED[group_id]);
+
+            if (pos == -1) {
+                $('#control_contextmenu #select').show();
+                $('#control_contextmenu #remove').hide();
+            }
+            else
+            {
+                $('#control_contextmenu #select').hide();
+                $('#control_contextmenu #remove').show();                        
+            }
+        }
+        else
+        {
+            $('#control_contextmenu #select').hide();
+            $('#control_contextmenu #remove').hide();
+        }
+
+        $('#control_contextmenu').offset({left:event.pageX-2,top:event.pageY-2});
+        return false;
+    }
+
+    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+
+    var group_id = $('input[type=radio]:checked').val();
+
+    if (group_id < 1)
+        return;
+
+    for (var i = 0; i < p.child_nodes.length; i++) {
+        $('.path_' + p.child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
+        $('.path_' + p.child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
+
+        // remove nodes from other groups
+        for (var gid = 1; gid <= group_counter; gid++) {
+            var pos = $.inArray(p.child_nodes[i], SELECTED[gid]);
+            if (pos > -1) {
+                SELECTED[gid].splice(pos, 1);
+            }
+        }
+    }
+    updateGroupWindow();
+    lineMouseLeaveHandler(event);
+    return false;
+}
+
+function lineMouseEnterHandler(event) {
+    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+
+    var group_id = $('input[type=radio]:checked').val();
+
+    if (group_id < 1)
+        return;
+
+    var group_color = $('#group_color_' + group_id).attr('color');
+
+    var p1 = p;
+    while (p1.child) {
+        p1 = p1.child;
+    }
+
+    var p2 = p;
+
+    while (p2.child) {
+        p2 = p2.child.GetRightMostSibling();
+    }
+
+    if (tree_type == 'circlephylogram')
+    {
+        drawPie('tree_group',
+            'hover',
+            p1.angle - angle_per_leaf / 2,
+            p2.angle + angle_per_leaf / 2,
+            distance(p.backarc, {
+                'x': 0,
+                'y': 0
+            }),
+            total_radius,
+            (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+            group_color,
+            '',
+            0.3,
+            false);
+    }
+    else
+    {  
+        drawPhylogramRectangle('tree_group',
+            'hover',
+            p.ancestor.xy.x,
+            (p1.xy.y + p2.xy.y) / 2,
+            p2.xy.y - p1.xy.y + height_per_leaf,
+            total_radius - p.ancestor.xy.x,
+            group_color,
+            null,
+            0.3,
+            false);
+   }
+
+    for (var index = 0; index < p.child_nodes.length; index++) {
+        $("#line" + p.child_nodes[index]).css('stroke-width', '3');
+        $("#arc" + p.child_nodes[index]).css('stroke-width', '3');
+        $("#line" + p.child_nodes[index]).css('stroke', group_color);
+        $("#arc" + p.child_nodes[index]).css('stroke', group_color);
+    }
+}
+
+function lineMouseLeaveHandler(event) {
+    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+
+    $('#path_hover').remove();
+
+    var group_id = $('input[type=radio]:checked').val();
+
+    if (group_id < 1) {
+        document.focus();
+        return;
+    }
+
+    for (var index = 0; index < p.child_nodes.length; index++) {
+        $("#line" + p.child_nodes[index]).css('stroke-width', '1');
+        $("#arc" + p.child_nodes[index]).css('stroke-width', '1');
+    }
+
+    var node_stack = [];
+    for (var gid = 1; gid <= group_counter; gid++) {
+        var group_color = $('#group_color_' + gid).attr('color');
+
+        for (var i = 0; i < SELECTED[gid].length; i++) {
+            node_stack.push(SELECTED[gid][i]);
+
+            $("#line" + SELECTED[gid][i]).css('stroke', group_color);
+            $("#arc" + SELECTED[gid][i]).css('stroke', group_color);
+            $("#line" + SELECTED[gid][i]).css('stroke-width', '2');
+            $("#arc" + SELECTED[gid][i]).css('stroke-width', '2');
+        }
+    }
+
+    for (var i = 0; i < p.child_nodes.length; i++) {
+        if ($.inArray(p.child_nodes[i], node_stack) > -1)
+            continue;
+
+        $("#line" + p.child_nodes[i]).css('stroke', LINE_COLOR);
+        $("#arc" + p.child_nodes[i]).css('stroke', LINE_COLOR);
+    }
+}
+
 function drawLine(svg_id, p, p0, p1, isArc) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
@@ -198,169 +390,6 @@ function drawLine(svg_id, p, p0, p1, isArc) {
     {
         line.setAttribute('id', 'line' + p.id);
     }
-
-    var n = new NodeIterator(p);
-    var q = n.Begin();
-
-    var child_nodes = [];
-    var rectangles = [];
-    while (q != null) {
-        child_nodes.push(q.id);
-        q = n.Next();
-    }
-
-    $(line).click(function() {
-        var group_id = $('input[type=radio]:checked').val();
-
-        if (group_id < 1)
-            return;
-
-        var group_color = $('#group_color_' + group_id).attr('color');
-
-        for (var i = 0; i < child_nodes.length; i++) {
-            var pos = $.inArray(child_nodes[i], SELECTED[group_id]);
-            if (pos == -1) {
-                SELECTED[group_id].push(child_nodes[i]);
-                $('.path_' + child_nodes[i] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
-                $('.path_' + child_nodes[i] + "_outer_ring").css('fill', group_color);
-            }
-
-            // remove nodes from other groups
-            for (var gid = 1; gid <= group_counter; gid++) {
-                // don't remove nodes from current group
-                if (gid == group_id)
-                    continue;
-
-                var pos = $.inArray(child_nodes[i], SELECTED[gid]);
-                if (pos > -1) {
-                    SELECTED[gid].splice(pos, 1);
-                }
-            }
-        }
-
-        updateGroupWindow();
-    });
-
-    $(line).on('contextmenu', function(e) {
-        e.preventDefault();
-        var group_id = $('input[type=radio]:checked').val();
-
-        if (group_id < 1)
-            return;
-
-        for (var i = 0; i < child_nodes.length; i++) {
-            $('.path_' + child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
-            $('.path_' + child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
-
-            // remove nodes from other groups
-            for (var gid = 1; gid <= group_counter; gid++) {
-                var pos = $.inArray(child_nodes[i], SELECTED[gid]);
-                if (pos > -1) {
-                    SELECTED[gid].splice(pos, 1);
-                }
-            }
-        }
-        updateGroupWindow();
-        $('#line' + p.id).trigger('mouseleave');
-        return false;
-    });
-
-    $(line).mouseenter(function() {
-        var group_id = $('input[type=radio]:checked').val();
-
-        if (group_id < 1)
-            return;
-
-        var group_color = $('#group_color_' + group_id).attr('color');
-
-        var p1 = p;
-        while (p1.child) {
-            p1 = p1.child;
-        }
-
-        var p2 = p;
-
-        while (p2.child) {
-            p2 = p2.child.GetRightMostSibling();
-        }
-
-        if (tree_type == 'circlephylogram')
-        {
-            drawPie('tree_group',
-                'hover',
-                p1.angle - angle_per_leaf / 2,
-                p2.angle + angle_per_leaf / 2,
-                distance(p.backarc, {
-                    'x': 0,
-                    'y': 0
-                }),
-                total_radius,
-                (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-                group_color,
-                '',
-                0.3,
-                false);
-        }
-        else
-        {  
-            drawPhylogramRectangle('tree_group',
-                'hover',
-                p.ancestor.xy.x,
-                (p1.xy.y + p2.xy.y) / 2,
-                p2.xy.y - p1.xy.y + height_per_leaf,
-                total_radius - p.ancestor.xy.x,
-                group_color,
-                null,
-                0.3,
-                false);
-       }
-
-        for (var index = 0; index < child_nodes.length; index++) {
-            $("#line" + child_nodes[index]).css('stroke-width', '3');
-            $("#arc" + child_nodes[index]).css('stroke-width', '3');
-            $("#line" + child_nodes[index]).css('stroke', group_color);
-            $("#arc" + child_nodes[index]).css('stroke', group_color);
-        }
-    });
-
-    $(line).mouseleave(function() {
-        $('#path_hover').remove();
-
-        var group_id = $('input[type=radio]:checked').val();
-
-        if (group_id < 1) {
-            document.focus();
-            return;
-        }
-
-        for (var index = 0; index < child_nodes.length; index++) {
-            $("#line" + child_nodes[index]).css('stroke-width', '1');
-            $("#arc" + child_nodes[index]).css('stroke-width', '1');
-        }
-
-        var node_stack = [];
-        for (var gid = 1; gid <= group_counter; gid++) {
-            var group_color = $('#group_color_' + gid).attr('color');
-
-            for (var i = 0; i < SELECTED[gid].length; i++) {
-                node_stack.push(SELECTED[gid][i]);
-
-                $("#line" + SELECTED[gid][i]).css('stroke', group_color);
-                $("#arc" + SELECTED[gid][i]).css('stroke', group_color);
-                $("#line" + SELECTED[gid][i]).css('stroke-width', '2');
-                $("#arc" + SELECTED[gid][i]).css('stroke-width', '2');
-            }
-        }
-
-        for (var i = 0; i < child_nodes.length; i++) {
-            if ($.inArray(child_nodes[i], node_stack) > -1)
-                continue;
-
-            $("#line" + child_nodes[i]).css('stroke', LINE_COLOR);
-            $("#arc" + child_nodes[i]).css('stroke', LINE_COLOR);
-        }
-        document.focus();
-    });
 
     line.setAttribute('vector-effect', 'non-scaling-stroke');
     line.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
@@ -425,8 +454,9 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     svg.appendChild(text);
 }
 
-function drawStraightGuideLine(svg_id, xy, max_x)  {
+function drawStraightGuideLine(svg_id, id, xy, max_x)  {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('id','guide' + id);
 
     line.setAttribute('x1', xy['x']);
     line.setAttribute('y1', xy['y']);
@@ -442,8 +472,9 @@ function drawStraightGuideLine(svg_id, xy, max_x)  {
     svg.appendChild(line);
 }
 
-function drawGuideLine(svg_id, angle, start_radius, end_radius) {
+function drawGuideLine(svg_id, id, angle, start_radius, end_radius) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('id','guide' + id);
 
     var ax = Math.cos(angle) * start_radius;
     var ay = Math.sin(angle) * start_radius;
@@ -474,18 +505,6 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
         end_angle = start_angle;
         start_angle = t;
     }
-
-    $(pie).click(function() {
-        $('#line' + id).trigger('click');
-    });
-
-    $(pie).mouseenter(function() {
-        $('#line' + id).trigger('mouseenter');
-    });
-    $(pie).mouseleave(function() {
-        $('#aToolTip').hide();
-        $('#line' + id).trigger('mouseleave');
-    });
 
     // origin
     var ox = 0;
@@ -534,18 +553,6 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 
 function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, content, fill_opacity, pointer_events) {
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-
-    $(rect).click(function() {
-        $('#line' + id).trigger('click');
-    });
-
-    $(rect).mouseenter(function() {
-        $('#line' + id).trigger('mouseenter');
-    });
-    $(rect).mouseleave(function() {
-        $('#aToolTip').hide();
-        $('#line' + id).trigger('mouseleave');
-    });
 
     rect.setAttribute('id', 'path_' + id);
     rect.setAttribute('class', 'path_' + id);
@@ -608,23 +615,6 @@ function circeArcPath(p0, p1, radius, large_arc_flag) {
 function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
     var arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     arc.setAttribute('id', 'arc' + p.id);
-
-    $(arc).click(function() {
-        $('#line' + p.id).click();
-    });
-
-    $(arc).on('contextmenu', function(e) {
-        e.preventDefault();
-        $('#line' + p.id).trigger('contextmenu');
-        return false;
-    });
-
-    $(arc).mouseenter(function() {
-        $('#line' + p.id).mouseenter();
-    });
-    $(arc).mouseleave(function() {
-        $('#line' + p.id).mouseleave();
-    });
 
     arc.setAttribute('vector-effect', 'non-scaling-stroke');
     arc.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
@@ -1923,12 +1913,26 @@ function draw_tree(drawing_type) {
                         tree_max_x = q.xy.x;
                     if (q.xy.y > tree_max_y)
                         tree_max_y = q.xy.y;
+
+                    // childs
+                    var _n = new NodeIterator(q);
+                    var _q = _n.Begin();
+
+                    q.child_nodes = [];
+                    while (_q != null) {
+                        q.child_nodes.push(_q.id);
+                        _q = _n.Next();
+                    }
+                    // end of childs
+
                     q = n.Next();
+
                 }
                 layer_boundaries.push( [0, tree_max_x] );
                 
                 // calculate height per leaf
                 height_per_leaf = VIEWER_WIDTH / (t.num_leaves - 1);
+
                 break;
 
             case 'circlephylogram':
@@ -1936,6 +1940,18 @@ function draw_tree(drawing_type) {
                 {
                     if (q.radius > tree_radius)
                         tree_radius = q.radius;
+
+                    // childs
+                    var _n = new NodeIterator(q);
+                    var _q = _n.Begin();
+
+                    q.child_nodes = [];
+                    while (_q != null) {
+                        q.child_nodes.push(_q.id);
+                        _q = _n.Next();
+                    }
+                    // end of childs
+
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_radius] );
@@ -2014,7 +2030,7 @@ function draw_tree(drawing_type) {
                         odd_even_flag = odd_even_flag * -1;
 
                         if (odd_even_flag > 0)
-                            drawStraightGuideLine('guide_lines', q.xy, tree_max_x);
+                            drawStraightGuideLine('guide_lines', q.id, q.xy, tree_max_x);
 
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
@@ -2148,7 +2164,7 @@ function draw_tree(drawing_type) {
 
                         // draw guidelines for every other leaf.
                         if (odd_even_flag > 0)
-                            drawGuideLine('guide_lines', q.angle, q.radius, beginning_of_layers);
+                            drawGuideLine('guide_lines', q.id, q.angle, q.radius, beginning_of_layers);
 
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
@@ -2330,5 +2346,11 @@ function draw_tree(drawing_type) {
 
         // pan
         $('svg').svgPan('viewport');
+
+        var tree_group = document.getElementById('tree_group');
+        tree_group.addEventListener('click', lineClickHandler, false);
+        tree_group.addEventListener('contextmenu', lineContextMenuHandler, false);
+        tree_group.addEventListener('mouseover',lineMouseEnterHandler, false);
+        tree_group.addEventListener('mouseout', lineMouseLeaveHandler, false);
     }
 }

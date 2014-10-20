@@ -348,44 +348,10 @@ $(document).ready(function() {
                 $(this).colpickSetColor(this.value);
             });
 
-            // bind right click menu
-            $('body').bind('contextmenu', function(e) {
-                if (e.target.id.indexOf('path_')==-1)
-                    return true;
-
-                context_menu_target_id = e.target.id.replace('path_', '');
-
-                $('#control_contextmenu').show();
-
-                var group_id = $('input[type=radio]:checked').val();
-
-                if (group_id > 0)
-                {
-                    var pos = $.inArray(parseInt(context_menu_target_id), SELECTED[group_id]);
-
-                    if (pos == -1) {
-                        $('#control_contextmenu #select').show();
-                        $('#control_contextmenu #remove').hide();
-                    }
-                    else
-                    {
-                        $('#control_contextmenu #select').hide();
-                        $('#control_contextmenu #remove').show();                        
-                    }
-                }
-                else
-                {
-                    $('#control_contextmenu #select').hide();
-                    $('#control_contextmenu #remove').hide();
-                }
-
-                $('#control_contextmenu').offset({left:e.pageX-2,top:e.pageY-2});
-                return false;
-            });
-
             $('body').bind('click', function() {
                 $('#control_contextmenu').hide();
             });
+
     }}); // meta
     }}); // state
 });
@@ -453,11 +419,13 @@ function menu_callback(action) {
     switch (action) {
 
         case 'select':
-            $('#line' + context_menu_target_id).trigger('click');
+            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
+            lineClickHandler(fake_event);
             break;
 
         case 'remove':
-            $('#line' + context_menu_target_id).trigger('contextmenu');
+            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
+            lineContextMenuHandler(fake_event);
             break;
 
         case 'content':
