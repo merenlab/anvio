@@ -190,12 +190,11 @@ class RuninfoIO:
                                                       S(contigs_in_metadata, contigs_in_fasta))
 
         if self.taxonomy:
-            contigs_in_taxonomy = sorted(self.taxonomy.keys())
-            try:
-                assert(contigs_in_taxonomy == contigs_in_fasta)
-            except:
-                raise PaPi.utils.ConfigError, "Contig names in taxonomy do not match with contig names found\
-                                               in other files. Bad news :/"
+            contigs_in_taxonomy = set(self.taxonomy.keys())
+            for contig in contigs_in_metadata:
+                if not contig in contigs_in_taxonomy:
+                    raise PaPi.utils.ConfigError, "Contig names in taxonomy does not include all contig names present\
+                                                   in other files. Bad news :/"
 
 
     def update_runinfo_on_disk(self):
@@ -209,7 +208,7 @@ class RuninfoIO:
         if self.taxonomy:
             metadata_headers = PaPi.utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
             metadata_dict = PaPi.utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
-            for contig in self.taxonomy:
+            for contig in metadata_dict.keys():
                 metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
 
             new_metatada_file_path = PaPi.utils.get_temp_file_path()
