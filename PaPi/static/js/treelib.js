@@ -222,7 +222,8 @@ function lineClickHandler(event) {
 }
 
 function lineContextMenuHandler(event) {
-    event.preventDefault();
+    if (event.preventDefault) event.preventDefault();
+
     if (event.target.id.indexOf('path_') > -1) // if layer -> show popup
     {
         context_menu_target_id = event.target.id.replace('path_', '');
@@ -402,7 +403,6 @@ function mouseMoveHandler(event) {
         tooltip.style['top'] = (event.y+10) + 'px';
         tooltip.style['left'] = (event.x+10) + 'px';
 
-        console.log(event);
         document.body.appendChild(tooltip);
     }
 
