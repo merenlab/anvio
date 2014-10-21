@@ -169,40 +169,72 @@ function drawGroupLegend() {
 function redrawGroupColors() {
     for (var gid = 1; gid <= group_counter; gid++) {
 
-        var group_color = $('#group_color_' + gid).attr('color');
+        var group_color = document.getElementById('group_color_' + gid).getAttribute('color');;
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
             if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                $('.path_' + SELECTED[gid][j] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
-                $('.path_' + SELECTED[gid][j] + "_outer_ring").css('fill', group_color);
+                var _path_background = document.getElementsByClassName('path_' + SELECTED[gid][j] + '_background');
+                for (var _i=0; _i < _path_background.length; _i++) {
+                    _path_background[_i].style['fill'] = group_color;
+                    _path_background[_i].style['fill-opacity'] = '0.1';      
+                }
+
+                var _path_outer_ring = document.getElementsByClassName('path_' + SELECTED[gid][j] + '_outer_ring');
+                for (var _i=0; _i < _path_outer_ring.length; _i++) {
+                    _path_outer_ring[_i].style['fill'] = group_color;    
+                }
             }
-            $("#line" + SELECTED[gid][j]).css('stroke', group_color);
-            $("#arc" + SELECTED[gid][j]).css('stroke', group_color);
-            $("#line" + SELECTED[gid][j]).css('stroke-width', '2');
-            $("#arc" + SELECTED[gid][j]).css('stroke-width', '2');
+
+            var _line = document.getElementById('line' + SELECTED[gid][j]);
+            if (_line) {
+                _line.style['stroke-width'] = '2';
+                _line.style['stroke'] = group_color;       
+            }
+
+            var _arc = document.getElementById('arc' + SELECTED[gid][j]);
+            if (_arc) {
+                _arc.style['stroke-width'] = '2';
+                _arc.style['stroke'] = group_color;
+            }
         }
-
-
     }
 
+}
+
+function getGroupId() {
+    var radios = document.getElementsByName('active_group');
+    for(var i=0; i < radios.length; i++)
+    {
+        if (radios[i].checked)
+            return radios[i].value;
+    }
 }
 
 function lineClickHandler(event) {
     var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
 
-    var group_id = $('input[type=radio]:checked').val();
+    var group_id = getGroupId();
 
     if (group_id < 1)
         return;
 
-    var group_color = $('#group_color_' + group_id).attr('color');
+    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');;
 
     for (var i = 0; i < p.child_nodes.length; i++) {
         var pos = $.inArray(p.child_nodes[i], SELECTED[group_id]);
         if (pos == -1) {
             SELECTED[group_id].push(p.child_nodes[i]);
-            $('.path_' + p.child_nodes[i] + "_background").css({'fill': group_color, 'fill-opacity': '0.1'});
-            $('.path_' + p.child_nodes[i] + "_outer_ring").css('fill', group_color);
+
+            var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
+            for (var _i=0; _i < _path_background.length; _i++) {
+                _path_background[_i].style['fill'] = group_color;
+                _path_background[_i].style['fill-opacity'] = '0.1';      
+            }
+
+            var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
+            for (var _i=0; _i < _path_outer_ring.length; _i++) {
+                _path_outer_ring[_i].style['fill'] = group_color;    
+            }
         }
 
         // remove nodes from other groups
@@ -223,14 +255,13 @@ function lineClickHandler(event) {
 
 function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
+    var group_id = getGroupId();
 
     if (event.target.id.indexOf('path_') > -1) // if layer -> show popup
     {
         context_menu_target_id = event.target.id.replace('path_', '');
 
         $('#control_contextmenu').show();
-
-        var group_id = $('input[type=radio]:checked').val();
 
         if (group_id > 0)
         {
@@ -258,14 +289,20 @@ function lineContextMenuHandler(event) {
 
     var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
 
-    var group_id = $('input[type=radio]:checked').val();
-
     if (group_id < 1)
         return;
 
     for (var i = 0; i < p.child_nodes.length; i++) {
-        $('.path_' + p.child_nodes[i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
-        $('.path_' + p.child_nodes[i] + "_outer_ring").css('fill', '#FFFFFF');
+        var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
+        for (var _i=0; _i < _path_background.length; _i++) {
+            _path_background[_i].style['fill'] = '#FFFFFF';
+            _path_background[_i].style['fill-opacity'] = '0.0';      
+        }
+
+        var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
+        for (var _i=0; _i < _path_outer_ring.length; _i++) {
+            _path_outer_ring[_i].style['fill'] = '#FFFFFF';    
+        }
 
         // remove nodes from other groups
         for (var gid = 1; gid <= group_counter; gid++) {
@@ -283,12 +320,12 @@ function lineContextMenuHandler(event) {
 function lineMouseEnterHandler(event) {
     var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
 
-    var group_id = $('input[type=radio]:checked').val();
+    var group_id = getGroupId();
 
     if (group_id < 1)
         return;
 
-    var group_color = $('#group_color_' + group_id).attr('color');
+    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');;
 
     var p1 = p;
     while (p1.child) {
@@ -331,10 +368,17 @@ function lineMouseEnterHandler(event) {
    }
 
     for (var index = 0; index < p.child_nodes.length; index++) {
-        $("#line" + p.child_nodes[index]).css('stroke-width', '3');
-        $("#arc" + p.child_nodes[index]).css('stroke-width', '3');
-        $("#line" + p.child_nodes[index]).css('stroke', group_color);
-        $("#arc" + p.child_nodes[index]).css('stroke', group_color);
+        var _line = document.getElementById('line' + p.child_nodes[index]);
+        if (_line) {
+            _line.style['stroke-width'] = '3';
+            _line.style['stroke'] = group_color;       
+        }
+
+        var _arc = document.getElementById('arc' + p.child_nodes[index]);
+        if (_arc) {
+            _arc.style['stroke-width'] = '3';
+            _arc.style['stroke'] = group_color;
+        }
     }
 }
 
@@ -343,7 +387,7 @@ function lineMouseLeaveHandler(event) {
 
     $('#path_hover').remove();
 
-    var group_id = $('input[type=radio]:checked').val();
+    var group_id = getGroupId();
 
     if (group_id < 1) {
         document.focus();
@@ -351,21 +395,35 @@ function lineMouseLeaveHandler(event) {
     }
 
     for (var index = 0; index < p.child_nodes.length; index++) {
-        $("#line" + p.child_nodes[index]).css('stroke-width', '1');
-        $("#arc" + p.child_nodes[index]).css('stroke-width', '1');
+        var _line = document.getElementById('line' + p.child_nodes[index]);
+        if (_line) {
+            _line.style['stroke-width'] = '1';       
+        }
+
+        var _arc = document.getElementById('arc' + p.child_nodes[index]);
+        if (_arc) {
+            _arc.style['stroke-width'] = '1';
+        }
     }
 
     var node_stack = [];
     for (var gid = 1; gid <= group_counter; gid++) {
-        var group_color = $('#group_color_' + gid).attr('color');
+        var group_color = document.getElementById('group_color_' + gid).getAttribute('color');;
 
         for (var i = 0; i < SELECTED[gid].length; i++) {
             node_stack.push(SELECTED[gid][i]);
 
-            $("#line" + SELECTED[gid][i]).css('stroke', group_color);
-            $("#arc" + SELECTED[gid][i]).css('stroke', group_color);
-            $("#line" + SELECTED[gid][i]).css('stroke-width', '2');
-            $("#arc" + SELECTED[gid][i]).css('stroke-width', '2');
+            var _line = document.getElementById('line' + SELECTED[gid][i]);
+            if (_line) {
+                _line.style['stroke-width'] = '2';
+                _line.style['stroke'] = group_color;       
+            }
+
+            var _arc = document.getElementById('arc' + SELECTED[gid][i]);
+            if (_arc) {
+                _arc.style['stroke-width'] = '2';
+                _arc.style['stroke'] = group_color;
+            }
         }
     }
 
@@ -373,8 +431,15 @@ function lineMouseLeaveHandler(event) {
         if ($.inArray(p.child_nodes[i], node_stack) > -1)
             continue;
 
-        $("#line" + p.child_nodes[i]).css('stroke', LINE_COLOR);
-        $("#arc" + p.child_nodes[i]).css('stroke', LINE_COLOR);
+        var _line = document.getElementById('line' + p.child_nodes[i]);
+        if (_line) {
+            _line.style['stroke'] = LINE_COLOR;       
+        }
+
+        var _arc = document.getElementById('arc' + p.child_nodes[i]);
+        if (_arc) {
+            _arc.style['stroke'] = LINE_COLOR;
+        }
     }
 }
 
