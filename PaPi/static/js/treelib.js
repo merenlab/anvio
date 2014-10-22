@@ -221,7 +221,7 @@ function lineClickHandler(event) {
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');;
 
     for (var i = 0; i < p.child_nodes.length; i++) {
-        var pos = $.inArray(p.child_nodes[i], SELECTED[group_id]);
+        var pos = SELECTED[group_id].indexOf(p.child_nodes[i]);
         if (pos == -1) {
             SELECTED[group_id].push(p.child_nodes[i]);
 
@@ -243,7 +243,7 @@ function lineClickHandler(event) {
             if (gid == group_id)
                 continue;
 
-            var pos = $.inArray(p.child_nodes[i], SELECTED[gid]);
+            var pos = SELECTED[gid].indexOf(p.child_nodes[i]);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
             }
@@ -265,7 +265,7 @@ function lineContextMenuHandler(event) {
 
         if (group_id > 0)
         {
-            var pos = $.inArray(parseInt(context_menu_target_id), SELECTED[group_id]);
+            var pos = SELECTED[group_id].indexOf(parseInt(context_menu_target_id));
 
             if (pos == -1) {
                 $('#control_contextmenu #select').show();
@@ -306,7 +306,7 @@ function lineContextMenuHandler(event) {
 
         // remove nodes from other groups
         for (var gid = 1; gid <= group_counter; gid++) {
-            var pos = $.inArray(p.child_nodes[i], SELECTED[gid]);
+            var pos = SELECTED[gid].indexOf(p.child_nodes[i]);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
             }
@@ -428,7 +428,7 @@ function lineMouseLeaveHandler(event) {
     }
 
     for (var i = 0; i < p.child_nodes.length; i++) {
-        if ($.inArray(p.child_nodes[i], node_stack) > -1)
+        if (node_stack.indexOf(p.child_nodes[i]) > -1)
             continue;
 
         var _line = document.getElementById('line' + p.child_nodes[i]);
@@ -1798,11 +1798,11 @@ function draw_tree(drawing_type) {
             {
                 continue;
             }    
-            if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+            if (categorical_data_ids.indexOf(pindex) > -1) // categorical data
             {
                 continue;
             }
-            if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
+            if (stack_bar_ids.indexOf(pindex) > -1) // stack bar
             {
                 // convert ";" string to array after normalization
                 var stack_bar_items = metadata_dict[id][pindex].split(";");
@@ -1847,7 +1847,7 @@ function draw_tree(drawing_type) {
         {
             continue;
         }
-        else if ($.inArray(pindex, categorical_data_ids) > -1) // categorical data
+        else if (categorical_data_ids.indexOf(pindex) > -1) // categorical data
         {
             continue;
         }
@@ -1863,7 +1863,7 @@ function draw_tree(drawing_type) {
 
             for (var id in metadata_dict)
             {
-                if ($.inArray(pindex, stack_bar_ids) > -1) // stack bar
+                if (stack_bar_ids.indexOf(pindex) > -1) // stack bar
                 {
                     var total = 0;
 
@@ -2054,8 +2054,8 @@ function draw_tree(drawing_type) {
         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
             var isParent = (pindex == 1 && has_parent_layer) ? true : false;
-            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
-            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
+            var isCategorical = categorical_data_ids.indexOf(pindex) > -1 ? true : false;
+            var isStackBar = stack_bar_ids.indexOf(pindex) > -1 ? true : false;
 
             var layer_margin = (parseFloat($('#height' + pindex).val())==0) ? 0 : margin;
 
@@ -2119,8 +2119,8 @@ function draw_tree(drawing_type) {
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
                             var isParent = (pindex == 1 && has_parent_layer) ? true : false;
-                            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
-                            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
+                            var isCategorical = categorical_data_ids.indexOf(pindex) > -1 ? true : false;
+                            var isStackBar = stack_bar_ids.indexOf(pindex) > -1 ? true : false;
 
                             if(isStackBar)
                             {
@@ -2243,8 +2243,8 @@ function draw_tree(drawing_type) {
                         for (var pindex = 1; pindex < parameter_count; pindex++) {
 
                             var isParent = (pindex == 1 && has_parent_layer) ? true : false;
-                            var isCategorical = $.inArray(pindex, categorical_data_ids) > -1 ? true : false;
-                            var isStackBar = $.inArray(pindex, stack_bar_ids) > -1 ? true : false;
+                            var isCategorical = categorical_data_ids.indexOf(pindex) > -1 ? true : false;
+                            var isStackBar = stack_bar_ids.indexOf(pindex) > -1 ? true : false;
 
                             if(isStackBar)
                             {
