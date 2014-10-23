@@ -620,14 +620,14 @@ function submitGroups(only_svg) {
 
         $.post("/submit", {
             groups: JSON.stringify(output),
-            svg: Base64.encode($('#svg')[0].outerHTML)
+            svg: document.getElementById('svg').outerHTML
         });
     }
     else
     {
         $.post("/submit", {
             groups: "{}",
-            svg: Base64.encode($('#svg')[0].outerHTML)
+            svg: document.getElementById('svg').outerHTML
         });
         // add removed ungrouped backgrounds back
         $(detached_paths).appendTo('#tree_group');

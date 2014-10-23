@@ -309,7 +309,7 @@ def save_state():
 @route('/submit', method='POST')
 def get_data():
     bins = json.loads(request.forms.get('groups'))
-    svg = base64.b64decode(request.forms.get('svg'))
+    svg = request.forms.get('svg')
 
     if svg:
         # take care of the SVG.
