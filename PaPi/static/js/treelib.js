@@ -173,7 +173,7 @@ function redrawGroupColors() {
         var color_picker = document.getElementById('group_color_' + gid);
 
         if (!color_picker)
-            break;
+            continue;
 
         var group_color = color_picker.getAttribute('color');
 
@@ -331,7 +331,7 @@ function lineMouseEnterHandler(event) {
     if (group_id < 1)
         return;
 
-    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');;
+    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
 
     var p1 = p;
     while (p1.child) {
@@ -414,7 +414,12 @@ function lineMouseLeaveHandler(event) {
 
     var node_stack = [];
     for (var gid = 1; gid <= group_counter; gid++) {
-        var group_color = document.getElementById('group_color_' + gid).getAttribute('color');;
+        var color_picker = document.getElementById('group_color_' + gid);
+
+        if (!color_picker)
+            continue;
+
+        var group_color = color_picker.getAttribute('color');
 
         for (var i = 0; i < SELECTED[gid].length; i++) {
             node_stack.push(SELECTED[gid][i]);
