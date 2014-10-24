@@ -168,8 +168,14 @@ function drawGroupLegend() {
 
 function redrawGroupColors() {
     for (var gid = 1; gid <= group_counter; gid++) {
+        
+        // check if group exist
+        var color_picker = document.getElementById('group_color_' + gid);
 
-        var group_color = document.getElementById('group_color_' + gid).getAttribute('color');;
+        if (!color_picker)
+            break;
+
+        var group_color = color_picker.getAttribute('color');
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
             if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
