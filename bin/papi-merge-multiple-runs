@@ -230,7 +230,8 @@ class MultipleRuns:
             merged_summary_index[split_name] = merged_split_summary_path
 
         self.progress.update('Serializing merged split summary index ...')
-        PaPi.utils.write_serialized_object(merged_summary_index, merged_summary_index_path)
+        PaPi.utils.write_serialized_object(PaPi.utils.strip_prefix_from_dict_values(merged_summary_index, self.output_dir),\
+                                           merged_summary_index_path)
 
         return summary_dir, merged_summary_index_path
 
