@@ -154,7 +154,7 @@ class MultipleRuns:
         self.run.info('profile_summary_index', profile_summary_index)
 
         self.progress.new('Analyzing contigs for consensus')
-        splits_fasta = self.store_contigs_consensus()
+        splits_fasta = self.store_splits_consensus()
         self.progress.end()
         self.run.info('splits_fasta', splits_fasta)
  
@@ -199,7 +199,7 @@ class MultipleRuns:
             self.progress.end()
 
             runinfo_output_path = os.path.join(self.output_dir, '-'.join(['RUNINFO', essential_field]) + '.cp')
-            self.run.info('project_name', essential_field)
+            self.run.info('project_name', '%s (%s)' % (os.path.basename(self.output_dir), essential_field))
             self.run.info('metadata_txt', metadata_output_path)
             self.run.info('runinfo', runinfo_output_path)
             self.run.store_info_dict(runinfo_output_path, strip_prefix = self.output_dir)
@@ -344,7 +344,7 @@ class MultipleRuns:
         return TNF_matrix_file_path
 
 
-    def store_contigs_consensus(self):
+    def store_splits_consensus(self):
         self.consensus_splits = {}
         num_splits = len(self.split_names)
         for i in range(0, num_splits):
