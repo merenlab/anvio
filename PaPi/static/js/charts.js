@@ -59,7 +59,6 @@ function createCharts(){
     $('#chart-container').css("width", (width + 150) + "px");
     
     var charts = [];
-    var maxCoverage = 0;
     var maxVariability = 0;
     
     var layersCount = layers.length;
@@ -69,10 +68,6 @@ function createCharts(){
         for (var prop in d) {
             if (d.hasOwnProperty(prop)) {
                 d[prop] = parseFloat(d[prop]);
-                
-                if (d[prop] > maxCoverage) {
-                    maxCoverage = d[prop];
-                }
             }
         }
     });
@@ -99,7 +94,6 @@ function createCharts(){
                         id: i,
                         width: width,
                         height: height * (1 / layersCount),
-                        maxCoverage: maxCoverage,
                         maxVariability: maxVariability,
                         svg: svg,
                         margin: margin,
@@ -177,7 +171,6 @@ function Chart(options){
     this.competing_nucleotides = options.competing_nucleotides;
     this.width = options.width;
     this.height = options.height;
-    this.maxCoverage = options.maxCoverage;
     this.maxVariability = options.maxVariability;
     this.svg = options.svg;
     this.id = options.id;
@@ -191,7 +184,10 @@ function Chart(options){
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
                             .domain([0, this.coverage.length]);
-    
+   
+    this.maxCoverage = Math.max.apply(null, this.coverage);
+    if(this.maxCoverage < 20)
+        this.maxCoverage = 20;
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
                             .domain([0,this.maxCoverage]);
@@ -199,7 +195,6 @@ function Chart(options){
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
                             .domain([0, this.maxVariability]);
-    
     
     var xS = this.xScale;
     var yS = this.yScale;
