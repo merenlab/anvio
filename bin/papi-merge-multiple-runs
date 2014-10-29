@@ -23,7 +23,7 @@ import PaPi.fastalib as u
 from PaPi.utils import pretty_print as pp 
 from PaPi.profiler import __version__
 
-kmers = PaPi.utils.KMers()
+kmers = PaPi.kmers.KMers()
 P = lambda x, y: os.path.join(x['output_dir'], y)
 
 class MultipleRuns:
@@ -157,7 +157,12 @@ class MultipleRuns:
         splits_fasta = self.store_splits_consensus()
         self.progress.end()
         self.run.info('splits_fasta', splits_fasta)
- 
+
+        self.progress.new('GC content for consensus splits')
+        self.progress.update('Computing...')
+        self.GC_content_for_splits = PaPi.utils.get_GC_content_for_FASTA_entries(splits_fasta)
+        self.progress.end()
+
         self.progress.new('Analyzing TNF of contigs')
         tnf_matrix = self.store_contigs_tnf()
         self.progress.end()
@@ -190,7 +195,7 @@ class MultipleRuns:
             for split_name in self.split_names:
                 line = '\t'.join([split_name] +\
                                  [self.metadata_for_each_run[self.project_names[0]][split_name][Length]] +\
-                                 [self.metadata_for_each_run[self.project_names[0]][split_name][GC_content]] +\
+                                 [str(self.GC_content_for_splits[split_name])] +\
                                  [self.metadata_for_each_run[project][split_name][essential_field] for project in self.project_names] +\
                                  [self.metadata_for_each_run[project][split_name][f] for f in auxiliary_fields])
                 metadata_output.write('%s\n' % line)

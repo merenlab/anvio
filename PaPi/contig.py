@@ -12,7 +12,7 @@
 import copy
 import numpy
 
-from PaPi.utils import KMers
+from PaPi.kmers import KMers
 from PaPi.variability import ColumnProfile
 
 kmers = KMers()
@@ -43,7 +43,7 @@ class Contig:
     def analyze_composition(self, bam, progress):
         for split in self.splits:
             progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
-            split.composition = Composition(split, bam)
+            split.composition = Composition(self.split.auxiliary.rep_seq)
 
 
     def get_rep_seq(self):
@@ -117,8 +117,8 @@ class Auxiliary:
 
 
 class Composition:
-    def __init__(self, split, bam):
-        self.split = split
+    def __init__(self, sequence):
+        self.sequence = sequence
         self.A = 0
         self.T = 0
         self.C = 0
@@ -129,13 +129,13 @@ class Composition:
         self.report()
 
     def report(self):
-        sequence = self.split.auxiliary.rep_seq
-        raw_length = len(sequence)
+        s = self.sequence
+        raw_length = len(s)
         
-        self.A = sequence.count('A')
-        self.T = sequence.count('T')
-        self.C = sequence.count('C')
-        self.G = sequence.count('G')
+        self.A = s.count('A')
+        self.T = s.count('T')
+        self.C = s.count('C')
+        self.G = s.count('G')
         self.N = raw_length - (self.A + self.T + self.C + self.G)
     
         length = raw_length - self.N
