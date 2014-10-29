@@ -174,19 +174,22 @@ class MultipleRuns:
 
 
     def store_project_runinfos_for_each_metadata_column(self):
-        essential_fields = [f for f in self.metadata_fields if not f.startswith('__') and f not in ["contigs", "GC_content"]]
+        essential_fields = [f for f in self.metadata_fields if not f.startswith('__') and f not in ["contigs", "GC_content", "length"]]
         auxiliary_fields = [f for f in self.metadata_fields if f.startswith('__')]
+        Length = "length"
         GC_content = "GC_content"
+        
 
         for essential_field in essential_fields:
             self.progress.new('Storing RUNINFO dicts for each metadata column')
             self.progress.update('%s ...' % essential_field)
             metadata_output_path = os.path.join(self.output_dir, '-'.join(['METADATA', essential_field]) + '.txt')
             metadata_output = open(metadata_output_path, 'w')
-            fields = '\t'.join(['contigs'] + [GC_content] + self.project_names + auxiliary_fields)
+            fields = '\t'.join(['contigs'] + [Length, GC_content] + self.project_names + auxiliary_fields)
             metadata_output.write('%s\n' % fields)
             for split_name in self.split_names:
                 line = '\t'.join([split_name] +\
+                                 [self.metadata_for_each_run[self.project_names[0]][split_name][Length]] +\
                                  [self.metadata_for_each_run[self.project_names[0]][split_name][GC_content]] +\
                                  [self.metadata_for_each_run[project][split_name][essential_field] for project in self.project_names] +\
                                  [self.metadata_for_each_run[project][split_name][f] for f in auxiliary_fields])
