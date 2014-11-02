@@ -454,6 +454,29 @@ def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
+def get_vectors_from_TAB_delim_matrix(file_path):
+    is_file_exists(file_path)
+    is_file_tab_delimited(file_path)
+
+    vectors = []
+    id_to_sample_dict = {}
+
+    input_matrix = open(file_path)
+    header = input_matrix.readline().strip().split('\t')[1:]
+
+    line_counter = 0
+    for line in input_matrix.readlines():
+        fields = line.strip().split('\t')
+        id_to_sample_dict[line_counter] = fields[0]
+
+        vector = [float(x) for x in fields[1:]]
+        vectors.append(vector)
+
+        line_counter += 1
+
+    return id_to_sample_dict, header, vectors
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
@@ -507,7 +530,6 @@ def concatenate_files(dest_file, file_list):
 
     dest_file_obj.close()
     return dest_file
-
 
 
 class ConfigError(Exception):
