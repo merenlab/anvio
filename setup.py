@@ -14,8 +14,7 @@ setup(
     packages = find_packages(),
     scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
 
-    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0'],
-
+    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15'],
 
     author = "A. Murat Eren",
     author_email = "a.murat.eren@gmail.com",
