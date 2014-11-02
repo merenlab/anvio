@@ -22,6 +22,7 @@ import PaPi.contig
 import PaPi.fastalib as u
 from PaPi.utils import pretty_print as pp 
 from PaPi.profiler import __version__
+from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD
 
 kmers = PaPi.kmers.KMers()
 P = lambda x, y: os.path.join(x['output_dir'], y)
@@ -179,11 +180,11 @@ class MultipleRuns:
 
 
     def store_project_runinfos_for_each_metadata_column(self):
-        essential_fields = [f for f in self.metadata_fields if not f.startswith('__') and f not in ["contigs", "GC_content", "length"]]
-        auxiliary_fields = [f for f in self.metadata_fields if f.startswith('__')]
+        essential_fields = [f for f in self.metadata_fields if IS_ESSENTIAL_FIELD(f)]
+        auxiliary_fields = [f for f in self.metadata_fields if IS_AUXILIARY_FIELD(f)]
+        # FIXME: these are pretty embarrassing, and should be fixed at some point:
         Length = "length"
         GC_content = "GC_content"
-        
 
         for essential_field in essential_fields:
             self.progress.new('Storing RUNINFO dicts for each metadata column')
