@@ -13,7 +13,6 @@
 import sys
 import argparse
 import hcluster
-from ete2 import Tree
 
 import PaPi.utils as utils
 
@@ -26,45 +25,5 @@ parser.add_argument('-o', '--output-file-name', metavar = 'PATH', default = None
 
 args = parser.parse_args()
 
-
-def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean', clustering_method = 'complete'):
-    # get the matrix content
-    id_to_sample_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path)
-
-    distance_matrix = hcluster.pdist(vectors, clustering_distance)
-    
-    #clustering_result = hcluster.ward(distance_matrix)
-    clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
-    
-    tree = hcluster.to_tree(clustering_result)
-    
-    root = Tree()
-    root.dist = 0
-    root.name = "root"
-    item2node = {tree: root}
-    
-    to_visit = [tree]
-    while to_visit:
-        node = to_visit.pop()
-        cl_dist = node.dist / 2.0
-        for ch_node in [node.left, node.right]:
-            if ch_node:
-                ch = Tree()
-                ch.dist = cl_dist
-
-                if ch_node.is_leaf():
-                    ch.name = id_to_sample_dict[ch_node.id]
-                else:
-                    ch.name = 'Int' + str(ch_node.id)
-
-                item2node[node].add_child(ch)
-                item2node[ch_node] = ch
-                to_visit.append(ch_node)
-   
-    if output_file_name:
-        root.write(format=1, outfile=output_file_name) 
-
-    return root.write(format=1) 
-
-tree_data = get_newick_tree_data(args.input_matrix, args.output_file_name)
-print tree_data
+newick = utils.get_newick_tree_data(args.input_matrix, args.output_file_name)
+print newick

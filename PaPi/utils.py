@@ -29,6 +29,8 @@ import subprocess
 import multiprocessing
 
 from ete2 import Tree
+import numpy as np
+from sklearn import preprocessing
 
 from PaPi.constants import pretty_names
 import PaPi.fastalib as u
@@ -657,10 +659,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
     return d
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean', clustering_method = 'complete'):
-    vectors = []
-    id_to_sample_dict = {}
-
+def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean',
+                         clustering_method = 'complete', norm = 'l1'):
     is_file_exists(observation_matrix_path)
     is_file_tab_delimited(observation_matrix_path)
 
@@ -670,26 +670,31 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
         if not os.access(output_directory, os.W_OK):
             raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
     
-    input_matrix = open(observation_matrix_path)
-    input_matrix.readline()
+    id_to_sample_dict, header, vectors = get_vectors_from_TAB_delim_matrix(observation_matrix_path)
 
-    line_counter = 0
-    for line in input_matrix.readlines():
-        fields = line.strip().split('\t')
-        id_to_sample_dict[line_counter] = fields[0]
-        vector = [float(x) for x in fields[1:]]
-        denominator = sum(vector)
-        normalized_vector = [p / denominator for p in vector]
-        vectors.append(normalized_vector)
-        line_counter += 1
+    vectors = np.array(vectors)
+
+    # normalize vectors:
+    normalizer = preprocessing.Normalizer(norm=norm)
+    vectors = normalizer.fit_transform(vectors)
 
     distance_matrix = hcluster.pdist(vectors, clustering_distance)
-    
-    #clustering_result = hcluster.ward(distance_matrix)
+
     clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
     
     tree = hcluster.to_tree(clustering_result)
     
+    newick = get_tree_object_in_newick(tree, id_to_sample_dict)
+   
+    if output_file_name:
+        open(output_file_name, 'w').write(newick.strip() + '\n')
+
+    return newick
+
+
+def get_tree_object_in_newick(tree, id_to_sample_dict):
+    """i.e., tree = hcluster.to_tree(c_res)"""
+
     root = Tree()
     root.dist = 0
     root.name = "root"
@@ -712,9 +717,6 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
                 item2node[node].add_child(ch)
                 item2node[ch_node] = ch
                 to_visit.append(ch_node)
-   
-    if output_file_name:
-        root.write(format=1, outfile=output_file_name) 
 
     return root.write(format=1) 
 
