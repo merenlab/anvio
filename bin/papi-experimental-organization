@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+# Copyright (C) 2014, A. Murat Eren
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option)
+# any later version.
+#
+# Please read the COPYING file.
+
+import sys
+import argparse
+import numpy as np
+import hcluster
+
+import PaPi.utils as utils
+import PaPi.terminal as terminal
+progress = terminal.Progress()
+
+parser = argparse.ArgumentParser(description='why yes we do stuff here.')
+parser.add_argument('input_tnf', metavar = 'PATH', default = None,
+                    help = 'TNF matrix')
+parser.add_argument('input_coverage', metavar = 'PATH', default = None,
+                    help = 'Coverage matrix')
+parser.add_argument('-o', '--output-file', metavar = 'PATH', default = None,
+                    help = 'Output file name')
+parser.add_argument('-s', '--seed', metavar = 'INT', default = 3,
+                    type=int, help = 'Seed for random state')
+
+
+args = parser.parse_args()
+
+# working on TNF matrix
+progress.new('TNF matrix')
+progress.update('Reading input')
+tnf_ids, tnf_header, tnf_vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_tnf)
+scaled_tnf_vectors = utils.get_scaled_vectors(tnf_vectors, user_seed = args.seed, progress=progress)
+progress.end()
+#tnf_newick = cluster_combined_scaled_vectors(tnf_ids, scaled_tnf_vectors)
+
+# working on Coverage matrix
+progress.new('Coverage matrix')
+progress.update('Reading input')
+cov_ids_to_sample, cov_header, cov_vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_coverage, only_essential_fields = True)
+cov_sample_to_id = dict([(v, k) for k, v in cov_ids_to_sample.iteritems()])
+scaled_cov_vectors = utils.get_scaled_vectors(cov_vectors, user_seed = args.seed, progress=progress)
+progress.end()
+#cov_newick = cluster_combined_scaled_vectors(cov_ids, scaled_cov_vectors)
+
+# update vectors
+progress.new('Final pass')
+progress.update('Normalizing scaled vectors')
+cov_vectors = utils.get_normalized_vectors(scaled_cov_vectors)
+tnf_vectors = utils.get_normalized_vectors(scaled_tnf_vectors)
+
+progress.update('Combining scaled vectors')
+combined_id_to_sample_dict = {}
+combined_scaled_vectors = []
+for i in range(0, len(tnf_ids)):
+    combined_id_to_sample_dict[i] = tnf_ids[i]
+    combined_vector = np.concatenate((tnf_vectors[i], cov_vectors[cov_sample_to_id[tnf_ids[i]]]), axis=0)
+    combined_scaled_vectors.append(combined_vector)
+progress.end()
+
+progress.update('Cluster analysis')
+tree = utils.get_clustering_as_tree(combined_scaled_vectors, progress = progress)
+newick = utils.get_tree_object_in_newick(tree, combined_id_to_sample_dict)
+print newick
