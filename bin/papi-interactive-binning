@@ -27,7 +27,10 @@ from bottle import run as run_server
 from ete2 import Tree
 
 import PaPi.profiler
-import PaPi.utils
+import PaPi.utils as utils
+import PaPi.filesnpaths as filesnpaths
+import PaPi.terminal as terminal
+import PaPi.dictio as dictio
 import PaPi.fastalib as u
 # get the absolute path for static directory under PaPi
 static_dir = os.path.join(os.path.dirname(u.__file__), 'static')
@@ -57,8 +60,8 @@ parser.add_argument('-s', '--state', metavar = "FILE", default = None,
                     help = "State file for loading previous session.")
 
 
-progress = PaPi.utils.Progress()
-run = PaPi.utils.Run()
+progress = terminal.Progress()
+run = terminal.Run()
 
 #######################################################################################################################
 # Input handler
@@ -81,36 +84,36 @@ class RuninfoIO:
         if args.runinfo:
             # runinfo dict provided: we don't want anything else
             if args.fasta_file or args.metadata or args.tree:
-                raise PaPi.utils.ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
+                raise utils.ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
                                                declare any of '-f', '-m', or '-t' parameters if you have a\
                                                RUNINFO dict. Please refer to the documentation."
 
             if not os.path.exists(args.runinfo):
-                raise PaPi.utils.ConfigError, "'%s'? No such file." % (args.runinfo)
+                raise utils.ConfigError, "'%s'? No such file." % (args.runinfo)
 
-            self.runinfo = PaPi.utils.read_serialized_object(args.runinfo)
+            self.runinfo = dictio.read_serialized_object(args.runinfo)
             
 
             if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
-                raise PaPi.utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
+                raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
                                                profiler that is not compatible with the current interactive interface\
                                                anymore. You need to re-run PaPi profiler on these projects."
 
             if not self.runinfo.has_key('metadata_txt'):
-                raise PaPi.utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
+                raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
 
             if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
                 old_output_dir = self.runinfo['output_dir']
 
-                self.runinfo = PaPi.utils.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
+                self.runinfo = filesnpaths.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
 
                 if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
-                    raise PaPi.utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\
+                    raise utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\
                                                    from another computer? Well. I really don't know what to\
                                                    suggest at this point :/"
 
-            self.contigs_summary_index = PaPi.utils.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
+            self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
             ###########################################################################################################
             # we're done
@@ -120,45 +123,45 @@ class RuninfoIO:
         else:
             # self.runinfo *must* contain 'tnf_tree', 'metadata_json', 'output_dir' and 'self_path'.
             if (not args.fasta_file) or (not args.metadata) or (not args.tree) or (not args.output_dir):
-                raise PaPi.utils.ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
+                raise utils.ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                                '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                                more detailed information on them."
 
-            self.runinfo['tnf_tree'] = PaPi.utils.ABS(args.tree)
-            self.runinfo['splits_fasta'] = PaPi.utils.ABS(args.fasta_file)
-            self.runinfo['metadata_txt'] = PaPi.utils.ABS(args.metadata)
-            self.runinfo['output_dir'] = PaPi.utils.ABS(args.output_dir)
+            self.runinfo['tnf_tree'] = utils.ABS(args.tree)
+            self.runinfo['splits_fasta'] = utils.ABS(args.fasta_file)
+            self.runinfo['metadata_txt'] = utils.ABS(args.metadata)
+            self.runinfo['output_dir'] = utils.ABS(args.output_dir)
 
             # sanity of the metadata
-            #PaPi.utils.is_file_json_formatted(args.metadata)
-            PaPi.utils.is_file_tab_delimited(self.runinfo['metadata_txt'])
+            #filesnpaths.is_file_json_formatted(args.metadata)
+            filesnpaths.is_file_tab_delimited(self.runinfo['metadata_txt'])
             if not open(self.runinfo['metadata_txt']).readline().split('\t')[0] == "contigs":
-                raise PaPi.utils.ConfigError, "The first row of the first column of the metadata file must\
+                raise utils.ConfigError, "The first row of the first column of the metadata file must\
                                                say 'contigs', which is not the case for your metadata file\
                                                ('%s'). Please make sure this is a properly formatted metadata\
                                                file." % (self.runinfo['metadata_txt'])
-            PaPi.utils.is_file_fasta_formatted(self.runinfo['splits_fasta'])
+            filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
 
-            PaPi.utils.gen_output_directory(self.runinfo['output_dir'])
+            utils.gen_output_directory(self.runinfo['output_dir'])
 
 
         # take care of taxonomy if a file is provided. otherwise self.taxonomy remain None
         if args.taxonomy:
             if not args.taxonomic_level:
-                raise PaPi.utils.ConfigError, "When a taxonomy file is declared, a taxonomic level to visualize\
+                raise utils.ConfigError, "When a taxonomy file is declared, a taxonomic level to visualize\
                                                has to be defined."
 
             self.taxonomic_level = args.taxonomic_level.lower()
 
-            if self.taxonomic_level not in PaPi.utils.levels_of_taxonomy:
-                raise PaPi.utils.ConfigError, "The taxonomic level '%s' is not a valid one. Taxonomic level has\
+            if self.taxonomic_level not in utils.levels_of_taxonomy:
+                raise utils.ConfigError, "The taxonomic level '%s' is not a valid one. Taxonomic level has\
                                                to match one of these: %s" % (args.taxonomic_level,
-                                                                             PaPi.utils.levels_of_taxonomy)
+                                                                             utils.levels_of_taxonomy)
 
-            PaPi.utils.is_file_tab_delimited(args.taxonomy)
-            self.taxonomy = PaPi.utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = PaPi.utils.levels_of_taxonomy)
+            filesnpaths.is_file_tab_delimited(args.taxonomy)
+            self.taxonomy = utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = utils.levels_of_taxonomy)
 
 
         self.check_names_consistency()
@@ -175,13 +178,13 @@ class RuninfoIO:
         tree = Tree(self.P(self.runinfo['tnf_tree']))
         contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
         contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.P(self.runinfo['metadata_txt'])).readlines()[1:]])
-        contigs_in_fasta = sorted(PaPi.utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
+        contigs_in_fasta = sorted(utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
 
         try:
             assert(contigs_in_fasta == contigs_in_tree == contigs_in_metadata)
         except:
             S = lambda x, y: "agrees" if x == y else "does not agree"
-            raise PaPi.utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
+            raise utils.ConfigError, "Contigs name found in the FASTA file, the tree file and the\
                                            metadata needs to match perfectly. It seems it is not the\
                                            case for the input you provided (the metadata %s with the tree,\
                                            the tree %s with the fasta, the fasta %s with the metadata;\
@@ -193,33 +196,33 @@ class RuninfoIO:
             contigs_in_taxonomy = set(self.taxonomy.keys())
             for contig in contigs_in_metadata:
                 if not contig in contigs_in_taxonomy:
-                    raise PaPi.utils.ConfigError, "Contig names in taxonomy does not include all contig names present\
+                    raise utils.ConfigError, "Contig names in taxonomy does not include all contig names present\
                                                    in other files. Bad news :/"
 
 
     def update_runinfo_on_disk(self):
         path = self.runinfo.pop('self_path')
-        PaPi.utils.write_serialized_object(self.runinfo, path)
+        dictio.write_serialized_object(self.runinfo, path)
 
 
     def convert_metadata_into_json(self):
         metadata_file_path = self.P(self.runinfo['metadata_txt'])
 
         if self.taxonomy:
-            metadata_headers = PaPi.utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
-            metadata_dict = PaPi.utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
+            metadata_headers = utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
+            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
             for contig in metadata_dict.keys():
                 metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
 
-            new_metatada_file_path = PaPi.utils.get_temp_file_path()
+            new_metatada_file_path = utils.get_temp_file_path()
             headers = ['contigs', self.taxonomic_level] + metadata_headers[1:]
-            PaPi.utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
+            utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
             metadata_file_path = new_metatada_file_path
 
 
-        json_obj = PaPi.utils.get_json_obj_from_TAB_delim_metadata(metadata_file_path)
+        json_obj = utils.get_json_obj_from_TAB_delim_metadata(metadata_file_path)
 
-        temp_file_path = PaPi.utils.get_temp_file_path()
+        temp_file_path = filesnpaths.get_temp_file_path()
         f = open(temp_file_path, 'w')
         f.write(json_obj)
         f.close()
@@ -232,7 +235,7 @@ class RuninfoIO:
 
 try:
     d = RuninfoIO(parser.parse_args())
-except PaPi.utils.ConfigError, e:
+except utils.ConfigError, e:
     print e
     sys.exit(-1)
 
@@ -265,7 +268,7 @@ def send_data(name):
         return static_file(d.runinfo['metadata_json'], root='/')
     elif name == "state":
         if d.state:
-            return static_file(PaPi.utils.ABS(d.state), root='/')
+            return static_file(utils.ABS(d.state), root='/')
         return "{}"
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
@@ -280,7 +283,7 @@ def charts(contig_name):
     if not d.contigs_summary_index.has_key(contig_name):
         return data
 
-    contigs = PaPi.utils.read_serialized_object(d.P(d.contigs_summary_index[contig_name]))
+    contigs = dictio.read_serialized_object(d.P(d.contigs_summary_index[contig_name]))
     layers = sorted(contigs.keys())
 
     for layer in layers:
@@ -346,7 +349,7 @@ def get_data():
 
 port = parser.parse_args().port_number
 
-port = PaPi.utils.get_available_port_num(start = port)
+port = utils.get_available_port_num(start = port)
 
 if not port:
     print 'Error: PaPi failed to find a port number that is available :('

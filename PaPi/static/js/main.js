@@ -192,7 +192,7 @@ $(document).ready(function() {
 
                         for (var j=0; j < metadata[1][i].split(";").length; j++)
                         {
-                            stack_bar_colors[i].push(randomColor());
+                            stack_bar_colors[i].push('#000000');
                         }
 
                         var stack_bar_row_str = '<tr>' +
@@ -203,10 +203,10 @@ $(document).ready(function() {
                             '    <select id="normalization{id}">' +
                             '        <option value="none">none</option>' +
                             '        <option value="sqrt">Square root</option>' +
-                            '        <option value="log">Logarithm</option>' +
+                            '        <option value="log" selected>Logarithm</option>' +
                             '    </select>' +
                             '</td>' +
-                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></input></td>' +
+                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="150"></input></td>' +
                             '<td>n/a</td>' +
                             '<td>n/a</td>' +
                             '</tr>';
@@ -244,10 +244,10 @@ $(document).ready(function() {
                             '    <select id="normalization{id}" onChange="clearMinMax(this)">' +
                             '        <option value="none">none</option>' +
                             '        <option value="sqrt">Square root</option>' +
-                            '        <option value="log">Logarithm</option>' +
+                            '        <option value="log" selected>Logarithm</option>' +
                             '    </select>' +
                             '</td>' +
-                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="50"></input></td>' +
+                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="150"></input></td>' +
                             '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></input></td>' +
                             '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></input></td>' +
                             '</tr>';
@@ -259,7 +259,7 @@ $(document).ready(function() {
                 }
 
                 $('.colorpicker').each(function(index, element) {
-                    var color = randomColor();
+                    var color = '#000000';
 
                     $(element).css('background-color', color);
                     $(element).attr('color', color);
@@ -495,7 +495,7 @@ function newGroup() {
     clone.attr('id', '');
     clone.css('display', '');
 
-    var color = randomColor();
+    var color = '#000000';
 
     clone.find('.colorpicker').css('background-color', color);
     clone.find('.colorpicker').attr('color', color);

@@ -13,7 +13,7 @@ import string
 import itertools
 
 
-
+# FIXME: this goes to constants.py:
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
 

@@ -13,7 +13,7 @@
 import os
 import sys
 import json
-import PaPi.utils
+import PaPi.filesnpaths as filesnpaths
 
 def main(input_file, output_file):
     open(output_file, 'w').write(json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()]))
@@ -41,8 +41,8 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     try:
-        PaPi.utils.is_file_tab_delimited(args.input_file)
-    except PaPi.utils.ConfigError, e:
+        filesnpaths.is_file_tab_delimited(args.input_file)
+    except filesnpaths.FilesNPathsError, e:
         print e
         sys.exit(-1)
 

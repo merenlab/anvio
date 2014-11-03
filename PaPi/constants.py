@@ -13,3 +13,9 @@ IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contigs"
 IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 
 pretty_names = {}
+
+def get_pretty_name(key):
+    if pretty_names.has_key(key):
+        return pretty_names[key]
+    else:
+        return key

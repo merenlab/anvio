@@ -12,7 +12,7 @@
 
 import os
 import sys
-import PaPi.utils as u
+import PaPi.filesnpaths as filesnpaths
 import glob
 
 
@@ -30,13 +30,13 @@ if __name__ == '__main__':
     output_dir = None
 
     for runinfo in glob.glob(os.path.join(run_dir, 'RUNINFO*cp')):
-        r = u.read_serialized_object(runinfo)
-        r = u.strip_prefix_from_dict_values(r, r['output_dir'])
-        u.write_serialized_object(r, runinfo)
+        r = dictio.read_serialized_object(runinfo)
+        r = dictio.strip_prefix_from_dict_values(r, r['output_dir'])
+        dictio.write_serialized_object(r, runinfo)
         output_dir = r['output_dir']
 
-    s = u.read_serialized_object(os.path.join(run_dir, 'SUMMARY.cp')) 
-    s = u.strip_prefix_from_dict_values(s, output_dir)
-    u.write_serialized_object(s, os.path.join(run_dir, 'SUMMARY.cp'))
+    s = dictio.read_serialized_object(os.path.join(run_dir, 'SUMMARY.cp')) 
+    s = dictio.strip_prefix_from_dict_values(s, output_dir)
+    dictio.write_serialized_object(s, os.path.join(run_dir, 'SUMMARY.cp'))
 
     print 'Congratulations! You probably have fixed whatever was wrong.'

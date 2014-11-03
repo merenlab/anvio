@@ -43,7 +43,7 @@ class Contig:
     def analyze_composition(self, bam, progress):
         for split in self.splits:
             progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
-            split.composition = Composition(self.split.auxiliary.rep_seq)
+            split.composition = Composition(split.auxiliary.rep_seq)
 
 
     def get_rep_seq(self):

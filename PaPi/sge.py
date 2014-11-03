@@ -17,8 +17,9 @@ import string
 import subprocess
 
 import PaPi.fastalib as u
-import PaPi.utils
-from PaPi.utils import pretty_print as pp
+import PaPi.utils as utils
+import PaPi.filesnpaths as filesnpaths
+from PaPi.terminal import pretty_print as pp
 
 
 QSUB_SCRIPT = """#!/bin/sh
@@ -50,7 +51,7 @@ class SGE:
 
             ----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
                 import os
-                import PaPi.utils
+                import utils
                 from PaPi.sge import SGE
                 sge = SGE()
                 sge.check_sge_binaries()
@@ -64,7 +65,7 @@ class SGE:
                 
                 try:
                     sge._run()
-                except PaPi.utils.ConfigError, e:
+                except utils.ConfigError, e:
                     print e
                     sys.exit(-1)
 
@@ -114,14 +115,14 @@ class SGE:
         self.check_sge_binaries()
 
         if not self.binary:
-            raise PaPi.utils.ConfigError, 'A binary has to be declared.'
+            raise utils.ConfigError, 'A binary has to be declared.'
         if not self.command:
-            raise PaPi.utils.ConfigError, 'SGE module cannot run without a command.'
+            raise utils.ConfigError, 'SGE module cannot run without a command.'
         if not self.tmp_dir:
-            raise PaPi.utils.ConfigError, 'SGE module needs a tmp dir.'
+            raise utils.ConfigError, 'SGE module needs a tmp dir.'
 
-        PaPi.utils.is_file_exists(self.input_file_path)
-        PaPi.utils.is_output_file_writable(self.merged_results_file_path)
+        filesnpaths.is_file_exists(self.input_file_path)
+        filesnpaths.is_output_file_writable(self.merged_results_file_path)
 
         self.run.info('temp_directory', self.tmp_dir)
 
@@ -140,14 +141,14 @@ class SGE:
         self.progress.update('Partial results file are being concatenated ...')
         files_to_concat = glob.glob(os.path.join(self.tmp_dir, self.wild_card_for_partial_results))
         if not files_to_concat:
-            raise PaPi.utils.ConfigError, "Wild card '%s' didn't return any files to concatenate." % self.wild_card_for_partial_results
+            raise utils.ConfigError, "Wild card '%s' didn't return any files to concatenate." % self.wild_card_for_partial_results
 
-        PaPi.utils.concatenate_files(self.merged_results_file_path, files_to_concat)
+        utils.concatenate_files(self.merged_results_file_path, files_to_concat)
 
 
     def check_sge_binaries(self):
-        PaPi.utils.is_program_exists('qsub')
-        PaPi.utils.is_program_exists('qstat')
+        filesnpaths.is_program_exists('qsub')
+        filesnpaths.is_program_exists('qstat')
 
 
     def split_input_file(self):
@@ -193,7 +194,7 @@ class SGE:
                                                          'command': command})
     
             # submit script to cluster
-            PaPi.utils.run_command('qsub %s' % shell_script)
+            utils.run_command('qsub %s' % shell_script)
     
 
         while True:
@@ -214,7 +215,7 @@ class SGE:
         try:
             proc = subprocess.Popen(['qstat'], stdout=subprocess.PIPE)
         except OSError, e:
-            raise PaPi.utils.ConfigError, "qstat command was failed for the following reason: '%s'" % (e)
+            raise utils.ConfigError, "qstat command was failed for the following reason: '%s'" % (e)
     
         qstat_state_codes = {'Pending': ['qw', 'hqw', 'hRwq'],
                              'Running': ['r', 't', 'Rr', 'Rt'],
@@ -242,7 +243,7 @@ class SGE:
                             found = True
                             info_dict[s] += 1
                     if not found:
-                        raise PaPi.utils.ConfigError, "Unknown state for qstat: '%s' (known states: '%s')"\
+                        raise utils.ConfigError, "Unknown state for qstat: '%s' (known states: '%s')"\
                                  % (state, ', '.join(info_dict.keys()))
     
                 line_no += 1

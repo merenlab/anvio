@@ -19,11 +19,16 @@ import string
 import shutil
 import operator
 import subprocess
+
 import PaPi.utils as utils
-from PaPi.utils import pretty_print as pp
+import PaPi.filesnpaths as filesnpaths
+import PaPi.terminal as terminal
+import PaPi.dictio as dictio
+
 from PaPi.contig import Contig
 from PaPi.contig import Split
 
+pp = terminal.pretty_print
 
 __version__ = '0.2.1'
 
@@ -64,8 +69,8 @@ class BAMProfiler:
         self.bam = None
         self.contigs = {}
 
-        self.progress = utils.Progress()
-        self.run = utils.Run()
+        self.progress = terminal.Progress()
+        self.run = terminal.Run()
 
 
     def _run(self):
@@ -110,7 +115,7 @@ class BAMProfiler:
     def init_serialized_profile(self):
         self.progress.new('Init')
         self.progress.update('Reading serialized profile')
-        self.contigs = utils.read_serialized_object(self.serialized_profile_path)
+        self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
         self.progress.end()
 
         self.run.info('profile_loaded_from', self.serialized_profile_path)
@@ -222,7 +227,7 @@ class BAMProfiler:
         else:
             self.output_directory = Absolute(self.output_directory)
 
-        utils.gen_output_directory(self.output_directory, self.progress)
+        filesnpaths.gen_output_directory(self.output_directory, self.progress)
 
 
     def generate_output_destination(self, postfix, directory = False):
@@ -296,7 +301,7 @@ class BAMProfiler:
         output_file = self.generate_output_destination('PROFILE.cp')
         self.progress.new('Storing Profile')
         self.progress.update('Serializing information for %s contigs ...' % pp(len(self.contigs)))
-        utils.write_serialized_object(self.contigs, output_file)
+        dictio.write_serialized_object(self.contigs, output_file)
         self.progress.end()
         self.run.info('profile_dict', output_file)
 
@@ -313,7 +318,7 @@ class BAMProfiler:
             self.progress.update('working on contig %s of %s' % (pp(counter), pp(len(self.contigs))))
             for split in self.contigs[contig].splits:
                 split_summary_path = self.generate_output_destination(os.path.join(summary_dir, '%.6d.cp' % counter))
-                utils.write_serialized_object({self.project_name: {'coverage': split.coverage.c,
+                dictio.write_serialized_object({self.project_name: {'coverage': split.coverage.c,
                                                                    'variability': split.auxiliary.v,
                                                                    'competing_nucleotides': split.auxiliary.competing_nucleotides}},
                                               split_summary_path)
@@ -322,7 +327,7 @@ class BAMProfiler:
 
         self.progress.end()
         self.run.info('profile_summary_dir', summary_dir)
-        utils.write_serialized_object(utils.strip_prefix_from_dict_values(summary_index, self.output_directory), summary_index_output_path)
+        dictio.write_serialized_object(dictio.strip_prefix_from_dict_values(summary_index, self.output_directory), summary_index_output_path)
         self.run.info('profile_summary_index', summary_index_output_path)
 
 
