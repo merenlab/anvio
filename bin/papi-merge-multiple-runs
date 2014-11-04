@@ -213,6 +213,7 @@ class MultipleRuns:
             self.run.info('project_name', '%s (%s)' % (os.path.basename(self.output_dir), essential_field))
             self.run.info('metadata_txt', metadata_output_path)
             self.run.info('runinfo', runinfo_output_path)
+            self.run.info('merged', True)
             self.run.store_info_dict(runinfo_output_path, strip_prefix = self.output_dir)
 
 

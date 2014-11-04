@@ -95,6 +95,7 @@ class BAMProfiler:
         self.run.info('project_name', self.project_name)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('runinfo', runinfo_serialized)
+        self.run.info('merged', False)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
         self.run.quit()
 
@@ -223,7 +224,7 @@ class BAMProfiler:
         Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
 
         if not self.output_directory:
-            self.output_directory = Absolute(self.input_file_path) + '-PaPi-OUTPUT'
+            self.output_directory = Absolute(self.input_file_path) + '-PAPI_PROFILE'
         else:
             self.output_directory = Absolute(self.output_directory)
 
