@@ -12,6 +12,7 @@
 # files, and paths
 
 import os
+import shutil
 import textwrap
 import tempfile
 import PaPi.fastalib as u
