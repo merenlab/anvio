@@ -106,7 +106,7 @@ class RuninfoIO:
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
                 old_output_dir = self.runinfo['output_dir']
 
-                self.runinfo = filesnpaths.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
+                self.runinfo = dictio.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
 
                 if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
                     raise utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\

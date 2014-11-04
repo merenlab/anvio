@@ -301,14 +301,14 @@ def get_chunks(contig_length, desired_length):
     return chunks
 
 
-def check_project_name(project_name):
+def check_sample_id(sample_id):
     allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
-    if project_name:
-        if len([c for c in project_name if c not in allowed_chars]):
+    if sample_id:
+        if len([c for c in sample_id if c not in allowed_chars]):
             raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
                                 digits, '_' and '-' (if you had not declared a project name and PaPi made\
-                                up one for you, please specify with '-p' parameter specifically)." % project_name
+                                up one for you, please specify with '-p' parameter specifically)." % sample_id
 
 
 def check_contig_names(contig_names):

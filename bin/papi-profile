@@ -32,16 +32,16 @@ if __name__ == '__main__':
     groupM.add_argument('-o', '--output-directory', default = None,
                         help = 'The directory for output files to be stored.')
 
-    groupM.add_argument('-p', '--project-name', metavar = 'NAME', default = None,
-                        help = 'It is important to set a project name (using only ASCII letters and digits\
+    groupM.add_argument('-s', '--sample-id', metavar = 'NAME', default = None,
+                        help = 'It is important to set a sample name (using only ASCII letters and digits\
                                 and without spaces) that is unique to a particular profile. If you do not\
-                                provide one PaPi will generate one for you based on the input BAM file\
+                                provide one, PaPi will generate one for you based on the input BAM file\
                                 name (it usually is a good practice to not let software decide for these\
                                 kinds of things).')
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
-                                        reasonable for your project.')
+                                        reasonable for your sample.')
     groupQ.add_argument('-M', '--min-contig-length', metavar = "INTEGER", default = 10000, type=int,
                         help = 'Minimum length of contigs in a BAM file to analyze. The\
                                 minimum length should be long enough for tetra-nucleotide\

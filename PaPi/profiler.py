@@ -30,7 +30,7 @@ from PaPi.contig import Split
 
 pp = terminal.pretty_print
 
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 
 
 class BAMProfiler:
@@ -57,7 +57,7 @@ class BAMProfiler:
             self.number_of_threads = 4 
             self.no_trehading = True
             self.split_length = args.split_length
-            self.project_name = args.project_name
+            self.sample_id = args.sample_id
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
@@ -76,7 +76,7 @@ class BAMProfiler:
     def _run(self):
         self.check_args()
 
-        self.set_project_name()
+        self.set_sample_id()
 
 
         if self.input_file_path:
@@ -92,7 +92,7 @@ class BAMProfiler:
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
         self.run.info('profiler_version', __version__)
-        self.run.info('project_name', self.project_name)
+        self.run.info('sample_id', self.sample_id)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('runinfo', runinfo_serialized)
         self.run.info('merged', False)
@@ -100,17 +100,17 @@ class BAMProfiler:
         self.run.quit()
 
 
-    def set_project_name(self):
-        if self.project_name:
-            utils.check_project_name(self.project_name)
+    def set_sample_id(self):
+        if self.sample_id:
+            utils.check_sample_id(self.sample_id)
         else:
             if self.input_file_path:
                 self.input_file_path = utils.ABS(self.input_file_path)
-                self.project_name = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
-                utils.check_project_name(self.project_name)
+                self.sample_id = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
+                utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
                 self.serialized_profile_path = utils.ABS(self.serialized_profile_path)
-                self.project_name = os.path.basename(os.path.dirname(self.serialized_profile_path))
+                self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
 
 
     def init_serialized_profile(self):
@@ -319,10 +319,10 @@ class BAMProfiler:
             self.progress.update('working on contig %s of %s' % (pp(counter), pp(len(self.contigs))))
             for split in self.contigs[contig].splits:
                 split_summary_path = self.generate_output_destination(os.path.join(summary_dir, '%.6d.cp' % counter))
-                dictio.write_serialized_object({self.project_name: {'coverage': split.coverage.c,
-                                                                   'variability': split.auxiliary.v,
-                                                                   'competing_nucleotides': split.auxiliary.competing_nucleotides}},
-                                              split_summary_path)
+                dictio.write_serialized_object({self.sample_id: {'coverage': split.coverage.c,
+                                                                 'variability': split.auxiliary.v,
+                                                                 'competing_nucleotides': split.auxiliary.competing_nucleotides}},
+                                                                 split_summary_path)
                 summary_index[split.name] = split_summary_path
                 counter += 1
 
