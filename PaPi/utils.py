@@ -18,7 +18,6 @@ import string
 import shutil
 import hcluster
 import textwrap
-import tempfile
 import itertools
 import subprocess
 import multiprocessing
