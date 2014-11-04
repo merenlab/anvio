@@ -144,7 +144,7 @@ class RuninfoIO:
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
 
-            utils.gen_output_directory(self.runinfo['output_dir'])
+            filesnpaths.gen_output_directory(self.runinfo['output_dir'])
 
 
         # take care of taxonomy if a file is provided. otherwise self.taxonomy remain None
