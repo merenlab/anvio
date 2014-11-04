@@ -46,7 +46,7 @@ def read_serialized_object(input_file_path):
 
 def strip_prefix_from_dict_values(d, prefix):
     for key in d.keys():
-        if key == 'output_dir':
+        if key in ['output_dir', 'input_bam']:
             continue
         if isinstance(d[key], str) and d[key].startswith(prefix):
             d[key] = d[key][len(prefix):].strip('/')
