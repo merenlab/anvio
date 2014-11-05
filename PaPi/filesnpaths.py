@@ -48,6 +48,7 @@ def is_output_file_writable(file_path):
         raise FilesNPathsError, "No output file is declared..."
     if not os.access(os.path.dirname(ABS(file_path)), os.W_OK):
         raise FilesNPathsError, "You do not have permission to generate the output file '%s'" % file_path
+    return True
 
 
 def is_file_tab_delimited(file_path):
