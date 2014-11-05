@@ -1,8 +1,15 @@
-* influence_ratio (integer)
-this number is used to decide how many of the num_components (under
-the 'general' section) are  going to be assigned for this file. if
-it is not declared, the influence is left to be decided by the
-software that handles the config object. 
+* ratio (integer)
+this is an optional parameter that can be set under matrices to 
+specify how many of the num_components (under the 'general' section)
+should be assigned for a given matrix. if there are more than one
+matrices, leaving them blank will let the software handling the config
+file to determine how ratios should be arranged. The default behavior
+of PaPi for merging will be to use TFN and Coverage information. It will
+increase the influence of Coverage with increasing number of samples.
+For instance, if there are 16 samples, the influence of TNF will be
+minimal, if there are two samples, the influence of coverage will be
+minimal, etc.
+
 
 * columns (column_name_1,...,column_name_n)
 
