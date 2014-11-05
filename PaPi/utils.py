@@ -277,7 +277,7 @@ class ConfigError(Exception):
         self.e = e
         return
     def __str__(self):
-        return 'Config Error: %s' % textwrap.fill(self.e, 80)
+        return '\033[0;30m\033[46mConfig Error: %s\033[0m' % textwrap.fill(self.e, 80)
 
 
 def get_chunks(contig_length, desired_length):
