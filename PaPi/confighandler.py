@@ -17,17 +17,19 @@ import ConfigParser
 import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 from PaPi.utils import ConfigError as ConfigError
+from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
+
 
 config_template = {
     'general': {
                 'output_file'    : {'mandatory': True, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
-                'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
+                'num_components': {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                                    'required': "an integer value between 1 and 256"},
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
-                'columns': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ','').split(',')) > 1,
-                            'required': 'more than one, comma-separated sample names'},
+                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ','').split(',')) > 1,
+                            'required': 'more than one, comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
                },
@@ -42,7 +44,7 @@ def RepresentsInt(s):
         return False
 
 
-class RunConfiguration:
+class ClusteringConfiguration:
     def __init__(self, config_file_path, input_directory = None):
         self.input_directory = input_directory or os.getcwd()
 
@@ -58,14 +60,23 @@ class RunConfiguration:
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
 
-        self.matrices = {}
+        self.matrices_dict = {}
+        self.matrices = []
         for matrix in self.get_other_sections(config):
+            self.matrices.append(matrix)
             m = {}
-            columns = self.get_option(config, matrix, 'columns', str)
-            m['columns'] = [c.strip() for c in columns.split(',')] if columns else None
+            columns_to_use = self.get_option(config, matrix, 'columns_to_use', str)
+            m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, matrix, 'ratio', int)
-            self.matrices[matrix] = m
+            self.matrices_dict[matrix] = m
 
+        self.num_matrices = len(self.matrices)
+
+        if self.num_matrices == 1:
+            # there is only one matrix, we don't expect to see a ratio.
+            if self.matrices_dict[self.matrices[0]]['ratio']:
+                raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
+                                    "ratio" variable irrelevant. Please remove it.'
 
     def print_summary(self):
         r = terminal.Run()
@@ -76,8 +87,8 @@ class RunConfiguration:
         r.info('Output file', self.output_file)
         for matrix in self.matrices:
             r.info(matrix, '', header=True)
-            r.info('Columns', self.matrices[matrix]['columns'])
-            r.info('Ratio', self.matrices[matrix]['ratio'])
+            r.info('Columns to use', self.matrices_dict[matrix]['columns_to_use'])
+            r.info('Ratio', self.matrices_dict[matrix]['ratio'])
 
 
     def get_option(self, config, section, option, cast):
@@ -96,7 +107,7 @@ class RunConfiguration:
             corresponds to what type of section it is..."""
         for option, value in config.items(section):
             if option not in config_template[template_class].keys():
-                raise ConfigError, 'Unknown option under "%s" section: "%s"' % (section, option)
+                raise ConfigError, 'Unknown option, "%s", under section "%s".' % (option, section)
             if config_template[template_class][option].has_key('test') and not config_template[template_class][option]['test'](value):
                 if config_template[template_class][option].has_key('required'):
                     r = config_template[template_class][option]['required']
@@ -126,5 +137,13 @@ class RunConfiguration:
                                     input directory (if you have not specify an input directory, it is\
                                     assumed to be the "current working directory". If you have\
                                     not specified one, please specify the correct input directory' % (section)
+
             self.check_section(config, section, 'matrix')
 
+            # it is not very elegant to do this here, but carrying this test in the template was going to
+            # cause a lot of uncalled for complexity (or reporting was going to be very vague):
+            columns_to_use_str = self.get_option(config, section, 'columns_to_use', str)
+            columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
+            if columns_to_use and not cols_present(columns_to_use, os.path.join(self.input_directory, section)):
+                raise ConfigError, 'One or more of the columns declared for "%s" in the config file\
+                                    seem(s) to be missing in the matrix :/' % (section)
