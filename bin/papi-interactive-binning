@@ -32,6 +32,8 @@ import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 import PaPi.dictio as dictio
 import PaPi.fastalib as u
+from PaPi.constants import levels_of_taxonomy
+
 # get the absolute path for static directory under PaPi
 static_dir = os.path.join(os.path.dirname(u.__file__), 'static/interactive')
 
@@ -155,13 +157,13 @@ class RuninfoIO:
 
             self.taxonomic_level = args.taxonomic_level.lower()
 
-            if self.taxonomic_level not in utils.levels_of_taxonomy:
+            if self.taxonomic_level not in levels_of_taxonomy:
                 raise utils.ConfigError, "The taxonomic level '%s' is not a valid one. Taxonomic level has\
                                                to match one of these: %s" % (args.taxonomic_level,
-                                                                             utils.levels_of_taxonomy)
+                                                                             levels_of_taxonomy)
 
             filesnpaths.is_file_tab_delimited(args.taxonomy)
-            self.taxonomy = utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = utils.levels_of_taxonomy)
+            self.taxonomy = utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = levels_of_taxonomy)
 
 
         self.check_names_consistency()

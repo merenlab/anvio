@@ -14,7 +14,6 @@ import sys
 import time
 import json
 import socket
-import string
 import shutil
 import hcluster
 import textwrap
@@ -27,7 +26,7 @@ import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
 
-from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD
+from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, complements, levels_of_taxonomy
 import PaPi.fastalib as u
 import PaPi.filesnpaths as filesnpaths
 from PaPi.contig import Composition
@@ -38,10 +37,6 @@ from PaPi.terminal import Progress
 progress = Progress()
 progress.verbose = False
 
-#FIXME: these need to go in constants:
-complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
-                               'tgcayrkmvhdbTGCAYRKMVHDB')
-levels_of_taxonomy = ["phylum", "class", "order", "family", "genus", "species"]
 
 # absolute path anonymous:
 ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
@@ -171,8 +166,14 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
     return output_path
 
 
+def is_all_columns_present_in_TAB_delim_file(columns, file_path):
+    header_fields = get_header_fields_of_TAB_delim_file(file_path)
+    return False if len([False for c in columns if c not in header_fields]) else True
+
+
 def get_header_fields_of_TAB_delim_file(file_path):
     return open(file_path).readline().strip('\n').split('\t')[1:]
+
 
 def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
@@ -302,7 +303,6 @@ def get_chunks(contig_length, desired_length):
 
 
 def check_sample_id(sample_id):
-    allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
     if sample_id:
         if len([c for c in sample_id if c not in allowed_chars]):
             raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
@@ -312,7 +312,6 @@ def check_sample_id(sample_id):
 
 
 def check_contig_names(contig_names):
-    allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
     all_characters_in_contig_names = set(''.join(contig_names))
     characters_PaPi_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
     if len(characters_PaPi_doesnt_like):

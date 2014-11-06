@@ -9,8 +9,14 @@
 #
 # Please read the COPYING file.
 
+import string
+
 IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contigs", "GC_content", "length"])
 IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
+allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
+complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
+                               'tgcayrkmvhdbTGCAYRKMVHDB')
+levels_of_taxonomy = ["phylum", "class", "order", "family", "genus", "species"]
 
 pretty_names = {}
 
