@@ -114,7 +114,7 @@ class Progress:
 
 
 class Run:
-    def __init__(self, info_file_path = None, verbose = True):
+    def __init__(self, info_file_path = None, verbose = True, width = 65):
         if info_file_path:
             self.init_info_file_obj(info_file_path)
         else:
@@ -122,24 +122,28 @@ class Run:
 
         self.info_dict = {}
         self.verbose = verbose
+        self.width = width
 
 
     def init_info_file_obj(self, info_file_path):
             self.info_file_obj = open(info_file_path, 'w')
 
 
-    def info(self, key, value, quiet = False):
+    def info(self, key, value, quiet = False, header = False):
         self.info_dict[key] = value
-        
+
         if quiet:
             return True
-        
+
         if type(value) == int:
             value = pretty_print(value)
 
         label = constants.get_pretty_name(key)
 
-        info_line = "%s %s: %s\n" % (label, '.' * (65 - len(label)), str(value))
+        if header:
+            info_line = "\n%s\n%s\n" % (label, '=' * (self.width + 2))
+        else:
+            info_line = "%s %s: %s\n" % (label, '.' * (self.width - len(label)), str(value))
         if self.info_file_obj:
             self.info_file_obj.write(info_line)
 
