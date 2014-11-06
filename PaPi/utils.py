@@ -179,7 +179,7 @@ def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, only_essential_fields = False):
+def get_vectors_from_TAB_delim_matrix(file_path, fields_to_return=None):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -190,10 +190,18 @@ def get_vectors_from_TAB_delim_matrix(file_path, only_essential_fields = False):
     header = input_matrix.readline().strip().split('\t')[1:]
 
     fields_of_interest = []
-    if only_essential_fields:
+    if fields_to_return:
+        fields_of_interest = [f for f in range(0, len(header)) if header[f] in fields_to_return and IS_ESSENTIAL_FIELD(header[f])]
+    else:
         fields_of_interest = [f for f in range(0, len(header)) if IS_ESSENTIAL_FIELD(header[f])]
-        # update header:
-        header = [header[i] for i in range(0, len(header)) if i in fields_of_interest]
+
+    # update header:
+    header = [header[i] for i in range(0, len(header)) if i in fields_of_interest]
+
+
+    if not len(header):
+        raise ConfigError, "Only a subset (%d) of fields were requested by the caller, but none of them was found\
+                            in the matrix (%s) :/" % (len(fields_to_return), file_path)
 
     line_counter = 0
     for line in input_matrix.readlines():
