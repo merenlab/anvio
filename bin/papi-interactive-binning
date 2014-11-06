@@ -215,7 +215,7 @@ class RuninfoIO:
                 metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
 
             new_metatada_file_path = filesnpaths.get_temp_file_path()
-            headers = ['contigs', self.taxonomic_level] + metadata_headers[1:]
+            headers = ['contigs', self.taxonomic_level] + metadata_headers
             utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
             metadata_file_path = new_metatada_file_path
 

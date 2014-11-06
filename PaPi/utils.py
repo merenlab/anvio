@@ -172,7 +172,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
 
 
 def get_header_fields_of_TAB_delim_file(file_path):
-    return open(file_path).readline().strip('\n').split('\t')
+    return open(file_path).readline().strip('\n').split('\t')[1:]
 
 def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
