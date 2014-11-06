@@ -21,12 +21,17 @@ config_template = {
     'general': {
                 'output_file'    : {'mandatory': True, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
                 'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
-                                   'required': "An integer value between 1 and 256"},
-                'skip_scaling': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-                'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'An integer'}
+                                   'required': "an integer value between 1 and 256"},
+                'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
-    'matrix': {},
+    'matrix': {
+                'columns': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ','').split(',')) > 1,
+                            'required': 'more than one, comma-separated sample names'},
+                'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
+                          'required': "an integer value between 1 and 256."},
+               },
 }
+
 
 def RepresentsInt(s):
     try: 
@@ -71,9 +76,10 @@ class RunConfiguration:
             if config_template[template_class][option].has_key('test') and not config_template[template_class][option]['test'](value):
                 if config_template[template_class][option].has_key('required'):
                     r = config_template[template_class][option]['required']
-                    raise ConfigError, 'Unexpected value for "%s" section "%s": %s \n    Expected: %s' % (option, section, value, r)
+                    raise ConfigError, 'Unexpected value for "%s" section "%s": "%s".\
+                                        What is expected is %s.' % (option, section, value, r)
                 else:
-                    raise ConfigError, 'Unexpected value for "%s" section "%s": %s' % (option, section, value)
+                    raise ConfigError, 'Unexpected value for "%s" section "%s": "%s".' % (option, section, value)
 
         for option in config_template[template_class]:
             if config_template[template_class][option].has_key('mandatory') and config_template[template_class][option]['mandatory'] and not config.has_option(section, option):
