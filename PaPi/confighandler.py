@@ -14,16 +14,19 @@ import os
 import sys
 import ConfigParser
 
-import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
-from PaPi.utils import ConfigError as ConfigError
+import PaPi.filesnpaths as filesnpaths
+
+from PaPi.utils import ConfigError
+from PaPi.utils import check_sample_id
+from PaPi.constants import allowed_chars
 from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 
 
 config_template = {
     'general': {
                 'output_file'    : {'mandatory': True, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
-                'num_components': {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
+                'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                                    'required': "an integer value between 1 and 256"},
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
@@ -32,6 +35,8 @@ config_template = {
                             'required': 'more than one, comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
+                'alias': {'mandatory': True, 'test': lambda x: NameIsOK(x),
+                         'required': 'a single word alias composed of these characters alone: "%s"' % allowed_chars}
                },
 }
 
@@ -42,6 +47,13 @@ def RepresentsInt(s):
         return True
     except ValueError:
         return False
+
+def NameIsOK(n):
+    try:
+        check_sample_id(n)
+    except ConfigError:
+        return False
+    return True
 
 
 class ClusteringConfiguration:
@@ -68,6 +80,8 @@ class ClusteringConfiguration:
             columns_to_use = self.get_option(config, matrix, 'columns_to_use', str)
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, matrix, 'ratio', int)
+            m['alias'] = self.get_option(config, matrix, 'alias', str)
+            m['path'] = os.path.join(self.input_directory, matrix)
             self.matrices_dict[matrix] = m
 
         self.num_matrices = len(self.matrices)
@@ -76,7 +90,12 @@ class ClusteringConfiguration:
             # there is only one matrix, we don't expect to see a ratio.
             if self.matrices_dict[self.matrices[0]]['ratio']:
                 raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
-                                    "ratio" variable irrelevant. Please remove it.'
+                                    "ratio" variables irrelevant. Please make sure it is not set in the\
+                                     config file.'
+            if self.num_components:
+                raise ConfigError, 'There is only one matrix declared in the config file. In this case there\
+                                    will be no scaling step. Therefore the "num_components" variable will\
+                                    not be used. Please make sure it is not set under the general section.'
 
     def print_summary(self):
         r = terminal.Run()
@@ -86,7 +105,7 @@ class ClusteringConfiguration:
         r.info('Seed', self.seed)
         r.info('Output file', self.output_file)
         for matrix in self.matrices:
-            r.info(matrix, '', header=True)
+            r.info('%s (%s)' % (matrix, self.matrices_dict[matrix]['alias']), '', header=True)
             r.info('Columns to use', self.matrices_dict[matrix]['columns_to_use'])
             r.info('Ratio', self.matrices_dict[matrix]['ratio'])
 
@@ -111,10 +130,10 @@ class ClusteringConfiguration:
             if config_template[template_class][option].has_key('test') and not config_template[template_class][option]['test'](value):
                 if config_template[template_class][option].has_key('required'):
                     r = config_template[template_class][option]['required']
-                    raise ConfigError, 'Unexpected value for "%s" section "%s": "%s".\
-                                        What is expected is %s.' % (option, section, value, r)
+                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".\
+                                        What is expected is %s.' % (value, option, section, r)
                 else:
-                    raise ConfigError, 'Unexpected value for "%s" section "%s": "%s".' % (option, section, value)
+                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section)
 
         for option in config_template[template_class]:
             if config_template[template_class][option].has_key('mandatory') and config_template[template_class][option]['mandatory'] and not config.has_option(section, option):
@@ -131,6 +150,7 @@ class ClusteringConfiguration:
             raise ConfigError, "Config file must contain at least one matrix sextion."
 
         self.check_section(config, 'general', 'general')
+
         for section in self.get_other_sections(config):
             if not os.path.exists(os.path.join(self.input_directory, section)):
                 raise ConfigError, 'The matrix file "%s" you mentioned in the config file is not in the\
