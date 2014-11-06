@@ -15,6 +15,7 @@ import sys
 import ConfigParser
 
 import PaPi.filesnpaths as filesnpaths
+import PaPi.terminal as terminal
 from PaPi.utils import ConfigError as ConfigError
 
 config_template = {
@@ -40,20 +41,43 @@ def RepresentsInt(s):
     except ValueError:
         return False
 
+
 class RunConfiguration:
     def __init__(self, config_file_path, input_directory = None):
         self.input_directory = input_directory or os.getcwd()
 
+        # read the config
         filesnpaths.is_file_exists(config_file_path)
         config = ConfigParser.ConfigParser()
         config.read(config_file_path)
 
+        # and sanity check.
         self.sanity_check(config)
 
         self.output_file = self.get_option(config, 'general', 'output_file', str)
-        self.skip_scaling = True if self.get_option(config, 'general', 'skip_scaling', str) == "True" else False
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
+
+        self.matrices = {}
+        for matrix in self.get_other_sections(config):
+            m = {}
+            columns = self.get_option(config, matrix, 'columns', str)
+            m['columns'] = [c.strip() for c in columns.split(',')] if columns else None
+            m['ratio'] = self.get_option(config, matrix, 'ratio', int)
+            self.matrices[matrix] = m
+
+
+    def print_summary(self):
+        r = terminal.Run()
+        r.info('General', '', header=True)
+        r.info('Input directory', self.input_directory)
+        r.info('Number of components', self.num_components)
+        r.info('Seed', self.seed)
+        r.info('Output file', self.output_file)
+        for matrix in self.matrices:
+            r.info(matrix, '', header=True)
+            r.info('Columns', self.matrices[matrix]['columns'])
+            r.info('Ratio', self.matrices[matrix]['ratio'])
 
 
     def get_option(self, config, section, option, cast):
@@ -68,8 +92,8 @@ class RunConfiguration:
 
 
     def check_section(self, config, section, template_class):
-        """section is the actual section name in the config file, template_class corresponds
-           to the type of section it is..."""
+        """`section` is the actual section name in the config file, `template_class`
+            corresponds to what type of section it is..."""
         for option, value in config.items(section):
             if option not in config_template[template_class].keys():
                 raise ConfigError, 'Unknown option under "%s" section: "%s"' % (section, option)
@@ -99,7 +123,8 @@ class RunConfiguration:
         for section in self.get_other_sections(config):
             if not os.path.exists(os.path.join(self.input_directory, section)):
                 raise ConfigError, 'The matrix file "%s" you mentioned in the config file is not in the\
-                                    input directory (which is the current working directory if you have\
-                                    not specified one. Please specify the correct input directory' % (section)
+                                    input directory (if you have not specify an input directory, it is\
+                                    assumed to be the "current working directory". If you have\
+                                    not specified one, please specify the correct input directory' % (section)
             self.check_section(config, section, 'matrix')
 
