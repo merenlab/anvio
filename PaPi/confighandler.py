@@ -94,7 +94,7 @@ class ClusteringConfiguration:
                                     "ratio" variables irrelevant. Please make sure it is not set in the\
                                      config file.'
             if self.num_components:
-                raise ConfigError, 'There is only one matrix declared in the config file. In this case there\
+                raise ConfigError, 'There is only one matrix declared in the config file. In this there\
                                     will be no scaling step. Therefore the "num_components" variable will\
                                     not be used. Please make sure it is not set under the general section.'
 
@@ -152,19 +152,32 @@ class ClusteringConfiguration:
 
         self.check_section(config, 'general', 'general')
 
-        for section in self.get_other_sections(config):
-            if not os.path.exists(os.path.join(self.input_directory, section)):
+        matrices = self.get_other_sections(config)
+
+        for matrix in matrices:
+            if not os.path.exists(os.path.join(self.input_directory, matrix)):
                 raise ConfigError, 'The matrix file "%s" you mentioned in the config file is not in the\
                                     input directory (if you have not specify an input directory, it is\
                                     assumed to be the "current working directory". If you have\
-                                    not specified one, please specify the correct input directory' % (section)
+                                    not specified one, please specify the correct input directory' % (matrix)
 
-            self.check_section(config, section, 'matrix')
+            self.check_section(config, matrix, 'matrix')
 
             # it is not very elegant to do this here, but carrying this test in the template was going to
             # cause a lot of uncalled for complexity (or reporting was going to be very vague):
-            columns_to_use_str = self.get_option(config, section, 'columns_to_use', str)
+            columns_to_use_str = self.get_option(config, matrix, 'columns_to_use', str)
             columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
-            if columns_to_use and not cols_present(columns_to_use, os.path.join(self.input_directory, section)):
+            if columns_to_use and not cols_present(columns_to_use, os.path.join(self.input_directory, matrix)):
                 raise ConfigError, 'One or more of the columns declared for "%s" in the config file\
-                                    seem(s) to be missing in the matrix :/' % (section)
+                                    seem(s) to be missing in the matrix :/' % (matrix)
+
+        # 'ratio' must be defined either for all, or for none of the matrices
+        with_ratio = len([True for matrix in matrices if self.get_option(config, matrix, 'ratio', int)])
+        if with_ratio and with_ratio != len(matrices):
+            raise ConfigError, 'Ratio value must be defined either for all, or none of the matrices. In your\
+                                configuration only %d of %d matrices have ratio values defined. Either remove\
+                                all, or complete the remaining one%s.' % (with_ratio, len(matrices),
+                                                                          's' if (len(matrices) - with_ratio) > 1 else '')
+
+
+
