@@ -28,6 +28,8 @@ parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
                     help = 'Config file for clustering of contigs. See XXX for help.')
 parser.add_argument('-i', '--input-directory', metavar = 'PATH', default = None, type=str,
                     help = 'Input directory to find matrix files')
+parser.add_argument('-D', '--dry-run', default = False, action = 'store_true', 
+                    help = 'Do not do anything, just print out the configuration.')
 
 args = parser.parse_args()
 
@@ -40,14 +42,17 @@ except FilesNPathsError, e:
     print e
     sys.exit(-2)
 
+# FIXME: This should take a Run argument.
 config.print_summary()
 
+if args.dry_run:
+    sys.exit()
+
 def order_contigs(config, progress = terminal.Progress(verbose=False), run = terminal.Run()):
-    if config.num_matrices == 1:
+    if not config.multiple_matrices:
         # there is one matrix. could be coverage, could be tnf. we don't care.
         # we do what we gotta do: perform clustering based on the matrix, and
         # skip scaling.
-
         matrix_name = config.matrices[0]
         matrix_path = config.matrices_dict[matrix_name]['path']
         matrix_alias = config.matrices_dict[matrix_name]['alias']
@@ -64,8 +69,37 @@ def order_contigs(config, progress = terminal.Progress(verbose=False), run = ter
         run.info("Tree is stored", config.output_file_path)
 
     else:
-        # what follows is crap, but will get sorted out. like tomorrow.
+        # ok. there is more than one matrix, so there will be a mixture of scaled vectors prior to clustering.
+        # FIXME: this part needs to be parallelized.
+
+        # determine whether ratios were set.
+        ratios_set = True if config.matrices_dict[config.matrices[0]]['ratio'] else False
+
+        # if ratios are not set there are two things that can be done; all components would be equally
+        # distributed across matrices, or a heuristic that considers the number of samples in the experiment
+        # and/or other experiment-specific properties to determine what could be a smart way to set ratios
+        # for now, I will set them to one, but will put here a FIXME to remember coming back to the heuristic.
+        # (on the other hand, maybe this is not the right place to do it and the caller of this func should
+        # take care of it, we'll see).
+        if not ratios_set:
+            for matrix in config.matrices:
+                config.matrices_dict[matrix]['ratio'] = 1
+
+
+        # find out about the distribution of components across matrices.
+        # note here we introduce a new member that was not in the original config class:
+        # num_components per matrix.
+        denominator = float(sum([r['ratio'] for r in config.matrices_dict.values()]))
+        for matrix in config.matrices:
+            m = config.matrices_dict[matrix]
+            num_components_for_ratio = int(round(config.num_components * (m['ratio'] / denominator)))
+            print num_components_for_ratio
+            m['num_components'] = num_components_for_ratio
+
+
+        # the rest of this code is un-constructed dream space. don't go there just yet.
         sys.exit()
+        
         # working on TNF matrix
         scaled_tnf_vectors = utils.get_scaled_vectors(tnf_vectors, user_seed = args.seed, progress=progress)
         progress.end()
