@@ -17,54 +17,87 @@ import hcluster
 
 import PaPi.utils as utils
 import PaPi.terminal as terminal
+import PaPi.confighandler as confighandler
+from PaPi.utils import ConfigError
+from PaPi.filesnpaths import FilesNPathsError
+
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='why yes we do stuff here.')
-parser.add_argument('input_tnf', metavar = 'PATH', default = None,
-                    help = 'TNF matrix')
-parser.add_argument('input_coverage', metavar = 'PATH', default = None,
-                    help = 'Coverage matrix')
-parser.add_argument('-o', '--output-file', metavar = 'PATH', default = None,
-                    help = 'Output file name')
-parser.add_argument('-s', '--seed', metavar = 'INT', default = 3,
-                    type=int, help = 'Seed for random state')
-
+parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
+                    help = 'Config file for clustering of contigs. See XXX for help.')
+parser.add_argument('-i', '--input-directory', metavar = 'PATH', default = None, type=str,
+                    help = 'Input directory to find matrix files')
 
 args = parser.parse_args()
 
-# working on TNF matrix
-progress.new('TNF matrix')
-progress.update('Reading input')
-tnf_ids, tnf_header, tnf_vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_tnf)
-scaled_tnf_vectors = utils.get_scaled_vectors(tnf_vectors, user_seed = args.seed, progress=progress)
-progress.end()
-#tnf_newick = cluster_combined_scaled_vectors(tnf_ids, scaled_tnf_vectors)
+try:
+    config = confighandler.ClusteringConfiguration(args.config_file, args.input_directory)
+except ConfigError, e:
+    print e
+    sys.exit(-1)
+except FilesNPathsError, e:
+    print e
+    sys.exit(-2)
 
-# working on Coverage matrix
-progress.new('Coverage matrix')
-progress.update('Reading input')
-cov_ids_to_sample, cov_header, cov_vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_coverage, only_essential_fields = True)
-cov_sample_to_id = dict([(v, k) for k, v in cov_ids_to_sample.iteritems()])
-scaled_cov_vectors = utils.get_scaled_vectors(cov_vectors, user_seed = args.seed, progress=progress)
-progress.end()
-#cov_newick = cluster_combined_scaled_vectors(cov_ids, scaled_cov_vectors)
+config.print_summary()
 
-# update vectors
-progress.new('Final pass')
-progress.update('Normalizing scaled vectors')
-cov_vectors = utils.get_normalized_vectors(scaled_cov_vectors)
-tnf_vectors = utils.get_normalized_vectors(scaled_tnf_vectors)
+def order_contigs(config, progress = terminal.Progress(verbose=False), run = terminal.Run()):
+    if config.num_matrices == 1:
+        # there is one matrix. could be coverage, could be tnf. we don't care.
+        # we do what we gotta do: perform clustering based on the matrix, and
+        # skip scaling.
 
-progress.update('Combining scaled vectors')
-combined_id_to_sample_dict = {}
-combined_scaled_vectors = []
-for i in range(0, len(tnf_ids)):
-    combined_id_to_sample_dict[i] = tnf_ids[i]
-    combined_vector = np.concatenate((tnf_vectors[i], cov_vectors[cov_sample_to_id[tnf_ids[i]]]), axis=0)
-    combined_scaled_vectors.append(combined_vector)
-progress.end()
+        matrix_name = config.matrices[0]
+        matrix_path = config.matrices_dict[matrix_name]['path']
+        matrix_alias = config.matrices_dict[matrix_name]['alias']
+        fields_to_return = config.matrices_dict[matrix_name]['columns_to_use']
+        progress.new('Ordering contigs based on %s' % matrix_alias)
+        progress.update('Reading input "%s"' % matrix_name)
+        id_to_contig, header, vectors = utils.get_vectors_from_TAB_delim_matrix(matrix_path, fields_to_return)
 
-progress.update('Cluster analysis')
-tree = utils.get_clustering_as_tree(combined_scaled_vectors, progress = progress)
-newick = utils.get_tree_object_in_newick(tree, combined_id_to_sample_dict)
-print newick
+        progress.update('Cluster analysis ...')
+        tree = utils.get_clustering_as_tree(vectors, progress = progress)
+        newick = utils.get_tree_object_in_newick(tree, id_to_contig)
+
+        open(config.output_file_path, 'w').write(newick + '\n')
+        run.info("Tree is stored", config.output_file_path)
+
+    else:
+        # what follows is crap, but will get sorted out. like tomorrow.
+        sys.exit()
+        # working on TNF matrix
+        scaled_tnf_vectors = utils.get_scaled_vectors(tnf_vectors, user_seed = args.seed, progress=progress)
+        progress.end()
+        #tnf_newick = cluster_combined_scaled_vectors(tnf_ids, scaled_tnf_vectors)
+        
+        # working on Coverage matrix
+        progress.new('Coverage matrix')
+        progress.update('Reading input')
+        cov_ids_to_sample, cov_header, cov_vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_coverage, only_essential_fields = True)
+        cov_sample_to_id = dict([(v, k) for k, v in cov_ids_to_sample.iteritems()])
+        scaled_cov_vectors = utils.get_scaled_vectors(cov_vectors, user_seed = args.seed, progress=progress)
+        progress.end()
+        #cov_newick = cluster_combined_scaled_vectors(cov_ids, scaled_cov_vectors)
+        
+        # update vectors
+        progress.new('Final pass')
+        progress.update('Normalizing scaled vectors')
+        cov_vectors = utils.get_normalized_vectors(scaled_cov_vectors)
+        tnf_vectors = utils.get_normalized_vectors(scaled_tnf_vectors)
+        
+        progress.update('Combining scaled vectors')
+        combined_id_to_sample_dict = {}
+        combined_scaled_vectors = []
+        for i in range(0, len(tnf_ids)):
+            combined_id_to_sample_dict[i] = tnf_ids[i]
+            combined_vector = np.concatenate((tnf_vectors[i], cov_vectors[cov_sample_to_id[tnf_ids[i]]]), axis=0)
+            combined_scaled_vectors.append(combined_vector)
+        progress.end()
+        
+        progress.update('Cluster analysis')
+        tree = utils.get_clustering_as_tree(combined_scaled_vectors, progress = progress)
+        newick = utils.get_tree_object_in_newick(tree, combined_id_to_sample_dict)
+        print newick
+
+order_contigs(config)
