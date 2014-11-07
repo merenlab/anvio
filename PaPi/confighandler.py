@@ -86,8 +86,9 @@ class ClusteringConfiguration:
             self.matrices_dict[matrix] = m
 
         self.num_matrices = len(self.matrices)
+        self.multiple_matrices = self.num_matrices > 1
 
-        if self.num_matrices == 1:
+        if not self.multiple_matrices:
             # there is only one matrix, we don't expect to see a ratio.
             if self.matrices_dict[self.matrices[0]]['ratio']:
                 raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
@@ -97,9 +98,17 @@ class ClusteringConfiguration:
                 raise ConfigError, 'There is only one matrix declared in the config file. In this there\
                                     will be no scaling step. Therefore the "num_components" variable will\
                                     not be used. Please make sure it is not set under the general section.'
+        else:
+            # if there are multiple matrices, it means this config is going to be used to
+            # scale and mix the data, therefore it is mandatory to have num_components
+            # defined.
+            if self.multiple_matrices and not self.get_option(config, 'general', 'num_components', int):
+                raise ConfigError, 'When multiple matrices are defined, it is mandatory to define the number of\
+                                    components under the general section ("num_components").'
+
 
     def print_summary(self):
-        r = terminal.Run()
+        r = terminal.Run(width=35)
         r.info('General', '', header=True)
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
@@ -178,6 +187,5 @@ class ClusteringConfiguration:
                                 configuration only %d of %d matrices have ratio values defined. Either remove\
                                 all, or complete the remaining one%s.' % (with_ratio, len(matrices),
                                                                           's' if (len(matrices) - with_ratio) > 1 else '')
-
 
 
