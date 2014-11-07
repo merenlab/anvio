@@ -68,7 +68,8 @@ class ClusteringConfiguration:
         # and sanity check.
         self.sanity_check(config)
 
-        self.output_file = self.get_option(config, 'general', 'output_file', str)
+        self.output_file_name = self.get_option(config, 'general', 'output_file', str)
+        self.output_file_path = os.path.join(self.input_directory, self.output_file_name)
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
 
@@ -103,7 +104,7 @@ class ClusteringConfiguration:
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
         r.info('Seed', self.seed)
-        r.info('Output file', self.output_file)
+        r.info('Output file', self.output_file_name)
         for matrix in self.matrices:
             r.info('%s (%s)' % (matrix, self.matrices_dict[matrix]['alias']), '', header=True)
             r.info('Columns to use', self.matrices_dict[matrix]['columns_to_use'])
