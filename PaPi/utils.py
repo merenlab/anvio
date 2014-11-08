@@ -167,11 +167,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    header_fields = get_header_fields_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in header_fields]) else True
+    columns = get_columns_of_TAB_delim_file(file_path)
+    return False if len([False for c in columns if c not in columns]) else True
 
 
-def get_header_fields_of_TAB_delim_file(file_path):
+def get_columns_of_TAB_delim_file(file_path):
     return open(file_path).readline().strip('\n').split('\t')[1:]
 
 
@@ -179,7 +179,7 @@ def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, fields_to_return=None):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = None):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -187,25 +187,29 @@ def get_vectors_from_TAB_delim_matrix(file_path, fields_to_return=None):
     id_to_sample_dict = {}
 
     input_matrix = open(file_path)
-    header = input_matrix.readline().strip().split('\t')[1:]
+    columns = input_matrix.readline().strip().split('\t')[1:]
 
     fields_of_interest = []
-    if fields_to_return:
-        fields_of_interest = [f for f in range(0, len(header)) if header[f] in fields_to_return and IS_ESSENTIAL_FIELD(header[f])]
+    if cols_to_return:
+        fields_of_interest = [f for f in range(0, len(columns)) if columns[f] in cols_to_return and IS_ESSENTIAL_FIELD(columns[f])]
     else:
-        fields_of_interest = [f for f in range(0, len(header)) if IS_ESSENTIAL_FIELD(header[f])]
+        fields_of_interest = [f for f in range(0, len(columns)) if IS_ESSENTIAL_FIELD(columns[f])]
 
-    # update header:
-    header = [header[i] for i in range(0, len(header)) if i in fields_of_interest]
+    # update columns:
+    columns = [columns[i] for i in range(0, len(columns)) if i in fields_of_interest]
 
 
-    if not len(header):
+    if not len(columns):
         raise ConfigError, "Only a subset (%d) of fields were requested by the caller, but none of them was found\
-                            in the matrix (%s) :/" % (len(fields_to_return), file_path)
+                            in the matrix (%s) :/" % (len(cols_to_return), file_path)
 
-    line_counter = 0
+    id_counter = 0
     for line in input_matrix.readlines():
-        id_to_sample_dict[line_counter] = line.strip().split('\t')[0]
+        row_name = line.strip().split('\t')[0]
+        if rows_to_return:
+            if row_name not in rows_to_return:
+                continue
+        id_to_sample_dict[id_counter] = row_name
         fields = line.strip().split('\t')[1:]
 
         if fields_of_interest:
@@ -215,9 +219,9 @@ def get_vectors_from_TAB_delim_matrix(file_path, fields_to_return=None):
 
         vectors.append(vector)
 
-        line_counter += 1
+        id_counter += 1
 
-    return id_to_sample_dict, header, vectors
+    return id_to_sample_dict, columns, vectors
 
 
 def get_all_ids_from_fasta(input_file):
@@ -349,15 +353,15 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
 
     f = open(file_path)
 
-    header_fields = f.readline().strip('\n').split('\t')
+    columns = f.readline().strip('\n').split('\t')
 
     if expected_fields:
         for field in expected_fields:
-            if field not in header_fields:
+            if field not in columns:
                 raise ConfigError, "The file '%s' does not contain the right type of header. It was expected\
                                     to have these: '%s', however it had these: '%s'" % (file_path,
                                                                                         ', '.join(expected_fields),
-                                                                                        ', '.join(header_fields[1:]))
+                                                                                        ', '.join(columns[1:]))
 
     d = {}
 
@@ -366,8 +370,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
 
         d[line_fields[0]] = {}
         e = d[line_fields[0]]
-        for i in range(1, len(header_fields)):
-            e[header_fields[i]] = line_fields[i]
+        for i in range(1, len(columns)):
+            e[columns[i]] = line_fields[i]
 
     return d
 
