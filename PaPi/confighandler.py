@@ -21,6 +21,7 @@ from PaPi.utils import ConfigError
 from PaPi.utils import check_sample_id
 from PaPi.constants import allowed_chars
 from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
+from PaPi.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 
 
 config_template = {
@@ -36,7 +37,7 @@ config_template = {
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
                 'alias': {'mandatory': True, 'test': lambda x: NameIsOK(x),
-                         'required': 'a single word alias composed of these characters alone: "%s"' % allowed_chars}
+                         'required': 'a single word alias composed of these characters alone: "%s"' % allowed_chars},
                },
 }
 
@@ -72,6 +73,7 @@ class ClusteringConfiguration:
         self.output_file_path = os.path.join(self.input_directory, self.output_file_name)
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
+        self.master = None
 
         self.matrices_dict = {}
         self.matrices = []
@@ -79,11 +81,34 @@ class ClusteringConfiguration:
             self.matrices.append(matrix)
             m = {}
             columns_to_use = self.get_option(config, matrix, 'columns_to_use', str)
+            m['name'] = matrix
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, matrix, 'ratio', int)
             m['alias'] = self.get_option(config, matrix, 'alias', str)
             m['path'] = os.path.join(self.input_directory, matrix)
+            # next two variables are necessary to follow the order of vectors
+            m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
+            m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
             self.matrices_dict[matrix] = m
+
+        # make sure all matrices have equal number of entries:
+        if len(set([m['id_to_sample'].values().__str__() for m in self.matrices_dict.values()])) > 1:
+            master_rows, master_matrix = sorted([(len(self.matrices_dict[m]['id_to_sample']), self.matrices_dict[m]['id_to_sample'].values(), m)\
+                                                            for m in self.matrices_dict])[0][1:]
+            self.master = master_matrix
+            self.master_rows = master_rows
+            # the smallest matrix is 'master_matrix', and the rows it has is master_rows. so every other matrix
+            # must match that, or we will throw a tantrum.
+            for matrix in [m for m in self.matrices if m != master_matrix]:
+                m = self.matrices_dict[matrix]
+                m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
+                if len(m['vectors']) != len(master_rows):
+                    raise ConfigError, 'The content of rows differed between input matrices. So I tried to\
+                                        match all other matrices to the matrix with the smallest number of\
+                                        rows (which was "%s"). However, not all other matrices contained\
+                                        the small set of rows.' % (master_matrix)
+        else:
+            self.master_rows = self.matrices_dict[self.matrices[0]]['sample_to_id'].keys()
 
         self.num_matrices = len(self.matrices)
         self.multiple_matrices = self.num_matrices > 1
@@ -108,16 +133,19 @@ class ClusteringConfiguration:
 
 
     def print_summary(self):
-        r = terminal.Run(width=35)
+        r = terminal.Run(width=45)
         r.info('General', '', header=True)
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
         r.info('Seed', self.seed)
         r.info('Output file', self.output_file_name)
         for matrix in self.matrices:
-            r.info('%s (%s)' % (matrix, self.matrices_dict[matrix]['alias']), '', header=True)
-            r.info('Columns to use', self.matrices_dict[matrix]['columns_to_use'])
-            r.info('Ratio', self.matrices_dict[matrix]['ratio'])
+            m = self.matrices_dict[matrix]
+            r.info('%s (%s) %s' % (matrix, m['alias'], '[MASTER]' if matrix == self.master else ''), '', header=True)
+            r.info('Ratio', m['ratio'])
+            r.info('Columns to use', m['columns_to_use'] or 'ALL')
+            r.info('Num Columns', len(m['cols']))
+            r.info('Num Rows', len(m['vectors']))
 
 
     def get_option(self, config, section, option, cast):
