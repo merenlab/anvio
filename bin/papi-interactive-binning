@@ -211,7 +211,7 @@ class RuninfoIO:
         metadata_file_path = self.P(self.runinfo['metadata_txt'])
 
         if self.taxonomy:
-            metadata_headers = utils.get_header_fields_of_TAB_delim_file(metadata_file_path)
+            metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
             metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
             for contig in metadata_dict.keys():
                 metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
