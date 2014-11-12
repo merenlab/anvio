@@ -348,7 +348,7 @@ def check_contig_names(contig_names):
                                    ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None):
     filesnpaths.is_file_tab_delimited(file_path)
 
     f = open(file_path)
@@ -368,10 +368,29 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None):
     for line in f.readlines():
         line_fields = line.strip('\n').split('\t')
 
-        d[line_fields[0]] = {}
+        entry_name = line_fields[0]
+
+        d[entry_name] = {}
+
         e = d[line_fields[0]]
         for i in range(1, len(columns)):
             e[columns[i]] = line_fields[i]
+
+
+
+    # we have the dict, but we will not return it the way it is if its supposed to be appended to an
+    # already existing dictionary.
+    if dict_to_append:
+        for entry in dict_to_append:
+            if entry not in d:
+                raise ConfigError, "Appending entries to the already existing dictionary from file '%s' failed\
+                                    as the entry %s does not appear to be in the file" % (file_path, entry)
+
+            for item in d[entry]:
+                dict_to_append[entry][item] = d[entry][item]
+
+        return dict_to_append
+
 
     return d
 
