@@ -114,7 +114,7 @@ class Progress:
 
 
 class Run:
-    def __init__(self, info_file_path = None, verbose = True, width = 65):
+    def __init__(self, info_file_path = None, verbose = True, width = 45):
         if info_file_path:
             self.init_info_file_obj(info_file_path)
         else:
