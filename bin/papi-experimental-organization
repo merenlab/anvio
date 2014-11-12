@@ -12,14 +12,14 @@
 
 import sys
 import argparse
-import numpy as np
 import hcluster
 
-import PaPi.utils as utils
 import PaPi.terminal as terminal
-import PaPi.confighandler as confighandler
+import PaPi.clustering as clustering
+
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
+from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 progress = terminal.Progress()
 
@@ -34,7 +34,7 @@ parser.add_argument('-D', '--dry-run', default = False, action = 'store_true',
 args = parser.parse_args()
 
 try:
-    config = confighandler.ClusteringConfiguration(args.config_file, args.input_directory)
+    config = ClusteringConfiguration(args.config_file, args.input_directory)
 except ConfigError, e:
     print e
     sys.exit(-1)
@@ -43,80 +43,9 @@ except FilesNPathsError, e:
     sys.exit(-2)
 
 # FIXME: This should take a Run argument.
-config.print_summary()
+config.print_summary(terminal.Run())
 
 if args.dry_run:
     sys.exit()
 
-def order_contigs(config, progress = terminal.Progress(verbose=False), run = terminal.Run()):
-    if not config.multiple_matrices:
-        # there is one matrix. could be coverage, could be tnf. we don't care.
-        # we do what we gotta do: perform clustering based on the matrix, and
-        # skip scaling.
-        m = config.matrices_dict[config.matrices[0]]
-
-        progress.new('Single matrix (%s)' % m['alias'])
-        progress.update('Performing cluster analysis ...')
-        tree = utils.get_clustering_as_tree(m['vectors'], progress = progress)
-        newick = utils.get_tree_object_in_newick(tree, m['id_to_sample'])
-        progress.end()
-
-        open(config.output_file_path, 'w').write(newick + '\n')
-        run.info("Tree is stored", config.output_file_path)
-
-    else:
-        # ok. there is more than one matrix, so there will be a mixture of scaled vectors prior to clustering.
-        # FIXME: this part needs to be parallelized.
-
-        # determine whether ratios were set.
-        ratios_set = True if config.matrices_dict[config.matrices[0]]['ratio'] else False
-
-        # if ratios are not set there are two things that can be done; all components would be equally
-        # distributed across matrices, or a heuristic that considers the number of samples in the experiment
-        # and/or other experiment-specific properties to determine what could be a smart way to set ratios
-        # for now, I will set them to one, but will put here a FIXME to remember coming back to the heuristic.
-        # (on the other hand, maybe this is not the right place to do it and the caller of this func should
-        # take care of it, we'll see).
-        if not ratios_set:
-            for matrix in config.matrices:
-                config.matrices_dict[matrix]['ratio'] = 1
-
-
-        # find out about the distribution of components across matrices.
-        # note here we introduce a new member that was not in the original config class:
-        # num_components per matrix.
-        denominator = float(sum([r['ratio'] for r in config.matrices_dict.values()]))
-        for matrix in config.matrices:
-            m = config.matrices_dict[matrix]
-            num_components_for_ratio = int(round(config.num_components * (m['ratio'] / denominator)))
-            m['num_components'] = num_components_for_ratio
-
-
-        for matrix in config.matrices:
-            m = config.matrices_dict[matrix]
-            progress.new('Multiple matrices %d of %d; %s' % (config.matrices.index(matrix) + 1, len(config.matrices), m['alias']))
-
-            progress.update('Scaling for %s components ...' % m['num_components'])
-            m['scaled_vectors'] = utils.get_scaled_vectors(m['vectors'], user_seed = config.seed, n_components = m['num_components'], progress=progress)
-
-            progress.update('Normalizing scaled vectors ...')
-            m['scaled_vectors'] = utils.get_normalized_vectors(m['scaled_vectors'])
-
-
-        progress.update('Combining scaled vectors')
-        config.combined_vectors = []
-        config.combined_id_to_sample = {}
-        for i in range(0, len(config.master_rows)):
-            row = config.master_rows[i]
-            config.combined_id_to_sample[i] = config.master_rows[i]
-            combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in config.matrices_dict.values()]
-            config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
-
-        progress.update('Cluster analysis on combined vectors')
-        tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
-        newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
-
-        open(config.output_file_path, 'w').write(newick + '\n')
-        run.info("Tree is stored", config.output_file_path)
-
-order_contigs(config)
+clustering.order_contigs(config, progress = terminal.Progress())

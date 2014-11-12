@@ -38,6 +38,7 @@ config_template = {
                           'required': "an integer value between 1 and 256."},
                 'alias': {'mandatory': True, 'test': lambda x: NameIsOK(x),
                          'required': 'a single word alias composed of these characters alone: "%s"' % allowed_chars},
+                'normalize': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
                },
 }
 
@@ -86,6 +87,7 @@ class ClusteringConfiguration:
             m['ratio'] = self.get_option(config, matrix, 'ratio', int)
             m['alias'] = self.get_option(config, matrix, 'alias', str)
             m['path'] = os.path.join(self.input_directory, matrix)
+            m['normalize'] = False if self.get_option(config, matrix, 'normalize', str) == 'False' else True 
             # next two variables are necessary to follow the order of vectors
             m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
             m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
@@ -132,8 +134,7 @@ class ClusteringConfiguration:
                                     components under the general section ("num_components").'
 
 
-    def print_summary(self):
-        r = terminal.Run(width=45)
+    def print_summary(self, r):
         r.info('General', '', header=True)
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
@@ -143,6 +144,7 @@ class ClusteringConfiguration:
             m = self.matrices_dict[matrix]
             r.info('%s (%s) %s' % (matrix, m['alias'], '[MASTER]' if matrix == self.master else ''), '', header=True)
             r.info('Ratio', m['ratio'])
+            r.info('Normalize', m['normalize'])
             r.info('Columns to use', m['columns_to_use'] or 'ALL')
             r.info('Num Columns', len(m['cols']))
             r.info('Num Rows', len(m['vectors']))
