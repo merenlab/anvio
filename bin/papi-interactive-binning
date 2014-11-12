@@ -51,6 +51,9 @@ parser.add_argument('-T', '--taxonomy', metavar = "FILE", default = None,
                     help = "TAB-delimited taxonomy file that contains phylum, class, order, family\
                             genus and species annotations of each contig. Contig names has to match\
                             with the ones in other files, obviously")
+parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for additional metadata for contigs. The file should\
+                            contain all contigs that are present in other files.")
 parser.add_argument('-l', '--taxonomic-level', metavar = 'NAME', default = 'phylum',
                     help = 'The level of taxonomy to annotate the tree. The default is %(default)s.')
 parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
@@ -77,6 +80,7 @@ class RuninfoIO:
         self.contig_lengths = {}
         self.taxonomy = None
         self.taxonomic_level = None
+        self.additional_metadata_path = None
         self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
 
         self.cwd = os.getcwd()
@@ -139,9 +143,9 @@ class RuninfoIO:
             filesnpaths.is_file_tab_delimited(self.runinfo['metadata_txt'])
             if not open(self.runinfo['metadata_txt']).readline().split('\t')[0] == "contigs":
                 raise utils.ConfigError, "The first row of the first column of the metadata file must\
-                                               say 'contigs', which is not the case for your metadata file\
-                                               ('%s'). Please make sure this is a properly formatted metadata\
-                                               file." % (self.runinfo['metadata_txt'])
+                                          say 'contigs', which is not the case for your metadata file\
+                                          ('%s'). Please make sure this is a properly formatted metadata\
+                                          file." % (self.runinfo['metadata_txt'])
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
@@ -165,6 +169,9 @@ class RuninfoIO:
             filesnpaths.is_file_tab_delimited(args.taxonomy)
             self.taxonomy = utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = levels_of_taxonomy)
 
+        if args.additional_metadata:
+            filesnpaths.is_file_tab_delimited(args.additional_metadata)
+            self.additional_metadata_path = args.additional_metadata
 
         self.check_names_consistency()
         self.convert_metadata_into_json()
@@ -198,7 +205,14 @@ class RuninfoIO:
             contigs_in_taxonomy = set(self.taxonomy.keys())
             for contig in contigs_in_metadata:
                 if not contig in contigs_in_taxonomy:
-                    raise utils.ConfigError, "Contig names in taxonomy does not include all contig names present\
+                    raise utils.ConfigError, "Contig names in taxonomy do not include all contig names present\
+                                                   in other files. Bad news :/"
+
+        if self.additional_metadata_path:
+            contigs_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
+            for contig in contigs_in_tree:
+                if contig not in contigs_in_additional_metadata:
+                    raise utils.ConfigError, "Contig names in additional metadata file do not include all contig names present\
                                                    in other files. Bad news :/"
 
 
@@ -218,6 +232,17 @@ class RuninfoIO:
 
             new_metatada_file_path = filesnpaths.get_temp_file_path()
             headers = ['contigs', self.taxonomic_level] + metadata_headers
+            utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
+            metadata_file_path = new_metatada_file_path
+
+        if self.additional_metadata_path:
+            metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
+            additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_metadata_path)
+            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
+            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path, dict_to_append = metadata_dict)
+            
+            new_metatada_file_path = filesnpaths.get_temp_file_path()
+            headers = ['contigs'] + metadata_headers + additional_headers
             utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
             metadata_file_path = new_metatada_file_path
 
