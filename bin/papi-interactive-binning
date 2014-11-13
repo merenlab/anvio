@@ -51,6 +51,12 @@ parser.add_argument('-T', '--taxonomy', metavar = "FILE", default = None,
                     help = "TAB-delimited taxonomy file that contains phylum, class, order, family\
                             genus and species annotations of each contig. Contig names has to match\
                             with the ones in other files, obviously")
+parser.add_argument('--title', metavar = "TITLE", default = None,
+                    help = "Title for the interface. If you are working with a RUNINFO dict, the title\
+                            will be determined based on information stored in that file. Regardless,\
+                            you can override that value using this parameter. If you are not using a\
+                            PaPi RUNINFO dictionary, a meaningful title will appear in the interface\
+                            only if you define one using this parameter.")
 parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
                     help = "A TAB-delimited file for additional metadata for contigs. The file should\
                             contain all contigs that are present in other files.")
@@ -75,6 +81,7 @@ run = terminal.Run()
 class RuninfoIO:
     def __init__(self, args):
         self.runinfo = {}
+        self.title = 'Unknown Project'
         self.contig_rep_seqs = {}
         self.contigs_summary_index = {}
         self.contig_lengths = {}
@@ -119,6 +126,11 @@ class RuninfoIO:
                                                    from another computer? Well. I really don't know what to\
                                                    suggest at this point :/"
 
+            if args.title:
+                self.title = args.title
+            else:
+                self.title = self.runinfo['sample_id']
+
             self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
             ###########################################################################################################
@@ -149,6 +161,9 @@ class RuninfoIO:
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
+
+            if args.title:
+                self.title = args.title
 
             filesnpaths.gen_output_directory(self.runinfo['output_dir'])
 
@@ -299,6 +314,8 @@ def send_data(name):
         return "{}"
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)
+    elif name == "title":
+        return json.dumps(d.title)
 
 @route('/data/charts/<contig_name>')
 def charts(contig_name):
