@@ -505,7 +505,7 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string, font_size) {
+function drawText(svg_id, p, string, font_size, align) {
 
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
@@ -514,6 +514,22 @@ function drawText(svg_id, p, string, font_size) {
     text.setAttribute('y', p['y']);
     text.setAttribute('font-size', font_size);
     text.setAttribute('pointer-events', 'none');
+
+    switch (align) {
+        case 'left':
+            text.setAttribute('text-anchor', 'start');
+            break;
+        case 'centre':
+        case 'center':
+            text.setAttribute('text-anchor', 'middle');
+            break;
+        case 'right':
+            text.setAttribute('text-anchor', 'end');
+            break;
+        default:
+            text.setAttribute('text-anchor', 'start');
+            break;
+    }
 
     var textNode = document.createTextNode(string)
     text.appendChild(textNode);
@@ -2401,9 +2417,11 @@ function draw_tree(drawing_type) {
         switch (drawing_type) {
             case 'phylogram':
                 drawLegend(0, 100);
+                drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -100}, project_title, '72px', 'center');
                 break;
             case 'circlephylogram':
                 drawLegend(20 - total_radius, total_radius + 100);
+                drawText('viewport', {'x': 0, 'y': -1 * total_radius - 100}, project_title, '72px', 'center');
                 break;
         }
 

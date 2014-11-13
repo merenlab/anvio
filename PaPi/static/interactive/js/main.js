@@ -9,6 +9,7 @@ var ZOOM_IN = 1.33;
 var ZOOM_OUT = 0.75;
 
 var LINE_COLOR='#888888';
+var project_title;
 
 var SCALE_MATRIX = 0;
 var id_to_node_map = new Array();
@@ -89,6 +90,20 @@ $(document).ready(function() {
             at: "center",
             of: window
         }).dialog('close');
+
+    // get project title
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/title?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            if (data.length > 0)
+            {
+                document.title = data;
+                project_title = data;
+            }
+        }
+    });
 
     // load data
     $.ajax({
