@@ -70,7 +70,7 @@ class BAMProfiler:
         self.contigs = {}
 
         self.progress = terminal.Progress()
-        self.run = terminal.Run()
+        self.run = terminal.Run(width=30)
 
 
     def _run(self):
