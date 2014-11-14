@@ -1,5 +1,4 @@
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
 var layers;
 var coverage;
@@ -48,7 +47,8 @@ function createCharts(){
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
-    var height = (150 * (layers.length + 1)) - margin.top - margin.bottom;
+    var chartHeight = 200;
+    var height = (chartHeight * (layers.length) + 400);
     var contextHeight = 50;
     var contextWidth = width;
 
@@ -62,7 +62,6 @@ function createCharts(){
     var maxVariability = 0;
     
     var layersCount = layers.length;
-    var chartHeight = height * (1 / layersCount);
     
     coverage.forEach(function(d) {
         for (var prop in d) {
@@ -93,7 +92,7 @@ function createCharts(){
                         competing_nucleotides: competing_nucleotides[i],
                         id: i,
                         width: width,
-                        height: height * (1 / layersCount),
+                        height: chartHeight,
                         maxVariability: maxVariability,
                         svg: svg,
                         margin: margin,
@@ -108,8 +107,7 @@ function createCharts(){
     
     var contextAxis = d3.svg.axis()
                 .scale(contextXScale)
-                .tickSize(contextHeight)
-                .orient("bottom");
+                .tickSize(contextHeight);
 
     var contextArea = d3.svg.area()
                 .interpolate("monotone")
