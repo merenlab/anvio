@@ -85,6 +85,7 @@ class RuninfoIO:
         self.contig_rep_seqs = {}
         self.contigs_summary_index = {}
         self.contig_lengths = {}
+        self.contigs = None
         self.taxonomy = None
         self.taxonomic_level = None
         self.additional_metadata_path = None
@@ -188,6 +189,10 @@ class RuninfoIO:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
             self.additional_metadata_path = args.additional_metadata
 
+
+        tree = Tree(self.P(self.runinfo['tnf_tree']))
+        self.contig_names_ordered = [n.name for n in tree.get_leaves()]
+
         self.check_names_consistency()
         self.convert_metadata_into_json()
 
@@ -198,9 +203,8 @@ class RuninfoIO:
             self.contig_lengths[fasta.id] = len(fasta.seq)
 
 
-    def check_names_consistency(self):
-        tree = Tree(self.P(self.runinfo['tnf_tree']))
-        contigs_in_tree = sorted([n.name for n in tree.get_leaves()])
+    def check_names_consistency(self):        
+        contigs_in_tree = sorted(self.contig_names_ordered)
         contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.P(self.runinfo['metadata_txt'])).readlines()[1:]])
         contigs_in_fasta = sorted(utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
 
@@ -322,10 +326,18 @@ def charts(contig_name):
     data = {'layers': [],
              'coverage': [],
              'variability': [],
-             'competing_nucleotides': []}
+             'competing_nucleotides': [],
+             'previous_contig_name': None,
+             'next_contig_name': None}
 
     if not d.contigs_summary_index.has_key(contig_name):
         return data
+
+    index_of_contig = d.contig_names_ordered.index(contig_name)
+    if index_of_contig:
+        data['previous_contig_name'] = d.contig_names_ordered[index_of_contig - 1]
+    if (index_of_contig + 1) < len(d.contig_names_ordered):
+        data['next_contig_name'] = d.contig_names_ordered[index_of_contig + 1]
 
     contigs = dictio.read_serialized_object(d.P(d.contigs_summary_index[contig_name]))
     layers = sorted(contigs.keys())

@@ -16,8 +16,6 @@ function getUrlVars() {
 function loadAll() {
     contig_id = getUrlVars()["contig"];
 
-    document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed";
-
     $.ajax({
         type: 'GET',
         cache: false,
@@ -29,15 +27,27 @@ function loadAll() {
             coverage = contig_data.coverage;
             variability = contig_data.variability;
             competing_nucleotides = contig_data.competing_nucleotides;
+            previous_contig_name = contig_data.previous_contig_name;
+            next_contig_name = contig_data.next_contig_name;
 
             if(layers.length == 0){
                 console.log('Warning: no layers returned')
             }
 
-            createCharts();
+            next_str = " | <small>next &gt;&gt;&gt;</small>";
+            prev_str = "<small>&lt;&lt;&lt; prev</small> | ";
 
+            if(next_contig_name)
+                next_str = ' | <small><a href="charts.html?contig=' + next_contig_name + '"> next &gt;&gt;&gt;</a></small>';
+
+            if(previous_contig_name)
+                prev_str = '<small><a href="charts.html?contig=' + previous_contig_name + '"> &lt;&lt;&lt; prev </a></small> | ';
+
+            document.getElementById("header").innerHTML = prev_str + "<strong>" + contig_id + "</strong> detailed" + next_str;
+            createCharts();
         }
     });
+
 }
 
 
@@ -83,7 +93,7 @@ function createCharts(){
         }
     });
 
-    
+
     for(var i = 0; i < layersCount; i++){
         charts.push(new Chart({
                         name: layers[i],
