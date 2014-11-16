@@ -29,21 +29,24 @@ function loadAll() {
             competing_nucleotides = contig_data.competing_nucleotides;
             previous_contig_name = contig_data.previous_contig_name;
             next_contig_name = contig_data.next_contig_name;
+            index = contig_data.index;
+            total = contig_data.total;
 
             if(layers.length == 0){
                 console.log('Warning: no layers returned')
             }
 
-            next_str = " | <small>next &gt;&gt;&gt;</small>";
-            prev_str = "<small>&lt;&lt;&lt; prev</small> | ";
+            next_str = " | next &gt;&gt;&gt;";
+            prev_str = "&lt;&lt;&lt; prev | ";
+            position = index + " of " + total;
 
             if(next_contig_name)
-                next_str = ' | <small><a href="charts.html?contig=' + next_contig_name + '"> next &gt;&gt;&gt;</a></small>';
+                next_str = '<small><a href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
 
             if(previous_contig_name)
-                prev_str = '<small><a href="charts.html?contig=' + previous_contig_name + '"> &lt;&lt;&lt; prev </a></small> | ';
+                prev_str = '<small><a href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
 
-            document.getElementById("header").innerHTML = prev_str + "<strong>" + contig_id + "</strong> detailed" + next_str;
+            document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small>" + prev_str + position + next_str + "</small>";
             createCharts();
         }
     });

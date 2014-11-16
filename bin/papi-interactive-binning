@@ -324,6 +324,8 @@ def send_data(name):
 @route('/data/charts/<contig_name>')
 def charts(contig_name):
     data = {'layers': [],
+             'index': None,
+             'total': None,
              'coverage': [],
              'variability': [],
              'competing_nucleotides': [],
@@ -338,6 +340,9 @@ def charts(contig_name):
         data['previous_contig_name'] = d.contig_names_ordered[index_of_contig - 1]
     if (index_of_contig + 1) < len(d.contig_names_ordered):
         data['next_contig_name'] = d.contig_names_ordered[index_of_contig + 1]
+
+    data['index'] = index_of_contig + 1
+    data['total'] = len(d.contig_names_ordered)
 
     contigs = dictio.read_serialized_object(d.P(d.contigs_summary_index[contig_name]))
     layers = sorted(contigs.keys())
