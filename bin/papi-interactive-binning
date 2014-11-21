@@ -97,7 +97,7 @@ class RuninfoIO:
 
         if args.runinfo:
             # runinfo dict provided: we don't want anything else
-            if args.fasta_file or args.metadata or args.tree:
+            if args.fasta_file or args.metadata:
                 raise utils.ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
                                                declare any of '-f', '-m', or '-t' parameters if you have a\
                                                RUNINFO dict. Please refer to the documentation."
@@ -106,7 +106,12 @@ class RuninfoIO:
                 raise utils.ConfigError, "'%s'? No such file." % (args.runinfo)
 
             self.runinfo = dictio.read_serialized_object(args.runinfo)
-            
+
+            # if there is a tree supplied through the command line, let that tree override what is in the
+            # runinfo. kinda sketchy, but it is necessary.
+            if args.tree:
+                run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
+                self.runinfo['tnf_tree'] = utils.ABS(args.tree)
 
             if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
                 raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
@@ -161,7 +166,10 @@ class RuninfoIO:
                                           file." % (self.runinfo['metadata_txt'])
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
-            self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
+            # even if the interactive interface is called withhout a RUNINFO file, there may be one 
+            # in the directory. Lets don't overwrite it and create a new one in case we store anything (a
+            # better, more informative name is a must, though, so here is a FIXME as a reminder):
+            self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO-EXTRA.cp')
 
             if args.title:
                 self.title = args.title
