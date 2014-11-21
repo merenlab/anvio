@@ -166,7 +166,7 @@ class RuninfoIO:
                                           file." % (self.runinfo['metadata_txt'])
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
-            # reminder: this is being strored in the output dir:
+            # reminder: this is being stored in the output dir provided as a commandline parameter:
             self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
 
             if args.title:
