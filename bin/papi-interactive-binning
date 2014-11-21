@@ -166,10 +166,8 @@ class RuninfoIO:
                                           file." % (self.runinfo['metadata_txt'])
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
-            # even if the interactive interface is called withhout a RUNINFO file, there may be one 
-            # in the directory. Lets don't overwrite it and create a new one in case we store anything (a
-            # better, more informative name is a must, though, so here is a FIXME as a reminder):
-            self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO-EXTRA.cp')
+            # reminder: this is being strored in the output dir:
+            self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
 
             if args.title:
                 self.title = args.title
