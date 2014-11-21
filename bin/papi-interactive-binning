@@ -46,7 +46,8 @@ parser.add_argument('-f', '--fasta-file', metavar = 'FASTA', default = None,
 parser.add_argument('-m', '--metadata', metavar = 'TXT', default = None,
                     help = 'TAB-delimited metadata file')
 parser.add_argument('-t', '--tree', metavar = 'NEWICK', default = None,
-                    help = 'Newick tree of contigs')
+                    help = 'Newick tree of contigs. Declaring a tree file using this parameter will override\
+                            the tree file in RUNINFO.')
 parser.add_argument('-T', '--taxonomy', metavar = "FILE", default = None,
                     help = "TAB-delimited taxonomy file that contains phylum, class, order, family\
                             genus and species annotations of each contig. Contig names has to match\
@@ -60,6 +61,9 @@ parser.add_argument('--title', metavar = "TITLE", default = None,
 parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
                     help = "A TAB-delimited file for additional metadata for contigs. The file should\
                             contain all contigs that are present in other files.")
+parser.add_argument('-S', '--summary-index', metavar = "FILE", default = None,
+                     help = "SUMMARY.cp, if there is one available, to inspect contigs from the interface. Will\
+                             override the one found in RUNINFO file if it was also declared using -r parameter.")
 parser.add_argument('-l', '--taxonomic-level', metavar = 'NAME', default = 'phylum',
                     help = 'The level of taxonomy to annotate the tree. The default is %(default)s.')
 parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
@@ -112,6 +116,9 @@ class RuninfoIO:
             if args.tree:
                 run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
                 self.runinfo['tnf_tree'] = utils.ABS(args.tree)
+            if args.summary_index:
+                run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
+                self.runinfo['profile_summary_index'] = utils.ABS(args.summary_index)
 
             if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
                 raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
@@ -155,6 +162,10 @@ class RuninfoIO:
             self.runinfo['splits_fasta'] = utils.ABS(args.fasta_file)
             self.runinfo['metadata_txt'] = utils.ABS(args.metadata)
             self.runinfo['output_dir'] = utils.ABS(args.output_dir)
+
+            if args.summary_index:
+                self.runinfo['profile_summary_index'] = utils.ABS(args.summary_index)
+                self.contigs_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
 
             # sanity of the metadata
             #filesnpaths.is_file_json_formatted(args.metadata)
