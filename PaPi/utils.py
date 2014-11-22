@@ -191,7 +191,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 
     fields_of_interest = []
     if cols_to_return:
-        fields_of_interest = [f for f in range(0, len(columns)) if columns[f] in cols_to_return and IS_ESSENTIAL_FIELD(columns[f])]
+        fields_of_interest = [f for f in range(0, len(columns)) if columns[f] in cols_to_return]
     else:
         fields_of_interest = [f for f in range(0, len(columns)) if IS_ESSENTIAL_FIELD(columns[f])]
 
@@ -453,11 +453,16 @@ def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False
     return normalizer.fit_transform(vectors)
 
 
-def get_clustering_as_tree(vectors, clustering_distance='euclidean', clustering_method = 'complete', progress = Progress(verbose=False)):
-    progress.update('Computing distance matrix using "%s" distance' % clustering_distance)
-    distance_matrix = hcluster.pdist(vectors, clustering_distance)
-    progress.update('Clustering data with "%s" linkage' % clustering_method)
-    clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
+def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean', clustering_method = 'complete', progress = Progress(verbose=False)):
+    if ward:
+        progress.update('Clustering data with Ward linkage and euclidean distances')
+        clustering_result = hcluster.ward(vectors)
+    else:
+        progress.update('Computing distance matrix using "%s" distance' % clustering_distance)
+        distance_matrix = hcluster.pdist(vectors, clustering_distance)
+        progress.update('Clustering data with "%s" linkage' % clustering_method)
+        clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
+
     progress.update('Returning results')
     return hcluster.to_tree(clustering_result)
 
