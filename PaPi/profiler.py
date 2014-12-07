@@ -78,7 +78,6 @@ class BAMProfiler:
 
         self.set_sample_id()
 
-
         if self.input_file_path:
             self.init_profile_from_BAM()
             self.profile()
@@ -245,9 +244,8 @@ class BAMProfiler:
     def profile(self):
         """Big deal function"""
 
-        # So we start with essential stats. In the section below, we will simply go through each contig (contig),
-        # in the BAM file and populate the contigs dictionary for the first time. There are two major sections,
-        # one for no_threading option, and the other with multiple threads.
+        # So we start with essential stats. In the section below, we will simply go through each contig
+        # in the BAM file and populate the contigs dictionary for the first time.
         for i in range(0, len(self.contig_names)):
         
             contig_name = self.contig_names[i]
@@ -272,10 +270,9 @@ class BAMProfiler:
             # analyze coverage for each split
             contig.analyze_coverage(self.bam, self.progress)
 
-            # now we can learn about the mean coverage of the contig.
+            # test the mean coverage of the contig.
             discarded_contigs_due_to_C = set([])
-            contig_mean_cov = contig.get_mean_self_coverage(self.progress)
-            if contig_mean_cov < self.min_mean_coverage:
+            if contig.mean_coverage < self.min_mean_coverage:
                 # discard this contig and continue
                 discarded_contigs_due_to_C.add(contig.name)
                 self.progress.end()
@@ -291,6 +288,7 @@ class BAMProfiler:
 
             # add contig to the dict.
             self.contigs[contig_name] = contig
+
 
         if discarded_contigs_due_to_C:
             self.run.info('contigs_after_C', pp(len(self.contigs)))

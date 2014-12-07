@@ -28,9 +28,14 @@ class Contig:
 
 
     def analyze_coverage(self, bam, progress):
+        contig_coverage = []
         for split in self.splits:
             progress.update('Coverage (split: %d of %d)' % (split.order, len(self.splits)))
             split.coverage = Coverage(split, bam)
+            contig_coverage.extend(split.coverage.c)
+
+        self.mean_coverage = numpy.mean(contig_coverage)
+        self.std_coverage = numpy.std(contig_coverage)
 
 
     def analyze_auxiliary(self, bam, progress):
@@ -54,12 +59,6 @@ class Contig:
         progress.update('TNF')
         rep_seq = self.get_rep_seq()
         self.tnf = kmers.get_kmer_frequency(rep_seq)
-
-
-    def get_mean_self_coverage(self, progress):
-        progress.update('Computing mean coverage for contig from splits')
-        self.mean_coverage = sum([split.coverage.mean * split.length / self.length for split in self.splits])
-        return self.mean_coverage 
 
 
 class Split:
