@@ -25,12 +25,12 @@ import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 import PaPi.dictio as dictio
 
-from PaPi.contig import Contig
+from PaPi.contig import Contig, set_contigs_abundance
 from PaPi.contig import Split
 
 pp = terminal.pretty_print
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 
 class BAMProfiler:
@@ -70,7 +70,7 @@ class BAMProfiler:
         self.contigs = {}
 
         self.progress = terminal.Progress()
-        self.run = terminal.Run(width=30)
+        self.run = terminal.Run(width=35)
 
 
     def _run(self):
@@ -293,6 +293,9 @@ class BAMProfiler:
         if discarded_contigs_due_to_C:
             self.run.info('contigs_after_C', pp(len(self.contigs)))
 
+        # set contig abundance
+        set_contigs_abundance(self.contigs)
+
         self.check_contigs()
 
 
@@ -369,37 +372,33 @@ class BAMProfiler:
         self.progress.end()
         self.run.info('tnf_tree', newick_tree_file_path)
 
-
-        # metadata
-        self.progress.new('Generating reports')
-        self.progress.update('Metadata for contigs')
-
         F = lambda x: '%.4f' % x
         I = lambda x: '%d' % x
 
-        metadata_fields_to_report = ['contigs', 'length', 'mean_coverage', 'std_coverage', 'GC_content', 'variability', '__parent__']
-
+        # metadata
+        self.progress.new('Metadata for splits')
+        self.progress.update('...')
+        metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'abundance', 'variability', '__parent__']
         metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
         metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
-
         for contig in self.contigs:
             for split in self.contigs[contig].splits:
                 fields = [split.name,
                           I(split.length),
-                          F(split.coverage.mean),
-                          F(split.coverage.std),
                           F(split.composition.GC_content),
+                          F(split.coverage.std),
+                          F(split.coverage.mean),
+                          F(split.abundance),
                           F(split.auxiliary.variability_score),
                           contig] 
                 metadata_txt.write('%s\n' % '\t'.join(fields))
-
         metadata_txt.close()
         self.progress.end()
         self.run.info('metadata_txt', metadata_txt.name)
 
-        # contigs FASTA
-        self.progress.new('Generating reports')
-        self.progress.update('Consensus FASTA files for contigs and splits')
+
+        # splits FASTA
+        self.progress.new('Consensus FASTA')
         splits_fasta = open(self.generate_output_destination('SPLITS-CONSENSUS.fa'), 'w')
         for contig in self.contig_names:
             for split in self.contigs[contig].splits:

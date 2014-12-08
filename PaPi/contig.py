@@ -17,6 +17,19 @@ from PaPi.variability import ColumnProfile
 
 kmers = KMers()
 
+def set_contigs_abundance(contigs):
+    """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
+       a Contigs wrapper .. maybe later."""
+
+    # first calculate the mean coverage
+    overall_mean_coverage = sum([c.mean_coverage * c.length for c in contigs.values()]) / sum(c.length for c in contigs.values())
+
+    # set normalized abundance factor for each contig
+    for contig in contigs:
+        contigs[contig].abundance = contigs[contig].mean_coverage / overall_mean_coverage
+        for split in contigs[contig].splits:
+            split.abundance = split.coverage.mean / overall_mean_coverage
+
 
 class Contig:
     def __init__(self, name):
@@ -24,6 +37,8 @@ class Contig:
         self.splits = []
         self.length = 0
         self.mean_coverage = 0.0
+        self.abundance = 0.0
+        self.std_coverage = 0.0
         self.tnf = {}
 
 
@@ -70,6 +85,7 @@ class Split:
         self.start = start
         self.length = end - start
         self.explicit_length = 0
+        self.abundance = 0.0
 
 
 class Auxiliary:
