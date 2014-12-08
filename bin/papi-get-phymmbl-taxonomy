@@ -18,6 +18,7 @@ import shutil
 from PaPi.sge import SGE
 import PaPi.utils as utils
 import PaPi.terminal as terminal
+import PaPi.filesnpaths as filesnpaths
 
 
 sge_error_txt = """Error: This script requires Sun Grid Engine to be accessible for PhymmBL
@@ -62,9 +63,9 @@ if not args.phymmbl_binary:
 filesnpaths.is_file_exists(args.phymmbl_binary)
 
 tmp_dir = os.path.join(os.path.dirname(utils.ABS(args.contigs)), 'tmp')
-utils.gen_output_directory(tmp_dir, delete_if_exits = True)
+filesnpaths.gen_output_directory(tmp_dir, delete_if_exits = True)
 parts_dir = os.path.join(tmp_dir, 'parts')
-utils.gen_output_directory(parts_dir)
+filesnpaths.gen_output_directory(parts_dir)
 
 run.info('contigs', args.contigs)
 
