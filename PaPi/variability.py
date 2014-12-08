@@ -45,10 +45,10 @@ class ColumnProfile:
         if 'N' in self.competing_nucleotides or 'n' in self.competing_nucleotides:
             return
 
-        if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
+        if len(column) < 20:
             return
 
-        if len(column) < 4:
+        if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
             return
 
         self.n2n1ratio = 1.0 * self.nucleotide_counts[n2] / self.nucleotide_counts[n1]
