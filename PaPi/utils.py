@@ -447,8 +447,11 @@ def get_scaled_vectors(vectors, user_seed = None, n_components = 12, normalize=T
     return scaled_vectors
 
 
-def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False)):
+def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False), pad_zeros = True):
     progress.update('Normalizing vectors using "%s" norm' % norm)
+    vectors = np.array(vectors)
+    if pad_zeros:
+        vectors += 0.0000001
     normalizer = preprocessing.Normalizer(norm=norm)
     return normalizer.fit_transform(vectors)
 
