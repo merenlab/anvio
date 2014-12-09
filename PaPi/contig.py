@@ -22,11 +22,11 @@ def set_contigs_abundance(contigs):
        a Contigs wrapper .. maybe later."""
 
     # first calculate the mean coverage
-    overall_mean_coverage = sum([c.mean_coverage * c.length for c in contigs.values()]) / sum(c.length for c in contigs.values())
+    overall_mean_coverage = sum([c.coverage.mean * c.length for c in contigs.values()]) / sum(c.length for c in contigs.values())
 
     # set normalized abundance factor for each contig
     for contig in contigs:
-        contigs[contig].abundance = contigs[contig].mean_coverage / overall_mean_coverage
+        contigs[contig].abundance = contigs[contig].coverage.mean / overall_mean_coverage
         for split in contigs[contig].splits:
             split.abundance = split.coverage.mean / overall_mean_coverage
 
@@ -36,27 +36,26 @@ class Contig:
         self.name = name
         self.splits = []
         self.length = 0
-        self.mean_coverage = 0.0
         self.abundance = 0.0
-        self.std_coverage = 0.0
         self.tnf = {}
+        self.coverage = Coverage()
 
 
     def analyze_coverage(self, bam, progress):
         contig_coverage = []
         for split in self.splits:
             progress.update('Coverage (split: %d of %d)' % (split.order, len(self.splits)))
-            split.coverage = Coverage(split, bam)
+            split.coverage = Coverage()
+            split.coverage.run(bam, split)
             contig_coverage.extend(split.coverage.c)
 
-        self.mean_coverage = numpy.mean(contig_coverage)
-        self.std_coverage = numpy.std(contig_coverage)
+        self.coverage.process_c(contig_coverage)
 
 
     def analyze_auxiliary(self, bam, progress):
         for split in self.splits:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
-                                 % (split.order, len(self.splits), self.mean_coverage, split.coverage.mean))
+                                 % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
             split.auxiliary = Auxiliary(split, bam)
 
 
@@ -161,40 +160,42 @@ class Composition:
         else:
             self.GC_content = (self.G + self.C) * 1.0 / length
 
-        #self.composition['tnf'] = kmers.get_kmer_frequency(sequence)
-    
 
 class Coverage:
-    def __init__(self, split, bam):
-        self.split = split
+    def __init__(self):
         self.c = []
         self.min = 0
         self.max = 0
         self.std = 0.0
         self.mean = 0.0
         self.median = 0.0
+        self.portion_covered = 0.0
+        self.normalized = 0.0
 
-        self.run(bam)
 
-
-    def run(self, bam):
+    def run(self, bam, split):
         coverage_profile = {}
-        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
-            if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
+        for pileupcolumn in bam.pileup(split.parent, split.start, split.end):
+            if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
                 continue
 
             coverage_profile[pileupcolumn.pos] = pileupcolumn.n
 
-        for i in range(self.split.start, self.split.end):
+        for i in range(split.start, split.end):
             if coverage_profile.has_key(i):
                 self.c.append(coverage_profile[i])
             else:
                 self.c.append(0)
 
         if self.c:
-            self.split.explicit_length = len(self.c) 
-            self.min = numpy.min(self.c)
-            self.max = numpy.max(self.c)
-            self.median = numpy.median(self.c)
-            self.mean = numpy.mean(self.c)
-            self.std = numpy.std(self.c)
+            split.explicit_length = len(self.c)
+            self.process_c(self.c)
+
+    def process_c(self, c):
+        self.min = numpy.min(c)
+        self.max = numpy.max(c)
+        self.median = numpy.median(c)
+        self.mean = numpy.mean(c)
+        self.std = numpy.std(c)
+        self.portion_covered = 1 - (float(c.count(0)) / len(c))
+        self.normalized = self.mean * self.portion_covered

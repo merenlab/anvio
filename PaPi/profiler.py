@@ -30,7 +30,7 @@ from PaPi.contig import Split
 
 pp = terminal.pretty_print
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 
 class BAMProfiler:
@@ -272,7 +272,7 @@ class BAMProfiler:
 
             # test the mean coverage of the contig.
             discarded_contigs_due_to_C = set([])
-            if contig.mean_coverage < self.min_mean_coverage:
+            if contig.coverage.mean < self.min_mean_coverage:
                 # discard this contig and continue
                 discarded_contigs_due_to_C.add(contig.name)
                 self.progress.end()
@@ -378,7 +378,7 @@ class BAMProfiler:
         # metadata
         self.progress.new('Metadata for splits')
         self.progress.update('...')
-        metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'abundance', 'variability', '__parent__']
+        metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'noramlized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
         metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
         metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
         for contig in self.contigs:
@@ -388,6 +388,8 @@ class BAMProfiler:
                           F(split.composition.GC_content),
                           F(split.coverage.std),
                           F(split.coverage.mean),
+                          F(split.coverage.normalized),
+                          F(split.coverage.portion_covered),
                           F(split.abundance),
                           F(split.auxiliary.variability_score),
                           contig] 
