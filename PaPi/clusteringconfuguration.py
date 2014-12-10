@@ -61,11 +61,12 @@ def NameIsOK(n):
 class ClusteringConfiguration:
     def __init__(self, config_file_path, input_directory = None):
         self.input_directory = input_directory or os.getcwd()
+        self.config_file_path = config_file_path
 
         # read the config
-        filesnpaths.is_file_exists(config_file_path)
+        filesnpaths.is_file_exists(self.config_file_path)
         config = ConfigParser.ConfigParser()
-        config.read(config_file_path)
+        config.read(self.config_file_path)
 
         # and sanity check.
         self.sanity_check(config)
@@ -110,28 +111,30 @@ class ClusteringConfiguration:
                                         rows (which was "%s"). However, not all other matrices contained\
                                         the small set of rows.' % (master_matrix)
         else:
-            self.master_rows = self.matrices_dict[self.matrices[0]]['sample_to_id'].keys()
+            self.master_rows = sorted(self.matrices_dict[self.matrices[0]]['sample_to_id'].keys())
 
         self.num_matrices = len(self.matrices)
         self.multiple_matrices = self.num_matrices > 1
 
-        if not self.multiple_matrices:
-            # there is only one matrix, we don't expect to see a ratio.
-            if self.matrices_dict[self.matrices[0]]['ratio']:
-                raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
-                                    "ratio" variables irrelevant. Please make sure it is not set in the\
-                                     config file.'
-            if self.num_components:
-                raise ConfigError, 'There is only one matrix declared in the config file. In this there\
-                                    will be no scaling step. Therefore the "num_components" variable will\
-                                    not be used. Please make sure it is not set under the general section.'
-        else:
-            # if there are multiple matrices, it means this config is going to be used to
-            # scale and mix the data, therefore it is mandatory to have num_components
-            # defined.
-            if self.multiple_matrices and not self.get_option(config, 'general', 'num_components', int):
-                raise ConfigError, 'When multiple matrices are defined, it is mandatory to define the number of\
-                                    components under the general section ("num_components").'
+        # following section will be irrelevant for a while (this is tied to working on 
+        # the clustering.order_contigs_experimental() function:
+        #if not self.multiple_matrices:
+        #    # there is only one matrix, we don't expect to see a ratio.
+        #    if self.matrices_dict[self.matrices[0]]['ratio']:
+        #        raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
+        #                            "ratio" variables irrelevant. Please make sure it is not set in the\
+        #                             config file.'
+        #    if self.num_components:
+        #        raise ConfigError, 'There is only one matrix declared in the config file. In this there\
+        #                            will be no scaling step. Therefore the "num_components" variable will\
+        #                            not be used. Please make sure it is not set under the general section.'
+        #else:
+        #    # if there are multiple matrices, it means this config is going to be used to
+        #    # scale and mix the data, therefore it is mandatory to have num_components
+        #    # defined.
+        #    if self.multiple_matrices and not self.get_option(config, 'general', 'num_components', int):
+        #        raise ConfigError, 'When multiple matrices are defined, it is mandatory to define the number of\
+        #                            components under the general section ("num_components").'
 
 
     def print_summary(self, r):
@@ -187,7 +190,7 @@ class ClusteringConfiguration:
             raise ConfigError, "[general] section is mandatory."
 
         if len(config.sections()) < 2:
-            raise ConfigError, "Config file must contain at least one matrix sextion."
+            raise ConfigError, "Config file must contain at least one matrix section."
 
         self.check_section(config, 'general', 'general')
 
@@ -195,10 +198,8 @@ class ClusteringConfiguration:
 
         for matrix in matrices:
             if not os.path.exists(os.path.join(self.input_directory, matrix)):
-                raise ConfigError, 'The matrix file "%s" you mentioned in the config file is not in the\
-                                    input directory (if you have not specify an input directory, it is\
-                                    assumed to be the "current working directory". If you have\
-                                    not specified one, please specify the correct input directory' % (matrix)
+                raise ConfigError, 'The matrix file "%s" you mentioned in %s has not been found in the\
+                                    input directory :/' % (matrix, os.path.basename(self.config_file_path))
 
             self.check_section(config, matrix, 'matrix')
 

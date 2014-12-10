@@ -48,4 +48,4 @@ config.print_summary(terminal.Run())
 if args.dry_run:
     sys.exit()
 
-clustering.order_contigs(config, progress = terminal.Progress())
+clustering.order_contigs_simple(config, progress = terminal.Progress(), debug = True)

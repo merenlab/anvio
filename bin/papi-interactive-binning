@@ -111,11 +111,17 @@ class RuninfoIO:
 
             self.runinfo = dictio.read_serialized_object(args.runinfo)
 
+            if not self.runinfo.has_key('runinfo'):
+                raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
+
             # if there is a tree supplied through the command line, let that tree override what is in the
             # runinfo. kinda sketchy, but it is necessary.
             if args.tree:
                 run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
-                self.runinfo['tnf_tree'] = utils.ABS(args.tree)
+                self.runinfo['tree_file'] = utils.ABS(args.tree)
+            else:
+                self.runinfo['tree_file'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]
+
             if args.summary_index:
                 run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
                 self.runinfo['profile_summary_index'] = utils.ABS(args.summary_index)
@@ -125,16 +131,13 @@ class RuninfoIO:
                                                profiler that is not compatible with the current interactive interface\
                                                anymore. You need to re-run PaPi profiler on these projects."
 
-            if not self.runinfo.has_key('metadata_txt'):
-                raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
-
-            if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
+            if not os.path.exists(self.P(self.runinfo['metadata_splits'])):
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
                 old_output_dir = self.runinfo['output_dir']
 
                 self.runinfo = dictio.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
 
-                if not os.path.exists(self.P(self.runinfo['metadata_txt'])):
+                if not os.path.exists(self.P(self.runinfo['metadata_splits'])):
                     raise utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\
                                                    from another computer? Well. I really don't know what to\
                                                    suggest at this point :/"
@@ -152,15 +155,15 @@ class RuninfoIO:
             self.runinfo['self_path'] = args.runinfo
 
         else:
-            # self.runinfo *must* contain 'tnf_tree', 'metadata_json', 'output_dir' and 'self_path'.
+            # self.runinfo *must* contain 'tree_file', 'metadata_json', 'output_dir' and 'self_path'.
             if (not args.fasta_file) or (not args.metadata) or (not args.tree) or (not args.output_dir):
                 raise utils.ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                                '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                                more detailed information on them."
 
-            self.runinfo['tnf_tree'] = utils.ABS(args.tree)
+            self.runinfo['tree_file'] = utils.ABS(args.tree)
             self.runinfo['splits_fasta'] = utils.ABS(args.fasta_file)
-            self.runinfo['metadata_txt'] = utils.ABS(args.metadata)
+            self.runinfo['metadata_splits'] = utils.ABS(args.metadata)
             self.runinfo['output_dir'] = utils.ABS(args.output_dir)
 
             if args.summary_index:
@@ -169,12 +172,12 @@ class RuninfoIO:
 
             # sanity of the metadata
             #filesnpaths.is_file_json_formatted(args.metadata)
-            filesnpaths.is_file_tab_delimited(self.runinfo['metadata_txt'])
-            if not open(self.runinfo['metadata_txt']).readline().split('\t')[0] == "contigs":
+            filesnpaths.is_file_tab_delimited(self.runinfo['metadata_splits'])
+            if not open(self.runinfo['metadata_splits']).readline().split('\t')[0] == "contigs":
                 raise utils.ConfigError, "The first row of the first column of the metadata file must\
                                           say 'contigs', which is not the case for your metadata file\
                                           ('%s'). Please make sure this is a properly formatted metadata\
-                                          file." % (self.runinfo['metadata_txt'])
+                                          file." % (self.runinfo['metadata_splits'])
             filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
             # reminder: this is being stored in the output dir provided as a commandline parameter:
@@ -207,7 +210,7 @@ class RuninfoIO:
             self.additional_metadata_path = args.additional_metadata
 
 
-        tree = Tree(self.P(self.runinfo['tnf_tree']))
+        tree = Tree(self.P(self.runinfo['tree_file']))
         self.contig_names_ordered = [n.name for n in tree.get_leaves()]
 
         self.check_names_consistency()
@@ -222,7 +225,7 @@ class RuninfoIO:
 
     def check_names_consistency(self):        
         contigs_in_tree = sorted(self.contig_names_ordered)
-        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.P(self.runinfo['metadata_txt'])).readlines()[1:]])
+        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.P(self.runinfo['metadata_splits'])).readlines()[1:]])
         contigs_in_fasta = sorted(utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
 
         try:
@@ -258,7 +261,7 @@ class RuninfoIO:
 
 
     def convert_metadata_into_json(self):
-        metadata_file_path = self.P(self.runinfo['metadata_txt'])
+        metadata_file_path = self.P(self.runinfo['metadata_splits'])
 
         if self.taxonomy:
             metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
@@ -326,7 +329,7 @@ def send_data(name):
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     if name == "tree":
-        return static_file(d.P(d.runinfo['tnf_tree']), root ='/')
+        return static_file(d.P(d.runinfo['tree_file']), root ='/')
     elif name == "meta":
         return static_file(d.runinfo['metadata_json'], root='/')
     elif name == "state":

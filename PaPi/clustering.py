@@ -31,36 +31,42 @@ def set_null_ratios_for_matrices(config):
     return config
 
 
-def order_contigs(config, progress = terminal.Progress(verbose=False), run = terminal.Run()):
+def order_contigs_simple(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
+
     for matrix in config.matrices:
         m = config.matrices_dict[matrix]
         if m['normalize']:
             m['scaled_vectors'] = utils.get_normalized_vectors(m['vectors'])
         else:
             m['scaled_vectors'] = np.array(m['vectors'])
-    progress.new('Scaled vectors for %d matrices' % config.num_matrices)
+
+    progress.new('Vectors from %d matrices' % config.num_matrices)
     progress.update('Combining ...')
     config.combined_vectors = []
     config.combined_id_to_sample = {}
+
     for i in range(0, len(config.master_rows)):
         row = config.master_rows[i]
         config.combined_id_to_sample[i] = config.master_rows[i]
         combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in config.matrices_dict.values()]
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
-    for i in range(0, 10):
-        print config.combined_vectors[i]
+
+    if debug:
+        for i in range(0, 10):
+            print config.combined_vectors[i]
+
     progress.update('Clustering ...')
     tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
     newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
     progress.end()
 
     open(config.output_file_path, 'w').write(newick + '\n')
-    run.info("Tree is stored", config.output_file_path)
-    return
+    return config.output_file_path
 
 
+def order_contigs_experimental(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
     if not config.multiple_matrices:
         # there is one matrix. could be coverage, could be tnf. we don't care.
         # we do what we gotta do: skip scaling and perform clustering using all
@@ -74,7 +80,7 @@ def order_contigs(config, progress = terminal.Progress(verbose=False), run = ter
         progress.end()
 
         open(config.output_file_path, 'w').write(newick + '\n')
-        run.info("Tree is stored", config.output_file_path)
+        return config.output_file_path
 
     else:
         # FIXME: this part needs to be parallelized.
@@ -133,4 +139,4 @@ def order_contigs(config, progress = terminal.Progress(verbose=False), run = ter
         progress.end()
 
         open(config.output_file_path, 'w').write(newick + '\n')
-        run.info("Tree is stored", config.output_file_path)
+        return config.output_file_path

@@ -21,16 +21,19 @@ import operator
 import subprocess
 
 import PaPi.utils as utils
+import PaPi.constants as constants
 import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 import PaPi.dictio as dictio
+import PaPi.clustering as clustering
 
+from PaPi.clusteringconfuguration import ClusteringConfiguration
 from PaPi.contig import Contig, set_contigs_abundance
 from PaPi.contig import Split
 
 pp = terminal.pretty_print
 
-__version__ = '0.3.2'
+__version__ = '0.4.0'
 
 
 class BAMProfiler:
@@ -69,6 +72,8 @@ class BAMProfiler:
         self.bam = None
         self.contigs = {}
 
+        self.clustering_configs = constants.clustering_configs['single']
+
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
 
@@ -77,6 +82,12 @@ class BAMProfiler:
         self.check_args()
 
         self.set_sample_id()
+
+        self.run.info('profiler_version', __version__)
+        self.run.info('sample_id', self.sample_id)
+        self.run.info('default_clustering', constants.single_default)
+        self.run.info('cmd_line', utils.get_cmd_line())
+        self.run.info('merged', False)
 
         if self.input_file_path:
             self.init_profile_from_BAM()
@@ -88,13 +99,10 @@ class BAMProfiler:
             self.store_summarized_profile()
 
         self.report()
+        self.cluster_contigs()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
-        self.run.info('profiler_version', __version__)
-        self.run.info('sample_id', self.sample_id)
-        self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('runinfo', runinfo_serialized)
-        self.run.info('merged', False)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
         self.run.quit()
 
@@ -350,53 +358,58 @@ class BAMProfiler:
         self.contig_names = [t[1] for t in sorted([(self.contigs[k].length, k)\
                                                 for k in self.contigs], reverse = True)]
 
-        self.progress.new('Generating reports')
-        self.progress.update('TNF matrix for contigs')
-        TNF_matrix_file_path = self.generate_output_destination('TETRANUCLEOTIDE-FREQ-MATRIX.txt')
-        output = open(TNF_matrix_file_path, 'w')
-        kmers = sorted(self.contigs[self.contigs.keys()[0]].tnf.keys())
-        output.write('contigs\t%s\n' % ('\t'.join(kmers)))
-        for contig in self.contigs:
-            for split in self.contigs[contig].splits:
-                output.write('%s\t' % (split.name))
-                output.write('%s\n' % '\t'.join([str(self.contigs[contig].tnf[kmer]) for kmer in kmers]))
-        output.close()
-        self.progress.end()
-        self.run.info('tnf_matrix', TNF_matrix_file_path)
-
-
-        self.progress.new('Generating reports')
-        self.progress.update('Generating the tree of contigs')
-        newick_tree_file_path = self.generate_output_destination('TNF-NEWICK-TREE.txt')
-        utils.get_newick_tree_data(TNF_matrix_file_path, newick_tree_file_path)
-        self.progress.end()
-        self.run.info('tnf_tree', newick_tree_file_path)
+        for target in ["contigs", "splits"]:
+            self.progress.new('TNF Matrix')
+            self.progress.update('Being generated for %s' % target)
+            matrix_path = self.generate_output_destination('TNF-MATRIX-%s.txt' % target.upper())
+            output = open(matrix_path, 'w')
+            kmers = sorted(self.contigs[self.contigs.keys()[0]].tnf.keys())
+            output.write('contigs\t%s\n' % ('\t'.join(kmers)))
+            for contig in self.contigs:
+                for split in self.contigs[contig].splits:
+                    output.write('%s\t' % (split.name))
+                    if target == "contigs":
+                        output.write('%s\n' % '\t'.join([str(self.contigs[contig].tnf[kmer]) for kmer in kmers]))
+                    else:
+                        output.write('%s\n' % '\t'.join([str(split.tnf[kmer]) for kmer in kmers]))
+            output.close()
+            self.progress.end()
+            self.run.info('tnf_matrix_%s' % target, matrix_path)
 
         F = lambda x: '%.4f' % x
         I = lambda x: '%d' % x
 
         # metadata
-        self.progress.new('Metadata for splits')
-        self.progress.update('...')
-        metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'noramlized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
-        metadata_txt = open(self.generate_output_destination('METADATA.txt'), 'w')
-        metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
-        for contig in self.contigs:
-            for split in self.contigs[contig].splits:
-                fields = [split.name,
-                          I(split.length),
-                          F(split.composition.GC_content),
-                          F(split.coverage.std),
-                          F(split.coverage.mean),
-                          F(split.coverage.normalized),
-                          F(split.coverage.portion_covered),
-                          F(split.abundance),
-                          F(split.auxiliary.variability_score),
-                          contig] 
-                metadata_txt.write('%s\n' % '\t'.join(fields))
-        metadata_txt.close()
-        self.progress.end()
-        self.run.info('metadata_txt', metadata_txt.name)
+        for target in ["contigs", "splits"]:
+            self.progress.new('Metadata')
+            self.progress.update('Being generated for %s' % target)
+            metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'noramlized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
+            metadata_txt = open(self.generate_output_destination('METADATA-%s.txt' % target.upper()), 'w')
+            metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
+            for contig_name in self.contigs:
+                contig = self.contigs[contig_name]
+                for split in contig.splits:
+                    if target == "contigs":
+                        obj = contig
+                    else:
+                        obj = split
+
+                    # FIXME: except for the split.name, all should be obj's. but the poor design in contig.py
+                    # prevents that. 
+                    fields = [split.name,
+                              I(split.length),
+                              F(split.composition.GC_content),
+                              F(obj.coverage.std),
+                              F(obj.coverage.mean),
+                              F(obj.coverage.normalized),
+                              F(obj.coverage.portion_covered),
+                              F(obj.abundance),
+                              F(split.auxiliary.variability_score),
+                              contig_name] 
+                    metadata_txt.write('%s\n' % '\t'.join(fields))
+            metadata_txt.close()
+            self.progress.end()
+            self.run.info('metadata_%s' % target, metadata_txt.name)
 
 
         # splits FASTA
@@ -409,6 +422,16 @@ class BAMProfiler:
         splits_fasta.close()
         self.progress.end()
         self.run.info('splits_fasta', splits_fasta.name)
+
+
+    def cluster_contigs(self):
+        clusterings = {}
+        for config_name in self.clustering_configs:
+            config_path = self.clustering_configs[config_name]
+            config = ClusteringConfiguration(config_path, self.output_directory)
+            newick_path = clustering.order_contigs_simple(config, progress = self.progress)
+            clusterings[config_name] = os.path.basename(newick_path)
+        self.run.info('clusterings', clusterings)
 
 
     def check_args(self):

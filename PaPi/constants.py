@@ -9,7 +9,33 @@
 #
 # Please read the COPYING file.
 
+import os
+import sys
+import glob
 import string
+
+import PaPi
+
+clustering_configs_dir = os.path.join(os.path.dirname(PaPi.__file__), 'static/clusterconfigs')
+clustering_configs = {}
+
+single_default = "tnf"
+merged_default = "tnf-ab-cov"
+
+if not os.path.exists(os.path.join(clustering_configs_dir, 'single', single_default)):
+    print "Error: The default clustering configuration file for single runs, '%s',\n\
+       is missing from static/clusterconfigs dir! I can't fix this!." % (single_default)
+    sys.exit()
+
+if not os.path.exists(os.path.join(clustering_configs_dir, 'merged', merged_default)):
+    print "Error: The default clustering configuration file for merged runs, '%s',\n\
+       is missing from static/clusterconfigs dir! I can't fix this!." % (merged_default)
+    sys.exit()
+
+for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
+    clustering_configs[dir] = {}
+    for config in glob.glob(os.path.join(clustering_configs_dir, dir, '*')):
+        clustering_configs[dir][os.path.basename(config)] = config
 
 IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contigs", "GC_content", "length"])
 IS_AUXILIARY_FIELD = lambda f: f.startswith('__')

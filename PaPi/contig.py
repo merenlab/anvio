@@ -57,6 +57,7 @@ class Contig:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
                                  % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
             split.auxiliary = Auxiliary(split, bam)
+            split.tnf = kmers.get_kmer_frequency(split.auxiliary.rep_seq)
 
 
     def analyze_composition(self, bam, progress):
@@ -85,6 +86,7 @@ class Split:
         self.length = end - start
         self.explicit_length = 0
         self.abundance = 0.0
+        self.tnf = {}
 
 
 class Auxiliary:
