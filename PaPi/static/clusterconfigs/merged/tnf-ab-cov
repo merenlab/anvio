@@ -1,0 +1,12 @@
+[general]
+output_file = CONTIGS-TREE-TNF-AB-COV.txt
+
+[TNF-MATRIX-CONTIGS.txt]
+alias = TNF
+
+[METADATA-CONTIGS-abundance.txt]
+alias = Abundance
+normalize=False
+
+[METADATA-CONTIGS-mean_coverage.txt]
+alias = Coverage

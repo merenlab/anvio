@@ -1,0 +1,5 @@
+[general]
+output_file = CONTIGS-TREE-TNF.txt
+
+[TNF-MATRIX-CONTIGS.txt]
+alias=TNF
