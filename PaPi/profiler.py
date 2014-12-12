@@ -345,9 +345,6 @@ class BAMProfiler:
         if not len(self.contigs):
             raise utils.ConfigError, "0 contigs to work with. Bye."
 
-        if len(self.contigs) < 3:
-            raise utils.ConfigError, "Less than 3 contigs left in your analysis. PaPi can't really do much with this :/ Bye."
-
 
     def report(self):
         self.run.info('split_length', self.split_length)
