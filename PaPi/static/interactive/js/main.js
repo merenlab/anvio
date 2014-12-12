@@ -22,6 +22,10 @@ var total_radius = 0;
 var SELECTED = new Array();
 
 var newick;
+var available_trees;
+var selected_tree;
+var default_tree;
+
 var metadata;
 var contig_lengths;
 var parameter_count;
@@ -105,13 +109,14 @@ $(document).ready(function() {
         }
     });
 
-    // load data
+    // get available clusterings (different newick trees)
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/tree?timestamp=' + new Date().getTime(),
+        url: '/data/clusterings?timestamp=' + new Date().getTime(),
         success: function(data) {
-            newick = data;
+        	default_tree = data[0];
+        	available_trees = data[1];
         }
     });
 
@@ -185,7 +190,7 @@ $(document).ready(function() {
 
                 categorical_data_ids = [];
                 separated_data_ids = [];
-
+                
                 for (var i = 1; i < parameter_count; i++) {
                     if (metadata[0][i] == '__parent__') // parent
                     {
@@ -273,12 +278,36 @@ $(document).ready(function() {
                     }
                 }
 
+                // TREES COMBO
+                var available_trees_combo = '';
+                var available_trees_combo_item = '<option value="{val}"{sel}>{text}</option>';
+                
+                $.each(available_trees, function(index, value) {
+                	if(index == default_tree)
+                		available_trees_combo += available_trees_combo_item
+                					.replace('{val}', index)
+                					.replace('{sel}', ' selected')
+                					.replace('{text}', index);
+                	else
+                		available_trees_combo += available_trees_combo_item
+                					.replace('{val}', index)
+                					.replace('{sel}', '')
+                					.replace('{text}', index);
+                }); 
+                
+                $('#trees_container').append(available_trees_combo);
+
+                
+                // COLOR PICKER
                 $('.colorpicker').each(function(index, element) {
                     var color = '#000000';
 
                     $(element).css('background-color', color);
                     $(element).attr('color', color);
                 });
+
+
+                
             } else {
                 // load state
 
@@ -473,6 +502,23 @@ function menu_callback(action) {
 }
 
 function draw_tree_callback(){
+	
+    var trees_container_selection = $('#trees_container').val()
+    if(!newick || selected_tree_id != trees_container_selection){
+	    selected_tree_id = trees_container_selection;
+	 
+	    // load data
+	    $.ajax({
+	        type: 'GET',
+	        cache: false,
+	        url: '/tree/' + selected_tree_id + '?timestamp=' + new Date().getTime(),
+	        success: function(data) {
+	            newick = data;
+	        }
+	    });
+	
+    }
+
     if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
         setTimeout(draw_tree_callback, 200);
     } else {

@@ -116,6 +116,7 @@ class RuninfoIO:
 
             # if there is a tree supplied through the command line, let that tree override what is in the
             # runinfo. kinda sketchy, but it is necessary.
+
             if args.tree:
                 run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
                 self.runinfo['tree_file'] = utils.ABS(args.tree)
@@ -328,8 +329,8 @@ def send_data(name):
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
-    if name == "tree":
-        return static_file(d.P(d.runinfo['tree_file']), root ='/')
+    if name == "clusterings":
+        return json.dumps((d.runinfo['default_clustering'], d.runinfo['clusterings']), )
     elif name == "meta":
         return static_file(d.runinfo['metadata_json'], root='/')
     elif name == "state":
@@ -340,6 +341,16 @@ def send_data(name):
         return json.dumps(d.contig_lengths)
     elif name == "title":
         return json.dumps(d.title)
+
+@route('/tree/<tree_id>')
+def send_data(tree_id):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    if d.runinfo['clusterings'].has_key(tree_id):
+        print "* '%s' tree is requested" % (tree_id)
+        return static_file(d.P(d.runinfo['clusterings'][tree_id]), root ='/')
 
 @route('/data/charts/<contig_name>')
 def charts(contig_name):

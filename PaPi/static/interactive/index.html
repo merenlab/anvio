@@ -35,6 +35,10 @@
                         </select></td>
                     </tr>
                     <tr>
+                        <td><label for="tree_selection">Order by:</label</td>
+                        <td><select id="trees_container"></select></td>
+                    </tr>
+                    <tr>
                         <td>Draw Angle:</td>
                         <td><input type="text" value="0" size="2" id="angle-min"> to <input type="text" value="350" size="2" id="angle-max"</td>
                     </tr>
@@ -47,7 +51,9 @@
                         <td><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value"></td>
                     </tr>
                 </table>
+                
                 <br /><br />
+                
                 <div id="table_layers_container">
                     <b>Layer Settings</b>
                     <br /><br />
@@ -65,10 +71,11 @@
                             </tr>
                         </thead>
                         <tbody id="tbody_layers">
-                            
                         </tbody>
                     </table>
                 </div>
+               
+
                 <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;<input type="button" id="btn_export_svg" onclick="submitGroups(true);" value="Export as SVG" disabled="true">
             </div>
             <div id="groups" class="dialogs">
