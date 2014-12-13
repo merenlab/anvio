@@ -23,7 +23,7 @@ var SELECTED = new Array();
 
 var newick;
 var available_trees;
-var selected_tree;
+var selected_tree_id;
 var default_tree;
 
 var metadata;
@@ -504,11 +504,12 @@ function menu_callback(action) {
 function draw_tree_callback(){
 	
     var trees_container_selection = $('#trees_container').val()
-    if(!newick || selected_tree_id != trees_container_selection){
+    if(selected_tree_id != trees_container_selection){
 	    selected_tree_id = trees_container_selection;
-	 
-        delete newick;
-        delete window.newick;
+	    
+	    // empty the variable
+        newick = '';
+        window.newick = '';
 
 	    // load data
 	    $.ajax({
@@ -522,7 +523,7 @@ function draw_tree_callback(){
 	
     }
 
-    if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
+    if (newick === '' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
         setTimeout(draw_tree_callback, 200);
     } else {
         tree_type = $('#tree_type').val();
