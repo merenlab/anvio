@@ -507,6 +507,9 @@ function draw_tree_callback(){
     if(!newick || selected_tree_id != trees_container_selection){
 	    selected_tree_id = trees_container_selection;
 	 
+        delete newick;
+        delete window.newick;
+
 	    // load data
 	    $.ajax({
 	        type: 'GET',
@@ -522,7 +525,7 @@ function draw_tree_callback(){
     if (typeof newick === 'undefined' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
         setTimeout(draw_tree_callback, 200);
     } else {
-        tree_type = $('#tree_type').val()
+        tree_type = $('#tree_type').val();
         draw_tree($('#tree_type').val());
 
         // enable export as svg button
