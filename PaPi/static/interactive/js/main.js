@@ -12,7 +12,10 @@ var LINE_COLOR='#888888';
 var project_title;
 
 var SCALE_MATRIX = 0;
+
 var id_to_node_map = new Array();
+var label_to_node_map = {};
+
 var angle_per_leaf;
 var height_per_leaf;
 var tree_type;
@@ -538,8 +541,8 @@ function showContigNames(gid) {
     var names = new Array();
 
     for (var j = 0; j < SELECTED[gid].length; j++) {
-        if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-            names.push(id_to_node_map[SELECTED[gid][j]].label);
+        if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+            names.push(SELECTED[gid][j]);
         }
     }
 
@@ -600,15 +603,16 @@ function deleteGroup(elm) {
         group_count--;
 
         for (var i = 0; i < SELECTED[id].length; i++) {
-            $("#line" + SELECTED[id][i]).css('stroke-width', '1');
-            $("#arc" + SELECTED[id][i]).css('stroke-width', '1');
-            $("#line" + SELECTED[id][i]).css('stroke', LINE_COLOR);
-            $("#arc" + SELECTED[id][i]).css('stroke', LINE_COLOR);
+            var node_id = label_to_node_map[SELECTED[id][i]].id;
+            $("#line" + node_id).css('stroke-width', '1');
+            $("#arc" + node_id).css('stroke-width', '1');
+            $("#line" + node_id).css('stroke', LINE_COLOR);
+            $("#arc" + node_id).css('stroke', LINE_COLOR);
 
-            if (id_to_node_map[SELECTED[id][i]].IsLeaf())
+            if (label_to_node_map[SELECTED[id][i]].IsLeaf())
             {
-                $('.path_' + SELECTED[id][i] + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
-                $('.path_' + SELECTED[id][i] + "_outer_ring").css('fill', '#FFFFFF');
+                $('.path_' + node_id + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
+                $('.path_' + node_id + "_outer_ring").css('fill', '#FFFFFF');
             }
         }
 
@@ -635,8 +639,8 @@ function submitGroups(only_svg) {
 
                 output[group_name] = new Array();
                 for (var i = 0; i < SELECTED[gid].length; i++) {
-                    if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
-                        output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
+                    if (label_to_node_map[SELECTED[gid][i]].IsLeaf()) {
+                        output[group_name].push(SELECTED[gid][i]);
                         msg_contig_count++;
                     }
                 }
@@ -658,9 +662,9 @@ function submitGroups(only_svg) {
         createGroup('tree_group', 'selected_group_' + gid);
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
-                $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
+            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_background").detach().appendTo('#selected_group_' + gid);
+                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_outer_ring").detach().appendTo('#selected_group_' + gid);
             }
         }
     }
@@ -708,10 +712,10 @@ function updateGroupWindow() {
         var length_sum = 0;
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (id_to_node_map[SELECTED[gid][j]].IsLeaf())
+            if (label_to_node_map[SELECTED[gid][j]].IsLeaf())
             {
                 contigs++;
-                length_sum += parseInt(contig_lengths[id_to_node_map[SELECTED[gid][j]].label]);
+                length_sum += parseInt(contig_lengths[SELECTED[gid][j]]);
             }
         }
 

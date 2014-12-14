@@ -178,26 +178,26 @@ function redrawGroupColors() {
         var group_color = color_picker.getAttribute('color');
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                var _path_background = document.getElementsByClassName('path_' + SELECTED[gid][j] + '_background');
+            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                var _path_background = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_background');
                 for (var _i=0; _i < _path_background.length; _i++) {
                     _path_background[_i].style['fill'] = group_color;
                     _path_background[_i].style['fill-opacity'] = '0.1';      
                 }
 
-                var _path_outer_ring = document.getElementsByClassName('path_' + SELECTED[gid][j] + '_outer_ring');
+                var _path_outer_ring = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_outer_ring');
                 for (var _i=0; _i < _path_outer_ring.length; _i++) {
                     _path_outer_ring[_i].style['fill'] = group_color;    
                 }
             }
 
-            var _line = document.getElementById('line' + SELECTED[gid][j]);
+            var _line = document.getElementById('line' + label_to_node_map[SELECTED[gid][j]].id);
             if (_line) {
                 _line.style['stroke-width'] = '2';
                 _line.style['stroke'] = group_color;       
             }
 
-            var _arc = document.getElementById('arc' + SELECTED[gid][j]);
+            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[gid][j]].id);
             if (_arc) {
                 _arc.style['stroke-width'] = '2';
                 _arc.style['stroke'] = group_color;
@@ -224,12 +224,12 @@ function lineClickHandler(event) {
     if (group_id < 1)
         return;
 
-    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');;
+    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
 
     for (var i = 0; i < p.child_nodes.length; i++) {
         var pos = SELECTED[group_id].indexOf(p.child_nodes[i]);
         if (pos == -1) {
-            SELECTED[group_id].push(p.child_nodes[i]);
+            SELECTED[group_id].push(id_to_node_map[p.child_nodes[i]].label);
 
             var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
             for (var _i=0; _i < _path_background.length; _i++) {
@@ -249,7 +249,7 @@ function lineClickHandler(event) {
             if (gid == group_id)
                 continue;
 
-            var pos = SELECTED[gid].indexOf(p.child_nodes[i]);
+            var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
             }
@@ -271,7 +271,7 @@ function lineContextMenuHandler(event) {
 
         if (group_id > 0)
         {
-            var pos = SELECTED[group_id].indexOf(parseInt(context_menu_target_id));
+            var pos = SELECTED[group_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
 
             if (pos == -1) {
                 $('#control_contextmenu #select').show();
@@ -312,7 +312,7 @@ function lineContextMenuHandler(event) {
 
         // remove nodes from other groups
         for (var gid = 1; gid <= group_counter; gid++) {
-            var pos = SELECTED[gid].indexOf(p.child_nodes[i]);
+            var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
             }
@@ -422,15 +422,15 @@ function lineMouseLeaveHandler(event) {
         var group_color = color_picker.getAttribute('color');
 
         for (var i = 0; i < SELECTED[gid].length; i++) {
-            node_stack.push(SELECTED[gid][i]);
+            node_stack.push(label_to_node_map[SELECTED[gid][i]].id);
 
-            var _line = document.getElementById('line' + SELECTED[gid][i]);
+            var _line = document.getElementById('line' + label_to_node_map[SELECTED[gid][i]].id);
             if (_line) {
                 _line.style['stroke-width'] = '2';
                 _line.style['stroke'] = group_color;       
             }
 
-            var _arc = document.getElementById('arc' + SELECTED[gid][i]);
+            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[gid][i]].id);
             if (_arc) {
                 _arc.style['stroke-width'] = '2';
                 _arc.style['stroke'] = group_color;
@@ -1773,10 +1773,16 @@ function reorderLayers() {
 function draw_tree(drawing_type) {
 
     id_to_node_map = new Array();
+    label_to_node_map = {};
     var t = new Tree();
 
     newick = newick.trim(newick);
     t.Parse(newick);
+
+    for (var index = 1; index < id_to_node_map.length; index++)
+    {
+        label_to_node_map[id_to_node_map[index].label] = id_to_node_map[index];
+    }
 
     // call order function 
     reorderLayers();
