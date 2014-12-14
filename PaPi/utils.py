@@ -348,12 +348,21 @@ def check_contig_names(contig_names):
                                    ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None):
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None, field_mapping = None):
     filesnpaths.is_file_tab_delimited(file_path)
 
     f = open(file_path)
 
-    columns = f.readline().strip('\n').split('\t')
+    if column_names:
+        columns = column_names
+        num_fields = len(f.readline().strip('\n').split('\t'))
+
+        if num_fields != len(columns):
+            raise  ConfigError, "Number of column names declared (%d) differs from the number of columns\
+                                 found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path)
+        f.seek(0)
+    else:
+        columns = f.readline().strip('\n').split('\t')
 
     if expected_fields:
         for field in expected_fields:
@@ -368,6 +377,22 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     for line in f.readlines():
         line_fields = line.strip('\n').split('\t')
 
+        if field_mapping:
+            updated_line_fields = []
+            for i in range(0, len(line_fields)):
+                try:
+                    updated_line_fields.append(field_mapping[i](line_fields[i]))
+                except NameError:
+                    raise ConfigError, "Mapping function '%s' did not work on value '%s'. These functions can be native\
+                                        Python functions, such as 'str', 'int', or 'float', or anonymous functions\
+                                        defined using lambda notation." % (field_mapping[i], line_fields[i])
+                except TypeError:
+                    raise ConfigError, "Mapping function '%s' does not seem to be a proper Python function :/" % field_mapping[i]
+                except ValueError:
+                    raise ConfigError, "Mapping funciton '%s' did not like the value '%s' in column number %d\
+                                        of the matrix :/" % (field_mapping[i], line_fields[i], i + 1)
+            line_fields = updated_line_fields 
+
         entry_name = line_fields[0]
 
         d[entry_name] = {}
@@ -375,7 +400,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
         e = d[line_fields[0]]
         for i in range(1, len(columns)):
             e[columns[i]] = line_fields[i]
-
 
 
     # we have the dict, but we will not return it the way it is if its supposed to be appended to an
