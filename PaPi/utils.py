@@ -161,7 +161,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
     for k in d.keys():
         line = [k]
         for header in headers[1:]:
-            line.append(d[k][header])
+            try:
+                line.append(str(d[k][header]))
+            except KeyError:
+                raise ConfigError, "Header ('%s') is not found in the dict :/" % (header)
         f.write('%s\n' % '\t'.join(line))
     return output_path
 
@@ -349,6 +352,7 @@ def check_contig_names(contig_names):
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None, column_mapping = None):
+    filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
     f = open(file_path)
@@ -401,7 +405,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
         for i in range(1, len(columns)):
             e[columns[i]] = line_fields[i]
 
-
     # we have the dict, but we will not return it the way it is if its supposed to be appended to an
     # already existing dictionary.
     if dict_to_append:
@@ -414,7 +417,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                 dict_to_append[entry][item] = d[entry][item]
 
         return dict_to_append
-
 
     return d
 
