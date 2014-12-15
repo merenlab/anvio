@@ -93,6 +93,7 @@ class RuninfoIO:
         self.taxonomy = None
         self.taxonomic_level = None
         self.additional_metadata_path = None
+
         self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
 
         self.cwd = os.getcwd()
@@ -110,6 +111,9 @@ class RuninfoIO:
                 raise utils.ConfigError, "'%s'? No such file." % (args.runinfo)
 
             self.runinfo = dictio.read_serialized_object(args.runinfo)
+
+            base_dir = os.path.dirname(args.runinfo)
+            self.runinfo['output_dir'] = os.path.join(os.getcwd(), base_dir)
 
             if not self.runinfo.has_key('runinfo'):
                 raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
@@ -131,17 +135,6 @@ class RuninfoIO:
                 raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
                                                profiler that is not compatible with the current interactive interface\
                                                anymore. You need to re-run PaPi profiler on these projects."
-
-            if not os.path.exists(self.P(self.runinfo['metadata_splits'])):
-                new_output_dir = os.path.dirname(os.path.join(os.getcwd(), args.runinfo))
-                old_output_dir = self.runinfo['output_dir']
-
-                self.runinfo = dictio.reset_output_dir(args.runinfo, old_output_dir, new_output_dir)
-
-                if not os.path.exists(self.P(self.runinfo['metadata_splits'])):
-                    raise utils.ConfigError, "File paths are broken in '%s'. Did you transfer this run\
-                                                   from another computer? Well. I really don't know what to\
-                                                   suggest at this point :/"
 
             if args.title:
                 self.title = args.title
