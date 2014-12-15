@@ -2431,7 +2431,7 @@ function draw_tree(drawing_type) {
                 break;
         }
 
-
+        rebuildIntersections();
         redrawGroupColors();
 
         // Scale to fit window
@@ -2451,5 +2451,60 @@ function draw_tree(drawing_type) {
         tree_group.addEventListener('mouseover',lineMouseEnterHandler, false);
         tree_group.addEventListener('mouseout', lineMouseLeaveHandler, false);
         document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
+    }
+}
+
+function rebuildIntersections()
+{
+    for (var gid = 1; gid <= group_counter; gid++) {
+
+        // delete extra intersections
+        var deleted;
+        do {
+            deleted = 0;
+            var cursor = SELECTED[gid].length;
+            while (cursor--)
+            {
+                var node = label_to_node_map[SELECTED[gid][cursor]];
+                
+                if (node.IsLeaf())
+                    continue;
+
+                if (node.child != null && SELECTED[gid].indexOf(node.child.label) > -1)
+                    continue;
+
+                if (node.sibling != null && SELECTED[gid].indexOf(node.sibling.label) > -1)
+                    continue;
+
+                SELECTED[gid].splice(cursor,1);
+                deleted++;
+            }
+
+        } while (deleted > 0)
+
+        // try to make new intersections
+        var inserted;
+        do {
+            inserted = 0;
+            var length = SELECTED[gid].length;
+            for (var cursor = 0; cursor < length; cursor++)
+            {
+                var node = label_to_node_map[SELECTED[gid][cursor]];
+                var parent = node.ancestor;
+
+                if (SELECTED[gid].indexOf(parent.label) > -1)
+                {
+                    // parent already in selected list
+                    continue;
+                }
+
+                if (node.sibling != null && SELECTED[gid].indexOf(node.sibling.label) > -1)
+                {
+                    SELECTED[gid].push(parent.label);
+                    inserted++;
+                }
+            }
+
+        } while (inserted > 0)
     }
 }
