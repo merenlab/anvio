@@ -14,7 +14,6 @@ import sys
 import time
 import json
 import socket
-import shutil
 import hcluster
 import textwrap
 import itertools
