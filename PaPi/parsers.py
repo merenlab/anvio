@@ -69,11 +69,8 @@ class Parser(object):
         if self.output_file_prefix.lower().endswith('.txt'):
             self.output_file_prefix = self.output_file_prefix[:-4]
 
-        A = annotation.Annotation()
-        A.init_from_matrix(source = self.annotations_dict)
-
-        A.store_annotation_matrix(self.output_file_prefix + '.txt')
-        A.store_annotation_dict(self.output_file_prefix + '.cp')
+        A = annotation.Annotation(self.output_file_prefix + '.db')
+        A.init_database_from_matrix(source = self.annotations_dict)
 
 
 class MyRast(Parser):
@@ -84,7 +81,7 @@ class MyRast(Parser):
                                 {'col_names': ['prot', 'figfam', 'field3', 'field4', 'field5', 'function'],
                                  'col_mapping': [str, str, int, int, int, str]},
                            'gene_otus': 
-                                {'col_names': ['prot', 'taxonomy'],
+                                {'col_names': ['prot', 't_species'],
                                  'col_mapping': None},
                            'peg':
                                 {'col_names': ['prot', 'contig', 'start', 'end'],
@@ -117,14 +114,17 @@ class MyRast(Parser):
                 entry['direction'] = 'r'
             entry['contig'] = d['contig']
 
+            # fill the entry with null taxonomy strings, and update t_species info next if its available
+            for level in annotation.levels_of_taxonomy:
+                entry[level] = None
+
             if self.dicts['gene_otus'].has_key(prot):
                 d = self.dicts['gene_otus'][prot]
-                taxonomy_str = d['taxonomy']
-                if len(taxonomy_str.split()) > 2:
-                    taxonomy_str = ' '.join(taxonomy_str.split()[0:2])
-                entry['taxonomy'] = taxonomy_str
-            else:
-                entry['taxonomy'] = None
+                t_species_str = d['t_species']
+                if len(t_species_str.split()) > 2:
+                    t_species_str = ' '.join(t_species_str.split()[0:2])
+                entry['t_species'] = t_species_str
+
 
             if self.dicts['functions'].has_key(prot):
                 d = self.dicts['functions'][prot]
