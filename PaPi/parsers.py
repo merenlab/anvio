@@ -84,7 +84,7 @@ class MyRast(Parser):
                                 {'col_names': ['prot', 't_species'],
                                  'col_mapping': None},
                            'peg':
-                                {'col_names': ['prot', 'contig', 'start', 'end'],
+                                {'col_names': ['prot', 'contig', 'start', 'stop'],
                                  'col_mapping': [str, str, int, int]},}
 
         Parser.__init__(self, 'MyRAST', input_file_paths, files_expected, files_structure, output_file_prefix)
@@ -104,13 +104,13 @@ class MyRast(Parser):
         for prot in proteins:
             entry = {}
             d = self.dicts['peg'][prot]
-            if d['start'] < d['end']:
+            if d['start'] < d['stop']:
                 entry['start'] = d['start']
-                entry['end'] = d['end']
+                entry['stop'] = d['stop']
                 entry['direction'] = 'f'
             else:
-                entry['start'] = d['end']
-                entry['end'] = d['start']
+                entry['start'] = d['stop']
+                entry['stop'] = d['start']
                 entry['direction'] = 'r'
             entry['contig'] = d['contig']
 

@@ -18,7 +18,7 @@ levels_of_taxonomy = ["t_phylum", "t_class", "t_order", "t_family", "t_genus", "
 mapping_taxonomy   = [   str    ,   str    ,    str   ,    str    ,    str   ,     str    ]
 db_types_taxonomy  = [  'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-header    = ['prot', 'contig', 'start',  'end'   , 'direction', 'figfam', 'function']
+header    = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function']
 mapping   = [ str  ,   str   ,  int   ,   int    ,     str    ,    str  ,    str    ]
 db_types  = ['text',  'text' ,'numeric','numeric',    'text'  ,  'text' ,   'text'  ]
 
@@ -26,7 +26,7 @@ header.extend(levels_of_taxonomy)
 mapping.extend(mapping_taxonomy)
 db_types.extend(db_types_taxonomy)
 
-__version__ = "0.0.2"
+__version__ = "0.0.1"
 
 import os
 import sys
@@ -88,9 +88,9 @@ class Annotation:
             o: number of taxonomic calls that matches the consensus among t
         """
 
-        response = self.db._exec("""SELECT %s FROM annotation WHERE contig='%s'""" % (t_level, contig, ))
-
+        response = self.db.cursor.execute("""SELECT %s FROM annotation WHERE contig='%s' and stop > %d and start < %d""" % (t_level, contig, start, stop))
         rows = response.fetchall()
+
         num_genes = len(rows)
         tax_str_list = [t[0] for t in rows if t[0]]
         distinct_taxa = set(tax_str_list)
