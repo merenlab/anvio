@@ -42,7 +42,6 @@ class MultipleRuns:
         self.sample_ids = []
         self.sample_runinfos = {}
         self.sample_runinfo_dict_paths = args.input
-        self.runinfo_dict = {}
         self.contigs = {}
         self.profiles = []
         self.output_directory = args.output_dir
@@ -126,6 +125,18 @@ class MultipleRuns:
         if [True for v in self.sample_runinfos.values() if v['merged']]:
             raise utils.ConfigError, "This is very cute, but you can't merge already merged runs. PaPi can only merge\
                                       individual profiles (which are generated through papi-profile program). Sorry."
+
+        for k, p in [('split_length', 'Split length (-L)'),
+                     ('min_contig_length', 'Minimum contig length (-M)'),
+                     ('min_mean_coverage', 'Minimum mean coverage (-C)')]:
+            v = set([r[k] for r in self.sample_runinfos.values()])
+            if len(v) > 1:
+                raise utils.ConfigError, "%s is not identical for all runs to be merged, which is a \
+                                          deal breaker. You need to profile all runs to be merged with\
+                                          identical parameters :/" % p
+
+            # so we carry over this information into the runinfo dict for merged runs:
+            self.run.info(k, v.pop())
 
         contigs = {}
         for metadata in [P(self.sample_runinfos[r], self.sample_runinfos[r]['metadata_splits']) for r in self.sample_ids]:
