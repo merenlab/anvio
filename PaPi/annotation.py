@@ -43,7 +43,6 @@ from PaPi.utils import ConfigError
 class Annotation:
     def __init__(self, db_path):
         self.db_path = db_path
-        self.version = None
         self.db = None
 
 
@@ -80,7 +79,7 @@ class Annotation:
                                                                                                 ', '.join(header))
 
 
-    def get_consensus_taxonomy_for_contig(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):
+    def get_consensus_taxonomy_for_split(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):
         """Returns (c, n, t, o) where,
             c: consensus taxonomy (the most common taxonomic call for each gene found in the contig),
             n: total number of genes found in the contig,
@@ -96,7 +95,7 @@ class Annotation:
         distinct_taxa = set(tax_str_list)
 
         if not len(distinct_taxa):
-            return None, num_genes, None
+            return None, num_genes, 0, 0
 
         if len(distinct_taxa) == 1:
             return distinct_taxa.pop(), num_genes, len(tax_str_list), len(tax_str_list)
