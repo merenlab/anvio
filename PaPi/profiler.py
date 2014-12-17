@@ -269,9 +269,8 @@ class BAMProfiler:
                                                                       pp(int(contig.length))))
 
             # populate contig with empty split objects and 
-            for j in range(0, len(contig_splits)):
-                start, end = contig_splits[j]
-                split_order = j + 1
+            for split_order in range(0, len(contig_splits)):
+                start, end = contig_splits[split_order]
                 split = Split(contig.name, split_order, start, end)
                 contig.splits.append(split)
 

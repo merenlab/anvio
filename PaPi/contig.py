@@ -77,8 +77,8 @@ class Contig:
 
 
 class Split:
-    def __init__(self, parent, order, start, end):
-        self.name = '_'.join([parent, 'split', '%05d' % order])
+    def __init__(self, parent, order, start = 0, end = 0):
+        self.name = '_'.join([parent, 'split', '%05d' % (order + 1)])
         self.parent = parent
         self.end = end
         self.order = order
