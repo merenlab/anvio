@@ -105,12 +105,6 @@ class RuninfoIO:
 
         self.state = args.state
 
-        if args.annotation_db:
-            self.annotation = PaPi.annotation.Annotation(args.annotation_db)
-            self.annotation.init_database()
-            run.info('annotation_db initialized', '%s (v. %s)' % (args.annotation_db, self.annotation.db.version))
-
-
         if args.runinfo:
             # runinfo dict provided: we don't want anything else
             if args.fasta_file or args.metadata:
@@ -154,10 +148,11 @@ class RuninfoIO:
 
             self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
-            ###########################################################################################################
-            # we're done
-            ###########################################################################################################
             self.runinfo['self_path'] = args.runinfo
+
+            ###########################################################################################################
+            # we're done with call with runinfo
+            ###########################################################################################################
 
         else:
             # self.runinfo *must* contain 'tree_file', 'metadata_json', 'output_dir' and 'self_path'.
@@ -192,6 +187,34 @@ class RuninfoIO:
                 self.title = args.title
 
             filesnpaths.gen_output_directory(self.runinfo['output_dir'])
+
+            ###########################################################################################################
+            # we're done with call with files
+            ###########################################################################################################
+
+
+        # if we have an annotation_db, lets load it up. the split length used when the annotation db
+        # created must match with the split length used to profile these merged runs. the problem is,
+        # if interactive binning is being called without a runinfo, we are going to have to ask the
+        # the user to run interactive interface without an annotation db.
+        if args.annotation_db:
+            self.annotation = PaPi.annotation.Annotation(args.annotation_db)
+            self.annotation.init_database()
+
+            profiling_split_length = int(self.runinfo['split_length'])
+            annotation_split_length = int(self.annotation.db.get_meta_value('split_length'))
+            if profiling_split_length != annotation_split_length:
+                raise utils.ConfigError, "The split length (-L) used to profile these merged runs (which is '%s') seem\
+                                          to differ from the split length used to generate %s (which is\
+                                          '%s'). Probably the best option is to re-create the annotation database with\
+                                          an identical split length parameter." % (terminal.pretty_print(profiling_split_length),
+                                                                                   os.path.basename(args.annotation_db),
+                                                                                   terminal.pretty_print(annotation_split_length))
+
+            annotation_source = self.annotation.db.get_meta_value('annotation_source')
+            run.info('annotation_db initialized', '%s (v. %s) (via "%s")' % (args.annotation_db,
+                                                                             self.annotation.db.version,
+                                                                             annotation_source))
 
 
         # take care of taxonomy if a file is provided. otherwise self.taxonomy remain None
