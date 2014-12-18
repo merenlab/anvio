@@ -350,7 +350,20 @@ def check_contig_names(contig_names):
                                    ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None, column_mapping = None):
+def get_FASTA_file_as_dictionary(file_path):
+    filesnpaths.is_file_exists(file_path)
+    filesnpaths.is_file_fasta_formatted(file_path)
+
+    d = {}
+
+    fasta = u.SequenceSource(file_path)
+    while fasta.next():
+        d[fasta.id] = fasta.seq
+
+    return d
+
+
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None, column_mapping = None, indexing_field = 0):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -396,12 +409,14 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                                         of the matrix :/" % (column_mapping[i], line_fields[i], i + 1)
             line_fields = updated_line_fields 
 
-        entry_name = line_fields[0]
+        entry_name = line_fields[indexing_field]
 
         d[entry_name] = {}
 
-        e = d[line_fields[0]]
-        for i in range(1, len(columns)):
+        e = d[line_fields[indexing_field]]
+        for i in range(0, len(columns)):
+            if i == indexing_field:
+                continue
             e[columns[i]] = line_fields[i]
 
     # we have the dict, but we will not return it the way it is if its supposed to be appended to an
