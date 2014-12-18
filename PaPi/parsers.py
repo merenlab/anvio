@@ -24,13 +24,12 @@ from PaPi.utils import store_dict_as_TAB_delimited_file as store_dict
 
 
 class Parser(object):
-    def __init__(self, name, input_file_paths, files_expected = {}, files_structure = {}, output_file_prefix = "ANNOTATION"):
-        self.name = name
-        self.output_file_prefix = output_file_prefix
-        self.files_structure = files_structure
+    def __init__(self, annotation_source, input_file_paths, files_expected = {}, files_structure = {}):
+        self.annotation_source = annotation_source
         self.input_file_paths = input_file_paths
-        self.input_file_names = [os.path.basename(p) for p in input_file_paths]
         self.files_expected = files_expected
+        self.files_structure = files_structure
+        self.input_file_names = [os.path.basename(p) for p in input_file_paths]
         self.paths = {}
         self.dicts = {}
 
@@ -44,11 +43,11 @@ class Parser(object):
         if missing_files:
             if sorted(missing_files) == sorted(self.files_expected.values()):
                 raise ConfigError, "%s parser requires these files: %s"\
-                                     % (name,
+                                     % (self.annotation_source,
                                         ', '.join(self.files_expected))
 
             raise ConfigError, "%s parser requires %d files (%s). %s missing from your input: %s"\
-                                     % (name,
+                                     % (self.annotation_source,
                                         len(self.files_expected),
                                         ', '.join(self.files_expected.values()),
                                         "These files were" if len(missing_files) > 1 else "This file was",
@@ -65,16 +64,16 @@ class Parser(object):
                                          column_names = self.files_structure[alias]['col_names'],
                                          column_mapping = self.files_structure[alias]['col_mapping'])
 
-    def store_annotations(self):
-        if self.output_file_prefix.lower().endswith('.txt'):
-            self.output_file_prefix = self.output_file_prefix[:-4]
+    def store_annotations(self, contigs_fasta, annotations_dict, split_length, output_file_prefix = "ANNOTATION"):
+        if output_file_prefix.lower().endswith('.txt'):
+            output_file_prefix = output_file_prefix[:-4]
 
-        A = annotation.Annotation(self.output_file_prefix + '.db')
-        A.init_database_from_matrix(source = self.annotations_dict)
+        A = annotation.Annotation(output_file_prefix + '.db')
+        A.create_new_database(contigs_fasta, annotations_dict, split_length, parser=self.annotation_source)
 
 
 class MyRast(Parser):
-    def __init__(self, input_file_paths, output_file_prefix):
+    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
         files_expected = {'functions': 'functions.tbl', 'gene_otus': 'gene_otus.tbl', 'peg': 'peg.tbl'}
 
         files_structure = {'functions': 
@@ -87,10 +86,10 @@ class MyRast(Parser):
                                 {'col_names': ['prot', 'contig', 'start', 'stop'],
                                  'col_mapping': [str, str, int, int]},}
 
-        Parser.__init__(self, 'MyRAST', input_file_paths, files_expected, files_structure, output_file_prefix)
+        Parser.__init__(self, 'MyRAST', input_file_paths, files_expected, files_structure)
 
-        self.annotations_dict = self.get_annotations_dict()
-        self.store_annotations()
+        annotations_dict = self.get_annotations_dict()
+        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -103,6 +102,9 @@ class MyRast(Parser):
 
         for prot in proteins:
             entry = {}
+            for key in annotation.annotation_table_structure:
+                entry[key] = None
+
             d = self.dicts['peg'][prot]
             if d['start'] < d['stop']:
                 entry['start'] = d['start']
@@ -114,17 +116,12 @@ class MyRast(Parser):
                 entry['direction'] = 'r'
             entry['contig'] = d['contig']
 
-            # fill the entry with null taxonomy strings, and update t_species info next if its available
-            for level in annotation.levels_of_taxonomy:
-                entry[level] = None
-
             if self.dicts['gene_otus'].has_key(prot):
                 d = self.dicts['gene_otus'][prot]
                 t_species_str = d['t_species']
                 if len(t_species_str.split()) > 2:
                     t_species_str = ' '.join(t_species_str.split()[0:2])
                 entry['t_species'] = t_species_str
-
 
             if self.dicts['functions'].has_key(prot):
                 d = self.dicts['functions'][prot]

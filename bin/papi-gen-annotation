@@ -18,11 +18,22 @@ import PaPi.parsers as parsers
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
 
-parser = argparse.ArgumentParser(description='Generate PaPi annotation object using available parsers')
+parser = argparse.ArgumentParser(description='Generate a PaPi annotation database using available parsers for \
+                                              various annotation sources.')
 parser.add_argument('input', metavar = 'FILE', nargs='+',
                     help = 'Input files')
+parser.add_argument('-f', '--contigs', metavar = 'FASTA', default = None,
+                    help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
+                            could be a reference genome, or contigs from your assembler. Contig names in this file\
+                            must match to those in other input files. If there is a problem, PaPi will gracefully\
+                            complain about it.')
 parser.add_argument('-p', '--parser', default = 'myrast',
                     help = 'Parser. Available parsers: %s. Default: %s' % (', '.join(parsers.parsers.keys()), 'myrast'))
+parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
+                    help = 'Splitting very large contigs into multiple pieces improves\
+                            the efficacy of the visualization step. The default value\
+                            is (%(default)d). The split size must be identical between the profiled samples\
+                            and the annotation db.')
 parser.add_argument('-o', '--output-prefix', default = "ANNOTATION", 
                     help = 'Output file prefix. Default prefix is "%(default)s.')
 
@@ -32,7 +43,9 @@ try:
     if args.parser not in parsers.parsers:
         raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
                             parsers available: %s" % (args.parser, ','.join(parsers.parsers))
-    parser = parsers.parsers[args.parser](args.input, args.output_prefix)
+    if not args.contigs:
+        raise ConfigError, "This is not going to work without a FASTA file with contigs. Please see the help menu :/"
+    parser = parsers.parsers[args.parser](args.contigs, args.input, args.output_prefix, args.split_length)
 except ConfigError, e:
     print e
     sys.exit(-1)
