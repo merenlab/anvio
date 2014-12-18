@@ -20,6 +20,7 @@ import PaPi.filesnpaths as filesnpaths
 import PaPi.annotation as annotation
 from PaPi.utils import ConfigError
 from PaPi.utils import get_TAB_delimited_file_as_dictionary as get_dict
+from PaPi.utils import get_FASTA_file_as_dictionary as get_dict_f
 from PaPi.utils import store_dict_as_TAB_delimited_file as store_dict
 
 
@@ -60,9 +61,20 @@ class Parser(object):
                     self.paths[alias] = self.input_file_paths[i]
 
         for alias in self.files_expected:
-            self.dicts[alias] = get_dict(self.paths[alias],
-                                         column_names = self.files_structure[alias]['col_names'],
-                                         column_mapping = self.files_structure[alias]['col_mapping'])
+            f = self.files_structure[alias]
+            if f.has_key('type'):
+                if f['type'] == 'fasta':
+                    self.dicts[alias] = get_dict_f(self.paths[alias])
+                else:
+                    raise ConfigError, "Parser class does not know about file type '%s' :/" % f['type']
+            else:
+                # then it is tab-delimited
+                indexing_field = f['indexing_field'] if f.has_key('indexing_field') else 0
+                self.dicts[alias] = get_dict(self.paths[alias],
+                                             column_names = self.files_structure[alias]['col_names'],
+                                             column_mapping = self.files_structure[alias]['col_mapping'],
+                                             indexing_field = indexing_field)
+
 
     def store_annotations(self, contigs_fasta, annotations_dict, split_length, output_file_prefix = "ANNOTATION"):
         if output_file_prefix.lower().endswith('.txt'):
@@ -72,7 +84,70 @@ class Parser(object):
         A.create_new_database(contigs_fasta, annotations_dict, split_length, parser=self.annotation_source)
 
 
-class MyRast(Parser):
+class MyRastCMDLine(Parser):
+    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+        files_expected = {'functions': 'functions.tbl', 'genes': 'genes.peg'}
+
+        files_structure = {'functions': 
+                                {'col_names': ['t_species', 'field2', 'prot', 'function'],
+                                 'col_mapping': [str, int, str, str],
+                                 'indexing_field': 2},
+                           'genes': 
+                                {'type': 'fasta'},}
+
+        Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
+
+        annotations_dict = self.get_annotations_dict()
+        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
+
+
+    def get_annotations_dict(self):
+        # start with the fasta dict to identify start and stop. fasta file looked like this, as a reminder:
+        #
+        #    >prot_00001 D23-1_contig_1_127_1215
+        #    MTDCSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #    >prot_00002 D23-1_contig_1_1281_1499
+        #    MKDNAERKAKRRIFLXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #    >prot_00003 D23-1_contig_1_2630_1626
+        #    MAKQKIRIRLKAYDHRVIDQSAEKIVETAKRSGADVSGPIPLPTE
+        #    >prot_00004 D23-1_contig_1_2987_3376
+        #    MKNGPKLSLALIGIFLILCEFFYGIPFLGATFILSFGWQPLIFNA
+        #    >prot_00005 D23-1_contig_1_4901_3567
+        #    MKNYFQFDKYGTNFKREILGGITTFLSMAYILAVNPQVLSLAGVK
+        #    >prot_00006 D23-1_contig_1_7149_5014
+        #    MKSLILAEKPSVARDIADALQINQKRNGYFENNQYIVTWALGHLV
+        #    >prot_00007 D23-1_contig_1_7266_8231
+        #    MLISLLTFISVEILYNKSNKKYGGNDMSIVQLYDITQIKSFIEHS
+
+        annotations_dict = {}
+
+        for key in self.dicts['genes']:
+            entry = {}
+            for field in annotation.annotation_table_structure:
+                entry[field] = None
+
+            prot, remainder = key.split()
+            contig = '_'.join(remainder.split('_')[:-2])
+            start, stop = [t for t in remainder.split('_')[-2:]]
+            entry['start'] = int(start)
+            entry['stop'] = int(stop)
+            entry['contig'] = contig
+
+            annotations_dict[prot] = entry
+
+        for prot in self.dicts['functions']:
+            d = self.dicts['functions'][prot]
+
+            t_species_str = d['t_species']
+            if len(t_species_str.split()) > 2:
+                t_species_str = ' '.join(t_species_str.split()[0:2])
+            annotations_dict[prot]['t_species'] = t_species_str
+            annotations_dict[prot]['function'] = d['function']
+
+        return annotations_dict
+
+
+class MyRastGUI(Parser):
     def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
         files_expected = {'functions': 'functions.tbl', 'gene_otus': 'gene_otus.tbl', 'peg': 'peg.tbl'}
 
@@ -86,7 +161,7 @@ class MyRast(Parser):
                                 {'col_names': ['prot', 'contig', 'start', 'stop'],
                                  'col_mapping': [str, str, int, int]},}
 
-        Parser.__init__(self, 'MyRAST', input_file_paths, files_expected, files_structure)
+        Parser.__init__(self, 'MyRastGUI', input_file_paths, files_expected, files_structure)
 
         annotations_dict = self.get_annotations_dict()
         self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
@@ -136,4 +211,5 @@ class MyRast(Parser):
         return annotations_dict
 
 
-parsers = {"myrast": MyRast}
+parsers = {"myrast_gui": MyRastGUI,
+           "myrast_cmdline": MyRastCMDLine}
