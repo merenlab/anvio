@@ -193,9 +193,9 @@ $(document).ready(function() {
 
                 categorical_data_ids = [];
                 separated_data_ids = [];
-                
                 for (var i = 1; i < parameter_count; i++) {
-                    if (metadata[0][i] == '__parent__') // parent
+                	layer = metadata[0][i];
+                    if (layer == '__parent__') // parent
                     {
                         var parent_row_str = '<tr style="display: none">' +
                             '<td></td>' +
@@ -220,7 +220,7 @@ $(document).ready(function() {
 
                         var stack_bar_row_str = '<tr>' +
                             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
                             '<td>n/a</td>' +
                             '<td>' +
                             '    <select id="normalization{id}">' +
@@ -245,7 +245,7 @@ $(document).ready(function() {
 
                         var categorical_data_row_str = '<tr>' +
                             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
+                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
                             '<td>n/a</td>' +
                             '<td>n/a</td>' +
                             '<td><input class="input-height" type="text" size="3" id="height{id}" value="30"></input></td>' +
@@ -258,20 +258,37 @@ $(document).ready(function() {
                         $('#tbody_layers').append(categorical_data_row_str);
                     } 
                     else // numerical data
-                    { 
+                    {
                         var numerical_data_row_str = '<tr>' +
                             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + metadata[0][i] + '">' + ((metadata[0][i].length > 10) ? metadata[0][i].slice(0,10) + "..." : metadata[0][i]) + '</td>' +
-                            '<td><div id="picker{id}" class="colorpicker"></td>' +
+                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
+                            '<td><div id="picker{id}" class="colorpicker" title="' + layer + '"></td>' +
                             '<td>' +
-                            '    <select id="normalization{id}" onChange="clearMinMax(this)">' +
-                            '        <option value="none">none</option>' +
-                            '        <option value="sqrt">Square root</option>' +
-                            '        <option value="log" selected>Logarithm</option>' +
-                            '    </select>' +
-                            '</td>' +
-                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="150"></input></td>' +
-                            '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></input></td>' +
+                            '    <select id="normalization{id}" onChange="clearMinMax(this)">';
+
+                        norm = ['none', 'sqrt', 'log'];
+                        if(layer in named_layers && 'norm' in named_layers[layer]){
+                            for(n in norm){
+                                if(norm[n] === named_layers[layer])
+                                    numerical_data_row_str += '        <option value="' + norm[n] + '" selected>' + norm[n] + '</option>';
+                                else
+                                    numerical_data_row_str += '        <option value="' + norm[n] + '">' + norm[n] + '</option>';
+                            }
+                        } else {
+                            numerical_data_row_str +=
+                                '        <option value="none">none</option>' +
+                                '        <option value="sqrt">sqrt</option>' +
+                                '        <option value="log" selected>log</option>';
+                        }
+                            numerical_data_row_str += '    </select></td>';
+                            
+                            
+                            if(layer in named_layers && 'width' in named_layers[layer])
+                            	numerical_data_row_str += '<td><input class="input-height" type="text" size="3" id="height{id}" value="' + named_layers[layer].width + '"></input></td>';
+                            else
+                            	numerical_data_row_str += '<td><input class="input-height" type="text" size="3" id="height{id}" value="180"></input></td>';
+                            
+                            numerical_data_row_str += '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></input></td>' +
                             '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></input></td>' +
                             '</tr>';
 
@@ -303,7 +320,19 @@ $(document).ready(function() {
                 
                 // COLOR PICKER
                 $('.colorpicker').each(function(index, element) {
-                    var color = '#000000';
+                	if('title' in element.attributes) {
+                	    layer = element.attributes.title.value;
+
+                	    if (layer in named_layers) {
+                	    	if('color' in named_layers[layer]){
+                	    		color = named_layers[layer].color;
+                	    	} else {
+                	    		color = randomColor();
+                	    	}
+                	    } else {
+                	    	color = '#000000';
+                	    }
+                	}
 
                     $(element).css('background-color', color);
                     $(element).attr('color', color);
@@ -384,7 +413,7 @@ $(document).ready(function() {
             $('.colorpicker').colpick({
                 layout: 'hex',
                 submit: 0,
-                colorScheme: 'light',
+                colorScheme: 'dark',
                 onChange: function(hsb, hex, rgb, el, bySetColor) {
                     $(el).css('background-color', '#' + hex);
                     $(el).attr('color', '#' + hex);
@@ -563,7 +592,7 @@ function newGroup() {
     clone.attr('id', '');
     clone.css('display', '');
 
-    var color = '#000000';
+    var color = randomColor();
 
     clone.find('.colorpicker').css('background-color', color);
     clone.find('.colorpicker').attr('color', color);
@@ -571,7 +600,7 @@ function newGroup() {
     clone.find('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'light',
+        colorScheme: 'dark',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
