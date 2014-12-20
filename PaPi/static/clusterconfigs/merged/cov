@@ -1,0 +1,5 @@
+[general]
+output_file = CONTIGS-TREE-COV.txt
+
+[METADATA-CONTIGS-mean_coverage.txt]
+alias = Coverage
