@@ -129,8 +129,8 @@ class MyRastCMDLine(Parser):
             prot, remainder = key.split()
             contig = '_'.join(remainder.split('_')[:-2])
             start, stop = [t for t in remainder.split('_')[-2:]]
-            entry['start'] = int(start)
-            entry['stop'] = int(stop)
+            start, stop = int(start), int(stop)
+            entry['start'], entry['stop'], entry['direction'] = (start, stop, 'f') if start < stop else (stop, start, 'r')
             entry['contig'] = contig
 
             annotations_dict[prot] = entry

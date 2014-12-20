@@ -18,14 +18,15 @@ annotation_table_structure = ['prot', 'contig', 'start', 'stop'   , 'direction',
 annotation_table_mapping   = [ str  ,   str   ,  int   ,   int    ,     str    ,   str   ,    str    ,    str    ,   str    ,    str   ,    str    ,    str   ,     str    ]
 annotation_table_types     = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-splits_table_structure = ['split', 'taxonomy', 'num_genes', 'num_tax_calls', 'num_function_calls', 'tax_accuracy']
-splits_table_mapping   = [  str  ,     str   ,    int     ,      int       ,          int        ,      float    ]
-splits_table_types     = [ 'text',   'text'  ,  'numeric' ,   'numeric'    ,       'numeric'     ,    'numeric'  ]
+splits_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
+splits_table_mapping   = [  str  ,     str   ,    int     ,       float      ,    'float'    ,        float        ,       float     ,     float     ]
+splits_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
 
 __version__ = "0.0.1"
 
 import os
 import sys
+import numpy
 import operator
 from collections import Counter
 
@@ -139,18 +140,38 @@ class Annotation:
 
                 taxa = []
                 functions = []
+                gene_start_stops = []
                 for prot in prots_in_contig[contig]:
                     if self.matrix_dict[prot]['stop'] > start and self.matrix_dict[prot]['start'] < stop:
                         taxa.append(self.matrix_dict[prot]['t_species'])
                         functions.append(self.matrix_dict[prot]['function'])
+                        gene_start_stops.append((self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop']), )
 
                 taxonomy_strings = [t for t in taxa if t]
                 function_strings = [f for f in functions if f]
 
+                # here we identify genes that are associated with a split even if one base of the gene spills into 
+                # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
+                # scenario:
+                #
+                # contig: (...)------[ gene A ]--------[     gene B    ]----[gene C]---------[    gene D    ]-----(...)
+                #         (...)----------x---------------------------------------x--------------------------------(...)
+                #                        ^ (split N start)                       ^ (split N stop)
+                #                        |                                       |
+                #                        |<-              split N              ->|
+                #
+                # however, when looking at the coding versus non-coding nucleotide ratios in a split, we have to make
+                # sure that only the relevant portion of gene A and gene C is counted:
+                total_coding_nts = 0
+                for gene_start, gene_stop in gene_start_stops:
+                    total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
+
                 splits_dict[split] = {'taxonomy': None,
                                       'num_genes': len(taxa),
-                                      'num_tax_calls': len(taxonomy_strings),
-                                      'num_function_calls': len(function_strings),
+                                      'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]),
+                                      'ratio_coding': total_coding_nts * 1.0 / (stop - start),
+                                      'ratio_hypothetical': (len(functions) - len(function_strings)) * 1.0 / len(functions) if len(functions) else 0.0,
+                                      'ratio_with_tax': len(taxonomy_strings) * 1.0 / len(taxa) if len(taxa) else 0.0,
                                       'tax_accuracy': 0.0}
 
                 distinct_taxa = set(taxonomy_strings)
@@ -166,15 +187,15 @@ class Annotation:
                     for taxon in taxonomy_strings:
                         d[taxon] += 1
                     consensus, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
-                    splits_dict[split]['taxonomy'] = distinct_taxa.pop()
-                    splits_dict[split]['tax_accuracy'] = 1.0
+                    splits_dict[split]['taxonomy'] = consensus
+                    splits_dict[split]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
 
         # create splits table using fields in 'splits_table_structure' info
         self.db.create_table('splits', splits_table_structure, splits_table_types)
 
         # push raw entries.
         db_entries = [tuple([split] + [splits_dict[split][h] for h in splits_table_structure[1:]]) for split in splits_dict]
-        self.db._exec_many('''INSERT INTO splits VALUES (?,?,?,?,?,?)''', db_entries)
+        self.db._exec_many('''INSERT INTO splits VALUES (?,?,?,?,?,?,?,?)''', db_entries)
 
 
     def get_consensus_taxonomy_for_split(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):

@@ -1,32 +1,43 @@
 var named_layers = {
-	'length': {
-		'width': 100,
-		'color': '#808080',
-		'norm': 'none',
-	},
-	'GC_content': {
-		'width': 100,
-		'color': '#115511',
-		'norm': 'none',
-	},
 	'num_genes': {
 		'width': 80,
-		'color': '#551111',
+		'color': '#414141',
+		'norm': 'sqrt',
+	},
+	'avg_gene_length': {
+		'width': 80,
+		'color': '#414141',
+		'norm': 'sqrt',
+	},
+	'ratio_coding': {
+		'width': 80,
+		'color': '#414141',
 		'norm': 'none',
 	},
-	'num_tax_calls': {
+	'ratio_hypothetical': {
 		'width': 80,
-		'color': '#552222',
+		'color': '#072c59',
 		'norm': 'none',
 	},
-	'num_function_calls': {
+	'ratio_with_tax': {
 		'width': 80,
-		'color': '#553333',
+		'color': '#555907',
 		'norm': 'none',
 	},
 	'tax_accuracy': {
 		'width': 80,
-		'color': '#554444',
+		'color': '#40012e',
+		'norm': 'none',
+	},
+	'length': {
+		'width': 80,
+		'color': '#414141',
+		'norm': 'none',
+	},
+	'GC_content': {
+		'width': 180,
+		'color': '#004a0f',
 		'norm': 'none',
 	},
 }
+
