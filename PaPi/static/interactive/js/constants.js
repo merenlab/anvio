@@ -39,5 +39,33 @@ var named_layers = {
 		'color': '#004a0f',
 		'norm': 'none',
 	},
+
+	'noramlized_coverage': {
+		'width': 120,
+		'color': '#414141',
+		'norm': 'log',
+	},
+	'std_coverage': {
+		'width': 60,
+		'color': '#414141',
+		'norm': 'log',
+	},
+	'portion_covered': {
+		'width': 60,
+		'color': '#616161',
+		'norm': 'none',
+	},
+	'abundance': {
+		'width': 60,
+		'color': '#818181',
+		'norm': 'none',
+	},
+
+	'variability': {
+		'width': 90,
+		'color': '#4a000f',
+		'norm': 'none',
+	},
+
 }
 
