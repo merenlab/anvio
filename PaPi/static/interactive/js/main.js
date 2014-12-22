@@ -269,7 +269,7 @@ $(document).ready(function() {
                         norm = ['none', 'sqrt', 'log'];
                         if(layer in named_layers && 'norm' in named_layers[layer]){
                             for(n in norm){
-                                if(norm[n] === named_layers[layer])
+                                if(norm[n] === named_layers[layer]['norm'])
                                     numerical_data_row_str += '        <option value="' + norm[n] + '" selected>' + norm[n] + '</option>';
                                 else
                                     numerical_data_row_str += '        <option value="' + norm[n] + '">' + norm[n] + '</option>';
