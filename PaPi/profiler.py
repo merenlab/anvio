@@ -20,20 +20,23 @@ import shutil
 import operator
 import subprocess
 
+import PaPi.db as db
 import PaPi.utils as utils
-import PaPi.constants as constants
-import PaPi.filesnpaths as filesnpaths
-import PaPi.terminal as terminal
 import PaPi.dictio as dictio
+import PaPi.terminal as terminal
+import PaPi.constants as constants
+import PaPi.annotation as annotation
+import PaPi.filesnpaths as filesnpaths
 import PaPi.clustering as clustering
 
-from PaPi.clusteringconfuguration import ClusteringConfiguration
-from PaPi.contig import Contig, set_contigs_abundance
+from PaPi.genes import Genes
 from PaPi.contig import Split
+from PaPi.contig import Contig, set_contigs_abundance
+from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
 
 class BAMProfiler:
@@ -41,6 +44,7 @@ class BAMProfiler:
     def __init__(self, args = None):
         self.args = None
         self.input_file_path = None 
+        self.annotation_db_path = None
         self.serialized_profile_path = None 
         self.output_directory = None 
         self.list_contigs_and_exit = None 
@@ -52,6 +56,7 @@ class BAMProfiler:
         if args:
             self.args = args
             self.input_file_path = args.input_file
+            self.annotation_db_path = args.annotation_db_path
             self.serialized_profile_path = args.profile
             self.output_directory = args.output_directory
             self.list_contigs_and_exit = args.list_contigs
@@ -71,6 +76,11 @@ class BAMProfiler:
 
         self.bam = None
         self.contigs = {}
+        self.contig_ORFs = {}
+        self.annotation_db = None
+
+        self.profile_db = None
+        self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['single']
 
@@ -78,17 +88,62 @@ class BAMProfiler:
         self.run = terminal.Run(width=35)
 
 
+    def init_dirs_and_dbs(self):
+        self.progress.new('Initializing')
+
+        self.progress.update('Creating the output directory ...')
+
+        Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
+
+        if not self.output_directory:
+            self.output_directory = Absolute(self.input_file_path) + '-PAPI_PROFILE'
+        else:
+            self.output_directory = Absolute(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory, self.progress)
+
+        self.progress.update('Initializing the profile database ...')
+
+        # init a new db
+        self.profile_db_path = self.generate_output_destination('PROFILE.db')
+        self.profile_db = db.DB(self.profile_db_path, __version__, new_database = True)
+
+        # put sample id into the meta table
+        self.profile_db.set_meta_value('sample_id', self.sample_id)
+        self.profile_db.set_meta_value('merged', False)
+
+        if self.annotation_db_path:
+            self.progress.update('Initializing the annotation database ...')
+            self.annotation_db = annotation.Annotation(self.annotation_db_path)
+            self.annotation_db.init_database()
+
+        self.progress.end()
+
+
     def _run(self):
         self.check_args()
 
         self.set_sample_id()
 
+        if not self.list_contigs_and_exit:
+            self.init_dirs_and_dbs()
+
+        # we will set up things here so the information in the annotation_db
+        # can be utilized directly from within the contigs for loop. contig to
+        # gene associations will be stored in self.contig_ORFs dictionary for
+        # fast access.
+        if self.annotation_db and not self.list_contigs_and_exit:
+            self.populate_contig_ORFs()
+
         self.run.info('profiler_version', __version__)
         self.run.info('sample_id', self.sample_id)
+        self.run.info('profile_db', self.profile_db_path)
+        self.run.info('annotation_db', True if self.annotation_db_path else False, quiet = True)
         self.run.info('default_clustering', constants.single_default)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
 
+        # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
+        # profile...
         if self.input_file_path:
             self.init_profile_from_BAM()
             self.profile()
@@ -98,13 +153,54 @@ class BAMProfiler:
             self.init_serialized_profile()
             self.store_summarized_profile()
 
+        if self.annotation_db:
+            # generate and store genes table
+            self.generate_genes_db()
+            self.run.info('genes_table', True, quiet = True)
+        else:
+            self.run.info('genes_table', False, quiet = True)
+
         self.report()
         self.cluster_contigs()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
         self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
+
         self.run.quit()
+        self.profile_db.disconnect()
+
+
+    def populate_contig_ORFs(self):
+        self.progress.new('Annotation')
+        self.progress.update('Reading annotation table')
+        annotation_table = self.annotation_db.db.get_table_as_dict('annotation', annotation.annotation_table_structure)
+
+        self.progress.update('Populating ORFs dictionary for each contig ...')
+        for gene in annotation_table:
+            e = annotation_table[gene]
+            if self.contig_ORFs.has_key(e['contig']):
+                self.contig_ORFs[e['contig']].add((gene, e['start'], e['stop']), )
+            else:
+                self.contig_ORFs[e['contig']] = set([(gene, e['start'], e['stop']), ])
+
+        self.progress.end()
+        self.run.info('annotation_db', "%d genes processed successfully." % len(annotation_table), display_only = True)
+
+
+    def generate_genes_db(self):
+        self.genes = Genes(self.progress)
+        self.progress.new('Profiling genes')
+        num_contigs = len(self.contigs)
+        contig_names = self.contigs.keys()
+        for i in range(0, num_contigs):
+            contig = contig_names[i]
+            self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
+            self.genes.analyze_contig(self.contigs[contig], self.sample_id, self.contig_ORFs[contig])
+
+        self.genes.create_genes_table(self.profile_db)
+        self.progress.end()
+        
 
 
     def set_sample_id(self):
@@ -153,6 +249,17 @@ class BAMProfiler:
 
         self.check_contigs()
 
+        # lets make sure that each contig name is found in the annotation db
+        if self.annotation_db:
+            for contig in self.contigs:
+                if contig not in self.contig_ORFs:
+                    raise utils.ConfigError, "You instructed the profiling to use an annotation database,\
+                                              however, at least one contig ('%s') PaPi found in your input file that\
+                                              is missing from the database. This would have never happened if you had\
+                                              generated the annotation database and done mapping using the same contigs.\
+                                              At this point PaPi does not know who to blame, but this is\
+                                              not right :/" % contig
+
         contigs_to_discard = set()
         for contig in self.contigs.values():
             if contig.length < self.min_contig_length:
@@ -164,12 +271,6 @@ class BAMProfiler:
 
         self.check_contigs()
 
-        self.progress.new('Init')
-        self.progress.update('Initializing the output directory ...')
-        self.init_output_directory()
-        self.progress.end()
-        self.run.info('output_dir', self.output_directory)
-
 
     def init_profile_from_BAM(self):
         self.progress.new('Init')
@@ -180,17 +281,17 @@ class BAMProfiler:
         self.contig_names = self.bam.references
         self.contig_lenghts = self.bam.lengths
 
+        if self.list_contigs_and_exit:
+            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
+                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+            sys.exit()
+
         utils.check_contig_names(self.contig_names)
 
         try:
             self.num_reads_mapped = self.bam.mapped
         except ValueError:
             raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
-
-        self.progress.new('Init')
-        self.progress.update('Initializing the output directory ...')
-        self.init_output_directory()
-        self.progress.end()
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
@@ -199,11 +300,6 @@ class BAMProfiler:
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
-        if self.list_contigs_and_exit:
-            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
-            sys.exit()
-
         if self.contig_names_of_interest:
             indexes = [self.contig_names.index(r) for r in self.contig_names_of_interest if r in self.contig_names]
             self.contig_names = [self.contig_names[i] for i in indexes]
@@ -211,6 +307,18 @@ class BAMProfiler:
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
 
 
+        # lets make sure that each contig name is found in the annotation db
+        if self.annotation_db:
+            for contig in self.contig_names:
+                if contig not in self.contig_ORFs:
+                    raise utils.ConfigError, "You instructed the profiling to use an annotation database,\
+                                              however, at least one contig ('%s') PaPi found in the BAM file is\
+                                              missing from the database.  This would have never happened if you had\
+                                              generated the annotation database and done mapping using the same contigs.\
+                                              At this point PaPi does not know who to blame, but this is\
+                                              not right :/" % contig
+
+        # check for the -M parameter.
         contigs_longer_than_M = set()
         for i in range(0, len(self.contig_names)):
             if self.contig_lenghts[i] > self.min_contig_length:
@@ -225,17 +333,6 @@ class BAMProfiler:
         # finally, compute contig splits.
         self.contig_splits = [utils.get_chunks(self.contig_lenghts[i], self.split_length)\
                                                                  for i in range(0, len(self.contig_names))]
-
-
-    def init_output_directory(self):
-        Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
-
-        if not self.output_directory:
-            self.output_directory = Absolute(self.input_file_path) + '-PAPI_PROFILE'
-        else:
-            self.output_directory = Absolute(self.output_directory)
-
-        filesnpaths.gen_output_directory(self.output_directory, self.progress)
 
 
     def generate_output_destination(self, postfix, directory = False):

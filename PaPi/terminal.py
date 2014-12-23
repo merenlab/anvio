@@ -129,8 +129,9 @@ class Run:
             self.info_file_obj = open(info_file_path, 'w')
 
 
-    def info(self, key, value, quiet = False, header = False):
-        self.info_dict[key] = value
+    def info(self, key, value, quiet = False, header = False, display_only = False):
+        if not display_only:
+            self.info_dict[key] = value
 
         if quiet:
             return True
@@ -144,6 +145,7 @@ class Run:
             info_line = "\n%s\n%s\n" % (label, '=' * (self.width + 2))
         else:
             info_line = "%s %s: %s\n" % (label, '.' * (self.width - len(label)), str(value))
+
         if self.info_file_obj:
             self.info_file_obj.write(info_line)
 

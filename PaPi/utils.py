@@ -28,7 +28,7 @@ from sklearn import preprocessing
 from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, complements, levels_of_taxonomy
 import PaPi.fastalib as u
 import PaPi.filesnpaths as filesnpaths
-from PaPi.contig import Composition
+from PaPi.sequence import Composition
 
 from PaPi.terminal import Progress
 

@@ -17,6 +17,8 @@ import sys
 import pysam
 import hashlib
 import subprocess
+import PaPi.db
+import PaPi.genes
 import PaPi.contig
 import PaPi.fastalib as u
 import PaPi.utils as utils
@@ -45,6 +47,9 @@ class MultipleRuns:
         self.contigs = {}
         self.profiles = []
         self.output_directory = args.output_dir
+
+        self.profile_db = None
+        self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
 
@@ -156,10 +161,47 @@ class MultipleRuns:
         filesnpaths.gen_output_directory(self.output_directory)
 
 
+    def merge_genes_tables(self):
+        gene_tables_present = [runinfo['genes_table'] for runinfo in self.sample_runinfos.values()]
+
+        if gene_tables_present.count(True) == len(self.sample_runinfos.values()):
+            self.run.info('genes_table', True, quiet = True)
+        elif gene_tables_present.count(False) == len(self.sample_runinfos.values()):
+            # none has it
+            self.run.info('genes_table', False, quiet = True)
+            return
+        else:
+            # some weird shit must have happened.
+            raise utils.ConfigError, "PaPi is confused. While merging multiple runs, it seem some of the runs have the\
+                                      'genes' table in their PROFILE.db's, and others do not. This is so weird, and it\
+                                      does not make any sense. Probably you should profile everything from scracth just\
+                                      to be on the safe side :/"
+
+        # create an instance from genes
+        genes = PaPi.genes.Genes()
+
+        # fill "genes" instance from all samples
+        for runinfo in self.sample_runinfos.values():
+            sample_profile_db_path = P(runinfo, runinfo['profile_db'])
+            sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
+            sample_gene_profiles = sample_profile_db.get_table_as_dict('genes', PaPi.genes.genes_table_structure)
+            for g in sample_gene_profiles.values():
+                genes.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'])
+
+        genes.create_genes_table(self.profile_db)
+
+
     def merge(self):
         self.sanity_check()
 
         self.split_names = self.get_split_names()
+
+        # init profile database
+        self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
+        self.profile_db = PaPi.db.DB(self.profile_db_path, __version__, new_database = True)
+        # put sample id into the meta table
+        self.profile_db.set_meta_value('sample_id', os.path.basename(self.output_directory))
+        self.profile_db.set_meta_value('merged', True)
 
         # get metadata information for both contigs and splits:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_files()
@@ -177,6 +219,11 @@ class MultipleRuns:
         self.run.info('num_runs_processed', len(self.contigs))
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
+ 
+ 
+        self.progress.new('Merging genes tables')
+        self.merge_genes_tables()
+        self.progress.end()
  
         self.progress.new('Generating merged summary')
         summary_dir, profile_summary_index = self.merge_split_summaries()
@@ -206,6 +253,7 @@ class MultipleRuns:
 
         self.progress.end()
         self.run.quit()
+        self.profile_db.disconnect()
 
 
     def merge_metadata_files(self):

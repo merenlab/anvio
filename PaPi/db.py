@@ -116,3 +116,8 @@ class DB:
             results_dict[row[0]] = entry
 
         return results_dict
+
+
+    def get_table_names(self):
+        response = self._exec("""select name from sqlite_master where type='table'""")
+        return [r[0] for r in response.fetchall()]
