@@ -655,7 +655,6 @@ function deleteGroup(elm) {
 }
 
 function submitGroups(only_svg) {
-
     if (!only_svg) {
         var output = {};
         var msg_group_count = 0;
@@ -668,8 +667,8 @@ function submitGroups(only_svg) {
 
                 output[group_name] = new Array();
                 for (var i = 0; i < SELECTED[gid].length; i++) {
-                    if (label_to_node_map[SELECTED[gid][i]].IsLeaf()) {
-                        output[group_name].push(SELECTED[gid][i]);
+                    if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
+                        output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
                         msg_contig_count++;
                     }
                 }
@@ -691,9 +690,9 @@ function submitGroups(only_svg) {
         createGroup('tree_group', 'selected_group_' + gid);
 
         for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_background").detach().appendTo('#selected_group_' + gid);
-                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_outer_ring").detach().appendTo('#selected_group_' + gid);
+            if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
+                $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
             }
         }
     }
@@ -701,11 +700,11 @@ function submitGroups(only_svg) {
     // remove ungrouped backgrounds.
     if (tree_type == 'circlephylogram')
     {
-        var detached_paths = $('#tree_group > path').detach();        
+        var detached_paths = $('#tree_group > path').detach();
     }
     else
     {
-        var detached_paths = $('#tree_group > rect').detach();   
+        var detached_paths = $('#tree_group > rect').detach();
     }
 
     if (!only_svg)
