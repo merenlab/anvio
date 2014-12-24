@@ -230,8 +230,6 @@ function removeSingleParents()
     {
         if (metadata[0][i] == '__parent__') 
         {
-            has_parent_layer = true;
-
             var parent_count_dict = {};
             for (var j=1; j < metadata.length; j++)
             {

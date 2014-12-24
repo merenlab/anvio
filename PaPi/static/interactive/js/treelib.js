@@ -1615,6 +1615,10 @@ function draw_tree(settings) {
                         }
 
                         metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / param_max[pindex];
+
+                        var min_max_str = "Min: " + min_new + " - Max: " + max_new;
+                        $('#min' + pindex).attr('title', min_max_str);
+                        $('#max' + pindex).attr('title', min_max_str);
                     }
                 }
             }
@@ -1624,11 +1628,6 @@ function draw_tree(settings) {
                 $('#min' + pindex).prop('disabled', false);
                 $('#max' + pindex).val(max_new).prop('disabled', false);        
             }
-
-            var min_max_str = "Min: " + min_new + " - Max: " + max_new;
-            $('#min' + pindex).attr('title', min_max_str);
-            $('#max' + pindex).attr('title', min_max_str);
-
         }
     }
 
@@ -1888,7 +1887,7 @@ function draw_tree(settings) {
                                     true);
 
                                 prev_parent_color = color;
-                                prev_parent_name = metadata_dict[q.label][1];
+                                prev_parent_name = metadata_dict[q.label][pindex];
                                 prev_parent_items.push(q.id + "_parent");
                             }
                             else // numerical
@@ -1988,12 +1987,12 @@ function draw_tree(settings) {
                             }
                             else if (isParent)
                             {
-                                if (metadata_dict[q.label][1] == '')
+                                if (metadata_dict[q.label][pindex] == '')
                                     continue;
 
                                 var color = prev_parent_color;
 
-                                if (prev_parent_name != metadata_dict[q.label][1])
+                                if (prev_parent_name != metadata_dict[q.label][pindex])
                                 {
                                     if (prev_parent_color == parent_odd)
                                     {
@@ -2019,7 +2018,7 @@ function draw_tree(settings) {
                                     true);
 
                                 prev_parent_color = color;
-                                prev_parent_name = metadata_dict[q.label][1];
+                                prev_parent_name = metadata_dict[q.label][pindex];
                                 prev_parent_items.push(q.id + "_parent");
                             }
                             else // numerical
