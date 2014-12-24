@@ -18,6 +18,7 @@
         <script type="text/javascript" src="js/jquery-ui.js"></script>
         <script type="text/javascript" src="js/jquery.ui.dialog-collapse.js"></script>
         <script type="text/javascript" src="js/randomColor.js"></script>
+        <script type="text/javascript" src="js/svg-crowbar.js"></script>
         <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="js/main.js"></script>
         <script type="text/javascript" src="js/treelib.js"></script>
@@ -77,7 +78,7 @@
                 </div>
                
 
-                <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;<input type="button" id="btn_export_svg" onclick="submitGroups(true);" value="Export as SVG" disabled="true">
+                <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;<input type="button" id="btn_export_svg" onclick="svgCrowbar();" value="Export as SVG" disabled="true">
             </div>
             <div id="groups" class="dialogs">
                 <table id="groups-table">
