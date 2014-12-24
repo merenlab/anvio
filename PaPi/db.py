@@ -76,7 +76,12 @@ class DB:
 
     def get_meta_value(self, key):
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
-        return response.fetchall()[0][0]
+        rows =  response.fetchall()
+
+        if not rows:
+            raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
+
+        return rows[0][0]
 
 
     def commit(self):
