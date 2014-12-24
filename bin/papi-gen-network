@@ -1,0 +1,235 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2014, PaPi Authors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import os
+import sys
+
+import PaPi.db as db
+import PaPi.genes as genes
+import PaPi.utils as utils
+import PaPi.dictio as dictio
+import PaPi.terminal as terminal
+import PaPi.filesnpaths as filesnpaths
+from PaPi.profiler import __version__
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def get_unit_counts_and_percents(units, samples_dict):
+    # this function returns two dictionaries that contain unit counts and percents
+    # across samples. that can be used for agglomeration, as well as generation of
+    # environment and matrix files.
+
+    unit_percents = {}
+    unit_counts = {}
+
+    sample_totals = {}
+    for sample in samples_dict:
+        sample_totals[sample] = sum(samples_dict[sample].values())
+
+    for sample in samples_dict:
+        counts = []
+        percents = []
+        for unit in units:
+            if samples_dict[sample].has_key(unit):
+                counts.append(samples_dict[sample][unit])
+                percents.append(samples_dict[sample][unit] * 100.0 / sample_totals[sample])
+            else:
+                counts.append(0)
+                percents.append(0.0)
+                
+        unit_counts[sample] = counts
+        unit_percents[sample] = percents
+
+    return (unit_counts, unit_percents)
+
+
+def generate_gexf_network_file(units, samples_dict, unit_percents, output_file, sample_mapping_dict = None,
+                               unit_mapping_dict = None, project = None, sample_size=8, unit_size=2,
+                               skip_sample_labels = False, skip_unit_labels = False):
+    output = open(output_file, 'w')
+
+    samples = sorted(samples_dict.keys())
+    sample_mapping_categories = sorted([k for k in sample_mapping_dict.keys() if k != 'colors']) if sample_mapping_dict else None
+    unit_mapping_categories = sorted([k for k in unit_mapping_dict.keys() if k not in ['colors', 'labels']]) if unit_mapping_dict else None
+    
+    output.write('''<?xml version="1.0" encoding="UTF-8"?>\n''')
+    output.write('''<gexf xmlns:viz="http:///www.gexf.net/1.1draft/viz" xmlns="http://www.gexf.net/1.2draft" version="1.2">\n''')
+    output.write('''<meta lastmodifieddate="2010-01-01+23:42">\n''')
+    output.write('''    <creator>Oligotyping pipeline</creator>\n''')
+    if project:
+        output.write('''    <creator>Network description for %s</creator>\n''' % (project))
+    output.write('''</meta>\n''')
+    output.write('''<graph type="static" defaultedgetype="undirected">\n\n''')
+
+    if sample_mapping_dict:
+        output.write('''<attributes class="node" type="static">\n''')
+        for i in range(0, len(sample_mapping_categories)):
+            category = sample_mapping_categories[i]
+            output.write('''    <attribute id="%d" title="%s" type="string" />\n''' % (i, category))
+        output.write('''</attributes>\n\n''')
+
+    # FIXME: IDK what the hell is this one about:
+    if unit_mapping_dict:
+        output.write('''<attributes class="edge">\n''')
+        for i in range(0, len(unit_mapping_categories)):
+            category = unit_mapping_categories[i]
+            output.write('''    <attribute id="%d" title="%s" type="string" />\n''' % (i, category))
+        output.write('''</attributes>\n\n''')
+
+    output.write('''<nodes>\n''')
+    for sample in samples:
+        if skip_sample_labels:
+            output.write('''    <node id="%s">\n''' % (sample))
+        else:
+            output.write('''    <node id="%s" label="%s">\n''' % (sample, sample))
+        output.write('''        <viz:size value="%d"/>\n''' % sample_size)
+        if sample_mapping_dict and sample_mapping_dict.has_key('colors'):
+            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
+                                             HTMLColorToRGB(sample_mapping_dict['colors'][sample], scaled = False))
+
+        if sample_mapping_categories:
+            output.write('''        <attvalues>\n''')
+            for i in range(0, len(sample_mapping_categories)):
+                category = sample_mapping_categories[i]
+                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, sample_mapping_dict[category][sample]))
+            output.write('''        </attvalues>\n''')
+
+        output.write('''    </node>\n''')
+
+    for unit in units:
+        if skip_unit_labels:
+            output.write('''    <node id="%s">\n''' % (unit))
+        else:
+            if unit_mapping_dict and unit_mapping_dict.has_key('labels'):
+                output.write('''    <node id="%s" label="%s">\n''' % (unit, unit_mapping_dict['labels'][unit]))
+            else:
+                output.write('''    <node id="%s">\n''' % (unit))
+        output.write('''        <viz:size value="%d" />\n''' % unit_size)
+
+        if unit_mapping_categories:
+            output.write('''        <attvalues>\n''')
+            for i in range(0, len(unit_mapping_categories)):
+                category = unit_mapping_categories[i]
+                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
+            output.write('''        </attvalues>\n''')
+
+        output.write('''    </node>\n''')
+
+    output.write('''</nodes>\n''')
+    
+    edge_id = 0
+    output.write('''<edges>\n''')
+    for sample in samples:
+        for i in range(0, len(units)):
+            unit = units[i]
+            if unit_percents[sample][i] > 0.0:
+                if unit_mapping_dict:
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f">\n''' % (edge_id, unit, sample, unit_percents[sample][i]))
+                    output.write('''        <attvalues>\n''')
+                    for i in range(0, len(unit_mapping_categories)):
+                        category = unit_mapping_categories[i]
+                        output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
+                    output.write('''        </attvalues>\n''')
+                    output.write('''    </edge>\n''')
+                else:
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f" />\n''' % (edge_id, unit, sample, unit_percents[sample][i]))
+
+
+                edge_id += 1
+    output.write('''</edges>\n''')
+    output.write('''</graph>\n''')
+    output.write('''</gexf>\n''')
+    
+    output.close()
+
+
+class NetworkDescripton:
+    def __init__(self):
+        self.runinfo_path = None
+        self.runinfo = None
+        self.P = lambda x: os.path.join(os.path.dirname(self.runinfo_path), x)
+
+
+    def generate_for_genes(self):
+        filesnpaths.is_file_exists(self.runinfo_path)
+        self.runinfo = dictio.read_serialized_object(self.runinfo_path)
+        profile_db_path = self.P(self.runinfo['profile_db'])
+        profile_db = db.DB(profile_db_path, __version__)
+
+        table_names = profile_db.get_table_names()
+
+        if not int(profile_db.get_meta_value('merged')):
+            raise utils.ConfigError, "The profile database describes a single run. Current implementation of this\
+                                      program restricts its use to merged runs. Sorry :/"
+
+        if 'genes' not in table_names:
+            raise utils.ConfigError, "There is no 'genes' table in the profile database. Probably you did not\
+                                      profile the samples you merged with the presence of an annotation database.\
+                                      If that is not the case maybe you should get in touch with the developers :/"
+
+        genes_table = profile_db.get_table_as_dict('genes', genes.genes_table_structure)
+        samples = sorted(list(set([r['sample_id'] for r in genes_table.values()])))
+        prots = sorted(list(set([r['prot'] for r in genes_table.values()])))
+
+        samples_dict = self.get_samples_dict(samples, prots, genes_table)
+        run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(prots), len(samples)))
+
+        progress.new('Processing')
+        progress.update('Counts and percents')
+        prot_counts, prot_percents = get_unit_counts_and_percents(prots, samples_dict)
+        progress.end()
+
+        network_desc_output_path = self.P('NETWORK.gexf')
+        progress.new('Processing')
+        progress.update('Generating the network description')
+        network_desc = generate_gexf_network_file(prots,
+                                                  samples_dict, 
+                                                  prot_percents,
+                                                  network_desc_output_path)
+        progress.end()
+        run.info('network stored', network_desc_output_path)
+
+
+
+    def get_samples_dict(self, samples, prots, table):
+        samples_dict = {}
+        for sample in samples:
+            samples_dict[sample] = {}
+        for v in table.values():
+            samples_dict[v['sample_id']][v['prot']] = v['mean_coverage']
+        return samples_dict
+
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Generate a network description file')
+    parser.add_argument('runinfo', metavar = 'PATH',
+                        help = 'PaPi RUNINFO file')
+
+    args = parser.parse_args()
+
+    try:
+        network = NetworkDescripton()
+        network.runinfo_path = args.runinfo
+        network.generate_for_genes()
+    except utils.ConfigError, e:
+        print e
+        sys.exit(-1)
+    except filesnpaths.FilesNPathsError, e:
+        print e
+        sys.exit(-2)
