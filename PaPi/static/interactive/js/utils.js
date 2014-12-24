@@ -160,3 +160,161 @@ PreorderIterator.prototype.Next = function()
     }
     return this.cur;
 }
+//---------------------------------------------------------
+//  Initialize dialogs and other dialog functions
+//---------------------------------------------------------
+
+function initializeDialogs() {
+    $('.dialogs').dialog({
+        resizable: false,
+        width: 'auto',
+        collapseEnabled: true,
+        closeOnEscape: false,
+        beforeclose: function(event, ui) {
+            return false;
+        },
+        dialogClass: "noclose"
+    });
+
+    $("#treeControls").dialog("option", "title", "Tree Settings");
+    $("#groups").dialog("option", "title", "Groups");
+
+    $("#zoomDialog").dialog("option", "title", "Zoom").dialog("option", "position", {
+            my: "right center",
+            at: "right center",
+            of: window
+        });
+
+
+    $("#messagePopup").dialog("option", "title", "Contig Names").dialog("option", "position", {
+            my: "center",
+            at: "center",
+            of: window
+        }).dialog('close');
+
+    var gap = (VIEWER_HEIGHT - ($(".ui-dialog:has(#treeControls)").height() + $(".ui-dialog:has(#groups)").height())) / 2;
+    var gap = (gap < 0) ? 0: gap;
+
+    $("#treeControls").dialog("option", "position", {
+            my: "left top",
+            at: "left top+" + gap + "px",
+            of: window
+        });
+
+    $("#groups").dialog("option", "position", {
+            my: "left bottom",
+            at: "left bottom-" + gap + "px",
+            of: window
+        }).dialog('option', 'minHeight', 0);
+}
+//---------------------------------------------------------
+//  message popup
+//---------------------------------------------------------
+function messagePopupShow(title, context)
+{
+    $('#messagePopup').dialog("option", "title", title);
+    $('#messagePopup_context').val(context);
+    $('#messagePopup').dialog('open');
+}
+
+
+//---------------------------------------------------------
+// Metadata operations
+//---------------------------------------------------------
+
+function removeSingleParents()
+{
+    // metadata and parameter count is global
+
+    for (var i = 1; i < parameter_count; i++) 
+    {
+        if (metadata[0][i] == '__parent__') 
+        {
+            has_parent_layer = true;
+
+            var parent_count_dict = {};
+            for (var j=1; j < metadata.length; j++)
+            {
+                if (metadata[j][i]=='')
+                    continue;
+
+                if (typeof parent_count_dict[metadata[j][i]] === 'undefined')
+                {
+                    parent_count_dict[metadata[j][i]] = 1;
+                }
+                else
+                {
+                    parent_count_dict[metadata[j][i]]++;
+                }
+            }
+
+            $.each(parent_count_dict, function(parent_name, count)
+            {
+                if (count==1)
+                {
+                    for (var j=1; j < metadata.length; j++)
+                    {
+                        if (metadata[j][i]==parent_name)
+                        {
+                            metadata[j][i]='';
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+//---------------------------------------------------------
+// jquery table sort helper
+//---------------------------------------------------------
+var fixHelperModified = function(e, tr) {
+    var $originals = tr.children();
+    var $helper = tr.clone();
+    $helper.children().each(function(index) {
+        $(this).width($originals.eq(index).width());
+    });
+    return $helper;
+};
+
+//---------------------------------------------------------
+//  zoom and scale
+//---------------------------------------------------------
+function getMatrix() {
+    var viewport = document.getElementById('viewport');
+    return viewport.getAttribute('transform').split('(')[1].split(')')[0].split(',').map(parseFloat);
+}
+
+function setMatrix(matrix) {
+    var viewport = document.getElementById('viewport');
+    viewport.setAttribute('transform', 'matrix(' + matrix.join(',') + ')');
+}
+
+function zoom(scale) {
+    matrix = getMatrix(viewport);
+
+    for (var i = 0; i < matrix.length; i++) {
+        matrix[i] *= scale;
+    }
+
+    bbox = viewport.getBBox();
+
+    matrix[4] += (1 - scale) * VIEWER_WIDTH / 2;
+    matrix[5] += (1 - scale) * VIEWER_HEIGHT / 2;
+
+    setMatrix(matrix);
+}
+
+function pan(dx, dy) {
+    matrix = getMatrix();
+
+    matrix[4] += dx;
+    matrix[5] += dy;
+
+    setMatrix(matrix);
+}
+
+function zoom_reset() {
+    baseMatrix = [1 * scale, 0, 0, 1 * scale, VIEWER_WIDTH / 2, VIEWER_HEIGHT / 2];
+    setMatrix(baseMatrix);
+}
