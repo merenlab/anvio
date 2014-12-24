@@ -213,6 +213,7 @@ class MultipleRuns:
 
         self.run.info('profiler_version', __version__)
         self.run.info('output_dir', self.output_directory)
+        self.run.info('profile_db', self.profile_db_path)
         self.run.info('merged', True)
         self.run.info('merged_sample_ids', self.sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
