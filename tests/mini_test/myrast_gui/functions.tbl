@@ -1,0 +1,43 @@
+prot_00001	FIG00000039	224	34	224	Translation elongation factor Tu
+prot_00002	FIG00000177	143	22	143	Translation elongation factor P
+prot_00003	FIG00016836	89	16	89	Transcription termination protein NusB
+prot_00004	FIG00000130	328	47	328	Carbamoyl-phosphate synthase small chain (EC 6.3.5.5)
+prot_00005	FIG00000111	736	120	736	Carbamoyl-phosphate synthase large chain (EC 6.3.5.5)
+prot_00006	FIG00000173	227	35	228	Orotidine 5'-phosphate decarboxylase (EC 4.1.1.23)
+prot_00007	FIG00000131	143	22	143	Guanylate kinase (EC 2.7.4.8)
+prot_00008	FIG00138258	480	73	480	Dihydroxy-acid dehydratase (EC 4.2.1.9)
+prot_00009	FIG00000394	69	11	70	DNA-directed RNA polymerase omega subunit (EC 2.7.7.6)
+prot_00010	FIG00000329	315	47	315	S-adenosylmethionine synthetase (EC 2.5.1.6)
+prot_00011	FIG00080955	572	86	572	Helicase PriA essential for oriC/DnaA-independent DNA replication
+prot_00012	FIG01349137	187	27	187	possible alpha beta hydrolase
+prot_00013	FIG00000112	207	34	208	Methionyl-tRNA formyltransferase (EC 2.1.2.9)
+prot_00014	FIG00000149	138	26	139	Phosphoserine phosphatase (EC 3.1.3.3)
+prot_00015	FIG00138585	330	58	330	Bacterial proteasome-activating AAA-ATPase (PAN)
+prot_00016	FIG00143645	382	59	383	Pup ligase PafA' paralog, possible component of postulated heterodimer PafA-PafA'
+prot_00017	FIG00002332	213	33	213	Inositol-1-monophosphatase (EC 3.1.3.25)
+prot_00018	FIG00016412	42	7	42	Prokaryotic ubiquitin-like protein Pup
+prot_00019	FIG00137619	374	57	374	Pup ligase PafA, possible component of postulated heterodimer PafA-PafA'
+prot_00020	FIG01320357	178	31	178	2-keto-3-deoxy-6-phosphogluconate aldolase
+prot_00022	FIG00020070	41	9	41	DNA-binding protein HU-alpha
+prot_00023	FIG00672403	600	93	601	FIG00672405: hypothetical protein
+prot_00024	FIG00000402	339	53	339	Multi antimicrobial extrusion protein (Na(+)/drug antiporter), MATE family of MDR efflux pumps
+prot_00026	FIG00001129	270	44	272	Cobalt-precorrin-6 synthase, anaerobic
+prot_00027	FIG00000933	181	29	181	Cobalt-precorrin-4 C11-methyltransferase (EC 2.1.1.133)
+prot_00028	FIG00014596	203	34	204	Cobalamin biosynthesis protein CbiG
+prot_00029	FIG00001528	157	25	157	Cobalt-precorrin-3b C17-methyltransferase
+prot_00030	FIG01960257	400	68	401	Cobalt-precorrin-6y C15-methyltransferase [decarboxylating] (EC 2.1.1.-)
+prot_00032	FIG00138468	224	33	225	Cobyrinic acid A,C-diamide synthase
+prot_00033	FIG00000689	238	37	239	Adenosylcobinamide-phosphate synthase (EC 6.3.1.10)
+prot_00034	FIG00000863	242	39	242	L-threonine 3-O-phosphate decarboxylase (EC 4.1.1.81)
+prot_00035	FIG00007257	110	19	110	Bacitracin export ATP-binding protein BceA
+prot_00036	FIG00010632	518	74	519	Bacitracin export permease protein BceB
+prot_00037	FIG00000518	120	17	120	Large-conductance mechanosensitive channel
+prot_00038	FIG00000147	540	86	541	Excinuclease ABC subunit A
+prot_00039	FIG00628138	135	19	135	transcriptional regulator, TetR family
+prot_00040	FIG01321637	175	27	175	Metal transporter, ZIP family
+prot_00042	FIG00521442	38	7	38	FIG00521446: hypothetical protein
+prot_00043	FIG01328066	319	45	319	Putative O-antigen ligase WaaL
+prot_00044	FIG01226081	259	37	259	UPF0020, Putative RNA methylase family UPF0020
+prot_00046	FIG00003460	237	33	238	Transcriptional regulator, MerR family
+prot_00047	FIG00017059	405	64	405	Lipid A export ATP-binding/permease protein MsbA
+prot_00048	FIG00017059	341	56	343	Lipid A export ATP-binding/permease protein MsbA
