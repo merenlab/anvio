@@ -142,7 +142,10 @@ class Run:
         label = constants.get_pretty_name(key)
 
         if header:
-            info_line = "\n%s\n%s\n" % (label, '=' * (self.width + 2))
+            if value:
+                info_line = "\n%s\n%s\n%s\n\n" % (label, '=' * (self.width + 2), textwrap.fill(str(value), 80))
+            else:
+                info_line = "\n%s\n%s\n" % (label, '=' * (self.width + 2))
         else:
             info_line = "%s %s: %s\n" % (label, '.' * (self.width - len(label)), str(value))
 

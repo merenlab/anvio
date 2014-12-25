@@ -281,15 +281,20 @@ def concatenate_files(dest_file, file_list):
     return dest_file
 
 
+def remove_spaces(text):
+    while 1:
+        if text.find("  ") > -1:
+            text = text.replace("  ", " ")
+        else:
+            break
+
+    return text
+
+
 class ConfigError(Exception):
     def __init__(self, e = None):
         Exception.__init__(self)
-        while 1:
-            if e.find("  ") > -1:
-                e = e.replace("  ", " ")
-            else:
-                break
-        self.e = e
+        self.e = remove_spaces(e)
         return
     def __str__(self):
         error_type = 'Config Error'
