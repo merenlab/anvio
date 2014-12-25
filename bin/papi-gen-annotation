@@ -11,6 +11,8 @@ any later version.
 
 Please read the COPYING file.
 """
+
+import os
 import sys
 import argparse
 
@@ -39,7 +41,7 @@ parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000
                             is (%(default)d). The split size must be identical between the profiled samples\
                             and the annotation db.')
 parser.add_argument('-o', '--output-prefix', default = "ANNOTATION", 
-                    help = 'Output file prefix. Default prefix is "%(default)s.')
+                    help = 'Output file prefix (it could contain a directory path). Default prefix is "%(default)s.')
 
 args = parser.parse_args()
 
@@ -49,6 +51,10 @@ try:
                             parsers available: %s" % (args.parser, ','.join(parsers.parsers))
     if not args.contigs:
         raise ConfigError, "This is not going to work without a FASTA file with contigs. Please see the help menu :/"
+
+    if os.path.isdir(args.output_prefix):
+        args.output_prefix = os.path.join(args.output_prefix, 'ANNOTATION')
+
     parser = parsers.parsers[args.parser](args.contigs, args.input, args.output_prefix, args.split_length)
 except ConfigError, e:
     print e
