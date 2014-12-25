@@ -293,6 +293,9 @@ class BAMProfiler:
         except ValueError:
             raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
 
+        # store num reads mapped for later use.
+        self.profile_db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
+
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
         self.run.info('input_bam', self.input_file_path)
