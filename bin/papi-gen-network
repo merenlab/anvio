@@ -27,36 +27,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def get_unit_counts_and_percents(units, samples_dict):
-    # this function returns two dictionaries that contain unit counts and percents
-    # across samples. that can be used for agglomeration, as well as generation of
-    # environment and matrix files.
-
-    unit_percents = {}
-    unit_counts = {}
-
-    sample_totals = {}
-    for sample in samples_dict:
-        sample_totals[sample] = sum(samples_dict[sample].values())
-
-    for sample in samples_dict:
-        counts = []
-        percents = []
-        for unit in units:
-            if samples_dict[sample].has_key(unit):
-                counts.append(samples_dict[sample][unit])
-                percents.append(samples_dict[sample][unit] * 100.0 / sample_totals[sample])
-            else:
-                counts.append(0)
-                percents.append(0.0)
-                
-        unit_counts[sample] = counts
-        unit_percents[sample] = percents
-
-    return (unit_counts, unit_percents)
-
-
-def generate_gexf_network_file(units, samples_dict, unit_percents, output_file, sample_mapping_dict = None,
+def generate_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict = None,
                                unit_mapping_dict = None, project = None, sample_size=8, unit_size=2,
                                skip_sample_labels = False, skip_unit_labels = False):
     output = open(output_file, 'w')
@@ -135,9 +106,9 @@ def generate_gexf_network_file(units, samples_dict, unit_percents, output_file, 
     for sample in samples:
         for i in range(0, len(units)):
             unit = units[i]
-            if unit_percents[sample][i] > 0.0:
+            if samples_dict[sample][unit] > 0.0:
                 if unit_mapping_dict:
-                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f">\n''' % (edge_id, unit, sample, unit_percents[sample][i]))
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f">\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
                     output.write('''        <attvalues>\n''')
                     for i in range(0, len(unit_mapping_categories)):
                         category = unit_mapping_categories[i]
@@ -145,7 +116,7 @@ def generate_gexf_network_file(units, samples_dict, unit_percents, output_file, 
                     output.write('''        </attvalues>\n''')
                     output.write('''    </edge>\n''')
                 else:
-                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f" />\n''' % (edge_id, unit, sample, unit_percents[sample][i]))
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f" />\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
 
 
                 edge_id += 1
@@ -187,21 +158,14 @@ class NetworkDescripton:
         samples_dict = self.get_samples_dict(samples, prots, genes_table)
         run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(prots), len(samples)))
 
-        progress.new('Processing')
-        progress.update('Counts and percents')
-        prot_counts, prot_percents = get_unit_counts_and_percents(prots, samples_dict)
-        progress.end()
-
         network_desc_output_path = self.P('NETWORK.gexf')
         progress.new('Processing')
         progress.update('Generating the network description')
         network_desc = generate_gexf_network_file(prots,
-                                                  samples_dict, 
-                                                  prot_percents,
+                                                  samples_dict,
                                                   network_desc_output_path)
         progress.end()
         run.info('network stored', network_desc_output_path)
-
 
 
     def get_samples_dict(self, samples, prots, table):
@@ -211,7 +175,6 @@ class NetworkDescripton:
         for v in table.values():
             samples_dict[v['sample_id']][v['prot']] = v['mean_coverage']
         return samples_dict
-
 
 
 if __name__ == '__main__':
