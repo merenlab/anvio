@@ -45,6 +45,7 @@ class MultipleRuns:
         self.sample_runinfos = {}
         self.sample_runinfo_dict_paths = args.input
         self.contigs = {}
+        self.normalization_multiplier = {}
         self.profiles = []
         self.output_directory = args.output_dir
 
@@ -81,7 +82,7 @@ class MultipleRuns:
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), p))
                 old_output_dir = runinfo['output_dir']
 
-                runinfo = filesnpaths.reset_output_dir(p, old_output_dir, new_output_dir)
+                runinfo = dictio.reset_output_dir(p, old_output_dir, new_output_dir)
 
                 # if the paths are still f'd up, store it as bad.
                 if not os.path.exists(P(runinfo, runinfo['metadata_splits'])):
@@ -174,7 +175,7 @@ class MultipleRuns:
             # some weird shit must have happened.
             raise utils.ConfigError, "PaPi is confused. While merging multiple runs, it seem some of the runs have the\
                                       'genes' table in their PROFILE.db's, and others do not. This is so weird, and it\
-                                      does not make any sense. Probably you should profile everything from scracth just\
+                                      does not make any sense. Probably you should profile everything from scratch just\
                                       to be on the safe side :/"
 
         # create an instance from genes
@@ -182,13 +183,36 @@ class MultipleRuns:
 
         # fill "genes" instance from all samples
         for runinfo in self.sample_runinfos.values():
+            sample_id = runinfo['sample_id']
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
             sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
             sample_gene_profiles = sample_profile_db.get_table_as_dict('genes', PaPi.genes.genes_table_structure)
             for g in sample_gene_profiles.values():
-                genes.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'])
+                genes.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
 
         genes.create_genes_table(self.profile_db)
+
+
+    def set_normalization_multiplier(self):
+        # WARNING: here we normalize gene coverages based on total number of reads mapped per sample.
+        # this is not the best way to do it. a better way probably required all reads obtained from each
+        # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
+        num_reads_mapped_per_sample = {}
+        for runinfo in self.sample_runinfos.values():
+            sample_profile_db_path = P(runinfo, runinfo['profile_db'])
+            sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
+            num_reads_mapped_per_sample[runinfo['sample_id']] = int(sample_profile_db.get_meta_value('total_reads_mapped'))
+
+        smallest_sample_size = min(num_reads_mapped_per_sample.values())
+
+        for sample_id in num_reads_mapped_per_sample:
+            self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id] 
+
+        PRETTY = lambda x: ', '.join(['%s: %.2f' % (s, x[s]) for s in x])
+        self.run.info('WARNING', utils.remove_spaces("PaPi just set the normalization values for each sample based on\
+                                                      how many mapped reads they contained. All normalized coverages\
+                                                      will use this information: %s" % PRETTY(self.normalization_multiplier)),
+                                                      display_only = True, header = True)
 
 
     def merge(self):
@@ -221,6 +245,7 @@ class MultipleRuns:
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
  
+        self.set_normalization_multiplier()
  
         self.progress.new('Merging genes tables')
         self.merge_genes_tables()
@@ -277,10 +302,17 @@ class MultipleRuns:
                 fields = '\t'.join(['contigs'] + [Length, GC_content] + self.sample_ids + auxiliary_fields)
                 metadata_output.write('%s\n' % fields)
                 for split_name in self.split_names:
+                    if essential_field == 'noramlized_coverage':
+                        # and here my programming career hits a new bottom with the following line. I will fix all this
+                        # shit very soon; that is how I contain my rage towards myself.
+                        values = [str(float(self.metadata_for_each_run[target][project][split_name][essential_field]) * self.normalization_multiplier[project]) for project in self.sample_ids]
+                    else:
+                        values = [self.metadata_for_each_run[target][project][split_name][essential_field] for project in self.sample_ids]
+
                     line = '\t'.join([split_name] +\
                                      [self.metadata_for_each_run[target][self.sample_ids[0]][split_name][Length]] +\
                                      [str(self.GC_content_for_splits[split_name])] +\
-                                     [self.metadata_for_each_run[target][project][split_name][essential_field] for project in self.sample_ids] +\
+                                     values +\
                                      [self.metadata_for_each_run[target][project][split_name][f] for f in auxiliary_fields])
                     metadata_output.write('%s\n' % line)
                 metadata_output.close()
