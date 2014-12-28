@@ -30,8 +30,8 @@ import PaPi.filesnpaths as filesnpaths
 import PaPi.clustering as clustering
 
 from PaPi.genes import Genes
-from PaPi.contig import Split
-from PaPi.contig import Contig, set_contigs_abundance
+from PaPi.metadata import Metadata
+from PaPi.contig import Split, Contig, set_contigs_abundance
 from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
@@ -87,6 +87,8 @@ class BAMProfiler:
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
 
+        self.metadata = Metadata(self.progress)
+
 
     def init_dirs_and_dbs(self):
         self.progress.new('Initializing')
@@ -141,6 +143,9 @@ class BAMProfiler:
         self.run.info('default_clustering', constants.single_default)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
+        self.run.info('split_length', self.split_length)
+        self.run.info('min_contig_length', self.min_contig_length)
+        self.run.info('min_mean_coverage', self.min_mean_coverage)
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -148,19 +153,23 @@ class BAMProfiler:
             self.init_profile_from_BAM()
             self.profile()
             self.store_profile()
-            self.store_summarized_profile()
+            self.store_summarized_profile_for_each_split()
         else:
             self.init_serialized_profile()
-            self.store_summarized_profile()
+            self.store_summarized_profile_for_each_split()
 
+        # if an annotation database is provided, there will be more fun downstream:
         if self.annotation_db:
-            # generate and store genes table
-            self.generate_genes_db()
+            self.generate_genes_table()
             self.run.info('genes_table', True, quiet = True)
         else:
             self.run.info('genes_table', False, quiet = True)
 
-        self.report()
+        # here we store both metadata and TNF information into the database:
+        self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, self.profile_db)
+
+        self.store_consenus_FASTA_files_for_splits_and_contigs()
+
         self.cluster_contigs()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
@@ -188,7 +197,7 @@ class BAMProfiler:
         self.run.info('annotation_db', "%d genes processed successfully." % len(annotation_table), display_only = True)
 
 
-    def generate_genes_db(self):
+    def generate_genes_table(self):
         self.genes = Genes(self.progress)
         self.progress.new('Profiling genes')
         num_contigs = len(self.contigs)
@@ -200,7 +209,6 @@ class BAMProfiler:
 
         self.genes.create_genes_table(self.profile_db)
         self.progress.end()
-        
 
 
     def set_sample_id(self):
@@ -415,7 +423,7 @@ class BAMProfiler:
         self.run.info('profile_dict', output_file)
 
 
-    def store_summarized_profile(self):
+    def store_summarized_profile_for_each_split(self):
         summary_index = {}
         summary_index_output_path = self.generate_output_destination('SUMMARY.cp')
         summary_dir = self.generate_output_destination('SUMMARY', directory=True)
@@ -445,68 +453,18 @@ class BAMProfiler:
             raise utils.ConfigError, "0 contigs to work with. Bye."
 
 
-    def report(self):
-        self.run.info('split_length', self.split_length)
-        self.run.info('min_contig_length', self.min_contig_length)
-        self.run.info('min_mean_coverage', self.min_mean_coverage)
+    def store_tnf_for_splits_and_contigs(self):
+        self.progress.new('Storing TNF')
+        kmers = sorted(self.contigs[self.contigs.keys()[0]].tnf.keys())
 
+        print kmers
+        sys.exit()
+
+
+    def store_consenus_FASTA_files_for_splits_and_contigs(self):
         # generate a sorted list of contigs based on length
         self.contig_names = [t[1] for t in sorted([(self.contigs[k].length, k)\
                                                 for k in self.contigs], reverse = True)]
-
-        for target in ["contigs", "splits"]:
-            self.progress.new('TNF Matrix')
-            self.progress.update('Being generated for %s' % target)
-            matrix_path = self.generate_output_destination('TNF-MATRIX-%s.txt' % target.upper())
-            output = open(matrix_path, 'w')
-            kmers = sorted(self.contigs[self.contigs.keys()[0]].tnf.keys())
-            output.write('contigs\t%s\n' % ('\t'.join(kmers)))
-            for contig in self.contigs:
-                for split in self.contigs[contig].splits:
-                    output.write('%s\t' % (split.name))
-                    if target == "contigs":
-                        output.write('%s\n' % '\t'.join([str(self.contigs[contig].tnf[kmer]) for kmer in kmers]))
-                    else:
-                        output.write('%s\n' % '\t'.join([str(split.tnf[kmer]) for kmer in kmers]))
-            output.close()
-            self.progress.end()
-            self.run.info('tnf_matrix_%s' % target, matrix_path)
-
-        F = lambda x: '%.4f' % x
-        I = lambda x: '%d' % x
-
-        # metadata
-        for target in ["contigs", "splits"]:
-            self.progress.new('Metadata')
-            self.progress.update('Being generated for %s' % target)
-            metadata_fields_to_report = ['contigs', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'noramlized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
-            metadata_txt = open(self.generate_output_destination('METADATA-%s.txt' % target.upper()), 'w')
-            metadata_txt.write('%s\n' % ('\t'.join(metadata_fields_to_report)))
-            for contig_name in self.contigs:
-                contig = self.contigs[contig_name]
-                for split in contig.splits:
-                    if target == "contigs":
-                        obj = contig
-                    else:
-                        obj = split
-
-                    # FIXME: except for the split.name, all should be obj's. but the poor design in contig.py
-                    # prevents that. 
-                    fields = [split.name,
-                              I(split.length),
-                              F(split.composition.GC_content),
-                              F(obj.coverage.std),
-                              F(obj.coverage.mean),
-                              F(obj.coverage.normalized),
-                              F(obj.coverage.portion_covered),
-                              F(obj.abundance),
-                              F(split.auxiliary.variability_score),
-                              contig_name] 
-                    metadata_txt.write('%s\n' % '\t'.join(fields))
-            metadata_txt.close()
-            self.progress.end()
-            self.run.info('metadata_%s' % target, metadata_txt.name)
-
 
         # splits FASTA
         self.progress.new('Consensus FASTA')

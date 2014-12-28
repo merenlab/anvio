@@ -35,12 +35,27 @@ def set_contigs_abundance(contigs):
 class Contig:
     def __init__(self, name):
         self.name = name
+        self.parent = None
         self.splits = []
         self.length = 0
         self.abundance = 0.0
         self.tnf = {}
         self.coverage = Coverage()
+        self.composition = None
 
+
+    def get_metadata_dict(self):
+        d = {'length': self.length,
+             'GC_content': self.composition.GC_content,
+             'std_coverage': self.coverage.std,
+             'mean_coverage': self.coverage.mean,
+             'normalized_coverage': self.coverage.normalized,
+             'portion_covered': self.coverage.portion_covered,
+             'abundance': self.abundance,
+             'variability': sum(s.auxiliary.variability_score for s in self.splits),
+             '__parent__': None}
+
+        return d
 
     def analyze_coverage(self, bam, progress):
         contig_coverage = []
@@ -65,6 +80,8 @@ class Contig:
         for split in self.splits:
             progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
             split.composition = Composition(split.auxiliary.rep_seq)
+        progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
+        self.composition = Composition(self.get_rep_seq())
 
 
     def get_rep_seq(self):
@@ -88,6 +105,20 @@ class Split:
         self.explicit_length = 0
         self.abundance = 0.0
         self.tnf = {}
+
+
+    def get_metadata_dict(self):
+        d = {'length': self.length,
+             'GC_content': self.composition.GC_content,
+             'std_coverage': self.coverage.std,
+             'mean_coverage': self.coverage.mean,
+             'normalized_coverage': self.coverage.normalized,
+             'portion_covered': self.coverage.portion_covered,
+             'abundance': self.abundance,
+             'variability': self.auxiliary.variability_score,
+             '__parent__': self.parent}
+
+        return d
 
 
 class Auxiliary:
