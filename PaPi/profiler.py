@@ -482,7 +482,7 @@ class BAMProfiler:
         clusterings = {}
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
-            config = ClusteringConfiguration(config_path, self.output_directory)
+            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
             newick_path = clustering.order_contigs_simple(config, progress = self.progress)
             clusterings[config_name] = os.path.basename(newick_path)
         self.run.info('clusterings', clusterings)

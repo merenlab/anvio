@@ -153,10 +153,38 @@ def run_command(cmdline):
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
 
+def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = []):
+    filesnpaths.is_output_file_writable(output_path)
+
+    num_fields = len(a[0])
+
+    if len(header) != num_fields:
+        raise ConfigError, "store array: header length (%d) differs from data (%d)..." % (len(header), num_fields)
+
+    for col in exclude_columns:
+        if not col in header:
+            raise ConfigError, "store array: column %s is not in the header array..."
+
+    exclude_indices = set([header.index(c) for c in exclude_columns])
+
+    header = [header[i] for i in range(0, len(header)) if i not in exclude_indices]
+
+    f = open(output_path, 'w')
+    f.write('%s\n' % '\t'.join(header))
+
+    for row in a:
+        f.write('\t'.join([str(row[i]) for i in range(0, num_fields) if i not in exclude_indices]) + '\n')
+
+    f.close()
+    return output_path
+
+
 def store_dict_as_TAB_delimited_file(d, output_path, headers):
     filesnpaths.is_output_file_writable(output_path)
+
     f = open(output_path, 'w')
     f.write('%s\n' % '\t'.join(headers))
+
     for k in d.keys():
         line = [k]
         for header in headers[1:]:
@@ -165,6 +193,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
             except KeyError:
                 raise ConfigError, "Header ('%s') is not found in the dict :/" % (header)
         f.write('%s\n' % '\t'.join(line))
+
+    f.close()
     return output_path
 
 

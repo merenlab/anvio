@@ -14,12 +14,14 @@ import os
 import sys
 import ConfigParser
 
+import PaPi.db as db
 import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
 
 from PaPi.utils import ConfigError
 from PaPi.utils import check_sample_id
 from PaPi.constants import allowed_chars
+from PaPi.utils import store_array_as_TAB_delimited_file as store_array
 from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 from PaPi.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 
@@ -59,14 +61,21 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory = None):
+    def __init__(self, config_file_path, input_directory = None, version = None):
         self.input_directory = input_directory or os.getcwd()
         self.config_file_path = config_file_path
+        self.version = version
 
         # read the config
         filesnpaths.is_file_exists(self.config_file_path)
         config = ConfigParser.ConfigParser()
         config.read(self.config_file_path)
+
+        # this will keep the actual paths for each matrix:
+        self.matrix_paths = {}
+        self.set_default_paths(config)
+
+        self.check_for_db_requests(config)
 
         # and sanity check.
         self.sanity_check(config)
@@ -87,7 +96,7 @@ class ClusteringConfiguration:
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, matrix, 'ratio', int)
             m['alias'] = self.get_option(config, matrix, 'alias', str)
-            m['path'] = os.path.join(self.input_directory, matrix)
+            m['path'] = self.matrix_paths[matrix]
             m['normalize'] = False if self.get_option(config, matrix, 'normalize', str) == 'False' else True 
             # next two variables are necessary to follow the order of vectors
             m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
@@ -183,6 +192,37 @@ class ClusteringConfiguration:
                 raise ConfigError, 'Missing mandatory option for section "%s": %s' % (section, option)
 
 
+    def set_default_paths(self, config):
+        matrices = self.get_other_sections(config)
+
+        # set default paths:
+        for matrix in matrices:
+            self.matrix_paths[matrix] = os.path.join(self.input_directory, matrix)
+
+
+    def check_for_db_requests(self, config):
+        matrices = self.get_other_sections(config)
+        # look for requests from the database, create temporary tab delimited files:
+        for matrix in matrices:
+            if matrix.find('::'):
+                database, table = matrix.split('::')
+                database_path = os.path.join(self.input_directory, database)
+                if not os.path.exists(database_path):
+                    raise ConfigError, 'The database you requested (%s) is not in the input directory :/' % database
+
+                dbc = db.DB(database_path, self.version)
+
+                if not table in dbc.get_table_names():
+                    raise ConfigError, 'The table you requested (%s) does not seem to be in %s :/' % (table, database)
+
+                table_rows = dbc.get_all_rows_from_table(table)
+                tmp_file_path = filesnpaths.get_temp_file_path()
+                table_structure = dbc.get_table_structure(table)
+                columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
+                store_array(table_rows, tmp_file_path, table_structure, exclude_columns = columns_to_exclude)
+                self.matrix_paths[matrix] = tmp_file_path
+
+
     def sanity_check(self, config):
         filesnpaths.is_file_exists(self.input_directory)
 
@@ -196,10 +236,12 @@ class ClusteringConfiguration:
 
         matrices = self.get_other_sections(config)
 
+
         for matrix in matrices:
-            if not os.path.exists(os.path.join(self.input_directory, matrix)):
+            if not os.path.exists(self.matrix_paths[matrix]):
                 raise ConfigError, 'The matrix file "%s" you mentioned in %s has not been found in the\
                                     input directory :/' % (matrix, os.path.basename(self.config_file_path))
+
 
             self.check_section(config, matrix, 'matrix')
 
@@ -207,7 +249,7 @@ class ClusteringConfiguration:
             # cause a lot of uncalled for complexity (or reporting was going to be very vague):
             columns_to_use_str = self.get_option(config, matrix, 'columns_to_use', str)
             columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
-            if columns_to_use and not cols_present(columns_to_use, os.path.join(self.input_directory, matrix)):
+            if columns_to_use and not cols_present(columns_to_use, self.matrix_paths[matrix]):
                 raise ConfigError, 'One or more of the columns declared for "%s" in the config file\
                                     seem(s) to be missing in the matrix :/' % (matrix)
 

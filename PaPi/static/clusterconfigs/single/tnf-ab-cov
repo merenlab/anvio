@@ -1,10 +1,10 @@
 [general]
 output_file = CONTIGS-TREE-TNF-AB-COV.txt
 
-[TNF-MATRIX-CONTIGS.txt]
+[PROFILE.db::tnf_contigs]
 alias = TNF
 
-[METADATA-CONTIGS.txt]
+[PROFILE.db::metadata_contigs]
 alias = Abundance
 normalize=False
 columns_to_use = abundance,coverage

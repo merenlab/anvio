@@ -109,8 +109,17 @@ class DB:
         return response.fetchall()
 
 
-    def get_table_as_dict(self, table, table_structure):
+    def get_table_structure(self, table):
+        response = self._exec('''SELECT * FROM %s''' % table)
+        row = response.fetchone()
+        return [t[0] for t in response.description]
+
+
+    def get_table_as_dict(self, table, table_structure = None):
         rows = self.get_all_rows_from_table(table)
+
+        if not table_structure:
+            table_structure = self.get_table_structure(table)
 
         results_dict = {}
 

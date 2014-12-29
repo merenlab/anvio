@@ -16,6 +16,7 @@ import hcluster
 
 import PaPi.terminal as terminal
 import PaPi.clustering as clustering
+from PaPi.profiler import __version__
 
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
@@ -34,7 +35,7 @@ parser.add_argument('-D', '--dry-run', default = False, action = 'store_true',
 args = parser.parse_args()
 
 try:
-    config = ClusteringConfiguration(args.config_file, args.input_directory)
+    config = ClusteringConfiguration(args.config_file, args.input_directory, __version__)
 except ConfigError, e:
     print e
     sys.exit(-1)
