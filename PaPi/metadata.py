@@ -13,9 +13,9 @@
 '''Storing and retrieving metadata regarding contigs and splits'''
 
 
-metadata_table_structure = ['entry_id', 'sample_id', 'name', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
-metadata_table_mapping   = [    int   ,     str    ,  str  ,    int  ,     float   ,     float     ,      float     ,         float        ,       float      ,    float   ,     float    ,      str    ]
-metadata_table_types     = [ 'numeric',   'text'   ,'text' ,'numeric',   'numeric' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,     'numeric'    ,  'numeric' ,   'numeric'  ,     'text'  ]
+metadata_table_structure = ['contig', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'portion_covered', 'abundance', 'variability', '__parent__']
+metadata_table_mapping   = [   str  ,    int  ,     float   ,     float     ,      float     ,         float        ,       float      ,    float   ,     float    ,     str     ]
+metadata_table_types     = [ 'text' ,'numeric',   'numeric' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 
 import copy
@@ -36,8 +36,6 @@ class Metadata:
         self.tnf_contigs = {}
         self.tnf_splits = {}
         self.progress = p
-        self.entry_id_c = 0
-        self.entry_id_s = 0
 
 
     def store_metadata_for_contigs_and_splits(self, sample_id, contigs, db):
@@ -57,50 +55,45 @@ class Metadata:
             contig_metadata = contig.get_metadata_dict()
             contig_tnf = contig.tnf
 
-            self.metadata_contigs[self.entry_id_c] = {'name': contig.name, 'sample_id': sample_id}
-            for metadata_field in metadata_table_structure[3:]:
-                self.metadata_contigs[self.entry_id_c][metadata_field] = contig_metadata[metadata_field]
+            self.metadata_contigs[contig.name] = {'contig': contig.name}
+            for metadata_field in metadata_table_structure[1:]:
+                self.metadata_contigs[contig.name][metadata_field] = contig_metadata[metadata_field]
 
-            self.tnf_contigs[self.entry_id_c] = contig.tnf
-            self.tnf_contigs[self.entry_id_c]['name'] = contig.name
+            self.tnf_contigs[contig.name] = contig.tnf
+            self.tnf_contigs[contig.name]['contig'] = contig.name
 
             # contig is done, deal with splits in it:
             for split in contig.splits:
                 split_metadata = split.get_metadata_dict()
-                self.metadata_splits[self.entry_id_s] = {'name': split.name, 'sample_id': sample_id, 'contig_id': self.entry_id_c}
-                for metadata_field in metadata_table_structure[3:]:
-                    self.metadata_splits[self.entry_id_s][metadata_field] = split_metadata[metadata_field]
+                self.metadata_splits[split.name] = {'contig': split.name}
+                for metadata_field in metadata_table_structure[1:]:
+                    self.metadata_splits[split.name][metadata_field] = split_metadata[metadata_field]
 
-                self.tnf_splits[self.entry_id_s] = split.tnf
-                self.tnf_splits[self.entry_id_s]['name'] = split.name
-                self.tnf_splits[self.entry_id_s]['contig_id'] = self.entry_id_c
-
-                self.entry_id_s += 1
-
-            self.entry_id_c += 1
-
+                self.tnf_splits[split.name] = split.tnf
+                self.tnf_splits[split.name]['name'] = split.name
+                self.tnf_splits[split.name]['__parent__'] = contig.name
 
         # all objects are ready, creating tables next.
         self.progress.update("Writing into the database ...")
         db.create_table('metadata_splits', metadata_table_structure, metadata_table_types)
-        db_entries = [tuple([entry_id] + [self.metadata_splits[entry_id][h] for h in metadata_table_structure[1:]]) for entry_id in self.metadata_splits]
-        db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+        db_entries = [tuple([split] + [self.metadata_splits[split][h] for h in metadata_table_structure[1:]]) for split in self.metadata_splits]
+        db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
         db.create_table('metadata_contigs', metadata_table_structure, metadata_table_types)
-        db_entries = [tuple([entry_id, self.metadata_splits[entry_id]['sample_id'], self.metadata_splits[entry_id]['name']] + [self.metadata_contigs[self.metadata_splits[entry_id]['contig_id']][h] for h in metadata_table_structure[3:]]) for entry_id in self.metadata_splits]
-        db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+        db_entries = [tuple([split] + [self.metadata_contigs[self.metadata_splits[split]['__parent__']][h] for h in metadata_table_structure[1:]]) for split in self.metadata_splits]
+        db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
         # FIXME: This a pretty shitty way to do this; table structure is dynamic, but not accessible from other
         # modules:
-        tnf_table_structure = ['entry_id', 'name'] + kmers
-        tnf_table_types = ['text', 'text'] + ['numeric'] * len(kmers)
+        tnf_table_structure = ['contig'] + kmers
+        tnf_table_types = ['text'] + ['numeric'] * len(kmers)
 
         db.create_table('tnf_splits', tnf_table_structure, tnf_table_types)
-        db_entries = [tuple([entry_id] + [self.tnf_splits[entry_id][h] for h in tnf_table_structure[1:]]) for entry_id in self.tnf_splits]
+        db_entries = [tuple([split] + [self.tnf_splits[split][h] for h in tnf_table_structure[1:]]) for split in self.tnf_splits]
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_splits', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
 
         db.create_table('tnf_contigs', tnf_table_structure, tnf_table_types)
-        db_entries = [tuple([entry_id, self.tnf_splits[entry_id]['name']] + [self.tnf_contigs[self.tnf_splits[entry_id]['contig_id']][h] for h in tnf_table_structure[2:]]) for entry_id in self.tnf_splits]
+        db_entries = [tuple([split] + [self.tnf_contigs[self.tnf_splits[split]['__parent__']][h] for h in tnf_table_structure[1:]]) for split in self.tnf_splits]
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_contigs', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
 
         db.commit()

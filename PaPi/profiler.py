@@ -36,7 +36,7 @@ from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.4.1'
+__version__ = '0.5.0'
 
 
 class BAMProfiler:
@@ -167,6 +167,13 @@ class BAMProfiler:
 
         # here we store both metadata and TNF information into the database:
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, self.profile_db)
+
+        # so this is a little sloppy. views variable holds all the table names that are appropriate for visualization.
+        # for single runs there is only one table in the PROFILE.db that is relevant for visualization; which is the
+        # 'metadata_splits' table. so we set it up here in such a way that it will be seamless to visualize both single
+        # and merged runs:
+        self.run.info('default_view', 'single', quiet = True)
+        self.run.info('views', {'single': 'metadata_splits'}, quiet = True)
 
         self.store_consenus_FASTA_files_for_splits_and_contigs()
 
