@@ -73,28 +73,38 @@ class Metadata:
                 self.tnf_splits[split.name]['name'] = split.name
                 self.tnf_splits[split.name]['__parent__'] = contig.name
 
-        # all objects are ready, creating tables next.
-        self.progress.update("Writing into the database ...")
-        db.create_table('metadata_splits', metadata_table_structure, metadata_table_types)
-        db_entries = [tuple([split] + [self.metadata_splits[split][h] for h in metadata_table_structure[1:]]) for split in self.metadata_splits]
-        db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
-        db.create_table('metadata_contigs', metadata_table_structure, metadata_table_types)
-        db_entries = [tuple([split] + [self.metadata_contigs[self.metadata_splits[split]['__parent__']][h] for h in metadata_table_structure[1:]]) for split in self.metadata_splits]
-        db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
-
-        # FIXME: This a pretty shitty way to do this; table structure is dynamic, but not accessible from other
-        # modules:
-        tnf_table_structure = ['contig'] + kmers
-        tnf_table_types = ['text'] + ['numeric'] * len(kmers)
-
-        db.create_table('tnf_splits', tnf_table_structure, tnf_table_types)
-        db_entries = [tuple([split] + [self.tnf_splits[split][h] for h in tnf_table_structure[1:]]) for split in self.tnf_splits]
-        db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_splits', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
-
-        db.create_table('tnf_contigs', tnf_table_structure, tnf_table_types)
-        db_entries = [tuple([split] + [self.tnf_contigs[self.tnf_splits[split]['__parent__']][h] for h in tnf_table_structure[1:]]) for split in self.tnf_splits]
-        db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_contigs', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
-
-        db.commit()
+        self.progress.update("Generating tables ...")
+        gen_metadata_tables(self.metadata_splits, self.metadata_contigs, db)
+        gen_tnf_tables(kmers, self.tnf_splits, self.tnf_contigs, db)
         self.progress.end()
+
+
+
+def gen_metadata_tables(metadata_splits, metadata_contigs, db):
+    # all objects are ready, creating tables next.
+    db.create_table('metadata_splits', metadata_table_structure, metadata_table_types)
+    db_entries = [tuple([split] + [metadata_splits[split][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
+    db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
+
+    db.create_table('metadata_contigs', metadata_table_structure, metadata_table_types)
+    db_entries = [tuple([split] + [metadata_contigs[metadata_splits[split]['__parent__']][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
+    db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
+
+    db.commit()
+
+
+def gen_tnf_tables(kmers, tnf_splits, tnf_contigs, db):
+    tnf_table_structure = ['contig'] + kmers
+    tnf_table_types = ['text'] + ['numeric'] * len(kmers)
+
+    db.create_table('tnf_splits', tnf_table_structure, tnf_table_types)
+    db_entries = [tuple([split] + [tnf_splits[split][h] for h in tnf_table_structure[1:]]) for split in tnf_splits]
+    db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_splits', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
+
+    db.create_table('tnf_contigs', tnf_table_structure, tnf_table_types)
+    db_entries = [tuple([split] + [tnf_contigs[tnf_splits[split]['__parent__']][h] for h in tnf_table_structure[1:]]) for split in tnf_splits]
+    db._exec_many('''INSERT INTO %s VALUES (%s)''' % ('tnf_contigs', (','.join(['?'] * len(tnf_table_structure)))), db_entries)
+
+    db.commit()
+

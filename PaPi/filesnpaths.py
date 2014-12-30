@@ -19,8 +19,6 @@ import PaPi.fastalib as u
 
 from PaPi.terminal import Progress
 
-ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
-
 class FilesNPathsError(Exception):
     def __init__(self, e = None):
         Exception.__init__(self)
@@ -56,7 +54,7 @@ def is_file_exists(file_path):
 def is_output_file_writable(file_path):
     if not file_path:
         raise FilesNPathsError, "No output file is declared..."
-    if not os.access(os.path.dirname(ABS(file_path)), os.W_OK):
+    if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
         raise FilesNPathsError, "You do not have permission to generate the output file '%s'" % file_path
     return True
 

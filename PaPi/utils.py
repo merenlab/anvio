@@ -25,7 +25,7 @@ import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
 
-from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, complements, levels_of_taxonomy
+from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, digits, complements, levels_of_taxonomy
 import PaPi.fastalib as u
 import PaPi.filesnpaths as filesnpaths
 from PaPi.sequence import Composition
@@ -35,10 +35,6 @@ from PaPi.terminal import Progress
 # Mock progress object that will not report anything, for general clarity.
 progress = Progress()
 progress.verbose = False
-
-
-# absolute path anonymous:
-ABS = lambda x: x if x.startswith('/') else os.path.join(os.getcwd(), x)
 
 
 def rev_comp(seq):
@@ -363,11 +359,16 @@ def get_chunks(contig_length, desired_length):
 
 def check_sample_id(sample_id):
     if sample_id:
-        if len([c for c in sample_id if c not in allowed_chars]):
-            raise ConfigError, "Project name ('%s') contains characters that PaPi does not like. Please\
+        if sample_id[0] in digits:
+            raise ConfigError, "Sample names can't start with digits. Long story. Please specify a sample name\
+                                that starts with an ASCII letter (you can use '-s' parameter for that)."
+
+        allowed_chars_for_samples = allowed_chars.replace('-', '')
+        if len([c for c in sample_id if c not in allowed_chars_for_samples]):
+            raise ConfigError, "Sample name ('%s') contains characters that PaPi does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
-                                digits, '_' and '-' (if you had not declared a project name and PaPi made\
-                                up one for you, please specify with '-p' parameter specifically)." % sample_id
+                                digits, '_' and '.' (if you had not declared a sample name and PaPi made\
+                                up one for you, please specify a sample name using the '-s' parameter)." % sample_id
 
 
 def check_contig_names(contig_names):
@@ -476,7 +477,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
 
     if output_file_name:
-        output_file_name = ABS(output_file_name)
+        output_file_name = os.path.abspath(output_file_name)
         output_directory = os.path.dirname(output_file_name)
         if not os.access(output_directory, os.W_OK):
             raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory

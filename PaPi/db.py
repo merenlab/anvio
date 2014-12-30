@@ -109,6 +109,11 @@ class DB:
         return response.fetchall()
 
 
+    def get_single_column_from_table(self, table, column):
+        response = self._exec('''SELECT %s FROM %s''' % (column, table))
+        return [t[0] for t in response.fetchall()]
+
+
     def get_table_structure(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
         row = response.fetchone()

@@ -27,8 +27,9 @@ import PaPi.terminal as terminal
 import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.filesnpaths as filesnpaths
-from PaPi.clusteringconfuguration import ClusteringConfiguration
 
+from PaPi.clusteringconfuguration import ClusteringConfiguration
+from PaPi.metadata import gen_tnf_tables
 from PaPi.profiler import __version__
 
 pp = terminal.pretty_print
@@ -41,10 +42,12 @@ class MultipleRuns:
         self.progress = terminal.Progress()
         self.run = terminal.Run()
 
-        self.sample_ids = []
-        self.sample_runinfos = {}
-        self.sample_runinfo_dict_paths = args.input
+        self.sample_id = args.sample_id
+        self.merged_sample_ids = []
+        self.merged_sample_runinfos = {}
+        self.merged_sample_runinfo_dict_paths = args.input
         self.contigs = {}
+        self.split_names = None
         self.normalization_multiplier = {}
         self.profiles = []
         self.output_directory = args.output_dir
@@ -58,9 +61,9 @@ class MultipleRuns:
     def read_runinfo_dict(self, path):
         runinfo = dictio.read_serialized_object(path)
         sample_id = runinfo['sample_id']
-        if not sample_id in self.sample_ids:
-            self.sample_ids.append(sample_id)
-        self.sample_runinfos[sample_id] = runinfo
+        if not sample_id in self.merged_sample_ids:
+            self.merged_sample_ids.append(sample_id)
+        self.merged_sample_runinfos[sample_id] = runinfo
         return sample_id, runinfo
 
 
@@ -69,7 +72,7 @@ class MultipleRuns:
         missing_path = []
         bad_profiler_version = []
 
-        for p in self.sample_runinfo_dict_paths:
+        for p in self.merged_sample_runinfo_dict_paths:
             sample_id, runinfo = self.read_runinfo_dict(p)
             try:
                 sample_id, runinfo = self.read_runinfo_dict(p)
@@ -78,14 +81,14 @@ class MultipleRuns:
                 continue
 
             # if things are not where they should be, we attempt to reset the directory paths.
-            if not os.path.exists(P(runinfo, runinfo['metadata_splits'])):
+            if not os.path.exists(P(runinfo, runinfo['profile_db'])):
                 new_output_dir = os.path.dirname(os.path.join(os.getcwd(), p))
                 old_output_dir = runinfo['output_dir']
 
                 runinfo = dictio.reset_output_dir(p, old_output_dir, new_output_dir)
 
                 # if the paths are still f'd up, store it as bad.
-                if not os.path.exists(P(runinfo, runinfo['metadata_splits'])):
+                if not os.path.exists(P(runinfo, runinfo['profile_db'])):
                     missing_path.append(p)
 
             if not runinfo.has_key('profiler_version') or runinfo['profiler_version'] != PaPi.profiler.__version__:
@@ -102,7 +105,7 @@ class MultipleRuns:
                                            it failed. Maybe these RUNINFO.cp files were generated on another\
                                            machine? Or maybe they were edited manually? Well, PaPi is as lost as you\
                                            are at this point :(" % (len(missing_path),
-                                                                    len(self.sample_runinfos),
+                                                                    len(self.merged_sample_runinfos),
                                                                     ', '.join(['"%s"' % x for x in missing_path]))
 
         if bad_profiler_version:
@@ -110,32 +113,38 @@ class MultipleRuns:
                                            older version of PaPi profiler that is not compatible with the current\
                                            merger anymore. You need to re-run PaPi profiler on these projects: %s" \
                                                         % (len(bad_profiler_version),
-                                                           len(self.sample_runinfos),
+                                                           len(self.merged_sample_runinfos),
                                                            ', '.join(['"%s"' % x for x in bad_profiler_version]))
 
 
     def sanity_check(self):
         if not self.output_directory:
             raise utils.ConfigError, "Sorry. You must declare an output directory path."
-        if not len(self.sample_runinfo_dict_paths) > 1:
+
+        self.output_directory = os.path.abspath(self.output_directory)
+
+        if os.path.exists(self.output_directory):
+            raise utils.ConfigError, "The output directory you asked for exists. PaPi does not like overwriting stuff."
+
+        if not len(self.merged_sample_runinfo_dict_paths) > 1:
             raise utils.ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
                                            to be useful."
 
-        missing = [p for p in self.sample_runinfo_dict_paths if not os.path.exists(p)]
+        missing = [p for p in self.merged_sample_runinfo_dict_paths if not os.path.exists(p)]
         if missing:
             raise utils.ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
                                                                  ', '.join(missing))
 
         self.read_runinfo_dicts()
 
-        if [True for v in self.sample_runinfos.values() if v['merged']]:
+        if [True for v in self.merged_sample_runinfos.values() if v['merged']]:
             raise utils.ConfigError, "This is very cute, but you can't merge already merged runs. PaPi can only merge\
                                       individual profiles (which are generated through papi-profile program). Sorry."
 
         for k, p in [('split_length', 'Split length (-L)'),
                      ('min_contig_length', 'Minimum contig length (-M)'),
                      ('min_mean_coverage', 'Minimum mean coverage (-C)')]:
-            v = set([r[k] for r in self.sample_runinfos.values()])
+            v = set([r[k] for r in self.merged_sample_runinfos.values()])
             if len(v) > 1:
                 raise utils.ConfigError, "%s is not identical for all runs to be merged, which is a \
                                           deal breaker. You need to profile all runs to be merged with\
@@ -144,30 +153,36 @@ class MultipleRuns:
             # so we carry over this information into the runinfo dict for merged runs:
             self.run.info(k, v.pop())
 
-        contigs = {}
-        for metadata in [P(self.sample_runinfos[r], self.sample_runinfos[r]['metadata_splits']) for r in self.sample_ids]:
-            contigs[metadata] = sorted([l.split('\t')[0] for l in open(metadata).readlines()[1:]])
+        # make sure all the split names are identical across runs
+        sample_runinfos = self.merged_sample_runinfos.values()
+        self.split_names = set(self.get_split_names(sample_runinfos[0]))
+        for sample_runinfo in sample_runinfos[1:]:
+            if self.split_names != set(self.get_split_names(sample_runinfo)):
+                raise utils.ConfigError, "All runs to be merged must contain identical split names (which would be the\
+                                          case if they are samples mapped to the same contigs). But it does not seem\
+                                          to be the case here. At least one run (namely, '%s') differs from a randomly\
+                                          chosen another one (namely, '%s'). PaPi hopes that you know how to fix this\
+                                          :/"% (sample_runinfos[0]['sample_id'], sample_runinfo['sample_id'])
+        self.split_names = sorted(list(self.split_names))
 
-        if len(set([contigs[m].__str__() for m in contigs])) > 1:
-            raise utils.ConfigError, "It seems there is at least one run among all runs you declared that differ\
-                                      from the others with respect to contig names or number of contigs it contains.\
-                                      (I simply checked  all the metadata files whether their first columns match\
-                                      each other with respect to their sorted content, so it is not likely that the\
-                                      mistake is on my part). If PaPi runs were not performed on BAM files that were\
-                                      generated by mapping short reads to the same scaffold, you can't use this\
-                                      script. Similarly, PaPi runs with different -M or -C parameters may not be merged."
 
-
-        self.output_directory = utils.ABS(self.output_directory)
-        filesnpaths.gen_output_directory(self.output_directory)
+    def set_sample_id(self):
+        if self.sample_id:
+            utils.check_sample_id(self.sample_id)
+        else:
+            self.sample_id = os.path.basename(self.output_directory)
+            self.sample_id = self.sample_id.replace('-', '_')
+            if self.sample_id[0] in constants.digits:
+                self.sample_id = 's' + self.sample_id
+            utils.check_sample_id(self.sample_id)
 
 
     def merge_genes_tables(self):
-        gene_tables_present = [runinfo['genes_table'] for runinfo in self.sample_runinfos.values()]
+        gene_tables_present = [runinfo['genes_table'] for runinfo in self.merged_sample_runinfos.values()]
 
-        if gene_tables_present.count(True) == len(self.sample_runinfos.values()):
+        if gene_tables_present.count(True) == len(self.merged_sample_runinfos.values()):
             self.run.info('genes_table', True, quiet = True)
-        elif gene_tables_present.count(False) == len(self.sample_runinfos.values()):
+        elif gene_tables_present.count(False) == len(self.merged_sample_runinfos.values()):
             # none has it
             self.run.info('genes_table', False, quiet = True)
             return
@@ -182,7 +197,7 @@ class MultipleRuns:
         genes = PaPi.genes.Genes()
 
         # fill "genes" instance from all samples
-        for runinfo in self.sample_runinfos.values():
+        for runinfo in self.merged_sample_runinfos.values():
             sample_id = runinfo['sample_id']
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
             sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
@@ -198,7 +213,7 @@ class MultipleRuns:
         # this is not the best way to do it. a better way probably required all reads obtained from each
         # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
         num_reads_mapped_per_sample = {}
-        for runinfo in self.sample_runinfos.values():
+        for runinfo in self.merged_sample_runinfos.values():
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
             sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
             num_reads_mapped_per_sample[runinfo['sample_id']] = int(sample_profile_db.get_meta_value('total_reads_mapped'))
@@ -217,18 +232,19 @@ class MultipleRuns:
 
     def merge(self):
         self.sanity_check()
+        self.set_sample_id()
 
-        self.split_names = self.get_split_names()
+        filesnpaths.gen_output_directory(self.output_directory)
 
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
         self.profile_db = PaPi.db.DB(self.profile_db_path, __version__, new_database = True)
         # put sample id into the meta table
-        self.profile_db.set_meta_value('sample_id', os.path.basename(self.output_directory))
+        self.profile_db.set_meta_value('sample_id', self.sample_id)
         self.profile_db.set_meta_value('merged', True)
 
         # get metadata information for both contigs and splits:
-        self.metadata_fields, self.metadata_for_each_run = self.read_metadata_files()
+        self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
         self.split_parents = self.get_split_parents()
 
         self.progress.new('Reading contigs into memory')
@@ -237,9 +253,10 @@ class MultipleRuns:
 
         self.run.info('profiler_version', __version__)
         self.run.info('output_dir', self.output_directory)
+        self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('merged', True)
-        self.run.info('merged_sample_ids', self.sample_ids)
+        self.run.info('merged_sample_ids', self.merged_sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('num_runs_processed', len(self.contigs))
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
@@ -268,16 +285,20 @@ class MultipleRuns:
         self.progress.end()
 
         self.progress.new('Analyzing TNF of contigs')
-        tnf_matrices = self.store_tnf_matrices_for_contigs_and_splits()
+        self.store_tnf_for_contigs_and_splits()
         self.progress.end()
-        for target in tnf_matrices:
-             self.run.info('tnf_matrix_%s' % target, tnf_matrices[target])
 
-        self.merged_metadata_files = self.merge_metadata_files()
+        # critical part:
+        self.merge_metadata_files()
         self.cluster_contigs()
-        self.store_runinfo_dicts()
 
         self.progress.end()
+
+
+        runinfo_serialized = os.path.join(self.output_directory, 'RUNINFO.mcp')
+        self.run.info('runinfo', runinfo_serialized)
+        self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
+
         self.run.quit()
         self.profile_db.disconnect()
 
@@ -289,36 +310,50 @@ class MultipleRuns:
         Length = "length"
         GC_content = "GC_content"
 
-        merged_metadata_files = {}
+        views = {}
 
+        # get split lenghs from one of the metadata files for fast access:
+        m = self.metadata_for_each_run['splits'].values()[0]
+        self.contig_lengths = dict([(split_name, m[split_name]['length']) for split_name in m])
+
+        # setting standard metadata table structure and types
+        merged_mtable_structure = ['contig', 'length', 'GC_content'] + self.merged_sample_ids + auxiliary_fields
+        merged_mtable_types = ['text'] + ['numeric'] * (len(self.merged_sample_ids) + 2) + ['text']
+
+
+        self.progress.new('Generating metadata tables')
         for target in ['contigs', 'splits']:
-            self.progress.new('Merging metadata files for %s' % target)
-            merged_metadata_files[target] = {}
             for essential_field in essential_fields:
-                self.progress.update('%s ...' % essential_field)
-                metadata_output_path = os.path.join(self.output_directory, '-'.join(['METADATA', target.upper(), essential_field]) + '.txt')
-                merged_metadata_files[target][essential_field] = metadata_output_path
-                metadata_output = open(metadata_output_path, 'w')
-                fields = '\t'.join(['contigs'] + [Length, GC_content] + self.sample_ids + auxiliary_fields)
-                metadata_output.write('%s\n' % fields)
+                self.progress.update('Processing %s for %s ...' % (essential_field, target))
+
+                target_table = '_'.join([essential_field, target])
+
+                m = {}
                 for split_name in self.split_names:
-                    if essential_field == 'noramlized_coverage':
-                        # and here my programming career hits a new bottom with the following line. I will fix all this
-                        # shit very soon; that is how I contain my rage towards myself.
-                        values = [str(float(self.metadata_for_each_run[target][project][split_name][essential_field]) * self.normalization_multiplier[project]) for project in self.sample_ids]
-                    else:
-                        values = [self.metadata_for_each_run[target][project][split_name][essential_field] for project in self.sample_ids]
+                    m[split_name] = {'GC_content': self.GC_content_for_splits[split_name],
+                                     'length': self.contig_lengths[split_name],
+                                     '__parent__': self.split_parents[split_name]}
+                    for sample_id in self.merged_sample_ids:
+                        if essential_field == 'noramlized_coverage':
+                            # and here my programming career hits a new bottom with the following line. I will fix all this
+                            # shit very soon; that is how I contain my rage towards myself.
+                            m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field] * self.normalization_multiplier[sample_id]
+                        else:
+                            m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field]
 
-                    line = '\t'.join([split_name] +\
-                                     [self.metadata_for_each_run[target][self.sample_ids[0]][split_name][Length]] +\
-                                     [str(self.GC_content_for_splits[split_name])] +\
-                                     values +\
-                                     [self.metadata_for_each_run[target][project][split_name][f] for f in auxiliary_fields])
-                    metadata_output.write('%s\n' % line)
-                metadata_output.close()
-            self.progress.end()
+                self.profile_db.create_table(target_table, merged_mtable_structure, merged_mtable_types)
+                db_entries = [tuple([split_name] + [m[split_name][h] for h in merged_mtable_structure[1:]]) for split_name in self.split_names]
+                self.profile_db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
 
-        return merged_metadata_files
+                if target == 'splits':
+                    views[essential_field] = target_table
+
+        self.profile_db.commit()
+        self.progress.end()
+        # fill the runinfo dict with visualization targets:
+        self.run.info('views', views, quiet = True)
+        # this is not very flexible:
+        self.run.info('default_view', 'mean_coverage', quiet = True)
 
 
     def cluster_contigs(self):
@@ -328,27 +363,11 @@ class MultipleRuns:
         clusterings = {}
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
-            config = ClusteringConfiguration(config_path, self.output_directory)
+            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
             newick_path = clustering.order_contigs_simple(config, progress = self.progress)
             clusterings[config_name] = os.path.basename(newick_path)
         self.run.info('clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
-
-
-    def store_runinfo_dicts(self):
-        # here we store runinfo dicts for essential columns purely for visualizatio purposes.
-
-        essential_fields = [f for f in self.metadata_fields if constants.IS_ESSENTIAL_FIELD(f)]
-        for essential_field in essential_fields:
-            self.progress.new('Runinfo files are being stored')
-            self.progress.update('%s ...' % essential_field)
-            runinfo_output_path = os.path.join(self.output_directory, '-'.join(['RUNINFO', essential_field]) + '.cp')
-            for target in ['contigs', 'splits']:
-                self.run.info('metadata_%s' % target, self.merged_metadata_files[target][essential_field], quiet = True)
-            self.progress.end()
-            self.run.info('sample_id', '%s (%s)' % (os.path.basename(self.output_directory), essential_field))
-            self.run.info('runinfo', runinfo_output_path)
-            self.run.store_info_dict(runinfo_output_path, strip_prefix = self.output_directory)
 
 
     def merge_split_summaries(self):
@@ -360,7 +379,7 @@ class MultipleRuns:
         # read all index files per run into a dict here, so the access is easier from within
         # the for loop below
         run_sum_indices = {}
-        for runinfo  in self.sample_runinfos.values():
+        for runinfo  in self.merged_sample_runinfos.values():
             r = P(runinfo, runinfo['profile_summary_index'])
             run_sum_indices[runinfo['sample_id']] = dictio.read_serialized_object(r)
 
@@ -369,7 +388,7 @@ class MultipleRuns:
             split_name = self.split_names[i]
 
             merged_summary = {}
-            for runinfo in self.sample_runinfos.values():
+            for runinfo in self.merged_sample_runinfos.values():
                 r = P(runinfo, run_sum_indices[runinfo['sample_id']][split_name])
                 run_split_summary = dictio.read_serialized_object(r)
                 merged_summary[runinfo['sample_id']] = run_split_summary[runinfo['sample_id']]
@@ -393,47 +412,37 @@ class MultipleRuns:
         return parents
 
 
-    def read_metadata_files(self):
+    def read_metadata_tables(self):
         """reads metadata files of contigs and splits into a dict"""
         metadata_for_each_run = {}
-
-        m = P(self.sample_runinfos.values()[0], self.sample_runinfos.values()[0]['metadata_contigs'])
-        metadata_fields = open(m).readline().strip().split('\t')
 
         for target in ['contigs', 'splits']:
             metadata_for_each_run[target] = {}
 
-            target_metadata = 'metadata_%s' % target
+            target_table = 'metadata_%s' % target
 
-            for sample_runinfo in self.sample_runinfos.values():
-                metadata = {}
-                metadata_path = P(sample_runinfo, sample_runinfo[target_metadata])
-                metadata_obj = open(metadata_path)
+            for r in self.merged_sample_runinfos.values():
+                db = PaPi.db.DB(os.path.join(r['output_dir'], r['profile_db']), __version__)
+                metadata_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
 
-                #skip the first line
-                metadata_obj.readline()
-
-                for line in metadata_obj.readlines():
-                    fields = line.strip().split('\t')
-                    metadata[fields[0]] = {}
-                    for i in range(1, len(fields)):
-                        metadata_field = metadata_fields[i]
-                        metadata[fields[0]][metadata_field] = fields[i]
-                metadata_for_each_run[target][sample_runinfo['sample_id']] = metadata
+        metadata_fields = db.get_table_structure('metadata_splits')
+        db.disconnect()
 
         return metadata_fields, metadata_for_each_run
 
 
-    def get_split_names(self):
-        m = P(self.sample_runinfos[self.sample_ids[0]], self.sample_runinfos[self.sample_ids[0]]['metadata_contigs'])
-        return [line.strip().split('\t')[0] for line in open(m).readlines()][1:]
+    def get_split_names(self, sample_runinfo):
+        db = PaPi.db.DB(os.path.join(sample_runinfo['output_dir'], sample_runinfo['profile_db']), __version__)
+        split_names = db.get_single_column_from_table('metadata_splits', 'contig')
+        db.disconnect()
+        return split_names
 
 
     def read_contigs(self):
-        for i in range(0, len(self.sample_ids)):
-            self.progress.update('%d of %d' % (i + 1, len(self.sample_ids)))
-            sample_id = self.sample_ids[i]
-            runinfo = self.sample_runinfos[sample_id]
+        for i in range(0, len(self.merged_sample_ids)):
+            self.progress.update('%d of %d' % (i + 1, len(self.merged_sample_ids)))
+            sample_id = self.merged_sample_ids[i]
+            runinfo = self.merged_sample_runinfos[sample_id]
             fasta = u.SequenceSource(P(runinfo, runinfo['splits_fasta']))
             contigs = {}
             while fasta.next():
@@ -441,7 +450,7 @@ class MultipleRuns:
             self.contigs[sample_id] = contigs
 
 
-    def store_tnf_matrices_for_contigs_and_splits(self):
+    def store_tnf_for_contigs_and_splits(self):
         # what we call a contig, is actually a split. we can't run TNF analysis on a split; instead,
         # we analyze TNF on the parent contig where each split is coming form. it is handled very
         # clearly in papi-profiler, but unfortunately I have been doing some pretty horrible coding
@@ -482,26 +491,21 @@ class MultipleRuns:
         # }
         #
 
-        # now we are going to populate the TNF matrix with splits, but using their parent tnf:
-        output_paths = {}
-        for target in ['contigs', 'splits']:
-            self.progress.update('Storing tnf matrix for %s ...' % (target))
-            matrix_path = os.path.join(self.output_directory, 'TNF-MATRIX-%s.txt' % target.upper())
-            output = open(matrix_path, 'w')
-            keys = kmers.kmers.values()[0]
-            output.write('contigs\t%s\n' % ('\t'.join(keys)))
-            for split_name in self.split_names:
-                output.write('%s\t' % (split_name))
-                if target == "contigs":
-                    parent = self.split_parents[split_name]
-                    output.write('%s\n' % '\t'.join([str(parents_dict[parent]['tnf'][key]) for key in keys]))
-                else:
-                    split_tnf = kmers.get_kmer_frequency(self.consensus_splits[split_name])
-                    output.write('%s\n' % '\t'.join([str(split_tnf[key]) for key in keys]))
-            output.close()
-            output_paths[target] = matrix_path
+        self.progress.update('Populating TNF variables ...')
+        tnf_splits = {}
+        tnf_contigs = {}
 
-        return output_paths
+        keys = kmers.kmers.values()[0]
+
+        for parent in set(self.split_parents.values()):
+            tnf_contigs[parent] = parents_dict[parent]['tnf']
+
+        for split_name in self.split_names:
+            tnf_splits[split_name] = kmers.get_kmer_frequency(self.consensus_splits[split_name])
+            tnf_splits[split_name]['__parent__'] = self.split_parents[split_name]
+
+        self.progress.update('Creating TNF tables ...')
+        gen_tnf_tables(sorted(list(keys)), tnf_splits, tnf_contigs, self.profile_db)
 
 
     def store_splits_consensus(self):
@@ -557,8 +561,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Merge multiple PaPi runs to do cross-sectional or timeseries comparisons')
     parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
                         help = 'PaPi RUNINFO files to create a merged output')
-    parser.add_argument('-o', '--output-dir', default = None,
-                        help = 'Output directory for merged output')
+    parser.add_argument('-o', '--output-dir', help = 'Output directory')
+    parser.add_argument('-s', '--sample-id', metavar = 'NAME', default = None,
+                        help = 'It is important to set a sample name (using only ASCII letters and digits\
+                                and without spaces) that is unique to a particular merged run. If you do not\
+                                provide one, PaPi will make up one for you based on the output_directory\
+                                name you set (although, you should never let the software to decide these\
+                                things).')
+
 
     args = parser.parse_args()
 

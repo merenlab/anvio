@@ -223,11 +223,14 @@ class BAMProfiler:
             utils.check_sample_id(self.sample_id)
         else:
             if self.input_file_path:
-                self.input_file_path = utils.ABS(self.input_file_path)
+                self.input_file_path = os.path.abspath(self.input_file_path)
                 self.sample_id = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
+                self.sample_id = self.sample_id.replace('-', '_')
+                if self.sample_id[0] in constants.digits:
+                    self.sample_id = 's' + self.sample_id
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
-                self.serialized_profile_path = utils.ABS(self.serialized_profile_path)
+                self.serialized_profile_path = os.path.abspath(self.serialized_profile_path)
                 self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
 
 
@@ -458,14 +461,6 @@ class BAMProfiler:
     def check_contigs(self):
         if not len(self.contigs):
             raise utils.ConfigError, "0 contigs to work with. Bye."
-
-
-    def store_tnf_for_splits_and_contigs(self):
-        self.progress.new('Storing TNF')
-        kmers = sorted(self.contigs[self.contigs.keys()[0]].tnf.keys())
-
-        print kmers
-        sys.exit()
 
 
     def store_consenus_FASTA_files_for_splits_and_contigs(self):

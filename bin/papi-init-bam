@@ -23,9 +23,9 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         progress = terminal.Progress()
         run = terminal.Run()
 
-        input_file_path = utils.ABS(input_file_path)
+        input_file_path = os.path.abspath(input_file_path)
         if output_file_path:
-            output_file_path = utils.ABS(output_file_path)
+            output_file_path = os.path.abspath(output_file_path)
         else:
             output_file_path = input_file_path + '-sorted'
 

@@ -204,7 +204,7 @@ class ClusteringConfiguration:
         matrices = self.get_other_sections(config)
         # look for requests from the database, create temporary tab delimited files:
         for matrix in matrices:
-            if matrix.find('::'):
+            if matrix.find('::') > -1:
                 database, table = matrix.split('::')
                 database_path = os.path.join(self.input_directory, database)
                 if not os.path.exists(database_path):

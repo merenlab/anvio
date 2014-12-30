@@ -31,4 +31,4 @@ papi-merge-multiple-runs test-output/204*/RUNINFO.cp -o test-output/204-MERGED
 
 
 # fire up the browser to show how does the merged samples look like.
-papi-interactive-binning -r test-output/204-MERGED/RUNINFO-mean_coverage.cp -a test-output/ANNOTATION.db
+papi-interactive-binning -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db

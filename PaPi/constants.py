@@ -20,7 +20,7 @@ clustering_configs_dir = os.path.join(os.path.dirname(PaPi.__file__), 'static/cl
 clustering_configs = {}
 
 single_default = "tnf"
-merged_default = "tnf-ab-cov"
+merged_default = "tnf-cov"
 
 if not os.path.exists(os.path.join(clustering_configs_dir, 'single', single_default)):
     print "Error: The default clustering configuration file for single runs, '%s',\n\
@@ -37,9 +37,10 @@ for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clusteri
     for config in glob.glob(os.path.join(clustering_configs_dir, dir, '*')):
         clustering_configs[dir][os.path.basename(config)] = config
 
-IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contigs", "GC_content", "length"])
+IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
 IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
+digits = string.digits
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
 levels_of_taxonomy = ["phylum", "class", "order", "family", "genus", "species"]

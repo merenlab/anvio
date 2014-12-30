@@ -1,5 +1,5 @@
 [general]
 output_file = CONTIGS-TREE-COV.txt
 
-[METADATA-CONTIGS-mean_coverage.txt]
+[PROFILE.db::mean_coverage_contigs]
 alias = Coverage

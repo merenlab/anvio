@@ -1,6 +1,6 @@
-bam
 .*
 *.pyc
 /build/
 /dist/
+test-output/
 /*.egg-info/

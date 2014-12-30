@@ -156,13 +156,13 @@ class RuninfoIO:
             # runinfo. kinda sketchy, but it is necessary.
             if args.tree:
                 run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
-                self.runinfo['tree_file'] = utils.ABS(args.tree)
+                self.runinfo['tree_file'] = os.path.abspath(args.tree)
             else:
                 self.runinfo['tree_file'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]
 
             if args.summary_index:
                 run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
-                self.runinfo['profile_summary_index'] = utils.ABS(args.summary_index)
+                self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
 
             if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != PaPi.profiler.__version__:
                 raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
@@ -170,9 +170,9 @@ class RuninfoIO:
                                                anymore. You need to re-run PaPi profiler on these projects."
 
             if args.title:
-                self.title = args.title
+                self.title = args.title + ' (%s)' % self.runinfo['default_view']
             else:
-                self.title = self.runinfo['sample_id']
+                self.title = self.runinfo['sample_id'] + ' (%s)' % self.runinfo['default_view']
 
             # FIXME: how it came to this point is a long story. but here we are trying to comply with the design
             # that was in place by replacing 'table names' for each self.runinfo['views'] item with TAB delimited
@@ -210,16 +210,16 @@ class RuninfoIO:
             if args.show_views:
                 raise utils.ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
-            self.runinfo['splits_fasta'] = utils.ABS(args.fasta_file)
-            self.runinfo['output_dir'] = utils.ABS(args.output_dir)
+            self.runinfo['splits_fasta'] = os.path.abspath(args.fasta_file)
+            self.runinfo['output_dir'] = os.path.abspath(args.output_dir)
             self.runinfo['default_view'] = 'single'
-            self.runinfo['views'] = {'single': utils.ABS(args.metadata)}
+            self.runinfo['views'] = {'single': os.path.abspath(args.metadata)}
             self.runinfo['default_clustering'] = 'default'
-            self.runinfo['clusterings'] = {'default': utils.ABS(args.tree)}
-            self.runinfo['tree_file'] = utils.ABS(args.tree)
+            self.runinfo['clusterings'] = {'default': os.path.abspath(args.tree)}
+            self.runinfo['tree_file'] = os.path.abspath(args.tree)
 
             if args.summary_index:
-                self.runinfo['profile_summary_index'] = utils.ABS(args.summary_index)
+                self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
                 self.contigs_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
 
             # sanity of the metadata
@@ -434,7 +434,7 @@ def send_data(name):
         return static_file(d.runinfo['metadata_json'], root='/')
     elif name == "state":
         if d.state:
-            return static_file(utils.ABS(d.state), root='/')
+            return static_file(os.path.abspath(d.state), root='/')
         return "{}"
     elif name == "contig_lengths":
         return json.dumps(d.contig_lengths)

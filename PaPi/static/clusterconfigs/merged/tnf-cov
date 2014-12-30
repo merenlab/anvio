@@ -1,8 +1,8 @@
 [general]
 output_file = CONTIGS-TREE-TNF-COV.txt
 
-[TNF-MATRIX-CONTIGS.txt]
+[PROFILE.db::tnf_contigs]
 alias = TNF
 
-[METADATA-CONTIGS-mean_coverage.txt]
+[PROFILE.db::mean_coverage_contigs]
 alias = Coverage
