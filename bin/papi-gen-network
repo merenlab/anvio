@@ -20,6 +20,7 @@ import PaPi.genes as genes
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
+import PaPi.annotation as annotation 
 import PaPi.filesnpaths as filesnpaths
 from PaPi.profiler import __version__
 
@@ -127,53 +128,100 @@ def generate_gexf_network_file(units, samples_dict, output_file, sample_mapping_
     output.close()
 
 
-class NetworkDescripton:
+class NetworkDescriptonSamples:
     def __init__(self):
         self.runinfo_path = None
+        self.annotation_db_path = None
+        self.use_named_functions_only = False
         self.runinfo = None
+        self.functions = {}
         self.P = lambda x: os.path.join(os.path.dirname(self.runinfo_path), x)
 
 
-    def generate_for_genes(self):
+    def init(self):
         filesnpaths.is_file_exists(self.runinfo_path)
+        filesnpaths.is_file_exists(self.annotation_db_path)
+
         self.runinfo = dictio.read_serialized_object(self.runinfo_path)
-        profile_db_path = self.P(self.runinfo['profile_db'])
-        profile_db = db.DB(profile_db_path, __version__)
+        self.profile_db_path = self.P(self.runinfo['profile_db'])
+        self.profile_db = db.DB(self.profile_db_path, __version__)
 
-        table_names = profile_db.get_table_names()
+        self.annotation_db = db.DB(self.annotation_db_path, annotation.__version__)
 
-        if not int(profile_db.get_meta_value('merged')):
+        table_names = self.profile_db.get_table_names()
+
+        if not int(self.profile_db.get_meta_value('merged')):
             raise utils.ConfigError, "The profile database describes a single run. Current implementation of this\
                                       program restricts its use to merged runs. Sorry :/"
 
         if 'genes' not in table_names:
             raise utils.ConfigError, "There is no 'genes' table in the profile database. Probably you did not\
-                                      profile the samples you merged with the presence of an annotation database.\
+                                      profile these samples with the presence of an annotation database.\
                                       If that is not the case maybe you should get in touch with the developers :/"
 
-        genes_table = profile_db.get_table_as_dict('genes', genes.genes_table_structure)
-        samples = sorted(list(set([r['sample_id'] for r in genes_table.values()])))
-        prots = sorted(list(set([r['prot'] for r in genes_table.values()])))
+        self.genes_dict = self.profile_db.get_table_as_dict('genes')
+        self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
+        self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
-        samples_dict = self.get_samples_dict(samples, prots, genes_table)
-        run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(prots), len(samples)))
+        # read functions.
+        self.annotation_table = self.annotation_db.get_table_as_dict('annotation')
+        for gene in self.annotation_table:
+            if self.annotation_table[gene]['function']:
+                self.functions[gene] = self.annotation_table[gene]['function']
 
-        network_desc_output_path = self.P('NETWORK.gexf')
+
+        # make sure every gene self.functions has representation in genes_dict:
+        for gene in self.functions:
+            if not gene in self.genes:
+                raise utils.ConfigError, "Annotation database and the genes table in the profile database disagrees.\
+                                          Are you sure you are using the right annotation database?" 
+
+        self.samples_dict = self.get_samples_dict(self.samples, self.genes_dict)
+        run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(self.genes), len(self.samples)))
+
+
+    def generate_genes_network(self):
+        network_desc_output_path = self.P('SAMPLE-GENE-NETWORK.gexf')
         progress.new('Processing')
         progress.update('Generating the network description')
-        network_desc = generate_gexf_network_file(prots,
-                                                  samples_dict,
+        network_desc = generate_gexf_network_file(self.genes,
+                                                  self.samples_dict,
                                                   network_desc_output_path)
         progress.end()
-        run.info('network stored', network_desc_output_path)
+        run.info('network with genes', network_desc_output_path)
 
 
-    def get_samples_dict(self, samples, prots, table):
+    def generate_functions_network(self):
+        functions = []
+        samples_functions_dict = {}
+        for sample in self.samples_dict:
+            samples_functions_dict[sample] = {}
+            for gene in self.samples_dict[sample]:
+                if gene in self.functions:
+                    function = self.functions[gene]
+                    functions.append(function)
+                    if function in samples_functions_dict[sample]:
+                        samples_functions_dict[sample][function] += self.samples_dict[sample][gene]
+                    else:
+                        samples_functions_dict[sample][function] = self.samples_dict[sample][gene]
+
+        network_desc_output_path = self.P('SAMPLE-FUNCTION-NETWORK.gexf')
+        progress.new('Processing')
+        progress.update('Generating sample-function network description')
+        network_desc = generate_gexf_network_file(functions,
+                                                  samples_functions_dict,
+                                                  network_desc_output_path)
+        progress.end()
+        run.info('network with functions', network_desc_output_path)
+
+
+
+    def get_samples_dict(self, samples, table, unit = 'prot'):
         samples_dict = {}
         for sample in samples:
             samples_dict[sample] = {}
         for v in table.values():
-            samples_dict[v['sample_id']][v['prot']] = v['mean_coverage']
+            samples_dict[v['sample_id']][v[unit]] = v['mean_coverage']
         return samples_dict
 
 
@@ -181,15 +229,20 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Generate a network description file')
-    parser.add_argument('runinfo', metavar = 'PATH',
+    parser.add_argument('runinfo', metavar = 'RUNINFO',
                         help = 'PaPi RUNINFO file')
+    parser.add_argument('annotation_db', metavar = 'ANNOTATION',
+                        help = 'Annotation database that has been used for the run described in RUNINFO file')
 
     args = parser.parse_args()
 
     try:
-        network = NetworkDescripton()
+        network = NetworkDescriptonSamples()
         network.runinfo_path = args.runinfo
-        network.generate_for_genes()
+        network.annotation_db_path = args.annotation_db
+        network.init()
+        network.generate_genes_network()
+        network.generate_functions_network()
     except utils.ConfigError, e:
         print e
         sys.exit(-1)
