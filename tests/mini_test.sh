@@ -1,9 +1,8 @@
-# change directory
+# change directory and clean the old mess if it exists
 cd mini_test
-
-# clean the old mess if exists
 rm -rf test-output
 mkdir test-output
+
 
 # init raw bam files.
 for f in 6M 7M 9M
@@ -28,6 +27,10 @@ done
 
 # merge samples
 papi-merge-multiple-runs test-output/204*/RUNINFO.cp -o test-output/204-MERGED
+
+
+# generate gene and function networks for the merge
+papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
 
 # fire up the browser to show how does the merged samples look like.
