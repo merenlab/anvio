@@ -160,10 +160,16 @@ class BAMProfiler:
 
         # if an annotation database is provided, there will be more fun downstream:
         if self.annotation_db:
+            annotation_hash = self.annotation_db.db.get_meta_value('annotation_hash')
+            self.profile_db.set_meta_value('annotation_hash', annotation_hash)
+            self.run.info('annotation_hash', annotation_hash)
+
             self.generate_genes_table()
             self.run.info('genes_table', True, quiet = True)
         else:
             self.run.info('genes_table', False, quiet = True)
+            self.profile_db.set_meta_value('annotation_hash', None)
+            self.run.info('annotation_hash', None, quiet = True)
 
         # here we store both metadata and TNF information into the database:
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, self.profile_db)

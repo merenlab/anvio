@@ -67,3 +67,4 @@ class Genes:
         db_entries = [tuple([entry_id] + [self.genes[entry_id][h] for h in genes_table_structure[1:]]) for entry_id in self.genes]
         db._exec_many('''INSERT INTO genes VALUES (?,?,?,?)''', db_entries)
         db.commit()
+

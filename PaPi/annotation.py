@@ -27,6 +27,7 @@ __version__ = "0.0.1"
 import os
 import sys
 import numpy
+import random
 import operator
 from collections import Counter
 
@@ -71,6 +72,8 @@ class Annotation:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
         self.db.set_meta_value('annotation_source', parser)
+        # this will be the unique information that will be passed downstream whenever this db is used:
+        self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
         self.split_length = split_length
 
         # create annotation main table using fields in 'annotation_table_structure' variable

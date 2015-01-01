@@ -148,6 +148,10 @@ class NetworkDescriptonSamples:
 
         self.annotation_db = db.DB(self.annotation_db_path, annotation.__version__)
 
+        if self.annotation_db.get_meta_value('annotation_hash') != self.profile_db.get_meta_value('annotation_hash'):
+            raise utils.ConfigError, "OK. The run described in '%s' was not profiled using the annotation database\
+                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.annotation_db_path)
+
         table_names = self.profile_db.get_table_names()
 
         if not int(self.profile_db.get_meta_value('merged')):
@@ -155,9 +159,8 @@ class NetworkDescriptonSamples:
                                       program restricts its use to merged runs. Sorry :/"
 
         if 'genes' not in table_names:
-            raise utils.ConfigError, "There is no 'genes' table in the profile database. Probably you did not\
-                                      profile these samples with the presence of an annotation database.\
-                                      If that is not the case maybe you should get in touch with the developers :/"
+            raise utils.ConfigError, "There is no 'genes' table in the profile database. This does not really make\
+                                      any sense :/"
 
         self.genes_dict = self.profile_db.get_table_as_dict('genes')
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))

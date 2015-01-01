@@ -165,6 +165,20 @@ class MultipleRuns:
                                           :/"% (sample_runinfos[0]['sample_id'], sample_runinfo['sample_id'])
         self.split_names = sorted(list(self.split_names))
 
+        # make sure all runs were profiled using the same annotation database (if one used):
+        annotation_hashes = set([r['annotation_hash'] for r in sample_runinfos])
+        if len(annotation_hashes) != 1:
+            if None in annotation_hashes:
+                raise utils.ConfigError, "It seems there is at least one run in the mix that was profiled using an\
+                                          annotation database, and at least one other that was profiled without using\
+                                          one. This is not good. All runs must be profiled using the same annotation\
+                                          database, or all runs must be profiled without an annotation database :/"
+            else:
+                raise utils.ConfigError, "It seems these runs were profiled using different annotation databases (or\
+                                          different versions of the same annotation database). All runs must be\
+                                          profiled using the same annotation database, or all runs must be profiled\
+                                          without an annotation database :/"
+
 
     def set_sample_id(self):
         if self.sample_id:
@@ -242,6 +256,9 @@ class MultipleRuns:
         # put sample id into the meta table
         self.profile_db.set_meta_value('sample_id', self.sample_id)
         self.profile_db.set_meta_value('merged', True)
+        annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
+        self.profile_db.set_meta_value('annotation_hash', annotation_hash)
+        self.run.info('annotation_hash', annotation_hash)
 
         # get metadata information for both contigs and splits:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
