@@ -1,0 +1,223 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2014, A. Murat Eren
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import os
+import sys
+import numpy
+import argparse
+import operator
+from collections import Counter
+from numpy import log2 as log
+
+
+import PaPi.utils as utils
+import PaPi.filesnpaths as filesnpaths
+import PaPi.terminal as terminal
+import PaPi.dictio as dictio
+
+progress = terminal.Progress()
+run = terminal.Run(width = 10)
+
+states_dict = {'AA': 'a',
+          'TT': 't',
+          'CC': 'c',
+          'GG': 'g',
+          'NN': 'n',
+          'AT': 'x',
+          'TA': 'x',
+          'AC': 'y',
+          'CA': 'y',
+          'CT': 'n',
+          'TC': 'n',
+          'AG': 'm',
+          'GA': 'm',
+          'CG': 'r',
+          'GC': 'r',
+          'GT': 'q',
+          'TG': 'q'}
+
+
+valid_chars = set(states_dict.values()) 
+
+def entropy(l):
+    E_Cs = []
+    for char in valid_chars:
+        P_C = (l.count(char) * 1.0 / len(l)) + 0.0000000000000000001
+        E_Cs.append(P_C * log(P_C))
+   
+    # return un-weighted entropy
+    return -(sum(E_Cs))
+
+
+class ContigVariability:
+    def __init__(self, contig_name, contig_data, contig_sequence, sample = 2):
+        self.contig_name = contig_name
+        self.contig_data = contig_data
+        self.contig_sequence = contig_sequence
+
+        self.layer_names = sorted(self.contig_data.keys())
+        self.layer_index = dict(zip(self.layer_names, range(0, len(self.layer_names))))
+
+        self.positions_dict = {}
+        self.filtered_num_positions = sample
+        self.positions_selected = None
+
+        self.TOP = lambda key, num: [x[1] for x in sorted([(self.positions_dict[p][key], p) for p in self.positions_selected], reverse = True)[:num]]
+
+
+    def populate_positions_dict(self):
+        counter = Counter()
+        for variable_positions_in_layer in [t['competing_nucleotides'].keys() for t in self.contig_data.values()]:
+            for pos in variable_positions_in_layer:
+                counter[pos] += 1
+
+        # initiate a null dict only with the information regarding how many times
+        # a position is observed across layers with a variability index > 0
+        for pos in counter:
+            self.positions_dict[pos] = {'occurrence': counter[pos],
+                                        'variability': 0.0,
+                                        'mean_coverage': 0.0,
+                                        'coverages': [],
+                                        'contents': [],
+                                        'avatars': [],
+                                        'entropy': 0.0 }
+
+        # fill in more information to finalize the dict
+        for p in self.positions_dict:
+            for layer_name in self.layer_names:
+                layer = self.contig_data[layer_name]
+                self.positions_dict[p]['variability'] += layer['variability'][p]
+                self.positions_dict[p]['coverages'].append(layer['coverage'][p])
+
+                if layer['competing_nucleotides'].has_key(p):
+                    content = layer['competing_nucleotides'][p]
+                else:
+                    if layer['coverage'][p]:
+                        content = self.contig_sequence[p] + self.contig_sequence[pos]
+                    else:
+                        content = 'NN'
+                self.positions_dict[p]['contents'].append(content)
+                self.positions_dict[p]['avatars'].append(states_dict[content])
+
+
+            avatar_set = set(self.positions_dict[p]['avatars'])
+            avatar_conversion = dict(zip(avatar_set, range(1, len(avatar_set) + 1)))
+            self.positions_dict[p]['identities'] = [avatar_conversion[a] for a in self.positions_dict[p]['avatars']]
+            self.positions_dict[p]['mean_coverage'] = numpy.mean(self.positions_dict[p]['coverages'])
+            self.positions_dict[p]['entropy'] = entropy(''.join(self.positions_dict[p]['avatars']))
+
+        self.positions_selected = self.positions_dict.keys()
+
+
+    def position_selection_heuristics(self):
+        '''The main purpose of this function is to normalize the number of positions across
+           multiple contigs by selecting only top `self.filtered_num_positions` positions
+           fom each contig.
+        '''
+
+        # first order all positions in a contig based on entropy
+        self.positions_selected = self.TOP('entropy', self.filtered_num_positions * 3)
+        # first order them by variability
+        self.positions_selected = self.TOP('variability', self.filtered_num_positions * 2)
+        # then order by coverage
+        self.positions_selected = self.TOP('mean_coverage', self.filtered_num_positions)
+    
+
+    def analyze_contig_summary(self):
+        # get a dictionary with all positions in all layers with their occurrences
+        self.populate_positions_dict()
+    
+        # set/select interesting positions
+        self.position_selection_heuristics()
+
+
+    def text_report(self):
+        run.info(contig_name, None, header = True)
+        for pos in self.positions_selected:
+            run.info('%d (entropy: %f)' % (pos, self.positions_dict[pos]['entropy']), None, header = True)
+            for layer_name in self.layer_names:
+                i = self.layer_index[layer_name]
+                layer = self.contig_data[layer_name]
+                content = self.positions_dict[pos]['contents'][i]
+                run.info(layer_name, '%s %s %f %d' % (content, states_dict[content], layer['variability'][pos], self.positions_dict[pos]['coverages'][i]))
+
+
+class VariabilityWrapper:
+    def __init__(self):
+        self.samples_dict = None
+        self.contigs = []
+        self.contig_positions = {}
+        self.layer_names = []
+        self.units = []
+
+    def add_contig(self, contig_name, contig_data, contig_sequence, sample = 2):
+        v = ContigVariability(contig_name, contig_data, contig_sequence, sample = sample)
+        v.analyze_contig_summary()
+
+        self.contigs.append(contig_name)
+        self.contig_positions[contig_name] = v.positions_selected
+
+        # create an empty samples_dict
+        if not self.samples_dict:
+            self.samples_dict = {}
+            for layer_name in v.layer_names:
+                self.samples_dict[layer_name] = {}
+            self.layer_names = v.layer_names
+
+        for pos in v.positions_selected:
+            unit = '%s_pos_%d' % (contig_name, pos)
+            self.units.append(unit)
+
+            for layer_name in v.layer_names:
+                i = v.layer_index[layer_name]
+                self.samples_dict[layer_name][unit] = v.positions_dict[pos]['identities'][i]
+
+
+    def create_TAB_delim_file(self, path):
+        output = open(path, 'w')
+        output.write('\t'.join(['layers'] + self.units) + '\n')
+        for layer_name in self.layer_names:
+            values = []
+            for unit in self.units:
+                values.append(self.samples_dict[layer_name][unit])
+            print values
+            output.write('\t'.join([layer_name] + [str(v) for v in values]) + '\n')
+        output.close()
+
+
+##############################################################################
+
+parser = argparse.ArgumentParser(description='Generate Variability Matrix')
+parser.add_argument('summary_dict', metavar = 'PATH', default = None,
+                    help = 'Summary file')
+parser.add_argument('contigs', help = 'List of contigs to work with')
+parser.add_argument('sequences', help = 'Contigs')
+parser.add_argument('-n', '--sample', type=int, default = 2, help = 'Num positions to report from each contig')
+parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
+args = parser.parse_args()
+
+
+run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
+summary_index = dictio.read_serialized_object(args.summary_dict)
+contigs = [c.strip() for c in open(args.contigs).readlines()]
+sequences = utils.get_FASTA_file_as_dictionary(args.sequences)
+sample = args.sample
+
+w = VariabilityWrapper()
+
+for contig_name in contigs:
+    d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[contig_name]))
+    w.add_contig(contig_name, d, sequences[contig_name], sample = sample)
+
+w.create_TAB_delim_file(args.output)
