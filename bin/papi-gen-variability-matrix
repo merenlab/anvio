@@ -117,6 +117,12 @@ class ContigVariability:
             self.positions_dict[p]['mean_coverage'] = numpy.mean(self.positions_dict[p]['coverages'])
             self.positions_dict[p]['entropy'] = entropy(''.join(self.positions_dict[p]['avatars']))
 
+
+        # remove any position with 0 entropy:
+        positions_with_zero_entropy = [p for p in self.positions_dict if self.positions_dict[p]['entropy'] < 0.00000001]
+        for pos in positions_with_zero_entropy:
+            self.positions_dict.pop(pos)
+
         self.positions_selected = self.positions_dict.keys()
 
 
@@ -181,7 +187,8 @@ class VariabilityWrapper:
 
             for layer_name in v.layer_names:
                 i = v.layer_index[layer_name]
-                self.samples_dict[layer_name][unit] = v.positions_dict[pos]['identities'][i]
+                #self.samples_dict[layer_name][unit] = v.positions_dict[pos]['identities'][i]
+                self.samples_dict[layer_name][unit] = v.positions_dict[pos]['avatars'][i]
 
 
     def create_TAB_delim_file(self, path):
@@ -191,9 +198,10 @@ class VariabilityWrapper:
             values = []
             for unit in self.units:
                 values.append(self.samples_dict[layer_name][unit])
-            print values
             output.write('\t'.join([layer_name] + [str(v) for v in values]) + '\n')
         output.close()
+
+
 
 
 ##############################################################################
