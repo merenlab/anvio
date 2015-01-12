@@ -48,9 +48,9 @@ args = parser.parse_args()
 try:
     if args.parser not in parsers.parsers:
         raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
-                            parsers available: %s" % (args.parser, ','.join(parsers.parsers))
+                            parsers available: %s" % (args.parser, ', '.join(parsers.parsers))
     if not args.contigs:
-        raise ConfigError, "This is not going to work without a FASTA file with contigs. Please see the help menu :/"
+        raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
 
     if os.path.isdir(args.output_prefix):
         args.output_prefix = os.path.join(args.output_prefix, 'ANNOTATION')
