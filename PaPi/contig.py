@@ -57,6 +57,7 @@ class Contig:
 
         return d
 
+
     def analyze_coverage(self, bam, progress):
         contig_coverage = []
         for split in self.splits:
