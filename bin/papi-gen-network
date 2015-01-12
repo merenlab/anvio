@@ -110,11 +110,12 @@ def generate_gexf_network_file(units, samples_dict, output_file, sample_mapping_
             if samples_dict[sample][unit] > 0.0:
                 if unit_mapping_dict:
                     output.write('''    <edge id="%d" source="%s" target="%s" weight="%f">\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
-                    output.write('''        <attvalues>\n''')
-                    for i in range(0, len(unit_mapping_categories)):
-                        category = unit_mapping_categories[i]
-                        output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
-                    output.write('''        </attvalues>\n''')
+                    if unit_mapping_categories:
+                        output.write('''        <attvalues>\n''')
+                        for i in range(0, len(unit_mapping_categories)):
+                            category = unit_mapping_categories[i]
+                            output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
+                        output.write('''        </attvalues>\n''')
                     output.write('''    </edge>\n''')
                 else:
                     output.write('''    <edge id="%d" source="%s" target="%s" weight="%f" />\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
@@ -134,7 +135,7 @@ class NetworkDescriptonSamples:
         self.annotation_db_path = None
         self.use_named_functions_only = False
         self.runinfo = None
-        self.functions = {}
+        self.functions = {'labels': {}}
         self.P = lambda x: os.path.join(os.path.dirname(self.runinfo_path), x)
 
 
@@ -162,31 +163,30 @@ class NetworkDescriptonSamples:
             raise utils.ConfigError, "There is no 'genes' table in the profile database. This does not really make\
                                       any sense :/"
 
+        progress.new('Init')
+        progress.update('Reading genes table from %s ...' % self.profile_db_path)
         self.genes_dict = self.profile_db.get_table_as_dict('genes')
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
         self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
-        # read functions.
+        progress.update('Reading annotations table from %s  ...' % self.annotation_db_path)
         self.annotation_table = self.annotation_db.get_table_as_dict('annotation')
+
+        # read functions.
+        progress.update('Sifting through genes with non-hypothetical functions ...')
         for gene in self.annotation_table:
-            if self.annotation_table[gene]['function']:
-                self.functions[gene] = self.annotation_table[gene]['function']
-
-
-        # make sure every gene self.functions has representation in genes_dict:
-        for gene in self.functions:
-            if not gene in self.genes:
-                raise utils.ConfigError, "Annotation database and the genes table in the profile database disagrees.\
-                                          Are you sure you are using the right annotation database?" 
+            if self.annotation_table[gene]['function'] and self.annotation_table[gene]['function'].lower().find('hypothetical') < 0 and gene in self.genes:
+                self.functions['labels'][gene] = self.annotation_table[gene]['function']
 
         self.samples_dict = self.get_samples_dict(self.samples, self.genes_dict)
+        progress.end()
         run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(self.genes), len(self.samples)))
 
 
     def generate_genes_network(self):
         network_desc_output_path = self.P('SAMPLE-GENE-NETWORK.gexf')
         progress.new('Processing')
-        progress.update('Generating the network description')
+        progress.update('Generating network description for %d genes across %d samples ... ' % (len(self.genes), len(self.samples_dict)))
         network_desc = generate_gexf_network_file(self.genes,
                                                   self.samples_dict,
                                                   network_desc_output_path)
@@ -195,25 +195,15 @@ class NetworkDescriptonSamples:
 
 
     def generate_functions_network(self):
-        functions = []
-        samples_functions_dict = {}
-        for sample in self.samples_dict:
-            samples_functions_dict[sample] = {}
-            for gene in self.samples_dict[sample]:
-                if gene in self.functions:
-                    function = self.functions[gene]
-                    functions.append(function)
-                    if function in samples_functions_dict[sample]:
-                        samples_functions_dict[sample][function] += self.samples_dict[sample][gene]
-                    else:
-                        samples_functions_dict[sample][function] = self.samples_dict[sample][gene]
+        genes_with_functions = sorted(self.functions['labels'].keys())
+        progress.new('Processing')
+        progress.update('Generating network description for %d genes w/functions across %d samples ... ' % (len(genes_with_functions), len(self.samples_dict)))
 
         network_desc_output_path = self.P('SAMPLE-FUNCTION-NETWORK.gexf')
-        progress.new('Processing')
-        progress.update('Generating sample-function network description')
-        network_desc = generate_gexf_network_file(functions,
-                                                  samples_functions_dict,
-                                                  network_desc_output_path)
+        network_desc = generate_gexf_network_file(genes_with_functions,
+                                                  self.samples_dict,
+                                                  network_desc_output_path,
+                                                  unit_mapping_dict = self.functions)
         progress.end()
         run.info('network with functions', network_desc_output_path)
 
