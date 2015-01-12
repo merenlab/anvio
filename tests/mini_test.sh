@@ -33,8 +33,12 @@ done
 INFO "Generating the annotation database ..."
 # generate an annotation db using files obtained from myrast_gui using contigs.fa (contigs.fa
 # is the original file all samples were mapped to) using split size 1000 (the default split
-# size is better for most projects, small split size here is for testing purposes)
+# size is better for most projects, small split size here is for testing purposes) (following
+# two lines are generating the ANNOTATION database using gui and cmdline outputs, obviously
+# the second one overwrites the result of the first one. they are both here for testing
+# purposes, but only the result of the second command is used for later steps)
 papi-gen-annotation --contigs contigs.fa -p myrast_gui myrast_gui/* -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_cmdline myrast_cmdline/*tbl -o test-output/ -L 1000 
 
 
 INFO "Profiling samples ..."
