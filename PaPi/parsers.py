@@ -84,9 +84,27 @@ class Parser(object):
         A.create_new_database(contigs_fasta, annotations_dict, split_length, parser=self.annotation_source)
 
 
-class MyRastCMDLine(Parser):
+class MyRastCMDLine_DO_NOT_USE(Parser):
+    """
+    OK. This class was parsing the output of this command:
+    
+        svr_assign_to_dna_using_figfams < ../contigs.fa > svr_assign_to_dna_using_figfams.txt
+
+    svr_assign_to_dna_using_figfams.txt looked like this:
+
+        204_10M_MERGED.PERFECT.gz.keep_contig_878    530    204_10M_MERGED.PERFECT.gz.keep_contig_878_3443_6817    Carbamoyl-phosphate synthase large chain (EC 6.3.5.5)
+        204_10M_MERGED.PERFECT.gz.keep_contig_878    428    204_10M_MERGED.PERFECT.gz.keep_contig_878_12284_14530    Helicase PriA essential for oriC/DnaA-independent DNA replication    Bifidobacterium adolescentis ATCC 15703
+        204_10M_MERGED.PERFECT.gz.keep_contig_878    271    204_10M_MERGED.PERFECT.gz.keep_contig_878_18914_20476    Pup ligase PafA' paralog, possible component of postulated heterodimer PafA-PafA'
+        204_10M_MERGED.PERFECT.gz.keep_contig_878    316    204_10M_MERGED.PERFECT.gz.keep_contig_878_21745_23202    Pup ligase PafA, possible component of postulated heterodimer PafA-PafA'    Bifidobacterium adolescentis ATCC 15703
+        (...)
+
+    which was great, because we had almost everything we needed to know about our contigs. however,
+    this output did not contain information about open reading frames without a known function. so we
+    had to go back to the shitty implementation. If we can find a way to 
+    """
+
     def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
-        files_expected = {'svr_output': 'svr_output.tbl'}
+        files_expected = {'svr_output': 'svr_assign_to_dna_using_figfams.txt'}
 
         files_structure = {'svr_output': 
                                 {'col_names': ['contig', 'field1', 'prot', 'function', 't_species'],
@@ -123,6 +141,69 @@ class MyRastCMDLine(Parser):
             entry['t_species'] = t_species_str
 
             annotations_dict[prot] = entry
+
+        return annotations_dict
+
+
+class MyRastCMDLine(Parser):
+    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+        files_expected = {'functions': 'svr_assign_using_figfams.txt', 'genes': 'svr_call_pegs.txt'}
+
+        files_structure = {'functions': 
+                                {'col_names': ['t_species', 'field2', 'prot', 'function'],
+                                 'col_mapping': [str, int, str, str],
+                                 'indexing_field': 2},
+                           'genes': 
+                                {'type': 'fasta'},}
+
+        Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
+
+        annotations_dict = self.get_annotations_dict()
+        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
+
+
+    def get_annotations_dict(self):
+        # start with the fasta dict to identify start and stop. fasta file looked like this, as a reminder:
+        #
+        #    >prot_00001 D23-1_contig_1_127_1215
+        #    MTDCSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #    >prot_00002 D23-1_contig_1_1281_1499
+        #    MKDNAERKAKRRIFLXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #    >prot_00003 D23-1_contig_1_2630_1626
+        #    MAKQKIRIRLKAYDHRVIDQSAEKIVETAKRSGADVSGPIPLPTE
+        #    >prot_00004 D23-1_contig_1_2987_3376
+        #    MKNGPKLSLALIGIFLILCEFFYGIPFLGATFILSFGWQPLIFNA
+        #    >prot_00005 D23-1_contig_1_4901_3567
+        #    MKNYFQFDKYGTNFKREILGGITTFLSMAYILAVNPQVLSLAGVK
+        #    >prot_00006 D23-1_contig_1_7149_5014
+        #    MKSLILAEKPSVARDIADALQINQKRNGYFENNQYIVTWALGHLV
+        #    >prot_00007 D23-1_contig_1_7266_8231
+        #    MLISLLTFISVEILYNKSNKKYGGNDMSIVQLYDITQIKSFIEHS
+
+        annotations_dict = {}
+
+        for key in self.dicts['genes']:
+            entry = {}
+            for field in annotation.annotation_table_structure:
+                entry[field] = None
+
+            prot, remainder = key.split()
+            contig = '_'.join(remainder.split('_')[:-2])
+            start, stop = [t for t in remainder.split('_')[-2:]]
+            start, stop = int(start), int(stop)
+            entry['start'], entry['stop'], entry['direction'] = (start, stop, 'f') if start < stop else (stop, start, 'r')
+            entry['contig'] = contig
+
+            annotations_dict[prot] = entry
+
+        for prot in self.dicts['functions']:
+            d = self.dicts['functions'][prot]
+
+            t_species_str = d['t_species']
+            if len(t_species_str.split()) > 2:
+                t_species_str = ' '.join(t_species_str.split()[0:2])
+            annotations_dict[prot]['t_species'] = t_species_str
+            annotations_dict[prot]['function'] = d['function']
 
         return annotations_dict
 
@@ -192,4 +273,5 @@ class MyRastGUI(Parser):
 
 
 parsers = {"myrast_gui": MyRastGUI,
-           "myrast_cmdline": MyRastCMDLine}
+           "myrast_cmdline": MyRastCMDLine,
+           "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}

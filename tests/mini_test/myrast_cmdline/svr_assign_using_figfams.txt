@@ -1,0 +1,44 @@
+	224	prot_00001	Translation elongation factor Tu
+	143	prot_00002	Translation elongation factor P
+	89	prot_00003	Transcription termination protein NusB
+	328	prot_00004	Carbamoyl-phosphate synthase small chain (EC 6.3.5.5)
+	736	prot_00005	Carbamoyl-phosphate synthase large chain (EC 6.3.5.5)
+	227	prot_00006	Orotidine 5'-phosphate decarboxylase (EC 4.1.1.23)
+	143	prot_00007	Guanylate kinase (EC 2.7.4.8)
+	480	prot_00008	Dihydroxy-acid dehydratase (EC 4.2.1.9)
+	69	prot_00009	DNA-directed RNA polymerase omega subunit (EC 2.7.7.6)
+	315	prot_00010	S-adenosylmethionine synthetase (EC 2.5.1.6)
+	572	prot_00011	Helicase PriA essential for oriC/DnaA-independent DNA replication
+Bifidobacterium adolescentis ATCC 15703	187	prot_00012	possible alpha beta hydrolase
+	207	prot_00013	Methionyl-tRNA formyltransferase (EC 2.1.2.9)
+	138	prot_00014	Phosphoserine phosphatase (EC 3.1.3.3)
+	330	prot_00015	Bacterial proteasome-activating AAA-ATPase (PAN)
+	382	prot_00016	Pup ligase PafA' paralog, possible component of postulated heterodimer PafA-PafA'
+	213	prot_00017	Inositol-1-monophosphatase (EC 3.1.3.25)
+	42	prot_00018	Prokaryotic ubiquitin-like protein Pup
+Bifidobacterium adolescentis ATCC 15703	374	prot_00019	Pup ligase PafA, possible component of postulated heterodimer PafA-PafA'
+	178	prot_00020	2-keto-3-deoxy-6-phosphogluconate aldolase
+	41	prot_00022	DNA-binding protein HU-alpha
+	600	prot_00023	FIG00672405: hypothetical protein
+Ruminococcus sp. 5_1_39BFAA	339	prot_00024	Multi antimicrobial extrusion protein (Na(+)/drug antiporter), MATE family of MDR efflux pumps
+Ruminococcus sp. 5_1_39BFAA	270	prot_00026	Cobalt-precorrin-6 synthase, anaerobic
+	181	prot_00027	Cobalt-precorrin-4 C11-methyltransferase (EC 2.1.1.133)
+Ruminococcus sp. 5_1_39BFAA	203	prot_00028	Cobalamin biosynthesis protein CbiG
+	157	prot_00029	Cobalt-precorrin-3b C17-methyltransferase
+Ruminococcus sp. 5_1_39BFAA	400	prot_00030	Cobalt-precorrin-6y C15-methyltransferase [decarboxylating] (EC 2.1.1.-)
+Ruminococcus sp. 5_1_39BFAA	224	prot_00032	Cobyrinic acid A,C-diamide synthase
+	238	prot_00033	Adenosylcobinamide-phosphate synthase (EC 6.3.1.10)
+Ruminococcus sp. 5_1_39BFAA	242	prot_00034	L-threonine 3-O-phosphate decarboxylase (EC 4.1.1.81)
+Clostridium ramosum DSM 1402	110	prot_00035	Bacitracin export ATP-binding protein BceA
+Clostridium ramosum DSM 1402	518	prot_00036	Bacitracin export permease protein BceB
+Clostridium ramosum DSM 1402	120	prot_00037	Large-conductance mechanosensitive channel
+Clostridium ramosum DSM 1402	540	prot_00038	Excinuclease ABC subunit A
+Clostridium ramosum DSM 1402	135	prot_00039	transcriptional regulator, TetR family
+	175	prot_00040	Metal transporter, ZIP family
+Clostridium ramosum DSM 1402	38	prot_00042	FIG00521446: hypothetical protein
+Clostridium ramosum DSM 1402	319	prot_00043	Putative O-antigen ligase WaaL
+Clostridium ramosum DSM 1402	259	prot_00044	UPF0020, Putative RNA methylase family UPF0020
+Clostridium ramosum DSM 1402	237	prot_00046	Transcriptional regulator, MerR family
+Clostridium ramosum DSM 1402	405	prot_00047	Lipid A export ATP-binding/permease protein MsbA
+Clostridium ramosum DSM 1402	341	prot_00048	Lipid A export ATP-binding/permease protein MsbA
+	0	prot_00045	Stage V sporulation protein B

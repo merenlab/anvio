@@ -38,7 +38,8 @@ INFO "Generating the annotation database ..."
 # the second one overwrites the result of the first one. they are both here for testing
 # purposes, but only the result of the second command is used for later steps)
 papi-gen-annotation --contigs contigs.fa -p myrast_gui myrast_gui/* -o test-output/ -L 1000 
-papi-gen-annotation --contigs contigs.fa -p myrast_cmdline myrast_cmdline/*tbl -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_cmdline_dont_use myrast_cmdline/svr_assign_to_dna_using_figfams.txt -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_cmdline myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -o test-output/ -L 1000 
 
 
 INFO "Profiling samples ..."
