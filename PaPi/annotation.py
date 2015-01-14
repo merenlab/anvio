@@ -35,10 +35,13 @@ import PaPi.db as db
 import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
+import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
 from PaPi.utils import ConfigError
 from PaPi.contig import Split
 
+run = terminal.Run()
+progress = terminal.Progress()
 
 class Annotation:
     def __init__(self, db_path):
@@ -133,6 +136,14 @@ class Annotation:
             else:
                 prots_in_contig[contig] = set([prot])
 
+        contigs_without_annotation = list(set(self.contigs.keys()) - set(prots_in_contig.keys()))
+        run.info('Num contigs in FASTA', len(self.contigs))
+        run.info('Num contigs w annotation', len(prots_in_contig))
+        run.info('Num contigs w/o annotation', len(contigs_without_annotation))
+
+        for contig in contigs_without_annotation:
+            prots_in_contig[contig] = set([])
+
         splits_dict = {}
         for contig in self.contigs:
             chunks = utils.get_chunks(self.contigs[contig]['length'], self.split_length)
@@ -149,6 +160,9 @@ class Annotation:
                         taxa.append(self.matrix_dict[prot]['t_species'])
                         functions.append(self.matrix_dict[prot]['function'])
                         gene_start_stops.append((self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop']), )
+
+                if not len(gene_start_stops):
+                    gene_start_stops = [(0, 0), ]
 
                 taxonomy_strings = [t for t in taxa if t]
                 function_strings = [f for f in functions if f]
