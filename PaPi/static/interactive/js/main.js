@@ -5,13 +5,9 @@
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
-var ZOOM_IN = 1.33;
-var ZOOM_OUT = 0.75;
-
 var LINE_COLOR='#888888';
-var project_title;
 
-var SCALE_MATRIX = 0;
+var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
@@ -25,9 +21,6 @@ var total_radius = 0;
 var SELECTED = new Array();
 
 var newick;
-var available_trees;
-var selected_tree_id;
-var default_tree;
 
 var metadata;
 var contig_lengths;
@@ -36,21 +29,15 @@ var parameter_count;
 var group_counter = 0; // for id
 var group_count = 0;
 
-var categorical_data_ids = new Array();
+var layer_types;
+
 var categorical_data_colors = {};
-
-var stack_bar_ids = new Array();
 var stack_bar_colors = {};
-
-var has_parent_layer = false;
 
 var context_menu_target_id = 0;
 
 var metadata_title = {};
 var metadata_dict;
-
-var metadata_swap_log = new Array();
-var metadata_swap_log_reverse = new Array();
 
 //---------------------------------------------------------
 //  Init
@@ -58,512 +45,429 @@ var metadata_swap_log_reverse = new Array();
 
 $(document).ready(function() {
 
-    // create "Group_1"
-    newGroup();
+    $('.dialogs').hide();
 
-    // common settings for dialogs
-    $('.dialogs').dialog({
-        resizable: false,
-        width: 'auto',
-        collapseEnabled: true,
-        closeOnEscape: false,
-        beforeclose: function(event, ui) {
-            return false;
-        },
-        dialogClass: "noclose"
-    });
+    var timestamp = new Date().getTime(); 
 
-    // settings per dialog
-    $("#zoomDialog").dialog("option", "title", "Zoom").dialog("option", "position", {
-            my: "right center",
-            at: "right center",
-            of: window
-        });
+    $.when(    
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/title?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/clusterings?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/contig_lengths?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/state?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/meta?timestamp=' + timestamp,
+        }))
+    .then(
+        function (titleResponse, clusteringsResponse, contigLengthsResponse, stateResponse, metaResponse) 
+        {
+            var state = eval(stateResponse[0]);
+            var hasState = !$.isEmptyObject(state);
+            document.title = titleResponse[0];
+            contig_lengths = eval(contigLengthsResponse[0]);
 
-    $("#treeControls").dialog("option", "title", "Tree Settings").dialog("option", "position", {
-            my: "left bottom",
-            at: "left center",
-            of: window
-        });
-
-    $("#groups").dialog("option", "title", "Groups").dialog("option", "position", {
-            my: "left top",
-            at: "left center",
-            of: window
-        });
-
-    $("#contig_name_dialog").dialog("option", "title", "Contig Names").dialog("option", "position", {
-            my: "center",
-            at: "center",
-            of: window
-        }).dialog('close');
-
-    // get project title
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/title?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            if (data.length > 0)
-            {
-                document.title = data;
-                project_title = data;
-            }
-        }
-    });
-
-    // get available clusterings (different newick trees)
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/clusterings?timestamp=' + new Date().getTime(),
-        success: function(data) {
-        	default_tree = data[0];
-        	available_trees = data[1];
-        }
-    });
-
-    // load contig lengths
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/contig_lengths?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            contig_lengths = data;
-        }
-    });
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/state?timestamp=' + new Date().getTime(),
-        success: function(state) {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/meta?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            state = eval(state);
-            metadata = eval(data);
-
+            /*
+                Get metadata and create layers table
+            */
+            metadata = eval(metaResponse[0]);
             parameter_count = metadata[0].length;
 
-            // remove all single parents from metadata
-            for (var i = 1; i < parameter_count; i++) 
-            {
-                if (metadata[0][i] == '__parent__') 
-                {
-                    has_parent_layer = true;
+            // since we are painting parent layers odd-even, 
+            // we should remove single parents (single means no parent)
+            removeSingleParents(); // in utils.js
 
-                    var parent_count_dict = {};
-                    for (var j=1; j < metadata.length; j++)
-                    {
-                        if (metadata[j][i]=='')
-                            continue;
+            var layer_order;
 
-                        if (typeof parent_count_dict[metadata[j][i]] === 'undefined')
-                        {
-                            parent_count_dict[metadata[j][i]] = 1;
-                        }
-                        else
-                        {
-                            parent_count_dict[metadata[j][i]]++;
-                        }
-                    }
+            if (hasState) {
+                layer_order = state['layer-order'];
 
-                    $.each(parent_count_dict, function(parent_name, count)
-                    {
-                        if (count==1)
-                        {
-                            for (var j=1; j < metadata.length; j++)
-                            {
-                                if (metadata[j][i]==parent_name)
-                                {
-                                    metadata[j][i]='';
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-            // all clear
-
-            if (jQuery.isEmptyObject(state)) {
-                // state is empty, build ui using metadata
-
-                categorical_data_ids = [];
-                separated_data_ids = [];
-                for (var i = 1; i < parameter_count; i++) {
-                	layer = metadata[0][i];
-                    if (layer == '__parent__') // parent
-                    {
-                        var parent_row_str = '<tr style="display: none">' +
-                            '<td></td>' +
-                            '<td></td>' +
-                            '<td></td>' +
-                            '<td><input class="input-height" type="text" size="2" id="height{id}" value="30"></input></td>' +
-                            '</tr>';
-
-                        parent_row_str = parent_row_str.replace(new RegExp('{id}', 'g'), i);
-
-                        $('#tbody_layers').prepend(parent_row_str);
-                    }
-                    else if (metadata[1][i].indexOf(';') > -1) // stack data
-                    {
-                        stack_bar_ids.push(i);
-                        stack_bar_colors[i] = new Array();
-
-                        for (var j=0; j < metadata[1][i].split(";").length; j++)
-                        {
-                            stack_bar_colors[i].push('#000000');
-                        }
-
-                        var stack_bar_row_str = '<tr>' +
-                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
-                            '<td>n/a</td>' +
-                            '<td>' +
-                            '    <select id="normalization{id}">' +
-                            '        <option value="none">none</option>' +
-                            '        <option value="sqrt">Square root</option>' +
-                            '        <option value="log" selected>Logarithm</option>' +
-                            '    </select>' +
-                            '</td>' +
-                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="150"></input></td>' +
-                            '<td>n/a</td>' +
-                            '<td>n/a</td>' +
-                            '</tr>';
-
-                        stack_bar_row_str = stack_bar_row_str.replace(new RegExp('{id}', 'g'), i);
-
-                        $('#tbody_layers').append(stack_bar_row_str);
-                    }
-                    else if (metadata[1][i] === '' || !isNumber(metadata[1][i])) // categorical data
-                    { 
-                        categorical_data_ids.push(i);
-                        categorical_data_colors[i] = {};
-
-                        var categorical_data_row_str = '<tr>' +
-                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
-                            '<td>n/a</td>' +
-                            '<td>n/a</td>' +
-                            '<td><input class="input-height" type="text" size="3" id="height{id}" value="30"></input></td>' +
-                            '<td>n/a</td>' +
-                            '<td>n/a</td>' +
-                            '</tr>';
-
-                        categorical_data_row_str = categorical_data_row_str.replace(new RegExp('{id}', 'g'), i);
-
-                        $('#tbody_layers').append(categorical_data_row_str);
-                    } 
-                    else // numerical data
-                    {
-                        var numerical_data_row_str = '<tr>' +
-                            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                            '<td title="' + layer + '">' + ((layer.length > 10) ? layer.slice(0,10) + "..." : layer) + '</td>' +
-                            '<td><div id="picker{id}" class="colorpicker" title="' + layer + '"></td>' +
-                            '<td>' +
-                            '    <select id="normalization{id}" onChange="clearMinMax(this)">';
-
-                        norm = ['none', 'sqrt', 'log'];
-                        if(layer in named_layers && 'norm' in named_layers[layer]){
-                            for(n in norm){
-                                if(norm[n] === named_layers[layer]['norm'])
-                                    numerical_data_row_str += '        <option value="' + norm[n] + '" selected>' + norm[n] + '</option>';
-                                else
-                                    numerical_data_row_str += '        <option value="' + norm[n] + '">' + norm[n] + '</option>';
-                            }
-                        } else {
-                            numerical_data_row_str +=
-                                '        <option value="none">none</option>' +
-                                '        <option value="sqrt">sqrt</option>' +
-                                '        <option value="log" selected>log</option>';
-                        }
-                            numerical_data_row_str += '    </select></td>';
-                            
-                            
-                            if(layer in named_layers && 'width' in named_layers[layer])
-                            	numerical_data_row_str += '<td><input class="input-height" type="text" size="3" id="height{id}" value="' + named_layers[layer].width + '"></input></td>';
-                            else
-                            	numerical_data_row_str += '<td><input class="input-height" type="text" size="3" id="height{id}" value="180"></input></td>';
-                            
-                            numerical_data_row_str += '<td><input class="input-min" type="text" size="4" id="min{id}" value="0" disabled></input></td>' +
-                            '<td><input class="input-max" type="text" size="4" id="max{id}" value="0" disabled></input></td>' +
-                            '</tr>';
-
-                        numerical_data_row_str = numerical_data_row_str.replace(new RegExp('{id}', 'g'), i);
-
-                        $('#tbody_layers').append(numerical_data_row_str);
-                    }
-                }
-
-                // TREES COMBO
-                var available_trees_combo = '';
-                var available_trees_combo_item = '<option value="{val}"{sel}>{text}</option>';
-                
-                $.each(available_trees, function(index, value) {
-                	if(index == default_tree)
-                		available_trees_combo += available_trees_combo_item
-                					.replace('{val}', index)
-                					.replace('{sel}', ' selected')
-                					.replace('{text}', index);
-                	else
-                		available_trees_combo += available_trees_combo_item
-                					.replace('{val}', index)
-                					.replace('{sel}', '')
-                					.replace('{text}', index);
-                }); 
-                
-                $('#trees_container').append(available_trees_combo);
-
-                
-                // COLOR PICKER
-                $('.colorpicker').each(function(index, element) {
-                	if('title' in element.attributes) {
-                	    layer = element.attributes.title.value;
-
-                	    if (layer in named_layers) {
-                	    	if('color' in named_layers[layer]){
-                	    		color = named_layers[layer].color;
-                	    	} else {
-                	    		color = randomColor();
-                	    	}
-                	    } else {
-                	    	color = '#000000';
-                	    }
-                	}
-
-                    $(element).css('background-color', color);
-                    $(element).attr('color', color);
-                });
-
-
-                
-            } else {
-                // load state
-
-                group_counter = state['group_counter'];
-                group_count = state['group_count'];
-
-                $('#treeControls').html(state['settings_html']);
-                $('#groups').html(state['groups_html']);
-
-                SELECTED = state['SELECTED'];
-
-                categorical_data_ids = state['categorical_data_ids'];
                 categorical_data_colors = state['categorical_data_colors'];
-
                 stack_bar_colors = state['stack_bar_colors'];
-                stack_bar_ids = state['stack_bar_ids'];
 
-                metadata_swap_log = state['metadata_swap_log'];
-                metadata_swap_log_reverse = state['metadata_swap_log_reverse'];
+                $('#tree_type').val(state['tree-type']);
+                $('#angle-min').val(state['angle-min']);
+                $('#angle-max').val(state['angle-max']);
+                $('#layer-margin').val(state['layer-margin']);
+                $('#')
+            }
+            else {
+                // range(1, prameter_count), we skipped column 0 because its not a layer, its name column.
+                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); 
+            }
+            //
+            //  add layers to table
+            //
+            layer_types = {};
 
-                var positions = {};
-                for (var i=1; i < parameter_count; i++)
-                    positions[i] = i;
+            for (var i = 0; i < layer_order.length; i++) 
+            {
+                // common layer variables
+                var layer_id = layer_order[i];
+                var layer_name = metadata[0][layer_id];
+                var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
-                for (var i=0; i < state['metadata_swap_log_reverse'].length; i++)
+                if (hasState)
+                    var layer_settings = state['layers'][layer_id];
+
+                //
+                //  parent layer
+                //
+                if (layer_name == '__parent__')
                 {
-                    var new_positions = {};
-                    for (var j=1; j < parameter_count; j++)
+                   layer_types[layer_id] = 0;
+
+                    if (hasState)
+                        var height = layer_settings['height'];
+                    else
+                        var height = '50';
+
+                    var template = '<tr>' +
+                        '<td><img src="images/drag.gif" /></td>' +
+                        '<td>Parent</td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
+                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
+                        '</tr>';
+
+                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                       .replace(new RegExp('{height}', 'g'), height);
+
+                    $('#tbody_layers').prepend(template);
+                }
+                //
+                // stack bar layer
+                //
+                else if (layer_name.indexOf(';') > -1) 
+                {
+                    layer_types[layer_id] = 1;
+
+                    if (hasState)
                     {
-                        new_positions[j] = positions[state['metadata_swap_log_reverse'][i][j]];
+                        var norm   = layer_settings['normalization'];
+                        var height = layer_settings['height'];
                     }
-                    positions = new_positions;
+                    else
+                    {
+                        var norm   = 'log';
+                        var height = '30';  
+
+                        // pick random color for stack bar items
+                        stack_bar_colors[layer_id] = new Array();
+                        for (var j=0; j < layer_name.split(";").length; j++)
+                        {
+                            stack_bar_colors[layer_id].push(randomColor());
+                        }              
+                    }
+
+                    var template = '<tr>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="{name}">{short-name}</td>' +
+                        '<td>n/a</td>' +
+                        '<td>' +
+                        '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                        '        <option value="none"{option-none}>none</option>' +
+                        '        <option value="sqrt"{option-sqrt}>Square root</option>' +
+                        '        <option value="log"{option-log}>Logarithm</option>' +
+                        '    </select>' +
+                        '</td>' +
+                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
+                        '</tr>';
+
+                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                       .replace(new RegExp('{name}', 'g'), layer_name)
+                                       .replace(new RegExp('{short-name}', 'g'), short_name)
+                                       .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                                       .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                                       .replace(new RegExp('{height}', 'g'), height);
+
+                    $('#tbody_layers').append(template);
+                }
+                //
+                // categorical layer
+                //
+                else if (metadata[1][layer_id] === '' || !isNumber(metadata[1][layer_id]))
+                { 
+                    layer_types[layer_id] = 2;
+
+                    if (hasState)
+                    {
+                        var height = layer_settings['height'];
+                    }
+                    else
+                    {
+                        var height = 30;
+
+                        categorical_data_colors[layer_id] = {};
+                    }
+                    
+                    var template = '<tr>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="{name}">{short-name}</td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
+                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                        '<td>n/a</td>' +
+                        '<td>n/a</td>' +
+                        '</tr>';
+
+                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                       .replace(new RegExp('{name}', 'g'), layer_name)
+                                       .replace(new RegExp('{short-name}', 'g'), short_name)
+                                       .replace(new RegExp('{height}', 'g'), height);
+
+                    $('#tbody_layers').append(template);
+                } 
+                //
+                // numerical layer
+                //
+                else
+                {
+                    layer_types[layer_id] = 3;
+
+                    if (hasState)
+                    {
+                        var height = layer_settings['height'];
+                        var norm   = layer_settings['normalization'];
+                        var color  = layer_settings['color'];
+                        var min    = layer_settings['min']['value'];
+                        var max    = layer_settings['max']['value'];
+                        var min_disabled = layer_settings['min']['disabled'];
+                        var max_disabled = layer_settings['max']['disabled'];
+                    }
+                    else
+                    {
+                        var height = getNamedLayerDefaults(layer_name, 'height', '180');
+                        var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
+                        var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                        var min    = 0;
+                        var max    = 0;
+                        var min_disabled = true;
+                        var max_disabled = true;
+                    }
+
+                    var template = '<tr>' +
+                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                        '<td title="{name}">{short-name}</td>' +
+                        '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                        '<td>' +
+                        '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                        '        <option value="none"{option-none}>none</option>' +
+                        '        <option value="sqrt"{option-sqrt}>Square root</option>' +
+                        '        <option value="log"{option-log}>Logarithm</option>' +
+                        '    </select>' +
+                        '</td>' +
+                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                        '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                        '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                        '</tr>';
+
+                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                       .replace(new RegExp('{name}', 'g'), layer_name)
+                                       .replace(new RegExp('{short-name}', 'g'), short_name)
+                                       .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                                       .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                                       .replace(new RegExp('{color}', 'g'), color)
+                                       .replace(new RegExp('{height}', 'g'), height)
+                                       .replace(new RegExp('{min}', 'g'), min)
+                                       .replace(new RegExp('{max}', 'g'), max)
+                                       .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                                       .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '');
+
+                    $('#tbody_layers').append(template);
                 }
 
-                for (var i=0; i < metadata.length; i++)
-                {
-                    var new_line = new Array();
-                    new_line.push(metadata[i][0]);
+                $('#picker'+ layer_id).colpick({
+                    layout: 'hex',
+                    submit: 0,
+                    colorScheme: 'dark',
+                    onChange: function(hsb, hex, rgb, el, bySetColor) {
+                        $(el).css('background-color', '#' + hex);
+                        $(el).attr('color', '#' + hex);
 
-                    for (var pindex = 1; pindex < parameter_count; pindex++)
-                    {
-                        new_line.push(metadata[i][positions[pindex]]);    
+                        if (!bySetColor) $(el).val(hex);
                     }
-                    metadata[i] = new_line.splice(0);
+                }).keyup(function() {
+                    $(this).colpickSetColor(this.value);
+                });
+                
+            } // layer loop
+
+            // make layers table sortable
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
+
+            /* 
+            //  Clusterings
+            */
+            var default_tree = (hasState) ? state['order-by'] : clusteringsResponse[0][0];
+            var available_trees = clusteringsResponse[0][1];
+
+            var available_trees_combo = '';
+            var available_trees_combo_item = '<option value="{val}"{sel}>{text}</option>';
+            
+            $.each(available_trees, function(index, value) {
+                if(index == default_tree)
+                {
+                    available_trees_combo += available_trees_combo_item
+                                .replace('{val}', index)
+                                .replace('{sel}', ' selected')
+                                .replace('{text}', index);
+                }
+                else
+                {
+                    available_trees_combo += available_trees_combo_item
+                                .replace('{val}', index)
+                                .replace('{sel}', '')
+                                .replace('{text}', index);
+                }
+            }); 
+            
+            $('#trees_container').append(available_trees_combo);
+
+            $('#trees_container').change(function() {
+
+                $('#trees_container').prop('disabled', true);
+                $('#btn_draw_tree').prop('disabled', true);
+
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
+                    success: function(data) {
+                        newick = data;
+                        $('#trees_container').attr('disabled', false);
+                        $('#btn_draw_tree').attr('disabled', false); 
+                    }
+                });
+            });
+
+            $('#trees_container').trigger('change'); // load default newick tree
+
+            /*
+            //  Add groups
+            */
+            if (hasState)
+            {
+                SELECTED = state['SELECTED'];
+                group_counter = state['group-counter'];
+
+                for (gid in state['groups'])
+                {
+                    newGroup(gid, state['groups'][gid]);
                 }
             }
+            else
+            {
+                newGroup();
+            }
 
-            // make table sortable
-            var fixHelperModified = function(e, tr) {
-                    var $originals = tr.children();
-                    var $helper = tr.clone();
-                    $helper.children().each(function(index) {
-                        $(this).width($originals.eq(index).width());
-                    });
-                    return $helper;
-                };
+            initializeDialogs();
+        } // response callback
+    ); // promise
 
-            $("#table_layers>tbody").sortable({helper: fixHelperModified}).disableSelection();
-
-            $("#treeControls").dialog("option", "position", {
-                my: "left center",
-                at: "left center",
-                of: window
-            });
-            $("#groups").dialog("option", "position", {
-                my: "left top",
-                at: "left bottom",
-                of: "#treeControls"
-            });
-
-            $('.colorpicker').colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'dark',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('background-color', '#' + hex);
-                    $(el).attr('color', '#' + hex);
-
-                    if (!bySetColor) $(el).val(hex);
-                }
-            }).keyup(function() {
-                $(this).colpickSetColor(this.value);
-            });
-
-            $('body').bind('click', function() {
-                $('#control_contextmenu').hide();
-            });
-
-    }}); // meta
-    }}); // state
-});
-
+    document.body.addEventListener('click', function() {
+        $('#control_contextmenu').hide();
+    }, false);
+}); // document ready
 
 
 //---------------------------------------------------------
 //  ui callbacks
 //---------------------------------------------------------
 
-function saveCurrentState() {
+function serializeSettings() {
     var state = {};
 
-    state['group_counter'] = group_counter;
-    state['group_count'] = group_count;
+    state['group-counter'] = group_counter;
+    state['tree-type'] = $('#tree_type').val();
+    state['order-by'] = $('#trees_container').val();
+    state['angle-min'] = $('#angle-min').val();
+    state['angle-max'] = $('#angle-max').val();
+    state['layer-margin'] = $('#layer-margin').val();
+    state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
 
-    // update dom 
-    $(':text').each(function(){
-         $(this).attr('value',$(this).val());
-    });
+    state['layers'] = {};
+    state['layer-order'] = new Array();
+    $('#tbody_layers tr').each(
+        function(index, layer) {
+            var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
 
-    $('select').each(function(i, select) {
-        var selected = $(select).val();
-        $(select).find('option').removeAttr('selected').each(function(j, option) {
-            if($(option).val()==selected)
-            {
-                $(option).attr('selected', true);
-            }
-        });
-    });
+            state['layer-order'].push(layer_id);
 
-    $(':checkbox').each(function() {
-        if ($(this)[0].checked)
-        {
-            $(this).attr('checked', true);
+            state['layers'][layer_id] = {};
+            state['layers'][layer_id]["normalization"] = $(layer).find('select').val();
+            state['layers'][layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
+            state['layers'][layer_id]["height"] = $(layer).find('.input-height').val();
+            state['layers'][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
+            state['layers'][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
         }
-        else
-        {
-            $(this).removeAttr('checked');
-        }
-    });
-
-    state['settings_html'] = $('#treeControls').html();
-    state['groups_html'] = $('#groups').html();
+    );
 
     state['SELECTED'] = SELECTED;
 
-    state['categorical_data_ids'] = categorical_data_ids;
+    state['groups'] = {};
+    $('#tbody_groups tr').each(
+        function(index, group) {
+            var gid = $(group).attr('group-id');
+
+            state['groups'][gid] = {};
+            state['groups'][gid]['name'] = $('#group_name_' + gid).val();
+            state['groups'][gid]['color'] = $('#group_color_' + gid).attr('color');
+            state['groups'][gid]['contig-length'] = $('#contig_length_' + gid).text();
+            state['groups'][gid]['contig-count'] = $('#contig_count_' + gid).val();
+
+        }
+    );
+
     state['categorical_data_colors'] = categorical_data_colors;
-
     state['stack_bar_colors'] = stack_bar_colors;
-    state['stack_bar_ids'] = stack_bar_ids;
 
-    state['metadata_swap_log'] = metadata_swap_log;
-    state['metadata_swap_log_reverse'] = metadata_swap_log_reverse;
+    return state;
+}
 
+function saveCurrentState() {
     $.post("/save_state", {
-        state: JSON.stringify(state),
+        state: JSON.stringify(serializeSettings(), null, 4),
     });
 }
 
-function menu_callback(action) {
-    var contig_name = id_to_node_map[context_menu_target_id].label;
+function drawTree() {
 
-    switch (action) {
+    var settings = serializeSettings();
 
-        case 'select':
-            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            lineClickHandler(fake_event);
-            break;
+    tree_type = settings['tree-type'];
 
-        case 'remove':
-            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            lineContextMenuHandler(fake_event);
-            break;
+    $('#img_loading').show();
+    $('#btn_draw_tree').prop('disabled', true);
 
-        case 'content':
-            $.ajax({
-                type: 'GET',
-                cache: false,
-                url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
-                success: function(data) {
-                    $("#contig_name_dialog").dialog("option", "title", contig_name);
-                    $('#contig_names').val(data);
-                    $('#contig_name_dialog').dialog('open');
-                    $('#contig_names').click(); // focus & select all
-                }
-            });
-            break;
+    setTimeout(function () 
+        { 
+            draw_tree(settings); // call treelib.js where the magic happens
 
-        case 'metadata':
-            $("#contig_name_dialog").dialog("option", "title", contig_name);
-            $('#contig_names').val(strip(metadata_title[contig_name].join('\n')));
-            $('#contig_name_dialog').dialog('open');
-            $('#contig_names').click(); // focus & select all
-            break;
-        
-        case 'inspect':
-        	var layers = new Array();
-        	metadata[0].forEach(function (e,i,a) {if(["contigs", "__parent__"].indexOf(e) < 0) layers.push(e);});
-        	window.open('charts.html?contig=' + contig_name, '_blank');
-        	break;
-    }
-}
+            $('#img_loading').hide();
+            $('#btn_draw_tree').prop('disabled', false);
 
-function draw_tree_callback(){
-	
-    var trees_container_selection = $('#trees_container').val()
-    if(selected_tree_id != trees_container_selection){
-	    selected_tree_id = trees_container_selection;
-	    
-	    // empty the variable
-        newick = '';
-        window.newick = '';
-
-	    // load data
-	    $.ajax({
-	        type: 'GET',
-	        cache: false,
-	        url: '/tree/' + selected_tree_id + '?timestamp=' + new Date().getTime(),
-	        success: function(data) {
-	            newick = data;
-	        }
-	    });
-	
-    }
-
-    if (newick === '' || typeof metadata === 'undefined' || typeof contig_lengths === 'undefined') {
-        setTimeout(draw_tree_callback, 200);
-    } else {
-        tree_type = $('#tree_type').val();
-        draw_tree($('#tree_type').val());
-
-        // enable export as svg button
-        $('#btn_export_svg').attr('disabled', false);
-    }
+        }, 1); 
 }
 
 function showContigNames(gid) {
@@ -575,29 +479,59 @@ function showContigNames(gid) {
         }
     }
 
+    if (names.length == 0)
+        return;
+
+    messagePopupShow('Contig Names', names.join('\n'));
+    /*
     $("#contig_name_dialog").dialog("option", "title", "Contig Names");
     $('#contig_names').val(names.join("\n"));
     $('#contig_name_dialog').dialog('open');
-    $('#contig_names').click(); // focus & select all
+    $('#contig_names').click(); // focus & select all*/
 }
 
-function newGroup() {
-    group_counter++;
+function newGroup(id, groupState) {
+
     group_count++;
 
-    SELECTED[group_counter] = [];
+    if (typeof id === 'undefined')
+    {
+        group_counter++;
+        var id = group_counter;
+        var name = "Group_" + id;
+        var color = '#000000';
+        var contig_count = 0;
+        var contig_length = 0;
 
-    var clone = $('#group-template').clone();
-    clone.appendTo('#groups-table');
-    clone.attr('id', '');
-    clone.css('display', '');
+        SELECTED[group_counter] = [];
+    }
+    else
+    {
+        // we are adding groups from state file
+        var name = groupState['name'];
+        var color = groupState['color'];
+        var contig_count = groupState['contig-count'];
+        var contig_length = groupState['contig-length'];
+    }
 
-    var color = randomColor();
+    var template = '<tr group-id="{id}" id="group_row_{id}">' +
+                   '    <td><input type="radio" name="active_group" value="{id}" checked></td>' +
+                   '    <td><div id="group_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                   '    <td><input type="text" size="12" id="group_name_{id}" value="{name}"></td>' +
+                   '    <td><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
+                   '    <td><span id="contig_length_{id}">{length}</span></td>' +
+                   '    <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup({id});"></span></td>' +
+                   '</tr>';
 
-    clone.find('.colorpicker').css('background-color', color);
-    clone.find('.colorpicker').attr('color', color);
-    clone.find('.colorpicker').attr('id', 'group_color_' + group_counter);
-    clone.find('.colorpicker').colpick({
+    template = template.replace(new RegExp('{id}', 'g'), id)
+                       .replace(new RegExp('{name}', 'g'), name)
+                       .replace(new RegExp('{color}', 'g'), color)
+                       .replace(new RegExp('{count}', 'g'), contig_count)
+                       .replace(new RegExp('{length}', 'g'), contig_length);
+
+    $('#tbody_groups').append(template);
+
+    $('#group_color_' + id).colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'dark',
@@ -608,27 +542,18 @@ function newGroup() {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawGroupColors();
+            redrawGroupColors(id);
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
-
-    clone.find('input[type=radio]').attr('value', group_counter).prop('checked', true);
-    clone.find('input[type=text]').attr('value', "Group_" + group_counter).attr('id', 'group_name_' + group_counter);
-    clone.find('.span_contig_length').attr('id', 'contig_length_' + group_counter);
-    clone.find('input[type=button]').attr('id', 'contig_count_' + group_counter).click(function() {
-        if (this.value == '0')
-            return;
-        showContigNames(group_counter);
-    });
 }
 
-function deleteGroup(elm) {
-    if (confirm('Are you sure you want to delete this group?')) {
-        var id = $(elm).closest('tr').find('input[type=radio]').attr('value');
-        $(elm).closest('tr').remove();
-        $('input[type=radio]').last().prop('checked', true);
+function deleteGroup(id) {
+    if (confirm('Are you sure?')) {
+
+        $('#group_row_' + id).remove();
+        $('#tbody_groups input[type=radio]').last().prop('checked', true);
         group_count--;
 
         for (var i = 0; i < SELECTED[id].length; i++) {
@@ -654,83 +579,44 @@ function deleteGroup(elm) {
     }
 }
 
-function submitGroups(only_svg) {
-    if (!only_svg) {
-        var output = {};
-        var msg_group_count = 0;
-        var msg_contig_count = 0;
+function submitGroups() {
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('You should draw tree before submit.');
+        return;
+    }
 
-        for (var gid = 1; gid <= group_counter; gid++) {
-            if (SELECTED[gid].length > 0) {
-                msg_group_count++;
-                var group_name = $('#group_name_' + gid).val();
+    var output = {};
+    var msg_group_count = 0;
+    var msg_contig_count = 0;
 
-                output[group_name] = new Array();
-                for (var i = 0; i < SELECTED[gid].length; i++) {
-                    if (id_to_node_map[SELECTED[gid][i]].IsLeaf()) {
-                        output[group_name].push(id_to_node_map[SELECTED[gid][i]].label);
-                        msg_contig_count++;
-                    }
+    for (var gid = 1; gid <= group_counter; gid++) {
+        if (SELECTED[gid].length > 0) {
+            msg_group_count++;
+            var group_name = $('#group_name_' + gid).val();
+
+            output[group_name] = new Array();
+            for (var i = 0; i < SELECTED[gid].length; i++) {
+                if (label_to_node_map[SELECTED[gid][i]].IsLeaf()) {
+                    output[group_name].push(SELECTED[gid][i]);
+                    msg_contig_count++;
                 }
             }
         }
-
-        if (!confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
-            return;
-        }
     }
 
-
-    // draw group list to output svg
-    drawGroupLegend();
-
-    // move group highlights to new svg groups
-    for (var gid = 1; gid <= group_counter; gid++) {
-
-        createGroup('tree_group', 'selected_group_' + gid);
-
-        for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (id_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                $('.path_' + SELECTED[gid][j] + "_background").detach().appendTo('#selected_group_' + gid);
-                $('.path_' + SELECTED[gid][j] + "_outer_ring").detach().appendTo('#selected_group_' + gid);
-            }
-        }
+    if (!confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
+        return;
     }
 
-    // remove ungrouped backgrounds.
-    if (tree_type == 'circlephylogram')
-    {
-        var detached_paths = $('#tree_group > path').detach();
-    }
-    else
-    {
-        var detached_paths = $('#tree_group > rect').detach();
-    }
+    $('#tbody_groups input[type=radio]').prop('checked', false).attr("disabled", true);
+    $('#submit-groups').attr("disabled", true);
+    $('#btn_new_group').attr("disabled", true);
+    window.deleteGroup = function() {};
 
-    if (!only_svg)
-    {
-        // disable group controls
-        $('#group-template input[type=radio]').prop('checked', true);
-        $('#groups-table input[type=radio]').attr("disabled", true);
-        $('#submit-groups').attr("disabled", true);
-        $('#btn_new_group').attr("disabled", true);
-
-        $.post("/submit", {
-            groups: JSON.stringify(output),
-            svg: document.getElementById('svg').outerHTML
-        });
-    }
-    else
-    {
-        $.post("/submit", {
-            groups: "{}",
-            svg: document.getElementById('svg').outerHTML
-        });
-        // add removed ungrouped backgrounds back
-        $(detached_paths).appendTo('#tree_group');
-
-        $('#group_legend').remove();
-    }
+    $.post("/submit", {
+        groups: JSON.stringify(output),
+        svg: null
+    });
 }
 
 function updateGroupWindow() { 
@@ -752,186 +638,41 @@ function updateGroupWindow() {
     }
 }
 
-//---------------------------------------------------------
-//  zoom and scale functions
-//---------------------------------------------------------
-
-function smooth_scale(x) {
-    return (Math.pow(Math.abs(x), 2) * (3 - 2 * Math.abs(x)))
-}
-
-function getMatrix(viewport) {
-    return viewport.getAttribute('transform').split('(')[1].split(')')[0].split(',').map(parseFloat);
-}
-
-function setMatrix(viewport, matrix) {
-    viewport.setAttribute('transform', 'matrix(' + matrix.join(',') + ')');
-}
-
-function zoom(viewport, scale) {
-    matrix = getMatrix(viewport);
-    old_scale = matrix[0];
-    if (scale * old_scale < 0.1) scale = 0.1 / old_scale;
-    if (scale * old_scale > 100) scale = 100 / old_scale;
-
-    for (var i = 0; i < matrix.length; i++) {
-        matrix[i] *= scale;
-
-    }
-
-    bbox = viewport.getBBox();
-
-    matrix[4] += (1 - scale) * (bbox.width - 50) / 2;
-    matrix[5] += (1 - scale) * bbox.height / 2;
-
-    setMatrix(viewport, matrix);
-}
-
-function pan(viewport, dx, dy) {
-    matrix = getMatrix(viewport);
-
-    matrix[4] += dx;
-    matrix[5] += dy;
-
-    setMatrix(viewport, matrix);
-}
-
-function zoom_in() {
-    var viewport = document.getElementById('viewport');
-    gradual_zoom(viewport, ZOOM_IN);
-}
-
-function zoom_out() {
-    var viewport = document.getElementById('viewport');
-    gradual_zoom(viewport, ZOOM_OUT);
-}
-
-function mouse_zoom_in(event) {
-    pan_to_mouse(event, ZOOM_IN);
-    zoom_in();
-}
-
-function mouse_zoom_out(event) {
-    pan_to_mouse(event, ZOOM_OUT);
-    zoom_out();
-}
-
-function pan_btn(dir) {
-    if (dir == '11') {
-        var svg = document.getElementById('svg');
-        // Scale to fit window
-        var bbox = svg.getBBox();
-
-        // move drawing to centre of viewport
-        var viewport = document.getElementById('viewport');
-        baseMatrix = [1 * SCALE_MATRIX, 0, 0, 1 * SCALE_MATRIX, VIEWER_WIDTH / 2, VIEWER_HEIGHT / 2];
-        setMatrix(viewport, baseMatrix);
-
-
-        // centre
-        bbox = svg.getBBox();
-        if (bbox.x < 0) {
-            pan(viewport, bbox.width / 2, bbox.height / 2);
-        } else {
-            pan(viewport, -25, 25);
-        }
+function exportSvg() {
+    // check if tree parsed, which means there is a tree on the screen
+    if ($.isEmptyObject(label_to_node_map)) 
         return;
-    }
-    start_pan();
-    var viewport = document.getElementById('viewport');
-    matrix = getMatrix(viewport);
-    scale = matrix[0];
-    d = 100;
-    dx = dir == 'l' ? d : (dir == 'r' ? -d : 0);
-    dy = dir == 'u' ? d : (dir == 'd' ? -d : 0);
-    gradual_pan(viewport, dx, dy);
-}
 
-function pan_to_mouse(e, scale) {
-    var container = document.getElementById('treeContainer');
-    var viewport = document.getElementById('viewport');
-    offset = $(container).offset();
+    // draw group list to output svg
+    drawGroupLegend();
 
-    dx = e.pageX - (offset.left + container.offsetWidth / 2);
-    dy = e.pageY - (offset.top + container.offsetHeight / 2);
+    // move group highlights to new svg groups
+    for (var gid = 1; gid <= group_counter; gid++) {
 
-    gradual_pan(viewport, dx * (1 - scale), dy * (1 - scale));
-}
+        createGroup('tree_group', 'selected_group_' + gid);
 
-var panning = 0;
-var pan_pressed = false;
-
-function start_pan() {
-    pan_pressed = true;
-}
-
-function stop_pan() {
-    pan_pressed = false;
-}
-
-function gradual_pan(viewport, dx, dy) {
-    if (panning) return;
-    steps = 25;
-    duration = 0.5;
-    panning = 0;
-    last_time = new Date() / 1000;
-
-    function frame() {
-        this_time = new Date() / 1000;
-        time_elapsed = this_time - last_time;
-        last_time = this_time;
-        panning += time_elapsed / duration;
-        if (panning >= 1) panning = 1;
-        d = smooth_scale(panning);
-        pan(viewport, d * dx / steps, d * dy / steps)
-        if (panning >= 1 && !(pan_pressed)) {
-            panning = 0;
-            clearInterval(id);
+        for (var j = 0; j < SELECTED[gid].length; j++) {
+            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_background").detach().appendTo('#selected_group_' + gid);
+                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_outer_ring").detach().appendTo('#selected_group_' + gid);
+            }
         }
     }
-    var id = setInterval(frame, 1000 * duration / steps);
-}
 
-var zooming = 0;
-var zoom_pressed = false;
-
-function start_zoom() {
-    zoom_pressed = true;
-}
-
-function stop_zoom() {
-    zoom_pressed = false;
-}
-
-function gradual_zoom(viewport, scale) {
-    if (zooming > 0 || panning || pan_pressed) return;
-
-    var viewport = document.getElementById('viewport');
-    matrix = getMatrix(viewport);
-
-    initial_scale = matrix[0];
-    new_scale = initial_scale * scale;
-    old_scale = initial_scale;
-
-    steps = 25;
-    duration = 0.5;
-    last_time = new Date() / 1000;
-
-    function frame() {
-        console.log(zoom_pressed);
-        this_time = new Date() / 1000;
-        time_elapsed = this_time - last_time;
-        last_time = this_time;
-        mult = scale < 1 ? zooming : Math.pow(zooming, 2.5);
-        this_scale = initial_scale + (new_scale - initial_scale) * mult;
-        this_step = this_scale / old_scale;
-        old_scale = this_scale;
-        zooming += time_elapsed / duration;
-        zoom(viewport, this_step)
-        if (zooming >= 1 && !(zoom_pressed)) {
-            clearInterval(id);
-            zooming = 0;
-        }
+    // remove ungrouped backgrounds.
+    if (tree_type == 'circlephylogram')
+    {
+        var detached_paths = $('#tree_group > path').detach();        
     }
-    var id = setInterval(frame, 1000 * duration / steps);
+    else
+    {
+        var detached_paths = $('#tree_group > rect').detach();   
+    }
+
+    svgCrowbar();
+
+    // add removed ungrouped backgrounds back
+    $(detached_paths).appendTo('#tree_group');
+
+    $('#group_legend').remove();
 }

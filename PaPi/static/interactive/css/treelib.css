@@ -45,16 +45,18 @@ div#treeControls {
 #zoomControls .zoom-in:hover { background-image:url(../images/zoom-in_sel.svg); }
 #zoomControls .zoom-out { background-image:url(../images/zoom-out.svg); }
 #zoomControls .zoom-out:hover { background-image:url(../images/zoom-out_sel.svg); }
+#zoomControls .zoom-reset { background-image:url(../images/pan-11.svg); }
+#zoomControls .zoom-reset:hover { background-image:url(../images/pan-11_sel.svg); }
 #zoomControls .pan-left { background-image:url(../images/pan-left.svg); }
 #zoomControls .pan-left:hover { background-image:url(../images/pan-left_sel.svg); }
-#zoomControls .pan-11 { background-image:url(../images/pan-11.svg); }
-#zoomControls .pan-11:hover { background-image:url(../images/pan-11_sel.svg); }
 #zoomControls .pan-up { background-image:url(../images/pan-up.svg); }
 #zoomControls .pan-up:hover { background-image:url(../images/pan-up_sel.svg); }
 #zoomControls .pan-down { background-image:url(../images/pan-down.svg); }
 #zoomControls .pan-down:hover { background-image:url(../images/pan-down_sel.svg); }
 #zoomControls .pan-right { background-image:url(../images/pan-right.svg); }
 #zoomControls .pan-right:hover { background-image:url(../images/pan-right_sel.svg); }
+#zoomControls .save-svg { background-image:url(../images/save.png); }
+#zoomControls .save-svg:hover { background-image:url(../images/save_sel.png); }
 
 div#treeContainer svg {
     position: absolute;
@@ -88,12 +90,14 @@ div#treeContainer svg {
 }
 
 .colorpicker:hover {
-    border: 2px solid;
+    border: 1px solid;
+    border-color: #555;
 }
 
 #groups-table td {
     text-align: center;
     margin: 3px;
+    padding: 3px;
 }
 
 .delete-button {

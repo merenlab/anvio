@@ -522,7 +522,6 @@ def get_data():
     if os.path.exists(bins_dir):
         shutil.rmtree(bins_dir)
     os.makedirs(bins_dir)
-    d.runinfo['bins'] = {} 
     print '* Storing bins under "%s"' % bins_dir
     for bin in bins:
         output_path = os.path.join(d.runinfo['output_dir'], 'BINS', bin + '.fa')
@@ -530,11 +529,7 @@ def get_data():
         for contig in bins[bin]:
             output.write('>%s\n%s\n' % (contig, d.contig_rep_seqs[contig]))
         output.close()
-        d.runinfo['bins'][bin] = output_path
 
-    # update RUNINFO dict...
-    print '* Storing updated RUNINFO.cp'
-    d.update_runinfo_on_disk()
     print
 
 

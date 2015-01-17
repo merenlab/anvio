@@ -22,6 +22,7 @@
         <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="js/main.js"></script>
         <script type="text/javascript" src="js/treelib.js"></script>
+        <script type="text/javascript" src="js/mouse-events.js"></script>
         <script type="text/javascript" src="js/constants.js"></script>
         <link rel="stylesheet" href="css/treelib.css" type="text/css" />
     </head>
@@ -49,7 +50,7 @@
                         <td><input type="text" value="15" size="2" id="layer-margin"></td>
                     </tr>
                     <tr>
-                        <td><label for="edge_length_normalization">Edge length normalization:</label</td>
+                        <td><label for="edge_length_normalization">Edge length normalization:</label></td>
                         <td><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value"></td>
                     </tr>
                 </table>
@@ -69,7 +70,6 @@
                                 <td>Height</td>
                                 <td>Min</td>
                                 <td>Max</td>
-
                             </tr>
                         </thead>
                         <tbody id="tbody_layers">
@@ -78,44 +78,47 @@
                 </div>
                
 
-                <br /><input type="button" id="btndraw" onclick="draw_tree_callback()" value="Draw">&nbsp;<input type="button" id="btn_export_svg" onclick="submitGroups(true);" value="Export as SVG" disabled="true">
+                <br /><input type="button" id="btn_draw_tree" onclick="drawTree();" value="Draw"><img id="img_loading" src="images/loading.gif" style="display: none; vertical-align:top;">
             </div>
             <div id="groups" class="dialogs">
                 <table id="groups-table">
-                    <tr>
-                        <td>Select</td>
-                        <td>Color</td>
-                        <td>Name</td>
-                        <td>Contigs</td>
-                        <td>Length</td>
-                        <td></td>
-                    </tr>
-                    <tr id="group-template" style="display: none;">
-                        <td><input type="radio" name="active_group" value="0" checked></td>
-                        <td><div id="group_color" class="colorpicker"></td>
-                        <td><input type="text" size="12" id="group_name" value="" ></td>
-                        <td><input type="button" value="0" title="Click for contig names"></td>
-                        <td><span class="span_contig_length">0</span></td>
-                        <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup(this);"></span></td>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <td>Select</td>
+                            <td>Color</td>
+                            <td>Name</td>
+                            <td>Contigs</td>
+                            <td>Length</td>
+                            <td>Delete</td>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody_groups">
+                    </tbody>
                 </table>
-                <input id="btn_new_group" type="button" onClick="newGroup();" value="New group"> <input type="button" onClick="submitGroups(false);" value="Submit groups" id="submit-groups"> <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
+                <div style="margin-top: 10px;">
+                <input id="btn_new_group" type="button" onClick="newGroup();" value="New group">
+                <input type="button" onClick="submitGroups();" value="Submit groups" id="submit-groups">
+                <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
+                </div>
             </div>
             <div id="zoomDialog" class="dialogs">
                 <ul id="zoomControls">
-                    <li class="zoom-in" onmousedown="start_zoom(); zoom_in()" ondblclick="event.stopPropagation()" onmouseup="stop_zoom();" onmouseout="stop_zoom();"></li>
-                    <li class="zoom-out" onmousedown="start_zoom(); zoom_out()" ondblclick="event.stopPropagation()" onmouseup="stop_zoom();" onmouseout="stop_zoom();"></li>
-                    <li class="pan-11" onmousedown="pan_btn('11')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();"></li>
-                    <li class="pan-up" onmousedown="pan_btn('u')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();"></li>
-                    <li class="pan-left" onmousedown="pan_btn('l')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();"></li>
-                    <li class="pan-right" onmousedown="pan_btn('r')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();"></li>
-                    <li class="pan-down" onmousedown="pan_btn('d')" ondblclick="event.stopPropagation()" onmouseup="stop_pan();" onmouseout="stop_pan();"></li>
+                    <li class="zoom-in" onmousedown="zoom(1.10);"></li>
+                    <li class="zoom-out" onmousedown="zoom(0.90);"></li>
+                    <li class="zoom-reset" onmousedown="zoom_reset();"></li>
+                    <li class="pan-up" onmousedown="pan(0, 25);"></li>
+                    <li class="pan-left" onmousedown="pan(25, 0);"></li>
+                    <li class="pan-right" onmousedown="pan(-25, 0);"></li>
+                    <li class="pan-down" onmousedown="pan(0, -25);"></li>
+                    <li class="save-svg" onmousedown="exportSvg();"></li>
                 </ul>
             </div>
-            <div id="contig_name_dialog" class="dialogs">
-                <textarea id="contig_names" onclick="this.focus();this.select()" readonly="readonly"></textarea>
+            <div id="messagePopup" class="dialogs">
+                <textarea id="messagePopup_context" onclick="this.focus();this.select();" readonly="readonly" style="width: 400px; height: 300px"></textarea>
                 <br />
-                <input type="button" value="Close window" onclick="$('#contig_name_dialog').dialog('close');">
+                <br />
+                
+                <center><input type="button" value="Close" onclick="$('#messagePopup').dialog('close');"></center>
             </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>
