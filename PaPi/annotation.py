@@ -22,6 +22,11 @@ splits_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', '
 splits_table_mapping   = [  str  ,     str   ,    int     ,       float      ,    'float'    ,        float        ,       float     ,     float     ]
 splits_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
 
+splits_to_prots_table_structure = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+splits_to_prots_table_mapping   = [    int   ,   str  ,  str  ,       int       ,       int      ,         float        ]
+splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
+
+
 __version__ = "0.0.1"
 
 import os
@@ -43,6 +48,42 @@ from PaPi.contig import Split
 run = terminal.Run()
 progress = terminal.Progress()
 
+
+class GenesInSplits:
+    def __init__(self):
+        self.entry_id = 0
+        self.splits_to_prots = {}
+
+    def add(self, split_name, split_start, split_end, prot_id, prot_start, prot_end):
+
+        gene_length = prot_end - prot_start
+
+        if gene_length <= 0:
+            raise ConfigError, "annotation.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
+                                which starts at position %d and ends at position %d. Well, it doesn't look right,\
+                                does it?" % (prot_id, prot_start, prot_end)
+
+        # if only a part of the gene is in the split:
+        start_in_split = (split_start if prot_start < split_start else prot_start) - split_start
+        stop_in_split = (split_end if prot_end > split_end else prot_end) - split_start
+        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
+
+        self.splits_to_prots[self.entry_id] = {'split': split_name,
+                                               'prot': prot_id,
+                                               'start_in_split': start_in_split,
+                                               'stop_in_split': stop_in_split,
+                                               'percentage_in_split': percentage_in_split}
+        self.entry_id += 1
+
+
+    def create_table(self, db):
+        db.create_table('genes_in_splits', splits_to_prots_table_structure, splits_to_prots_table_types)
+        db_entries = [tuple([entry_id] + [self.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.splits_to_prots]
+        db._exec_many('''INSERT INTO genes_in_splits VALUES (?,?,?,?,?,?)''', db_entries)
+        db.commit()
+
+
+
 class Annotation:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -51,6 +92,10 @@ class Annotation:
         # a dictionary to keep contigs
         self.contigs = {}
         self.split_length = None
+
+        # this class keeps track of genes that occur in splits, and responsible
+        # for generating the necessary table in the annotation database
+        self.genes_in_splits = GenesInSplits()
 
 
     def create_new_database(self, contigs_fasta, source, split_length, parser="unknown"):
@@ -145,6 +190,7 @@ class Annotation:
             prots_in_contig[contig] = set([])
 
         splits_dict = {}
+        split_to_prot = {}
         for contig in self.contigs:
             chunks = utils.get_chunks(self.contigs[contig]['length'], self.split_length)
             for i in range(0, len(chunks)):
@@ -155,14 +201,16 @@ class Annotation:
                 taxa = []
                 functions = []
                 gene_start_stops = []
+                # here we go through all genes in the contig and identify the all the ones that happen to be in
+                # this particular split to generate summarized info for each split. BUT one important that is done
+                # in the following loop is self.genes_in_splits.add call, which populates GenesInSplits class.
                 for prot in prots_in_contig[contig]:
                     if self.matrix_dict[prot]['stop'] > start and self.matrix_dict[prot]['start'] < stop:
                         taxa.append(self.matrix_dict[prot]['t_species'])
                         functions.append(self.matrix_dict[prot]['function'])
                         gene_start_stops.append((self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop']), )
+                        self.genes_in_splits.add(split, start, stop, prot, self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop'])
 
-                if not len(gene_start_stops):
-                    gene_start_stops = [(0, 0), ]
 
                 taxonomy_strings = [t for t in taxa if t]
                 function_strings = [f for f in functions if f]
@@ -183,9 +231,12 @@ class Annotation:
                 for gene_start, gene_stop in gene_start_stops:
                     total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
 
+                if total_coding_nts * 1.0 / (stop - start) < 0:
+                    print split, start, stop, gene_start_stops
+
                 splits_dict[split] = {'taxonomy': None,
                                       'num_genes': len(taxa),
-                                      'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]),
+                                      'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]) if len(gene_start_stops) else 0.0,
                                       'ratio_coding': total_coding_nts * 1.0 / (stop - start),
                                       'ratio_hypothetical': (len(functions) - len(function_strings)) * 1.0 / len(functions) if len(functions) else 0.0,
                                       'ratio_with_tax': len(taxonomy_strings) * 1.0 / len(taxa) if len(taxa) else 0.0,
@@ -213,6 +264,9 @@ class Annotation:
         # push raw entries.
         db_entries = [tuple([split] + [splits_dict[split][h] for h in splits_table_structure[1:]]) for split in splits_dict]
         self.db._exec_many('''INSERT INTO splits VALUES (?,?,?,?,?,?,?,?)''', db_entries)
+
+        # finally, create genes_in_splits table
+        self.genes_in_splits.create_table(self.db)
 
 
     def get_consensus_taxonomy_for_split(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):
