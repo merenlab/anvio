@@ -399,7 +399,8 @@ def get_FASTA_file_as_dictionary(file_path):
     return d
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None, column_mapping = None, indexing_field = 0):
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
+                                        column_mapping = None, indexing_field = 0, assign_none_for_missing = False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -458,13 +459,25 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     # we have the dict, but we will not return it the way it is if its supposed to be appended to an
     # already existing dictionary.
     if dict_to_append:
+        # we don't want to through keys in d each time we want to add stuff to 'dict_to_append', so we keep keys we
+        # find in the first item in the dict in another variable. this is potentially very dangerous if not every
+        # item in 'd' has identical set of keys.
+        keys = d.values()[0].keys()
+
         for entry in dict_to_append:
             if entry not in d:
-                raise ConfigError, "Appending entries to the already existing dictionary from file '%s' failed\
-                                    as the entry %s does not appear to be in the file" % (file_path, entry)
-
-            for item in d[entry]:
-                dict_to_append[entry][item] = d[entry][item]
+                # so dict to append is missing a key that is in the dict to be appended. if the user did not
+                # ask us to add None for these entries via none_for_missing, we are going to make a noise,
+                # otherwise we will tolerate it.
+                if not assign_none_for_missing:
+                    raise ConfigError, "Appending entries to the already existing dictionary from file '%s' failed\
+                                        as the entry %s does not appear to be in the file." % (file_path, entry)
+                else:
+                    for key in keys:
+                        dict_to_append[entry][key] = None
+            else:
+                for key in keys:
+                    dict_to_append[entry][key] = d[entry][key]
 
         return dict_to_append
 
