@@ -31,6 +31,7 @@ function loadAll() {
             next_contig_name = contig_data.next_contig_name;
             index = contig_data.index;
             total = contig_data.total;
+            genes = contig_data.genes;
 
             if(layers.length == 0){
                 console.log('Warning: no layers returned')
@@ -57,6 +58,8 @@ function loadAll() {
 function createCharts(){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
+
+    console.log(genes);
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
