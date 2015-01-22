@@ -283,10 +283,12 @@ class InputHandler:
 
         if self.additional_metadata_path:
             contigs_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
-            for contig in contigs_in_tree:
-                if contig not in contigs_in_additional_metadata:
-                    raise utils.ConfigError, "Contig names in additional metadata file do not include all contig names present\
-                                                   in other files. Bad news :/"
+            for contig_name in contigs_in_additional_metadata:
+                if contig_name not in contigs_in_tree:
+                    raise utils.ConfigError, "Some contig names in the additional metadata file is not found in contigs\
+                                              found in other files (such as this one: '%s'). Additional metadata file\
+                                              does not have to list all contigs, but whenever there is a contig, it must\
+                                              be present in other files. Bad news :/" % (contig_name)
 
 
     def update_runinfo_on_disk(self):
@@ -332,7 +334,7 @@ class InputHandler:
             metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
             additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_metadata_path)
             metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
-            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path, dict_to_append = metadata_dict)
+            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path, dict_to_append = metadata_dict, assign_none_for_missing = True)
             
             new_metatada_file_path = filesnpaths.get_temp_file_path()
             headers = ['contigs'] + metadata_headers + additional_headers
