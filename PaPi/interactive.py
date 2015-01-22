@@ -45,6 +45,11 @@ class InputHandler:
         self.taxonomic_level = None
         self.additional_metadata_path = None
 
+        # from annotation db if exists (these will be populated in self.init_annotation_db()):
+        self.annotation_dict = {}
+        self.genes_in_splits = {}
+        self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
+
         self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
 
         self.cwd = os.getcwd()
@@ -111,6 +116,15 @@ class InputHandler:
                                       an identical split length parameter." % (terminal.pretty_print(profiling_split_length),
                                                                                os.path.basename(db_path),
                                                                                terminal.pretty_print(annotation_split_length))
+
+        self.annotation_dict = self.annotation.db.get_table_as_dict('annotation')
+        self.genes_in_splits = self.annotation.db.get_table_as_dict('genes_in_splits')
+        for entry_id in self.genes_in_splits:
+            split_name = self.genes_in_splits[entry_id]['split']
+            if split_name in self.split_to_genes_in_splits_ids:
+                self.split_to_genes_in_splits_ids[split_name].add(entry_id)
+            else:
+                self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
 
         annotation_source = self.annotation.db.get_meta_value('annotation_source')
         run.info('annotation_db initialized', '%s (v. %s) (via "%s")' % (db_path,
