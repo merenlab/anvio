@@ -162,11 +162,12 @@ def charts(contig_name):
         data['variability'].append(contigs[layer]['variability'])
         data['competing_nucleotides'].append(contigs[layer]['competing_nucleotides'])
 
-    for entry_id in d.split_to_genes_in_splits_ids[contig_name]:
-        prot_id = d.genes_in_splits[entry_id]['prot']
-        data['genes'][prot_id] = d.genes_in_splits[entry_id]
-        data['genes'][prot_id]['direction'] = d.annotation_dict[prot_id]['direction']
-        data['genes'][prot_id]['function'] = d.annotation_dict[prot_id]['function'] or 'hypothetical'
+    if d.split_to_genes_in_splits_ids.has_key(contig_name):
+        for entry_id in d.split_to_genes_in_splits_ids[contig_name]:
+            prot_id = d.genes_in_splits[entry_id]['prot']
+            data['genes'][prot_id] = d.genes_in_splits[entry_id]
+            data['genes'][prot_id]['direction'] = d.annotation_dict[prot_id]['direction']
+            data['genes'][prot_id]['function'] = d.annotation_dict[prot_id]['function'] or 'hypothetical'
 
     return json.dumps(data)
 
