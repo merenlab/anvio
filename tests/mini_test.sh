@@ -54,7 +54,7 @@ done
 
 INFO "Merging profiles ..."
 # merge samples
-papi-merge-multiple-runs test-output/204*/RUNINFO.cp -o test-output/204-MERGED
+papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED
 
 
 INFO "Generating network descriptions for samples based on ORFs and functions ..."
