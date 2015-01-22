@@ -13,6 +13,7 @@ Please read the COPYING file.
 """
 
 import os
+import sys
 from ete2 import Tree
 
 import PaPi.db
