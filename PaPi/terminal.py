@@ -9,6 +9,7 @@
 #
 # Please read the COPYING file.
 
+import os
 import sys
 import time
 import fcntl
