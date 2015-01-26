@@ -39,6 +39,8 @@ var context_menu_target_id = 0;
 var metadata_title = {};
 var metadata_dict;
 
+var last_settings;
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -464,6 +466,11 @@ function drawTree() {
         { 
             draw_tree(settings); // call treelib.js where the magic happens
 
+            // last_settings used in export svg for layer information,
+            // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
+            // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
+            last_settings = serializeSettings(); 
+
             $('#img_loading').hide();
             $('#btn_draw_tree').prop('disabled', false);
 
@@ -483,11 +490,6 @@ function showContigNames(gid) {
         return;
 
     messagePopupShow('Contig Names', names.join('\n'));
-    /*
-    $("#contig_name_dialog").dialog("option", "title", "Contig Names");
-    $('#contig_names').val(names.join("\n"));
-    $('#contig_name_dialog').dialog('open');
-    $('#contig_names').click(); // focus & select all*/
 }
 
 function newGroup(id, groupState) {
@@ -643,8 +645,31 @@ function exportSvg() {
     if ($.isEmptyObject(label_to_node_map)) 
         return;
 
-    // draw group list to output svg
-    drawGroupLegend();
+    // draw group and layer legend to output svg
+    var settings = serializeSettings();
+
+    var groups_to_draw = new Array();
+    for (var gid = 1; gid <= group_counter; gid++) {
+        if(SELECTED[gid].length > 0) {
+            groups_to_draw.push(settings['groups'][gid]);
+        }
+    }
+
+    var left = 0 - total_radius - 400; // draw on the left top
+    var top = 20 - total_radius;
+
+    if (groups_to_draw.length > 0) {
+        drawGroupLegend(groups_to_draw, top, left);
+        top = top + 100 + (groups_to_draw.length + 2.5) * 20
+    }
+
+    // important,
+    // we used current settings because we want current group information.
+    // now we are going to use "last_settings" which updated by draw button.
+    var settings = {};
+    settings = last_settings; 
+
+    drawLayerLegend(settings['layers'], settings['layer-order'], top, left);
 
     // move group highlights to new svg groups
     for (var gid = 1; gid <= group_counter; gid++) {
@@ -675,4 +700,5 @@ function exportSvg() {
     $(detached_paths).appendTo('#tree_group');
 
     $('#group_legend').remove();
+    $('#layer_legend').remove();
 }

@@ -142,38 +142,103 @@ function drawLegend(top, left) {
 
 }
 
-function drawGroupLegend() {
-    var left = 0 - total_radius - 300; // draw on the left top
-    var top = 20 - total_radius;
-
-    var groups_to_draw = new Array();
-    for (var gid = 1; gid <= group_counter; gid++) {
-        if(SELECTED[gid].length > 0) {
-            groups_to_draw.push(gid);
-        }
-    }
-
-    if (groups_to_draw.length==0)
-        return;
-
+function drawGroupLegend(groups_to_draw, top, left) {
     createGroup('viewport', 'group_legend');
 
-    drawRectangle('group_legend', left - 10, top - 20, (groups_to_draw.length + 2.5) * 20, 200, 'white', 1, 'black');
+    drawRectangle('group_legend', left - 10, top - 20,20 + (groups_to_draw.length + 2.5) * 20, 300, 'white', 1, 'black');
     drawText('group_legend', {
         'x': left,
         'y': top
     }, "Groups", '16px');
 
-    for (var j = 0; j < groups_to_draw.length; j++) {
-        gid = groups_to_draw[j];
+    // table titles
+    top = top + 28;
+    drawText('group_legend', {'x': left, 'y': top }, 'Color', '10px');
+    drawText('group_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
+    drawText('group_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
+    drawText('group_legend', {'x': left + 230, 'y': top}, 'Length', '10px');
+
+
+    for (var gid=0; gid < groups_to_draw.length; gid++) {
+        var group = groups_to_draw[gid];
         top = top + 20;
 
-        drawRectangle('group_legend', left, top, 16, 16, $('#group_color_' + gid).attr('color'), 1, 'black');
-        drawText('group_legend', {
-            'x': left + 30,
-            'y': top + 8
-        }, $('#group_name_' + gid).val(), '12px');
+        drawRectangle('group_legend', left, top-8, 16, 16, group['color'], 1, 'black');
+        drawText('group_legend', {'x': left + 30, 'y': top }, group['name'], '12px');
+        drawText('group_legend', {'x': left + 170, 'y': top}, group['contig-count'], '12px');
+        drawText('group_legend', {'x': left + 230, 'y': top}, group['contig-length'], '12px');
     }
+}
+
+function drawLayerLegend(layers, layer_order, top, left) {
+    createGroup('viewport', 'layer_legend');
+
+    // legend border
+    drawRectangle('layer_legend', left - 10, top - 20,20 + (layer_order.length + 2.5) * 20, 300, 'white', 1, 'black');
+    
+    // legend title
+    drawText('layer_legend', {
+        'x': left,
+        'y': top
+    }, "Layers", '16px');
+
+    // table titles
+    top = top + 28;
+    drawText('layer_legend', {'x': left, 'y': top }, 'Color', '10px');
+    drawText('layer_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
+    drawText('layer_legend', {'x': left + 120, 'y': top}, 'Norm.', '10px');
+    drawText('layer_legend', {'x': left + 160, 'y': top}, 'Height', '10px');
+    drawText('layer_legend', {'x': left + 200, 'y': top}, 'Min', '10px');
+    drawText('layer_legend', {'x': left + 245, 'y': top}, 'Max', '10px');
+
+    // table items
+    for (var i = 0; i < layer_order.length; i++) 
+    {
+        var pindex = layer_order[i];
+        var layer = layers[pindex];
+        var layer_name = metadata[0][pindex];
+        var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
+
+        top = top + 20;
+
+        // color
+        if (layer.hasOwnProperty('color') && typeof layer['color'] != 'undefined') 
+            drawRectangle('layer_legend', left, top - 8, 16, 16, layer['color'], 1, 'black');
+
+        // name
+        drawText('layer_legend', {'x': left + 30, 'y': top}, short_name, '12px');
+
+        // normalization
+        if (layer.hasOwnProperty('normalization') && typeof layer['normalization'] != 'undefined') {
+            var _norm = layer['normalization'];   
+        } else {
+            var _norm = "-";
+        }
+        drawText('layer_legend', {'x': left + 120, 'y': top}, _norm, '12px');
+
+        // height
+        drawText('layer_legend', {'x': left + 160, 'y': top}, layer['height'], '12px');
+
+        // min & max
+        if (layer['min'].hasOwnProperty('value') && typeof layer['min']['value'] != 'undefined') {
+            var _min = layer['min']['value'];
+            var _max = layer['max']['value'];
+
+            // normalize floating numbers 
+            console.log(_min);
+            if (_min % 1 !== 0)
+                _min = parseFloat(_min).toFixed(4);
+            console.log(_max);
+            if (_max % 1 !== 0)
+                _max = parseFloat(_max).toFixed(4);
+        } else {
+            var _min = "-";
+            var _max = "-"; 
+        }
+        drawText('layer_legend', {'x': left + 200, 'y': top}, _min, '12px');
+        drawText('layer_legend', {'x': left + 245, 'y': top}, _max, '12px');
+    }
+
 }
 
 function redrawGroupColors(id) {
@@ -1619,6 +1684,8 @@ function draw_tree(settings) {
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
                         $('#min' + pindex).attr('title', min_max_str);
                         $('#max' + pindex).attr('title', min_max_str);
+
+
                     }
                 }
             }
