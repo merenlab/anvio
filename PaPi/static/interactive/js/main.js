@@ -146,6 +146,7 @@ $(document).ready(function() {
                         '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                         '<td>n/a</td>' +
                         '<td>n/a</td>' +
+                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
                         '</tr>';
 
                     template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -192,6 +193,7 @@ $(document).ready(function() {
                         '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                         '<td>n/a</td>' +
                         '<td>n/a</td>' +
+                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
                         '</tr>';
 
                     template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -229,6 +231,7 @@ $(document).ready(function() {
                         '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                         '<td>n/a</td>' +
                         '<td>n/a</td>' +
+                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
                         '</tr>';
 
                     template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -280,6 +283,7 @@ $(document).ready(function() {
                         '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                         '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
                         '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
                         '</tr>';
 
                     template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -310,7 +314,68 @@ $(document).ready(function() {
                 }).keyup(function() {
                     $(this).colpickSetColor(this.value);
                 });
-                
+
+                // multiple-color
+                $('#picker_multiple').colpick({
+                    layout: 'hex',
+                    submit: 0,
+                    colorScheme: 'light',
+                    onChange: function(hsb, hex, rgb, el, bySetColor) {
+                        $(el).css('background-color', '#' + hex);
+                        $(el).attr('color', '#' + hex);
+                        if (!bySetColor) $(el).val(hex);
+
+                        $('.layer_selectors:checked').each(
+                            function(index, layer_checkbox){
+                                var picker = $('#' + layer_checkbox.id.replace('select_this_', 'picker'));
+                                $(picker).css('background-color', '#' + hex);
+                                $(picker).attr('color', '#' + hex);
+                            });
+                    }
+                }).keyup(function() {
+                    $(this).colpickSetColor(this.value);
+                });
+
+                // multiple-height
+                $('#height_multiple').on('change', function(){
+                    var intend_value = $('#height_multiple').val();
+                    $('.layer_selectors:checked').each(
+                        function(index, layer_checkbox){
+                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'height'));
+                            $(picker).attr('value', intend_value);
+                        });
+                });
+
+                // multiple-min
+                $('#min_multiple').on('change', function(){
+                    var intend_value = $('#min_multiple').val();
+                    $('.layer_selectors:checked').each(
+                        function(index, layer_checkbox){
+                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'min'));
+                            $(picker).attr('value', intend_value);
+                        });
+                });
+
+                // multiple-max
+                $('#max_multiple').on('change', function(){
+                    var intend_value = $('#max_multiple').val();
+                    $('.layer_selectors:checked').each(
+                        function(index, layer_checkbox){
+                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'max'));
+                            $(picker).attr('value', intend_value);
+                        });
+                });
+
+                // multiple-normalization
+                $('#normalization_multiple').on('change', function(){
+                    var intend_value = $('#normalization_multiple option:selected').val();
+                    $('.layer_selectors:checked').each(
+                        function(index, layer_checkbox){
+                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'normalization'));
+                            $(picker).attr('value', intend_value);
+                        });
+                });
+
             } // layer loop
 
             // make layers table sortable
