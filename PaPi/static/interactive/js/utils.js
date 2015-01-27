@@ -185,12 +185,18 @@ function initializeDialogs() {
             of: window
         });
 
-
     $("#messagePopup").dialog("option", "title", "Contig Names").dialog("option", "position", {
             my: "center",
             at: "center",
             of: window
         }).dialog('close');
+
+    $("#searchBox").dialog("option", "title", "Search Contigs").dialog("option", "position", {
+            my: "center",
+            at: "center",
+            of: window
+        }).dialog('close');
+
 
     var gap = (VIEWER_HEIGHT - ($(".ui-dialog:has(#treeControls)").height() + $(".ui-dialog:has(#groups)").height())) / 2;
     var gap = (gap < 0) ? 0: gap;

@@ -41,6 +41,10 @@ var metadata_dict;
 
 var last_settings;
 
+var search_column;
+var search_results = [];
+var highlight_backup = {};
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -107,7 +111,6 @@ $(document).ready(function() {
                 $('#angle-min').val(state['angle-min']);
                 $('#angle-max').val(state['angle-max']);
                 $('#layer-margin').val(state['layer-margin']);
-                $('#')
             }
             else {
                 // range(1, prameter_count), we skipped column 0 because its not a layer, its name column.
@@ -449,6 +452,12 @@ $(document).ready(function() {
             }
 
             initializeDialogs();
+
+            // add metadata columns to search window
+            for (var i=0; i < metadata[0].length; i++)
+            {
+                $('#searchLayerList').append(new Option(metadata[0][i],i));
+            }
         } // response callback
     ); // promise
 
@@ -766,4 +775,186 @@ function exportSvg() {
 
     $('#group_legend').remove();
     $('#layer_legend').remove();
+}
+
+function searchContigs() 
+{
+    var svalue = $('#searchValue').val();
+
+    if (svalue == "")
+    {
+        alert("Search value shouldn't be empty.");
+        return;
+    }
+    var column = $('#searchLayerList').val();
+    search_column = column;
+    var operator = $('#searchOperator').val();
+    
+    if (operator < 6)
+    {
+        var operator_text = $('#searchOperator option:selected').text();
+
+        // logical operator
+        var _pre = "metadata[";
+        var _post = "][" + column + "] " + operator_text + " \"" + svalue.trim() + "\"";
+
+    }
+    else if (operator == 6)
+    {
+        // contains
+        var _pre = "metadata[";
+        var _post = "][" + column + "].toString().indexOf(\"" + svalue + "\") != -1";
+    }
+
+    var _len = metadata.length;
+    var _counter = 0;
+    search_results = [];
+
+    $('#search_result_message').html("Searching...");
+
+    for (var row=1; row < _len; row++)
+    {
+        if (eval(_pre + row + _post)){
+            search_results.push(row);
+            _counter++;
+        }
+    }
+    $('#search_result_message').html(_counter + " contigs found.");
+}
+
+function showSearchResult() {
+    var msg = "Line\t\tContig Name\t\t" + metadata[0][search_column] + "\n";
+
+    var _len = search_results.length;
+    for (var i=0; i < _len; i++)
+    {
+        msg = msg + search_results[i] + "\t\t" + metadata[search_results[i]][0] + "\t\t" + metadata[search_results[i]][search_column] + "\n";
+    }
+    messagePopupShow('Search Results ('+_len+" items)", msg);
+}
+
+function highlightResult() {
+    var HIGHLIGHT_COLOR= "#FFC000";
+
+    // check if tree exists
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('Draw tree first.');
+        return;
+    }
+
+    // clear previous highlight
+    clearHighlight();
+
+    var _len = search_results.length;
+    for (var i=0; i < _len; i++) {
+        var _contig_name = metadata[search_results[i]][0];
+        var _id = label_to_node_map[_contig_name].id;
+
+        var _path_background = document.getElementsByClassName('path_' + _id + '_background');
+        for (var _i=0; _i < _path_background.length; _i++) {
+            _path_background[_i].style['fill'] = HIGHLIGHT_COLOR;
+            _path_background[_i].style['fill-opacity'] = '0.1';  
+        }
+        var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
+        for (var _i=0; _i < _path_outer_ring.length; _i++) {
+            if (_i==0) {
+                highlight_backup[_contig_name] = _path_outer_ring[_i].style['fill'];
+            }
+            _path_outer_ring[_i].style['fill'] = HIGHLIGHT_COLOR;
+        }
+    }
+}
+
+function clearHighlight() {
+    for (_contig_name in highlight_backup)
+    {
+        var _id = label_to_node_map[_contig_name].id;
+        var _color = highlight_backup[_contig_name];
+        var _opacity = (_color == "#FFFFFF" || _color == "") ? '0.0' : '0.1';
+
+        var _path_background = document.getElementsByClassName('path_' + _id + '_background');
+        for (var _i=0; _i < _path_background.length; _i++) {
+            _path_background[_i].style['fill'] = _color;
+            _path_background[_i].style['fill-opacity'] = _opacity;  
+        }
+        var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
+        for (var _i=0; _i < _path_outer_ring.length; _i++) {
+            _path_outer_ring[_i].style['fill'] = _color;
+        }
+    }
+
+    highlight_backup = {};
+
+}
+
+function appendResult() {
+    // check if tree exists
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('Draw tree first.');
+        return;
+    }
+
+    var group_id = getGroupId();
+
+    if (group_id === 'undefined')
+        return;
+
+    clearHighlight();
+
+    var _len = search_results.length;
+    for (var i=0; i < _len; i++) {
+        _contig_name = metadata[search_results[i]][0];
+        if (SELECTED[group_id].indexOf(_contig_name) == -1)
+            SELECTED[group_id].push(_contig_name);
+
+        for (var gid = 1; gid <= group_counter; gid++) {
+            // don't remove nodes from current group
+            if (gid == group_id)
+                continue;
+
+            var pos = SELECTED[gid].indexOf(_contig_name);
+            if (pos > -1) {
+                SELECTED[gid].splice(pos, 1);
+            }
+        }
+    }
+
+    updateGroupWindow();
+    redrawGroupColors(group_id);
+}
+
+function removeResult() {
+    // check if tree exists
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('Draw tree first.');
+        return;
+    }
+
+    var group_id = getGroupId();
+
+    if (group_id === 'undefined')
+        return;
+
+    var _len = search_results.length;
+    for (var i=0; i < _len; i++) {
+        _contig_name = metadata[search_results[i]][0];
+        var _id = label_to_node_map[_contig_name].id;
+
+        var pos = SELECTED[group_id].indexOf(_contig_name);
+        if (pos > -1) {
+            SELECTED[group_id].splice(pos, 1);
+        }
+
+        var _path_background = document.getElementsByClassName('path_' + _id + '_background');
+        for (var _i=0; _i < _path_background.length; _i++) {
+            _path_background[_i].style['fill'] = '#FFFFFF';
+            _path_background[_i].style['fill-opacity'] = '0.0';  
+        }
+        var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
+        for (var _i=0; _i < _path_outer_ring.length; _i++) {
+            _path_outer_ring[_i].style['fill'] = '#FFFFFF';
+        }
+    }
+
+    updateGroupWindow();
 }
