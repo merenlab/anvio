@@ -1,18 +1,6 @@
 #!/bin/bash
-
-C() {
-    echo -e "\033[0;30m\033[46m$1\033[0m"
-}
-
-INFO() { 
-    echo
-    C "###############################################################"
-    C "#"
-    C "# $1"
-    C "#"
-    C "###############################################################"
-    echo
-} 
+source 00.sh
+set -e
 
 INFO "Creating the output directory ..."
 # change directory and clean the old mess if it exists
@@ -37,9 +25,9 @@ INFO "Generating the annotation database ..."
 # two lines are generating the ANNOTATION database using gui and cmdline outputs, obviously
 # the second one overwrites the result of the first one. they are both here for testing
 # purposes, but only the result of the second command is used for later steps)
-papi-gen-annotation --contigs contigs.fa -p myrast_gui myrast_gui/* -o test-output/ -L 1000 
-papi-gen-annotation --contigs contigs.fa -p myrast_cmdline_dont_use myrast_cmdline/svr_assign_to_dna_using_figfams.txt -o test-output/ -L 1000 
-papi-gen-annotation --contigs contigs.fa -p myrast_cmdline myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_gui --input-files myrast_gui/* -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_cmdline_dont_use --input-files myrast_cmdline/svr_assign_to_dna_using_figfams.txt -o test-output/ -L 1000 
+papi-gen-annotation --contigs contigs.fa -p myrast_cmdline --input-files myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -o test-output/ -L 1000 
 
 
 INFO "Profiling samples ..."
