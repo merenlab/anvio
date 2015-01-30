@@ -49,6 +49,10 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+import PaPi.data.hmm
+single_copy_gene_analysis_sources = PaPi.data.hmm.sources
+
+
 class GenesInSplits:
     def __init__(self):
         self.entry_id = 0
@@ -98,10 +102,11 @@ class Annotation:
         self.genes_in_splits = GenesInSplits()
 
 
-    def create_new_database(self, contigs_fasta, source, split_length, parser="unknown"):
+    def create_new_database(self, contigs_fasta, source, split_length, parser=None):
         if type(source) == type(dict()):
             self.matrix_dict = source
-            self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
+            if len(self.matrix_dict):
+                self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
         if type(source) == type(str()):
             self.matrix_dict = utils.get_TAB_delimited_file_as_dictionary(source,
                                                                           column_names = annotation_table_structure,
@@ -124,15 +129,18 @@ class Annotation:
         self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
         self.split_length = split_length
 
-        # create annotation main table using fields in 'annotation_table_structure' variable
-        self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
+        if self.matrix_dict:
+            # create annotation main table using fields in 'annotation_table_structure' variable
+            self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
 
-        # push raw entries.
-        db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
-        self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+            # push raw entries.
+            db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
+            self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
-        # compute and push split taxonomy information.
-        self.init_splits_table()
+            # compute and push split taxonomy information.
+            self.init_splits_table()
+
+
 
         # bye.
         self.db.disconnect()
