@@ -413,7 +413,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
         if num_fields != len(columns):
             raise  ConfigError, "Number of column names declared (%d) differs from the number of columns\
                                  found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path)
-        f.seek(0)
     else:
         columns = f.readline().strip('\n').split('\t')
 
