@@ -30,7 +30,7 @@ import PaPi.dictio as dictio
 import PaPi.interactive as interactive
 
 # get the absolute path for static directory under PaPi
-static_dir = os.path.join(os.path.dirname(utils.__file__), 'static/interactive')
+static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
 parser = argparse.ArgumentParser(description='Start PaPi binning interface')
 # FIXME: it should be possible to run this without the runinfo-dict.
