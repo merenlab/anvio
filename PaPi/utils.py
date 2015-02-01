@@ -354,7 +354,7 @@ class ConfigError(Exception):
         for error_line in error_lines[1:]:
             error_message.append('%s%s' % (' ' * (len(error_type) + 2), error_line))
 
-        return '\n'.join(error_message)
+        return '\n' + '\n'.join(error_message)
 
 
 def get_chunks(contig_length, desired_length):
