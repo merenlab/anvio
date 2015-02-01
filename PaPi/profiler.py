@@ -36,8 +36,7 @@ from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.5.0'
-
+__version__ = '0.6'
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
@@ -229,7 +228,11 @@ class BAMProfiler:
         for i in range(0, num_contigs):
             contig = contig_names[i]
             self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
-            self.genes.analyze_contig(self.contigs[contig], self.sample_id, self.contig_ORFs[contig])
+            # if no open reading frames were found in a contig, it wouldn't have an entry in the annotation table,
+            # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
+            # we wreck ourselves and the ultimately the analysis of this poor user:
+            if self.contig_ORFs.has_key(contig):
+                self.genes.analyze_contig(self.contigs[contig], self.sample_id, self.contig_ORFs[contig])
 
         self.genes.create_genes_table(self.profile_db)
         self.progress.end()
@@ -249,6 +252,25 @@ class BAMProfiler:
             if self.serialized_profile_path:
                 self.serialized_profile_path = os.path.abspath(self.serialized_profile_path)
                 self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
+
+
+    def check_entries_in_annotation_db_against_contigs(self, contig_names):
+        contig_names = set(contig_names)
+        contigs_without_annotation = [c for c in contig_names if c not in self.contig_ORFs]
+
+        if len(contigs_without_annotation):
+            import random
+            P = lambda x: 'are %d contigs' % (x) if x > 1 else 'there is one contig'
+            self.run.info('WARNING', utils.remove_spaces("You have instructed profiling to use an annotation database,\
+                                              however, there %s in your BAM file that did not get annotated. Which means\
+                                              whatever method you used to identify open reading frames in these contigs\
+                                              failed to find any open reading frames in those. Which may be normal\
+                                              (a) if your contigs are very short, or (b) if your gene finder is not\
+                                              capable of dealing with your stuff. If you know what you are doing, that\
+                                              is fine. Otherwise please double check. Here is one contig missing\
+                                              annotation if you would like to play: %s" % (P(len(contigs_without_annotation)),
+                                                                                        random.choice(contigs_without_annotation))),
+                                                                                        display_only = True, header = True)
 
 
     def init_serialized_profile(self):
@@ -284,16 +306,8 @@ class BAMProfiler:
 
         self.check_contigs()
 
-        # lets make sure that each contig name is found in the annotation db
-        if self.annotation_db:
-            for contig in self.contigs:
-                if contig not in self.contig_ORFs:
-                    raise utils.ConfigError, "You instructed the profiling to use an annotation database,\
-                                              however, at least one contig ('%s') PaPi found in your input file that\
-                                              is missing from the database. This would have never happened if you had\
-                                              generated the annotation database and done mapping using the same contigs.\
-                                              At this point PaPi does not know who to blame, but this is\
-                                              not right :/" % contig
+        # it brings good karma to let the user know what the hell is wrong with their data:
+        self.check_entries_in_annotation_db_against_contigs(self.contigs.keys())
 
         contigs_to_discard = set()
         for contig in self.contigs.values():
@@ -345,16 +359,8 @@ class BAMProfiler:
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
 
 
-        # lets make sure that each contig name is found in the annotation db
-        if self.annotation_db:
-            for contig in self.contig_names:
-                if contig not in self.contig_ORFs:
-                    raise utils.ConfigError, "You instructed the profiling to use an annotation database,\
-                                              however, at least one contig ('%s') PaPi found in the BAM file is\
-                                              missing from the database.  This would have never happened if you had\
-                                              generated the annotation database and done mapping using the same contigs.\
-                                              At this point PaPi does not know who to blame, but this is\
-                                              not right :/" % contig
+        # it brings good karma to let the user know what the hell is wrong with their data:
+        self.check_entries_in_annotation_db_against_contigs(self.contig_names)
 
         # check for the -M parameter.
         contigs_longer_than_M = set()
