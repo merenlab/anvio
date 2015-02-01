@@ -37,7 +37,6 @@ import random
 import operator
 from collections import Counter
 
-import PaPi.data.hmm
 import PaPi.db as db
 import PaPi.fastalib as u
 import PaPi.utils as utils
@@ -140,6 +139,7 @@ class Annotation:
             self.init_splits_table()
 
         # populate single_copy_dict with each resource for single-copy gene analysis
+        import PaPi.data.hmm
         if PaPi.data.hmm.sources:
             # we have one or more database to perform a single-copy gene analysis, and it seems
             # all the necessary apps are in place.
