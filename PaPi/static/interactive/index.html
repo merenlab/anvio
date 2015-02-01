@@ -74,9 +74,14 @@
                         </thead>
                         <tbody id="tbody_layers"></tbody>
                         <tbody id="tbody_bottom">
+                            <tr style="height: 30px">
+                                <td colspan="9">
+                                    <hr size="1" width="%100">Edit attributes for multiple layers</hr>
+                                </td>
+                            </tr>
                             <tr>
                                 <td></td>
-                                <td>Multiple</td>
+                                <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
                                 <td><div id="picker_multiple" class="colorpicker"></div></td>
                                 <td>
                                     <select id="normalization_multiple">
@@ -88,6 +93,7 @@
                                 <td><input id="height_multiple" class="input-height" size="3"></input></td>
                                 <td><input id="min_multiple" class="input-min" size="4"></input></td>
                                 <td><input id="max_multiple" class="input-max" size="4"></input></td>
+                                <td><input type="checkbox" id="select_all"></td>
                             </tr>
                         </tbody>
                     </table>

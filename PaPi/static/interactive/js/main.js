@@ -181,7 +181,7 @@ $(document).ready(function() {
 
                     var template = '<tr>' +
                         '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}">{short-name}</td>' +
+                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                         '<td>n/a</td>' +
                         '<td>' +
                         '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
@@ -225,7 +225,7 @@ $(document).ready(function() {
                     
                     var template = '<tr>' +
                         '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}">{short-name}</td>' +
+                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                         '<td>n/a</td>' +
                         '<td>n/a</td>' +
                         '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
@@ -271,7 +271,7 @@ $(document).ready(function() {
 
                     var template = '<tr>' +
                         '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}">{short-name}</td>' +
+                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                         '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
                         '<td>' +
                         '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
@@ -376,6 +376,29 @@ $(document).ready(function() {
                         });
                 });
 
+                //select-layer
+                $('#select_layer').on('change', function() {
+                    var layer_name = $('#select_layer').val();
+                    $('.titles').each(function(){
+                       if (this.title == layer_name){
+                           $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
+                       }
+                    });
+                });
+
+                //select-all
+                $('#select_all').on('click', function() {
+                    if(this.checked) {
+                        $('.layer_selectors').each(function() {
+                            this.checked = true;
+                        });
+                    }else{
+                        $('.layer_selectors').each(function() {
+                            this.checked = false;
+                        });
+                    }
+                });
+
             } // layer loop
 
             // make layers table sortable
@@ -455,6 +478,12 @@ $(document).ready(function() {
     }, false);
 }); // document ready
 
+// get numeric part from id
+function getNumericPart(id){
+    var $num = id.replace(/[^\d]+/, '');
+
+    return $num;
+}
 
 //---------------------------------------------------------
 //  ui callbacks
