@@ -140,7 +140,7 @@ class Annotation:
 
         # populate single_copy_dict with each resource for single-copy gene analysis
         import PaPi.data.hmm
-        if PaPi.data.hmm.sources:
+        if False and PaPi.data.hmm.sources:
             # we have one or more database to perform a single-copy gene analysis, and it seems
             # all the necessary apps are in place.
             single_copy_dict = {}
@@ -256,7 +256,6 @@ class Annotation:
                                       'ratio_hypothetical': (len(functions) - len(function_strings)) * 1.0 / len(functions) if len(functions) else 0.0,
                                       'ratio_with_tax': len(taxonomy_strings) * 1.0 / len(taxa) if len(taxa) else 0.0,
                                       'tax_accuracy': 0.0}
-
                 distinct_taxa = set(taxonomy_strings)
 
                 if not len(distinct_taxa):
