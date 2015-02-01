@@ -351,7 +351,7 @@ class MultipleRuns:
                                      'length': self.contig_lengths[split_name],
                                      '__parent__': self.split_parents[split_name]}
                     for sample_id in self.merged_sample_ids:
-                        if essential_field == 'noramlized_coverage':
+                        if essential_field == 'normalized_coverage':
                             # and here my programming career hits a new bottom with the following line. I will fix all this
                             # shit very soon; that is how I contain my rage towards myself.
                             m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field] * self.normalization_multiplier[sample_id]

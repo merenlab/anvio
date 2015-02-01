@@ -40,7 +40,7 @@ var named_layers = {
 		'norm': 'none',
 	},
 
-	'noramlized_coverage': {
+	'normalized_coverage': {
 		'height': 120,
 		'color': '#414141',
 		'norm': 'log',
