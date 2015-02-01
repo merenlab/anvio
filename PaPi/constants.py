@@ -16,7 +16,7 @@ import string
 
 import PaPi
 
-clustering_configs_dir = os.path.join(os.path.dirname(PaPi.__file__), 'static/clusterconfigs')
+clustering_configs_dir = os.path.join(os.path.dirname(PaPi.__file__), 'data/clusterconfigs')
 clustering_configs = {}
 
 single_default = "tnf"
@@ -24,12 +24,12 @@ merged_default = "tnf-cov"
 
 if not os.path.exists(os.path.join(clustering_configs_dir, 'single', single_default)):
     print "Error: The default clustering configuration file for single runs, '%s',\n\
-       is missing from static/clusterconfigs dir! I can't fix this!." % (single_default)
+       is missing from data/clusterconfigs dir! I can't fix this!." % (single_default)
     sys.exit()
 
 if not os.path.exists(os.path.join(clustering_configs_dir, 'merged', merged_default)):
     print "Error: The default clustering configuration file for merged runs, '%s',\n\
-       is missing from static/clusterconfigs dir! I can't fix this!." % (merged_default)
+       is missing from data/clusterconfigs dir! I can't fix this!." % (merged_default)
     sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:

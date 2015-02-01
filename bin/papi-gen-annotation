@@ -20,21 +20,25 @@ import PaPi.parsers as parsers
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
 
+
 parser = argparse.ArgumentParser(description='Generate a PaPi annotation database using available parsers for \
                                               various annotation sources.')
-parser.add_argument('input', metavar = 'FILE', nargs='+',
-                    help = 'Input files')
 parser.add_argument('-f', '--contigs', metavar = 'FASTA', default = None,
                     help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
                             could be a reference genome, or contigs from your assembler. Contig names in this file\
                             must match to those in other input files. If there is a problem, PaPi will gracefully\
                             complain about it.')
-parser.add_argument('-p', '--parser', default = 'myrast_cmdline',
+parser.add_argument('-p', '--parser', default = None,
                     help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
-                            The default is "%s". Please see the documentation, or get in touch with the developers\
-                            if you have any questions regarding parsers.' % (len(parsers.parsers.keys()),
-                                                                             ', '.join(parsers.parsers.keys()),
-                                                                             'myrast_cmdline'))
+                            It is OK if you do not select a parser, but in that case there will be no additional\
+                            annotation available except the identification of single-copy genes in your contigs\
+                            for later use. Using a parser will not prevent the analysis of single-copy genes,\
+                            but make PaPi more powerful to help you make sense of your results. Please see the\
+                            documentation, or get in touch with the developers if you have any questions\
+                            regarding parsers.' % (len(parsers.available_parsers), parsers.available_parsers))
+parser.add_argument('-i', '--input-files', metavar = 'FILE', nargs='+', default = None,
+                    help = 'Input files for selected parser. Each parser (except "blank") requires input files to\
+                            process that you generate before running PaPi. Please see the documentation for details.')
 parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
                     help = 'Splitting very large contigs into multiple pieces improves\
                             the efficacy of the visualization step. The default value\
@@ -46,16 +50,21 @@ parser.add_argument('-o', '--output-prefix', default = "ANNOTATION",
 args = parser.parse_args()
 
 try:
-    if args.parser not in parsers.parsers:
+    if type(args.parser) != type(None) and args.parser not in parsers.available_parsers:
         raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
-                            parsers available: %s" % (args.parser, ', '.join(parsers.parsers))
+                            parsers available: %s" % (args.parser, ', '.join(parsers.available_parsers))
+
+    if type(args.parser) == type(None) and args.input_files:
+        raise ConfigError, "You can't list --input-files with your parser is 'blank'. You know why? Because that parser\
+                            does not want any input files."
+
     if not args.contigs:
         raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
 
     if os.path.isdir(args.output_prefix):
         args.output_prefix = os.path.join(args.output_prefix, 'ANNOTATION')
 
-    parser = parsers.parsers[args.parser](args.contigs, args.input, args.output_prefix, args.split_length)
+    parser = parsers.parser_modules[args.parser](args.contigs, args.input_files, args.output_prefix, args.split_length)
 except ConfigError, e:
     print e
     sys.exit(-1)

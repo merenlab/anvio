@@ -76,7 +76,7 @@ class Parser(object):
                                              indexing_field = indexing_field)
 
 
-    def store_annotations(self, contigs_fasta, annotations_dict, split_length, output_file_prefix = "ANNOTATION"):
+    def create_annotation_db(self, contigs_fasta, annotations_dict, split_length, output_file_prefix = "ANNOTATION"):
         if output_file_prefix.lower().endswith('.txt'):
             output_file_prefix = output_file_prefix[:-4]
 
@@ -114,7 +114,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
 
         annotations_dict = self.get_annotations_dict()
-        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
+        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -159,7 +159,7 @@ class MyRastCMDLine(Parser):
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
 
         annotations_dict = self.get_annotations_dict()
-        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
+        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -225,7 +225,7 @@ class MyRastGUI(Parser):
         Parser.__init__(self, 'MyRastGUI', input_file_paths, files_expected, files_structure)
 
         annotations_dict = self.get_annotations_dict()
-        self.store_annotations(contigs_fasta, annotations_dict, split_length, output_file_prefix)
+        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -272,6 +272,15 @@ class MyRastGUI(Parser):
         return annotations_dict
 
 
-parsers = {"myrast_gui": MyRastGUI,
-           "myrast_cmdline": MyRastCMDLine,
-           "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
+class Blank(Parser):
+    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+        self.annotation_source = None
+        self.create_annotation_db(contigs_fasta, {}, split_length, output_file_prefix)
+
+
+parser_modules = {None: Blank,
+                  "myrast_gui": MyRastGUI,
+                  "myrast_cmdline": MyRastCMDLine,
+                  "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
+
+available_parsers = [k for k in parser_modules if k]

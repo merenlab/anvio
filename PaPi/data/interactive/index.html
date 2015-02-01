@@ -121,6 +121,8 @@
                 <input id="btn_new_group" type="button" onClick="newGroup();" value="New group">
                 <input type="button" onClick="submitGroups();" value="Submit groups" id="submit-groups">
                 <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
+                <br /><br />
+                <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search contigs">
                 </div>
             </div>
             <div id="zoomDialog" class="dialogs">
@@ -141,6 +143,33 @@
                 <br />
                 
                 <center><input type="button" value="Close" onclick="$('#messagePopup').dialog('close');"></center>
+            </div>
+            <div id="searchBox" class="dialogs">
+                Expression: 
+                <select id="searchLayerList"></select>
+                <select id="searchOperator">
+                    <option value="6">Contains</option>
+                    <option value="0">==</option>
+                    <option value="1">!=</option>
+                    <option value="2">&gt;</option>
+                    <option value="3">&lt;</option>
+                    <option value="4">&gt;=</option>
+                    <option value="5">&lt;=</option>
+                </select>
+                <input id="searchValue" value="">
+                <br />
+                <br />
+                <input type="button" onclick="searchContigs();" value="Search"> <input type="button" onclick="showSearchResult();" value="Show result">&nbsp;&nbsp;<span id="search_result_message">0 contigs found.</span>
+                <br />
+                <br />                
+                <input type="button" onclick="highlightResult();" value="Highlight on tree"> 
+                <input type="button" onclick="clearHighlight();" value="Clear">
+                <input type="button" onclick="appendResult();" value="Append to group">
+                <input type="button" onclick="removeResult();" value="Remove from group">
+                <br />
+                <br /> 
+                <center><input type="button" onclick="$('#searchBox').dialog('close');" value="Close"></center>
+
             </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>

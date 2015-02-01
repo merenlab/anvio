@@ -29,6 +29,7 @@ splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    
 
 __version__ = "0.0.1"
 
+
 import os
 import sys
 import numpy
@@ -36,14 +37,17 @@ import random
 import operator
 from collections import Counter
 
+import PaPi.data.hmm
 import PaPi.db as db
 import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
+import PaPi.singlecopy as singlecopy
 import PaPi.filesnpaths as filesnpaths
 from PaPi.utils import ConfigError
 from PaPi.contig import Split
+
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -83,7 +87,6 @@ class GenesInSplits:
         db.commit()
 
 
-
 class Annotation:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -98,10 +101,11 @@ class Annotation:
         self.genes_in_splits = GenesInSplits()
 
 
-    def create_new_database(self, contigs_fasta, source, split_length, parser="unknown"):
+    def create_new_database(self, contigs_fasta, source, split_length, parser=None):
         if type(source) == type(dict()):
             self.matrix_dict = source
-            self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
+            if len(self.matrix_dict):
+                self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
         if type(source) == type(str()):
             self.matrix_dict = utils.get_TAB_delimited_file_as_dictionary(source,
                                                                           column_names = annotation_table_structure,
@@ -124,15 +128,29 @@ class Annotation:
         self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
         self.split_length = split_length
 
-        # create annotation main table using fields in 'annotation_table_structure' variable
-        self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
+        if self.matrix_dict:
+            # create annotation main table using fields in 'annotation_table_structure' variable
+            self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
 
-        # push raw entries.
-        db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
-        self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+            # push raw entries.
+            db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
+            self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
-        # compute and push split taxonomy information.
-        self.init_splits_table()
+            # compute and push split taxonomy information.
+            self.init_splits_table()
+
+        # populate single_copy_dict with each resource for single-copy gene analysis
+        if PaPi.data.hmm.sources:
+            # we have one or more database to perform a single-copy gene analysis, and it seems
+            # all the necessary apps are in place.
+            single_copy_dict = {}
+            for source in PaPi.data.hmm.sources:
+                scg = singlecopy.SingleCopyGenes(contigs_fasta,
+                                                 PaPi.data.hmm.sources[source]['genes'],
+                                                 PaPi.data.hmm.sources[source]['hmm'],
+                                                 PaPi.data.hmm.sources[source]['ref'],)
+
+                single_copy_dict[source] = scg.get_results_dict()
 
         # bye.
         self.db.disconnect()
@@ -230,9 +248,6 @@ class Annotation:
                 total_coding_nts = 0
                 for gene_start, gene_stop in gene_start_stops:
                     total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
-
-                if total_coding_nts * 1.0 / (stop - start) < 0:
-                    print split, start, stop, gene_start_stops
 
                 splits_dict[split] = {'taxonomy': None,
                                       'num_genes': len(taxa),

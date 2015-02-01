@@ -2,6 +2,10 @@
     cursor:move;
 }
 
+#searchBox {
+    margin: 5px;
+}
+
 body {
     font-family: Arial;
     font-size: 10px;

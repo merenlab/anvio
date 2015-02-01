@@ -141,6 +141,27 @@ def is_port_in_use(port):
     return in_use
 
 
+def is_program_exists(program):
+    IsExe = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+
+    if fpath:
+        if IsExe(program):
+            return True
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if IsExe(exe_file):
+                return True
+
+    raise ConfigError, "A PaPi function needs '%s' to be installed on your system, but it doesn't seem to appear\
+                        in your path :/ If you are certain you have it on your system (for instance you can run it\
+                        by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
+                        % (program, program)
+
+
 def run_command(cmdline):
     try:
         if subprocess.call(cmdline, shell = True) < 0:
@@ -413,7 +434,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
         if num_fields != len(columns):
             raise  ConfigError, "Number of column names declared (%d) differs from the number of columns\
                                  found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path)
-        f.seek(0)
     else:
         columns = f.readline().strip('\n').split('\t')
 
