@@ -61,7 +61,7 @@ def entropy(l):
 
 
 class ContigVariability:
-    def __init__(self, contig_name, contig_data, contig_sequence, sample = 2):
+    def __init__(self, contig_name, contig_data, contig_sequence, num_positions_from_each_contig = 2):
         self.contig_name = contig_name
         self.contig_data = contig_data
         self.contig_sequence = contig_sequence
@@ -70,13 +70,14 @@ class ContigVariability:
         self.layer_index = dict(zip(self.layer_names, range(0, len(self.layer_names))))
 
         self.positions_dict = {}
-        self.filtered_num_positions = sample
+        self.num_positions_from_each_contig = num_positions_from_each_contig
         self.positions_selected = None
 
         self.TOP = lambda key, num: [x[1] for x in sorted([(self.positions_dict[p][key], p) for p in self.positions_selected], reverse = True)[:num]]
 
 
     def populate_positions_dict(self):
+        '''We take a contig, and create a record of each variable position in it.'''
         counter = Counter()
         for variable_positions_in_layer in [t['competing_nucleotides'].keys() for t in self.contig_data.values()]:
             for pos in variable_positions_in_layer:
@@ -117,7 +118,6 @@ class ContigVariability:
             self.positions_dict[p]['mean_coverage'] = numpy.mean(self.positions_dict[p]['coverages'])
             self.positions_dict[p]['entropy'] = entropy(''.join(self.positions_dict[p]['avatars']))
 
-
         # remove any position with 0 entropy:
         positions_with_zero_entropy = [p for p in self.positions_dict if self.positions_dict[p]['entropy'] < 0.00000001]
         for pos in positions_with_zero_entropy:
@@ -128,22 +128,22 @@ class ContigVariability:
 
     def position_selection_heuristics(self):
         '''The main purpose of this function is to normalize the number of positions across
-           multiple contigs by selecting only top `self.filtered_num_positions` positions
+           multiple contigs by selecting only top `self.num_positions_from_each_contig` positions
            fom each contig.
         '''
 
         # first order all positions in a contig based on entropy
-        self.positions_selected = self.TOP('entropy', self.filtered_num_positions * 3)
+        self.positions_selected = self.TOP('entropy', self.num_positions_from_each_contig * 3)
         # first order them by variability
-        self.positions_selected = self.TOP('variability', self.filtered_num_positions * 2)
+        self.positions_selected = self.TOP('variability', self.num_positions_from_each_contig * 2)
         # then order by coverage
-        self.positions_selected = self.TOP('mean_coverage', self.filtered_num_positions)
-    
+        self.positions_selected = self.TOP('mean_coverage', self.num_positions_from_each_contig)
+
 
     def analyze_contig_summary(self):
         # get a dictionary with all positions in all layers with their occurrences
         self.populate_positions_dict()
-    
+
         # set/select interesting positions
         self.position_selection_heuristics()
 
@@ -167,8 +167,8 @@ class VariabilityWrapper:
         self.layer_names = []
         self.units = []
 
-    def add_contig(self, contig_name, contig_data, contig_sequence, sample = 2):
-        v = ContigVariability(contig_name, contig_data, contig_sequence, sample = sample)
+    def add_contig(self, contig_name, contig_data, contig_sequence, num_positions_from_each_contig = 2):
+        v = ContigVariability(contig_name, contig_data, contig_sequence, num_positions_from_each_contig)
         v.analyze_contig_summary()
 
         self.contigs.append(contig_name)
@@ -191,12 +191,30 @@ class VariabilityWrapper:
                 self.samples_dict[layer_name][unit] = v.positions_dict[pos]['avatars'][i]
 
 
-    def create_TAB_delim_file(self, path):
+    def create_TAB_delim_file(self, path, min_scatter = 1):
+        # units to discard due to min_scatter:
+        units_to_discard = set([])
+
+        if min_scatter > 1:
+            for unit in self.units:
+                values = []
+
+                for layer_name in self.layer_names:
+                    values.append(self.samples_dict[layer_name][unit])
+
+                if len(set(values)) > 1 and Counter(values).most_common()[1][1] < min_scatter:
+                    units_to_discard.add(unit)
+
+        if len(units_to_discard):
+            units = [unit for unit in self.units if unit not in units_to_discard]
+        else:
+            units = self.units
+
         output = open(path, 'w')
-        output.write('\t'.join(['layers'] + self.units) + '\n')
+        output.write('\t'.join(['layers'] + units) + '\n')
         for layer_name in self.layer_names:
             values = []
-            for unit in self.units:
+            for unit in units:
                 values.append(self.samples_dict[layer_name][unit])
             output.write('\t'.join([layer_name] + [str(v) for v in values]) + '\n')
         output.close()
@@ -211,7 +229,24 @@ parser.add_argument('summary_dict', metavar = 'PATH', default = None,
                     help = 'Summary file')
 parser.add_argument('contigs', help = 'List of contigs to work with')
 parser.add_argument('sequences', help = 'Contigs')
-parser.add_argument('-n', '--sample', type=int, default = 2, help = 'Num positions to report from each contig')
+parser.add_argument('-n', '--num-positions-from-each-contig', type=int, default = 2,
+                    help = 'Each contig may have one or more variable positions. What is the maximum number of positons\
+                            to report from each contig is described via this paramter.')
+parser.add_argument('-m', '--minimum-scatter', type=int, default = 1,
+                    help = 'This is tricky. If you have N samples in your dataset, a given variable position x in one\
+                            of your contigs can split your N samples into t groups based on the identity of the\
+                            variation they harbor at position x. For instance, t would have been 1, if all samples had the same\
+                            type of variation at position x (which would not be very interesting, because in this case\
+                            position x would have zero contribution to a deeper understanding of how these samples differ\
+                            based on variability. When t > 1, it would mean that identities at position x across samples\
+                            do differ. But how much scattering occurs based on position x when t > 1? If t=2, how many\
+                            samples ended in each group? Obviously, even distribution of samples across groups may tell\
+                            us something different than uneven distribution of samples across groups. So, this parameter\
+                            filters out any x if "the number of samples in the second largest group" (=scatter) is less\
+                            than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
+                            of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
+                            position would not be reported in your output matrix. The default value for -m is\
+                            %(default)d, which means every x that is returned from ContigVariability class is reported.')
 parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
 args = parser.parse_args()
 
@@ -220,12 +255,13 @@ run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
 summary_index = dictio.read_serialized_object(args.summary_dict)
 contigs = [c.strip() for c in open(args.contigs).readlines()]
 sequences = utils.get_FASTA_file_as_dictionary(args.sequences)
-sample = args.sample
+num_positions_from_each_contig = args.num_positions_from_each_contig
+min_scatter = args.minimum_scatter
 
 w = VariabilityWrapper()
 
 for contig_name in contigs:
     d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[contig_name]))
-    w.add_contig(contig_name, d, sequences[contig_name], sample = sample)
+    w.add_contig(contig_name, d, sequences[contig_name], num_positions_from_each_contig)
 
-w.create_TAB_delim_file(args.output)
+w.create_TAB_delim_file(args.output, min_scatter)
