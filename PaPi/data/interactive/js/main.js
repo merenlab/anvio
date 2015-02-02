@@ -320,91 +320,100 @@ $(document).ready(function() {
                     $(this).colpickSetColor(this.value);
                 });
 
-                // multiple-color
-                $('#picker_multiple').colpick({
-                    layout: 'hex',
-                    submit: 0,
-                    colorScheme: 'light',
-                    onChange: function(hsb, hex, rgb, el, bySetColor) {
-                        $(el).css('background-color', '#' + hex);
-                        $(el).attr('color', '#' + hex);
-                        if (!bySetColor) $(el).val(hex);
-
-                        $('.layer_selectors:checked').each(
-                            function(index, layer_checkbox){
-                                var picker = $('#' + layer_checkbox.id.replace('select_this_', 'picker'));
-                                $(picker).css('background-color', '#' + hex);
-                                $(picker).attr('color', '#' + hex);
-                            });
-                    }
-                }).keyup(function() {
-                    $(this).colpickSetColor(this.value);
-                });
-
-                // multiple-height
-                $('#height_multiple').on('change', function(){
-                    var intend_value = $('#height_multiple').val();
-                    $('.layer_selectors:checked').each(
-                        function(index, layer_checkbox){
-                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'height'));
-                            $(picker).attr('value', intend_value);
-                        });
-                });
-
-                // multiple-min
-                $('#min_multiple').on('change', function(){
-                    var intend_value = $('#min_multiple').val();
-                    $('.layer_selectors:checked').each(
-                        function(index, layer_checkbox){
-                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'min'));
-                            $(picker).attr('value', intend_value);
-                        });
-                });
-
-                // multiple-max
-                $('#max_multiple').on('change', function(){
-                    var intend_value = $('#max_multiple').val();
-                    $('.layer_selectors:checked').each(
-                        function(index, layer_checkbox){
-                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'max'));
-                            $(picker).attr('value', intend_value);
-                        });
-                });
-
-                // multiple-normalization
-                $('#normalization_multiple').on('change', function(){
-                    var intend_value = $('#normalization_multiple option:selected').val();
-                    $('.layer_selectors:checked').each(
-                        function(index, layer_checkbox){
-                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'normalization'));
-                            $(picker).attr('value', intend_value);
-                        });
-                });
-
-                //select-layer
-                $('#select_layer').on('change', function() {
-                    var layer_name = $('#select_layer').val();
-                    $('.titles').each(function(){
-                       if (this.title == layer_name){
-                           $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
-                       }
-                    });
-                });
-
-                //select-all
-                $('#select_all').on('click', function() {
-                    if(this.checked) {
-                        $('.layer_selectors').each(function() {
-                            this.checked = true;
-                        });
-                    }else{
-                        $('.layer_selectors').each(function() {
-                            this.checked = false;
-                        });
-                    }
-                });
-
             } // layer loop
+
+            //  Edit Attributes For Multiple Layers
+
+            $('#select_layer').on('change', function() {
+                var layer_name = $('#select_layer').val();
+                $('.titles').each(
+                    function(){
+                        if (!this.title.indexOf(layer_name))
+                        {
+                            $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
+                        }
+                    }
+                );
+            });
+
+            $('#picker_multiple').colpick({
+                layout: 'hex',
+                submit: 0,
+                colorScheme: 'light',
+                onChange: function(hsb, hex, rgb, el, bySetColor) {
+                    $(el).css('background-color', '#' + hex);
+                    $(el).attr('color', '#' + hex);
+                    if (!bySetColor) $(el).val(hex);
+
+                    $('.layer_selectors:checked').each(
+                        function(index, layer_checkbox){
+                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'picker'));
+                            $(picker).css('background-color', '#' + hex);
+                            $(picker).attr('color', '#' + hex);
+                        }
+                    );
+                }
+            }).keyup(function() {
+                    $(this).colpickSetColor(this.value);
+            });
+
+            $('#min_multiple').on('change', function(){
+                var intend_value = $('#min_multiple').val();
+                $('.layer_selectors:checked').each(
+                    function(index, layer_checkbox){
+                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'min'));
+                        $(picker).attr('value', intend_value);
+                    }
+                );
+            });
+
+            $('#max_multiple').on('change', function(){
+                var intend_value = $('#max_multiple').val();
+                $('.layer_selectors:checked').each(
+                    function(index, layer_checkbox){
+                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'max'));
+                        $(picker).attr('value', intend_value);
+                    }
+                );
+            });
+
+            $('#height_multiple').on('change', function(){
+                var intend_value = $('#height_multiple').val();
+                $('.layer_selectors:checked').each(
+                    function(index, layer_checkbox){
+                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'height'));
+                        $(picker).attr('value', intend_value);
+                    }
+                );
+            });
+
+            $('#normalization_multiple').on('change', function(){
+                var intend_value = $('#normalization_multiple option:selected').val();
+                $('.layer_selectors:checked').each(
+                    function(index, layer_checkbox){
+                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'normalization'));
+                        $(picker).attr('value', intend_value);
+                        clearMinMax(picker);
+                    }
+                );
+            });
+
+            $('#select_all').on('click', function() {
+                if(this.checked) {
+                    $('.layer_selectors').each(
+                        function() {
+                            this.checked = true;
+                        }
+                    );
+
+                }else{
+                    $('.layer_selectors').each(
+                        function() {
+                            this.checked = false;
+                        }
+                    );
+                }
+            });
 
             // make layers table sortable
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
