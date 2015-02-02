@@ -27,25 +27,25 @@ import PaPi.terminal as terminal
 import PaPi.dictio as dictio
 
 progress = terminal.Progress()
-run = terminal.Run(width = 10)
+run = terminal.Run(width = 30)
 
 states_dict = {'AA': 'a',
-          'TT': 't',
-          'CC': 'c',
-          'GG': 'g',
-          'NN': 'n',
-          'AT': 'x',
-          'TA': 'x',
-          'AC': 'y',
-          'CA': 'y',
-          'CT': 'n',
-          'TC': 'n',
-          'AG': 'm',
-          'GA': 'm',
-          'CG': 'r',
-          'GC': 'r',
-          'GT': 'q',
-          'TG': 'q'}
+               'TT': 't',
+               'CC': 'c',
+               'GG': 'g',
+               'NN': 'n',
+               'AT': 'x',
+               'TA': 'x',
+               'AC': 'y',
+               'CA': 'y',
+               'CT': 'n',
+               'TC': 'n',
+               'AG': 'm',
+               'GA': 'm',
+               'CG': 'r',
+               'GC': 'r',
+               'GT': 'q',
+               'TG': 'q'}
 
 
 valid_chars = set(states_dict.values()) 
@@ -187,7 +187,6 @@ class VariabilityWrapper:
 
             for layer_name in v.layer_names:
                 i = v.layer_index[layer_name]
-                #self.samples_dict[layer_name][unit] = v.positions_dict[pos]['identities'][i]
                 self.samples_dict[layer_name][unit] = v.positions_dict[pos]['avatars'][i]
 
 
@@ -260,8 +259,17 @@ min_scatter = args.minimum_scatter
 
 w = VariabilityWrapper()
 
-for contig_name in contigs:
+num_contigs = len(contigs)
+
+run.info('Contigs', '%d contigs found' % (num_contigs))
+progress.new('Analyzing contigs')
+for i in range(0, num_contigs):
+    contig_name = contigs[i]
+    progress.update('%d of %d' % (i + 1, num_contigs))
     d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[contig_name]))
     w.add_contig(contig_name, d, sequences[contig_name], num_positions_from_each_contig)
 
+progress.update('Generating output ...')
 w.create_TAB_delim_file(args.output, min_scatter)
+progress.end()
+run.info('Output matrix', args.output)
