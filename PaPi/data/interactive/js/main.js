@@ -326,14 +326,24 @@ $(document).ready(function() {
 
             $('#select_layer').on('change', function() {
                 var layer_name = $('#select_layer').val();
-                $('.titles').each(
-                    function(){
-                        if (!this.title.indexOf(layer_name))
-                        {
-                            $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
+
+                // clean prior selections
+                $('.layer_selectors').each(
+                        function() {
+                            this.checked = false;
                         }
-                    }
-                );
+                    );
+
+                if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
+                    $('.titles').each(
+                        function(){
+                            if (this.title.indexOf(layer_name) > -1)
+                            {
+                                $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
+                            }
+                        }
+                    );
+                }
             });
 
             $('#picker_multiple').colpick({
