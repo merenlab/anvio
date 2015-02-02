@@ -180,8 +180,8 @@ function initializeDialogs() {
     $("#groups").dialog("option", "title", "Groups");
 
     $("#zoomDialog").dialog("option", "title", "Zoom").dialog("option", "position", {
-            my: "right center",
-            at: "right center",
+            my: "right bottom",
+            at: "right bottom",
             of: window
         });
 
@@ -197,19 +197,15 @@ function initializeDialogs() {
             of: window
         }).dialog('close');
 
-
-    var gap = (VIEWER_HEIGHT - ($(".ui-dialog:has(#treeControls)").height() + $(".ui-dialog:has(#groups)").height())) / 2;
-    var gap = (gap < 0) ? 0: gap;
-
     $("#treeControls").dialog("option", "position", {
             my: "left top",
-            at: "left top+" + gap + "px",
+            at: "left top",
             of: window
         });
 
     $("#groups").dialog("option", "position", {
-            my: "left bottom",
-            at: "left bottom-" + gap + "px",
+            my: "right top",
+            at: "right top",
             of: window
         }).dialog('option', 'minHeight', 0);
 }
