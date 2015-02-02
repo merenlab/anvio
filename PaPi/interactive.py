@@ -24,7 +24,6 @@ import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
-from PaPi.constants import levels_of_taxonomy
 
 
 progress = terminal.Progress()
@@ -42,8 +41,6 @@ class InputHandler:
         self.contig_rep_seqs = {}
         self.contigs_summary_index = {}
         self.contig_lengths = {}
-        self.taxonomy = None
-        self.taxonomic_level = None
         self.additional_metadata_path = None
 
         # from annotation db if exists (these will be populated in self.init_annotation_db()):
@@ -70,21 +67,6 @@ class InputHandler:
         if args.annotation_db:
             self.init_annotation_db(args.annotation_db)
 
-        # take care of taxonomy if a file is provided. otherwise self.taxonomy remain None
-        if args.taxonomy:
-            if not args.taxonomic_level:
-                raise utils.ConfigError, "When a taxonomy file is declared, a taxonomic level to visualize\
-                                               has to be defined."
-
-            self.taxonomic_level = args.taxonomic_level.lower()
-
-            if self.taxonomic_level not in levels_of_taxonomy:
-                raise utils.ConfigError, "The taxonomic level '%s' is not a valid one. Taxonomic level has\
-                                               to match one of these: %s" % (args.taxonomic_level,
-                                                                             levels_of_taxonomy)
-
-            filesnpaths.is_file_tab_delimited(args.taxonomy)
-            self.taxonomy = utils.get_TAB_delimited_file_as_dictionary(args.taxonomy, expected_fields = levels_of_taxonomy)
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
@@ -275,13 +257,6 @@ class InputHandler:
                                                       S(contigs_in_fasta, contigs_in_tree),
                                                       S(contigs_in_metadata, contigs_in_fasta))
 
-        if self.taxonomy:
-            contigs_in_taxonomy = set(self.taxonomy.keys())
-            for contig in contigs_in_metadata:
-                if not contig in contigs_in_taxonomy:
-                    raise utils.ConfigError, "Contig names in taxonomy do not include all contig names present\
-                                                   in other files. Bad news :/"
-
         if self.additional_metadata_path:
             contigs_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
             for contig_name in contigs_in_additional_metadata:
@@ -298,19 +273,8 @@ class InputHandler:
 
 
     def convert_metadata_into_json(self):
+        '''This function's name must change to something more meaningful.'''
         metadata_file_path = self.runinfo['views'][self.runinfo['default_view']]
-
-        if self.taxonomy:
-            metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
-            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
-            for contig in metadata_dict.keys():
-                metadata_dict[contig][self.taxonomic_level] = self.taxonomy[contig][self.taxonomic_level]
-
-            new_metatada_file_path = filesnpaths.get_temp_file_path()
-            headers = ['contigs', self.taxonomic_level] + metadata_headers
-            utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
-            metadata_file_path = new_metatada_file_path
-
 
         if self.annotation:
             splits_additional_info = {}

@@ -48,10 +48,6 @@ parser.add_argument('-m', '--metadata', metavar = 'TXT', default = None,
 parser.add_argument('-t', '--tree', metavar = 'NEWICK', default = None,
                     help = 'Newick tree of contigs. Declaring a tree file using this parameter will override\
                             the tree file in RUNINFO.')
-parser.add_argument('-T', '--taxonomy', metavar = "FILE", default = None,
-                    help = "TAB-delimited taxonomy file that contains phylum, class, order, family\
-                            genus and species annotations of each contig. Contig names has to match\
-                            with the ones in other files, obviously")
 parser.add_argument('--title', metavar = "TITLE", default = None,
                     help = "Title for the interface. If you are working with a RUNINFO dict, the title\
                             will be determined based on information stored in that file. Regardless,\
@@ -64,8 +60,6 @@ parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = N
 parser.add_argument('-S', '--summary-index', metavar = "FILE", default = None,
                      help = "SUMMARY.cp, if there is one available, to inspect contigs from the interface. Will\
                              override the one found in RUNINFO file if it was also declared using -r parameter.")
-parser.add_argument('-l', '--taxonomic-level', metavar = 'NAME', default = 'phylum',
-                    help = 'The level of taxonomy to annotate the tree. The default is %(default)s.')
 parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
                     help = 'Output directory for output storage')
 parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type=int,

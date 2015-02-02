@@ -43,7 +43,6 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
-levels_of_taxonomy = ["phylum", "class", "order", "family", "genus", "species"]
 
 pretty_names = {}
 

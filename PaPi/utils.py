@@ -25,7 +25,7 @@ import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
 
-from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, digits, complements, levels_of_taxonomy
+from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, digits, complements
 import PaPi.fastalib as u
 import PaPi.filesnpaths as filesnpaths
 from PaPi.sequence import Composition
