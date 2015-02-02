@@ -346,10 +346,9 @@ $(document).ready(function() {
                     if (!bySetColor) $(el).val(hex);
 
                     $('.layer_selectors:checked').each(
-                        function(index, layer_checkbox){
-                            var picker = $('#' + layer_checkbox.id.replace('select_this_', 'picker'));
-                            $(picker).css('background-color', '#' + hex);
-                            $(picker).attr('color', '#' + hex);
+                        function(){
+                            $('#' + 'picker' + getNumericPart(this.id)).attr('color', '#' + hex);
+                            $('#' + 'picker' + getNumericPart(this.id)).css('background-color', '#' + hex);
                         }
                     );
                 }
@@ -360,9 +359,8 @@ $(document).ready(function() {
             $('#min_multiple').on('change', function(){
                 var intend_value = $('#min_multiple').val();
                 $('.layer_selectors:checked').each(
-                    function(index, layer_checkbox){
-                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'min'));
-                        $(picker).attr('value', intend_value);
+                    function(){
+                        $('#' + 'min' + getNumericPart(this.id)).attr('value', intend_value);
                     }
                 );
             });
@@ -370,9 +368,8 @@ $(document).ready(function() {
             $('#max_multiple').on('change', function(){
                 var intend_value = $('#max_multiple').val();
                 $('.layer_selectors:checked').each(
-                    function(index, layer_checkbox){
-                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'max'));
-                        $(picker).attr('value', intend_value);
+                    function(){
+                        $('#' + 'max' + getNumericPart(this.id)).attr('value', intend_value);
                     }
                 );
             });
@@ -380,9 +377,8 @@ $(document).ready(function() {
             $('#height_multiple').on('change', function(){
                 var intend_value = $('#height_multiple').val();
                 $('.layer_selectors:checked').each(
-                    function(index, layer_checkbox){
-                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'height'));
-                        $(picker).attr('value', intend_value);
+                    function(){
+                        $('#' + 'height' + getNumericPart(this.id)).attr('value', intend_value);
                     }
                 );
             });
@@ -390,8 +386,8 @@ $(document).ready(function() {
             $('#normalization_multiple').on('change', function(){
                 var intend_value = $('#normalization_multiple option:selected').val();
                 $('.layer_selectors:checked').each(
-                    function(index, layer_checkbox){
-                        var picker = $('#' + layer_checkbox.id.replace('select_this_', 'normalization'));
+                    function(){
+                        var picker = $('#' + 'normalization' + getNumericPart(this.id));
                         $(picker).attr('value', intend_value);
                         clearMinMax(picker);
                     }
