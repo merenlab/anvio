@@ -219,7 +219,7 @@ $(document).ready(function() {
                 //
                 // categorical layer
                 //
-                else if (metadata[1][layer_id] === '' || !isNumber(metadata[1][layer_id]))
+                else if (metadata[1][layer_id] === null || !isNumber(metadata[1][layer_id]))
                 { 
                     layer_types[layer_id] = 2;
 
@@ -477,7 +477,7 @@ $(document).ready(function() {
                     cache: false,
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        XXX = data; // <- FIXME: isn't this suppused to be metadata? well, I am kinda lost :/
+                        metadata = eval(data);
                         $('#views_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false); 
                     }
