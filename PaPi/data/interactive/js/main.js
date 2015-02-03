@@ -69,6 +69,11 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
+            url: '/data/views?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
             url: '/data/contig_lengths?timestamp=' + timestamp,
         }),
         $.ajax({
@@ -79,10 +84,10 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/meta?timestamp=' + timestamp,
+            url: '/data/default_view?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, contigLengthsResponse, stateResponse, metaResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse) 
         {
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
@@ -92,7 +97,8 @@ $(document).ready(function() {
             /*
                 Get metadata and create layers table
             */
-            metadata = eval(metaResponse[0]);
+
+            metadata = eval(defaultViewResponse[0]);
             parameter_count = metadata[0].length;
 
             // since we are painting parent layers odd-even, 
@@ -429,27 +435,8 @@ $(document).ready(function() {
             */
             var default_tree = (hasState) ? state['order-by'] : clusteringsResponse[0][0];
             var available_trees = clusteringsResponse[0][1];
+            var available_trees_combo = getComboBoxContent(default_tree, available_trees);
 
-            var available_trees_combo = '';
-            var available_trees_combo_item = '<option value="{val}"{sel}>{text}</option>';
-            
-            $.each(available_trees, function(index, value) {
-                if(index == default_tree)
-                {
-                    available_trees_combo += available_trees_combo_item
-                                .replace('{val}', index)
-                                .replace('{sel}', ' selected')
-                                .replace('{text}', index);
-                }
-                else
-                {
-                    available_trees_combo += available_trees_combo_item
-                                .replace('{val}', index)
-                                .replace('{sel}', '')
-                                .replace('{text}', index);
-                }
-            }); 
-            
             $('#trees_container').append(available_trees_combo);
 
             $('#trees_container').change(function() {
@@ -470,6 +457,35 @@ $(document).ready(function() {
             });
 
             $('#trees_container').trigger('change'); // load default newick tree
+
+            /* 
+            //  Views
+            */
+            var default_view = (hasState) ? state['current-view'] : viewsResponse[0][0];
+            var available_views = viewsResponse[0][1];
+            var available_views_combo = getComboBoxContent(default_view, available_views);
+
+            $('#views_container').append(available_views_combo);
+
+            $('#views_container').change(function() {
+
+                $('#views_container').prop('disabled', false);
+                $('#btn_draw_tree').prop('disabled', true);
+
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
+                    success: function(data) {
+                        XXX = data; // <- FIXME: isn't this suppused to be metadata? well, I am kinda lost :/
+                        $('#views_container').attr('disabled', false);
+                        $('#btn_draw_tree').attr('disabled', false); 
+                    }
+                });
+            });
+
+            $('#views_container').trigger('change'); // load default view
+
 
             /*
             //  Add groups
@@ -504,6 +520,32 @@ $(document).ready(function() {
     }, false);
 }); // document ready
 
+
+function getComboBoxContent(default_item, available_items){
+    var combo = '';
+    var combo_item = '<option value="{val}"{sel}>{text}</option>';
+
+    $.each(available_items, function(index, value) {
+        if(index == default_item)
+        {
+            combo += combo_item
+                        .replace('{val}', index)
+                        .replace('{sel}', ' selected')
+                        .replace('{text}', index);
+        }
+        else
+        {
+            combo += combo_item
+                        .replace('{val}', index)
+                        .replace('{sel}', '')
+                        .replace('{text}', index);
+        }
+    });
+
+    return combo;
+}
+
+
 // get numeric part from id
 function getNumericPart(id){
     var $num = id.replace(/[^\d]+/, '');
@@ -521,6 +563,7 @@ function serializeSettings() {
     state['group-counter'] = group_counter;
     state['tree-type'] = $('#tree_type').val();
     state['order-by'] = $('#trees_container').val();
+    state['current-view'] = $('#views_container').val();
     state['angle-min'] = $('#angle-min').val();
     state['angle-max'] = $('#angle-max').val();
     state['layer-margin'] = $('#layer-margin').val();

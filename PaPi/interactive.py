@@ -34,6 +34,7 @@ class InputHandler:
     """The class that loads everything for the interactive interface. Wow. Such glory."""
     def __init__(self, args):
         self.args = args
+        self.views = {}
         self.runinfo = {}
         self.title = 'Unknown Project'
         self.annotation = None
@@ -127,10 +128,10 @@ class InputHandler:
         if args.show_views:
             raise utils.ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
+        metadata_path = os.path.abspath(metadata)
         self.runinfo['splits_fasta'] = os.path.abspath(args.fasta_file)
         self.runinfo['output_dir'] = os.path.abspath(args.output_dir)
         self.runinfo['default_view'] = 'single'
-        self.runinfo['views'] = {'single': os.path.abspath(args.metadata)}
         self.runinfo['default_clustering'] = 'default'
         self.runinfo['clusterings'] = {'default': os.path.abspath(args.tree)}
         self.runinfo['tree_file'] = os.path.abspath(args.tree)
@@ -140,12 +141,18 @@ class InputHandler:
             self.contigs_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
 
         # sanity of the metadata
-        filesnpaths.is_file_tab_delimited(self.runinfo['views']['single'])
-        if not open(self.runinfo['views']['single']).readline().split('\t')[0] == "contig":
+        filesnpaths.is_file_tab_delimited(metadata_path)
+        metadata_columns = utils.get_columns_of_TAB_delim_file(metadata_path, include_first_column=True)
+        if not metadata_headers[0] == "contig":
             raise utils.ConfigError, "The first row of the first column of the metadata file must\
                                       say 'contig', which is not the case for your metadata file\
                                       ('%s'). Please make sure this is a properly formatted metadata\
-                                      file." % (self.runinfo['views']['single'])
+                                      file." % (metadata_path)
+
+        # store metadata as view:
+        self.views['single'] = {'header': metadata_headers,
+                                'dict': get_TAB_delimited_file_as_dictionary(metadata_path)}
+
         filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
         # reminder: this is being stored in the output dir provided as a commandline parameter:
@@ -167,21 +174,23 @@ class InputHandler:
             raise utils.ConfigError, "'%s'? No such file." % (args.runinfo)
 
         self.runinfo = dictio.read_serialized_object(args.runinfo)
+        self.views = self.runinfo['views']
+        self.runinfo['views'] = {}
 
         # if the user wants to see available views, show them and exit.
         if args.show_views:
-            num_views = len(self.runinfo['views'])
+            num_views = len(self.views)
             print "* %d view%s available for this run is listed below." % (num_views,
                                                                            's' if num_views > 1 else '')
             run.info('Available views', None, header = True)
-            for view in self.runinfo['views']:
-                run.info(view, 'Via "%s" table' % self.runinfo['views'][view])
+            for view in self.views:
+                run.info(view, 'Via "%s" table' % self.views[view])
             print
             sys.exit()
 
         # if the user specifies a view, set it as default:
         if args.view:
-            if not args.view in self.runinfo['views']:
+            if not args.view in self.views:
                 raise utils.ConfigError, "The requested view ('%s') is not available for this run. Please see\
                                           available views by running this program with --show-views flag." % args.view
 
@@ -220,20 +229,11 @@ class InputHandler:
         else:
             self.title = self.runinfo['sample_id'] + ' (%s)' % self.runinfo['default_view']
 
-        # FIXME: how it came to this point is a long story. but here we are trying to comply with the design
-        # that was in place by replacing 'table names' for each self.runinfo['views'] item with TAB delimited
-        # file paths on this ... by .. literally .. rading them from the database, and converting them into
-        # TAB delimited files, JUST TO BE READ later on as JSON formatted objects. This is ridiculous, because
-        # what is being done here is 2 steps with a lot of IO when it could be one very fast step. This
-        # has to be fixed at some point (tl;dr, for each view, self.runinfo['views'][view] must contain a JSON
-        # formatted output of the 'view' table):
-        for view in self.runinfo['views']:
-            table = self.runinfo['views'][view]
-            table_rows = self.profile_db.get_all_rows_from_table(table)
-            tmp_file_path = filesnpaths.get_temp_file_path()
-            table_structure = self.profile_db.get_table_structure(table)
-            utils.store_array_as_TAB_delimited_file(table_rows, tmp_file_path, table_structure)
-            self.runinfo['views'][view] = tmp_file_path
+        # read available views from the profile database:
+        for view in self.views:
+            table = self.views[view]
+            self.views[view] = {'header': self.profile_db.get_table_structure(table)[1:],
+                                'dict': self.profile_db.get_table_as_dict(table)}
 
         self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
@@ -242,7 +242,7 @@ class InputHandler:
 
     def check_names_consistency(self):
         contigs_in_tree = sorted(self.contig_names_ordered)
-        contigs_in_metadata = sorted([l.split('\t')[0] for l in open(self.runinfo['views'][self.runinfo['default_view']]).readlines()[1:]])
+        contigs_in_metadata = sorted(self.views[self.runinfo['default_view']]['dict'].keys())
         contigs_in_fasta = sorted(utils.get_all_ids_from_fasta(self.P(self.runinfo['splits_fasta'])))
 
         try:
@@ -274,46 +274,49 @@ class InputHandler:
 
     def convert_metadata_into_json(self):
         '''This function's name must change to something more meaningful.'''
-        metadata_file_path = self.runinfo['views'][self.runinfo['default_view']]
 
+        annotation_dict, annotation_headers = None, []
+        splits_header = None
         if self.annotation:
-            splits_additional_info = {}
-            progress.new('Generating splits additional info')
-            num_contigs = len(self.contig_names_ordered)
+            annotation_dict = self.annotation.db.get_table_as_dict('splits')
+            annotation_headers = self.annotation.db.get_table_structure('splits')[1:]
 
-            metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
-            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
-
-            splits = self.annotation.db.get_table_as_dict('splits', PaPi.annotation.splits_table_structure)
-            for split in metadata_dict:
-                for key in PaPi.annotation.splits_table_structure[1:]:
-                    metadata_dict[split][key] = splits[split][key]
-
-            new_metatada_file_path = filesnpaths.get_temp_file_path()
-            headers = ['contigs'] + PaPi.annotation.splits_table_structure[1:] + metadata_headers
-            utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
-            metadata_file_path = new_metatada_file_path
-
-
+        additional_dict, additional_header = None, []
         if self.additional_metadata_path:
-            metadata_headers = utils.get_columns_of_TAB_delim_file(metadata_file_path)
+            additional_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path)
             additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_metadata_path)
-            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(metadata_file_path)
-            metadata_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path, dict_to_append = metadata_dict, assign_none_for_missing = True)
-            
-            new_metatada_file_path = filesnpaths.get_temp_file_path()
-            headers = ['contigs'] + metadata_headers + additional_headers
-            utils.store_dict_as_TAB_delimited_file(metadata_dict, new_metatada_file_path, headers)
-            metadata_file_path = new_metatada_file_path
 
+        for view in self.views:
+            # here we will populate runinfo['views'] with json objects.
+            view_dict = self.views[view]['dict']
+            view_headers = self.views[view]['header']
 
-        json_obj = utils.get_json_obj_from_TAB_delim_metadata(metadata_file_path)
+            json_object = []
 
-        temp_file_path = filesnpaths.get_temp_file_path()
-        f = open(temp_file_path, 'w')
-        f.write(json_obj)
-        f.close()
-        self.runinfo['metadata_json'] = temp_file_path
+            # set the header line:
+            json_header = ['contigs']
+            # first annotation, if exists
+            if annotation_headers:
+                json_header.extend(annotation_headers)
+            # then, the view!
+            json_header.extend(view_headers)
+            # additional headers as the outer ring:
+            if additional_headers:
+                json_header.extend(additional_headers)
+            # finalize it:
+            json_object.append(json_header)
+
+            for split_name in view_dict:
+                json_entry = [split_name]
+
+                json_entry.extend([annotation_dict[split_name][header] for header in annotation_headers])
+                json_entry.extend([view_dict[split_name][header] for header in view_headers])
+                json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
+
+                json_object.append(json_entry)
+                 
+            self.runinfo['views'][view] = json_object
+        print self.runinfo['views']
 
 
     def end(self):

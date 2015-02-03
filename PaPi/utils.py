@@ -220,8 +220,11 @@ def is_all_columns_present_in_TAB_delim_file(columns, file_path):
     return False if len([False for c in columns if c not in columns]) else True
 
 
-def get_columns_of_TAB_delim_file(file_path):
-    return open(file_path).readline().strip('\n').split('\t')[1:]
+def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
+    if include_first_column:
+        return open(file_path).readline().strip('\n').split('\t')
+    else:
+        return open(file_path).readline().strip('\n').split('\t')[1:]
 
 
 def get_json_obj_from_TAB_delim_metadata(input_file):

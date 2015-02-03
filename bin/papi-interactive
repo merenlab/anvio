@@ -102,8 +102,11 @@ def send_data(name):
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     if name == "clusterings":
         return json.dumps((d.runinfo['default_clustering'], d.runinfo['clusterings']), )
-    elif name == "meta":
-        return static_file(d.runinfo['metadata_json'], root='/')
+    elif name == "views":
+        available_views = dict(zip(d.runinfo['views'].keys(), d.runinfo['views'].keys()))
+        return json.dumps((d.runinfo['default_view'], available_views), )
+    elif name == "default_view":
+        return json.dumps(d.runinfo['views'][d.runinfo['default_view']])
     elif name == "state":
         if d.state:
             return static_file(os.path.abspath(d.state), root='/')
@@ -112,6 +115,10 @@ def send_data(name):
         return json.dumps(d.contig_lengths)
     elif name == "title":
         return json.dumps(d.title)
+
+@route('/data/view/<view_id>')
+def get_view_data(view_id):
+    return json.dumps(d.runinfo['views'][view_id])
 
 @route('/tree/<tree_id>')
 def send_data(tree_id):
@@ -181,7 +188,7 @@ def save_state():
     state_output.close()
 
 @route('/submit', method='POST')
-def get_data():
+def submit():
     bins = json.loads(request.forms.get('groups'))
     svg = request.forms.get('svg')
 
