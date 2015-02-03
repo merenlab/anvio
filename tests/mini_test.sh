@@ -52,4 +52,4 @@ papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-papi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db
+papi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt
