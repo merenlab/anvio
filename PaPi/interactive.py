@@ -281,7 +281,7 @@ class InputHandler:
             annotation_dict = self.annotation.db.get_table_as_dict('splits')
             annotation_headers = self.annotation.db.get_table_structure('splits')[1:]
 
-        additional_dict, additional_header = None, []
+        additional_dict, additional_headers = None, []
         if self.additional_metadata_path:
             additional_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path)
             additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_metadata_path)
@@ -316,7 +316,6 @@ class InputHandler:
                 json_object.append(json_entry)
                  
             self.runinfo['views'][view] = json_object
-        print self.runinfo['views']
 
 
     def end(self):
