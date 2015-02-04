@@ -11,13 +11,13 @@
 # Please read the COPYING file.
 
 """
-    This is the file that keeps all the parser classes for different sources of annotation.
+    This is the file that keeps all the parser classes for different sources of annotation. Each parser generates
+    an annotation_dictionary to be sent to the annotation.py/Annotation class to get the database initiated.
 """
 
 import os
 
 import PaPi.filesnpaths as filesnpaths
-import PaPi.annotation as annotation
 from PaPi.utils import ConfigError
 from PaPi.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from PaPi.utils import get_FASTA_file_as_dictionary as get_dict_f
@@ -76,14 +76,6 @@ class Parser(object):
                                              indexing_field = indexing_field)
 
 
-    def create_annotation_db(self, contigs_fasta, annotations_dict, split_length, output_file_prefix = "ANNOTATION"):
-        if output_file_prefix.lower().endswith('.txt'):
-            output_file_prefix = output_file_prefix[:-4]
-
-        A = annotation.Annotation(output_file_prefix + '.db')
-        A.create_new_database(contigs_fasta, annotations_dict, split_length, parser=self.annotation_source)
-
-
 class MyRastCMDLine_DO_NOT_USE(Parser):
     """
     OK. This class was parsing the output of this command:
@@ -103,7 +95,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
     had to go back to the shitty implementation. If we can find a way to 
     """
 
-    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+    def __init__(self, contigs_fasta, input_file_paths, annotation_table_structure):
         files_expected = {'svr_output': 'svr_assign_to_dna_using_figfams.txt'}
 
         files_structure = {'svr_output': 
@@ -111,10 +103,8 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
                                  'col_mapping': [str, int, str, str, str],
                                  'indexing_field': 2}}
 
+        self.annotation_table_structure = annotation_table_structure
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
-
-        annotations_dict = self.get_annotations_dict()
-        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -126,7 +116,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
             prot = 'prot_%.12d' % counter
             counter += 1
 
-            for field in annotation.annotation_table_structure:
+            for field in self.annotation_table_structure:
                 entry[field] = None
 
             start, stop = [t for t in key.split('_')[-2:]]
@@ -146,7 +136,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
 
 
 class MyRastCMDLine(Parser):
-    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+    def __init__(self, contigs_fasta, input_file_paths, annotation_table_structure):
         files_expected = {'functions': 'svr_assign_using_figfams.txt', 'genes': 'svr_call_pegs.txt'}
 
         files_structure = {'functions': 
@@ -156,10 +146,8 @@ class MyRastCMDLine(Parser):
                            'genes': 
                                 {'type': 'fasta'},}
 
+        self.annotation_table_structure = annotation_table_structure
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
-
-        annotations_dict = self.get_annotations_dict()
-        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -184,7 +172,7 @@ class MyRastCMDLine(Parser):
 
         for key in self.dicts['genes']:
             entry = {}
-            for field in annotation.annotation_table_structure:
+            for field in self.annotation_table_structure:
                 entry[field] = None
 
             prot, remainder = key.split()
@@ -209,7 +197,7 @@ class MyRastCMDLine(Parser):
 
 
 class MyRastGUI(Parser):
-    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+    def __init__(self, contigs_fasta, input_file_paths, annotation_table_structure):
         files_expected = {'functions': 'functions.tbl', 'gene_otus': 'gene_otus.tbl', 'peg': 'peg.tbl'}
 
         files_structure = {'functions': 
@@ -222,10 +210,8 @@ class MyRastGUI(Parser):
                                 {'col_names': ['prot', 'contig', 'start', 'stop'],
                                  'col_mapping': [str, str, int, int]},}
 
+        self.annotation_table_structure = annotation_table_structure
         Parser.__init__(self, 'MyRastGUI', input_file_paths, files_expected, files_structure)
-
-        annotations_dict = self.get_annotations_dict()
-        self.create_annotation_db(contigs_fasta, annotations_dict, split_length, output_file_prefix)
 
 
     def get_annotations_dict(self):
@@ -238,7 +224,7 @@ class MyRastGUI(Parser):
 
         for prot in proteins:
             entry = {}
-            for key in annotation.annotation_table_structure:
+            for key in self.annotation_table_structure:
                 entry[key] = None
 
             d = self.dicts['peg'][prot]
@@ -273,9 +259,11 @@ class MyRastGUI(Parser):
 
 
 class Blank(Parser):
-    def __init__(self, contigs_fasta, input_file_paths, output_file_prefix, split_length = 20000):
+    def __init__(self, contigs_fasta, input_file_paths, annotation_table_structure):
         self.annotation_source = None
-        self.create_annotation_db(contigs_fasta, {}, split_length, output_file_prefix)
+
+    def get_annotations_dict(self):
+        return {}
 
 
 parser_modules = {None: Blank,

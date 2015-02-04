@@ -17,6 +17,8 @@ import sys
 import argparse
 
 import PaPi.parsers as parsers
+import PaPi.annotation as annotation
+
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
 
@@ -44,12 +46,18 @@ parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000
                             the efficacy of the visualization step. The default value\
                             is (%(default)d). The split size must be identical between the profiled samples\
                             and the annotation db.')
-parser.add_argument('-o', '--output-prefix', default = "ANNOTATION", 
+parser.add_argument('-S', '--skip-hmm-profiling', action='store_true', default = False,
+                    help = 'PaPi scans available HMM profiles to identify matching contigs for each database. This\
+                            step can be skipped by declaring this flag')
+parser.add_argument('-o', '--output', default = "ANNOTATION.db", 
                     help = 'Output file prefix (it could contain a directory path). Default prefix is "%(default)s.')
 
 args = parser.parse_args()
 
 try:
+    if args.skip_hmm_profiling and not args.parser:
+        raise ConfigError, "OK. You are using a blank parser, and you want to skip HMM profiling step. Well,\
+                            there is nothing else this script offers. Bye!"
     if type(args.parser) != type(None) and args.parser not in parsers.available_parsers:
         raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
                             parsers available: %s" % (args.parser, ', '.join(parsers.available_parsers))
@@ -61,10 +69,23 @@ try:
     if not args.contigs:
         raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
 
-    if os.path.isdir(args.output_prefix):
-        args.output_prefix = os.path.join(args.output_prefix, 'ANNOTATION')
+    if os.path.isdir(args.output):
+        args.output = os.path.join(args.output, 'ANNOTATION.db')
 
-    parser = parsers.parser_modules[args.parser](args.contigs, args.input_files, args.output_prefix, args.split_length)
+    if not args.output.lower().endswith('.db'):
+        raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+                            for imposing their views on how local databases should be named, and are humbled by your\
+                            cooperation."
+
+    # We are doing it:
+    parser = parsers.parser_modules[args.parser](args.contigs, args.input_files, annotation.annotation_table_structure)
+    annotations_dict = parser.get_annotations_dict()
+
+    annotation_db = annotation.Annotation(args.output)
+    annotation_db.create_new_database(args.contigs, annotations_dict, args.split_length, args.parser, args.skip_hmm_profiling)
+
+
+
 except ConfigError, e:
     print e
     sys.exit(-1)

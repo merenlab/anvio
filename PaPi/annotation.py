@@ -27,7 +27,7 @@ splits_to_prots_table_mapping   = [    int   ,   str  ,  str  ,       int       
 splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
 
-__version__ = "0.0.1"
+__version__ = "0.2"
 
 
 import os
@@ -100,7 +100,7 @@ class Annotation:
         self.genes_in_splits = GenesInSplits()
 
 
-    def create_new_database(self, contigs_fasta, source, split_length, parser=None):
+    def create_new_database(self, contigs_fasta, source, split_length, parser=None, skip_hmm_profiling=False):
         if type(source) == type(dict()):
             self.matrix_dict = source
             if len(self.matrix_dict):
@@ -139,18 +139,19 @@ class Annotation:
             self.init_splits_table()
 
         # populate single_copy_dict with each resource for single-copy gene analysis
-        import PaPi.data.hmm
-        if False and PaPi.data.hmm.sources:
-            # we have one or more database to perform a single-copy gene analysis, and it seems
-            # all the necessary apps are in place.
-            single_copy_dict = {}
-            for source in PaPi.data.hmm.sources:
-                scg = singlecopy.SingleCopyGenes(contigs_fasta,
-                                                 PaPi.data.hmm.sources[source]['genes'],
-                                                 PaPi.data.hmm.sources[source]['hmm'],
-                                                 PaPi.data.hmm.sources[source]['ref'],)
+        if not skip_hmm_profiling:
+            import PaPi.data.hmm
+            if PaPi.data.hmm.sources:
+                # we have one or more database to perform a single-copy gene analysis, and it seems
+                # all the necessary apps are in place.
+                single_copy_dict = {}
+                for source in PaPi.data.hmm.sources:
+                    scg = singlecopy.SingleCopyGenes(contigs_fasta,
+                                                     PaPi.data.hmm.sources[source]['genes'],
+                                                     PaPi.data.hmm.sources[source]['hmm'],
+                                                     PaPi.data.hmm.sources[source]['ref'],)
 
-                single_copy_dict[source] = scg.get_results_dict()
+                    single_copy_dict[source] = scg.get_results_dict()
 
         # bye.
         self.db.disconnect()

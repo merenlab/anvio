@@ -36,7 +36,7 @@ from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.5.0'
+__version__ = '0.6'
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
