@@ -18,7 +18,7 @@ function lineClickHandler(event) {
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
 
     for (var i = 0; i < p.child_nodes.length; i++) {
-        var pos = SELECTED[group_id].indexOf(p.child_nodes[i]);
+        var pos = SELECTED[group_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
         if (pos == -1) {
             SELECTED[group_id].push(id_to_node_map[p.child_nodes[i]].label);
 
