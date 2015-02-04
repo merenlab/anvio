@@ -121,14 +121,15 @@ class BAMProfiler:
 
         # before leaving this part, lets just make sure the split_length is compatible with annotation
         # database.
-        annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
-        if annotation_split_length != self.split_length:
-            raise utils.ConfigError, "The split length used to generate the annotation database (which is %d),\
-                                      and splith length set for the current profiling attempt (which is %d) do\
-                                      not match (but they should). You either need to profile this sample using\
-                                      '-L %d' parameter, or regenerate the annotation database using '-L %d'\
-                                      parameter :/" % (annotation_split_length, self.split_length,
-                                                       annotation_split_length, self.split_length)
+        if self.annotation_db:
+            annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
+            if annotation_split_length != self.split_length:
+                raise utils.ConfigError, "The split length used to generate the annotation database (which is %d),\
+                                          and splith length set for the current profiling attempt (which is %d) do\
+                                          not match (but they should). You either need to profile this sample using\
+                                          '-L %d' parameter, or regenerate the annotation database using '-L %d'\
+                                          parameter :/" % (annotation_split_length, self.split_length,
+                                                           annotation_split_length, self.split_length)
 
 
     def _run(self):
