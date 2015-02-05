@@ -62,7 +62,14 @@ def is_output_file_writable(file_path):
 def is_file_tab_delimited(file_path):
     is_file_exists(file_path)
     f = open(file_path)
-    line = f.readline()
+
+    while 1:
+        line = f.readline().strip(' ')
+        if line.startswith('#'):
+            continue
+        else:
+            break
+
     if len(line.split('\t')) == 1:
         raise FilesNPathsError, "File '%s' does not seem to have TAB characters.\
                             Did you export this file on MAC using EXCEL? :(" % file_path
