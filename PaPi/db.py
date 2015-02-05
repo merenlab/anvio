@@ -62,6 +62,7 @@ class DB:
 
         db_fields = ', '.join(['%s %s' % (t[0], t[1]) for t in zip(fields, types)])
         self._exec('''CREATE TABLE %s (%s)''' % (table_name, db_fields))
+        self.commit()
 
 
     def set_version(self, version):
@@ -81,7 +82,12 @@ class DB:
         if not rows:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
 
-        return rows[0][0]
+        try:
+            val = int(rows[0][0])
+        except ValueError:
+            val = rows[0][0]
+
+        return val
 
 
     def commit(self):
@@ -95,9 +101,12 @@ class DB:
 
     def _exec(self, sql_query, value=None):
         if value:
-            return self.cursor.execute(sql_query, value)
+            ret_val = self.cursor.execute(sql_query, value)
         else:
-            return self.cursor.execute(sql_query)
+            ret_val = self.cursor.execute(sql_query)
+
+        self.commit()
+        return ret_val
 
 
     def _exec_many(self, sql_query, values):
