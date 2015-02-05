@@ -11,24 +11,38 @@ run = terminal.Run()
 dir_path = os.path.dirname(os.path.abspath(__file__))
 sources = {}
 
-for source in [s for s in glob.glob(os.path.join(dir_path, '*')) if s.find('.py') < 0 and s.find('.txt') < 0]:
-    if len([c for c in os.path.basename(source) if c not in allowed_chars]):
-        raise u.ConfigError, "One of the directories for single-copy gene analysis ('%s') contains\
-                              characters PaPi does not like. Becathese directory names will also be\
-                              used as variable names, they must be composed of ASCII letters,\
-                              digits, '_' and '.' alone." % os.path.basename(source)
+allowed_chars = allowed_chars.replace('.', '').replace('-', '')
+PROPER = lambda w: not len([c for c in w if c not in allowed_chars]) \
+                   and len(w) >= 3 \
+                   and w[0] not in '_0123456789'
 
-    for f in ['reference.txt', 'genes.txt', 'genes.hmm.gz']:
+
+for source in [s for s in glob.glob(os.path.join(dir_path, '*')) if s.find('.py') < 0 and s.find('.txt') < 0]:
+    if not PROPER(os.path.basename(source)):
+        raise u.ConfigError, "One of the search database directory ('%s') contains characters in its name\
+                              PaPi does not like. Directory names should be at least three characters long\
+                              and must not contain any characters but ASCII letters, digits and\
+                              underscore" % os.path.basename(source)
+
+    for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz']:
         if not os.path.exists(os.path.join(source, f)):
-            raise u.ConfigError, "Each directory with single-copy gene analysis must contain a\
-                                  'reference.txt', 'genes.txt', and 'genes.hmm'. %s does not seem\
+            raise u.ConfigError, "Each search database directory must contain following files:\
+                                  'kind.txt', 'reference.txt', 'genes.txt', and 'genes.hmm.gz'. %s does not seem\
                                   to be a proper source." % os.path.basename(source)
+
+    kind = open(os.path.join(source, 'kind.txt')).readlines()[0].strip()
+    if not PROPER(kind):
+        raise u.ConfigError, "'kind.txt' defines the kind of search this database offers. This file must contain a single\
+                              word that is at least three characters long, and must not contain any characters but\
+                              ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
+                              or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
 
     genes = u.get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['pfam_id', 'gene'], indexing_field = 1)
 
     sources[os.path.basename(source)] = {'ref': os.path.join(source, 'reference.txt'),
+                                         'kind': kind,
                                          'genes': genes.keys(),
-                                         'hmm': os.path.join(source, 'genes.hmm.gz')}
+                                         'model': os.path.join(source, 'genes.hmm.gz')}
 
 
 # lets make sure stuff we need is installed on this system
@@ -50,7 +64,7 @@ if len(sources):
                                              requirements.' % ', '.join(missing_programs)), 80) + '\n'
         sources = {}
     else:
-        run.info('Bacterial single-copy genes database',
+        run.info('HMM profiling data',
                  'Loaded from %d source%s; %s' % (len(sources),
                                                   's' if len(sources) > 1 else '',
                                                   ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes'])) for s in sources])))

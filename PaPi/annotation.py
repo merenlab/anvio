@@ -26,19 +26,31 @@ splits_to_prots_table_structure = ['entry_id', 'split', 'prot', 'start_in_split'
 splits_to_prots_table_mapping   = [    int   ,   str  ,  str  ,       int       ,       int      ,         float        ]
 splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
+search_info_table_structure = ['source', 'ref' , 'search_type', 'genes']
+search_info_table_mapping   = [  str   ,  str  ,      str     ,   str  ]
+search_info_table_types     = [ 'text' , 'text',    'text'    , 'text' ]
 
-__version__ = "0.2"
+search_contigs_table_structure = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
+search_contigs_table_mapping   = [    int   ,   str   ,    str  ,   int   ,   int   ,     str    ,    str   ,   float  ]   
+search_contigs_table_types     = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
+
+search_splits_table_structure = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
+search_splits_table_mapping   = [    int   ,   str   ,            str          ,     str    ,   str  ,         float        ,   float  ]   
+search_splits_table_types     = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
+
+
+__version__ = "0.3"
 
 
 import os
 import sys
 import numpy
 import random
+import hashlib
 import operator
 from collections import Counter
 
 import PaPi.db as db
-import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
@@ -52,114 +64,190 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class GenesInSplits:
-    def __init__(self):
-        self.entry_id = 0
-        self.splits_to_prots = {}
-
-    def add(self, split_name, split_start, split_end, prot_id, prot_start, prot_end):
-
-        gene_length = prot_end - prot_start
-
-        if gene_length <= 0:
-            raise ConfigError, "annotation.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
-                                which starts at position %d and ends at position %d. Well, it doesn't look right,\
-                                does it?" % (prot_id, prot_start, prot_end)
-
-        # if only a part of the gene is in the split:
-        start_in_split = (split_start if prot_start < split_start else prot_start) - split_start
-        stop_in_split = (split_end if prot_end > split_end else prot_end) - split_start
-        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
-
-        self.splits_to_prots[self.entry_id] = {'split': split_name,
-                                               'prot': prot_id,
-                                               'start_in_split': start_in_split,
-                                               'stop_in_split': stop_in_split,
-                                               'percentage_in_split': percentage_in_split}
-        self.entry_id += 1
-
-
-    def create_table(self, db):
-        db.create_table('genes_in_splits', splits_to_prots_table_structure, splits_to_prots_table_types)
-        db_entries = [tuple([entry_id] + [self.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.splits_to_prots]
-        db._exec_many('''INSERT INTO genes_in_splits VALUES (?,?,?,?,?,?)''', db_entries)
-        db.commit()
-
-
-class Annotation:
-    def __init__(self, db_path):
+class AnnotationDB:
+    """This class will handle all the connections, will create a database if it is not there, etc"""
+    def __init__(self, db_path, split_length = None, force_create_new = False, run=run, progress=progress):
         self.db_path = db_path
+        self.split_length = split_length
+        self.run = run
+        self.progress = progress
+
         self.db = None
 
-        # a dictionary to keep contigs
-        self.contigs = {}
-        self.split_length = None
+        if force_create_new:
+            self.create_database()
+        else:
+            if os.path.exists(self.db_path):
+                self.init_database()
+                self.split_length = self.db.get_meta_value('split_length')
+            else:
+                self.create_database()
+
+
+    def init_database(self):
+        run.info('AnnotationDB', 'Initializing from %s' % self.db_path)
+        self.db = db.DB(self.db_path, __version__)
+
+
+    def create_database(self):
+        if not self.split_length:
+            raise ConfigError, "Creating a new annotation database requires split length information to be\
+                                provided. Something, somewhere in the code made a mistake."
+
+        try:
+            self.split_length = int(self.split_length)
+        except:
+            raise ConfigError, "Split size must be an integer. It was not..."
+
+        run.info('AnnotationDB', 'Creating a new one at %s' % self.db_path)
+        # init a new db
+        self.db = db.DB(self.db_path, __version__, new_database = True)
+
+        # set split length variable in the meta table
+        self.db.set_meta_value('split_length', self.split_length)
+        # this will be the unique information that will be passed downstream whenever this db is used:
+        self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
+
+
+class SearchTables:
+    def __init__(self, db, contig_lengths):
+        self.db = db
+        self.contig_lengths = contig_lengths
+        self.search_info_table = 'search_info'
+        self.search_contigs_table = 'search_contigs'
+        self.search_splits_table = 'search_splits'
+        # read split length
+        self.split_length = db.get_meta_value('split_length')
+
+        self.next_available_id = {}
+        self.set_next_available_id(self.search_contigs_table)
+        self.set_next_available_id(self.search_splits_table)
+
+
+    def next_id(self, table):
+        self.next_available_id[table] += 1
+        return self.next_available_id[table] - 1
+
+
+    def set_next_available_id(self, table):
+        tables_in_db = self.db.get_table_names()
+        if table not in tables_in_db:
+            self.next_available_id[table] = 0
+        else:
+            table_content = self.db.get_table_as_dict(table)
+            if table_content:
+                self.next_available_id[table] = max(table_content.keys()) + 1
+            else:
+                self.next_available_id[table] = 0
+
+
+    def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
+        tables_in_db = self.db.get_table_names()
+
+        if self.search_info_table not in tables_in_db:
+            self.db.create_table(self.search_info_table, search_info_table_structure, search_info_table_types)
+
+        if self.search_contigs_table not in tables_in_db:
+            self.db.create_table(self.search_contigs_table, search_contigs_table_structure, search_contigs_table_types)
+
+        if self.search_splits_table not in tables_in_db:
+            self.db.create_table(self.search_splits_table, search_splits_table_structure, search_splits_table_types)
+
+        search_info_table = self.db.get_table_as_dict(self.search_info_table)
+        if source in search_info_table:
+            run.info('WARNING', 'Data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
+            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_info_table, source))
+            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_contigs_table, source))
+            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_splits_table, source))
+
+        # push information about this search result into serach_info table.
+        db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
+        self.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % self.search_info_table, db_entries)
+        # then populate serach_data table for each contig.
+        db_entries = [tuple([self.next_id(self.search_contigs_table), source] + [v[h] for h in search_contigs_table_structure[2:]]) for v in search_results_dict.values()]
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % self.search_contigs_table, db_entries)
+
+        db_entries = self.process_splits(source, search_results_dict)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.search_splits_table, db_entries)
+
+
+    def process_splits(self, source, search_results_dict):
+        hits_per_contig = {}
+        for hit in search_results_dict.values():
+            if hits_per_contig.has_key(hit['contig']):
+                hits_per_contig[hit['contig']].append(hit)
+            else:
+                hits_per_contig[hit['contig']] = [hit]
+
+        db_entries_for_splits = []
+
+        for contig in self.contig_lengths:
+            if not hits_per_contig.has_key(contig):
+                # no hits for this contig. pity!
+                continue
+
+            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
+            for i in range(0, len(chunks)):
+                split = Split(contig, i).name
+                start = chunks[i][0]
+                stop = chunks[i][1]
+
+                # FIXME: this really needs some explanation.
+                for hit in hits_per_contig[contig]:
+                    if hit['stop'] > start and hit['start'] < stop:
+                        gene_length = hit['stop'] - hit['start']
+                        # if only a part of the gene is in the split:
+                        start_in_split = (start if hit['start'] < start else hit['start']) - start
+                        stop_in_split = (stop if hit['stop'] > stop else hit['stop']) - start
+                        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
+                        
+                        gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
+                        db_entry = tuple([self.next_id(self.search_splits_table), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
+                        db_entries_for_splits.append(db_entry)
+
+        return db_entries_for_splits
+
+
+class AnnotationTables:
+    def __init__(self, db, contig_lengths):
+        self.db = db
+        self.contig_lengths = contig_lengths
+
+        # read split length
+        self.split_length = db.get_meta_value('split_length')
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database
         self.genes_in_splits = GenesInSplits()
 
 
-    def create_new_database(self, contigs_fasta, source, split_length, parser=None, skip_hmm_profiling=False):
-        if type(source) == type(dict()):
-            self.matrix_dict = source
+    def create(self, data_source, parser):
+        if type(data_source) == type(dict()):
+            self.matrix_dict = data_source
             if len(self.matrix_dict):
                 self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
-        if type(source) == type(str()):
-            self.matrix_dict = utils.get_TAB_delimited_file_as_dictionary(source,
+        if type(data_source) == type(str()):
+            self.matrix_dict = utils.get_TAB_delimited_file_as_dictionary(data_source,
                                                                           column_names = annotation_table_structure,
                                                                           column_maping = annotation_table_mapping)
 
-        # populate contigs dict with contig lengths
-        fasta = u.SequenceSource(contigs_fasta)
-        while fasta.next():
-            self.contigs[fasta.id] = {'length': len(fasta.seq)}
-
         self.sanity_check()
 
-        # init a new db
-        self.db = db.DB(self.db_path, __version__, new_database = True)
-
-        # set split length variable in the meta table
-        self.db.set_meta_value('split_length', split_length)
+        # create annotation main table using fields in 'annotation_table_structure' variable
+        self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
         self.db.set_meta_value('annotation_source', parser)
-        # this will be the unique information that will be passed downstream whenever this db is used:
-        self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
-        self.split_length = split_length
 
-        if self.matrix_dict:
-            # create annotation main table using fields in 'annotation_table_structure' variable
-            self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
+        # push raw entries.
+        db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
+        self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
-            # push raw entries.
-            db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
-            self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
-
-            # compute and push split taxonomy information.
-            self.init_splits_table()
-
-        # populate single_copy_dict with each resource for single-copy gene analysis
-        if not skip_hmm_profiling:
-            import PaPi.data.hmm
-            if PaPi.data.hmm.sources:
-                # we have one or more database to perform a single-copy gene analysis, and it seems
-                # all the necessary apps are in place.
-                single_copy_dict = {}
-                for source in PaPi.data.hmm.sources:
-                    scg = singlecopy.SingleCopyGenes(contigs_fasta,
-                                                     PaPi.data.hmm.sources[source]['genes'],
-                                                     PaPi.data.hmm.sources[source]['hmm'],
-                                                     PaPi.data.hmm.sources[source]['ref'],)
-
-                    single_copy_dict[source] = scg.get_results_dict()
-
-        # bye.
-        self.db.disconnect()
+        # compute and push split taxonomy information.
+        self.init_splits_table()
 
 
     def sanity_check(self):
         contig_names_in_matrix = set([v['contig'] for v in self.matrix_dict.values()])
-        contig_names_in_fasta  = set(self.contigs.keys())
+        contig_names_in_fasta  = set(self.contig_lengths.keys())
 
         for contig in contig_names_in_matrix:
             if contig not in contig_names_in_fasta:
@@ -175,10 +263,6 @@ class Annotation:
                                     input files: '%s'. You should make them identical (and make sure whatever solution\
                                     you come up with will not make them incompatible with names in your BAM files\
                                     later on." % (contig, contig_names_in_fasta.pop(), contig_names_in_matrix.pop())
-
-
-    def init_database(self):
-        self.db = db.DB(self.db_path, __version__)
 
 
     def check_keys(self, keys):
@@ -200,8 +284,8 @@ class Annotation:
             else:
                 prots_in_contig[contig] = set([prot])
 
-        contigs_without_annotation = list(set(self.contigs.keys()) - set(prots_in_contig.keys()))
-        run.info('Num contigs in FASTA', len(self.contigs))
+        contigs_without_annotation = list(set(self.contig_lengths.keys()) - set(prots_in_contig.keys()))
+        run.info('Num contigs in FASTA', len(self.contig_lengths))
         run.info('Num contigs w annotation', len(prots_in_contig))
         run.info('Num contigs w/o annotation', len(contigs_without_annotation))
 
@@ -210,8 +294,8 @@ class Annotation:
 
         splits_dict = {}
         split_to_prot = {}
-        for contig in self.contigs:
-            chunks = utils.get_chunks(self.contigs[contig]['length'], self.split_length)
+        for contig in self.contig_lengths:
+            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
             for i in range(0, len(chunks)):
                 split = Split(contig, i).name
                 start = chunks[i][0]
@@ -310,3 +394,39 @@ class Annotation:
                 d[t] += 1
             consensus, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
             return consensus, num_genes, len(tax_str_list), occurrence
+
+
+class GenesInSplits:
+    def __init__(self):
+        self.entry_id = 0
+        self.splits_to_prots = {}
+
+    def add(self, split_name, split_start, split_end, prot_id, prot_start, prot_end):
+
+        gene_length = prot_end - prot_start
+
+        if gene_length <= 0:
+            raise ConfigError, "annotation.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
+                                which starts at position %d and ends at position %d. Well, it doesn't look right,\
+                                does it?" % (prot_id, prot_start, prot_end)
+
+        # if only a part of the gene is in the split:
+        start_in_split = (split_start if prot_start < split_start else prot_start) - split_start
+        stop_in_split = (split_end if prot_end > split_end else prot_end) - split_start
+        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
+
+        self.splits_to_prots[self.entry_id] = {'split': split_name,
+                                               'prot': prot_id,
+                                               'start_in_split': start_in_split,
+                                               'stop_in_split': stop_in_split,
+                                               'percentage_in_split': percentage_in_split}
+        self.entry_id += 1
+
+
+    def create_table(self, db):
+        db.create_table('genes_in_splits', splits_to_prots_table_structure, splits_to_prots_table_types)
+        db_entries = [tuple([entry_id] + [self.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.splits_to_prots]
+        db._exec_many('''INSERT INTO genes_in_splits VALUES (?,?,?,?,?,?)''', db_entries)
+        db.commit()
+
+

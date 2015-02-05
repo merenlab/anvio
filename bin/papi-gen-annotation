@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 """
-Copyright (C) 2014, PaPi Authors
+Copyright (C) 2015, PaPi Authors
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -14,81 +14,126 @@ Please read the COPYING file.
 
 import os
 import sys
-import argparse
 
-import PaPi.parsers as parsers
 import PaPi.annotation as annotation
+import PaPi.fastalib as u
 
 from PaPi.utils import ConfigError
+from PaPi.commandline import HMMSearch
+from PaPi.parsers import parser_modules
 from PaPi.filesnpaths import FilesNPathsError
 
 
-parser = argparse.ArgumentParser(description='Generate a PaPi annotation database using available parsers for \
-                                              various annotation sources.')
-parser.add_argument('-f', '--contigs', metavar = 'FASTA', default = None,
-                    help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
-                            could be a reference genome, or contigs from your assembler. Contig names in this file\
-                            must match to those in other input files. If there is a problem, PaPi will gracefully\
-                            complain about it.')
-parser.add_argument('-p', '--parser', default = None,
-                    help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
-                            It is OK if you do not select a parser, but in that case there will be no additional\
-                            annotation available except the identification of single-copy genes in your contigs\
-                            for later use. Using a parser will not prevent the analysis of single-copy genes,\
-                            but make PaPi more powerful to help you make sense of your results. Please see the\
-                            documentation, or get in touch with the developers if you have any questions\
-                            regarding parsers.' % (len(parsers.available_parsers), parsers.available_parsers))
-parser.add_argument('-i', '--input-files', metavar = 'FILE', nargs='+', default = None,
-                    help = 'Input files for selected parser. Each parser (except "blank") requires input files to\
-                            process that you generate before running PaPi. Please see the documentation for details.')
-parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
-                    help = 'Splitting very large contigs into multiple pieces improves\
-                            the efficacy of the visualization step. The default value\
-                            is (%(default)d). The split size must be identical between the profiled samples\
-                            and the annotation db.')
-parser.add_argument('-S', '--skip-hmm-profiling', action='store_true', default = False,
-                    help = 'PaPi scans available HMM profiles to identify matching contigs for each database. This\
-                            step can be skipped by declaring this flag')
-parser.add_argument('-o', '--output', default = "ANNOTATION.db", 
-                    help = 'Output file prefix (it could contain a directory path). Default prefix is "%(default)s.')
+def gen_annotation(args):
+    # populate contigs dict with contig lengths
+    contig_lengths = {}
+    fasta = u.SequenceSource(args.contigs_fasta)
+    while fasta.next():
+        contig_lengths[fasta.id] = len(fasta.seq)
 
-args = parser.parse_args()
+    # create and connect to the database
+    annotation_db = annotation.AnnotationDB(args.output, args.split_length, force_create_new = True)
 
-try:
-    if args.skip_hmm_profiling and not args.parser:
-        raise ConfigError, "OK. You are using a blank parser, and you want to skip HMM profiling step. Well,\
-                            there is nothing else this script offers. Bye!"
-    if type(args.parser) != type(None) and args.parser not in parsers.available_parsers:
-        raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
-                            parsers available: %s" % (args.parser, ', '.join(parsers.available_parsers))
-
-    if type(args.parser) == type(None) and args.input_files:
-        raise ConfigError, "You can't list --input-files with your parser is 'blank'. You know why? Because that parser\
-                            does not want any input files."
-
-    if not args.contigs:
-        raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
-
-    if os.path.isdir(args.output):
-        args.output = os.path.join(args.output, 'ANNOTATION.db')
-
-    if not args.output.lower().endswith('.db'):
-        raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
-                            for imposing their views on how local databases should be named, and are humbled by your\
-                            cooperation."
-
-    # We are doing it:
-    parser = parsers.parser_modules[args.parser](args.contigs, args.input_files, annotation.annotation_table_structure)
+    # call the parser, get the annotation results dictionary, and create the annotation table in annotation_db:
+    parser = parser_modules['annotation'][args.parser](args.input_files, annotation.annotation_table_structure)
     annotations_dict = parser.get_annotations_dict()
+    annotation_tables = annotation.AnnotationTables(annotation_db.db, contig_lengths)
+    annotation_tables.create(annotations_dict, args.parser)
 
-    annotation_db = annotation.Annotation(args.output)
-    annotation_db.create_new_database(args.contigs, annotations_dict, args.split_length, args.parser, args.skip_hmm_profiling)
+    if not args.skip_search_tables:
+        # so there is this design flaw here. files for annotation is generated by the user and
+        # provided to this script. however, search databases ship with PaPi, and in the next
+        # line we will learn about our target database(s). then we will run contigs against 
+        # every single db.
+        import PaPi.data.hmm
+
+        commander = HMMSearch()
+        search_tables = annotation.SearchTables(annotation_db.db, contig_lengths)
+
+        proteins_in_contigs_fasta = commander.run_prodigal(args.contigs_fasta)
+
+        search_results_dict = {}
+        for source in PaPi.data.hmm.sources:
+            kind_of_search = PaPi.data.hmm.sources[source]['kind']
+            all_genes_searched_against = PaPi.data.hmm.sources[source]['genes']
+            hmm_model = PaPi.data.hmm.sources[source]['model']
+            reference = PaPi.data.hmm.sources[source]['ref']
+            hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      all_genes_searched_against,
+                                                      hmm_model,
+                                                      reference)
+
+            parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
+            search_results_dict = parser.get_search_results()
+
+            search_tables.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
+
+        if not args.debug:
+            commander.clean_tmp_dirs()
+
+    annotation_db.db.disconnect()
 
 
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate a PaPi annotation database using available parsers for \
+                                                  various annotation and search resources.')
+    parser.add_argument('-f', '--contigs-fasta', metavar = 'FASTA', default = None,
+                        help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
+                                could be a reference genome, or contigs from your assembler. Contig names in this file\
+                                must match to those in other input files. If there is a problem, PaPi will gracefully\
+                                complain about it.')
+    parser.add_argument('-p', '--parser', default = None,
+                        help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
+                                It is OK if you do not select a parser, but in that case there will be no additional\
+                                annotation available except the identification of single-copy genes in your contigs\
+                                for later use. Using a parser will not prevent the analysis of single-copy genes,\
+                                but make PaPi more powerful to help you make sense of your results. Please see the\
+                                documentation, or get in touch with the developers if you have any questions\
+                                regarding parsers.' % (len(parser_modules['annotation']), parser_modules['annotation']))
+    parser.add_argument('input_files', metavar = 'FILE', nargs='+', default = None,
+                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
+                                process that you generate before running PaPi. Please see the documentation for details.')
+    parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
+                        help = 'Splitting very large contigs into multiple pieces improves\
+                                the efficacy of the visualization step. The default value\
+                                is (%(default)d). The split size must be identical between the profiled samples\
+                                and the annotation db.')
+    parser.add_argument('-S', '--skip-search-tables', action='store_true', default = False,
+                        help = 'PaPi scans available HMM profiles to identify matching contigs for each database, and\
+                                generate tables for search results coming from each of them. This flag is to skip that\
+                                step.')
+    parser.add_argument('-o', '--output', default = "ANNOTATION.db", 
+                        help = 'Output file for the database.')
+    parser.add_argument('--debug', action='store_true', default = False,
+                        help = 'When declared, PaPi will not remove temporary directories with intermediate search\
+                                results that may be useful to investigate unexpected behavior.')
 
-except ConfigError, e:
-    print e
-    sys.exit(-1)
-except FilesNPathsError, e:
-    print e
-    sys.exit(-2)
+    args = parser.parse_args()
+
+    try:
+        if type(args.parser) == type(None):
+            raise ConfigError, "You must specify a parser. Please see --help menu for a list."
+        if args.parser not in parser_modules['annotation']:
+            raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
+                                parsers available for annotation data: %s" % (args.parser, ', '.join(parser_modules['annotation']))
+
+        if not args.contigs_fasta:
+            raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
+
+        if os.path.isdir(args.output):
+            args.output = os.path.join(args.output, 'ANNOTATION.db')
+
+        if not args.output.lower().endswith('.db'):
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+                                for imposing their views on how local databases should be named, and are humbled by your\
+                                cooperation."
+
+        gen_annotation(args)
+
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)

@@ -88,8 +88,7 @@ class InputHandler:
 
 
     def init_annotation_db(self, db_path):
-        self.annotation = PaPi.annotation.Annotation(db_path)
-        self.annotation.init_database()
+        self.annotation = PaPi.annotation.AnnotationDB(db_path)
 
         profiling_split_length = int(self.runinfo['split_length'])
         annotation_split_length = int(self.annotation.db.get_meta_value('split_length'))

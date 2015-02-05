@@ -36,7 +36,7 @@ from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.6'
+__version__ = '0.7'
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
@@ -114,8 +114,7 @@ class BAMProfiler:
 
         if self.annotation_db_path:
             self.progress.update('Initializing the annotation database ...')
-            self.annotation_db = annotation.Annotation(self.annotation_db_path)
-            self.annotation_db.init_database()
+            self.annotation_db = annotation.AnnotationDB(self.annotation_db_path)
 
         self.progress.end()
 
