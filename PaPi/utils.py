@@ -449,6 +449,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                                                                                         ', '.join(columns[1:]))
 
     d = {}
+    line_counter = 0
 
     for line in f.readlines():
         line_fields = line.strip('\n').split('\t')
@@ -469,15 +470,19 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                                         of the matrix :/" % (column_mapping[i], line_fields[i], i + 1)
             line_fields = updated_line_fields 
 
-        entry_name = line_fields[indexing_field]
+        if indexing_field == -1:
+            entry_name = 'line__%09d__' % line_counter
+        else:
+            entry_name = line_fields[indexing_field]
 
         d[entry_name] = {}
 
-        e = d[line_fields[indexing_field]]
         for i in range(0, len(columns)):
             if i == indexing_field:
                 continue
-            e[columns[i]] = line_fields[i]
+            d[entry_name][columns[i]] = line_fields[i]
+
+        line_counter += 1
 
     # we have the dict, but we will not return it the way it is if its supposed to be appended to an
     # already existing dictionary.
