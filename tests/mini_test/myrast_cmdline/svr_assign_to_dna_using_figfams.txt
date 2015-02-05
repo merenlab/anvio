@@ -20,16 +20,6 @@
 204_10M_MERGED.PERFECT.gz.keep_contig_878	138	204_10M_MERGED.PERFECT.gz.keep_contig_878_24079_23282	2-keto-3-deoxy-6-phosphogluconate aldolase	
 204_10M_MERGED.PERFECT.gz.keep_contig_878	93	204_10M_MERGED.PERFECT.gz.keep_contig_878_17212_16535	Phosphoserine phosphatase (EC 3.1.3.3)	
 204_10M_MERGED.PERFECT.gz.keep_contig_878	31	204_10M_MERGED.PERFECT.gz.keep_contig_878_24860_24615	DNA-binding protein HU-alpha	
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	331	204_10M_MERGED.PERFECT.gz.keep_contig_6515_5919_7967	Cobalt-precorrin-6y C15-methyltransferase [decarboxylating] (EC 2.1.1.-)	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	276	204_10M_MERGED.PERFECT.gz.keep_contig_6515_8093_9484	Cobyrinic acid A,C-diamide synthase	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	295	204_10M_MERGED.PERFECT.gz.keep_contig_6515_307_1644	Multi antimicrobial extrusion protein (Na(+)/drug antiporter), MATE family of MDR efflux pumps	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	222	204_10M_MERGED.PERFECT.gz.keep_contig_6515_1981_3129	Cobalt-precorrin-6 synthase, anaerobic	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	192	204_10M_MERGED.PERFECT.gz.keep_contig_6515_10694_11716	L-threonine 3-O-phosphate decarboxylase (EC 4.1.1.81)	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	189	204_10M_MERGED.PERFECT.gz.keep_contig_6515_9588_10562	Adenosylcobinamide-phosphate synthase (EC 6.3.1.10)	
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	170	204_10M_MERGED.PERFECT.gz.keep_contig_6515_4084_5199	Cobalamin biosynthesis protein CbiG	Ruminococcus sp. 5_1_39BFAA
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	123	204_10M_MERGED.PERFECT.gz.keep_contig_6515_3279_4004	Cobalt-precorrin-4 C11-methyltransferase (EC 2.1.1.133)	
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	130	204_10M_MERGED.PERFECT.gz.keep_contig_6515_5198_5923	Cobalt-precorrin-3b C17-methyltransferase	
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	73	204_10M_MERGED.PERFECT.gz.keep_contig_6515_11770_12306	Cobyric acid synthase (EC 6.3.5.10)	
 204_10M_MERGED.PERFECT.gz.keep_contig_1720	608	204_10M_MERGED.PERFECT.gz.keep_contig_1720_12727_16171	Lipid A export ATP-binding/permease protein MsbA	Clostridium ramosum DSM 1402
 204_10M_MERGED.PERFECT.gz.keep_contig_1720	437	204_10M_MERGED.PERFECT.gz.keep_contig_1720_3223_5613	Excinuclease ABC subunit A	Clostridium ramosum DSM 1402
 204_10M_MERGED.PERFECT.gz.keep_contig_1720	481	204_10M_MERGED.PERFECT.gz.keep_contig_1720_607_2511	Bacitracin export permease protein BceB	Clostridium ramosum DSM 1402
