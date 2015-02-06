@@ -225,10 +225,8 @@ function drawLayerLegend(layers, layer_order, top, left) {
             var _max = layer['max']['value'];
 
             // normalize floating numbers 
-            console.log(_min);
             if (_min % 1 !== 0)
                 _min = parseFloat(_min).toFixed(4);
-            console.log(_max);
             if (_max % 1 !== 0)
                 _max = parseFloat(_max).toFixed(4);
         } else {
@@ -1513,7 +1511,6 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 }
 
 function draw_tree(settings) {
-
     id_to_node_map = new Array();
     label_to_node_map = {};
     var t = new Tree();
@@ -1568,7 +1565,7 @@ function draw_tree(settings) {
     {
         for (var pindex = 1; pindex < parameter_count; pindex++) 
         {
-            var layer = settings['layers'][pindex];
+            var layer = settings['views'][current_view][pindex];
 
             if (layer_types[pindex] == 0 || layer_types[pindex] == 2) 
             {
@@ -1623,7 +1620,7 @@ function draw_tree(settings) {
         }    
         else
         {
-            var layer = settings['layers'][pindex];
+            var layer = settings['views'][current_view][pindex];
 
             var min_max_disabled = layer['min']['disabled'];
 
@@ -1826,7 +1823,7 @@ function draw_tree(settings) {
         for (var i = 0; i < settings['layer-order'].length; i++) {
             var layer_index = i+1;
             var pindex = settings['layer-order'][i];
-            var layer  = settings['layers'][pindex];
+            var layer = settings['views'][current_view][pindex];
 
             var layer_margin = (parseFloat(layer['height'])==0) ? 0 : margin;
             
@@ -1882,7 +1879,7 @@ function draw_tree(settings) {
                         for (var i = 0; i < settings['layer-order'].length; i++) {
                             var layer_index = i+1;
                             var pindex = settings['layer-order'][i];
-                            var layer  = settings['layers'][pindex];
+                            var layer = settings['views'][current_view][pindex];
 
                             var isParent      = (layer_types[pindex] == 0) ? true : false;
                             var isStackBar    = (layer_types[pindex] == 1) ? true : false;
@@ -2009,7 +2006,7 @@ function draw_tree(settings) {
                         for (var i = 0; i < settings['layer-order'].length; i++) {
                             var layer_index = i+1;
                             var pindex = settings['layer-order'][i];
-                            var layer  = settings['layers'][pindex];
+                            var layer = settings['views'][current_view][pindex];
 
                             var isParent      = (layer_types[pindex] == 0) ? true : false;
                             var isStackBar    = (layer_types[pindex] == 1) ? true : false;

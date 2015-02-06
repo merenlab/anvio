@@ -45,6 +45,10 @@ var search_column;
 var search_results = [];
 var highlight_backup = {};
 
+var views = {};
+var current_view = '';
+var layer_order;
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -105,10 +109,9 @@ $(document).ready(function() {
             // we should remove single parents (single means no parent)
             removeSingleParents(); // in utils.js
 
-            var layer_order;
-
             if (hasState) {
                 layer_order = state['layer-order'];
+                views = state['views'];
 
                 categorical_data_colors = state['categorical_data_colors'];
                 stack_bar_colors = state['stack_bar_colors'];
@@ -122,211 +125,8 @@ $(document).ready(function() {
                 // range(1, prameter_count), we skipped column 0 because its not a layer, its name column.
                 layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); 
             }
-            //
-            //  add layers to table
-            //
+
             layer_types = {};
-
-            for (var i = 0; i < layer_order.length; i++) 
-            {
-                // common layer variables
-                var layer_id = layer_order[i];
-                var layer_name = metadata[0][layer_id];
-                var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
-
-                if (hasState)
-                    var layer_settings = state['layers'][layer_id];
-
-                //
-                //  parent layer
-                //
-                if (layer_name == '__parent__')
-                {
-                   layer_types[layer_id] = 0;
-
-                    if (hasState)
-                        var height = layer_settings['height'];
-                    else
-                        var height = '50';
-
-                    var template = '<tr>' +
-                        '<td><img src="images/drag.gif" /></td>' +
-                        '<td>Parent</td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
-                        '</tr>';
-
-                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                                       .replace(new RegExp('{height}', 'g'), height);
-
-                    $('#tbody_layers').prepend(template);
-                }
-                //
-                // stack bar layer
-                //
-                else if (layer_name.indexOf(';') > -1) 
-                {
-                    layer_types[layer_id] = 1;
-
-                    if (hasState)
-                    {
-                        var norm   = layer_settings['normalization'];
-                        var height = layer_settings['height'];
-                    }
-                    else
-                    {
-                        var norm   = 'log';
-                        var height = '30';  
-
-                        // pick random color for stack bar items
-                        stack_bar_colors[layer_id] = new Array();
-                        for (var j=0; j < layer_name.split(";").length; j++)
-                        {
-                            stack_bar_colors[layer_id].push(randomColor());
-                        }              
-                    }
-
-                    var template = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                        '<td>n/a</td>' +
-                        '<td>' +
-                        '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
-                        '        <option value="none"{option-none}>none</option>' +
-                        '        <option value="sqrt"{option-sqrt}>Square root</option>' +
-                        '        <option value="log"{option-log}>Logarithm</option>' +
-                        '    </select>' +
-                        '</td>' +
-                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
-                        '</tr>';
-
-                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                                       .replace(new RegExp('{name}', 'g'), layer_name)
-                                       .replace(new RegExp('{short-name}', 'g'), short_name)
-                                       .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
-                                       .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                                       .replace(new RegExp('{height}', 'g'), height);
-
-                    $('#tbody_layers').append(template);
-                }
-                //
-                // categorical layer
-                //
-                else if (metadata[1][layer_id] === null || !isNumber(metadata[1][layer_id]))
-                { 
-                    layer_types[layer_id] = 2;
-
-                    if (hasState)
-                    {
-                        var height = layer_settings['height'];
-                    }
-                    else
-                    {
-                        var height = 30;
-
-                        categorical_data_colors[layer_id] = {};
-                    }
-                    
-                    var template = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                        '<td>n/a</td>' +
-                        '<td>n/a</td>' +
-                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
-                        '</tr>';
-
-                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                                       .replace(new RegExp('{name}', 'g'), layer_name)
-                                       .replace(new RegExp('{short-name}', 'g'), short_name)
-                                       .replace(new RegExp('{height}', 'g'), height);
-
-                    $('#tbody_layers').append(template);
-                } 
-                //
-                // numerical layer
-                //
-                else
-                {
-                    layer_types[layer_id] = 3;
-
-                    if (hasState)
-                    {
-                        var height = layer_settings['height'];
-                        var norm   = layer_settings['normalization'];
-                        var color  = layer_settings['color'];
-                        var min    = layer_settings['min']['value'];
-                        var max    = layer_settings['max']['value'];
-                        var min_disabled = layer_settings['min']['disabled'];
-                        var max_disabled = layer_settings['max']['disabled'];
-                    }
-                    else
-                    {
-                        var height = getNamedLayerDefaults(layer_name, 'height', '180');
-                        var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
-                        var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                        var min    = 0;
-                        var max    = 0;
-                        var min_disabled = true;
-                        var max_disabled = true;
-                    }
-
-                    var template = '<tr>' +
-                        '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                        '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                        '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                        '<td>' +
-                        '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
-                        '        <option value="none"{option-none}>none</option>' +
-                        '        <option value="sqrt"{option-sqrt}>Square root</option>' +
-                        '        <option value="log"{option-log}>Logarithm</option>' +
-                        '    </select>' +
-                        '</td>' +
-                        '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                        '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
-                        '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
-                        '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
-                        '</tr>';
-
-                    template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                                       .replace(new RegExp('{name}', 'g'), layer_name)
-                                       .replace(new RegExp('{short-name}', 'g'), short_name)
-                                       .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
-                                       .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                                       .replace(new RegExp('{color}', 'g'), color)
-                                       .replace(new RegExp('{height}', 'g'), height)
-                                       .replace(new RegExp('{min}', 'g'), min)
-                                       .replace(new RegExp('{max}', 'g'), max)
-                                       .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                                       .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '');
-
-                    $('#tbody_layers').append(template);
-                }
-
-                $('#picker'+ layer_id).colpick({
-                    layout: 'hex',
-                    submit: 0,
-                    colorScheme: 'dark',
-                    onChange: function(hsb, hex, rgb, el, bySetColor) {
-                        $(el).css('background-color', '#' + hex);
-                        $(el).attr('color', '#' + hex);
-
-                        if (!bySetColor) $(el).val(hex);
-                    }
-                }).keyup(function() {
-                    $(this).colpickSetColor(this.value);
-                });
-
-            } // layer loop
 
             //  Edit Attributes For Multiple Layers
 
@@ -427,8 +227,6 @@ $(document).ready(function() {
                 }
             });
 
-            // make layers table sortable
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
 
             /* 
             //  Clusterings
@@ -479,7 +277,22 @@ $(document).ready(function() {
                     success: function(data) {
                         metadata = eval(data);
                         $('#views_container').attr('disabled', false);
-                        $('#btn_draw_tree').attr('disabled', false); 
+                        $('#btn_draw_tree').attr('disabled', false);
+
+                        if (current_view != '') {
+                            // backup current layer order and layers table to global views object
+                            syncViews();
+                        }
+                        current_view = $('#views_container').val();
+
+                        $("#tbody_layers").empty();
+
+                        buildLayersTable(layer_order, views[current_view]);
+
+                        // make layers table sortable
+                        $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
+
+                        
                     }
                 });
             });
@@ -520,6 +333,25 @@ $(document).ready(function() {
     }, false);
 }); // document ready
 
+function syncViews() {
+    views[current_view] = {};
+    layer_order = new Array();
+    $('#tbody_layers tr').each(
+        function(index, layer) {
+            var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
+
+            layer_order.push(layer_id);
+
+            views[current_view][layer_id] = {};
+            views[current_view][layer_id]["normalization"] = $(layer).find('select').val();
+            views[current_view][layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
+            views[current_view][layer_id]["height"] = $(layer).find('.input-height').val();
+            views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
+            views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
+        }
+    );    
+}
+
 
 function getComboBoxContent(default_item, available_items){
     var combo = '';
@@ -553,6 +385,212 @@ function getNumericPart(id){
     return $num;
 }
 
+function buildLayersTable(order, settings)
+{
+    for (var i = 0; i < order.length; i++) 
+    {
+        // common layer variables
+        var layer_id = order[i];
+        var layer_name = metadata[0][layer_id];
+        var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
+
+        var hasSettings = false;
+        if (typeof settings !== 'undefined') {
+            var layer_settings = settings[layer_id];
+            var hasSettings = true;
+        }
+
+        //
+        //  parent layer
+        //
+        if (layer_name == '__parent__')
+        {
+           layer_types[layer_id] = 0;
+
+            if (hasSettings)
+                var height = layer_settings['height'];
+            else
+                var height = '50';
+
+            var template = '<tr>' +
+                '<td><img src="images/drag.gif" /></td>' +
+                '<td>Parent</td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                               .replace(new RegExp('{height}', 'g'), height);
+
+            $('#tbody_layers').prepend(template);
+        }
+        //
+        // stack bar layer
+        //
+        else if (layer_name.indexOf(';') > -1) 
+        {
+            layer_types[layer_id] = 1;
+
+            if (hasSettings)
+            {
+                var norm   = layer_settings['normalization'];
+                var height = layer_settings['height'];
+            }
+            else
+            {
+                var norm   = 'log';
+                var height = '30';  
+
+                // pick random color for stack bar items
+                stack_bar_colors[layer_id] = new Array();
+                for (var j=0; j < layer_name.split(";").length; j++)
+                {
+                    stack_bar_colors[layer_id].push(randomColor());
+                }              
+            }
+
+            var template = '<tr>' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                '<td>n/a</td>' +
+                '<td>' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                '        <option value="none"{option-none}>none</option>' +
+                '        <option value="sqrt"{option-sqrt}>Square root</option>' +
+                '        <option value="log"{option-log}>Logarithm</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                               .replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{height}', 'g'), height);
+
+            $('#tbody_layers').append(template);
+        }
+        //
+        // categorical layer
+        //
+        else if (metadata[1][layer_id] === null || !isNumber(metadata[1][layer_id]))
+        { 
+            layer_types[layer_id] = 2;
+
+            if (hasSettings)
+            {
+                var height = layer_settings['height'];
+            }
+            else
+            {
+                var height = 30;
+
+                categorical_data_colors[layer_id] = {};
+            }
+            
+            var template = '<tr>' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                               .replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{height}', 'g'), height);
+
+            $('#tbody_layers').append(template);
+        } 
+        //
+        // numerical layer
+        //
+        else
+        {
+            layer_types[layer_id] = 3;
+
+            if (hasSettings)
+            {
+                var height = layer_settings['height'];
+                var norm   = layer_settings['normalization'];
+                var color  = layer_settings['color'];
+                var min    = layer_settings['min']['value'];
+                var max    = layer_settings['max']['value'];
+                var min_disabled = layer_settings['min']['disabled'];
+                var max_disabled = layer_settings['max']['disabled'];
+            }
+            else
+            {
+                var height = getNamedLayerDefaults(layer_name, 'height', '180');
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
+                var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                var min    = 0;
+                var max    = 0;
+                var min_disabled = true;
+                var max_disabled = true;
+            }
+
+            var template = '<tr>' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                '<td>' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                '        <option value="none"{option-none}>none</option>' +
+                '        <option value="sqrt"{option-sqrt}>Square root</option>' +
+                '        <option value="log"{option-log}>Logarithm</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                               .replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{min}', 'g'), min)
+                               .replace(new RegExp('{max}', 'g'), max)
+                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '');
+
+            $('#tbody_layers').append(template);
+        }
+
+        $('#picker'+ layer_id).colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'dark',
+            onChange: function(hsb, hex, rgb, el, bySetColor) {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+
+                if (!bySetColor) $(el).val(hex);
+            }
+        }).keyup(function() {
+            $(this).colpickSetColor(this.value);
+        });
+    }
+}
+
 //---------------------------------------------------------
 //  ui callbacks
 //---------------------------------------------------------
@@ -569,24 +607,13 @@ function serializeSettings() {
     state['layer-margin'] = $('#layer-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
 
-    state['layers'] = {};
-    state['layer-order'] = new Array();
-    $('#tbody_layers tr').each(
-        function(index, layer) {
-            var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
-
-            state['layer-order'].push(layer_id);
-
-            state['layers'][layer_id] = {};
-            state['layers'][layer_id]["normalization"] = $(layer).find('select').val();
-            state['layers'][layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
-            state['layers'][layer_id]["height"] = $(layer).find('.input-height').val();
-            state['layers'][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
-            state['layers'][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
-        }
-    );
-
     state['SELECTED'] = SELECTED;
+
+    // sync views object and layers table
+    syncViews();
+
+    state['views'] = views;
+    state['layer-order'] = layer_order;
 
     state['groups'] = {};
     $('#tbody_groups tr').each(
@@ -617,7 +644,6 @@ function saveCurrentState() {
 function drawTree() {
 
     var settings = serializeSettings();
-
     tree_type = settings['tree-type'];
 
     $('#img_loading').show();
@@ -830,7 +856,7 @@ function exportSvg() {
     var settings = {};
     settings = last_settings; 
 
-    drawLayerLegend(settings['layers'], settings['layer-order'], top, left);
+    drawLayerLegend(settings['views'][current_view], settings['layer-order'], top, left);
 
     // move group highlights to new svg groups
     for (var gid = 1; gid <= group_counter; gid++) {
