@@ -1664,7 +1664,11 @@ function draw_tree(settings) {
                             bar_size = bar_size - min;
                         }
 
-                        metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / (max - min);
+                        if (bar_size == 0) {
+                            metadata_dict[id][pindex] = 0;
+                        } else {
+                            metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / (max - min);
+                        }                        
                     }
                     else
                     {  
@@ -1676,7 +1680,11 @@ function draw_tree(settings) {
                             max_new = bar_size;
                         }
 
-                        metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / param_max[pindex];
+                        if (bar_size == 0) {
+                            metadata_dict[id][pindex] = 0;
+                        } else {
+                            metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / param_max[pindex];
+                        }
 
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
                         $('#min' + pindex).attr('title', min_max_str);
