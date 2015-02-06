@@ -206,9 +206,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers):
         line = [k]
         for header in headers[1:]:
             try:
-                line.append(str(d[k][header]))
+                val = d[k][header]
             except KeyError:
                 raise ConfigError, "Header ('%s') is not found in the dict :/" % (header)
+            line.append(str(val) if val else '')
         f.write('%s\n' % '\t'.join(line))
 
     f.close()
