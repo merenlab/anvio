@@ -110,20 +110,32 @@ $(document).ready(function() {
             removeSingleParents(); // in utils.js
 
             if (hasState) {
-                layer_order = state['layer-order'];
-                views = state['views'];
+                if (state.hasOwnProperty('layer-order')) {
+                    layer_order = state['layer-order'];
+                } else {
+                    layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                }
 
-                categorical_data_colors = state['categorical_data_colors'];
-                stack_bar_colors = state['stack_bar_colors'];
+                if (state.hasOwnProperty('views'))
+                    views = state['views'];
 
-                $('#tree_type').val(state['tree-type']);
-                $('#angle-min').val(state['angle-min']);
-                $('#angle-max').val(state['angle-max']);
-                $('#layer-margin').val(state['layer-margin']);
+                if (state.hasOwnProperty('categorical_data_colors'))
+                    categorical_data_colors = state['categorical_data_colors'];
+
+                if (state.hasOwnProperty('stack_bar_colors'))
+                    stack_bar_colors = state['stack_bar_colors'];
+
+                if (state.hasOwnProperty('tree-type'))
+                    $('#tree_type').val(state['tree-type']);
+                if (state.hasOwnProperty('angle-min'))
+                    $('#angle-min').val(state['angle-min']);
+                if (state.hasOwnProperty('angle-max'))
+                    $('#angle-max').val(state['angle-max']);
+                if (state.hasOwnProperty('layer-margin'))
+                    $('#layer-margin').val(state['layer-margin']);
             }
             else {
-                // range(1, prameter_count), we skipped column 0 because its not a layer, its name column.
-                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); 
+                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
             }
 
             layer_types = {};
@@ -231,7 +243,7 @@ $(document).ready(function() {
             /* 
             //  Clusterings
             */
-            var default_tree = (hasState) ? state['order-by'] : clusteringsResponse[0][0];
+            var default_tree = (hasState && state.hasOwnProperty('order-by')) ? state['order-by'] : clusteringsResponse[0][0];
             var available_trees = clusteringsResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
 
@@ -259,7 +271,7 @@ $(document).ready(function() {
             /* 
             //  Views
             */
-            var default_view = (hasState) ? state['current-view'] : viewsResponse[0][0];
+            var default_view = (hasState && state.hasOwnProperty('current-view')) ? state['current-view'] : viewsResponse[0][0];
             var available_views = viewsResponse[0][1];
             var available_views_combo = getComboBoxContent(default_view, available_views);
 
@@ -305,12 +317,18 @@ $(document).ready(function() {
             */
             if (hasState)
             {
-                SELECTED = state['SELECTED'];
-                group_counter = state['group-counter'];
+                if (state.hasOwnProperty('SELECTED'))
+                    SELECTED = state['SELECTED'];
 
-                for (gid in state['groups'])
+                if (state.hasOwnProperty('group-counter'))
+                    group_counter = state['group-counter'];
+
+                if (state.hasOwnProperty('groups'))
                 {
-                    newGroup(gid, state['groups'][gid]);
+                    for (gid in state['groups'])
+                    {
+                        newGroup(gid, state['groups'][gid]);
+                    }              
                 }
             }
             else
