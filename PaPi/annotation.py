@@ -51,17 +51,129 @@ import operator
 from collections import Counter
 
 import PaPi.db as db
+import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.singlecopy as singlecopy
 import PaPi.filesnpaths as filesnpaths
+
 from PaPi.utils import ConfigError
 from PaPi.contig import Split
-
+from PaPi.commandline import HMMSearch
+from PaPi.parsers import parser_modules
 
 run = terminal.Run()
 progress = terminal.Progress()
+
+
+class GenAnnotationDB:
+    def __init__(self, args):
+        self.contigs_fasta = None
+        self.parser = None
+        self.split_length = 20000
+        self.input_files = []
+        self.skip_search_tables = False
+        self.output = 'ANNOTATION.db'
+        self.debug = False
+
+        if args:
+            self.contigs_fasta = args.contigs_fasta
+            self.parser = args.parser
+            self.split_length = args.split_length
+            self.input_files = args.input_files
+            self.skip_search_tables = args.skip_search_tables
+            self.output = args.output
+            self.debug = args.debug
+
+        self.sanity_checked = False
+        self.contig_lengths = {}
+
+
+    def sanity_check(self):
+        if type(self.parser) == type(None):
+            raise ConfigError, "You must specify a parser. Please see --help menu or the documentation for a list."
+        if self.parser not in parser_modules['annotation']:
+            raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
+                                parsers available for annotation data: %s" % (self.parser, ', '.join(parser_modules['annotation']))
+
+        if not self.contigs_fasta:
+            raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
+
+        if not os.path.exists(self.contigs_fasta):
+            raise ConfigError, "PaPi can't find a FASTA file here: '%s' :/" % self.contigs_fasta
+
+        if os.path.isdir(self.output):
+            self.output = os.path.join(self.output, 'ANNOTATION.db')
+
+        if not self.output.lower().endswith('.db'):
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+                                for imposing their views on how local databases should be named, and are humbled by your\
+                                cooperation."
+
+        # well maybe .. since we are here ...
+        fasta = u.SequenceSource(self.contigs_fasta)
+        while fasta.next():
+            self.contig_lengths[fasta.id] = len(fasta.seq)
+
+        self.sanity_checked = True
+
+    def _run(self):
+        self.sanity_check()
+
+        annotation_db = AnnotationDB(self.output, self.split_length, force_create_new = True)
+
+        self.populate_annotation_tables(annotation_db)
+
+        self.populate_search_tables(annotation_db)
+
+        annotation_db.db.disconnect()
+
+
+    def populate_annotation_tables(self, annotation_db):
+        if not self.sanity_check:
+            raise ConfigError, "You must first call sanity_check()"
+
+        parser = parser_modules['annotation'][self.parser](self.input_files, annotation_table_structure)
+        annotations_dict = parser.get_annotations_dict()
+        annotation_tables = AnnotationTables(annotation_db.db, self.contig_lengths)
+        annotation_tables.create(annotations_dict, self.parser)
+
+
+    def populate_search_tables(self, annotation_db):
+        if self.skip_search_tables:
+            return
+
+        if not self.sanity_check:
+            raise ConfigError, "You must first call sanity_check()"
+
+        import PaPi.data.hmm
+        if not PaPi.data.hmm.sources:
+            return
+
+        commander = HMMSearch()
+        search_tables = SearchTables(annotation_db.db, self.contig_lengths)
+
+        proteins_in_contigs_fasta = commander.run_prodigal(self.contigs_fasta)
+
+        search_results_dict = {}
+        for source in PaPi.data.hmm.sources:
+            kind_of_search = PaPi.data.hmm.sources[source]['kind']
+            all_genes_searched_against = PaPi.data.hmm.sources[source]['genes']
+            hmm_model = PaPi.data.hmm.sources[source]['model']
+            reference = PaPi.data.hmm.sources[source]['ref']
+            hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      all_genes_searched_against,
+                                                      hmm_model,
+                                                      reference)
+
+            parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
+            search_results_dict = parser.get_search_results()
+
+            search_tables.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
+
+        if not self.debug:
+            commander.clean_tmp_dirs()
 
 
 class AnnotationDB:
