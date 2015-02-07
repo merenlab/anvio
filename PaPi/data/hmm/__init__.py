@@ -37,7 +37,7 @@ for source in [s for s in glob.glob(os.path.join(dir_path, '*')) if s.find('.py'
                               ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
                               or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
 
-    genes = u.get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['pfam_id', 'gene'], indexing_field = 1)
+    genes = u.get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['gene', 'accession'])
 
     sources[os.path.basename(source)] = {'ref': os.path.join(source, 'reference.txt'),
                                          'kind': kind,
