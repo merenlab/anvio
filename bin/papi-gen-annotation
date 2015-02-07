@@ -31,14 +31,14 @@ if __name__ == '__main__':
                                 could be a reference genome, or contigs from your assembler. Contig names in this file\
                                 must match to those in other input files. If there is a problem, PaPi will gracefully\
                                 complain about it.')
-    parser.add_argument('-p', '--parser', default = None,
+    parser.add_argument('-p', '--parser', default = 'default_matrix',
                         help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
                                 It is OK if you do not select a parser, but in that case there will be no additional\
                                 annotation available except the identification of single-copy genes in your contigs\
                                 for later use. Using a parser will not prevent the analysis of single-copy genes,\
                                 but make PaPi more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
-                                regarding parsers.' % (len(parser_modules['annotation']), parser_modules['annotation']))
+                                regarding parsers.' % (len(parser_modules['annotation']), parser_modules['annotation'].keys()))
     parser.add_argument('input_files', metavar = 'FILE', nargs='+', default = None,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running PaPi. Please see the documentation for details.')
