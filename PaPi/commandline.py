@@ -67,9 +67,9 @@ class HMMSearch:
         return self.proteins_in_contigs
 
 
-    def run_hmmscan(self, source, genes_in_model, hmm, ref = None):
+    def run_hmmscan(self, source, genes_in_model, hmm, ref):
         self.run.info('HMM Profiling for %s' % source, '', header=True)
-        self.run.info('Reference', open(ref).readline().strip() if ref else 'unknown')
+        self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))
 
@@ -120,7 +120,11 @@ class HMMSearch:
                 continue
             parseable_output.write('\t'.join(line.split()[0:18]) + '\n')
         parseable_output.close()
-        return self.hmm_scan_hits
+
+        num_raw_hits = filesnpaths.get_num_lines_in_file(self.hmm_scan_hits)
+        self.run.info('Number of raw hits', num_raw_hits)
+
+        return self.hmm_scan_hits if num_raw_hits else None
 
 
     def clean_tmp_dirs(self):
