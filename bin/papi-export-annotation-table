@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2015, PaPi Authors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import os
+import sys
+
+import PaPi.utils as utils
+import PaPi.terminal as terminal
+import PaPi.annotation as annotation
+import PaPi.filesnpaths as filesnpaths
+
+run = terminal.Run()
+
+def main(args):
+    annotation_db = annotation.AnnotationDB(args.db_path)
+    annotation_table_dict = annotation_db.db.get_table_as_dict('annotation')
+    annotation_table_headers = annotation_db.db.get_table_structure('annotation')
+    utils.store_dict_as_TAB_delimited_file(annotation_table_dict, args.output, annotation_table_headers)
+    run.info('Recovered matrix', os.path.abspath(args.output))
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate a TAB-delimited matrix file from an annotation database')
+    parser.add_argument('db_path', metavar = 'DB_PATH', default = None,
+                        help = 'Path to the annotation database.')
+    parser.add_argument('-o', '--output', default = "ANNOTATION.txt",
+                        help = 'Output file path. Default is %(default)s.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except utils.ConfigError, e:
+        print e
+        sys.exit(-1)
+    except filesnpaths.FilesNPathsError, e:
+        print e
+        sys.exit(-2)
