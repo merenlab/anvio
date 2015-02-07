@@ -68,7 +68,7 @@ progress = terminal.Progress()
 
 
 class GenAnnotationDB:
-    def __init__(self, args):
+    def __init__(self, args = None):
         self.contigs_fasta = None
         self.parser = None
         self.split_length = 20000
@@ -91,12 +91,6 @@ class GenAnnotationDB:
 
 
     def sanity_check(self):
-        if type(self.parser) == type(None):
-            raise ConfigError, "You must specify a parser. Please see --help menu or the documentation for a list."
-        if self.parser not in parser_modules['annotation']:
-            raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
-                                parsers available for annotation data: %s" % (self.parser, ', '.join(parser_modules['annotation']))
-
         if not self.contigs_fasta:
             raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
 
@@ -134,21 +128,30 @@ class GenAnnotationDB:
         if not self.sanity_check:
             raise ConfigError, "You must first call sanity_check()"
 
+        if type(self.parser) == type(None):
+            raise ConfigError, "You must specify a parser. Please see --help menu or the documentation for a list."
+        if self.parser not in parser_modules['annotation']:
+            raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
+                                parsers available for annotation data: %s" % (self.parser, ', '.join(parser_modules['annotation']))
+
         parser = parser_modules['annotation'][self.parser](self.input_files, annotation_table_structure)
         annotations_dict = parser.get_annotations_dict()
         annotation_tables = AnnotationTables(annotation_db.db, self.contig_lengths)
         annotation_tables.create(annotations_dict, self.parser)
 
 
-    def populate_search_tables(self, annotation_db):
+    def populate_search_tables(self, annotation_db, sources = {}):
         if self.skip_search_tables:
             return
 
         if not self.sanity_check:
             raise ConfigError, "You must first call sanity_check()"
 
-        import PaPi.data.hmm
-        if not PaPi.data.hmm.sources:
+        if not len(sources):
+            import PaPi.data.hmm
+            sources = PaPi.data.hmm.sources
+
+        if not sources:
             return
 
         commander = HMMSearch()
@@ -157,15 +160,18 @@ class GenAnnotationDB:
         proteins_in_contigs_fasta = commander.run_prodigal(self.contigs_fasta)
 
         search_results_dict = {}
-        for source in PaPi.data.hmm.sources:
-            kind_of_search = PaPi.data.hmm.sources[source]['kind']
-            all_genes_searched_against = PaPi.data.hmm.sources[source]['genes']
-            hmm_model = PaPi.data.hmm.sources[source]['model']
-            reference = PaPi.data.hmm.sources[source]['ref']
+        for source in sources:
+            kind_of_search = sources[source]['kind']
+            all_genes_searched_against =  sources[source]['genes']
+            hmm_model = sources[source]['model']
+            reference = sources[source]['ref']
             hmm_scan_hits_txt = commander.run_hmmscan(source,
                                                       all_genes_searched_against,
                                                       hmm_model,
                                                       reference)
+
+            if not hmm_scan_hits_txt:
+                continue
 
             parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
             search_results_dict = parser.get_search_results()
