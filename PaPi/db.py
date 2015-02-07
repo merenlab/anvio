@@ -24,7 +24,11 @@ class DB:
         self.db_path = db_path
         self.version = None
 
-        filesnpaths.is_output_file_writable(db_path)
+        if new_database:
+            filesnpaths.is_output_file_writable(db_path)
+        else:
+            filesnpaths.is_file_exists(db_path)
+
         if new_database and os.path.exists(self.db_path):
             os.remove(self.db_path)
 
