@@ -121,7 +121,7 @@ class GenAnnotationDB:
     def _run(self):
         self.sanity_check()
 
-        annotation_db = AnnotationDB(self.output, self.split_length, force_create_new = True)
+        annotation_db = AnnotationDB(self.output, self.split_length, create_new = True)
 
         self.populate_annotation_tables(annotation_db)
 
@@ -178,47 +178,42 @@ class GenAnnotationDB:
 
 class AnnotationDB:
     """This class will handle all the connections, will create a database if it is not there, etc"""
-    def __init__(self, db_path, split_length = None, force_create_new = False, run=run, progress=progress):
+    def __init__(self, db_path, split_length = None, create_new = False, run=run, progress=progress):
         self.db_path = db_path
-        self.split_length = split_length
         self.run = run
         self.progress = progress
+        self.split_length = None
 
         self.db = None
 
-        if force_create_new:
-            self.create_database()
+        if create_new:
+            self.create_database(split_length)
         else:
-            if os.path.exists(self.db_path):
-                self.init_database()
-                self.split_length = self.db.get_meta_value('split_length')
-            else:
-                self.create_database()
+            self.init_database()
+            self.split_length = self.db.get_meta_value('split_length')
 
 
     def init_database(self):
-        run.info('AnnotationDB', 'Initializing from %s' % self.db_path)
         self.db = db.DB(self.db_path, __version__)
 
 
-    def create_database(self):
-        if not self.split_length:
+    def create_database(self, split_length):
+        if not split_length:
             raise ConfigError, "Creating a new annotation database requires split length information to be\
                                 provided. Something, somewhere in the code made a mistake."
 
         try:
-            self.split_length = int(self.split_length)
+            split_length = int(split_length)
         except:
-            raise ConfigError, "Split size must be an integer. It was not..."
+            raise ConfigError, "Split size must be an integer."
 
-        run.info('AnnotationDB', 'Creating a new one at %s' % self.db_path)
-        # init a new db
         self.db = db.DB(self.db_path, __version__, new_database = True)
 
-        # set split length variable in the meta table
-        self.db.set_meta_value('split_length', self.split_length)
         # this will be the unique information that will be passed downstream whenever this db is used:
         self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
+        # set split length variable in the meta table
+        self.db.set_meta_value('split_length', split_length)
+        self.split_length = split_length
 
 
 class SearchTables:
