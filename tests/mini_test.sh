@@ -18,23 +18,35 @@ do
 done
 
 
-INFO "Generating the annotation database ..."
 # generate an annotation db using files obtained from myrast_gui using contigs.fa (contigs.fa
 # is the original file all samples were mapped to) using split size 1000 (the default split
 # size is better for most projects, small split size here is for testing purposes) (following
 # two lines are generating the ANNOTATION database using gui and cmdline outputs, obviously
 # the second one overwrites the result of the first one. they are both here for testing
 # purposes, but only the result of the second command is used for later steps)
+
+
+INFO "Generating an annotation database using 'myrast_gui' parser ..."
 papi-gen-annotation myrast_gui/* -p myrast_gui --contigs contigs.fa -o test-output/ANNOTATION-myrast_gui.db -L 1000 
+
+INFO "Generating an annotation database using 'myrast_cmdline_dont_use' parser ..."
 papi-gen-annotation myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline_dont_use.db -L 1000 
-papi-gen-annotation myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -p myrast_cmdline --contigs contigs.fa -o test-output/ANNOTATION.db -L 1000 
+
+INFO "Generating an annotation database using 'myrast_cmdline' parser ..."
+papi-gen-annotation myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -p myrast_cmdline --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline.db -L 1000 
+
+INFO "Recovering a standart matrix file from the annotation database generated using 'myrast_cmdline' parser ..."
+papi-export-annotation-table test-output/ANNOTATION-myrast_cmdline.db -o test-output/ANNOTATION_recovered.txt
+
+INFO "Re-generating an annotation database using the recovered matrix file with 'default_matrix' parser ..."
+papi-gen-annotation test-output/ANNOTATION_recovered.txt -p default_matrix --contigs contigs.fa -o test-output/ANNOTATION.db -L 1000 
 
 
-INFO "Profiling samples ..."
 # for each sample, run the profiling using the same split size used for the annotation database.
 # profiling generates individual directiorues uner test-output directory for each sample.
 for f in 6M 7M 9M
 do
+    INFO "Profiling sample 204-$f ..."
     papi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db -L 1000
     echo
 done
