@@ -59,6 +59,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.parser not in parser_modules['annotation']:
+        print "Error: I don't know what to do with '%s'. Available parsers for annotation data: %s" \
+                                                                % (self.parser, ', '.join(parser_modules['annotation']))
+
     try:
         g = annotation.GenAnnotationDB(args)
         g._run()
