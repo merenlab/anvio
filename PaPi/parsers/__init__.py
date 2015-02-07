@@ -10,13 +10,15 @@
 #
 # Please read the COPYING file.
 
+from PaPi.parsers.defaultmatrix import DefaultMatrix
 from PaPi.parsers.myrastgui import MyRastGUI
 from PaPi.parsers.myrastcmdline import MyRastCMDLine 
 from PaPi.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
 from PaPi.parsers.hmmscan import HMMScan
 
 parser_modules = {}
-parser_modules['annotation'] = {"myrast_gui": MyRastGUI,
+parser_modules['annotation'] = {"default_matrix": DefaultMatrix,
+                                "myrast_gui": MyRastGUI,
                                 "myrast_cmdline": MyRastCMDLine,
                                 "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
 parser_modules['search']     = {'hmmscan': HMMScan}
