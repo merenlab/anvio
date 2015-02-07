@@ -616,3 +616,56 @@ def get_tree_object_in_newick(tree, id_to_sample_dict):
 
     return root.write(format=1) 
 
+
+def get_HMM_sources_dictionary(source_dirs=[]):
+    if type(source_dirs) != type([]):
+        raise ConfigError, "source_dirs parameter must be a list (get_HMM_sources_dictionary)."
+
+    sources = {}
+    allowed_chars_for_proper_sources = allowed_chars.replace('.', '').replace('-', '')
+    PROPER = lambda w: not len([c for c in w if c not in allowed_chars_for_proper_sources]) \
+                       and len(w) >= 3 \
+                       and w[0] not in '_0123456789'
+
+    for source in source_dirs:
+        if source.endswith('/'):
+            source = source[:-1]
+
+        if not PROPER(os.path.basename(source)):
+            raise ConfigError, "One of the search database directories ('%s') contains characters in its name\
+                                PaPi does not like. Directory names should be at least three characters long\
+                                and must not contain any characters but ASCII letters, digits and\
+                                underscore" % os.path.basename(source)
+
+        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz']:
+            if not os.path.exists(os.path.join(source, f)):
+                raise ConfigError, "Each search database directory must contain following files:\
+                                    'kind.txt', 'reference.txt', 'genes.txt', and 'genes.hmm.gz'. %s does not seem\
+                                    to be a proper source." % os.path.basename(source)
+
+        ref = open(os.path.join(source, 'reference.txt')).readlines()[0].strip()
+        kind = open(os.path.join(source, 'kind.txt')).readlines()[0].strip()
+        if not PROPER(kind):
+            raise ConfigError, "'kind.txt' defines the kind of search this database offers. This file must contain a single\
+                                word that is at least three characters long, and must not contain any characters but\
+                                ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
+                                or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
+
+        genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['gene', 'accession'])
+
+        sources[os.path.basename(source)] = {'ref': ref,
+                                             'kind': kind,
+                                             'genes': genes.keys(),
+                                             'model': os.path.join(source, 'genes.hmm.gz')}
+
+    return sources
+
+
+def get_missing_programs_for_hmm_analysis():
+    missing_programs = []
+    for p in ['prodigal', 'hmmscan']:
+        try:
+            is_program_exists(p)
+        except ConfigError:
+            missing_programs.append(p)
+    return missing_programs
