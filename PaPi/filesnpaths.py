@@ -12,6 +12,7 @@
 # files, and paths
 
 import os
+import mmap
 import shutil
 import textwrap
 import tempfile
@@ -132,6 +133,20 @@ def get_temp_file_path():
     temp_file_name = f.name
     f.close()
     return temp_file_name
+
+
+def get_num_lines_in_file(file_path):
+    if os.stat(file_path).st_size == 0:
+        return 0
+
+    f = open(file_path, "r+")
+    buf = mmap.mmap(f.fileno(), 0)
+    num_lines = 0
+    readline = buf.readline
+    while readline():
+        num_lines += 1
+
+    return num_lines
 
 
 def gen_output_directory(output_directory, progress=Progress(verbose=False), delete_if_exits = False):
