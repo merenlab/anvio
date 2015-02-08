@@ -64,7 +64,10 @@ if __name__ == '__main__':
                                                                 % (self.parser, ', '.join(parser_modules['annotation']))
 
     try:
-        g = annotation.GenAnnotationDB(args)
+        if os.path.isdir(args.output):
+            args.output = os.path.join(args.output, 'ANNOTATION.db')
+
+        g = annotation.PopulateAnnotationDB(args)
         g._run()
     except ConfigError, e:
         print e

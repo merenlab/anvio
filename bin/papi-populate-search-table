@@ -42,14 +42,19 @@ def main(args):
         split_length = annotation_db.db.get_meta_value('split_length')
         run.info('Database', 'An existing database, %s, has been initiated.' % args.annotation_db)
         run.info('Split length', split_length)
+        annotation_db.disconnect()
     else:
         split_length = args.split_length
         if not split_length:
             raise ConfigError, "You must define a split length."
 
+        if os.path.isdir(args.annotation_db):
+            args.annotation_db = os.path.join(args.annotation_db, 'ANNOTATION.db')
+
         annotation_db = annotation.AnnotationDB(args.annotation_db, args.split_length, create_new = True)
         run.info('Database', 'A new database, %s, has been created.' % args.annotation_db)
         run.info('Split length', split_length)
+        annotation_db.disconnect()
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
@@ -64,18 +69,19 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    g = annotation.GenAnnotationDB()
-    g.split_length = split_length
-    g.contigs_fasta = args.contigs_fasta
-    g.skip_search_tables = False
-    g.debug = args.debug
+    t = annotation.PopulateAnnotationDB()
+    t.split_length = split_length
+    t.contigs_fasta = args.contigs_fasta
+    t.skip_search_tables = False
+    t.annotation_db_path = args.annotation_db
+    t.debug = args.debug
 
     progress.new('Sanity check')
     progress.update('...')
-    g.sanity_check()
+    t.sanity_check()
     progress.end()
 
-    g.populate_search_tables(annotation_db, sources)
+    t.populate_search_tables(sources)
 
 
 if __name__ == '__main__':

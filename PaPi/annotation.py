@@ -14,30 +14,35 @@
     matching 'header' variable.
 """
 
+annotation_table_name      = 'annotation'
 annotation_table_structure = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 annotation_table_mapping   = [ str  ,   str   ,  int   ,   int    ,     str    ,   str   ,    str    ,    str    ,   str    ,    str   ,    str    ,    str   ,     str    ]
 annotation_table_types     = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
+splits_table_name      = 'splits'
 splits_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
 splits_table_mapping   = [  str  ,     str   ,    int     ,       float      ,    'float'    ,        float        ,       float     ,     float     ]
 splits_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
 
+splits_to_prots_table_name      = 'genes_in_splits'
 splits_to_prots_table_structure = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
 splits_to_prots_table_mapping   = [    int   ,   str  ,  str  ,       int       ,       int      ,         float        ]
 splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
+search_info_table_name      = 'search_info'
 search_info_table_structure = ['source', 'ref' , 'search_type', 'genes']
 search_info_table_mapping   = [  str   ,  str  ,      str     ,   str  ]
 search_info_table_types     = [ 'text' , 'text',    'text'    , 'text' ]
 
+search_contigs_table_name      = 'search_contigs'
 search_contigs_table_structure = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
 search_contigs_table_mapping   = [    int   ,   str   ,    str  ,   int   ,   int   ,     str    ,    str   ,   float  ]   
 search_contigs_table_types     = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
 
+search_splits_table_name      = 'search_splits'
 search_splits_table_structure = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
 search_splits_table_mapping   = [    int   ,   str   ,            str          ,     str    ,   str  ,         float        ,   float  ]   
 search_splits_table_types     = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
-
 
 __version__ = "0.3"
 
@@ -67,14 +72,14 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class GenAnnotationDB:
+class PopulateAnnotationDB:
     def __init__(self, args = None):
         self.contigs_fasta = None
         self.parser = None
         self.split_length = 20000
         self.input_files = []
         self.skip_search_tables = False
-        self.output = 'ANNOTATION.db'
+        self.annotation_db_path = None
         self.debug = False
 
         if args:
@@ -83,7 +88,7 @@ class GenAnnotationDB:
             self.split_length = args.split_length
             self.input_files = args.input_files
             self.skip_search_tables = args.skip_search_tables
-            self.output = args.output
+            self.annotation_db_path = args.output
             self.debug = args.debug
 
         self.sanity_checked = False
@@ -97,13 +102,8 @@ class GenAnnotationDB:
         if not os.path.exists(self.contigs_fasta):
             raise ConfigError, "PaPi can't find a FASTA file here: '%s' :/" % self.contigs_fasta
 
-        if os.path.isdir(self.output):
-            self.output = os.path.join(self.output, 'ANNOTATION.db')
-
-        if not self.output.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
-                                for imposing their views on how local databases should be named, and are humbled by your\
-                                cooperation."
+        if not self.annotation_db_path:
+            raise ConfigError, "Annotation database path cannot be None :/"
 
         # well maybe .. since we are here ...
         fasta = u.SequenceSource(self.contigs_fasta)
@@ -112,19 +112,20 @@ class GenAnnotationDB:
 
         self.sanity_checked = True
 
+
     def _run(self):
         self.sanity_check()
 
-        annotation_db = AnnotationDB(self.output, self.split_length, create_new = True)
-
-        self.populate_annotation_tables(annotation_db)
-
-        self.populate_search_tables(annotation_db)
-
+        # get a new, empty annotation database is created with all tables and stuff:
+        annotation_db = AnnotationDB(self.annotation_db_path, self.split_length, create_new = True)
         annotation_db.db.disconnect()
 
+        self.populate_annotation_tables()
 
-    def populate_annotation_tables(self, annotation_db):
+        self.populate_search_tables()
+
+
+    def populate_annotation_tables(self):
         if not self.sanity_check:
             raise ConfigError, "You must first call sanity_check()"
 
@@ -136,11 +137,11 @@ class GenAnnotationDB:
 
         parser = parser_modules['annotation'][self.parser](self.input_files, annotation_table_structure)
         annotations_dict = parser.get_annotations_dict()
-        annotation_tables = AnnotationTables(annotation_db.db, self.contig_lengths)
+        annotation_tables = AnnotationTables(self.annotation_db_path, self.contig_lengths)
         annotation_tables.create(annotations_dict, self.parser)
 
 
-    def populate_search_tables(self, annotation_db, sources = {}):
+    def populate_search_tables(self, sources = {}):
         if self.skip_search_tables:
             return
 
@@ -155,14 +156,14 @@ class GenAnnotationDB:
             return
 
         commander = HMMSearch()
-        search_tables = SearchTables(annotation_db.db, self.contig_lengths)
+        search_tables = SearchTables(self.annotation_db_path, self.contig_lengths)
 
         proteins_in_contigs_fasta = commander.run_prodigal(self.contigs_fasta)
 
         search_results_dict = {}
         for source in sources:
             kind_of_search = sources[source]['kind']
-            all_genes_searched_against =  sources[source]['genes']
+            all_genes_searched_against = sources[source]['genes']
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
             hmm_scan_hits_txt = commander.run_hmmscan(source,
@@ -183,7 +184,7 @@ class GenAnnotationDB:
 
 
 class AnnotationDB:
-    """This class will handle all the connections, will create a database if it is not there, etc"""
+    """This class will connect to an annotation database at db_path. It will create one if requested."""
     def __init__(self, db_path, split_length = None, create_new = False, run=run, progress=progress):
         self.db_path = db_path
         self.run = run
@@ -193,7 +194,7 @@ class AnnotationDB:
         self.db = None
 
         if create_new:
-            self.create_database(split_length)
+            self.new_annotation_database(split_length)
         else:
             self.init_database()
             self.split_length = self.db.get_meta_value('split_length')
@@ -203,10 +204,16 @@ class AnnotationDB:
         self.db = db.DB(self.db_path, __version__)
 
 
-    def create_database(self, split_length):
+    def new_annotation_database(self, split_length):
         if not split_length:
             raise ConfigError, "Creating a new annotation database requires split length information to be\
-                                provided. Something, somewhere in the code made a mistake."
+                                provided. But the AnnotationDB class was called to create one, without the\
+                                split length information. Not cool."
+
+        if not self.db_path.lower().endswith('.db'):
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+                                for imposing their views on how local databases should be named, and are humbled by your\
+                                cooperation."
 
         try:
             split_length = int(split_length)
@@ -219,22 +226,32 @@ class AnnotationDB:
         self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
-        self.split_length = split_length
+
+        self.db.create_table(search_info_table_name, search_info_table_structure, search_info_table_types)
+        self.db.create_table(search_splits_table_name, search_splits_table_structure, search_splits_table_types)
+        self.db.create_table(search_contigs_table_name, search_contigs_table_structure, search_contigs_table_types)
+        self.db.create_table(annotation_table_name, annotation_table_structure, annotation_table_types)
+        self.db.create_table(splits_table_name, splits_table_structure, splits_table_types)
+        self.db.create_table(splits_to_prots_table_name, splits_to_prots_table_structure, splits_to_prots_table_types)
+
+
+    def disconnect(self):
+        self.db.disconnect()
 
 
 class SearchTables:
-    def __init__(self, db, contig_lengths):
-        self.db = db
+    def __init__(self, db_path, contig_lengths):
+        self.db_path = db_path
         self.contig_lengths = contig_lengths
-        self.search_info_table = 'search_info'
-        self.search_contigs_table = 'search_contigs'
-        self.search_splits_table = 'search_splits'
-        # read split length
-        self.split_length = db.get_meta_value('split_length')
+
+        # read split length and create search tables if they are not in the database.
+        annotation_db = AnnotationDB(self.db_path)
+        self.split_length = annotation_db.split_length
+        annotation_db.disconnect()
 
         self.next_available_id = {}
-        self.set_next_available_id(self.search_contigs_table)
-        self.set_next_available_id(self.search_splits_table)
+        self.set_next_available_id(search_contigs_table_name)
+        self.set_next_available_id(search_splits_table_name)
 
 
     def next_id(self, table):
@@ -243,45 +260,36 @@ class SearchTables:
 
 
     def set_next_available_id(self, table):
-        tables_in_db = self.db.get_table_names()
-        if table not in tables_in_db:
-            self.next_available_id[table] = 0
+        annotation_db = AnnotationDB(self.db_path)
+        table_content = annotation_db.db.get_table_as_dict(table)
+        if table_content:
+            self.next_available_id[table] = max(table_content.keys()) + 1
         else:
-            table_content = self.db.get_table_as_dict(table)
-            if table_content:
-                self.next_available_id[table] = max(table_content.keys()) + 1
-            else:
-                self.next_available_id[table] = 0
+            self.next_available_id[table] = 0
+        annotation_db.disconnect()
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
-        tables_in_db = self.db.get_table_names()
+        annotation_db = AnnotationDB(self.db_path)
 
-        if self.search_info_table not in tables_in_db:
-            self.db.create_table(self.search_info_table, search_info_table_structure, search_info_table_types)
-
-        if self.search_contigs_table not in tables_in_db:
-            self.db.create_table(self.search_contigs_table, search_contigs_table_structure, search_contigs_table_types)
-
-        if self.search_splits_table not in tables_in_db:
-            self.db.create_table(self.search_splits_table, search_splits_table_structure, search_splits_table_types)
-
-        search_info_table = self.db.get_table_as_dict(self.search_info_table)
+        search_info_table = annotation_db.db.get_table_as_dict(search_info_table_name)
         if source in search_info_table:
             run.info('WARNING', 'Data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
-            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_info_table, source))
-            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_contigs_table, source))
-            self.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (self.search_splits_table, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_info_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_contigs_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_splits_table_name, source))
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
-        self.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % self.search_info_table, db_entries)
+        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % search_info_table_name, db_entries)
         # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(self.search_contigs_table), source] + [v[h] for h in search_contigs_table_structure[2:]]) for v in search_results_dict.values()]
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % self.search_contigs_table, db_entries)
+        db_entries = [tuple([self.next_id(search_contigs_table_name), source] + [v[h] for h in search_contigs_table_structure[2:]]) for v in search_results_dict.values()]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % search_contigs_table_name, db_entries)
 
         db_entries = self.process_splits(source, search_results_dict)
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.search_splits_table, db_entries)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % search_splits_table_name, db_entries)
+
+        annotation_db.disconnect()
 
 
     def process_splits(self, source, search_results_dict):
@@ -315,19 +323,21 @@ class SearchTables:
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
                         gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
-                        db_entry = tuple([self.next_id(self.search_splits_table), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(search_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
 
 
 class AnnotationTables:
-    def __init__(self, db, contig_lengths):
-        self.db = db
+    def __init__(self, annotation_db_path, contig_lengths):
+        self.annotation_db_path = annotation_db_path
         self.contig_lengths = contig_lengths
 
         # read split length
-        self.split_length = db.get_meta_value('split_length')
+        annotation_db = AnnotationDB(self.annotation_db_path)
+        self.split_length = annotation_db.db.get_meta_value('split_length')
+        annotation_db.disconnect()
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database
@@ -346,13 +356,16 @@ class AnnotationTables:
 
         self.sanity_check()
 
-        # create annotation main table using fields in 'annotation_table_structure' variable
-        self.db.create_table('annotation', annotation_table_structure, annotation_table_types)
-        self.db.set_meta_value('annotation_source', parser)
-
-        # push raw entries.
+        # oepn connection
+        annotation_db = AnnotationDB(self.annotation_db_path)
+        # set the parser
+        annotation_db.db.set_meta_value('annotation_source', parser)
+        # push raw entries
         db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
-        self.db._exec_many('''INSERT INTO annotation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % annotation_table_name, db_entries)
+        # disconnect like a pro.
+        annotation_db.disconnect()
+
 
         # compute and push split taxonomy information.
         self.init_splits_table()
@@ -470,15 +483,16 @@ class AnnotationTables:
                     splits_dict[split]['taxonomy'] = consensus
                     splits_dict[split]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
 
-        # create splits table using fields in 'splits_table_structure' info
-        self.db.create_table('splits', splits_table_structure, splits_table_types)
-
-        # push raw entries.
+        # open connection
+        annotation_db = AnnotationDB(self.annotation_db_path)
+        # push raw entries for splits table
         db_entries = [tuple([split] + [splits_dict[split][h] for h in splits_table_structure[1:]]) for split in splits_dict]
-        self.db._exec_many('''INSERT INTO splits VALUES (?,?,?,?,?,?,?,?)''', db_entries)
-
-        # finally, create genes_in_splits table
-        self.genes_in_splits.create_table(self.db)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % splits_table_name, db_entries)
+        # push entries for genes in splits table
+        db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % splits_to_prots_table_name, db_entries)
+        # disconnect
+        annotation_db.disconnect()
 
 
     def get_consensus_taxonomy_for_split(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):
@@ -489,7 +503,7 @@ class AnnotationTables:
             o: number of taxonomic calls that matches the consensus among t
         """
 
-        response = self.db.cursor.execute("""SELECT %s FROM annotation WHERE contig='%s' and stop > %d and start < %d""" % (t_level, contig, start, stop))
+        response = self.db.cursor.execute("""SELECT %s FROM %s WHERE contig='%s' and stop > %d and start < %d""" % (t_level, annotation_table_name, contig, start, stop))
         rows = response.fetchall()
 
         num_genes = len(rows)
@@ -534,12 +548,4 @@ class GenesInSplits:
                                                'stop_in_split': stop_in_split,
                                                'percentage_in_split': percentage_in_split}
         self.entry_id += 1
-
-
-    def create_table(self, db):
-        db.create_table('genes_in_splits', splits_to_prots_table_structure, splits_to_prots_table_types)
-        db_entries = [tuple([entry_id] + [self.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.splits_to_prots]
-        db._exec_many('''INSERT INTO genes_in_splits VALUES (?,?,?,?,?,?)''', db_entries)
-        db.commit()
-
 
