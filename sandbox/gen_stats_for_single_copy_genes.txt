@@ -1,0 +1,23 @@
+say you have your contigs.fa.
+
+first you run this:
+
+    papi-populate-search-table contigs.fa ANNOTATION.db 
+
+which creates an ANNOTATION.db with search tables in it. here:
+
+    sqlite3 ANNOTATION.db '.tables'
+    annotation       search_contigs   search_splits    splits
+    genes_in_splits  search_info      self
+
+then you run gen_stats_for_single_copy_genes.py, which takes contigs, and the newly created annotation database:
+
+    ./gen_stats_for_single_copy_genes.py contigs.fa ANNOTATION.db
+
+this results in two files, which goes into R for visualization:
+
+    ./gen_stats_for_single_copy_genes.R  ANNOTATION.db.hits ANNOTATION.db.genes --e_value 1e-20
+
+which generates a file like this:
+
+    https://i.imgur.com/2oPU849.png
