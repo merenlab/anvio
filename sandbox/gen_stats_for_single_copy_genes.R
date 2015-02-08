@@ -48,7 +48,7 @@ hits_df <- hits_df[hits_df$e_value < e_value, ]
 
 plots <- list()  # new empty list
 i <- 1
-for(source in c('Wu_et_al', 'Campbell_et_al', 'Dupont_et_al')){
+for(source in c('Wu_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_al')){
 	print(source)
     source_genes_df <- genes_df[genes_df$source == source, ]
     source_genes_df$source <- factor(source_genes_df$source)
@@ -121,9 +121,10 @@ for(source in c('Wu_et_al', 'Campbell_et_al', 'Dupont_et_al')){
 
 }
 pdf(paste(hits, '-(', e_value, ').pdf', sep=''), width=25, height=10)
-grid.arrange(plots[[1]], plots[[2]], plots[[3]],
-             plots[[4]], plots[[5]], plots[[6]],
-             plots[[7]], plots[[8]], plots[[9]],
+grid.arrange(plots[[1]],  plots[[2]],  plots[[3]],
+             plots[[4]],  plots[[5]],  plots[[6]],
+             plots[[7]],  plots[[8]],  plots[[9]],
+             plots[[10]], plots[[11]], plots[[12]],
              widths = c(2, 1, 10))
 dev.off()
 
