@@ -149,7 +149,7 @@ class BAMProfiler:
         self.run.info('profiler_version', __version__)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
-        self.run.info('annotation_db', True if self.annotation_db_path else False, quiet = True)
+        self.run.info('annotation_db', True if self.annotation_db_path else False)
         self.run.info('default_clustering', constants.single_default)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
@@ -255,6 +255,8 @@ class BAMProfiler:
 
 
     def check_entries_in_annotation_db_against_contigs(self, contig_names):
+        if not self.annotation_db:
+            return
         contig_names = set(contig_names)
         contigs_without_annotation = [c for c in contig_names if c not in self.contig_ORFs]
 
