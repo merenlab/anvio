@@ -388,12 +388,11 @@ def check_sample_id(sample_id):
             raise ConfigError, "Sample names can't start with digits. Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you can use '-s' parameter for that)."
 
-        allowed_chars_for_samples = allowed_chars.replace('-', '')
+        allowed_chars_for_samples = allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
             raise ConfigError, "Sample name ('%s') contains characters that PaPi does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
-                                digits, '_' and '.' (if you had not declared a sample name and PaPi made\
-                                up one for you, please specify a sample name using the '-s' parameter)." % sample_id
+                                digits, and the underscore character ('_')." % sample_id
 
 
 def check_contig_names(contig_names):

@@ -246,6 +246,7 @@ class BAMProfiler:
                 self.input_file_path = os.path.abspath(self.input_file_path)
                 self.sample_id = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
                 self.sample_id = self.sample_id.replace('-', '_')
+                self.sample_id = self.sample_id.replace('.', '_')
                 if self.sample_id[0] in constants.digits:
                     self.sample_id = 's' + self.sample_id
                 utils.check_sample_id(self.sample_id)
