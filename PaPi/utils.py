@@ -573,6 +573,19 @@ def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False
     return normalizer.fit_transform(vectors)
 
 
+def get_filtered_dict(d, property, values):
+    # removes any entry from d, where the value of the 'property' of items in d does not match
+    # with desired 'values'
+    if type(values) != type(set([])):
+        raise ConfigError, "get_filtered_dict: values must be type of set([])."
+
+    entry_ids_to_remove = [entry_id for entry_id in d if d[entry_id][property] not in values]
+    for entry_id in entry_ids_to_remove:
+        d.pop(entry_id)
+
+    return d
+
+
 def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean', clustering_method = 'complete', progress = Progress(verbose=False)):
     if ward:
         progress.update('Clustering data with Ward linkage and euclidean distances')
