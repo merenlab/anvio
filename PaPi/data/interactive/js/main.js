@@ -684,7 +684,8 @@ function drawTree() {
         }, 1); 
 }
 
-function showContigNames(gid) {
+
+function getContigNames(gid) {
     var names = new Array();
 
     for (var j = 0; j < SELECTED[gid].length; j++) {
@@ -693,9 +694,12 @@ function showContigNames(gid) {
         }
     }
 
-    if (names.length == 0)
-        return;
+    return names
+}
 
+
+function showContigNames(gid) {
+    names = getContigNames(gid)
     messagePopupShow('Contig Names', names.join('\n'));
 }
 
@@ -830,6 +834,11 @@ function submitGroups() {
 
 function updateGroupWindow() { 
     // count contigs and update group labels
+    // FIXME: this loop starts from 1 to group_counter, but things go bad when
+    //        a group is removed :) so "group_counter" should not be an integer, but a
+    //        list that contains all group ids, and ids should be removed from it when
+    //        a group is removed. all thes for loops can then go through ids in that 
+    //        list.
     for (var gid = 1; gid <= group_counter; gid++) {
         var contigs = 0;
         var length_sum = 0;
@@ -844,6 +853,30 @@ function updateGroupWindow() {
 
         $('#contig_count_' + gid).val(contigs);
         $('#contig_length_' + gid).html(readableNumber(length_sum));
+
+        // FIXME:
+        // updateGroupWindow goes through every group (whether a group is recently updated or not). 
+        // calling updateGroupWindow for every selection action is somewhat manageable
+        // since what this function is doing is pretty starightforward at this point.
+        // however, the following addition will add a lot to the computational budget
+        // to it. I think this funciton should take a parameter (group_id) that needs
+        // to be updated. when necessary, it would be called for all group_id's.
+        split_names = getContigNames(gid);
+        group_name = $('#group_name_' + gid).val();
+
+        $.ajax({
+              type: "POST",
+              url: "/data/completeness",
+              cache: false,
+              data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
+              success: function(data){
+                  completeness_stats = JSON.parse(data);
+
+                  // for now lets just print them in the console, but we will do great
+                  // things with this information!
+                  console.log(completeness_stats);
+                  },
+        });
     }
 }
 

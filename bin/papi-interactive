@@ -29,6 +29,7 @@ import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.interactive as interactive
 
+
 # get the absolute path for static directory under PaPi
 static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
@@ -127,7 +128,7 @@ def send_data(tree_id):
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     if d.runinfo['clusterings'].has_key(tree_id):
-        print "* '%s' tree is requested" % (tree_id)
+        print "* Clustering of '%s' has been requested" % (tree_id)
         return static_file(d.P(d.runinfo['clusterings'][tree_id]), root ='/')
 
 @route('/data/charts/<contig_name>')
@@ -175,6 +176,26 @@ def charts(contig_name):
 @route('/data/contig/<contig_name>')
 def contig_info(contig_name):
     return d.contig_rep_seqs[contig_name]
+
+@route('/data/completeness', method='POST')
+def completeness():
+    completeness_stats = {}
+    if not d.completeness:
+        return json.dumps(completeness_stats)
+
+    split_names = json.loads(request.forms.get('split_names'))
+    group_name = json.loads(request.forms.get('group_name'))
+
+    print '* Completeness info has been requested for %d splits in %s' % (len(split_names), group_name)
+    completeness_stats = d.completeness.get_info_for_splits(set(split_names))
+    # FIXME: sorry for the following BS list comp:
+    print '        %s' % '; '.join(['%s: %.1f%% complete / %.1f%% contaminated'\
+                                            % (source,\
+                                               completeness_stats[source]['percent_complete'],\
+                                               completeness_stats[source]['percent_contamination'])\
+                                                                                for source in completeness_stats])
+
+    return json.dumps(completeness_stats)
 
 @route('/save_state', method='POST')
 def save_state():
