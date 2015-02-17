@@ -288,6 +288,8 @@ $(document).ready(function() {
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
                         metadata = eval(data);
+                        removeSingleParents(); // in utils.js
+                        
                         $('#views_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false);
 
