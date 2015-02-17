@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import json
+import copy
 import socket
 import hcluster
 import textwrap
@@ -576,6 +577,7 @@ def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False
 def get_filtered_dict(d, property, values):
     # removes any entry from d, where the value of the 'property' of items in d does not match
     # with desired 'values'
+    d = copy.deepcopy(d)
     if type(values) != type(set([])):
         raise ConfigError, "get_filtered_dict: values must be type of set([])."
 
