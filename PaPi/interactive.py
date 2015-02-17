@@ -24,7 +24,7 @@ import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
-
+import PaPi.completeness as completeness
 
 progress = terminal.Progress()
 run = terminal.Run()
@@ -43,6 +43,7 @@ class InputHandler:
         self.contigs_summary_index = {}
         self.contig_lengths = {}
         self.additional_metadata_path = None
+        self.completeness = None
 
         # from annotation db if exists (these will be populated in self.init_annotation_db()):
         self.annotation_dict = {}
@@ -67,7 +68,7 @@ class InputHandler:
         # the user to run interactive interface without an annotation db.
         if args.annotation_db:
             self.init_annotation_db(args.annotation_db)
-
+            self.completeness = completeness.Completeness(args.annotation_db)
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
