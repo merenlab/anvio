@@ -60,7 +60,6 @@ import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
-import PaPi.singlecopy as singlecopy
 import PaPi.filesnpaths as filesnpaths
 
 from PaPi.utils import ConfigError
