@@ -26,11 +26,14 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A script to generate completeness info for a given list of splits')
+    parser = argparse.ArgumentParser(description='A script to generate completeness info for a given list of _splits_')
     parser.add_argument('splits_txt', metavar = 'SPLITS_TXT',
                         help = 'File with split names.')
     parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
                         help = 'Annotation database to read from.')
+    parser.add_argument('-e', '--min-e-value', default=1e-15, type=float, metavar = 'E-VALUE',
+                        help = 'Minimum significance score of an HMM find to be considered as a valid hit.\
+                                Default is %(default)g.')
     parser.add_argument('--list-sources', action='store_true', default=False,
                         help = 'Show available single-copy gene search results and exit.')
     parser.add_argument('--source', default=None,
@@ -48,12 +51,12 @@ if __name__ == '__main__':
     split_names = set([s.strip() for s in open(args.splits_txt).readlines() if s.strip() and not s.startswith('#')])
 
     try:
-        results = completeness.get_info_for_splits(split_names)
+        results = completeness.get_info_for_splits(split_names, min_e_value = args.min_e_value)
     except ConfigError, e:
         print e
         sys.exit(-1)
 
-    run.info('COMPLETENESS FOR %d SPLITS' % len(split_names), '', header=True)
+    run.info('Completeness for %d splits (p < %g)' % (len(split_names), args.min_e_value), '', header=True)
     for source in completeness.sources:
         run.info(source, '%.2f%% complete, %.2f%% contamination' % (results[source]['percent_complete'], results[source]['percent_contamination']))
 
