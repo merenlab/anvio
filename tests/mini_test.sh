@@ -27,19 +27,25 @@ done
 
 
 INFO "Generating an annotation database using 'myrast_gui' parser ..."
-papi-gen-annotation myrast_gui/* -p myrast_gui --contigs contigs.fa -o test-output/ANNOTATION-myrast_gui.db -L 1000 
+papi-gen-annotation myrast_gui/* -p myrast_gui --contigs contigs.fa -o test-output/ANNOTATION-myrast_gui.db -L 1000 --skip-search-tables 
 
 INFO "Generating an annotation database using 'myrast_cmdline_dont_use' parser ..."
-papi-gen-annotation myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline_dont_use.db -L 1000 
+papi-gen-annotation myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline_dont_use.db -L 1000 --skip-search-tables
 
 INFO "Generating an annotation database using 'myrast_cmdline' parser ..."
-papi-gen-annotation myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -p myrast_cmdline --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline.db -L 1000 
+papi-gen-annotation myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -p myrast_cmdline --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline.db -L 1000 --skip-search-tables
 
-INFO "Recovering a standart matrix file from the annotation database generated using 'myrast_cmdline' parser ..."
+INFO "Recovering a standart matrix file from the annotation database generated using 'myrast_cmdline' parser ..." --skip-search-tables
 papi-export-annotation-table test-output/ANNOTATION-myrast_cmdline.db -o test-output/ANNOTATION_recovered.txt
 
 INFO "Re-generating an annotation database using the recovered matrix file with 'default_matrix' parser ..."
-papi-gen-annotation test-output/ANNOTATION_recovered.txt -p default_matrix --contigs contigs.fa -o test-output/ANNOTATION.db -L 1000 
+papi-gen-annotation test-output/ANNOTATION_recovered.txt -p default_matrix --contigs contigs.fa -o test-output/ANNOTATION.db -L 1000 --skip-search-tables
+
+
+# in the lines below we used '--skip-search-tables' flag, and PaPi skipped generating HMM scan
+# results in those databases. Now we will do that step alone specifically:
+INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
+papi-populate-search-table contigs.fa test-output/ANNOTATION.db
 
 
 # for each sample, run the profiling using the same split size used for the annotation database.
