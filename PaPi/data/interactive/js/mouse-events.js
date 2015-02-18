@@ -15,7 +15,7 @@ function lineClickHandler(event) {
     if (group_id === 'undefined')
         return;
 
-    if (p.child_nodes.length > 500 && !confirm("insert message, " + p.child_nodes.length + ", Do you wish to continue?"))
+    if (p.child_nodes.length > 1000 && !confirm("You just made a very big selection. Please click OK if it was intentional (and be ready to wait for a bit)."))
         return;
 
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
@@ -97,7 +97,7 @@ function lineContextMenuHandler(event) {
     if (group_id === 'undefined')
         return;
 
-    if (p.child_nodes.length > 500 && !confirm("delete message, " + p.child_nodes.length + ", Do you wish to continue?"))
+    if (p.child_nodes.length > 1000 && !confirm("You are about to unselect a large number of contigs."))
         return;
 
     for (var i = 0; i < p.child_nodes.length; i++) {
