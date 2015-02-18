@@ -873,23 +873,27 @@ function updateGroupWindow() {
         split_names = getContigNames(gid);
         group_name = $('#group_name_' + gid).val();
 
-        $.ajax({
-              type: "POST",
-              url: "/data/completeness",
-              cache: false,
-              data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
-              success: function(data){
-                  completeness_info_dict = JSON.parse(data);
-                  console.log(completeness_info_dict);
+        updateComplateness(gid);
+    }
+}
 
-                  default_source = completeness_info_dict['default_source'];
-                  stats = completeness_info_dict['stats'];
+function updateComplateness(gid) {
+    $.ajax({
+        type: "POST",
+        url: "/data/completeness",
+        cache: false,
+        data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
+        success: function(data){
+            completeness_info_dict = JSON.parse(data);
+            console.log(completeness_info_dict);
 
-                  $('#completeness_' + gid).val(stats[default_source]['percent_complete']);
-                  $('#contamination_' + gid).val(stats[default_source]['percent_contamination']);
-              },
-         });
-     }
+            default_source = completeness_info_dict['default_source'];
+            stats = completeness_info_dict['stats'];
+
+            $('#completeness_' + gid).html(stats[default_source]['percent_complete']);
+            $('#contamination_' + gid).val(stats[default_source]['percent_contamination']);
+        },
+    });
 }
 
 function exportSvg() {
