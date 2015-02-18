@@ -15,6 +15,9 @@ function lineClickHandler(event) {
     if (group_id === 'undefined')
         return;
 
+    if (p.child_nodes.length > 500 && !confirm("insert message, " + p.child_nodes.length + ", Do you wish to continue?"))
+        return;
+
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
 
     for (var i = 0; i < p.child_nodes.length; i++) {
@@ -92,6 +95,9 @@ function lineContextMenuHandler(event) {
     var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
 
     if (group_id === 'undefined')
+        return;
+
+    if (p.child_nodes.length > 500 && !confirm("delete message, " + p.child_nodes.length + ", Do you wish to continue?"))
         return;
 
     for (var i = 0; i < p.child_nodes.length; i++) {
