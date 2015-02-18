@@ -188,6 +188,7 @@ def completeness():
 
     print '* Completeness info has been requested for %d splits in %s' % (len(split_names), group_name)
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
+    default_source = 'Wu_et_al' if 'Wu_et_al' in completeness_stats else completeness_stats.keys()[0]
     # FIXME: sorry for the following BS list comp:
     print '        %s' % '; '.join(['%s: %.1f%% complete / %.1f%% contaminated'\
                                             % (source,\
@@ -195,7 +196,7 @@ def completeness():
                                                completeness_stats[source]['percent_contamination'])\
                                                                                 for source in completeness_stats])
 
-    return json.dumps(completeness_stats)
+    return json.dumps({'stats': completeness_stats, 'default_source': default_source})
 
 @route('/save_state', method='POST')
 def save_state():
