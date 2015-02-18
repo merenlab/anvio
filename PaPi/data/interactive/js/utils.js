@@ -204,8 +204,8 @@ function initializeDialogs() {
         });
 
     $("#groups").dialog("option", "position", {
-            my: "right-1px top",
-            at: "right-1px top",
+            my: "right-20px top",
+            at: "right-20px top",
             of: window
         }).dialog('option', 'minHeight', 0);
 }
