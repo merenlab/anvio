@@ -645,7 +645,8 @@ function serializeSettings() {
             state['groups'][gid]['color'] = $('#group_color_' + gid).attr('color');
             state['groups'][gid]['contig-length'] = $('#contig_length_' + gid).text();
             state['groups'][gid]['contig-count'] = $('#contig_count_' + gid).val();
-
+            state['groups'][gid]['completeness'] = $('#completeness_' + gid).val();
+            state['groups'][gid]['contamination'] = $('#contamination_' + gid).val();
         }
     );
 
@@ -715,6 +716,8 @@ function newGroup(id, groupState) {
         var color = '#000000';
         var contig_count = 0;
         var contig_length = 0;
+        var completeness = 0;
+        var contamination = 0;
 
         SELECTED[group_counter] = [];
     }
@@ -725,6 +728,8 @@ function newGroup(id, groupState) {
         var color = groupState['color'];
         var contig_count = groupState['contig-count'];
         var contig_length = groupState['contig-length'];
+        var completeness = groupState['completeness'];
+        var contamination = groupState['contamination'];
     }
 
     var template = '<tr group-id="{id}" id="group_row_{id}">' +
@@ -733,13 +738,17 @@ function newGroup(id, groupState) {
                    '    <td><input type="text" size="12" id="group_name_{id}" value="{name}"></td>' +
                    '    <td><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
                    '    <td><span id="contig_length_{id}">{length}</span></td>' +
-                   '    <td><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup({id});"></span></td>' +
+                   '    <td><span id="completeness_{id}">{completeness}%</span></td>' +
+                   '    <td><input id="contamination_{id}" type="button" value="{contamination}%" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
+                   '    <td><center><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup({id});"></span></center></td>' +
                    '</tr>';
 
     template = template.replace(new RegExp('{id}', 'g'), id)
                        .replace(new RegExp('{name}', 'g'), name)
                        .replace(new RegExp('{color}', 'g'), color)
                        .replace(new RegExp('{count}', 'g'), contig_count)
+                       .replace(new RegExp('{completeness}', 'g'), completeness)
+                       .replace(new RegExp('{contamination}', 'g'), contamination)
                        .replace(new RegExp('{length}', 'g'), contig_length);
 
     $('#tbody_groups').append(template);
@@ -870,14 +879,17 @@ function updateGroupWindow() {
               cache: false,
               data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
               success: function(data){
-                  completeness_stats = JSON.parse(data);
+                  completeness_info_dict = JSON.parse(data);
+                  console.log(completeness_info_dict);
 
-                  // for now lets just print them in the console, but we will do great
-                  // things with this information!
-                  console.log(completeness_stats);
-                  },
-        });
-    }
+                  default_source = completeness_info_dict['default_source'];
+                  stats = completeness_info_dict['stats'];
+
+                  $('#completeness_' + gid).val(stats[default_source]['percent_complete']);
+                  $('#contamination_' + gid).val(stats[default_source]['percent_contamination']);
+              },
+         });
+     }
 }
 
 function exportSvg() {
