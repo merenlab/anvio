@@ -711,19 +711,21 @@ function newGroup(id, groupState) {
     if (typeof id === 'undefined')
     {
         group_counter++;
+        var from_state = false;
         var id = group_counter;
         var name = "Group_" + id;
         var color = '#000000';
         var contig_count = 0;
         var contig_length = 0;
-        var completeness = 0;
-        var contamination = 0;
+        var completeness = '---';
+        var contamination = '---';
 
         SELECTED[group_counter] = [];
     }
     else
     {
         // we are adding groups from state file
+        var from_state = true;
         var name = groupState['name'];
         var color = groupState['color'];
         var contig_count = groupState['contig-count'];
@@ -738,8 +740,8 @@ function newGroup(id, groupState) {
                    '    <td><input type="text" size="12" id="group_name_{id}" value="{name}"></td>' +
                    '    <td><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
                    '    <td><span id="contig_length_{id}">{length}</span></td>' +
-                   '    <td><span id="completeness_{id}">{completeness}%</span></td>' +
-                   '    <td><input id="contamination_{id}" type="button" value="{contamination}%" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
+                   '    <td><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
+                   '    <td><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
                    '    <td><center><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup({id});"></span></center></td>' +
                    '</tr>';
 
@@ -751,7 +753,13 @@ function newGroup(id, groupState) {
                        .replace(new RegExp('{contamination}', 'g'), contamination)
                        .replace(new RegExp('{length}', 'g'), contig_length);
 
+
     $('#tbody_groups').append(template);
+
+    if(!from_state){
+        $('#completeness_' + id).attr("disabled", true);
+        $('#contamination_' + id).attr("disabled", true);
+    }
 
     $('#group_color_' + id).colpick({
         layout: 'hex',
@@ -885,13 +893,15 @@ function updateComplateness(gid) {
         data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
         success: function(data){
             completeness_info_dict = JSON.parse(data);
-            console.log(completeness_info_dict);
 
             default_source = completeness_info_dict['default_source'];
             stats = completeness_info_dict['stats'];
 
-            $('#completeness_' + gid).html(stats[default_source]['percent_complete']);
-            $('#contamination_' + gid).val(stats[default_source]['percent_contamination']);
+            $('#completeness_' + gid).val(stats[default_source]['percent_complete'].toFixed(1) + '%');
+            $('#contamination_' + gid).val(stats[default_source]['percent_contamination'].toFixed(1) + '%');
+
+            $('#completeness_' + gid).attr("disabled", false);
+            $('#contamination_' + gid).attr("disabled", false);
         },
     });
 }
