@@ -11,7 +11,7 @@
 # Please read the COPYING file.
 
 
-import PaPi.filesnpaths as filesnpaths
+from PaPi.parsers.base import Parser
 
 
 class MyRastGUI(Parser):
