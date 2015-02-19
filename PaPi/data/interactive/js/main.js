@@ -849,14 +849,18 @@ function submitGroups() {
     });
 }
 
-function updateGroupWindow() { 
-    // count contigs and update group labels
-    // FIXME: this loop starts from 1 to group_counter, but things go bad when
-    //        a group is removed :) so "group_counter" should not be an integer, but a
-    //        list that contains all group ids, and ids should be removed from it when
-    //        a group is removed. all thes for loops can then go through ids in that 
-    //        list.
-    for (var gid = 1; gid <= group_counter; gid++) {
+function updateGroupWindow(group_list) {
+    if (typeof group_list === 'undefined')
+    {
+        var group_list = [];
+        $('#tbody_groups tr').each(
+        function(index, group) {
+            group_list.push(parseInt($(group).attr('group-id')));
+        });
+    }
+
+    for (var _i = 0; _i < group_list.length; _i++) {
+        var gid = group_list[_i];
         var contigs = 0;
         var length_sum = 0;
 
@@ -871,13 +875,6 @@ function updateGroupWindow() {
         $('#contig_count_' + gid).val(contigs);
         $('#contig_length_' + gid).html(readableNumber(length_sum));
 
-        // FIXME:
-        // updateGroupWindow goes through every group (whether a group is recently updated or not). 
-        // calling updateGroupWindow for every selection action is somewhat manageable
-        // since what this function is doing is pretty starightforward at this point.
-        // however, the following addition will add a lot to the computational budget
-        // to it. I think this funciton should take a parameter (group_id) that needs
-        // to be updated. when necessary, it would be called for all group_id's.
         split_names = getContigNames(gid);
         group_name = $('#group_name_' + gid).val();
 
