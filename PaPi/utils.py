@@ -288,6 +288,17 @@ def get_all_ids_from_fasta(input_file):
     return ids
 
 
+def get_read_lengths_from_fasta(input_file):
+    contig_lengths = {}
+
+    fasta = u.SequenceSource(input_file)
+    while fasta.next():
+        contig_lengths[fasta.id] = len(fasta.seq)
+
+    fasta.close()
+    return contig_lengths
+
+
 def get_GC_content_for_FASTA_entries(file_path):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_fasta_formatted(file_path)
