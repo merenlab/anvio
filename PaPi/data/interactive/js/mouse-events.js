@@ -20,10 +20,14 @@ function lineClickHandler(event) {
 
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
 
+    var groups_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
         var pos = SELECTED[group_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
         if (pos == -1) {
             SELECTED[group_id].push(id_to_node_map[p.child_nodes[i]].label);
+
+            if (groups_to_update.indexOf(group_id) == -1)
+                groups_to_update.push(group_id);
 
             var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
             for (var _i=0; _i < _path_background.length; _i++) {
@@ -46,11 +50,14 @@ function lineClickHandler(event) {
             var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
+
+                if (groups_to_update.indexOf(gid) == -1)
+                    groups_to_update.push(gid);
             }
         }
     }
 
-    updateGroupWindow();
+    updateGroupWindow(groups_to_update);
 }
 
 function lineContextMenuHandler(event) {
@@ -100,6 +107,7 @@ function lineContextMenuHandler(event) {
     if (p.child_nodes.length > 1000 && !confirm("You are about to unselect a large number of contigs."))
         return;
 
+    var groups_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
         var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
         for (var _i=0; _i < _path_background.length; _i++) {
@@ -112,15 +120,18 @@ function lineContextMenuHandler(event) {
             _path_outer_ring[_i].style['fill'] = '#FFFFFF';    
         }
 
-        // remove nodes from other groups
+        // remove nodes from all groups
         for (var gid = 1; gid <= group_counter; gid++) {
             var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
+
+                if (groups_to_update.indexOf(gid) == -1)
+                    groups_to_update.push(gid);
             }
         }
     }
-    updateGroupWindow();
+    updateGroupWindow(groups_to_update);
     lineMouseLeaveHandler(event);
     return false;
 }
