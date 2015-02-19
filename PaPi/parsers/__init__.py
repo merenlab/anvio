@@ -15,6 +15,7 @@ from PaPi.parsers.myrastgui import MyRastGUI
 from PaPi.parsers.myrastcmdline import MyRastCMDLine 
 from PaPi.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
 from PaPi.parsers.hmmscan import HMMScan
+from PaPi.parsers.concoct import CONCOCT
 
 parser_modules = {}
 parser_modules['annotation'] = {"default_matrix": DefaultMatrix,
@@ -22,3 +23,4 @@ parser_modules['annotation'] = {"default_matrix": DefaultMatrix,
                                 "myrast_cmdline": MyRastCMDLine,
                                 "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
 parser_modules['search']     = {'hmmscan': HMMScan}
+parser_modules['binning']    = {'concoct': CONCOCT}
