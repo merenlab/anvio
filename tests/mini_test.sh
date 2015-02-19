@@ -47,6 +47,13 @@ papi-gen-annotation test-output/ANNOTATION_recovered.txt -p default_matrix --con
 INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
 papi-populate-search-table contigs.fa test-output/ANNOTATION.db
 
+INFO "Populating collections tables using mock clustering results for CONCOCT ..."
+papi-populate-collections contigs.fa test-output/ANNOTATION.db --parser concoct -i concoct.txt
+
+
+INFO "Annotation DB is ready; here are the tables in it:"
+sqlite3 test-output/ANNOTATION.db '.tables'
+
 
 # for each sample, run the profiling using the same split size used for the annotation database.
 # profiling generates individual directiorues uner test-output directory for each sample.
