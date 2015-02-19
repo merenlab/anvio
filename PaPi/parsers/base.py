@@ -66,11 +66,13 @@ class Parser(object):
                     raise ConfigError, "Parser class does not know about file type '%s' :/" % f['type']
             else:
                 # then it is tab-delimited
+                no_header = f['no_header'] if f.has_key('no_header') else False
+                separator = f['separator'] if f.has_key('separator') else '\t'
                 indexing_field = f['indexing_field'] if f.has_key('indexing_field') else 0
-                self.dicts[alias] = get_dict(self.paths[alias],
+                self.dicts[alias] = get_dict(self.paths[alias], no_header = no_header,
                                              column_names = self.files_structure[alias]['col_names'],
                                              column_mapping = self.files_structure[alias]['col_mapping'],
-                                             indexing_field = indexing_field)
+                                             indexing_field = indexing_field, separator = separator)
 
 
 if __name__ == "__main__":
