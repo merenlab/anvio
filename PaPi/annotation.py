@@ -44,7 +44,20 @@ search_splits_table_structure = ['entry_id', 'source', 'gene_unique_identifier',
 search_splits_table_mapping   = [    int   ,   str   ,            str          ,     str    ,   str  ,         float        ,   float  ]   
 search_splits_table_types     = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
 
-__version__ = "0.3"
+collections_info_table_name      = 'collections_info'
+collections_info_table_structure = ['source',  'ref']
+collections_info_table_types     = [ 'text' , 'text']
+
+collections_contigs_table_name      = 'collections_contigs'
+collections_contigs_table_structure = ['entry_id', 'source', 'contig', 'cluster_id']
+collections_contigs_table_types     = [ 'numeric',  'text' ,  'text' ,    'text'   ]
+
+collections_splits_table_name      = 'collections_splits'
+collections_splits_table_structure = ['entry_id', 'source', 'split', 'cluster_id']
+collections_splits_table_types     = [ 'numeric',  'text' , 'text' ,    'text'   ]
+
+
+__version__ = "0.4.0"
 
 
 import os
@@ -69,6 +82,40 @@ from PaPi.parsers import parser_modules
 
 run = terminal.Run()
 progress = terminal.Progress()
+
+
+def magic_touch(annotation_db_path, split_length = None, run=run, progress=progress):
+    """you call this function, and it creates a new database for you if the path you sent does not exists, or gets
+       the split size if the annotation_db_path does exist. It is like 'touch' command in UNIX environments, hence
+       my silly naming."""
+
+    # FIXME: this is a risky convenience (maybe I should be more explicit): 
+    if os.path.isdir(annotation_db_path):
+        annotation_db_path = os.path.join(annotation_db_path, 'ANNOTATION.db')
+
+    if os.path.exists(annotation_db_path):
+        if split_length:
+            raise ConfigError, "You can not declare a split length (-L/--split-length) when you are\
+                                working with an already existing annotation database."
+
+        annotation_db = AnnotationDB(annotation_db_path)
+        split_length = annotation_db.db.get_meta_value('split_length')
+        run.info('Database touch', 'An existing database, %s, has been initiated.' % annotation_db_path)
+        run.info('Split length', split_length)
+        annotation_db.disconnect()
+    else:
+        split_length = split_length
+        if not split_length:
+            raise ConfigError, "A new annotation database is about to be created, but the split length information\
+                                is missing from the request. If you just run a PaPi program and got this error,\
+                                you should try to take a look at the --help menu for relevant parameter."
+
+        annotation_db = AnnotationDB(annotation_db_path, split_length, create_new = True)
+        run.info('Database touch', 'A new database, %s, has been created.' % annotation_db_path)
+        run.info('Split length', split_length)
+        annotation_db.disconnect()
+
+    return (annotation_db_path, split_length)
 
 
 class PopulateAnnotationDB:
@@ -105,9 +152,7 @@ class PopulateAnnotationDB:
             raise ConfigError, "Annotation database path cannot be None :/"
 
         # well maybe .. since we are here ...
-        fasta = u.SequenceSource(self.contigs_fasta)
-        while fasta.next():
-            self.contig_lengths[fasta.id] = len(fasta.seq)
+        self.contig_lengths = utils.get_read_lengths_from_fasta(self.contigs_fasta)
 
         self.sanity_checked = True
 
@@ -232,28 +277,29 @@ class AnnotationDB:
         self.db.create_table(annotation_table_name, annotation_table_structure, annotation_table_types)
         self.db.create_table(splits_table_name, splits_table_structure, splits_table_types)
         self.db.create_table(splits_to_prots_table_name, splits_to_prots_table_structure, splits_to_prots_table_types)
+        self.db.create_table(collections_info_table_name, collections_info_table_structure, collections_info_table_types)
+        self.db.create_table(collections_contigs_table_name, collections_contigs_table_structure, collections_contigs_table_types)
+        self.db.create_table(collections_splits_table_name, collections_splits_table_structure, collections_splits_table_types)
 
 
     def disconnect(self):
         self.db.disconnect()
 
 
-class SearchTables:
-    def __init__(self, db_path, contig_lengths):
+class Table(object):
+    def __init__(self, db_path):
         self.db_path = db_path
-        self.contig_lengths = contig_lengths
+        self.next_available_id = {}
 
-        # read split length and create search tables if they are not in the database.
         annotation_db = AnnotationDB(self.db_path)
         self.split_length = annotation_db.split_length
         annotation_db.disconnect()
 
-        self.next_available_id = {}
-        self.set_next_available_id(search_contigs_table_name)
-        self.set_next_available_id(search_splits_table_name)
-
 
     def next_id(self, table):
+        if table not in self.next_available_id:
+            raise ConfigError, "If you need unique ids, you must call 'set_next_available_id' first"
+
         self.next_available_id[table] += 1
         return self.next_available_id[table] - 1
 
@@ -265,7 +311,73 @@ class SearchTables:
             self.next_available_id[table] = max(table_content.keys()) + 1
         else:
             self.next_available_id[table] = 0
+
         annotation_db.disconnect()
+
+
+
+class CollectionsTables(Table):
+    """Populates the collections_* tables, where clusters of contigs and splits are kept"""
+    def __init__(self, db_path, contig_lengths):
+        self.db_path = db_path
+        self.contig_lengths = contig_lengths
+
+        Table.__init__(self, self.db_path)
+
+        # set these dudes so we have access to unique IDs:
+        self.set_next_available_id(collections_contigs_table_name)
+        self.set_next_available_id(collections_splits_table_name)
+
+
+    def append(self, source, clusters_dict):
+        annotation_db = AnnotationDB(self.db_path)
+
+        # FIXME: this check is being done on multiple places, merge them:
+        collections_info_table = annotation_db.db.get_table_as_dict(collections_info_table_name)
+        if source in collections_info_table:
+            run.info('WARNING', 'Clustering data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_info_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_contigs_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_splits_table_name, source))
+
+        # push information about this search result into serach_info table.
+        db_entries = tuple([source, ''])
+        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % collections_info_table_name, db_entries)
+        # then populate serach_data table for each contig.
+        db_entries = [tuple([self.next_id(collections_contigs_table_name), source] + [v[h] for h in collections_contigs_table_structure[2:]]) for v in clusters_dict.values()]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
+
+        db_entries = self.process_splits(source, clusters_dict)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
+
+        annotation_db.disconnect()
+
+
+    def process_splits(self, source, clusters_dict):
+        db_entries_for_splits = []
+
+        contig_to_cluster_id = dict([(d['contig'], d['cluster_id']) for d in clusters_dict.values()])
+
+        for contig in contig_to_cluster_id:
+            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
+            for i in range(0, len(chunks)):
+                split = Split(contig, i).name
+
+                db_entry = tuple([self.next_id(collections_splits_table_name), source, split, contig_to_cluster_id[contig]])
+                db_entries_for_splits.append(db_entry)
+
+        return db_entries_for_splits
+
+
+class SearchTables(Table):
+    def __init__(self, db_path, contig_lengths):
+        self.db_path = db_path
+        self.contig_lengths = contig_lengths
+
+        Table.__init__(self, self.db_path)
+
+        self.set_next_available_id(search_contigs_table_name)
+        self.set_next_available_id(search_splits_table_name)
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
@@ -326,6 +438,7 @@ class SearchTables:
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
+
 
 
 class AnnotationTables:
