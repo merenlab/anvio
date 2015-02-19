@@ -18,17 +18,21 @@ from PaPi.parsers.base import Parser
 
 
 class CONCOCT(Parser):
-    def __init__(self, clusters_txt):
-        files_expected = {'clusters': clusters_txt}
+    def __init__(self, input_files):
+        if type(input_files) != type(list()):
+            input_files = [input_files]
+
+        files_expected = {'clusters': input_files[0]}
 
         files_structure = {'clusters': 
-                                {'col_names': ['contig', 'cluster'],
+                                {'col_names': ['contig', 'cluster_id'],
                                  'col_mapping': [str, str],
                                  'separator': ',',
+                                 'indexing_field': -1,
                                  'no_header': True
                                  },
                            }
-        Parser.__init__(self, 'CONCOCT', [clusters_txt], files_expected, files_structure)
+        Parser.__init__(self, 'CONCOCT', input_files, files_expected, files_structure)
 
 
     def get_clusters_dict(self):

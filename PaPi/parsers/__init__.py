@@ -23,4 +23,4 @@ parser_modules['annotation'] = {"default_matrix": DefaultMatrix,
                                 "myrast_cmdline": MyRastCMDLine,
                                 "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
 parser_modules['search']     = {'hmmscan': HMMScan}
-parser_modules['binning']    = {'concoct': CONCOCT}
+parser_modules['collections']    = {'concoct': CONCOCT}
