@@ -10,13 +10,7 @@
 #
 # Please read the COPYING file.
 
-import os
 
-import PaPi.filesnpaths as filesnpaths
-
-from PaPi.utils import ConfigError
-from PaPi.utils import get_TAB_delimited_file_as_dictionary as get_dict
-from PaPi.utils import store_dict_as_TAB_delimited_file as store_dict
 from PaPi.parsers.base import Parser
 
 
