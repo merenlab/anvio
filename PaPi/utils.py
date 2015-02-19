@@ -425,21 +425,34 @@ def get_FASTA_file_as_dictionary(file_path):
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
-                                        column_mapping = None, indexing_field = 0, assign_none_for_missing = False):
+                                        column_mapping = None, indexing_field = 0, assign_none_for_missing = False,\
+                                        separator = '\t', no_header = False):
     filesnpaths.is_file_exists(file_path)
-    filesnpaths.is_file_tab_delimited(file_path)
+    filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
     f = open(file_path)
 
+    # learn the number of fields and reset the file:
+    num_fields = len(f.readline().strip('\n').split(separator))
+    f.seek(0)
+
+    # if there is no file header, make up a columns list:
+    if no_header and not column_names:
+        column_names = ['column_%05d' % i for i in range(0, num_fields)]
+
     if column_names:
         columns = column_names
-        num_fields = len(f.readline().strip('\n').split('\t'))
 
         if num_fields != len(columns):
             raise  ConfigError, "Number of column names declared (%d) differs from the number of columns\
                                  found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path)
+
+        # now we set the column names. if the file had its header, we must discard
+        # the first line. so here we go:
+        if not no_header:
+            f.readline()
     else:
-        columns = f.readline().strip('\n').split('\t')
+        columns = f.readline().strip('\n').split(separator)
 
     if expected_fields:
         for field in expected_fields:
@@ -453,7 +466,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     line_counter = 0
 
     for line in f.readlines():
-        line_fields = line.strip('\n').split('\t')
+        line_fields = line.strip('\n').split(separator)
 
         if column_mapping:
             updated_line_fields = []

@@ -60,7 +60,7 @@ def is_output_file_writable(file_path):
     return True
 
 
-def is_file_tab_delimited(file_path):
+def is_file_tab_delimited(file_path, separator = '\t'):
     is_file_exists(file_path)
     f = open(file_path)
 
@@ -71,12 +71,12 @@ def is_file_tab_delimited(file_path):
         else:
             break
 
-    if len(line.split('\t')) == 1:
+    if len(line.split(separator)) == 1:
         raise FilesNPathsError, "File '%s' does not seem to have TAB characters.\
                             Did you export this file on MAC using EXCEL? :(" % file_path
 
     f.seek(0)
-    if len(set([len(line.split('\t')) for line in f.readlines()])) != 1:
+    if len(set([len(line.split(separator)) for line in f.readlines()])) != 1:
         raise FilesNPathsError, "Not all lines in the file '%s' have equal number of fields..." % file_path
 
     f.close()
