@@ -31,6 +31,10 @@ class Parser(object):
         self.paths = {}
         self.dicts = {}
 
+        if len(input_file_paths) != len(files_expected):
+            raise ConfigError, "This parser (%s) requires %d file(s), but %d of them were sent. This class is now\
+                                confused :/" % (self.annotation_source, len(files_expected), len(input_file_paths))
+
         if sorted(files_expected.keys()) != sorted(files_structure.keys()):
             raise ConfigError, "Items in files_expected and files_structure must match."
 
