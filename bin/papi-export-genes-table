@@ -23,15 +23,16 @@ import PaPi.filesnpaths as filesnpaths
 run = terminal.Run()
 
 def main(args):
-    annotation_db = annotation.AnnotationDB(args.db_path)
-    annotation_table_dict = annotation_db.db.get_table_as_dict('annotation')
-    annotation_table_headers = annotation_db.db.get_table_structure('annotation')
-    utils.store_dict_as_TAB_delimited_file(annotation_table_dict, args.output, annotation_table_headers)
+    annotation_db = annotation.AnnotationDatabase(args.db_path)
+    genes_contigs_table = annotation_db.db.get_table_as_dict(annotation.genes_contigs_table_name)
+    genes_contigs_table_headers = annotation_db.db.get_table_structure(annotation.genes_contigs_table_name)
+    utils.store_dict_as_TAB_delimited_file(genes_contigs_table, args.output, genes_contigs_table_headers)
     run.info('Recovered matrix', os.path.abspath(args.output))
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Generate a TAB-delimited matrix file from an annotation database')
+    parser = argparse.ArgumentParser(description='Generate a TAB-delimited matrix file from genes tables found in an\
+                                                  annotation database')
     parser.add_argument('db_path', metavar = 'DB_PATH', default = None,
                         help = 'Path to the annotation database.')
     parser.add_argument('-o', '--output', default = "ANNOTATION.txt",

@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""
+Copyright (C) 2015, PaPi Authors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.
+
+Please read the COPYING file.
+"""
+
+import os
+import sys
+
+import PaPi.terminal as terminal
+import PaPi.annotation as annotation
+
+from PaPi.utils import ConfigError
+from PaPi.parsers import parser_modules
+from PaPi.filesnpaths import FilesNPathsError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    # make sure we have the parser
+    if not args.parser:
+        raise ConfigError, "You need to choose a parser :/ See the '--help' menu."
+
+    if args.parser not in parser_modules['genes']:
+        raise ConfigError, "Error: I don't know what to do with '%s'. You must use one of the available parsers\
+                            to make sense of genes (well, open reading frames) found in your contigs (please see\
+                            the documentation for a more detailed explanation): %s"\
+                                                 % (args.parser, ', '.join(parser_modules['genes']))
+    if not args.input_files:
+        raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
+                            parser you chose. Please see the documentation for details."
+
+
+    parser = parser_modules['genes'][args.parser](args.input_files, annotation.genes_contigs_table_structure)
+    genes_dict = parser.get_annotations_dict()
+
+    if not len(genes_dict):
+        raise ConfigError, "Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong.\
+                            Maybe you selected a wrong parser, or the input file format has changed between when this\
+                            parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
+                            you should send an e-mail to PaPi developers! Sorry for this!" % (args.parser)
+
+
+    tables_for_genes = annotation.TablesForGenes(args.annotation_db_path, run, progress)
+    tables_for_genes.create(genes_dict, args.parser)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Create and store information into a PaPi annotation database using\
+                                                  available parsers for various gene annotation resources.')
+    parser.add_argument('annotation_db_path', metavar = 'ANNOTATION_DB',
+                        help = 'Annotation database to update.')
+    parser.add_argument('-p', '--parser', default = 'default_matrix',
+                        help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
+                                It is OK if you do not select a parser, but in that case there will be no additional\
+                                annotation available except the identification of single-copy genes in your contigs\
+                                for later use. Using a parser will not prevent the analysis of single-copy genes,\
+                                but make PaPi more powerful to help you make sense of your results. Please see the\
+                                documentation, or get in touch with the developers if you have any questions\
+                                regarding parsers.' % (len(parser_modules['genes']), parser_modules['genes'].keys()))
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None,
+                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
+                                process that you generate before running PaPi. Please see the documentation for details.')
+    parser.add_argument('--debug', action='store_true', default = False,
+                        help = 'When declared, PaPi will not remove temporary directories with intermediate search\
+                                results that may be useful to investigate unexpected behavior.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)

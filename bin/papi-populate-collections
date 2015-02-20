@@ -30,10 +30,12 @@ def main(args):
     # make sure we have the parser
     if not args.parser:
         raise ConfigError, "You need to choose a parser :/ See the '--help' menu."
+
     if args.parser not in parser_modules['collections']:
-        raise ConfigError, "Error: I don't know what to do with '%s'. You must use one of the available parsers\
-                            for clustering of contigs (please see the documentation of you are not sure what is\
+        raise ConfigError, "I don't know what to do with '%s'. You must use one of the available parsers\
+                            for clustering of contigs (please see the documentation if you are not sure what is\
                             going on here): %s" % (args.parser, ', '.join(parser_modules['collections']))
+
     if not args.input_files:
         raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
                             parser you chose. Please see the documentation for details."
@@ -48,12 +50,7 @@ def main(args):
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
                             you should send an e-mail to PaPi developers! Sorry for this!" % (args.parser)
 
-    # then init the annotation database (or create a new one), set/learn the split length.
-    annotation_db_path, split_length = annotation.magic_touch(args.annotation_db_path, args.split_length, run, progress)
-
-    contig_lengths = utils.get_read_lengths_from_fasta(args.contigs_fasta)
-
-    collections = annotation.CollectionsTables(annotation_db_path, contig_lengths)
+    collections = annotation.TablesForCollections(args.annotation_db_path)
     collections.append(args.parser, clusters_dict)
 
 
@@ -75,16 +72,8 @@ if __name__ == '__main__':
                                                   manually curate until a native parsers specificly written for your\
                                                   favorite genome binning software is available in PaPi. Please see the\
                                                   documentation for details.')
-    parser.add_argument('contigs_fasta', metavar = 'CONTIGS_FASTA',
-                        help = 'The FASTA file of your contigs you have used for mapping.')
     parser.add_argument('annotation_db_path', metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database to update or create. If the path you provide resolves to an already\
-                                existing database, running this program will populate search tables in it. If it is a\
-                                new file, a new annotation database will be created with search results alone.')
-    parser.add_argument('-L', '--split-length', default = None,
-                        help = 'This is not necessary if you are working with an already existing annotation database\
-                                since it will have this information (which you can not overwrite). If you are creating\
-                                a new database, then this parameter will be in effect.')
+                        help = 'Annotation database to update.')
     parser.add_argument('-p', '--parser', default = None,
                         help = 'A parser to make sense of the input files. Please consult the documentation if you have\
                                 questions regarding parsers, or contact PaPi developers. Currently there %s: %s.' %\

@@ -29,10 +29,8 @@ def main(args):
     # first check whether this computer is capable of doing an HMM search.
     missing_programs =  utils.get_missing_programs_for_hmm_analysis()
     if missing_programs:
-        raise ConfigError, "Well, in order to run this program, you need %s to be installed on your system." % (', and '.join(missing_programs))
-
-    # then init the annotation database (or create a new one), set/learn the split length.
-    annotation_db_path, split_length = annotation.magic_touch(args.annotation_db_path, args.split_length, run, progress)
+        raise ConfigError, "Well, in order to run this program, you need %s to be installed on your system." %\
+                                                                                     (', and '.join(missing_programs))
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
@@ -42,56 +40,28 @@ def main(args):
         sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
-                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes'])) for s in sources])))
+                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
+                                                                                                    for s in sources])))
     else:
         # sources will be loaded from defaults. 
         pass
 
-    t = annotation.PopulateAnnotationDB()
-    t.split_length = split_length
-    t.contigs_fasta = args.contigs_fasta
-    t.skip_search_tables = False
-    t.annotation_db_path = annotation_db_path
-    t.debug = args.debug
-
-    progress.new('Sanity check')
-    progress.update('...')
-    t.sanity_check()
-    progress.end()
-
-    t.populate_search_tables(sources)
+    search_tables = annotation.TablesForSearches(args.annotation_db_path)
+    search_tables.debug = args.debug
+    search_tables.populate_search_tables(sources)
 
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='This program deals with populating seearch tables in the annotation\
-                                                  database. What it does is somewhat redundant with papi-gen-annotation.\
-                                                  There are multiple ways to utilize it. For instance, you\
-                                                  may have a FASTA file of contigs you want to analyze it against HMM\
-                                                  profiles that come with PaPi *without* annotating contigs; if you had\
-                                                  used papi-gen-annotation, it would have required you to provide some\
-                                                  annotation information. Or, for instance, you may already have an\
-                                                  annotation database generated previously, and you may like to update\
-                                                  search tables in it with results from a new HMM profile you created.\
-                                                  See documentation for more information.')
-    parser.add_argument('contigs_fasta', metavar = 'FASTA',
-                        help = 'A FASTA file with one or more contigs. This file might be a reference genome, or a\
-                                bunch of contigs from an assembly. If you are expanding or re-populating an already\
-                                existing annotation database, this file must be identical to the one that was used to\
-                                generate the database the first time')
+    parser = argparse.ArgumentParser(description='This program deals with populating tables that store HMM hits in an\
+                                                  annotation database. See the documentation for more information.')
     parser.add_argument('annotation_db_path', metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database to update or create. If the path you provide resolves to an already\
-                                existing database, running this program will populate search tables in it. If it is a\
-                                new file, a new annotation database will be created with search results alone.')
+                        help = 'Annotation database to update.')
     parser.add_argument('-H', '--hmm-profile-dir', default = None,
                         help = 'If this is empty, PaPi will perform the HMM search against the default collections that\
                                 are on the system. If it is not, this parameter should be used to point to a directory\
                                 that contains 4 files: (1) genes.hmm.gz, (2) genes.txt, (3) kind.txt, and (4)\
                                 reference.txt. Please see the documentation for specifics of these files.')
-    parser.add_argument('-L', '--split-length', default = None,
-                        help = 'This is not necessary if you are working with an already existing annotation database\
-                                since it will have this information (which you can not overwrite). If you are creating\
-                                a new database, then this parameter will be in effect.')
     parser.add_argument('--debug', action='store_true', default = False,
                         help = 'When declared, PaPi will not remove temporary directories with intermediate search\
                                 results that may be useful to investigate unexpected behavior.')
