@@ -170,13 +170,13 @@ class NetworkDescriptonSamples:
         self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
         progress.update('Reading annotations table from %s  ...' % self.annotation_db_path)
-        self.annotation_table = self.annotation_db.get_table_as_dict('annotation')
+        self.genes_in_contigs = self.annotation_db.get_table_as_dict(annotation.genes_contigs_table_name)
 
         # read functions.
         progress.update('Sifting through genes with non-hypothetical functions ...')
-        for gene in self.annotation_table:
-            if self.annotation_table[gene]['function'] and self.annotation_table[gene]['function'].lower().find('hypothetical') < 0 and gene in self.genes:
-                self.functions['labels'][gene] = self.annotation_table[gene]['function']
+        for gene in self.genes_in_contigs:
+            if self.genes_in_contigs[gene]['function'] and self.genes_in_contigs[gene]['function'].lower().find('hypothetical') < 0 and gene in self.genes:
+                self.functions['labels'][gene] = self.genes_in_contigs[gene]['function']
 
         self.samples_dict = self.get_samples_dict(self.samples, self.genes_dict)
         progress.end()
