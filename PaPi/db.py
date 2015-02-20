@@ -79,6 +79,12 @@ class DB:
         self.commit()
 
 
+    def remove_meta_key_value_pair(self, key):
+        print key
+        self._exec('''DELETE FROM self WHERE key="%s"''' % key)
+        self.commit()
+
+
     def get_meta_value(self, key):
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows =  response.fetchall()
@@ -86,10 +92,15 @@ class DB:
         if not rows:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
 
+        val = rows[0][0]
+
+        if type(val) == type(None):
+            return None
+
         try:
-            val = int(rows[0][0])
+            val = int(val)
         except ValueError:
-            val = rows[0][0]
+            pass
 
         return val
 
