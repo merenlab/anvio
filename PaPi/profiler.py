@@ -1,14 +1,6 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
+# coding: utf-8
+"""Provides the necessary class to profile BAM files."""
 
 import os
 import sys
@@ -34,9 +26,19 @@ from PaPi.metadata import Metadata
 from PaPi.contig import Split, Contig, set_contigs_abundance
 from PaPi.clusteringconfuguration import ClusteringConfiguration
 
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The PaPi Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "0.8.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
 pp = terminal.pretty_print
 
-__version__ = '0.8.0'
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
