@@ -31,15 +31,15 @@ progress = terminal.Progress()
 class Completeness:
     def __init__(self, annotation_db_path, source = None, run = run, progress = progress):
         # hi db
-        annotation_db = annotation.AnnotationDB(annotation_db_path)
+        annotation_db = annotation.AnnotationDatabase(annotation_db_path)
 
         # read info table to get what is available in the db
-        info_table = annotation_db.db.get_table_as_dict('search_info')
+        info_table = annotation_db.db.get_table_as_dict(annotation.hmm_hits_info_table_name)
         self.sources = info_table.keys()
         self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table if info_table[s]['search_type'] == 'singlecopy'])
 
         # read search table (which holds hmmscan hits for splits).
-        self.search_table = annotation_db.db.get_table_as_dict('search_splits')
+        self.search_table = annotation_db.db.get_table_as_dict(annotation.hmm_hits_splits_table_name)
 
         # an example entry in self.search_table looks loke this:
         #

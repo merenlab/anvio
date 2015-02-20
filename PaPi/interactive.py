@@ -18,11 +18,11 @@ from ete2 import Tree
 
 import PaPi.db
 import PaPi.profiler
-import PaPi.annotation
 import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
+import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
 import PaPi.completeness as completeness
 
@@ -37,7 +37,7 @@ class InputHandler:
         self.views = {}
         self.runinfo = {}
         self.title = 'Unknown Project'
-        self.annotation = None
+        self.annotation_db = None
         self.contig_names_ordered = None
         self.contig_rep_seqs = {}
         self.contigs_summary_index = {}
@@ -45,8 +45,7 @@ class InputHandler:
         self.additional_metadata_path = None
         self.completeness = None
 
-        # from annotation db if exists (these will be populated in self.init_annotation_db()):
-        self.annotation_dict = {}
+        # if annotation db exists, these dicts will be populated in self.init_annotation_db():
         self.genes_in_splits = {}
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
 
@@ -89,10 +88,10 @@ class InputHandler:
 
 
     def init_annotation_db(self, db_path):
-        self.annotation = PaPi.annotation.AnnotationDB(db_path)
+        self.annotation_db = annotation.AnnotationDatabase(db_path)
 
         profiling_split_length = int(self.runinfo['split_length'])
-        annotation_split_length = int(self.annotation.db.get_meta_value('split_length'))
+        annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
         if profiling_split_length != annotation_split_length:
             raise utils.ConfigError, "The split length (-L) used to profile these merged runs (which is '%s') seem\
                                       to differ from the split length used to generate %s (which is\
@@ -101,8 +100,7 @@ class InputHandler:
                                                                                os.path.basename(db_path),
                                                                                terminal.pretty_print(annotation_split_length))
 
-        self.annotation_dict = self.annotation.db.get_table_as_dict('annotation')
-        self.genes_in_splits = self.annotation.db.get_table_as_dict('genes_in_splits')
+        self.genes_in_splits = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_table_name)
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']
             if split_name in self.split_to_genes_in_splits_ids:
@@ -110,10 +108,10 @@ class InputHandler:
             else:
                 self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
 
-        annotation_source = self.annotation.db.get_meta_value('annotation_source')
-        run.info('annotation_db initialized', '%s (v. %s) (via "%s")' % (db_path,
-                                                                         self.annotation.db.version,
-                                                                         annotation_source))
+        genes_annotation_source = self.annotation_db.db.get_meta_value('genes_annotation_source')
+        run.info('Annotation Database', 'Initialized: %s (v. %s) (gene annotations via "%s")' % (db_path,
+                                                                                                 self.annotation_db.db.version,
+                                                                                                 genes_annotation_source))
 
 
     def load_from_files(self, fasta_file, metadata, tree, output_dir):
@@ -275,11 +273,11 @@ class InputHandler:
     def convert_metadata_into_json(self):
         '''This function's name must change to something more meaningful.'''
 
-        annotation_dict, annotation_headers = None, []
+        genes_in_splits_summary_dict, genes_in_splits_summary_headers = None, []
         splits_header = None
-        if self.annotation:
-            annotation_dict = self.annotation.db.get_table_as_dict('splits')
-            annotation_headers = self.annotation.db.get_table_structure('splits')[1:]
+        if self.annotation_db:
+            genes_in_splits_summary_dict = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_summary_table_name)
+            genes_in_splits_summary_headers = self.annotation_db.db.get_table_structure(annotation.genes_splits_summary_table_name)[1:]
 
         additional_dict, additional_headers = None, []
         if self.additional_metadata_path:
@@ -296,8 +294,8 @@ class InputHandler:
             # set the header line:
             json_header = ['contigs']
             # first annotation, if exists
-            if annotation_headers:
-                json_header.extend(annotation_headers)
+            if genes_in_splits_summary_headers:
+                json_header.extend(genes_in_splits_summary_headers)
             # then, the view!
             json_header.extend(view_headers)
             # additional headers as the outer ring:
@@ -309,7 +307,7 @@ class InputHandler:
             for split_name in view_dict:
                 json_entry = [split_name]
 
-                json_entry.extend([annotation_dict[split_name][header] for header in annotation_headers])
+                json_entry.extend([genes_in_splits_summary_dict[split_name][header] for header in genes_in_splits_summary_headers])
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
                 json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
 
