@@ -36,7 +36,7 @@ from PaPi.clusteringconfuguration import ClusteringConfiguration
 
 pp = terminal.pretty_print
 
-__version__ = '0.7'
+__version__ = '0.8.0'
 
 class BAMProfiler:
     """Creates an über class for BAM file operations"""
@@ -75,7 +75,7 @@ class BAMProfiler:
 
         self.bam = None
         self.contigs = {}
-        self.contig_ORFs = {}
+        self.genes_in_contigs = {}
         self.annotation_db = None
 
         self.profile_db = None
@@ -114,7 +114,7 @@ class BAMProfiler:
 
         if self.annotation_db_path:
             self.progress.update('Initializing the annotation database ...')
-            self.annotation_db = annotation.AnnotationDB(self.annotation_db_path)
+            self.annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
 
         self.progress.end()
 
@@ -141,10 +141,10 @@ class BAMProfiler:
 
         # we will set up things here so the information in the annotation_db
         # can be utilized directly from within the contigs for loop. contig to
-        # gene associations will be stored in self.contig_ORFs dictionary for
+        # gene associations will be stored in self.genes_in_contigs dictionary for
         # fast access.
         if self.annotation_db and not self.list_contigs_and_exit:
-            self.populate_contig_ORFs()
+            self.populate_genes_in_contigs_dict()
 
         self.run.info('profiler_version', __version__)
         self.run.info('sample_id', self.sample_id)
@@ -203,21 +203,21 @@ class BAMProfiler:
         self.profile_db.disconnect()
 
 
-    def populate_contig_ORFs(self):
+    def populate_genes_in_contigs_dict(self):
         self.progress.new('Annotation')
-        self.progress.update('Reading annotation table')
-        annotation_table = self.annotation_db.db.get_table_as_dict('annotation', annotation.annotation_table_structure)
+        self.progress.update('Reading genes in contigs table')
+        genes_in_contigs_table = self.annotation_db.db.get_table_as_dict(annotation.genes_contigs_table_name, annotation.genes_contigs_table_structure)
 
         self.progress.update('Populating ORFs dictionary for each contig ...')
-        for gene in annotation_table:
-            e = annotation_table[gene]
-            if self.contig_ORFs.has_key(e['contig']):
-                self.contig_ORFs[e['contig']].add((gene, e['start'], e['stop']), )
+        for gene in genes_in_contigs_table:
+            e = genes_in_contigs_table[gene]
+            if self.genes_in_contigs.has_key(e['contig']):
+                self.genes_in_contigs[e['contig']].add((gene, e['start'], e['stop']), )
             else:
-                self.contig_ORFs[e['contig']] = set([(gene, e['start'], e['stop']), ])
+                self.genes_in_contigs[e['contig']] = set([(gene, e['start'], e['stop']), ])
 
         self.progress.end()
-        self.run.info('annotation_db', "%d genes processed successfully." % len(annotation_table), display_only = True)
+        self.run.info('annotation_db', "%d genes processed successfully." % len(genes_in_contigs_table), display_only = True)
 
 
     def generate_genes_table(self):
@@ -231,8 +231,8 @@ class BAMProfiler:
             # if no open reading frames were found in a contig, it wouldn't have an entry in the annotation table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
-            if self.contig_ORFs.has_key(contig):
-                self.genes.analyze_contig(self.contigs[contig], self.sample_id, self.contig_ORFs[contig])
+            if self.genes_in_contigs.has_key(contig):
+                self.genes.analyze_contig(self.contigs[contig], self.sample_id, self.genes_in_contigs[contig])
 
         self.genes.create_genes_table(self.profile_db)
         self.progress.end()
@@ -255,11 +255,11 @@ class BAMProfiler:
                 self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
 
 
-    def check_entries_in_annotation_db_against_contigs(self, contig_names):
+    def check_contigs_without_any_ORFs(self, contig_names):
         if not self.annotation_db:
             return
         contig_names = set(contig_names)
-        contigs_without_annotation = [c for c in contig_names if c not in self.contig_ORFs]
+        contigs_without_annotation = [c for c in contig_names if c not in self.genes_in_contigs]
 
         if len(contigs_without_annotation):
             import random
@@ -310,7 +310,7 @@ class BAMProfiler:
         self.check_contigs()
 
         # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_entries_in_annotation_db_against_contigs(self.contigs.keys())
+        self.check_contigs_without_any_ORFs(self.contigs.keys())
 
         contigs_to_discard = set()
         for contig in self.contigs.values():
@@ -363,7 +363,7 @@ class BAMProfiler:
 
 
         # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_entries_in_annotation_db_against_contigs(self.contig_names)
+        self.check_contigs_without_any_ORFs(self.contig_names)
 
         # check for the -M parameter.
         contigs_longer_than_M = set()
