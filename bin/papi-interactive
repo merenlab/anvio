@@ -1,16 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-"""
-Copyright (C) 2014, PaPi Authors
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option)
-any later version.
-
-Please read the COPYING file.
-"""
 
 import os
 import sys
@@ -28,6 +18,16 @@ from bottle import run as run_server
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.interactive as interactive
+
+
+__author__ = "Özcan Esen"
+__copyright__ = "Copyright 2015, The PaPi Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 # get the absolute path for static directory under PaPi
@@ -80,7 +80,7 @@ except utils.ConfigError, e:
 
 
 #######################################################################################################################
-# bottle callbacks
+# bottle callbacks start
 #######################################################################################################################
 
 @route('/')
@@ -168,14 +168,25 @@ def charts(contig_name):
         for entry_id in d.split_to_genes_in_splits_ids[contig_name]:
             prot_id = d.genes_in_splits[entry_id]['prot']
             data['genes'][prot_id] = d.genes_in_splits[entry_id]
-            data['genes'][prot_id]['direction'] = d.annotation_dict[prot_id]['direction']
-            data['genes'][prot_id]['function'] = d.annotation_dict[prot_id]['function'] or 'hypothetical'
+            data['genes'][prot_id]['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
+            data['genes'][prot_id]['function'] = d.genes_in_contigs_dict[prot_id]['function'] or 'hypothetical'
 
     return json.dumps(data)
 
 @route('/data/contig/<contig_name>')
 def contig_info(contig_name):
     return d.contig_rep_seqs[contig_name]
+
+@route('/data/collections')
+def collections():
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+    collections_dict = d.collections.get_collections_dict()
+
+    return json.dumps(collections_dict)
 
 @route('/data/completeness', method='POST')
 def completeness():
@@ -240,6 +251,10 @@ def submit():
         output.close()
 
     print
+
+#######################################################################################################################
+# bottle callbacks end
+#######################################################################################################################
 
 
 port = parser.parse_args().port_number

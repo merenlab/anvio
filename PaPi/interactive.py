@@ -25,6 +25,7 @@ import PaPi.terminal as terminal
 import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
 import PaPi.completeness as completeness
+import PaPi.ccollections as ccollections
 
 progress = terminal.Progress()
 run = terminal.Run()
@@ -44,8 +45,10 @@ class InputHandler:
         self.contig_lengths = {}
         self.additional_metadata_path = None
         self.completeness = None
+        self.collections = None
 
         # if annotation db exists, these dicts will be populated in self.init_annotation_db():
+        self.genes_in_contigs_dict = {}
         self.genes_in_splits = {}
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
 
@@ -68,6 +71,7 @@ class InputHandler:
         if args.annotation_db:
             self.init_annotation_db(args.annotation_db)
             self.completeness = completeness.Completeness(args.annotation_db)
+            self.collections = ccollections.Collections(args.annotation_db)
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
@@ -100,6 +104,7 @@ class InputHandler:
                                                                                os.path.basename(db_path),
                                                                                terminal.pretty_print(annotation_split_length))
 
+        self.genes_in_contigs_dict = self.annotation_db.db.get_table_as_dict(annotation.genes_contigs_table_name)
         self.genes_in_splits = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_table_name)
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']

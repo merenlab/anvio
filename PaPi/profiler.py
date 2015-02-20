@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """Provides the necessary class to profile BAM files."""
 
