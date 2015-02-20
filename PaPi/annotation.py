@@ -10,54 +10,55 @@
 # Please read the COPYING file.
 
 """
-    Here is described the annotation class. Any parser implemented in parsers.py must generate headers
-    matching 'header' variable.
+    Classes to create and access the annotation database.
 """
 
-annotation_table_name      = 'annotation'
-annotation_table_structure = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-annotation_table_mapping   = [ str  ,   str   ,  int   ,   int    ,     str    ,   str   ,    str    ,    str    ,   str    ,    str   ,    str    ,    str   ,     str    ]
-annotation_table_types     = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+contig_sequences_table_name          = 'contig_sequences'
+contig_sequences_table_structure     = ['contig', 'sequence']
+contig_sequences_table_types         = [  'str' ,   'str'   ]
 
-splits_table_name      = 'splits'
-splits_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
-splits_table_mapping   = [  str  ,     str   ,    int     ,       float      ,    'float'    ,        float        ,       float     ,     float     ]
-splits_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
+contig_lengths_table_name            = 'contig_lengths'
+contig_lengths_table_structure       = ['contig', 'length' ]
+contig_lengths_table_types           = [  'str' , 'numeric']
 
-splits_to_prots_table_name      = 'genes_in_splits'
-splits_to_prots_table_structure = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-splits_to_prots_table_mapping   = [    int   ,   str  ,  str  ,       int       ,       int      ,         float        ]
-splits_to_prots_table_types     = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
+genes_contigs_table_name             = 'genes_in_contigs'
+genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+genes_contigs_table_types            = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-search_info_table_name      = 'search_info'
-search_info_table_structure = ['source', 'ref' , 'search_type', 'genes']
-search_info_table_mapping   = [  str   ,  str  ,      str     ,   str  ]
-search_info_table_types     = [ 'text' , 'text',    'text'    , 'text' ]
+genes_splits_summary_table_name      = 'genes_in_splits_summary'
+genes_splits_summary_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
+genes_splits_summary_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
 
-search_contigs_table_name      = 'search_contigs'
-search_contigs_table_structure = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
-search_contigs_table_mapping   = [    int   ,   str   ,    str  ,   int   ,   int   ,     str    ,    str   ,   float  ]   
-search_contigs_table_types     = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
+genes_splits_table_name              = 'genes_in_splits'
+genes_splits_table_structure         = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+genes_splits_table_types             = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-search_splits_table_name      = 'search_splits'
-search_splits_table_structure = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
-search_splits_table_mapping   = [    int   ,   str   ,            str          ,     str    ,   str  ,         float        ,   float  ]   
-search_splits_table_types     = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
+hmm_hits_info_table_name             = 'hmm_hits_info'
+hmm_hits_info_table_structure        = ['source', 'ref' , 'search_type', 'genes']
+hmm_hits_info_table_types            = [ 'text' , 'text',    'text'    , 'text' ]
 
-collections_info_table_name      = 'collections_info'
-collections_info_table_structure = ['source',  'ref']
-collections_info_table_types     = [ 'text' , 'text']
+hmm_hits_contigs_table_name          = 'hmm_hits_in_contigs'
+hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
+hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
 
-collections_contigs_table_name      = 'collections_contigs'
-collections_contigs_table_structure = ['entry_id', 'source', 'contig', 'cluster_id']
-collections_contigs_table_types     = [ 'numeric',  'text' ,  'text' ,    'text'   ]
+hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
+hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
+hmm_hits_splits_table_types          = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
 
-collections_splits_table_name      = 'collections_splits'
-collections_splits_table_structure = ['entry_id', 'source', 'split', 'cluster_id']
-collections_splits_table_types     = [ 'numeric',  'text' , 'text' ,    'text'   ]
+collections_info_table_name          = 'collections_info'
+collections_info_table_structure     = ['source',  'ref']
+collections_info_table_types         = [ 'text' , 'text']
+
+collections_contigs_table_name       = 'collections_of_contigs'
+collections_contigs_table_structure  = ['entry_id', 'source', 'contig', 'cluster_id']
+collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text'   ]
+
+collections_splits_table_name        = 'collections_of_splits'
+collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
+collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 import os
@@ -84,175 +85,44 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def magic_touch(annotation_db_path, split_length = None, run=run, progress=progress):
-    """you call this function, and it creates a new database for you if the path you sent does not exists, or gets
-       the split size if the annotation_db_path does exist. It is like 'touch' command in UNIX environments, hence
-       my silly naming."""
-
-    # FIXME: this is a risky convenience (maybe I should be more explicit): 
-    if os.path.isdir(annotation_db_path):
-        annotation_db_path = os.path.join(annotation_db_path, 'ANNOTATION.db')
-
-    if os.path.exists(annotation_db_path):
-        if split_length:
-            raise ConfigError, "You can not declare a split length (-L/--split-length) when you are\
-                                working with an already existing annotation database."
-
-        annotation_db = AnnotationDB(annotation_db_path)
-        split_length = annotation_db.db.get_meta_value('split_length')
-        run.info('Database touch', 'An existing database, %s, has been initiated.' % annotation_db_path)
-        run.info('Split length', split_length)
-        annotation_db.disconnect()
-    else:
-        split_length = split_length
-        if not split_length:
-            raise ConfigError, "A new annotation database is about to be created, but the split length information\
-                                is missing from the request. If you just run a PaPi program and got this error,\
-                                you should try to take a look at the --help menu for relevant parameter."
-
-        annotation_db = AnnotationDB(annotation_db_path, split_length, create_new = True)
-        run.info('Database touch', 'A new database, %s, has been created.' % annotation_db_path)
-        run.info('Split length', split_length)
-        annotation_db.disconnect()
-
-    return (annotation_db_path, split_length)
-
-
-class PopulateAnnotationDB:
-    def __init__(self, args = None):
-        self.contigs_fasta = None
-        self.parser = None
-        self.split_length = 20000
-        self.input_files = []
-        self.skip_search_tables = False
-        self.annotation_db_path = None
-        self.debug = False
-
-        if args:
-            self.contigs_fasta = args.contigs_fasta
-            self.parser = args.parser
-            self.split_length = args.split_length
-            self.input_files = args.input_files
-            self.skip_search_tables = args.skip_search_tables
-            self.annotation_db_path = args.output
-            self.debug = args.debug
-
-        self.sanity_checked = False
-        self.contig_lengths = {}
-
-
-    def sanity_check(self):
-        if not self.contigs_fasta:
-            raise ConfigError, "This is not going to work without a FASTA file of contigs. Please see the help menu :/"
-
-        if not os.path.exists(self.contigs_fasta):
-            raise ConfigError, "PaPi can't find a FASTA file here: '%s' :/" % self.contigs_fasta
-
-        if not self.annotation_db_path:
-            raise ConfigError, "Annotation database path cannot be None :/"
-
-        # well maybe .. since we are here ...
-        self.contig_lengths = utils.get_read_lengths_from_fasta(self.contigs_fasta)
-
-        self.sanity_checked = True
-
-
-    def _run(self):
-        self.sanity_check()
-
-        # get a new, empty annotation database is created with all tables and stuff:
-        annotation_db = AnnotationDB(self.annotation_db_path, self.split_length, create_new = True)
-        annotation_db.db.disconnect()
-
-        self.populate_annotation_tables()
-
-        self.populate_search_tables()
-
-
-    def populate_annotation_tables(self):
-        if not self.sanity_check:
-            raise ConfigError, "You must first call sanity_check()"
-
-        if type(self.parser) == type(None):
-            raise ConfigError, "You must specify a parser. Please see --help menu or the documentation for a list."
-        if self.parser not in parser_modules['annotation']:
-            raise ConfigError, "I don't know what to do with '%s'. Please enter a valid parser. Here is a list of\
-                                parsers available for annotation data: %s" % (self.parser, ', '.join(parser_modules['annotation']))
-
-        parser = parser_modules['annotation'][self.parser](self.input_files, annotation_table_structure)
-        annotations_dict = parser.get_annotations_dict()
-        annotation_tables = AnnotationTables(self.annotation_db_path, self.contig_lengths)
-        annotation_tables.create(annotations_dict, self.parser)
-
-
-    def populate_search_tables(self, sources = {}):
-        if self.skip_search_tables:
-            return
-
-        if not self.sanity_check:
-            raise ConfigError, "You must first call sanity_check()"
-
-        if not len(sources):
-            import PaPi.data.hmm
-            sources = PaPi.data.hmm.sources
-
-        if not sources:
-            return
-
-        commander = HMMSearch()
-        search_tables = SearchTables(self.annotation_db_path, self.contig_lengths)
-
-        proteins_in_contigs_fasta = commander.run_prodigal(self.contigs_fasta)
-
-        search_results_dict = {}
-        for source in sources:
-            kind_of_search = sources[source]['kind']
-            all_genes_searched_against = sources[source]['genes']
-            hmm_model = sources[source]['model']
-            reference = sources[source]['ref']
-            hmm_scan_hits_txt = commander.run_hmmscan(source,
-                                                      all_genes_searched_against,
-                                                      hmm_model,
-                                                      reference)
-
-            if not hmm_scan_hits_txt:
-                continue
-
-            parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
-            search_results_dict = parser.get_search_results()
-
-            search_tables.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
-
-        if not self.debug:
-            commander.clean_tmp_dirs()
-
-
-class AnnotationDB:
-    """This class will connect to an annotation database at db_path. It will create one if requested."""
-    def __init__(self, db_path, split_length = None, create_new = False, run=run, progress=progress):
+class AnnotationDatabase:
+    """To create an empty annotation database and/or access one."""
+    def __init__(self, db_path, run=run, progress=progress, quiet = True):
+        self.db = None
         self.db_path = db_path
+
         self.run = run
         self.progress = progress
-        self.split_length = None
+        self.quiet = quiet
 
-        self.db = None
+        self.init()
 
-        if create_new:
-            self.new_annotation_database(split_length)
+
+    def init(self):
+        if os.path.exists(self.db_path):
+            self.db = db.DB(self.db_path, __version__)
+
+            self.run.info('Annotation database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
+            self.run.info('Number of contigs', self.db.get_meta_value('num_contigs'), quiet = self.quiet)
+            self.run.info('Total number of nucleotides', self.db.get_meta_value('total_length'), quiet = self.quiet)
+            self.run.info('Split length', self.db.get_meta_value('split_length'), quiet = self.quiet)
         else:
-            self.init_database()
-            self.split_length = self.db.get_meta_value('split_length')
+            self.db = None
 
 
-    def init_database(self):
-        self.db = db.DB(self.db_path, __version__)
+    def create(self, contigs_fasta, split_length):
+        if os.path.exists(self.db_path):
+            raise ConfigError, "PaPi will not overwrite an existing annotation database. Please choose a different name\
+                                or remove the existing database ('%s') first." % (self.db_path)
 
-
-    def new_annotation_database(self, split_length):
         if not split_length:
             raise ConfigError, "Creating a new annotation database requires split length information to be\
-                                provided. But the AnnotationDB class was called to create one, without the\
-                                split length information. Not cool."
+                                provided. But the AnnotationDatabase class was called to create one without this\
+                                bit of information. Not cool."
+
+        if not os.path.exists(contigs_fasta):
+            raise ConfigError, "Creating a new annotation database requires a FASTA file with contigs to be provided."
+
 
         if not self.db_path.lower().endswith('.db'):
             raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
@@ -271,15 +141,47 @@ class AnnotationDB:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        self.db.create_table(search_info_table_name, search_info_table_structure, search_info_table_types)
-        self.db.create_table(search_splits_table_name, search_splits_table_structure, search_splits_table_types)
-        self.db.create_table(search_contigs_table_name, search_contigs_table_structure, search_contigs_table_types)
-        self.db.create_table(annotation_table_name, annotation_table_structure, annotation_table_types)
-        self.db.create_table(splits_table_name, splits_table_structure, splits_table_types)
-        self.db.create_table(splits_to_prots_table_name, splits_to_prots_table_structure, splits_to_prots_table_types)
+        self.db.create_table(contig_sequences_table_name, contig_sequences_table_structure, contig_sequences_table_types)
+        self.db.create_table(contig_lengths_table_name, contig_lengths_table_structure, contig_lengths_table_types)
+
+        # lets process and store the FASTA file.
+        fasta = u.SequenceSource(contigs_fasta)
+        num_contigs, total_length = 0, 0
+        db_entries_contig_sequences = []
+        db_entries_contig_lengths = []
+
+        while fasta.next():
+            num_contigs += 1
+            contig_length = len(fasta.seq)
+            db_entries_contig_sequences.append((fasta.id, fasta.seq), )
+            db_entries_contig_lengths.append((fasta.id, contig_length), )
+            total_length += contig_length
+
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_sequences_table_name, db_entries_contig_sequences)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_lengths_table_name, db_entries_contig_lengths)
+
+        # set some useful meta values:
+        self.db.set_meta_value('num_contigs', num_contigs)
+        self.db.set_meta_value('total_length', total_length)
+        self.db.set_meta_value('genes_annotation_source', None)
+
+        # creating empty default tables
+        self.db.create_table(hmm_hits_info_table_name, hmm_hits_info_table_structure, hmm_hits_info_table_types)
+        self.db.create_table(hmm_hits_splits_table_name, hmm_hits_splits_table_structure, hmm_hits_splits_table_types)
+        self.db.create_table(hmm_hits_contigs_table_name, hmm_hits_contigs_table_structure, hmm_hits_contigs_table_types)
+        self.db.create_table(genes_contigs_table_name, genes_contigs_table_structure, genes_contigs_table_types)
+        self.db.create_table(genes_splits_summary_table_name, genes_splits_summary_table_structure, genes_splits_summary_table_types)
+        self.db.create_table(genes_splits_table_name, genes_splits_table_structure, genes_splits_table_types)
         self.db.create_table(collections_info_table_name, collections_info_table_structure, collections_info_table_types)
         self.db.create_table(collections_contigs_table_name, collections_contigs_table_structure, collections_contigs_table_types)
         self.db.create_table(collections_splits_table_name, collections_splits_table_structure, collections_splits_table_types)
+
+        self.disconnect()
+
+        self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+        self.run.info('Number of contigs', num_contigs, quiet = self.quiet)
+        self.run.info('Total number of nucleotides', total_length, quiet = self.quiet)
+        self.run.info('Split length', split_length, quiet = self.quiet)
 
 
     def disconnect(self):
@@ -287,13 +189,23 @@ class AnnotationDB:
 
 
 class Table(object):
-    def __init__(self, db_path):
+    """Superclass for rudimentary table needs and operations"""
+    def __init__(self, db_path, run=run, progress=progress):
+        if not os.path.exists(db_path):
+            raise ConfigError, "Annotation database ('%s') does not exist. You must create one first." % db_path
+
         self.db_path = db_path
         self.next_available_id = {}
 
-        annotation_db = AnnotationDB(self.db_path)
-        self.split_length = annotation_db.split_length
+        self.run = run
+        self.progress = progress
+
+        annotation_db = AnnotationDatabase(self.db_path, quiet = False)
+        self.split_length = annotation_db.db.get_meta_value('split_length')
+        contig_lengths_table = annotation_db.db.get_table_as_dict(contig_lengths_table_name)
         annotation_db.disconnect()
+
+        self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 
 
     def next_id(self, table):
@@ -305,7 +217,7 @@ class Table(object):
 
 
     def set_next_available_id(self, table):
-        annotation_db = AnnotationDB(self.db_path)
+        annotation_db = AnnotationDatabase(self.db_path)
         table_content = annotation_db.db.get_table_as_dict(table)
         if table_content:
             self.next_available_id[table] = max(table_content.keys()) + 1
@@ -315,14 +227,31 @@ class Table(object):
         annotation_db.disconnect()
 
 
+    def export_contigs_in_db_into_FASTA_file(self):
+        annotation_db = AnnotationDatabase(self.db_path, quiet = True)
+        contig_sequences_table = annotation_db.db.get_table_as_dict(contig_sequences_table_name)
+        annotation_db.disconnect()
 
-class CollectionsTables(Table):
+        self.progress.new('Exporting contigs into a FASTA file')
+        self.progress.update('...')
+        contigs_fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'contigs.fa')
+        contigs_fasta = u.FastaOutput(contigs_fasta_path)
+        for contig in contig_sequences_table:
+            contigs_fasta.write_id(contig)
+            contigs_fasta.write_seq(contig_sequences_table[contig]['sequence'], split=False)
+
+        self.progress.end()
+        self.run.info('FASTA for contigs', contigs_fasta_path)
+
+        return contigs_fasta_path
+
+
+class TablesForCollections(Table):
     """Populates the collections_* tables, where clusters of contigs and splits are kept"""
-    def __init__(self, db_path, contig_lengths):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
-        self.contig_lengths = contig_lengths
 
-        Table.__init__(self, self.db_path)
+        Table.__init__(self, self.db_path, run, progress)
 
         # set these dudes so we have access to unique IDs:
         self.set_next_available_id(collections_contigs_table_name)
@@ -330,12 +259,12 @@ class CollectionsTables(Table):
 
 
     def append(self, source, clusters_dict):
-        annotation_db = AnnotationDB(self.db_path)
+        annotation_db = AnnotationDatabase(self.db_path)
 
         # FIXME: this check is being done on multiple places, merge them:
         collections_info_table = annotation_db.db.get_table_as_dict(collections_info_table_name)
         if source in collections_info_table:
-            run.info('WARNING', 'Clustering data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
+            self.run.info('WARNING', 'Clustering data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
             annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_info_table_name, source))
             annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_contigs_table_name, source))
             annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_splits_table_name, source))
@@ -369,36 +298,73 @@ class CollectionsTables(Table):
         return db_entries_for_splits
 
 
-class SearchTables(Table):
-    def __init__(self, db_path, contig_lengths):
+class TablesForSearches(Table):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
-        self.contig_lengths = contig_lengths
 
-        Table.__init__(self, self.db_path)
+        self.debug = False
 
-        self.set_next_available_id(search_contigs_table_name)
-        self.set_next_available_id(search_splits_table_name)
+        Table.__init__(self, self.db_path, run, progress)
+
+        self.set_next_available_id(hmm_hits_contigs_table_name)
+        self.set_next_available_id(hmm_hits_splits_table_name)
+
+
+    def populate_search_tables(self, sources = {}):
+        if not len(sources):
+            import PaPi.data.hmm
+            sources = PaPi.data.hmm.sources
+
+        if not sources:
+            return
+
+        commander = HMMSearch()
+        contigs_fasta = self.export_contigs_in_db_into_FASTA_file()
+        proteins_in_contigs_fasta = commander.run_prodigal(contigs_fasta)
+        if not self.debug:
+            os.remove(contigs_fasta)
+
+        for source in sources:
+            kind_of_search = sources[source]['kind']
+            all_genes_searched_against = sources[source]['genes']
+            hmm_model = sources[source]['model']
+            reference = sources[source]['ref']
+            hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      all_genes_searched_against,
+                                                      hmm_model,
+                                                      reference)
+
+            if not hmm_scan_hits_txt:
+                search_results_dict = {}
+            else:
+                parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
+                search_results_dict = parser.get_search_results()
+
+            self.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
+
+        if not self.debug:
+            commander.clean_tmp_dirs()
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
-        annotation_db = AnnotationDB(self.db_path)
+        annotation_db = AnnotationDatabase(self.db_path)
 
-        search_info_table = annotation_db.db.get_table_as_dict(search_info_table_name)
-        if source in search_info_table:
-            run.info('WARNING', 'Data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_info_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_contigs_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (search_splits_table_name, source))
+        hmm_hits_info_table = annotation_db.db.get_table_as_dict(hmm_hits_info_table_name)
+        if source in hmm_hits_info_table:
+            self.run.info('WARNING', 'Data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_info_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_contigs_table_name, source))
+            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_splits_table_name, source))
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
-        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % search_info_table_name, db_entries)
+        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % hmm_hits_info_table_name, db_entries)
         # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(search_contigs_table_name), source] + [v[h] for h in search_contigs_table_structure[2:]]) for v in search_results_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % search_contigs_table_name, db_entries)
+        db_entries = [tuple([self.next_id(hmm_hits_contigs_table_name), source] + [v[h] for h in hmm_hits_contigs_table_structure[2:]]) for v in search_results_dict.values()]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % hmm_hits_contigs_table_name, db_entries)
 
         db_entries = self.process_splits(source, search_results_dict)
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % search_splits_table_name, db_entries)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % hmm_hits_splits_table_name, db_entries)
 
         annotation_db.disconnect()
 
@@ -434,98 +400,98 @@ class SearchTables(Table):
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
                         gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
-                        db_entry = tuple([self.next_id(search_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
 
 
+class TablesForGenes(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
 
-class AnnotationTables:
-    def __init__(self, annotation_db_path, contig_lengths):
-        self.annotation_db_path = annotation_db_path
-        self.contig_lengths = contig_lengths
-
-        # read split length
-        annotation_db = AnnotationDB(self.annotation_db_path)
-        self.split_length = annotation_db.db.get_meta_value('split_length')
-        annotation_db.disconnect()
+        Table.__init__(self, self.db_path, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database
         self.genes_in_splits = GenesInSplits()
 
 
-    def create(self, data_source, parser):
-        if type(data_source) == type(dict()):
-            self.matrix_dict = data_source
-            if len(self.matrix_dict):
-                self.check_keys(['prot'] + self.matrix_dict.values()[0].keys())
-        if type(data_source) == type(str()):
-            self.matrix_dict = utils.get_TAB_delimited_file_as_dictionary(data_source,
-                                                                          column_names = annotation_table_structure,
-                                                                          column_maping = annotation_table_mapping)
+    def create(self, genes_dict, parser):
+        self.genes_dict = genes_dict
 
         self.sanity_check()
 
         # oepn connection
-        annotation_db = AnnotationDB(self.annotation_db_path)
+        annotation_db = AnnotationDatabase(self.db_path)
+
+        # test whether there are already genes tables populated
+        genes_annotation_source = annotation_db.db.get_meta_value('genes_annotation_source')
+        if genes_annotation_source:
+            self.run.info('WARNING', 'Previous genes annotation data from "%s" will be replaced with the incoming data' % parser, header = True, display_only = True)
+            annotation_db.db._exec('''DELETE FROM %s''' % (genes_contigs_table_name))
+            annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_table_name))
+            annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_summary_table_name))
+
         # set the parser
-        annotation_db.db.set_meta_value('annotation_source', parser)
+        annotation_db.db.remove_meta_key_value_pair('genes_annotation_source')
+        annotation_db.db.set_meta_value('genes_annotation_source', parser)
         # push raw entries
-        db_entries = [tuple([prot] + [self.matrix_dict[prot][h] for h in annotation_table_structure[1:]]) for prot in self.matrix_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % annotation_table_name, db_entries)
+        db_entries = [tuple([prot] + [self.genes_dict[prot][h] for h in genes_contigs_table_structure[1:]]) for prot in self.genes_dict]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % genes_contigs_table_name, db_entries)
         # disconnect like a pro.
         annotation_db.disconnect()
 
 
         # compute and push split taxonomy information.
-        self.init_splits_table()
+        self.init_genes_splits_summary_table()
 
 
     def sanity_check(self):
-        contig_names_in_matrix = set([v['contig'] for v in self.matrix_dict.values()])
-        contig_names_in_fasta  = set(self.contig_lengths.keys())
-
-        for contig in contig_names_in_matrix:
-            if contig not in contig_names_in_fasta:
-                raise ConfigError, "We have a problem... Every contig name there is in your input files for annotation\
-                                    must be found in the FASTA file. But it seems it is not the case. I did not check\
-                                    all, but there there is at least one contig name ('%s') that appears in the\
-                                    annotation files, but missing in the FASTA file. You may need to format the\
-                                    names in your FASTA file to match contig names in your annotation files. Keep in\
-                                    mind that contig names must match the ones in your BAM files later on. Even when\
-                                    you use one software for assembly and mapping, disagreements between contig names\
-                                    may arise. We know that it is the case with CLC, for instance. OK. Going back to the\
-                                    issue. Here is one contig name from your FASTA file: '%s', and here is one from your\
-                                    input files: '%s'. You should make them identical (and make sure whatever solution\
-                                    you come up with will not make them incompatible with names in your BAM files\
-                                    later on." % (contig, contig_names_in_fasta.pop(), contig_names_in_matrix.pop())
-
-
-    def check_keys(self, keys):
-        missing_keys = [key for key in annotation_table_structure if key not in keys]
+        # check whether input matrix dict 
+        keys_found = ['prot'] + self.genes_dict.values()[0].keys()
+        missing_keys = [key for key in genes_contigs_table_structure if key not in keys_found]
         if len(missing_keys):
             raise ConfigError, "Your input lacks one or more header fields to generate a PaPi annotation db. Here is\
                                 what you are missing: %s. The complete list (and order) of headers in your TAB\
                                 delimited matrix file (or dictionary) must follow this: %s." % (', '.join(missing_keys),
-                                                                                                ', '.join(annotation_table_structure))
+                                                                                                ', '.join(genes_contigs_table_structure))
 
 
-    def init_splits_table(self):
+        contig_names_in_matrix = set([v['contig'] for v in self.genes_dict.values()])
+        contig_names_in_db  = set(self.contig_lengths.keys())
+
+        for contig in contig_names_in_matrix:
+            if contig not in contig_names_in_db:
+                raise ConfigError, "We have a problem... Every contig name found in the input file you provide\
+                                    must be found in the annotation database. But it seems it is not the case. I did not check\
+                                    all, but there there is at least one contig name ('%s') that appears in your\
+                                    matrices, but missing in the database. You may need to format the contig\
+                                    names in your FASTA file and regenerate the annotation database to match contig\
+                                    names appear in your matrices. Keep in mind that contig names must also match the\
+                                    ones in your BAM files later on. Even when you use one software for assembly and\
+                                    mapping, disagreements between contig names may arise. We know that it is the case\
+                                    with CLC for instance. OK. Going back to the issue. Here is one contig name from\
+                                    the annotation database (which was originally in your contigs FASTA): '%s', and\
+                                    here is one from your input files you just provided: '%s'. You should make them\
+                                    identical (and make sure whatever solution you come up with will not make them\
+                                    incompatible with names in your BAM files later on. Sorry about this mess, but\
+                                    there is nothing much PaPi can do about this issue." %\
+                                                    (contig, contig_names_in_db.pop(), contig_names_in_matrix.pop())
+
+
+    def init_genes_splits_summary_table(self):
         # build a dictionary for fast access to all proteins identified within a contig
         prots_in_contig = {}
-        for prot in self.matrix_dict:
-            contig = self.matrix_dict[prot]['contig']
+        for prot in self.genes_dict:
+            contig = self.genes_dict[prot]['contig']
             if prots_in_contig.has_key(contig):
                 prots_in_contig[contig].add(prot)
             else:
                 prots_in_contig[contig] = set([prot])
 
         contigs_without_annotation = list(set(self.contig_lengths.keys()) - set(prots_in_contig.keys()))
-        run.info('Num contigs in FASTA', len(self.contig_lengths))
-        run.info('Num contigs w annotation', len(prots_in_contig))
-        run.info('Num contigs w/o annotation', len(contigs_without_annotation))
+        run.info('Percent of contigs annotated', '%.1f%%' % (len(prots_in_contig) * 100.0 / len(self.contig_lengths)))
 
         for contig in contigs_without_annotation:
             prots_in_contig[contig] = set([])
@@ -546,11 +512,11 @@ class AnnotationTables:
                 # this particular split to generate summarized info for each split. BUT one important that is done
                 # in the following loop is self.genes_in_splits.add call, which populates GenesInSplits class.
                 for prot in prots_in_contig[contig]:
-                    if self.matrix_dict[prot]['stop'] > start and self.matrix_dict[prot]['start'] < stop:
-                        taxa.append(self.matrix_dict[prot]['t_species'])
-                        functions.append(self.matrix_dict[prot]['function'])
-                        gene_start_stops.append((self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop']), )
-                        self.genes_in_splits.add(split, start, stop, prot, self.matrix_dict[prot]['start'], self.matrix_dict[prot]['stop'])
+                    if self.genes_dict[prot]['stop'] > start and self.genes_dict[prot]['start'] < stop:
+                        taxa.append(self.genes_dict[prot]['t_species'])
+                        functions.append(self.genes_dict[prot]['function'])
+                        gene_start_stops.append((self.genes_dict[prot]['start'], self.genes_dict[prot]['stop']), )
+                        self.genes_in_splits.add(split, start, stop, prot, self.genes_dict[prot]['start'], self.genes_dict[prot]['stop'])
 
 
                 taxonomy_strings = [t for t in taxa if t]
@@ -596,13 +562,13 @@ class AnnotationTables:
                     splits_dict[split]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
 
         # open connection
-        annotation_db = AnnotationDB(self.annotation_db_path)
+        annotation_db = AnnotationDatabase(self.db_path)
         # push raw entries for splits table
-        db_entries = [tuple([split] + [splits_dict[split][h] for h in splits_table_structure[1:]]) for split in splits_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % splits_table_name, db_entries)
+        db_entries = [tuple([split] + [splits_dict[split][h] for h in genes_splits_summary_table_structure[1:]]) for split in splits_dict]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % genes_splits_summary_table_name, db_entries)
         # push entries for genes in splits table
-        db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in splits_to_prots_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % splits_to_prots_table_name, db_entries)
+        db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in genes_splits_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % genes_splits_table_name, db_entries)
         # disconnect
         annotation_db.disconnect()
 
@@ -615,7 +581,7 @@ class AnnotationTables:
             o: number of taxonomic calls that matches the consensus among t
         """
 
-        response = self.db.cursor.execute("""SELECT %s FROM %s WHERE contig='%s' and stop > %d and start < %d""" % (t_level, annotation_table_name, contig, start, stop))
+        response = self.db.cursor.execute("""SELECT %s FROM %s WHERE contig='%s' and stop > %d and start < %d""" % (t_level, genes_contigs_table_name, contig, start, stop))
         rows = response.fetchall()
 
         num_genes = len(rows)
