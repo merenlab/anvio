@@ -18,9 +18,9 @@ from PaPi.parsers.hmmscan import HMMScan
 from PaPi.parsers.concoct import CONCOCT
 
 parser_modules = {}
-parser_modules['annotation'] = {"default_matrix": DefaultMatrix,
-                                "myrast_gui": MyRastGUI,
-                                "myrast_cmdline": MyRastCMDLine,
-                                "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
-parser_modules['search']     = {'hmmscan': HMMScan}
-parser_modules['collections']    = {'concoct': CONCOCT}
+parser_modules['genes']       = {"default_matrix": DefaultMatrix,
+                                 "myrast_gui": MyRastGUI,
+                                 "myrast_cmdline": MyRastCMDLine,
+                                 "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
+parser_modules['search']      = {"hmmscan": HMMScan}
+parser_modules['collections'] = {"concoct": CONCOCT}

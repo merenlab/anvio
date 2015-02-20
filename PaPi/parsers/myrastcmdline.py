@@ -15,7 +15,7 @@ from PaPi.parsers.base import Parser
 
 
 class MyRastCMDLine(Parser):
-    def __init__(self, input_file_paths, annotation_table_structure):
+    def __init__(self, input_file_paths, genes_table_structure):
         files_expected = {'functions': 'svr_assign_using_figfams.txt', 'genes': 'svr_call_pegs.txt'}
 
         files_structure = {'functions': 
@@ -25,7 +25,7 @@ class MyRastCMDLine(Parser):
                            'genes': 
                                 {'type': 'fasta'},}
 
-        self.annotation_table_structure = annotation_table_structure
+        self.genes_table_structure = genes_table_structure
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
 
 
@@ -51,7 +51,7 @@ class MyRastCMDLine(Parser):
 
         for key in self.dicts['genes']:
             entry = {}
-            for field in self.annotation_table_structure:
+            for field in self.genes_table_structure:
                 entry[field] = None
 
             prot, remainder = key.split()

@@ -15,7 +15,7 @@ from PaPi.parsers.base import Parser
 
 
 class MyRastGUI(Parser):
-    def __init__(self, input_file_paths, annotation_table_structure):
+    def __init__(self, input_file_paths, genes_table_structure):
         files_expected = {'functions': 'functions.tbl', 'gene_otus': 'gene_otus.tbl', 'peg': 'peg.tbl'}
 
         files_structure = {'functions': 
@@ -28,7 +28,7 @@ class MyRastGUI(Parser):
                                 {'col_names': ['prot', 'contig', 'start', 'stop'],
                                  'col_mapping': [str, str, int, int]},}
 
-        self.annotation_table_structure = annotation_table_structure
+        self.genes_table_structure = genes_table_structure
         Parser.__init__(self, 'MyRastGUI', input_file_paths, files_expected, files_structure)
 
 
@@ -42,7 +42,7 @@ class MyRastGUI(Parser):
 
         for prot in proteins:
             entry = {}
-            for key in self.annotation_table_structure:
+            for key in self.genes_table_structure:
                 entry[key] = None
 
             d = self.dicts['peg'][prot]

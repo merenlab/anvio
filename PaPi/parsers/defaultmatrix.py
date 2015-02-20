@@ -15,7 +15,7 @@ from PaPi.parsers.base import Parser
 
 
 class DefaultMatrix(Parser):
-    def __init__(self, input_file_paths, annotation_table_structure):
+    def __init__(self, input_file_paths, genes_table_structure):
         matrix_txt = input_file_paths[0]
         files_expected = {'matrix': matrix_txt}
 
@@ -25,7 +25,7 @@ class DefaultMatrix(Parser):
                                  }
                           }
 
-        self.annotation_table_structure = annotation_table_structure
+        self.genes_table_structure = genes_table_structure
         Parser.__init__(self, 'DefaultMatrix', [matrix_txt], files_expected, files_structure)
 
 
