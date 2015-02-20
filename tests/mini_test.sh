@@ -18,38 +18,32 @@ do
 done
 
 
-# generate an annotation db using files obtained from myrast_gui using contigs.fa (contigs.fa
-# is the original file all samples were mapped to) using split size 1000 (the default split
-# size is better for most projects, small split size here is for testing purposes) (following
-# two lines are generating the ANNOTATION database using gui and cmdline outputs, obviously
-# the second one overwrites the result of the first one. they are both here for testing
-# purposes, but only the result of the second command is used for later steps)
+# we first generate an empty annotation database using contigs.fa (keep in mind that 'contigs.fa'
+# is the original file all samples were mapped to). here we use split size of 1000 (the default split
+# size is much better for most projects. the small split size used here is simply for testing purposes)
+INFO "Generating an EMPTY annotation database ..."
+papi-gen-annotation-database -f contigs.fa -o test-output/ANNOTATION.db -L 1000
 
+INFO "Populating the genes tables in the annotation database using 'myrast_gui' parser ..."
+papi-populate-genes-table test-output/ANNOTATION.db -i myrast_gui/* -p myrast_gui
 
-INFO "Generating an annotation database using 'myrast_gui' parser ..."
-papi-gen-annotation myrast_gui/* -p myrast_gui --contigs contigs.fa -o test-output/ANNOTATION-myrast_gui.db -L 1000 --skip-search-tables 
+INFO "Populating the genes tables in the annotation database using 'myrast_cmdline_dont_use' parser ..."
+papi-populate-genes-table test-output/ANNOTATION.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
-INFO "Generating an annotation database using 'myrast_cmdline_dont_use' parser ..."
-papi-gen-annotation myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline_dont_use.db -L 1000 --skip-search-tables
+INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
+papi-populate-genes-table test-output/ANNOTATION.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
-INFO "Generating an annotation database using 'myrast_cmdline' parser ..."
-papi-gen-annotation myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt -p myrast_cmdline --contigs contigs.fa -o test-output/ANNOTATION-myrast_cmdline.db -L 1000 --skip-search-tables
+INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
+papi-export-genes-table test-output/ANNOTATION.db -o test-output/ANNOTATION_recovered.txt
 
-INFO "Recovering a standart matrix file from the annotation database generated using 'myrast_cmdline' parser ..." --skip-search-tables
-papi-export-annotation-table test-output/ANNOTATION-myrast_cmdline.db -o test-output/ANNOTATION_recovered.txt
+INFO "Re-populating the genes tables in the annotation database using the recovered matrix file with 'default_matrix' parser ..."
+papi-populate-genes-table test-output/ANNOTATION.db -p default_matrix -i test-output/ANNOTATION_recovered.txt
 
-INFO "Re-generating an annotation database using the recovered matrix file with 'default_matrix' parser ..."
-papi-gen-annotation test-output/ANNOTATION_recovered.txt -p default_matrix --contigs contigs.fa -o test-output/ANNOTATION.db -L 1000 --skip-search-tables
-
-
-# in the lines below we used '--skip-search-tables' flag, and PaPi skipped generating HMM scan
-# results in those databases. Now we will do that step alone specifically:
 INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
-papi-populate-search-table contigs.fa test-output/ANNOTATION.db
+papi-populate-search-table test-output/ANNOTATION.db
 
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-papi-populate-collections contigs.fa test-output/ANNOTATION.db --parser concoct -i concoct.txt
-
+papi-populate-collections test-output/ANNOTATION.db --parser concoct -i concoct.txt
 
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
