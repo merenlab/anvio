@@ -1093,11 +1093,16 @@ function appendResult() {
 
     clearHighlight();
 
+    var groups_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
         _contig_name = metadata[search_results[i]][0];
-        if (SELECTED[group_id].indexOf(_contig_name) == -1)
+        if (SELECTED[group_id].indexOf(_contig_name) == -1) {
             SELECTED[group_id].push(_contig_name);
+
+            if (groups_to_update.indexOf(group_id) == -1)
+                groups_to_update.push(group_id);
+        }
 
         for (var gid = 1; gid <= group_counter; gid++) {
             // don't remove nodes from current group
@@ -1107,11 +1112,14 @@ function appendResult() {
             var pos = SELECTED[gid].indexOf(_contig_name);
             if (pos > -1) {
                 SELECTED[gid].splice(pos, 1);
+
+                if (groups_to_update.indexOf(gid) == -1)
+                    groups_to_update.push(gid);
             }
         }
     }
 
-    updateGroupWindow();
+    updateGroupWindow(groups_to_update);
     redrawGroupColors(group_id);
 }
 
@@ -1127,6 +1135,7 @@ function removeResult() {
     if (group_id === 'undefined')
         return;
 
+    var groups_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
         _contig_name = metadata[search_results[i]][0];
@@ -1135,6 +1144,9 @@ function removeResult() {
         var pos = SELECTED[group_id].indexOf(_contig_name);
         if (pos > -1) {
             SELECTED[group_id].splice(pos, 1);
+
+            if (groups_to_update.indexOf(group_id) == -1)
+                groups_to_update.push(group_id);
         }
 
         var _path_background = document.getElementsByClassName('path_' + _id + '_background');
@@ -1148,5 +1160,5 @@ function removeResult() {
         }
     }
 
-    updateGroupWindow();
+    updateGroupWindow(groups_to_update);
 }
