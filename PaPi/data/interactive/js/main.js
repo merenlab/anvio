@@ -1003,6 +1003,9 @@ function searchContigs()
 
     for (var row=1; row < _len; row++)
     {
+        if (metadata[row][column]==null)
+            continue;
+        
         if (eval(_pre + row + _post)){
             search_results.push(row);
             _counter++;
