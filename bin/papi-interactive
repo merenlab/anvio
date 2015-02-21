@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
+"""Entry point to the interactive interface.
 
+The massage of the data is being taken care of in the interactive module,
+and this file implements the bottle callbacks."""
 
 import os
 import sys
@@ -22,7 +25,7 @@ import PaPi.interactive as interactive
 
 __author__ = "Özcan Esen"
 __copyright__ = "Copyright 2015, The PaPi Project"
-__credits__ = []
+__credits__ = ["Gökmen Görgen"]
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
