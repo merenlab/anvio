@@ -80,7 +80,6 @@ class DB:
 
 
     def remove_meta_key_value_pair(self, key):
-        print key
         self._exec('''DELETE FROM self WHERE key="%s"''' % key)
         self.commit()
 
