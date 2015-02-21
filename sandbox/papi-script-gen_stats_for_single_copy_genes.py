@@ -30,8 +30,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='A simple script to generate info from search tables')
-parser.add_argument('contigs_fasta', metavar = 'FASTA',
-                    help = 'A FASTA file with one or more contigs.')
 parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
                     help = 'Annotation database to read from.')
 parser.add_argument('--list-sources', action='store_true', default=False,
@@ -47,9 +45,12 @@ contig_lengths = {}
 contig_genes = {}
 genes = {}
 
-db = annotation.AnnotationDB(args.annotation_db)
-search_contigs_dict = db.db.get_table_as_dict('search_contigs')
-search_info_dict = db.db.get_table_as_dict('search_info')
+db = annotation.AnnotationDatabase(args.annotation_db, quiet=False)
+search_contigs_dict = db.db.get_table_as_dict(annotation.hmm_hits_contigs_table_name)
+search_info_dict = db.db.get_table_as_dict(annotation.hmm_hits_info_table_name)
+contig_lengths_table = db.db.get_table_as_dict(annotation.contig_lengths_table_name)
+contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
+db.disconnect()
 
 sources = {}
 for source in search_info_dict:
@@ -65,12 +66,6 @@ if args.source:
         print 'bad --source. here are the available ones: %s' % ', '.join(sources)
     else:
         sources = {args.source: sources[source]}
-
-
-fasta = u.SequenceSource(args.contigs_fasta)
-while fasta.next():
-    contigs.add(fasta.id)
-    contig_lengths[fasta.id] = len(fasta.seq) - fasta.seq.count('N')
 
 hits_output = open(args.annotation_db + '.hits', 'w')
 hits_output.write('source\tcontig\tgene\te_value\n')
