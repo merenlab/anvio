@@ -180,6 +180,12 @@
                 <center><input type="button" onclick="$('#searchBox').dialog('close');" value="Close"></center>
 
             </div>
+            <div id="completenessBox" class="dialogs">
+                <input type="hidden" id="completenessBox_source_gid" value="">
+                <div id="completenessBox_content"></div>
+                <br />
+                <center><input type="button" onclick="$('#completenessBox_source_gid').val(''); $('#completenessBox').dialog('close');" value="Close"></center>
+            </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>
             </svg>

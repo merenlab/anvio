@@ -49,6 +49,8 @@ var views = {};
 var current_view = '';
 var layer_order;
 
+var completeness_dict = {};
+
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -801,6 +803,7 @@ function deleteGroup(id) {
         }
 
         SELECTED[id] = [];
+        delete completeness_dict[id];
 
         if (group_count==0)
         {
@@ -894,6 +897,13 @@ function updateComplateness(gid) {
             default_source = completeness_info_dict['default_source'];
             stats = completeness_info_dict['stats'];
 
+            completeness_dict[gid] = completeness_info_dict;
+
+            //check if completenessBox for this group already on the screen, if yes update content.
+            if ($('#completenessBox_source_gid').val()==gid) {
+                $('#completenessBox_content').html(buildCompletenessTable(completeness_info_dict) + "updated");
+            }
+
             $('#completeness_' + gid).val(stats[default_source]['percent_complete'].toFixed(1) + '%');
             $('#contamination_' + gid).val(stats[default_source]['percent_contamination'].toFixed(1) + '%');
 
@@ -901,6 +911,31 @@ function updateComplateness(gid) {
             $('#contamination_' + gid).attr("disabled", false);
         },
     });
+}
+
+function showCompleteness(gid) {
+    if (!completeness_dict.hasOwnProperty(gid))
+        return;
+
+    $('#completenessBox_source_gid').val(gid);
+    $('#completenessBox_content').html(buildCompletenessTable(completeness_dict[gid]));
+    $('#completenessBox').dialog('open');
+
+}
+
+function buildCompletenessTable(info_dict) {
+    var stats = info_dict['stats'];
+    var output = '<table>';
+
+    for (var source in stats)
+    {
+        var _style = (source == info_dict['default_source']) ? 'font-weight:bold;' : '';
+
+        output = output + "<tr><td style='" + _style + "'>" + source + "</td><td style='" + _style + "'>" + stats[source]['percent_complete'] + "%</td></tr>";
+    }
+
+    output = output + '</table>';
+    return output;
 }
 
 function exportSvg() {

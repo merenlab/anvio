@@ -197,6 +197,12 @@ function initializeDialogs() {
             of: window
         }).dialog('close');
 
+    $("#completenessBox").dialog("option", "title", "Completeness Info").dialog("option", "position", {
+            my: "center",
+            at: "center",
+            of: window
+        }).dialog('close');    
+
     $("#treeControls").dialog("option", "position", {
             my: "left top",
             at: "left top",
