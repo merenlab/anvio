@@ -92,6 +92,7 @@ class InputHandler:
 
 
     def init_annotation_db(self, db_path):
+        filesnpaths.is_file_exists(db_path)
         self.annotation_db = annotation.AnnotationDatabase(db_path)
 
         profiling_split_length = int(self.runinfo['split_length'])
@@ -262,12 +263,24 @@ class InputHandler:
 
         if self.additional_metadata_path:
             contigs_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
+            contigs_only_in_additional_metadata = []
             for contig_name in contigs_in_additional_metadata:
                 if contig_name not in contigs_in_tree:
-                    raise utils.ConfigError, "Some contig names in the additional metadata file is not found in contigs\
-                                              found in other files (such as this one: '%s'). Additional metadata file\
-                                              does not have to list all contigs, but whenever there is a contig, it must\
-                                              be present in other files. Bad news :/" % (contig_name)
+                    contigs_only_in_additional_metadata.append(contig_name)
+            if len(contigs_only_in_additional_metadata):
+                one_example = contigs_only_in_additional_metadata[-1]
+                num_all = len(contigs_only_in_additional_metadata)
+                run.info('WARNING', utils.remove_spaces("Some of the contigs in your addtional metadata file does not\
+                                                         appear to be in anywhere else. Additional metadata file is not\
+                                                         required to list all contigs (which means, there may be contigs\
+                                                         in the database that are not in the additional metadata file),\
+                                                         however, finding contigs that are only in the additional metadata\
+                                                         file usually means trouble. PaPi will continue, but please\
+                                                         go back and check your files if you think there may be something\
+                                                         wrong. Here is a random contig name that was only in the\
+                                                         metadata file: '%s'. And there were %d of them in total. You\
+                                                         are warned!" % (one_example, num_all)),
+                                                         display_only = True, header = True)
 
 
     def update_runinfo_on_disk(self):

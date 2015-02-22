@@ -20,6 +20,7 @@ from bottle import run as run_server
 
 import PaPi.utils as utils
 import PaPi.dictio as dictio
+import PaPi.filesnpaths as filesnpaths
 import PaPi.interactive as interactive
 
 
@@ -78,6 +79,9 @@ parser.add_argument('--show-views', action = 'store_true', default = False,
 try:
     d = interactive.InputHandler(parser.parse_args())
 except utils.ConfigError, e:
+    print e
+    sys.exit(-1)
+except filesnpaths.FilesNPathsError, e:
     print e
     sys.exit(-1)
 
