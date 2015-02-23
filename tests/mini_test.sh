@@ -43,7 +43,7 @@ INFO "Populating search tables in the latest annotation database using default H
 papi-populate-search-table test-output/ANNOTATION.db
 
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-papi-populate-collections test-output/ANNOTATION.db --parser concoct -i concoct.txt
+papi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
 
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
