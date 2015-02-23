@@ -20,7 +20,7 @@ import PaPi.filesnpaths as filesnpaths
 from PaPi.utils import ConfigError
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False):
         self.db_path = db_path
         self.version = None
 
@@ -40,7 +40,7 @@ class DB:
             self.set_version(client_version)
         else:
             self.version = self.get_version()
-            if self.version != client_version:
+            if self.version != client_version and not ignore_version:
                 raise ConfigError, "It seems the database '%s' was generated when your client was at version %s,\
                                     however, your client now is at version %s. Which means this database file\
                                     cannot be used with this client anymore and needs to be re-created :/"\
