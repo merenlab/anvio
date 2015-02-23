@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Takes a database and a table name as parameters, stores the content as
+a TAB-delimited matrix."""
+
+import os
+import sys
+
+import PaPi.db as db
+import PaPi.utils as utils
+import PaPi.dictio as dictio
+import PaPi.filesnpaths as filesnpaths
+import PaPi.terminal as terminal
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The PaPi Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    filesnpaths.is_file_exists(args.db_path)
+    database = db.DB(args.db_path, None, ignore_version=True)
+    tables_in_database = database.get_table_names()
+
+    if args.list_tables:
+        for table in tables_in_database:
+            print table
+        sys.exit()
+
+    run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
+
+    if not args.table:
+        raise utils.ConfigError, "You must specify a table name."
+
+    if args.table not in tables_in_database:
+        print args.table
+        raise utils.ConfigError, "Table '%s' is not seem to be in this databse :/" % args.table
+
+    table_content = database.get_table_as_dict(args.table)
+    table_columns = database.get_table_structure(args.table)
+    run.info('Table', '"%s" has been read with %d entries and %d columns.' % (args.table, len(table_content), len(table_columns)))
+
+    if not args.output:
+        args.output = args.table + '.txt'
+
+    utils.store_dict_as_TAB_delimited_file(table_content, args.output, table_columns)
+    run.info('Output', args.output)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='A script to export PaPi tables as TAB-delimited matrices.')
+    parser.add_argument('db_path', metavar = 'DB',
+                        help = 'Database to read.')
+    parser.add_argument('-t', '--table', default = None, metavar = 'TABLE',
+                        help = 'Table name to export.')
+    parser.add_argument('-l', '--list-tables', action="store_true", default = False,
+                        help = 'Gives a list of tables in a database and quits.')
+    parser.add_argument('-o', '--output', type=str, default = None,
+                        help = 'Output file path.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except utils.ConfigError, e:
+        print e
+        sys.exit(-1)
+    except filesnpaths.FilesNPathsError, e:
+        print e
+        sys.exit(-2)
