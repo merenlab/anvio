@@ -3,6 +3,7 @@
 # visualizes stuff..
 #
 
+suppressPackageStartupMessages(library(gtools))
 suppressPackageStartupMessages(library(gridExtra))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(optparse))
@@ -10,7 +11,9 @@ suppressPackageStartupMessages(library(optparse))
 # command line options
 option_list <- list(
         make_option(c("--e_value"), default=1e-15,
-                help = "e-value to retain hits [default \"%default\"]")
+                help = "e-value to retain hits [default \"%default\"]"),
+        make_option(c("--output_prefix"),
+                help = "Output file name *prefix* (without the extension)")
         )
 
 parser <- OptionParser(usage = "./self hits_file genes_file", option_list=option_list,
@@ -29,6 +32,12 @@ if(length(arguments$args) != 2) {
 } else {
     hits <- arguments$args[1]
     genes <- arguments$args[2]
+}
+
+if(invalid(options$output_prefix)){
+    output_prefix <- paste(hits, '-(', e_value, ')', sep='')
+} else {
+    output_prefix <- paste(options$output_prefix, '-(', e_value, ')', sep='')
 }
 
 # check if the input file is accessible
@@ -120,7 +129,7 @@ for(source in c('Wu_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_al')){
     i <- i + 1
 
 }
-pdf(paste(hits, '-(', e_value, ').pdf', sep=''), width=25, height=10)
+pdf(paste(output_prefix, '.pdf', sep=''), width=25, height=10)
 grid.arrange(plots[[1]],  plots[[2]],  plots[[3]],
              plots[[4]],  plots[[5]],  plots[[6]],
              plots[[7]],  plots[[8]],  plots[[9]],
