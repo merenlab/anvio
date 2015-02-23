@@ -901,7 +901,7 @@ function updateComplateness(gid) {
 
             //check if completenessBox for this group already on the screen, if yes update content.
             if ($('#completenessBox_source_gid').val()==gid) {
-                $('#completenessBox_content').html(buildCompletenessTable(completeness_info_dict) + "updated");
+                $('#completenessBox_content').html(buildCompletenessTable(completeness_info_dict));
             }
 
             $('#completeness_' + gid).val(stats[default_source]['percent_complete'].toFixed(1) + '%');
@@ -925,16 +925,40 @@ function showCompleteness(gid) {
 
 function buildCompletenessTable(info_dict) {
     var stats = info_dict['stats'];
-    var output = '<table>';
+    var output = '<table style="margin: 5px;">';
 
-    for (var source in stats)
-    {
-        var _style = (source == info_dict['default_source']) ? 'font-weight:bold;' : '';
+    header_template = '<td style="font-variant: small-caps; font-size: 125%; padding: 0px 10px;">{TXT}</td>';
+    percentages_template = '<td style="text-align: center; font-weight: bold;">{VAL}%</td>';
+    source_template = '<td style="text-align: left;">{VAL}</td>';
 
-        output = output + "<tr><td style='" + _style + "'>" + source + "</td><td style='" + _style + "'>" + stats[source]['percent_complete'] + "%</td></tr>";
+    headers = ['', 'source', 'completeness', 'contamination'];
+    entry_keys = ['percent_complete', 'percent_contamination'];
+
+    // header line:
+    output += '<tr>';
+    headers.forEach(function(header) {
+        output += header_template.replace('{TXT}', header);
+    });
+    output += '</tr><tr><td colspan="' + headers.length + '"><hr /></td>';
+
+    for (var source in stats) {
+        output += '<tr>';
+
+        if (source == info_dict['default_source']){
+            output += source_template.replace('{VAL}', '>');
+        } else {
+            output += source_template.replace('{VAL}', '');
+        }
+
+        output += source_template.replace('{VAL}', source);
+
+        entry_keys.forEach(function(key) {
+            output += percentages_template.replace('{VAL}', stats[source][key].toFixed(1));
+        })
+        output += '</tr>';
     }
 
-    output = output + '</table>';
+    output += '</tr><tr><td colspan="' + headers.length + '"><hr /></td></table>';
     return output;
 }
 
