@@ -1850,6 +1850,24 @@ function draw_tree(settings) {
                     0.3,
                     false);
             }
+            if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3)
+            {
+                var color = layer['color'];
+
+                var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
+                var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
+
+                drawPie('layer_background_' + layer_index,
+                    'all',
+                    _min,
+                    _max,
+                    layer_boundaries[layer_index][0],
+                    layer_boundaries[layer_index][1],
+                    (_max - _min > Math.PI) ? 1:0, // large arc flag
+                    color,
+                    0.3,
+                    false);
+            }
         }
 
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
@@ -2094,18 +2112,6 @@ function draw_tree(settings) {
                             else // numerical
                             {
                                 var color = layer['color'];
-
-                                drawPie('layer_background_' + layer_index,
-                                    q.id,
-                                    q.angle - angle_per_leaf / 2,
-                                    q.angle + angle_per_leaf / 2,
-                                    layer_boundaries[layer_index][0],
-                                    layer_boundaries[layer_index][1],
-                                    0,
-                                    color,
-                                    0.3,
-                                    true);
-
 
                                 if (metadata_dict[q.label][pindex] > 0) {
                                     drawPie('layer_' + layer_index,
