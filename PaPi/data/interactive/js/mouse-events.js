@@ -29,15 +29,13 @@ function lineClickHandler(event) {
             if (groups_to_update.indexOf(group_id) == -1)
                 groups_to_update.push(group_id);
 
-            var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
-            for (var _i=0; _i < _path_background.length; _i++) {
-                _path_background[_i].style['fill'] = group_color;
-                _path_background[_i].style['fill-opacity'] = '0.1';      
-            }
+            if (id_to_node_map[p.child_nodes[i]].IsLeaf()) {
+                var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
+                _path_background[0].style['fill'] = group_color;
+                _path_background[0].style['fill-opacity'] = '0.1';      
 
-            var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
-            for (var _i=0; _i < _path_outer_ring.length; _i++) {
-                _path_outer_ring[_i].style['fill'] = group_color;    
+                var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
+                _path_outer_ring[0].style['fill'] = group_color;   
             }
         }
 
@@ -109,16 +107,14 @@ function lineContextMenuHandler(event) {
 
     var groups_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
-        var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
-        for (var _i=0; _i < _path_background.length; _i++) {
-            _path_background[_i].style['fill'] = '#FFFFFF';
-            _path_background[_i].style['fill-opacity'] = '0.0';      
-        }
+        if (id_to_node_map[p.child_nodes[i]].IsLeaf()) {
+            var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
+            _path_background[0].style['fill'] = '#FFFFFF';
+            _path_background[0].style['fill-opacity'] = '0.0';      
 
-        var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
-        for (var _i=0; _i < _path_outer_ring.length; _i++) {
-            _path_outer_ring[_i].style['fill'] = '#FFFFFF';    
-        }
+            var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
+            _path_outer_ring[0].style['fill'] = '#FFFFFF';
+        }  
 
         // remove nodes from all groups
         for (var gid = 1; gid <= group_counter; gid++) {

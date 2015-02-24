@@ -269,15 +269,11 @@ function redrawGroupColors(id) {
         for (var j = 0; j < SELECTED[gid].length; j++) {
             if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
                 var _path_background = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_background');
-                for (var _i=0; _i < _path_background.length; _i++) {
-                    _path_background[_i].style['fill'] = group_color;
-                    _path_background[_i].style['fill-opacity'] = '0.1';      
-                }
+                _path_background[0].style['fill'] = group_color;
+                _path_background[0].style['fill-opacity'] = '0.1';      
 
                 var _path_outer_ring = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_outer_ring');
-                for (var _i=0; _i < _path_outer_ring.length; _i++) {
-                    _path_outer_ring[_i].style['fill'] = group_color;    
-                }
+                _path_outer_ring[0].style['fill'] = group_color;    
             }
 
             var _line = document.getElementById('line' + label_to_node_map[SELECTED[gid][j]].id);
