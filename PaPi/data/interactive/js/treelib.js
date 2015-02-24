@@ -1964,17 +1964,19 @@ function draw_tree(settings) {
                             }
                             else // numerical
                             {
-                                var color = layer['color'];
+                                if (metadata_dict[q.label][pindex] > 0) {
+                                    var color = layer['color'];
 
-                                 drawPhylogramRectangle('layer_' + layer_index,
-                                    q.id,
-                                    layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
-                                    q.xy['y'],
-                                    height_per_leaf,
-                                    metadata_dict[q.label][pindex],
-                                    color,
-                                    1,
-                                    true);
+                                     drawPhylogramRectangle('layer_' + layer_index,
+                                        q.id,
+                                        layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
+                                        q.xy['y'],
+                                        height_per_leaf,
+                                        metadata_dict[q.label][pindex],
+                                        color,
+                                        1,
+                                        true);
+                                }
                             }
 
                         }
@@ -2108,16 +2110,19 @@ function draw_tree(settings) {
                                     0.3,
                                     true);
 
-                                drawPie('layer_' + layer_index,
-                                    q.id,
-                                    q.angle - angle_per_leaf / 2,
-                                    q.angle + angle_per_leaf / 2,
-                                    layer_boundaries[layer_index][0], 
-                                    layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
-                                    0,
-                                    color,
-                                    1,
-                                    true);
+
+                                if (metadata_dict[q.label][pindex] > 0) {
+                                    drawPie('layer_' + layer_index,
+                                        q.id,
+                                        q.angle - angle_per_leaf / 2,
+                                        q.angle + angle_per_leaf / 2,
+                                        layer_boundaries[layer_index][0], 
+                                        layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
+                                        0,
+                                        color,
+                                        1,
+                                        true);
+                                }
                             }
 
                         }
