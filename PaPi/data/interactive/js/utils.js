@@ -49,19 +49,23 @@ function clearMinMax(selectbox)
 function BasicTimer(name) {
     this.name = name;
     this.start = new Date().getTime();
+    this.previousDelta = this.start;
 
     this.getDeltaSeconds = function(event, consoleOutput) {
-        this.end = new Date().getTime();
-        deltaSeconds = (this.end - this.start) / 1000;
+        this.now = new Date().getTime();
+        deltaSecondsStart = (this.now - this.start) / 1000;
+        deltaSecondsPrev = (this.now - this.previousDelta) / 1000;
 
+        this.previousDelta = this.now;
+        
         consoleOutput = typeof consoleOutput !== 'undefined' ? consoleOutput: true;
 
-        prettyText = this.name + ' [' + event + ']: ' + readableNumber(deltaSeconds) + ' seconds.';
+        prettyText = this.name + ' [' + event + ']: ' + readableNumber(deltaSecondsPrev) + ' seconds (' + readableNumber(deltaSecondsStart) + ' seconds since beginning)';
 
         if(consoleOutput)
             console.log(prettyText);
 
-        return {'deltaSeconds': deltaSeconds, 'prettyText': prettyText};
+        return {'deltaSecondsStart': deltaSecondsStart, 'deltaSecondsPrev': deltaSecondsPrev, 'prettyText': prettyText};
     };
 }
 
