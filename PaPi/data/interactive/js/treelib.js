@@ -1507,6 +1507,8 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 }
 
 function draw_tree(settings) {
+    var tree_draw_timer = new BasicTimer('tree_draw');
+
     id_to_node_map = new Array();
     label_to_node_map = {};
     var t = new Tree();
@@ -1554,6 +1556,8 @@ function draw_tree(settings) {
         metadata_title[params[0]] = title;
     }
 
+    $('#draw_delta_time').html('tooltips ready (took <b>' + tree_draw_timer.getDeltaSeconds('tooltips')['deltaSecondsPrev'] + '</b> seconds).');
+ 
     // normalization
     var param_max = new Array();
 
@@ -1605,6 +1609,8 @@ function draw_tree(settings) {
             }
         }
     }
+
+    $('#draw_delta_time').html('normalizations done (took <b>' + tree_draw_timer.getDeltaSeconds('normalizations')['deltaSecondsPrev'] + '</b> seconds).');
 
     // calculate bar sizes according to given height
     for (var pindex = 1; pindex < parameter_count; pindex++) 
@@ -1699,7 +1705,9 @@ function draw_tree(settings) {
         }
     }
 
- if (t.error != 0) {
+    $('#draw_delta_time').html('barsizes done (took <b>' + tree_draw_timer.getDeltaSeconds('barsizes')['deltaSecondsPrev'] + '</b> seconds).');
+
+    if (t.error != 0) {
         alert('Error parsing tree');
     } else {
         t.ComputeWeights(t.root);
@@ -2202,7 +2210,10 @@ function draw_tree(settings) {
         document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
         document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
     }
+
+    $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 }
+
 
 function rebuildIntersections()
 {
