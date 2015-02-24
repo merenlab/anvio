@@ -670,6 +670,7 @@ function drawTree() {
     tree_type = settings['tree-type'];
 
     $('#img_loading').show();
+    $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
 
     setTimeout(function () 
