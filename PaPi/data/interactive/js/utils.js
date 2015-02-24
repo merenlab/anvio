@@ -33,11 +33,45 @@ function clearMinMax(selectbox)
     $('#max' + id).val('0').prop('disabled', true);     
 }
 
+/* Poor man's timer.
+ * 
+ *     function ...(...) {
+ *         var my_timer = new BasicTimer('my_func');
+ *         (...)
+ *         my_timer.getDeltaSeconds('X happened');
+ *         (...)
+ *         my_timer.getDeltaSeconds('Y happened');
+ *         (...)
+ *         my_timer.getDeltaSeconds('End');
+ *     }
+ *
+ */ 
+function BasicTimer(name) {
+    this.name = name;
+    this.start = new Date().getTime();
+
+    this.getDeltaSeconds = function(event, consoleOutput) {
+        this.end = new Date().getTime();
+        deltaSeconds = (this.end - this.start) / 1000;
+
+        consoleOutput = typeof consoleOutput !== 'undefined' ? consoleOutput: true;
+
+        prettyText = this.name + ' [' + event + ']: ' + readableNumber(deltaSeconds) + ' seconds.';
+
+        if(consoleOutput)
+            console.log(prettyText);
+
+        return {'deltaSeconds': deltaSeconds, 'prettyText': prettyText};
+    };
+}
+
 //--------------------------------------------------------------------------------------------------
 // source: https://gist.github.com/cjthompson/9140248
 function readableNumber(num) {
     if(num == 0)
         return 0;
+    if(num < 1)
+        return num;
     var s = ['', 'K', 'M', 'G'];
     var e = Math.floor(Math.log(num) / Math.log(1000));
     return (num / Math.pow(1000, e)).toPrecision(3) + s[e];
