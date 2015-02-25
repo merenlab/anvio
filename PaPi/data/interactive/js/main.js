@@ -6,6 +6,7 @@ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || 
 var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
 var LINE_COLOR='#888888';
+var HIGHLIGHT_COLOR= "#FFC000";
 
 var scale = 0;
 
@@ -1058,57 +1059,22 @@ function showSearchResult() {
 }
 
 function highlightResult() {
-    var HIGHLIGHT_COLOR= "#FFC000";
-
     // check if tree exists
     if ($.isEmptyObject(label_to_node_map)) {
         alert('Draw tree first.');
         return;
     }
 
-    // clear previous highlight
-    clearHighlight();
+    var order_list = new Array();
 
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
+    for (var i=0; i < search_results.length; i++) {
         var _contig_name = metadata[search_results[i]][0];
-        var _id = label_to_node_map[_contig_name].id;
+        var _order = label_to_node_map[_contig_name].order;
 
-        var _path_background = document.getElementsByClassName('path_' + _id + '_background');
-        for (var _i=0; _i < _path_background.length; _i++) {
-            _path_background[_i].style['fill'] = HIGHLIGHT_COLOR;
-            _path_background[_i].style['fill-opacity'] = '0.1';  
-        }
-        var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
-        for (var _i=0; _i < _path_outer_ring.length; _i++) {
-            if (_i==0) {
-                highlight_backup[_contig_name] = _path_outer_ring[_i].style['fill'];
-            }
-            _path_outer_ring[_i].style['fill'] = HIGHLIGHT_COLOR;
-        }
-    }
-}
-
-function clearHighlight() {
-    for (_contig_name in highlight_backup)
-    {
-        var _id = label_to_node_map[_contig_name].id;
-        var _color = highlight_backup[_contig_name];
-        var _opacity = (_color == "#FFFFFF" || _color == "") ? '0.0' : '0.1';
-
-        var _path_background = document.getElementsByClassName('path_' + _id + '_background');
-        for (var _i=0; _i < _path_background.length; _i++) {
-            _path_background[_i].style['fill'] = _color;
-            _path_background[_i].style['fill-opacity'] = _opacity;  
-        }
-        var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
-        for (var _i=0; _i < _path_outer_ring.length; _i++) {
-            _path_outer_ring[_i].style['fill'] = _color;
-        }
+        order_list.push(_order);
     }
 
-    highlight_backup = {};
-
+    redrawGroups(order_list); 
 }
 
 function appendResult() {
@@ -1122,8 +1088,6 @@ function appendResult() {
 
     if (group_id === 'undefined')
         return;
-
-    clearHighlight();
 
     var groups_to_update = [];
     var _len = search_results.length;
@@ -1152,7 +1116,7 @@ function appendResult() {
     }
 
     updateGroupWindow(groups_to_update);
-    redrawGroupColors(group_id);
+    redrawGroups();
 }
 
 function removeResult() {
@@ -1176,21 +1140,12 @@ function removeResult() {
         var pos = SELECTED[group_id].indexOf(_contig_name);
         if (pos > -1) {
             SELECTED[group_id].splice(pos, 1);
-
+            
             if (groups_to_update.indexOf(group_id) == -1)
                 groups_to_update.push(group_id);
-
-            var _path_background = document.getElementsByClassName('path_' + _id + '_background');
-            for (var _i=0; _i < _path_background.length; _i++) {
-                _path_background[_i].style['fill'] = '#FFFFFF';
-                _path_background[_i].style['fill-opacity'] = '0.0';  
-            }
-            var _path_outer_ring = document.getElementsByClassName('path_' + _id + '_outer_ring');
-            for (var _i=0; _i < _path_outer_ring.length; _i++) {
-                _path_outer_ring[_i].style['fill'] = '#FFFFFF';
-            }
         }
     }
 
     updateGroupWindow(groups_to_update);
+    redrawGroups();
 }

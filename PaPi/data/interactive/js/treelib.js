@@ -2179,7 +2179,6 @@ function draw_tree(settings) {
         }
 
         rebuildIntersections();
-        //redrawGroupColors();
         createGroup('tree_group', 'group');
         redrawGroups();
 
@@ -2218,7 +2217,7 @@ function draw_tree(settings) {
     $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 }
 
-function redrawGroups()
+function redrawGroups(search_results)
 {
     var leaf_list = Array.apply(null, new Array(order_counter+1)).map(Number.prototype.valueOf,0);
 
@@ -2229,6 +2228,16 @@ function redrawGroups()
             if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
                 leaf_list[label_to_node_map[SELECTED[gid][j]].order] = gid;
             }
+        }
+    }
+
+    // if search_results is given, we will write it on leaf_list with value -1
+    // later we will draw HIGHLIGHT_COLOR for gid -1.
+    if (typeof search_results !== 'undefined')
+    {
+        for (var i=0; i < search_results.length; i++)
+        {
+            leaf_list[search_results[i]] = -1;
         }
     }
 
@@ -2261,7 +2270,7 @@ function redrawGroups()
         var start = order_to_node_map[groups_to_draw[i][0]];
         var end = order_to_node_map[groups_to_draw[i][1]];
 
-        var color = document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
+        var color = (groups_to_draw[i][2] == -1) ? HIGHLIGHT_COLOR : document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
 
         drawPie('group',
             'group_background_' + i,
