@@ -239,59 +239,6 @@ function drawLayerLegend(layers, layer_order, top, left) {
 
 }
 
-function redrawGroupColors(id) {
-    // check if tree parsed, if not there is nothing to redraw.
-    if ($.isEmptyObject(label_to_node_map)) 
-        return;
-
-    if (typeof id === 'undefined')
-    {
-        // redraw all groups
-        var start = 1;
-        var end = group_counter;
-    }
-    else
-    {
-        var start = id;
-        var end = id;
-    }
-
-    for (var gid = start; gid <= end; gid++) {
-        
-        // check if group exist
-        var color_picker = document.getElementById('group_color_' + gid);
-
-        if (!color_picker)
-            continue;
-
-        var group_color = color_picker.getAttribute('color');
-
-        for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                var _path_background = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_background');
-                _path_background[0].style['fill'] = group_color;
-                _path_background[0].style['fill-opacity'] = '0.1';      
-
-                var _path_outer_ring = document.getElementsByClassName('path_' + label_to_node_map[SELECTED[gid][j]].id + '_outer_ring');
-                _path_outer_ring[0].style['fill'] = group_color;    
-            }
-
-            var _line = document.getElementById('line' + label_to_node_map[SELECTED[gid][j]].id);
-            if (_line) {
-                _line.style['stroke-width'] = '2';
-                _line.style['stroke'] = group_color;       
-            }
-
-            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[gid][j]].id);
-            if (_arc) {
-                _arc.style['stroke-width'] = '2';
-                _arc.style['stroke'] = group_color;
-            }
-        }
-    }
-
-}
-
 function drawLine(svg_id, p, p0, p1, isArc) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
