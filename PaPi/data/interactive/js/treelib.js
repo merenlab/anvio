@@ -1896,8 +1896,12 @@ function draw_tree(settings) {
                             }
                             else if(isCategorical)
                             {
-                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined')
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
+                                    if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
+                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                                    else
+                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                }
 
                                 var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
 
@@ -2005,8 +2009,12 @@ function draw_tree(settings) {
                             }
                             else if(isCategorical)
                             {
-                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined')
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
+                                    if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
+                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                                    else
+                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                }
 
                                 var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
 
