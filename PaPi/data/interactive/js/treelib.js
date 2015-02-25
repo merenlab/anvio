@@ -2219,6 +2219,10 @@ function draw_tree(settings) {
 
 function redrawGroups(search_results)
 {
+    // check if tree parsed, if not there is nothing to redraw.
+    if ($.isEmptyObject(label_to_node_map)) 
+        return;
+
     var leaf_list = Array.apply(null, new Array(order_counter+1)).map(Number.prototype.valueOf,0);
 
     // put group numbers of selected leaves to leaf list
