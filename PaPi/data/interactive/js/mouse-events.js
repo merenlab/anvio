@@ -15,7 +15,7 @@ function lineClickHandler(event) {
     if (group_id === 'undefined')
         return;
 
-    if (p.child_nodes.length > 1000 && !confirm("You just made a very big selection. Please click OK if it was intentional (and be ready to wait for a bit)."))
+    if (p.child_nodes.length > 2500 && !confirm("You just made a very big selection. Please click OK if it was intentional."))
         return;
 
     var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
@@ -76,7 +76,7 @@ function lineContextMenuHandler(event) {
             else
             {
                 $('#control_contextmenu #select').hide();
-                $('#control_contextmenu #remove').show();                        
+                $('#control_contextmenu #remove').show();
             }
         }
         else
@@ -94,7 +94,7 @@ function lineContextMenuHandler(event) {
     if (group_id === 'undefined')
         return;
 
-    if (p.child_nodes.length > 1000 && !confirm("You are about to unselect a large number of contigs."))
+    if (p.child_nodes.length > 2500 && !confirm("You are about to unselect a large number of contigs. Press OK to continue."))
         return;
 
     var groups_to_update = [];
