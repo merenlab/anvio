@@ -11,15 +11,17 @@ var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
+var order_to_node_map = {};
 
 var angle_per_leaf;
 var height_per_leaf;
 var tree_type;
+var margin;
+var order_counter;
 
 var total_radius = 0;
 
 var SELECTED = new Array();
-
 var newick;
 
 var metadata;
@@ -775,7 +777,7 @@ function newGroup(id, groupState) {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawGroupColors(id);
+            redrawGroups();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
@@ -795,12 +797,6 @@ function deleteGroup(id) {
             $("#arc" + node_id).css('stroke-width', '1');
             $("#line" + node_id).css('stroke', LINE_COLOR);
             $("#arc" + node_id).css('stroke', LINE_COLOR);
-
-            if (label_to_node_map[SELECTED[id][i]].IsLeaf())
-            {
-                $('.path_' + node_id + "_background").css({'fill': '#FFFFFF', 'fill-opacity': '0.0'});
-                $('.path_' + node_id + "_outer_ring").css('fill', '#FFFFFF');
-            }
         }
 
         SELECTED[id] = [];
@@ -810,6 +806,8 @@ function deleteGroup(id) {
         {
             newGroup();
         }
+
+        redrawGroups();
     }
 }
 
@@ -994,33 +992,7 @@ function exportSvg() {
 
     drawLayerLegend(settings['views'][current_view], settings['layer-order'], top, left);
 
-    // move group highlights to new svg groups
-    for (var gid = 1; gid <= group_counter; gid++) {
-
-        createGroup('tree_group', 'selected_group_' + gid);
-
-        for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_background").detach().appendTo('#selected_group_' + gid);
-                $('.path_' + label_to_node_map[SELECTED[gid][j]].id + "_outer_ring").detach().appendTo('#selected_group_' + gid);
-            }
-        }
-    }
-
-    // remove ungrouped backgrounds.
-    if (tree_type == 'circlephylogram')
-    {
-        var detached_paths = $('#tree_group > path').detach();        
-    }
-    else
-    {
-        var detached_paths = $('#tree_group > rect').detach();   
-    }
-
     svgCrowbar();
-
-    // add removed ungrouped backgrounds back
-    $(detached_paths).appendTo('#tree_group');
 
     $('#group_legend').remove();
     $('#layer_legend').remove();

@@ -28,15 +28,6 @@ function lineClickHandler(event) {
 
             if (groups_to_update.indexOf(group_id) == -1)
                 groups_to_update.push(group_id);
-
-            if (id_to_node_map[p.child_nodes[i]].IsLeaf()) {
-                var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
-                _path_background[0].style['fill'] = group_color;
-                _path_background[0].style['fill-opacity'] = '0.1';      
-
-                var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
-                _path_outer_ring[0].style['fill'] = group_color;   
-            }
         }
 
         // remove nodes from other groups
@@ -55,6 +46,7 @@ function lineClickHandler(event) {
         }
     }
 
+    redrawGroups();
     updateGroupWindow(groups_to_update);
 }
 
@@ -107,15 +99,6 @@ function lineContextMenuHandler(event) {
 
     var groups_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
-        if (id_to_node_map[p.child_nodes[i]].IsLeaf()) {
-            var _path_background = document.getElementsByClassName('path_' + p.child_nodes[i] + '_background');
-            _path_background[0].style['fill'] = '#FFFFFF';
-            _path_background[0].style['fill-opacity'] = '0.0';      
-
-            var _path_outer_ring = document.getElementsByClassName('path_' + p.child_nodes[i] + '_outer_ring');
-            _path_outer_ring[0].style['fill'] = '#FFFFFF';
-        }  
-
         // remove nodes from all groups
         for (var gid = 1; gid <= group_counter; gid++) {
             var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
@@ -127,6 +110,7 @@ function lineContextMenuHandler(event) {
             }
         }
     }
+    redrawGroups();
     updateGroupWindow(groups_to_update);
     lineMouseLeaveHandler(event);
     return false;

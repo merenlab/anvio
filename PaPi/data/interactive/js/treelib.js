@@ -579,6 +579,7 @@ function Node(label) {
     this.edge_length = 0.0;
     this.path_length = 0.0;
     this.depth = 0;
+    this.order = null;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1511,6 +1512,8 @@ function draw_tree(settings) {
 
     id_to_node_map = new Array();
     label_to_node_map = {};
+    order_to_node_map = {};
+
     var t = new Tree();
 
     newick = newick.trim(newick);
@@ -1771,6 +1774,7 @@ function draw_tree(settings) {
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 
+        order_counter = 0;
         switch (settings['tree-type']) {
             case 'phylogram':
                 while (q != null)
@@ -1790,6 +1794,10 @@ function draw_tree(settings) {
                         _q = _n.Next();
                     }
                     // end of childs
+                    if (q.IsLeaf()) {
+                        q.order = order_counter++;
+                        order_to_node_map[q.order] = q;
+                    }
 
                     q = n.Next();
 
@@ -1817,6 +1825,10 @@ function draw_tree(settings) {
                         _q = _n.Next();
                     }
                     // end of childs
+                    if (q.IsLeaf()) {
+                        q.order = order_counter++;
+                        order_to_node_map[q.order] = q;
+                    }
 
                     q = n.Next();
                 }
@@ -1829,7 +1841,7 @@ function draw_tree(settings) {
                 break;
         }  
         
-        var margin = parseFloat(settings['layer-margin']);
+        margin = parseFloat(settings['layer-margin']);
 
         // calculate layer boundries
         for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -2150,30 +2162,6 @@ function draw_tree(settings) {
                             }
 
                         }
-
-                        drawPie('viewport',
-                            q.id + "_background",
-                            q.angle - angle_per_leaf / 2,
-                            q.angle + angle_per_leaf / 2,
-                            layer_boundaries[0][1],
-                            total_radius + margin,
-                            0,
-                            '#FFFFFF',
-                            0.0,
-                            false); 
-
-                        drawPie('viewport',
-                            q.id + "_outer_ring",
-                            q.angle - angle_per_leaf / 2,
-                            q.angle + angle_per_leaf / 2,
-                            total_radius + margin,
-                            // FIXME: for now the scaling factor is 4, but obviously this should be
-                            // parameterized at some point:
-                            total_radius + margin * 4,
-                            0,
-                            '#FFFFFF',
-                            1,
-                            false); 
                     }
                     q = n.Next();
                 }
@@ -2191,7 +2179,9 @@ function draw_tree(settings) {
         }
 
         rebuildIntersections();
-        redrawGroupColors();
+        //redrawGroupColors();
+        createGroup('tree_group', 'group');
+        redrawGroups();
 
         // draw title
         switch (settings['tree-type']) {
@@ -2226,6 +2216,76 @@ function draw_tree(settings) {
     }
 
     $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+}
+
+function redrawGroups()
+{
+    var leaf_list = Array.apply(null, new Array(order_counter+1)).map(Number.prototype.valueOf,0);
+
+    // put group numbers of selected leaves to leaf list
+    // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
+    for (var gid = 1; gid <= group_counter; gid++) {
+        for (var j = 0; j < SELECTED[gid].length; j++) {
+            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
+                leaf_list[label_to_node_map[SELECTED[gid][j]].order] = gid;
+            }
+        }
+    }
+
+    // cluster groups and put them into groups_to_draw array with (start, end, gid);
+    var prev_value = leaf_list[0];
+    var prev_start = 0;
+
+    var groups_to_draw = new Array();
+
+    for (var i=1; i < leaf_list.length; i++)
+    {
+        if (prev_value != leaf_list[i])
+        {
+            if (prev_value != 0)
+                groups_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, gid;
+
+            prev_start = i;
+        }
+        prev_value = leaf_list[i];
+    }
+
+    // remove exist group drawings
+    var group = document.getElementById('group');
+    while (group.hasChildNodes()) {
+        group.removeChild(group.lastChild);
+    }
+
+    // draw new groups
+    for (var i=0; i < groups_to_draw.length; i++) {
+        var start = order_to_node_map[groups_to_draw[i][0]];
+        var end = order_to_node_map[groups_to_draw[i][1]];
+
+        var color = document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
+
+        drawPie('group',
+            'group_background_' + i,
+            start.angle - angle_per_leaf / 2,
+            end.angle + angle_per_leaf / 2,
+            beginning_of_layers,
+            total_radius,
+            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+            color,
+            0.1,
+            false);
+
+        drawPie('group',
+            'group_outer_' + 1,
+            start.angle - angle_per_leaf / 2,
+            end.angle + angle_per_leaf / 2,
+            total_radius + margin,
+            total_radius + margin * 4,
+            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+            color,
+            1,
+            false); 
+
+    }
 }
 
 
