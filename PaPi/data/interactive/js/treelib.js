@@ -2014,28 +2014,7 @@ function draw_tree(settings) {
                                         true);
                                 }
                             }
-
                         }
-
-                        drawPhylogramRectangle('tree_group',
-                            q.id + "_background",
-                            layer_boundaries[0][1],
-                            q.xy['y'],
-                            height_per_leaf,
-                            total_radius + margin - layer_boundaries[0][1],
-                            '#FFFFFF',
-                            0.0,
-                            false);
-
-                        drawPhylogramRectangle('tree_group',
-                            q.id + "_outer_ring",
-                            total_radius + margin,
-                            q.xy['y'],
-                            height_per_leaf,
-                            margin * 4,
-                            '#FFFFFF',
-                            1,
-                            false);
                     }
                     q = n.Next();
                 }
@@ -2276,27 +2255,54 @@ function redrawGroups(search_results)
 
         var color = (groups_to_draw[i][2] == -1) ? HIGHLIGHT_COLOR : document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
 
-        drawPie('group',
-            'group_background_' + i,
-            start.angle - angle_per_leaf / 2,
-            end.angle + angle_per_leaf / 2,
-            beginning_of_layers,
-            total_radius,
-            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-            color,
-            0.1,
-            false);
+        if (tree_type == 'circlephylogram')
+        {
+            drawPie('group',
+                'group_background_' + i,
+                start.angle - angle_per_leaf / 2,
+                end.angle + angle_per_leaf / 2,
+                beginning_of_layers,
+                total_radius,
+                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                color,
+                0.1,
+                false);
 
-        drawPie('group',
-            'group_outer_' + 1,
-            start.angle - angle_per_leaf / 2,
-            end.angle + angle_per_leaf / 2,
-            total_radius + margin,
-            total_radius + margin * 4,
-            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-            color,
-            1,
-            false); 
+            drawPie('group',
+                'group_outer_' + 1,
+                start.angle - angle_per_leaf / 2,
+                end.angle + angle_per_leaf / 2,
+                total_radius + margin,
+                total_radius + margin * 4,
+                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                color,
+                1,
+                false);     
+        }
+        else
+        {
+
+            drawPhylogramRectangle('group',
+                'group_background_' + i,
+                beginning_of_layers,
+                (start.xy.y + end.xy.y) / 2,
+                end.xy.y - start.xy.y + height_per_leaf,
+                total_radius + margin - beginning_of_layers,
+                color,
+                0.1,
+                false);
+
+            drawPhylogramRectangle('group',
+                'group_outer_' + 1,
+                total_radius + margin,
+                (start.xy.y + end.xy.y) / 2,
+                end.xy.y - start.xy.y + height_per_leaf,
+                margin * 4,
+                color,
+                1,
+                false);
+        }
+
 
     }
 }
