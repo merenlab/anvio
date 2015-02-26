@@ -9,20 +9,23 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 
 
 setup(
-    name = "PaPi",
-    version = "0.1",
-    packages = find_packages(),
+    name = "papi",
+    version = open('VERSION').read().strip(),
+
     scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
+    include_package_data = True,
 
-    install_requires = ['bottle>=0.12.7', 'pysam>=0.7.5', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15'],
+    packages = find_packages(),
 
-    author = "A. Murat Eren",
+    install_requires = ['bottle>=0.12.7', 'pysam==0.7.7', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15'],
+
+    author = "PaPi Authors",
     author_email = "a.murat.eren@gmail.com",
-    description = "Post-assembly environmental genomics pipeline",
+    description = "Post-assembly Environmental (Meta)genomics Pipeline",
     longer_description=README,
-    license = "GPL",
+    license = "GPLv3+",
     keywords = "metagenomics microbiology shotgun genomics MBL pipeline sequencing bam",
-    url = "http://meren.org/research/papi/",   # project home page, if any
+    url = "https://meren.github.io/projects/papi/",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
