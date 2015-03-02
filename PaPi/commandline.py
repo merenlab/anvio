@@ -67,7 +67,7 @@ class HMMSearch:
         return self.proteins_in_contigs
 
 
-    def run_hmmscan(self, source, genes_in_model, hmm, ref):
+    def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag = "--cut_ga"):
         self.run.info('HMM Profiling for %s' % source, '', header=True)
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Pfam model', hmm)
@@ -103,7 +103,8 @@ class HMMSearch:
 
         self.progress.new('Processing')
         self.progress.update('Performing HMM scan ...')
-        cmd_line = ('hmmscan -o "%s" --tblout "%s" "%s" "%s" >> "%s" 2>&1' % (self.hmm_scan_output,
+        cmd_line = ('hmmscan -o "%s" %s --tblout "%s" "%s" "%s" >> "%s" 2>&1' % (self.hmm_scan_output,
+                                                                              cut_off_flag,
                                                                               self.hmm_scan_hits_shitty,
                                                                               hmm_file_path,
                                                                               self.proteins_in_contigs,
