@@ -1,41 +1,41 @@
-gene	accession
-COG0048	Ribosomal protein S12
-COG0052	Ribosomal protein S2
-COG0080	Ribosomal protein L11
-COG0085	DNA-directed RNA polymerase
-COG0087	Ribosomal protein L3
-COG0091	Ribosomal protein L22
-COG0092	Ribosomal protein S3
-COG0093	Ribosomal protein L14
-COG0094	Ribosomal protein L5
-COG0096	Ribosomal protein S8
-COG0097	Ribosomal protein L6P/L9E
-COG0100	Ribosomal protein S11
-COG0184	Ribosomal protein S15P/S13E
-COG0200	Ribosomal protein L15
-COG0201	Preprotein translocase subunit SecY
-COG0552	Signal recognition particle GTPase
-COG0088	Ribosomal protein L4
-COG0098	Ribosomal protein S5
-COG0099	Ribosomal protein S13
-COG0103	Ribosomal protein S9
-COG0185	Ribosomal protein S19
-COG0186	Ribosomal protein S17
-COG0197	Ribosomal protein L16/L10E
-COG0522	Ribosomal protein S4
-COG0081	Ribosomal protein L1
-COG0102	Ribosomal protein L13
-COG0172	Seryl-tRNA synthetase
-COG0215	Cysteinyl-tRNA synthetase
-COG0256	Ribosomal protein L18
-COG0495	Leucyl-tRNA synthetase
-COG0541	Signal recognition particle GTPase
-COG0016	Phenylalanyl-tRNA synthetase alpha subunit
-COG0049	Ribosomal protein S7
-COG0090	Ribosomal protein L2
-COG0202	DNA-directed RNA polymerase
-COG0533	Metal-dependent protease
-COG0525	Valyl-tRNA synthetase
-COG0012	GTP Binding Protein
-COG0018	Arginyl-tRNA synthetase
-COG0124	Histidyl-tRNA synthetase
+gene	accession	source
+YchF-GTPase_C	COG0012	http://pfam.xfam.org/family/PF06071
+Phe_tRNA-synt_N	COG0016	http://pfam.xfam.org/family/PF02912
+Arg_tRNA_synt_N	COG0018	http://pfam.xfam.org/family/PF03485
+Ribosom_S12_S23	COG0048	http://pfam.xfam.org/family/PF00164
+Ribosomal_S7	COG0049	http://pfam.xfam.org/family/PF00177
+Ribosomal_S2	COG0052	http://pfam.xfam.org/family/PF00318
+Ribosomal_L11	COG0080	http://pfam.xfam.org/family/PF00298
+Ribosomal_L1	COG0081	http://pfam.xfam.org/family/PF00687
+RNA_pol_Rpb2_1	COG0085	http://pfam.xfam.org/family/PF04563
+Ribosomal_L3	COG0087	http://pfam.xfam.org/family/PF00297
+Ribosomal_L4	COG0088	http://pfam.xfam.org/family/PF00573
+Ribosomal_L2	COG0090	http://pfam.xfam.org/family/PF00181
+Ribosomal_L22	COG0091	http://pfam.xfam.org/family/PF00237
+Ribosomal_S3_C	COG0092	http://pfam.xfam.org/family/PF00189
+Ribosomal_L14	COG0093	http://pfam.xfam.org/family/PF00238
+Ribosomal_L5	COG0094	http://pfam.xfam.org/family/PF00281
+Ribosomal_S8	COG0096	http://pfam.xfam.org/family/PF00410
+Ribosomal_L6	COG0097	http://pfam.xfam.org/family/PF00347
+Ribosomal_S5	COG0098	http://pfam.xfam.org/family/PF00333
+Ribosomal_S13	COG0099	http://pfam.xfam.org/family/PF00416
+Ribosomal_S11	COG0100	http://pfam.xfam.org/family/PF00411
+Ribosomal_L13	COG0102	http://pfam.xfam.org/family/PF00572
+Ribosomal_S9	COG0103	http://pfam.xfam.org/family/PF00380
+HGTP_anticodon	COG0124	http://pfam.xfam.org/family/PF03129
+Seryl_tRNA_N	COG0172	http://pfam.xfam.org/family/PF02403
+Ribosomal_S15	COG0184	http://pfam.xfam.org/family/PF00312
+Ribosomal_S19	COG0185	http://pfam.xfam.org/family/PF00203
+Ribosomal_S17	COG0186	http://pfam.xfam.org/family/PF00366
+Ribosomal_L16	COG0197	http://pfam.xfam.org/family/PF00252
+Ribosomal_L18e	COG0200	http://pfam.xfam.org/family/PF00828
+SecY	COG0201	http://pfam.xfam.org/family/PF00344
+RNA_pol_A_bac	COG0202	http://pfam.xfam.org/family/PF01000
+tRNA-synt_1e	COG0215	http://pfam.xfam.org/family/PF01406
+Ribosomal_L18p	COG0256	http://pfam.xfam.org/family/PF00861
+tRNA-synt_1_2	COG0495	http://pfam.xfam.org/family/PF13603
+Ribosomal_S4	COG0522	http://pfam.xfam.org/family/PF00163
+Val_tRNA-synt_C	COG0525	http://pfam.xfam.org/family/PF10458
+Peptidase_M22	COG0533	http://pfam.xfam.org/family/PF00814
+SRP54	COG0541	http://pfam.xfam.org/family/PF00448
+SRP54_N	COG0552	http://pfam.xfam.org/family/PF02881
