@@ -690,7 +690,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
                                 or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
 
-        genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['gene', 'accession'])
+        genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['gene', 'accession', 'hmmsource'])
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,

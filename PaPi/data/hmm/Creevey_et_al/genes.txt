@@ -1,4 +1,4 @@
-gene	accession	source
+gene	accession	hmmsource
 YchF-GTPase_C	COG0012	http://pfam.xfam.org/family/PF06071
 Phe_tRNA-synt_N	COG0016	http://pfam.xfam.org/family/PF02912
 Arg_tRNA_synt_N	COG0018	http://pfam.xfam.org/family/PF03485

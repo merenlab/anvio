@@ -1,112 +1,112 @@
-gene	accession
-PGK	PF00162.14
-Ribosomal_L23	PF00276.15
-Ribosomal_L5	PF00281.14
-Ribosomal_L3	PF00297.17
-Ribosomal_L6	PF00347.18
-Ribosomal_S17	PF00366.15
-Ribosomal_S9	PF00380.14
-Ribosomal_S8	PF00410.14
-Ribosomal_S11	PF00411.14
-Ribosomal_S13	PF00416.17
-Ribosomal_L10	PF00466.15
-Ribosomal_L4	PF00573.17
-tRNA-synt_1d	PF00750.14
-GrpE	PF01025.14
-Methyltransf_5	PF01795.14
-rpmI	TIGR00001
-rpsP	TIGR00002
-rpmB	TIGR00009
-rpmC	TIGR00012
-prfA	TIGR00019
-rpsT	TIGR00029
-ybeY	TIGR00043
-rplQ	TIGR00059
-rplR	TIGR00060
-rplU	TIGR00061
-rpmA	TIGR00062
-ftsY	TIGR00064
-rfbA	TIGR00082
-smpB	TIGR00086
-ychF	TIGR00092
-tig	TIGR00115
-tsf	TIGR00116
-coaE	TIGR00152
-rplI	TIGR00158
-rpsR	TIGR00165
-rpsF	TIGR00166
-infC	TIGR00168
-tyrS	TIGR00234
-pyrG	TIGR00337
-alaS	TIGR00344
-dnaA	TIGR00362
-glyQ	TIGR00388
-glyS	TIGR00389
-ileS	TIGR00392
-leuS	TIGR00396
-proS_fam_I	TIGR00408
-proS_fam_II	TIGR00409
-serS	TIGR00414
-thrS	TIGR00418
-mnmA	TIGR00420
-valS	TIGR00422
-cysS	TIGR00435
-era	TIGR00436
-hisS	TIGR00442
-aspS	TIGR00459
-fmt	TIGR00460
-pheS	TIGR00468
-pheT_arch	TIGR00471
-pheT_bact	TIGR00472
-infB	TIGR00487
-frr	TIGR00496
-ligA	TIGR00575
-uvrB	TIGR00631
-dnaN	TIGR00663
-TIGR00775	TIGR00775
-secG	TIGR00810
-rplL	TIGR00855
-nusG	TIGR00922
-rpsO	TIGR00952
-ffh	TIGR00959
-secA	TIGR00963
-secE	TIGR00964
-secY	TIGR00967
-rpsL	TIGR00981
-rpsC	TIGR01009
-rpsB	TIGR01011
-rpsD	TIGR01017
-rpsE	TIGR01021
-rplS	TIGR01024
-rpsG	TIGR01029
-rpmH	TIGR01030
-rpmF	TIGR01031
-rplT	TIGR01032
-rplV	TIGR01044
-rpsJ	TIGR01049
-rpsS	TIGR01050
-gyrB	TIGR01059
-gyrA	TIGR01063
-rplM	TIGR01066
-rplN	TIGR01067
-rplO	TIGR01071
-rplX	TIGR01079
-rplP	TIGR01164
-rplA	TIGR01169
-rplB	TIGR01171
-dnaG	TIGR01391
-lepA	TIGR01393
-rplK	TIGR01632
-nusA	TIGR01953
-recA	TIGR02012
-rpoB	TIGR02013
-rpoA	TIGR02027
-rnc	TIGR02191
-dnaK	TIGR02350
-rpoC_TIGR	TIGR02386
-rpoC1_cyan	TIGR02387
-dnaX	TIGR02397
-tilS	TIGR02432
-cgtA	TIGR02729
-gmk	TIGR03263
-engA	TIGR03594
+gene	accession	hmmsource
+PGK	PF00162.14	unknown
+Ribosomal_L23	PF00276.15	unknown
+Ribosomal_L5	PF00281.14	unknown
+Ribosomal_L3	PF00297.17	unknown
+Ribosomal_L6	PF00347.18	unknown
+Ribosomal_S17	PF00366.15	unknown
+Ribosomal_S9	PF00380.14	unknown
+Ribosomal_S8	PF00410.14	unknown
+Ribosomal_S11	PF00411.14	unknown
+Ribosomal_S13	PF00416.17	unknown
+Ribosomal_L10	PF00466.15	unknown
+Ribosomal_L4	PF00573.17	unknown
+tRNA-synt_1d	PF00750.14	unknown
+GrpE	PF01025.14	unknown
+Methyltransf_5	PF01795.14	unknown
+rpmI	TIGR00001	unknown
+rpsP	TIGR00002	unknown
+rpmB	TIGR00009	unknown
+rpmC	TIGR00012	unknown
+prfA	TIGR00019	unknown
+rpsT	TIGR00029	unknown
+ybeY	TIGR00043	unknown
+rplQ	TIGR00059	unknown
+rplR	TIGR00060	unknown
+rplU	TIGR00061	unknown
+rpmA	TIGR00062	unknown
+ftsY	TIGR00064	unknown
+rfbA	TIGR00082	unknown
+smpB	TIGR00086	unknown
+ychF	TIGR00092	unknown
+tig	TIGR00115	unknown
+tsf	TIGR00116	unknown
+coaE	TIGR00152	unknown
+rplI	TIGR00158	unknown
+rpsR	TIGR00165	unknown
+rpsF	TIGR00166	unknown
+infC	TIGR00168	unknown
+tyrS	TIGR00234	unknown
+pyrG	TIGR00337	unknown
+alaS	TIGR00344	unknown
+dnaA	TIGR00362	unknown
+glyQ	TIGR00388	unknown
+glyS	TIGR00389	unknown
+ileS	TIGR00392	unknown
+leuS	TIGR00396	unknown
+proS_fam_I	TIGR00408	unknown
+proS_fam_II	TIGR00409	unknown
+serS	TIGR00414	unknown
+thrS	TIGR00418	unknown
+mnmA	TIGR00420	unknown
+valS	TIGR00422	unknown
+cysS	TIGR00435	unknown
+era	TIGR00436	unknown
+hisS	TIGR00442	unknown
+aspS	TIGR00459	unknown
+fmt	TIGR00460	unknown
+pheS	TIGR00468	unknown
+pheT_arch	TIGR00471	unknown
+pheT_bact	TIGR00472	unknown
+infB	TIGR00487	unknown
+frr	TIGR00496	unknown
+ligA	TIGR00575	unknown
+uvrB	TIGR00631	unknown
+dnaN	TIGR00663	unknown
+TIGR00775	TIGR00775	unknown
+secG	TIGR00810	unknown
+rplL	TIGR00855	unknown
+nusG	TIGR00922	unknown
+rpsO	TIGR00952	unknown
+ffh	TIGR00959	unknown
+secA	TIGR00963	unknown
+secE	TIGR00964	unknown
+secY	TIGR00967	unknown
+rpsL	TIGR00981	unknown
+rpsC	TIGR01009	unknown
+rpsB	TIGR01011	unknown
+rpsD	TIGR01017	unknown
+rpsE	TIGR01021	unknown
+rplS	TIGR01024	unknown
+rpsG	TIGR01029	unknown
+rpmH	TIGR01030	unknown
+rpmF	TIGR01031	unknown
+rplT	TIGR01032	unknown
+rplV	TIGR01044	unknown
+rpsJ	TIGR01049	unknown
+rpsS	TIGR01050	unknown
+gyrB	TIGR01059	unknown
+gyrA	TIGR01063	unknown
+rplM	TIGR01066	unknown
+rplN	TIGR01067	unknown
+rplO	TIGR01071	unknown
+rplX	TIGR01079	unknown
+rplP	TIGR01164	unknown
+rplA	TIGR01169	unknown
+rplB	TIGR01171	unknown
+dnaG	TIGR01391	unknown
+lepA	TIGR01393	unknown
+rplK	TIGR01632	unknown
+nusA	TIGR01953	unknown
+recA	TIGR02012	unknown
+rpoB	TIGR02013	unknown
+rpoA	TIGR02027	unknown
+rnc	TIGR02191	unknown
+dnaK	TIGR02350	unknown
+rpoC_TIGR	TIGR02386	unknown
+rpoC1_cyan	TIGR02387	unknown
+dnaX	TIGR02397	unknown
+tilS	TIGR02432	unknown
+cgtA	TIGR02729	unknown
+gmk	TIGR03263	unknown
+engA	TIGR03594	unknown
