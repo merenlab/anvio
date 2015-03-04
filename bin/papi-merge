@@ -20,7 +20,7 @@ __status__ = "Development"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Merge multiple PaPi runs to do cross-sectional or timeseries comparisons')
+    parser = argparse.ArgumentParser(description='Merge multiple PaPi profiles')
     parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
                         help = 'PaPi RUNINFO files to create a merged output')
     parser.add_argument('-o', '--output-dir', help = 'Output directory')
