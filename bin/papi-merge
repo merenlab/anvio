@@ -255,6 +255,7 @@ class MultipleRuns:
         self.profile_db = PaPi.db.DB(self.profile_db_path, __version__, new_database = True)
         # put sample id into the meta table
         self.profile_db.set_meta_value('sample_id', self.sample_id)
+        self.profile_db.set_meta_value('samples', ','.join(self.merged_sample_ids))
         self.profile_db.set_meta_value('merged', True)
         annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         self.profile_db.set_meta_value('annotation_hash', annotation_hash)

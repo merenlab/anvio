@@ -111,6 +111,10 @@ class BAMProfiler:
 
         # put sample id into the meta table
         self.profile_db.set_meta_value('sample_id', self.sample_id)
+        # the database design also requires to have a metadata variable that holds all the "samples"
+        # described in the database. it doesn't make much sense for an individual profile, but it is
+        # well used for merged studies.
+        self.profile_db.set_meta_value('samples', self.sample_id)
         self.profile_db.set_meta_value('merged', False)
 
         if self.annotation_db_path:
