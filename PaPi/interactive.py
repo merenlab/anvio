@@ -62,7 +62,7 @@ class InputHandler:
         if args.runinfo:
             self.load_from_runinfo_dict(args)
         else:
-            self.load_from_files(args.fasta_file, args.metadata, args.tree, args.output_dir)
+            self.load_from_files(args)
 
         # if we have an annotation_db, lets load it up. the split length used when the annotation db
         # created must match with the split length used to profile these merged runs. the problem is,
@@ -120,8 +120,8 @@ class InputHandler:
                                                                                                  genes_annotation_source))
 
 
-    def load_from_files(self, fasta_file, metadata, tree, output_dir):
-        if (not fasta_file) or (not metadata) or (not tree) or (not output_dir):
+    def load_from_files(self, args):
+        if (not args.fasta_file) or (not args.metadata) or (not args.tree) or (not args.output_dir):
             raise utils.ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                            '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                            more detailed information on them."
@@ -132,9 +132,10 @@ class InputHandler:
         if args.show_views:
             raise utils.ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
-        metadata_path = os.path.abspath(metadata)
+        metadata_path = os.path.abspath(args.metadata)
         self.runinfo['splits_fasta'] = os.path.abspath(args.fasta_file)
         self.runinfo['output_dir'] = os.path.abspath(args.output_dir)
+        self.runinfo['views'] = {}
         self.runinfo['default_view'] = 'single'
         self.runinfo['default_clustering'] = 'default'
         self.runinfo['clusterings'] = {'default': os.path.abspath(args.tree)}
@@ -147,15 +148,15 @@ class InputHandler:
         # sanity of the metadata
         filesnpaths.is_file_tab_delimited(metadata_path)
         metadata_columns = utils.get_columns_of_TAB_delim_file(metadata_path, include_first_column=True)
-        if not metadata_headers[0] == "contig":
+        if not metadata_columns[0] == "contig":
             raise utils.ConfigError, "The first row of the first column of the metadata file must\
                                       say 'contig', which is not the case for your metadata file\
                                       ('%s'). Please make sure this is a properly formatted metadata\
                                       file." % (metadata_path)
 
         # store metadata as view:
-        self.views['single'] = {'header': metadata_headers,
-                                'dict': get_TAB_delimited_file_as_dictionary(metadata_path)}
+        self.views['single'] = {'header': metadata_columns[1:],
+                                'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
 
         filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
 
@@ -331,6 +332,7 @@ class InputHandler:
 
                 json_object.append(json_entry)
                  
+            print self.runinfo
             self.runinfo['views'][view] = json_object
 
 
