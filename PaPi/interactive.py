@@ -332,7 +332,6 @@ class InputHandler:
 
                 json_object.append(json_entry)
                  
-            print self.runinfo
             self.runinfo['views'][view] = json_object
 
 
