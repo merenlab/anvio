@@ -46,11 +46,11 @@ class BAMProfiler:
         self.input_file_path = None 
         self.annotation_db_path = None
         self.serialized_profile_path = None 
+        self.split_length = 20000
         self.output_directory = None 
         self.list_contigs_and_exit = None 
         self.min_contig_length = 10000 
         self.min_mean_coverage = 10
-        self.split_length = 20000
         self.contig_names_of_interest = None
 
         if args:
@@ -64,7 +64,6 @@ class BAMProfiler:
             self.min_mean_coverage = args.min_mean_coverage
             self.number_of_threads = 4 
             self.no_trehading = True
-            self.split_length = args.split_length
             self.sample_id = args.sample_id
 
             if args.contigs_of_interest:
@@ -91,6 +90,10 @@ class BAMProfiler:
 
 
     def init_dirs_and_dbs(self):
+        if not self.annotation_db_path:
+            raise utils.ConfigError, "You can not run profiling without an annotation database. You can create\
+                                      one using 'papi-gen-annotation-database'. Not sure how? Please see the\
+                                      user manual."
         self.progress.new('Initializing')
 
         self.progress.update('Creating the output directory ...')
@@ -117,23 +120,11 @@ class BAMProfiler:
         self.profile_db.set_meta_value('samples', self.sample_id)
         self.profile_db.set_meta_value('merged', False)
 
-        if self.annotation_db_path:
-            self.progress.update('Initializing the annotation database ...')
-            self.annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
+        self.progress.update('Initializing the annotation database ...')
+        self.annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
+        self.split_length = int(self.annotation_db.db.get_meta_value('split_length'))
 
         self.progress.end()
-
-        # before leaving this part, lets just make sure the split_length is compatible with annotation
-        # database.
-        if self.annotation_db:
-            annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
-            if annotation_split_length != self.split_length:
-                raise utils.ConfigError, "The split length used to generate the annotation database (which is %d),\
-                                          and splith length set for the current profiling attempt (which is %d) do\
-                                          not match (but they should). You either need to profile this sample using\
-                                          '-L %d' parameter, or regenerate the annotation database using '-L %d'\
-                                          parameter :/" % (annotation_split_length, self.split_length,
-                                                           annotation_split_length, self.split_length)
 
 
     def _run(self):
@@ -173,18 +164,11 @@ class BAMProfiler:
             self.init_serialized_profile()
             self.store_summarized_profile_for_each_split()
 
-        # if an annotation database is provided, there will be more fun downstream:
-        if self.annotation_db:
-            annotation_hash = self.annotation_db.db.get_meta_value('annotation_hash')
-            self.profile_db.set_meta_value('annotation_hash', annotation_hash)
-            self.run.info('annotation_hash', annotation_hash)
-
-            self.generate_genes_table()
-            self.run.info('genes_table', True, quiet = True)
-        else:
-            self.run.info('genes_table', False, quiet = True)
-            self.profile_db.set_meta_value('annotation_hash', None)
-            self.run.info('annotation_hash', None, quiet = True)
+        annotation_hash = self.annotation_db.db.get_meta_value('annotation_hash')
+        self.profile_db.set_meta_value('annotation_hash', annotation_hash)
+        self.run.info('annotation_hash', annotation_hash)
+        self.generate_genes_table()
+        self.run.info('genes_table', True, quiet = True)
 
         # here we store both metadata and TNF information into the database:
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, self.profile_db)
@@ -290,12 +274,6 @@ class BAMProfiler:
         self.run.info('profile_loaded_from', self.serialized_profile_path)
         self.run.info('num_contigs', pp(len(self.contigs)))
 
-        # we learn split length from the structure itself (and here we poorly assume that
-        # all contigs have the same split length). so command line argument of split
-        # length does not mean anything when the profile is loaded from a serialized
-        # file.
-        self.split_length = self.contigs.values()[0].split_length
-
         if self.list_contigs_and_exit:
             for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
                 print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
@@ -383,8 +361,14 @@ class BAMProfiler:
             self.run.info('contigs_raw_longer_than_M', len(self.contig_names))
 
         # finally, compute contig splits.
-        self.contig_splits = [utils.get_chunks(self.contig_lenghts[i], self.split_length)\
-                                                                 for i in range(0, len(self.contig_names))]
+        self.splits = self.annotation_db.db.get_table_as_dict(annotation.splits_info_table_name)
+        self.contig_name_to_splits = {}
+        for split_name in self.splits:
+            parent = self.splits[split_name]['parent']
+            if self.contig_name_to_splits.has_key(parent):
+                self.contig_name_to_splits[parent].append(split_name)
+            else:
+                self.contig_name_to_splits[parent] = [split_name]
 
 
     def generate_output_destination(self, postfix, directory = False):
@@ -406,7 +390,6 @@ class BAMProfiler:
         for i in range(0, len(self.contig_names)):
         
             contig_name = self.contig_names[i]
-            contig_splits = self.contig_splits[i]
 
             contig = Contig(contig_name)
             contig.length = self.contig_lenghts[i]
@@ -418,9 +401,9 @@ class BAMProfiler:
                                                                       pp(int(contig.length))))
 
             # populate contig with empty split objects and 
-            for split_order in range(0, len(contig_splits)):
-                start, end = contig_splits[split_order]
-                split = Split(contig.name, split_order, start, end)
+            for split_name in self.contig_name_to_splits[contig_name]:
+                s = self.splits[split_name]
+                split = Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
             # analyze coverage for each split
