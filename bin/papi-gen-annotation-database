@@ -36,8 +36,13 @@ if __name__ == '__main__':
     parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
                         help = 'Splitting very large contigs into multiple pieces improves\
                                 the efficacy of the visualization step. The default value\
-                                is (%(default)d). The split size must be identical between the profiled samples\
-                                and the annotation db.')
+                                is (%(default)d). If you are not sure, we advise you to not\
+                                go below 10,000. The lower you go, the more complicated the\
+                                tree will be, and will take more time and computational\
+                                resources to finish the analysis. Also this is not a case\
+                                of "the smaller the split size the more sensitive the results". If you do\
+                                not want your contigs to be split, you can either enter a very\
+                                large integer, or "-1".')
     parser.add_argument('-o', '--db-path', default = "ANNOTATION.db", 
                         help = 'Output file path for the new annotation database to be generated.')
 
