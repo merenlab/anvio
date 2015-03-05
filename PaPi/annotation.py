@@ -21,6 +21,10 @@ contig_lengths_table_name            = 'contig_lengths'
 contig_lengths_table_structure       = ['contig', 'length' ]
 contig_lengths_table_types           = [  'str' , 'numeric']
 
+splits_info_table_name               = 'splits_info'
+splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'parent' ]
+splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric',  'text'  ]
+
 genes_contigs_table_name             = 'genes_in_contigs'
 genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 genes_contigs_table_types            = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
@@ -72,12 +76,12 @@ from collections import Counter
 import PaPi.db as db
 import PaPi.fastalib as u
 import PaPi.utils as utils
+import PaPi.contig as contig
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
 
 from PaPi.utils import ConfigError
-from PaPi.contig import Split
 from PaPi.commandline import HMMSearch
 from PaPi.parsers import parser_modules
 
@@ -143,26 +147,36 @@ class AnnotationDatabase:
 
         self.db.create_table(contig_sequences_table_name, contig_sequences_table_structure, contig_sequences_table_types)
         self.db.create_table(contig_lengths_table_name, contig_lengths_table_structure, contig_lengths_table_types)
+        self.db.create_table(splits_info_table_name, splits_info_table_structure, splits_info_table_types)
 
         # lets process and store the FASTA file.
         fasta = u.SequenceSource(contigs_fasta)
         num_contigs, total_length = 0, 0
         db_entries_contig_sequences = []
         db_entries_contig_lengths = []
+        db_entries_splits_info = []
 
         while fasta.next():
             num_contigs += 1
             contig_length = len(fasta.seq)
+            chunks = utils.get_chunks(contig_length, split_length)
+
+            for order in range(0, len(chunks)):
+                start, end = chunks[order]
+                db_entries_splits_info.append((contig.gen_split_name(fasta.id, order), order, start, end, fasta.id), )
+
             db_entries_contig_sequences.append((fasta.id, fasta.seq), )
             db_entries_contig_lengths.append((fasta.id, contig_length), )
             total_length += contig_length
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_sequences_table_name, db_entries_contig_sequences)
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_lengths_table_name, db_entries_contig_lengths)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % splits_info_table_name, db_entries_splits_info)
 
         # set some useful meta values:
         self.db.set_meta_value('num_contigs', num_contigs)
         self.db.set_meta_value('total_length', total_length)
+        self.db.set_meta_value('num_splits', len(db_entries_splits_info))
         self.db.set_meta_value('genes_annotation_source', None)
 
         # creating empty default tables
@@ -203,7 +217,16 @@ class Table(object):
         annotation_db = AnnotationDatabase(self.db_path, quiet = False)
         self.split_length = annotation_db.db.get_meta_value('split_length')
         contig_lengths_table = annotation_db.db.get_table_as_dict(contig_lengths_table_name)
+        self.splits = annotation_db.db.get_table_as_dict(splits_info_table_name)
         annotation_db.disconnect()
+
+        self.contig_name_to_splits = {}
+        for split_name in self.splits:
+            parent = self.splits[split_name]['parent']
+            if self.contig_name_to_splits.has_key(parent):
+                self.contig_name_to_splits[parent].append(split_name)
+            else:
+                self.contig_name_to_splits[parent] = [split_name]
 
         self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 
@@ -288,11 +311,8 @@ class TablesForCollections(Table):
         contig_to_cluster_id = dict([(d['contig'], d['cluster_id']) for d in clusters_dict.values()])
 
         for contig in contig_to_cluster_id:
-            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
-            for i in range(0, len(chunks)):
-                split = Split(contig, i).name
-
-                db_entry = tuple([self.next_id(collections_splits_table_name), source, split, contig_to_cluster_id[contig]])
+            for split_name in self.contig_name_to_splits[contig]:
+                db_entry = tuple([self.next_id(collections_splits_table_name), source, split_name, contig_to_cluster_id[contig]])
                 db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
@@ -384,11 +404,9 @@ class TablesForSearches(Table):
                 # no hits for this contig. pity!
                 continue
 
-            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
-            for i in range(0, len(chunks)):
-                split = Split(contig, i).name
-                start = chunks[i][0]
-                stop = chunks[i][1]
+            for split_name in self.contig_name_to_splits[contig]:
+                start = self.splits[split_name]['start']
+                stop = self.splits[split_name]['end']
 
                 # FIXME: this really needs some explanation.
                 for hit in hits_per_contig[contig]:
@@ -400,7 +418,7 @@ class TablesForSearches(Table):
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
                         gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
-                        db_entry = tuple([self.next_id(hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
@@ -499,11 +517,9 @@ class TablesForGenes(Table):
         splits_dict = {}
         split_to_prot = {}
         for contig in self.contig_lengths:
-            chunks = utils.get_chunks(self.contig_lengths[contig], self.split_length)
-            for i in range(0, len(chunks)):
-                split = Split(contig, i).name
-                start = chunks[i][0]
-                stop = chunks[i][1]
+            for split_name in self.contig_name_to_splits[contig]:
+                start = self.splits[split_name]['start']
+                stop = self.splits[split_name]['end']
 
                 taxa = []
                 functions = []
@@ -516,7 +532,7 @@ class TablesForGenes(Table):
                         taxa.append(self.genes_dict[prot]['t_species'])
                         functions.append(self.genes_dict[prot]['function'])
                         gene_start_stops.append((self.genes_dict[prot]['start'], self.genes_dict[prot]['stop']), )
-                        self.genes_in_splits.add(split, start, stop, prot, self.genes_dict[prot]['start'], self.genes_dict[prot]['stop'])
+                        self.genes_in_splits.add(split_name, start, stop, prot, self.genes_dict[prot]['start'], self.genes_dict[prot]['stop'])
 
 
                 taxonomy_strings = [t for t in taxa if t]
@@ -538,28 +554,28 @@ class TablesForGenes(Table):
                 for gene_start, gene_stop in gene_start_stops:
                     total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
 
-                splits_dict[split] = {'taxonomy': None,
-                                      'num_genes': len(taxa),
-                                      'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]) if len(gene_start_stops) else 0.0,
-                                      'ratio_coding': total_coding_nts * 1.0 / (stop - start),
-                                      'ratio_hypothetical': (len(functions) - len(function_strings)) * 1.0 / len(functions) if len(functions) else 0.0,
-                                      'ratio_with_tax': len(taxonomy_strings) * 1.0 / len(taxa) if len(taxa) else 0.0,
-                                      'tax_accuracy': 0.0}
+                splits_dict[split_name] = {'taxonomy': None,
+                                           'num_genes': len(taxa),
+                                           'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]) if len(gene_start_stops) else 0.0,
+                                           'ratio_coding': total_coding_nts * 1.0 / (stop - start),
+                                           'ratio_hypothetical': (len(functions) - len(function_strings)) * 1.0 / len(functions) if len(functions) else 0.0,
+                                           'ratio_with_tax': len(taxonomy_strings) * 1.0 / len(taxa) if len(taxa) else 0.0,
+                                           'tax_accuracy': 0.0}
                 distinct_taxa = set(taxonomy_strings)
 
                 if not len(distinct_taxa):
                     continue
 
                 if len(distinct_taxa) == 1:
-                    splits_dict[split]['taxonomy'] = distinct_taxa.pop()
-                    splits_dict[split]['tax_accuracy'] = 1.0
+                    splits_dict[split_name]['taxonomy'] = distinct_taxa.pop()
+                    splits_dict[split_name]['tax_accuracy'] = 1.0
                 else:
                     d = Counter()
                     for taxon in taxonomy_strings:
                         d[taxon] += 1
                     consensus, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
-                    splits_dict[split]['taxonomy'] = consensus
-                    splits_dict[split]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
+                    splits_dict[split_name]['taxonomy'] = consensus
+                    splits_dict[split_name]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
 
         # open connection
         annotation_db = AnnotationDatabase(self.db_path)
