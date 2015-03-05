@@ -54,7 +54,7 @@ sqlite3 test-output/ANNOTATION.db '.tables'
 for f in 6M 7M 9M
 do
     INFO "Profiling sample 204-$f ..."
-    papi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db -L 1000
+    papi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db
     echo
 done
 
