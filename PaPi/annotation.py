@@ -62,7 +62,7 @@ collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
 
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 
 import os
