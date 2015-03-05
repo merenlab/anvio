@@ -63,6 +63,8 @@ INFO "Merging profiles ..."
 # merge samples
 papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED
 
+INFO "Generating coverages and sequences files for splits (for external binning) ..."
+papi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
 
 INFO "Generating network descriptions for samples based on ORFs and functions ..."
 # generate gene and function networks for the merge
