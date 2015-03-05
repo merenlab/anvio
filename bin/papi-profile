@@ -61,17 +61,6 @@ if __name__ == '__main__':
                                 if you are going to profile muptiple BAM files which are then going to be\
                                 merged for a cross-sectional or time series analysis. Do not change it if\
                                 you are not sure')
-    groupQ.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
-                        help = 'Splitting very large contigs into multiple pieces improves\
-                                the efficacy of the visualization step. The default value\
-                                (%(default)d) will brake up any contig that is longer. If you\
-                                are not sure, we advise you to not go below 10,000. The lower you go,\
-                                the more complicated the tree will be, and will take more time and\
-                                computational resources to finish the analysis. Also this is not a case\
-                                of "the smaller the split size the more sensitive the results". If you do\
-                                not want your contigs to be split, you can either enter a very\
-                                large integer, or "-1".')
-
     groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
     groupC.add_argument('--list-contigs', action = 'store_true', default = False,
                         help = 'When declared, the profiler would list contigs in the BAM file and\
