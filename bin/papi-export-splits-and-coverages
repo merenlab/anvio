@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to export a FASTA file and the coverage table from a merged database.
+
+The purpose of this script is to export two critical files for most genome binning
+software: the sequences file for tetra-nucleotide analysis, and the coverage table
+that shows the coverage of each contig across samples. These output files can be
+used to identify bins, and those bins can be used to populate collections table
+via available parsers in papi-populate-collections table."""
+
+import os
+import sys
+import argparse
+
+import PaPi.db as db
+import PaPi.utils as utils
+import PaPi.fastalib as fastalib
+import PaPi.profiler as profiler
+import PaPi.terminal as terminal
+import PaPi.annotation as annotation
+import PaPi.filesnpaths as filesnpaths
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The PaPi Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = profiler.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+run = terminal.Run()
+
+def main(args):
+    merged_profile_db = db.DB(args.merged_profile_db, profiler.__version__)
+    annotation_db = db.DB(args.annotation_db, annotation.__version__)
+
+    if(merged_profile_db.get_meta_value('merged') != True):
+        raise utils.ConfigError, "'%s' does not seem to be a merged profile database :/" % args.merged_profile_db
+
+    if args.output_directory:
+        filesnpaths.gen_output_directory(args.output_directory)
+    else:
+        args.output_directory = os.path.dirname(os.path.abspath(args.merged_profile_db))
+
+    if not args.output_file_prefix:
+        args.output_file_prefix = merged_profile_db.get_meta_value('sample_id')
+
+    samples = merged_profile_db.get_meta_value('samples').split(',')
+    split_length = annotation_db.get_meta_value('split_length')
+    contig_sequences_dict = annotation_db.get_table_as_dict(annotation.contig_sequences_table_name)
+    splits_dict = annotation_db.get_table_as_dict(annotation.splits_info_table_name)
+    coverages = merged_profile_db.get_table_as_dict('mean_coverage_contigs')
+
+    merged_profile_db.disconnect()
+    annotation_db.disconnect()
+
+    coverages_file = os.path.join(args.output_directory, args.output_file_prefix + '-COVs.txt')
+    splits_fasta = os.path.join(args.output_directory, args.output_file_prefix + '-SPLITS.fa')
+
+    utils.store_dict_as_TAB_delimited_file(coverages, coverages_file, ['contig'] + samples)
+
+    splits_fasta_f = fastalib.FastaOutput(splits_fasta)
+
+    for split_name in sorted(coverages.keys()):
+        s = splits_dict[split_name]
+        splits_fasta_f.write_id(split_name)
+        splits_fasta_f.write_seq(contig_sequences_dict[s['parent']]['sequence'][s['start']:s['end']], split = False)
+                                                                                                    # ^^^^^ This has nothing to do
+                                                                                                    # with our splits...
+
+    run.info('Coverages file', coverages_file)
+    run.info('Sequences file', splits_fasta)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Export splits and the coverage table from database')
+    parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
+                        help = 'PaPi annotation database')
+    parser.add_argument('merged_profile_db', metavar = 'PROFILE_DB',
+                        help = 'PaPi profile database for a merged run')
+    parser.add_argument('-o', '--output-directory', default = None, metavar = 'OUTPUT_DIR',
+                        help = 'Output directory for files to be stored')
+    parser.add_argument('-p', '--output-file-prefix', default = None, metavar = 'FILENAME_PREFIX',
+                        help = 'A prefix to name output files.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except utils.ConfigError, e:
+        print e
+        sys.exit(-1)
