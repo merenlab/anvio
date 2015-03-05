@@ -18,6 +18,7 @@ from PaPi.sequence import Coverage, Composition
 
 kmers = KMers()
 
+
 def set_contigs_abundance(contigs):
     """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
        a Contigs wrapper .. maybe later."""
@@ -31,6 +32,9 @@ def set_contigs_abundance(contigs):
         for split in contigs[contig].splits:
             split.abundance = split.coverage.mean / overall_mean_coverage
 
+
+def gen_split_name(parent_name, order):
+    return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 class Contig:
     def __init__(self, name):
@@ -96,8 +100,8 @@ class Contig:
 
 
 class Split:
-    def __init__(self, parent, order, start = 0, end = 0):
-        self.name = '_'.join([parent, 'split', '%05d' % (order + 1)])
+    def __init__(self, name, parent, order, start = 0, end = 0):
+        self.name = name
         self.parent = parent
         self.end = end
         self.order = order
