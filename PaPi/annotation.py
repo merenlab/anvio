@@ -108,6 +108,7 @@ class AnnotationDatabase:
 
             self.run.info('Annotation database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
             self.run.info('Number of contigs', self.db.get_meta_value('num_contigs'), quiet = self.quiet)
+            self.run.info('Number of splits', self.db.get_meta_value('num_splits'), quiet = self.quiet)
             self.run.info('Total number of nucleotides', self.db.get_meta_value('total_length'), quiet = self.quiet)
             self.run.info('Split length', self.db.get_meta_value('split_length'), quiet = self.quiet)
         else:
@@ -299,6 +300,24 @@ class TablesForCollections(Table):
         # remove any pre-existing information for 'source'
         self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name])
 
+        contigs_in_clusters_dict = set(v['contig'] for v in clusters_dict.values())
+        contigs_only_in_clusters_dict = [c for c in contigs_in_clusters_dict if c not in self.contig_lengths]
+        contigs_only_in_db = [c for c in self.contig_lengths if c not in contigs_in_clusters_dict]
+
+        if len(contigs_only_in_clusters_dict):
+            self.run.info('WARNING', '%d of %d contigs found in "%s" results are not in the database. This may be OK,\
+                                      but you must be the judge of it. If this is somewhat surprising, please use caution\
+                                      and make sure all is fine before going forward with you analysis.'\
+                                            % (len(contigs_only_in_clusters_dict), len(contigs_in_clusters_dict), source),\
+                                      header = True, display_only = True)
+
+        if len(contigs_only_in_db):
+            self.run.info('WARNING', '%d of %d contigs found in the database were missing from the "%s" results. If this\
+                                      does not make any sense, please make sure you know why before going any further.'\
+                                            % (len(contigs_only_in_db), len(contigs_in_clusters_dict), source),\
+                                      header = True, display_only = True)
+
+
         annotation_db = AnnotationDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
@@ -313,15 +332,20 @@ class TablesForCollections(Table):
 
         annotation_db.disconnect()
 
+        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the annotation database.'\
+                                        % (source, len(db_entries)))
+
 
     def process_splits(self, source, clusters_dict):
         db_entries_for_splits = []
 
         contig_to_cluster_id = dict([(d['contig'], d['cluster_id']) for d in clusters_dict.values()])
 
-        for contig in contig_to_cluster_id:
-            for split_name in self.contig_name_to_splits[contig]:
-                db_entry = tuple([self.next_id(collections_splits_table_name), source, split_name, contig_to_cluster_id[contig]])
+        for contig_name in contig_to_cluster_id:
+            if not contig_name in self.contig_name_to_splits:
+                continue
+            for split_name in self.contig_name_to_splits[contig_name]:
+                db_entry = tuple([self.next_id(collections_splits_table_name), source, split_name, contig_to_cluster_id[contig_name]])
                 db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
