@@ -1,5 +1,4 @@
 [general]
-output_file = CONTIGS-TREE-TNF-COV.txt
 
 [PROFILE.db::tnf_contigs]
 alias = TNF

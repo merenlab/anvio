@@ -1,5 +1,4 @@
 [general]
-output_file = CONTIGS-TREE-COV.txt
 
 [PROFILE.db::mean_coverage_contigs]
 alias = Coverage
