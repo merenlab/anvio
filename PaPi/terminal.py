@@ -76,7 +76,7 @@ class Progress:
         surpass = self.terminal_width - len(c)
         
         if surpass < 0:
-            c = c[0:-(-surpass + 4)] + ' (...)'
+            c = c[0:-(-surpass + 5)] + ' (...)'
         else:
             self.currently_shown = c
             c = c + ' ' * surpass
