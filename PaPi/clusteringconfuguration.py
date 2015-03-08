@@ -28,7 +28,7 @@ from PaPi.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 
 config_template = {
     'general': {
-                'output_file'    : {'mandatory': True, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
+                'output_file'    : {'mandatory': False, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
                 'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                                    'required': "an integer value between 1 and 256"},
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
@@ -80,8 +80,13 @@ class ClusteringConfiguration:
         # and sanity check.
         self.sanity_check(config)
 
-        self.output_file_name = self.get_option(config, 'general', 'output_file', str)
-        self.output_file_path = os.path.join(self.input_directory, self.output_file_name)
+        if self.get_option(config, 'general', 'output_file', str):
+            self.output_file_name = self.get_option(config, 'general', 'output_file', str)
+            self.output_file_path = os.path.join(self.input_directory, self.output_file_name)
+        else:
+            self.output_file_name = None
+            self.output_file_path = None
+
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
         self.master = None

@@ -381,13 +381,26 @@ class MultipleRuns:
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
         # every metadata file that may be required.
-        clusterings = {}
+
+        # FIXME: need a profiledb.py to do all these stuff and the things that are done in the metadata.py:
+        clusterings_table_name      = 'clusterings'
+        clusterings_table_structure = ['clustering', 'newick' ]
+        clusterings_table_types     = [   'str'    ,  'str'   ]
+        self.profile_db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
+
+        clusterings = []
+
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
+
             config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
-            newick_path = clustering.order_contigs_simple(config, progress = self.progress)
-            clusterings[config_name] = os.path.basename(newick_path)
-        self.run.info('clusterings', clusterings)
+            newick = clustering.order_contigs_simple(config, progress = self.progress)
+
+            clusterings.append(config_name)
+            db_entries = tuple([config_name, newick])
+            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % clusterings_table_name, db_entries)
+
+        self.run.info('available_clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
 
 

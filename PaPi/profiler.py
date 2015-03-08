@@ -495,13 +495,25 @@ class BAMProfiler:
 
 
     def cluster_contigs(self):
-        clusterings = {}
+        # FIXME: need a profiledb.py to do all these stuff and the things that are done in the metadata.py:
+        clusterings_table_name      = 'clusterings'
+        clusterings_table_structure = ['clustering', 'newick' ]
+        clusterings_table_types     = [   'str'    ,  'str'   ]
+        self.profile_db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
+
+        clusterings = []
+
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
+
             config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
-            newick_path = clustering.order_contigs_simple(config, progress = self.progress)
-            clusterings[config_name] = os.path.basename(newick_path)
-        self.run.info('clusterings', clusterings)
+            newick = clustering.order_contigs_simple(config, progress = self.progress)
+
+            clusterings.append(config_name)
+            db_entries = tuple([config_name, newick])
+            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % clusterings_table_name, db_entries)
+
+        self.run.info('available_clusterings', clusterings)
 
 
     def check_args(self):
@@ -510,10 +522,6 @@ class BAMProfiler:
                                       to learn more about the command line parameters."
         if self.input_file_path and self.serialized_profile_path:
             raise utils.ConfigError, "You can't declare both an input file and a serialized profile."
-        if self.serialized_profile_path and ('-L' in sys.argv or '--split-length' in sys.argv):
-            raise utils.ConfigError, "You can't change split size when you use a serialized profile as an input.\
-                                      Unfortunately, the only way to change the split size is to run the profiler\
-                                      on the BAM file from scratch."
         if self.serialized_profile_path and (not self.output_directory):
             raise utils.ConfigError, "When loading serialized profiles, you need to declare an output directory."
         if self.input_file_path and not os.path.exists(self.input_file_path):
@@ -523,6 +531,4 @@ class BAMProfiler:
         if not self.min_mean_coverage >= 0:
             raise utils.ConfigError, "Minimum mean coverage must be 0 or larger."
         if not self.min_contig_length >= 0:
-            raise utils.ConfigError, "Minimum contig length must be 0 or larger (although using anything\
-                                      below 5,000 is kinda silly, UNLESS you are working with mappings of\
-                                      multiple samples to a single assembly)."
+            raise utils.ConfigError, "Minimum contig length must be 0 or larger."

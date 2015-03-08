@@ -77,8 +77,7 @@ class InputHandler:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
             self.additional_metadata_path = args.additional_metadata
 
-
-        tree = Tree(self.P(self.runinfo['tree_file']))
+        tree = Tree(self.runinfo['clustering_newick'])
         self.contig_names_ordered = [n.name for n in tree.get_leaves()]
 
         self.check_names_consistency()
@@ -138,8 +137,8 @@ class InputHandler:
         self.runinfo['views'] = {}
         self.runinfo['default_view'] = 'single'
         self.runinfo['default_clustering'] = 'default'
-        self.runinfo['clusterings'] = {'default': os.path.abspath(args.tree)}
-        self.runinfo['tree_file'] = os.path.abspath(args.tree)
+        self.runinfo['available_clusterings'] = ['default']
+        self.runinfo['clusterings'] = {'default': {'newick': os.path.abspath(args.tree).read()}}
 
         if args.summary_index:
             self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
@@ -210,15 +209,14 @@ class InputHandler:
 
         # connect to the PROFILE.db
         self.profile_db = PaPi.db.DB(self.P(self.runinfo['profile_db']), PaPi.profiler.__version__)
+        self.runinfo['clusterings'] = self.profile_db.get_table_as_dict('clusterings')
 
-
-        # if there is a tree supplied through the command line, let that tree override what is in the
-        # runinfo. kinda sketchy, but it is necessary.
+        # clustering_newick is only necessary for sanity check. interface does not use it.
         if args.tree:
             run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
-            self.runinfo['tree_file'] = os.path.abspath(args.tree)
+            self.runinfo['clustering_newick'] = os.path.abspath(args.tree).read()
         else:
-            self.runinfo['tree_file'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]
+            self.runinfo['clustering_newick'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick']
 
         if args.summary_index:
             run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)

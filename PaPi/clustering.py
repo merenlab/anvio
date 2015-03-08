@@ -62,8 +62,10 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
     newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
     progress.end()
 
-    open(config.output_file_path, 'w').write(newick + '\n')
-    return config.output_file_path
+    if config.output_file_path:
+        open(config.output_file_path, 'w').write(newick + '\n')
+
+    return newick
 
 
 def order_contigs_experimental(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
@@ -79,8 +81,10 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
         newick = utils.get_tree_object_in_newick(tree, m['id_to_sample'])
         progress.end()
 
-        open(config.output_file_path, 'w').write(newick + '\n')
-        return config.output_file_path
+        if config.output_file_path:
+            open(config.output_file_path, 'w').write(newick + '\n')
+
+        return newick
 
     else:
         # FIXME: this part needs to be parallelized.
@@ -138,5 +142,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
         newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
         progress.end()
 
-        open(config.output_file_path, 'w').write(newick + '\n')
-        return config.output_file_path
+        if config.output_file_path:
+            open(config.output_file_path, 'w').write(newick + '\n')
+
+        return newick
