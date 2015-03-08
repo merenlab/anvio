@@ -134,9 +134,10 @@ def send_data(tree_id):
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
-    if d.runinfo['clusterings'].has_key(tree_id):
+
+    if tree_id in d.runinfo['clusterings']:
         print "* Clustering of '%s' has been requested" % (tree_id)
-        return static_file(d.P(d.runinfo['clusterings'][tree_id]), root ='/')
+        return json.dumps(d.runinfo['clusterings'][tree_id]['newick'])
 
 @route('/data/charts/<contig_name>')
 def charts(contig_name):
