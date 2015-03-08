@@ -1786,8 +1786,9 @@ function draw_tree(settings) {
                 var angle_max = parseFloat(settings['angle-max']);
                 angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
                 break;
-        }  
-        
+        }
+        leaf_count = Object.keys(order_to_node_map).length;
+                
         margin = parseFloat(settings['layer-margin']);
 
         // calculate layer boundries
@@ -1800,8 +1801,8 @@ function draw_tree(settings) {
             
             layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layer['height']) ] );
 
-            createGroup('tree_group', 'layer_' + layer_index);
             createGroup('tree_group', 'layer_background_' + layer_index);
+            createGroup('tree_group', 'layer_' + layer_index);
 
             if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
             {
@@ -1815,9 +1816,9 @@ function draw_tree(settings) {
                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                     color,
                     0.3,
-                    false);
+                    true);
             }
-            /*
+            
             if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3)
             {
                 var color = layer['color'];
@@ -1834,9 +1835,8 @@ function draw_tree(settings) {
                     (_max - _min > Math.PI) ? 1:0, // large arc flag
                     color,
                     0.3,
-                    false);
+                    true);
             }
-            */
         }
 
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
@@ -2068,18 +2068,6 @@ function draw_tree(settings) {
                             else // numerical
                             {
                                 var color = layer['color'];
- 
-                                drawPie('layer_background_' + layer_index,
-                                    q.id,
-                                    q.angle - angle_per_leaf / 2,
-                                    q.angle + angle_per_leaf / 2,
-                                    layer_boundaries[layer_index][0],
-                                    layer_boundaries[layer_index][1],
-                                    0,
-                                    color,
-                                    0.3,
-                                    true);
-
 
                                 if (metadata_dict[q.label][pindex] > 0) {
                                     drawPie('layer_' + layer_index,
@@ -2115,6 +2103,14 @@ function draw_tree(settings) {
         rebuildIntersections();
         createGroup('tree_group', 'group');
         redrawGroups();
+
+        // observe for transform matrix change
+        var observer = new MutationObserver(updateSingleBackgroundGlobals);
+    
+        observer.observe(document.getElementById('viewport'), {
+            attributes:    true,
+            attributeFilter: ["transform"]
+        });
 
         // draw title
         switch (settings['tree-type']) {
