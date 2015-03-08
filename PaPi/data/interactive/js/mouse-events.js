@@ -338,11 +338,33 @@ function updateSingleBackgroundGlobals()
     }
     else // circlephylogram
     {
-        var tree = document.getElementById('tree');
-        var rect = tree.getBoundingClientRect();
+        var root = document.getElementById('line0');
+        var rect = root.getBoundingClientRect();
 
-        origin_x = rect.left + rect.width / 2;
-        origin_y = rect.top + rect.height / 2;
+        var angle = id_to_node_map[0];
+
+        var halfPI = Math.PI / 2;
+
+        if (angle < halfPI)
+        {
+            origin_x = rect.left;
+            origin_y = rect.top;
+        }
+        else if (angle < 2 * halfPI)
+        {
+            origin_x = rect.left + rect.width;
+            origin_y = rect.top;
+        }
+        else if (angle < 3 * halfPI)
+        {
+            origin_x = rect.left + rect.width;
+            origin_y = rect.top + rect.height;
+        }
+        else // 4 * halfPI
+        {
+            origin_x = rect.left;
+            origin_y = rect.top + rect.height;
+        }
     }
 }
 
@@ -359,11 +381,18 @@ function getNodeFromEvent(event)
             var _y = event.clientY - origin_y;
             var _x = event.clientX - origin_x;
 
-            var angle = Math.atan2(_y, _x) + angle_per_leaf / 2;
+            var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            return order_to_node_map[parseInt(angle / angle_per_leaf)]
+            //angle = angle;
+
+            var order = parseInt(angle / angle_per_leaf);
+            
+            if (order < 1 || order > leaf_count)
+                order = 0;
+
+            return order_to_node_map[order]
         }
     }
     else
