@@ -62,7 +62,7 @@ collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
 
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 
 import os
@@ -204,17 +204,18 @@ class AnnotationDatabase:
 
 class Table(object):
     """Superclass for rudimentary table needs and operations"""
-    def __init__(self, db_path, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress, quiet = False):
         if not os.path.exists(db_path):
             raise ConfigError, "Annotation database ('%s') does not exist. You must create one first." % db_path
 
+        self.quiet = quiet
         self.db_path = db_path
         self.next_available_id = {}
 
         self.run = run
         self.progress = progress
 
-        annotation_db = AnnotationDatabase(self.db_path, quiet = False)
+        annotation_db = AnnotationDatabase(self.db_path, quiet = self.quiet)
         self.split_length = annotation_db.db.get_meta_value('split_length')
         contig_lengths_table = annotation_db.db.get_table_as_dict(contig_lengths_table_name)
         self.splits = annotation_db.db.get_table_as_dict(splits_info_table_name)
@@ -269,6 +270,19 @@ class Table(object):
         return contigs_fasta_path
 
 
+    def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
+        # removes rows from each table in 'tables_to_remove' where 'table_column' equals 'value'
+        annotation_db = AnnotationDatabase(self.db_path)
+
+        table_content = annotation_db.db.get_table_as_dict(tables_to_clear[0])
+        if key in table_content:
+            self.run.info('WARNING', 'Previous entries for "%s" is being removed from "%s"' % (key, ', '.join(tables_to_clear)), header = True, display_only = True)
+            for table_name in tables_to_clear:
+                annotation_db.db._exec('''DELETE FROM %s WHERE %s = "%s"''' % (table_name, table_column, key))
+
+        annotation_db.disconnect()
+
+
 class TablesForCollections(Table):
     """Populates the collections_* tables, where clusters of contigs and splits are kept"""
     def __init__(self, db_path, run=run, progress=progress):
@@ -282,15 +296,10 @@ class TablesForCollections(Table):
 
 
     def append(self, source, clusters_dict):
-        annotation_db = AnnotationDatabase(self.db_path)
+        # remove any pre-existing information for 'source'
+        self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name])
 
-        # FIXME: this check is being done on multiple places, merge them:
-        collections_info_table = annotation_db.db.get_table_as_dict(collections_info_table_name)
-        if source in collections_info_table:
-            self.run.info('WARNING', 'Clustering data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_info_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_contigs_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (collections_splits_table_name, source))
+        annotation_db = AnnotationDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
         db_entries = tuple([source, ''])
@@ -367,14 +376,9 @@ class TablesForSearches(Table):
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
-        annotation_db = AnnotationDatabase(self.db_path)
+        self.delete_entries_for_key('source', source, [hmm_hits_info_table_name, hmm_hits_contigs_table_name, hmm_hits_splits_table_name])
 
-        hmm_hits_info_table = annotation_db.db.get_table_as_dict(hmm_hits_info_table_name)
-        if source in hmm_hits_info_table:
-            self.run.info('WARNING', 'Data for "%s" will be replaced with the incoming data' % source, header = True, display_only = True)
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_info_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_contigs_table_name, source))
-            annotation_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (hmm_hits_splits_table_name, source))
+        annotation_db = AnnotationDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
