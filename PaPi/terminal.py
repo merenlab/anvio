@@ -21,15 +21,20 @@ import PaPi.constants as constants
 import PaPi.dictio as dictio
 
 
+def remove_spaces(text):
+    while 1:
+        if text.find("  ") > -1:
+            text = text.replace("  ", " ")
+        else:
+            break
+
+    return text
+
+
 class TerminalError(Exception):
     def __init__(self, e = None):
         Exception.__init__(self)
-        while 1:
-            if e.find("  ") > -1:
-                e = e.replace("  ", " ")
-            else:
-                break
-        self.e = e
+        self.e = remove_spaces(e)
         return
     def __str__(self):
         return 'Config Error: %s' % textwrap.fill(self.e, 80)
@@ -137,6 +142,8 @@ class Run:
         if quiet:
             return True
 
+        if type(value) == str:
+            value = remove_spaces(value)
         if type(value) == int:
             value = pretty_print(value)
 
