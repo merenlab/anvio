@@ -152,14 +152,14 @@ class ClusteringConfiguration:
 
 
     def print_summary(self, r):
-        r.info('General', '', header=True)
+        r.warning('', header = 'General')
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
         r.info('Seed', self.seed)
         r.info('Output file', self.output_file_name)
         for matrix in self.matrices:
             m = self.matrices_dict[matrix]
-            r.info('%s (%s) %s' % (matrix, m['alias'], '[MASTER]' if matrix == self.master else ''), '', header=True)
+            r.warning('', header = '%s (%s) %s' % (matrix, m['alias'], '[MASTER]' if matrix == self.master else ''))
             r.info('Ratio', m['ratio'])
             r.info('Normalize', m['normalize'])
             r.info('Columns to use', m['columns_to_use'] or 'ALL')
