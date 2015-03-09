@@ -21,6 +21,42 @@ import PaPi.constants as constants
 import PaPi.dictio as dictio
 
 
+tty_colors = {
+    'gray'    :{'normal': '\033[1;30m%s\033[1m', 'bold': '\033[0;30m%s\033[0m'},
+    'red'     :{'normal': '\033[1;31m%s\033[1m', 'bold': '\033[0;31m%s\033[0m'},
+    'green'   :{'normal': '\033[1;32m%s\033[1m', 'bold': '\033[0;32m%s\033[0m'},
+    'yellow'  :{'normal': '\033[1;33m%s\033[1m', 'bold': '\033[0;33m%s\033[0m'},
+    'blue'    :{'normal': '\033[1;34m%s\033[1m', 'bold': '\033[0;34m%s\033[0m'},
+    'magenta' :{'normal': '\033[1;35m%s\033[1m', 'bold': '\033[0;35m%s\033[0m'},
+    'cyan'    :{'normal': '\033[1;36m%s\033[1m', 'bold': '\033[0;36m%s\033[0m'},
+    'white'   :{'normal': '\033[1;37m%s\033[1m', 'bold': '\033[0;37m%s\033[0m'},
+    'crimson' :{'normal': '\033[1;38m%s\033[1m', 'bold': '\033[0;38m%s\033[0m'}
+}
+
+
+class SuppressAllOutput(object):
+    def __enter__(self):
+        sys.stderr.flush()
+        self.old_stderr = sys.stderr
+        sys.stderr = open('/dev/null', 'a+', 0)
+        sys.stdout.flush()
+        self.old_stdout = sys.stdout
+        sys.stdout = open('/dev/null', 'a+', 0)
+ 
+    def __exit__(self, exc_type, exc_value, traceback):
+        sys.stderr.flush()
+        sys.stderr = self.old_stderr
+        sys.stdout.flush()
+        sys.stdout = self.old_stdout
+
+
+def c(text, color="crimson", weight="bold"):
+    if sys.stdout.isatty():
+        return tty_colors[color][weight] % text
+    else:
+        return text
+
+
 def remove_spaces(text):
     while 1:
         if text.find("  ") > -1:
@@ -135,7 +171,7 @@ class Run:
             self.info_file_obj = open(info_file_path, 'w')
 
 
-    def info(self, key, value, quiet = False, header = False, display_only = False):
+    def info(self, key, value, quiet = False, display_only = False, lc = 'blue', mc = 'yellow'):
         if not display_only:
             self.info_dict[key] = value
 
@@ -149,19 +185,38 @@ class Run:
 
         label = constants.get_pretty_name(key)
 
-        if header:
-            if value:
-                info_line = "\n%s\n%s\n%s\n\n" % (label, '=' * (self.width + 2), textwrap.fill(str(value), 80))
-            else:
-                info_line = "\n%s\n%s\n" % (label, '=' * (self.width + 2))
-        else:
-            info_line = "%s %s: %s\n" % (label, '.' * (self.width - len(label)), str(value))
+        info_line = "%s %s: %s\n" % (c(label, lc), '.' * (self.width - len(label)), c(str(value), mc))
 
         if self.info_file_obj:
             self.info_file_obj.write(info_line)
 
         if self.verbose:
             sys.stderr.write(info_line)
+
+
+    def info_single(self, message, mc = 'yellow', new_lines = 0):
+        if type(message) == str:
+            message = remove_spaces(message)
+
+        message_line = c("* %s\n" % (textwrap.fill(str(message), 80)), mc)
+
+        if self.verbose:
+            sys.stderr.write('\n' * new_lines)
+            sys.stderr.write(message_line)
+            sys.stderr.write('\n' * new_lines)
+
+
+    def warning(self, message, header='WARNING', lc = 'red'):
+        if type(message) == str:
+            message = remove_spaces(message)
+
+        header_line = c("\n%s\n%s\n" % (header, '=' * (self.width + 2)), lc)
+        message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
+
+        if self.verbose:
+            sys.stderr.write(header_line)
+            if message:
+                sys.stderr.write(message_line)
 
 
     def store_info_dict(self, destination, strip_prefix = None):
