@@ -1816,7 +1816,7 @@ function draw_tree(settings) {
                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                     color,
                     0.3,
-                    true);
+                    false);
             }
             
             if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3)
@@ -1835,7 +1835,7 @@ function draw_tree(settings) {
                     (_max - _min > Math.PI) ? 1:0, // large arc flag
                     color,
                     0.3,
-                    true);
+                    false);
             }
         }
 
@@ -1843,7 +1843,7 @@ function draw_tree(settings) {
         beginning_of_layers = layer_boundaries[0][1];
 
         createGroup('tree_group', 'event_catcher');
-        
+
         if (settings['tree-type']=='phylogram')
         {
             var color = layer['color'];
@@ -1924,7 +1924,7 @@ function draw_tree(settings) {
                                         metadata_dict[q.label][pindex][j],
                                         stack_bar_colors[pindex][j],
                                         1,
-                                        true);
+                                        false);
                                     offset += metadata_dict[q.label][pindex][j];
                                 } 
                         
@@ -1948,7 +1948,7 @@ function draw_tree(settings) {
                                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                                     color,
                                     1,
-                                    true);
+                                    false);
                             }
                             else if (isParent)
                             {
@@ -1978,7 +1978,7 @@ function draw_tree(settings) {
                                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                                     color,
                                     1,
-                                    true);
+                                    false);
 
                                 prev_parent_color = color;
                                 prev_parent_name = metadata_dict[q.label][pindex];
@@ -1997,7 +1997,7 @@ function draw_tree(settings) {
                                         metadata_dict[q.label][pindex],
                                         color,
                                         1,
-                                        true);
+                                        false);
                                 }
                             }
                         }
@@ -2037,7 +2037,7 @@ function draw_tree(settings) {
                                         0,
                                         stack_bar_colors[pindex][j],
                                         1,
-                                        true);
+                                        false);
                                     offset += metadata_dict[q.label][pindex][j];
                                 } 
                         
@@ -2062,7 +2062,7 @@ function draw_tree(settings) {
                                     0,
                                     color,
                                     1,
-                                    true);
+                                    false);
                             }
                             else if (isParent)
                             {
@@ -2094,7 +2094,7 @@ function draw_tree(settings) {
                                     0,
                                     color,
                                     1,
-                                    true);
+                                    false);
 
                                 prev_parent_color = color;
                                 prev_parent_name = metadata_dict[q.label][pindex];
@@ -2114,7 +2114,7 @@ function draw_tree(settings) {
                                         0,
                                         color,
                                         1,
-                                        true);
+                                        false);
                                 }
                             }
 
