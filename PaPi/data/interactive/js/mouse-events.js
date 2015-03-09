@@ -10,6 +10,9 @@ function getGroupId() {
 function lineClickHandler(event) {
     var p = getNodeFromEvent(event);
 
+    if (p.id == 0)
+        return; // skip root
+
     var group_id = getGroupId();
 
     if (group_id === 'undefined')
@@ -91,6 +94,9 @@ function lineContextMenuHandler(event) {
 
     var p = getNodeFromEvent(event);
 
+    if (p.id == 0)
+        return; // skip root
+
     if (group_id === 'undefined')
         return;
 
@@ -120,6 +126,9 @@ function lineMouseEnterHandler(event) {
     var p = getNodeFromEvent(event);
 
     $('#path_hover').remove();
+
+    if (p.id == 0)
+        return; // skip root
 
     var group_id = getGroupId();
 
