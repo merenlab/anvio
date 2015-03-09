@@ -22,6 +22,7 @@ var margin;
 var order_counter;
 
 var total_radius = 0;
+var layer_boundaries;
 
 var SELECTED = new Array();
 var newick;

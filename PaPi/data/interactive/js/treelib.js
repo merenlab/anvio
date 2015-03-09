@@ -1713,7 +1713,7 @@ function draw_tree(settings) {
         td.Draw();
 
         // calculate max radius of tree
-        var layer_boundaries = new Array();
+        layer_boundaries = new Array();
         var tree_radius = 0;
         var tree_max_x = 0;
         var tree_max_y = 0;
