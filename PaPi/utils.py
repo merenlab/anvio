@@ -21,7 +21,6 @@ import itertools
 import subprocess
 import multiprocessing
 
-from ete2 import Tree
 import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
@@ -625,35 +624,6 @@ def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean'
 
     progress.update('Returning results')
     return hcluster.to_tree(clustering_result)
-
-
-def get_tree_object_in_newick(tree, id_to_sample_dict):
-    """i.e., tree = hcluster.to_tree(c_res)"""
-
-    root = Tree()
-    root.dist = 0
-    root.name = "root"
-    item2node = {tree: root}
-    
-    to_visit = [tree]
-    while to_visit:
-        node = to_visit.pop()
-        cl_dist = node.dist / 2.0
-        for ch_node in [node.left, node.right]:
-            if ch_node:
-                ch = Tree()
-                ch.dist = cl_dist
-
-                if ch_node.is_leaf():
-                    ch.name = id_to_sample_dict[ch_node.id]
-                else:
-                    ch.name = 'Int' + str(ch_node.id)
-
-                item2node[node].add_child(ch)
-                item2node[ch_node] = ch
-                to_visit.append(ch_node)
-
-    return root.write(format=1) 
 
 
 def get_HMM_sources_dictionary(source_dirs=[]):
