@@ -1842,6 +1842,41 @@ function draw_tree(settings) {
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
         beginning_of_layers = layer_boundaries[0][1];
 
+        createGroup('tree_group', 'event_catcher');
+        
+        if (settings['tree-type']=='phylogram')
+        {
+            var color = layer['color'];
+
+            drawPhylogramRectangle('event_catcher',
+                'event',
+                beginning_of_layers,
+                tree_max_y / 2,
+                tree_max_y + height_per_leaf,
+                total_radius - beginning_of_layers,
+                '#FFFFFF',
+                0,
+                true);
+        }
+        if (settings['tree-type']=='circlephylogram')
+        {
+            var color = layer['color'];
+
+            var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
+            var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
+
+            drawPie('event_catcher',
+                'event',
+                _min,
+                _max,
+                beginning_of_layers,
+                total_radius,
+                (_max - _min > Math.PI) ? 1:0, // large arc flag
+                '#FFFFFF',
+                0,
+                true);
+        }
+
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 

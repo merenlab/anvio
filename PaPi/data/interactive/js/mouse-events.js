@@ -252,7 +252,7 @@ function lineMouseLeaveHandler(event) {
 function mouseMoveHandler(event) {
     var p = getNodeFromEvent(event);
 
-    if (event.target.id && event.target.id == 'path_all')
+    if (event.target.id && event.target.id == 'path_event')
         lineMouseEnterHandler(event);
     
     var tooltip = document.getElementById('aToolTip');
@@ -330,8 +330,8 @@ function updateSingleBackgroundGlobals()
 {
     if (tree_type == 'phylogram')
     {
-        var path_all = document.getElementsByClassName('path_all');
-        var rect = path_all[0].getBoundingClientRect();
+        var path_event = document.getElementsByClassName('path_event');
+        var rect = path_event[0].getBoundingClientRect();
 
         rect_left = rect.left;
         rect_width = rect.width;
@@ -341,7 +341,7 @@ function updateSingleBackgroundGlobals()
         var root = document.getElementById('line0');
         var rect = root.getBoundingClientRect();
 
-        var angle = id_to_node_map[0];
+        var angle = id_to_node_map[0].angle;
 
         var halfPI = Math.PI / 2;
 
@@ -370,7 +370,7 @@ function updateSingleBackgroundGlobals()
 
 function getNodeFromEvent(event)
 {
-    if (event.target.id == 'path_all')
+    if (event.target.id == 'path_event')
     {
         if (tree_type == 'phylogram')
         {
@@ -387,7 +387,7 @@ function getNodeFromEvent(event)
 
             //angle = angle;
 
-            var order = parseInt(angle / angle_per_leaf);
+            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min'])) / angle_per_leaf);
             
             if (order < 1 || order > leaf_count)
                 order = 0;
