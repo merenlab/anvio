@@ -270,7 +270,7 @@ function mouseMoveHandler(event) {
         var distance = (event.clientY - tree_top) / zoom_factor;
     }
 
-    var layer_id;
+    var layer_id = 0;
     for (var i=0; i < layer_boundaries.length; i++)
     {
         if (distance > layer_boundaries[i][0] && distance < layer_boundaries[i][1])
@@ -279,6 +279,9 @@ function mouseMoveHandler(event) {
             break;
         }
     }
+
+    if (layer_id == 0)
+        return;
 
     var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
     tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
