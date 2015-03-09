@@ -14,6 +14,8 @@ import numpy as np
 import PaPi.utils as utils
 import PaPi.terminal as terminal
 
+with terminal.SuppressAllOutput():
+    from ete2 import Tree
 
 def set_num_components_for_each_matrix(config):
     denominator = float(sum([r['ratio'] for r in config.matrices_dict.values()]))
@@ -29,6 +31,35 @@ def set_null_ratios_for_matrices(config):
     for matrix in config.matrices:
         config.matrices_dict[matrix]['ratio'] = 1
     return config
+
+
+def get_tree_object_in_newick(tree, id_to_sample_dict):
+    """i.e., tree = hcluster.to_tree(c_res)"""
+
+    root = Tree()
+    root.dist = 0
+    root.name = "root"
+    item2node = {tree: root}
+    
+    to_visit = [tree]
+    while to_visit:
+        node = to_visit.pop()
+        cl_dist = node.dist / 2.0
+        for ch_node in [node.left, node.right]:
+            if ch_node:
+                ch = Tree()
+                ch.dist = cl_dist
+
+                if ch_node.is_leaf():
+                    ch.name = id_to_sample_dict[ch_node.id]
+                else:
+                    ch.name = 'Int' + str(ch_node.id)
+
+                item2node[node].add_child(ch)
+                item2node[ch_node] = ch
+                to_visit.append(ch_node)
+
+    return root.write(format=1) 
 
 
 def order_contigs_simple(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
@@ -59,7 +90,7 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
 
     progress.update('Clustering ...')
     tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
-    newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
+    newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
     progress.end()
 
     if config.output_file_path:
@@ -78,7 +109,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
         progress.new('Single matrix (%s)' % m['alias'])
         progress.update('Performing cluster analysis ...')
         tree = utils.get_clustering_as_tree(m['vectors'], progress = progress)
-        newick = utils.get_tree_object_in_newick(tree, m['id_to_sample'])
+        newick = get_tree_object_in_newick(tree, m['id_to_sample'])
         progress.end()
 
         if config.output_file_path:
@@ -139,7 +170,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
 
         progress.update('Clustering ...')
         tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
-        newick = utils.get_tree_object_in_newick(tree, config.combined_id_to_sample)
+        newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
         progress.end()
 
         if config.output_file_path:
