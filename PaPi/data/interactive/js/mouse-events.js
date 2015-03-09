@@ -259,6 +259,9 @@ function mouseMoveHandler(event) {
     if (tooltip)
         tooltip.parentNode.removeChild(tooltip);
 
+    if (!p)
+        return;
+
     if (tree_type == 'circlephylogram')
     {    
         var _y = event.clientY - origin_y;
