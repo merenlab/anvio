@@ -1938,17 +1938,20 @@ function draw_tree(settings) {
                                         categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
                                 }
 
-                                var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
+                                if (typeof(metadata_dict[q.label][pindex]) != typeof(null))
+                                {
+                                    var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
 
-                                drawPhylogramRectangle('layer_' + layer_index,
-                                    q.id,
-                                    layer_boundaries[layer_index][0],
-                                    q.xy['y'],
-                                    height_per_leaf,
-                                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                    color,
-                                    1,
-                                    false);
+                                    drawPhylogramRectangle('layer_' + layer_index,
+                                        q.id,
+                                        layer_boundaries[layer_index][0],
+                                        q.xy['y'],
+                                        height_per_leaf,
+                                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                                        color,
+                                        1,
+                                        false);
+                                }
                             }
                             else if (isParent)
                             {
@@ -2051,18 +2054,21 @@ function draw_tree(settings) {
                                         categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
                                 }
 
-                                var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
+                                if (typeof(metadata_dict[q.label][pindex]) != typeof(null))
+                                {
+                                    var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
 
-                                drawPie('layer_' + layer_index,
-                                    q.id,
-                                    q.angle - angle_per_leaf / 2,
-                                    q.angle + angle_per_leaf / 2,
-                                    layer_boundaries[layer_index][0], 
-                                    layer_boundaries[layer_index][1],
-                                    0,
-                                    color,
-                                    1,
-                                    false);
+                                    drawPie('layer_' + layer_index,
+                                        q.id,
+                                        q.angle - angle_per_leaf / 2,
+                                        q.angle + angle_per_leaf / 2,
+                                        layer_boundaries[layer_index][0], 
+                                        layer_boundaries[layer_index][1],
+                                        0,
+                                        color,
+                                        1,
+                                        false);
+                                }
                             }
                             else if (isParent)
                             {
