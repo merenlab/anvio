@@ -1803,6 +1803,41 @@ function draw_tree(settings) {
 
             createGroup('tree_group', 'layer_background_' + layer_index);
             createGroup('tree_group', 'layer_' + layer_index);
+            createGroup('tree_group', 'event_catcher_' + layer_index);
+
+            // draw event catcher of the layer
+            if (settings['tree-type']=='phylogram')
+            {
+                var color = layer['color'];
+
+                drawPhylogramRectangle('event_catcher_' + layer_index,
+                    'event',
+                    layer_boundaries[layer_index][0],
+                    tree_max_y / 2,
+                    tree_max_y + height_per_leaf,
+                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    '#ffffff',
+                    0,
+                    true);  
+            }
+            if (settings['tree-type']=='circlephylogram')
+            {
+                var color = layer['color'];
+
+                var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
+                var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
+
+                drawPie('event_catcher_' + layer_index,
+                    'event',
+                    _min,
+                    _max,
+                    layer_boundaries[layer_index][0],
+                    layer_boundaries[layer_index][1],
+                    (_max - _min > Math.PI) ? 1:0, // large arc flag
+                    '#ffffff',
+                    0,
+                    true);
+            }
 
             if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
             {
@@ -1841,41 +1876,6 @@ function draw_tree(settings) {
 
         total_radius = layer_boundaries[layer_boundaries.length - 1][1];
         beginning_of_layers = layer_boundaries[0][1];
-
-        createGroup('tree_group', 'event_catcher');
-
-        if (settings['tree-type']=='phylogram')
-        {
-            var color = layer['color'];
-
-            drawPhylogramRectangle('event_catcher',
-                'event',
-                beginning_of_layers,
-                tree_max_y / 2,
-                tree_max_y + height_per_leaf,
-                total_radius - beginning_of_layers,
-                '#FFFFFF',
-                0,
-                true);
-        }
-        if (settings['tree-type']=='circlephylogram')
-        {
-            var color = layer['color'];
-
-            var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
-            var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
-
-            drawPie('event_catcher',
-                'event',
-                _min,
-                _max,
-                beginning_of_layers,
-                total_radius,
-                (_max - _min > Math.PI) ? 1:0, // large arc flag
-                '#FFFFFF',
-                0,
-                true);
-        }
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();

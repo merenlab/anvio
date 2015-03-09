@@ -195,6 +195,9 @@ function lineMouseLeaveHandler(event) {
         return;
     }
 
+    if (!p)
+        return;
+
     for (var index = 0; index < p.child_nodes.length; index++) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
         if (_line) {
@@ -262,29 +265,10 @@ function mouseMoveHandler(event) {
     if (!p)
         return;
 
-    if (tree_type == 'circlephylogram')
-    {    
-        var _y = event.clientY - origin_y;
-        var _x = event.clientX - origin_x;
-        var distance = Math.sqrt(Math.pow(_x,2) + Math.pow(_y,2)) / zoom_factor;
-    }
-    else
-    {
-        var distance = (event.clientY - tree_top) / zoom_factor;
-    }
-
-    var layer_id = 0;
-    for (var i=0; i < layer_boundaries.length; i++)
-    {
-        if (distance > layer_boundaries[i][0] && distance < layer_boundaries[i][1])
-        {
-            layer_id = i;
-            break;
-        }
-    }
-
-    if (layer_id == 0)
+    var layer_id_exp = event.target.parentNode.id.match(/\d+/);
+    if (!layer_id_exp)
         return;
+    var layer_id = layer_id_exp[0];
 
     var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
     tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
@@ -343,28 +327,19 @@ function menu_callback(action) {
 // globals related single background
 var rect_left;
 var rect_width;
-var tree_top;
 
 var origin_x;
 var origin_y;
 
-var zoom_factor;
-
 function updateSingleBackgroundGlobals()
 {
-    zoom_factor = getMatrix()[0];
-
     if (tree_type == 'phylogram')
     {
         var path_event = document.getElementById('path_event');
         var rect = path_event.getBoundingClientRect();
 
-        var tree = document.getElementById('tree');
-        var tree_rect = tree.getBoundingClientRect();
-
         rect_left = rect.left;
         rect_width = rect.width;
-        tree_top = tree_rect.top;
     }
     else // circlephylogram
     {
