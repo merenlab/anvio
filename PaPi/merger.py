@@ -241,10 +241,9 @@ class MultipleRuns:
             self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id] 
 
         PRETTY = lambda x: ', '.join(['%s: %.2f' % (s, x[s]) for s in x])
-        self.run.info('WARNING', utils.remove_spaces("PaPi just set the normalization values for each sample based on\
-                                                      how many mapped reads they contained. All normalized coverages\
-                                                      will use this information: %s" % PRETTY(self.normalization_multiplier)),
-                                                      display_only = True, header = True)
+        self.run.warning("PaPi just set the normalization values for each sample based on\
+                          how many mapped reads they contained. All normalized coverages\
+                          will use this information: %s" % PRETTY(self.normalization_multiplier))
 
 
     def merge(self):

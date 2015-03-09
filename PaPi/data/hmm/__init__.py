@@ -16,12 +16,11 @@ missing_programs = u.get_missing_programs_for_hmm_analysis()
 
 if len(sources):
     if len(missing_programs):
-        run.info('WARNING', '', header = True)
-        print textwrap.fill(u.remove_spaces('PaPi found one or more databases to perform single-copy gene analysis\
+        run.warning('PaPi found one or more databases to perform single-copy gene analysis\
                                              that may be useful for downstream analyses. However, this process require\
                                              certain programs to be present in your system. Here is the command(s) PaPi\
                                              tried to access and failed: %s. Please see the documentation for system\
-                                             requirements.' % ', '.join(missing_programs)), 80) + '\n'
+                                             requirements.' % ', '.join(missing_programs))
         sources = {}
     else:
         run.info('HMM profiles',

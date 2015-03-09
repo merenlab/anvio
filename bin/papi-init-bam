@@ -51,9 +51,7 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         progress.update('Indexing BAM File...')
         pysam.index(sorted_file_path)
         progress.end()
-        run.info('Indexed BAM File', sorted_file_path)
-
-        sys.stderr.write('\n\n\tUse this file as input for PaPi: "%s"\n\n' % sorted_file_path)
+        run.info('Indexed BAM File', sorted_file_path, mc='green')
 
 
 if __name__ == '__main__':

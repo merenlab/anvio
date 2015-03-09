@@ -253,16 +253,15 @@ class BAMProfiler:
         if len(contigs_without_annotation):
             import random
             P = lambda x: 'are %d contigs' % (x) if x > 1 else 'there is one contig'
-            self.run.info('WARNING', utils.remove_spaces("You have instructed profiling to use an annotation database,\
-                                              however, there %s in your BAM file that did not get annotated. Which means\
-                                              whatever method you used to identify open reading frames in these contigs\
-                                              failed to find any open reading frames in those. Which may be normal\
-                                              (a) if your contigs are very short, or (b) if your gene finder is not\
-                                              capable of dealing with your stuff. If you know what you are doing, that\
-                                              is fine. Otherwise please double check. Here is one contig missing\
-                                              annotation if you would like to play: %s" % (P(len(contigs_without_annotation)),
-                                                                                        random.choice(contigs_without_annotation))),
-                                                                                        display_only = True, header = True)
+            self.run.info('You have instructed profiling to use an annotation database,\
+                          however, there %s in your BAM file that did not get annotated. Which means\
+                          whatever method you used to identify open reading frames in these contigs\
+                          failed to find any open reading frames in those. Which may be normal\
+                          (a) if your contigs are very short, or (b) if your gene finder is not\
+                          capable of dealing with your stuff. If you know what you are doing, that\
+                          is fine. Otherwise please double check. Here is one contig missing\
+                          annotation if you would like to play: %s"' %\
+                                  (P(len(contigs_without_annotation)), random.choice(contigs_without_annotation)))
 
 
     def init_serialized_profile(self):

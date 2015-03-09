@@ -49,7 +49,7 @@ class HMMSearch:
 
         log_file_path = os.path.join(tmp_dir, '00_log.txt')
 
-        self.run.info('Finding ORFs in contigs', '', header=True)
+        self.run.warning('', header = 'Finding ORFs in contigs', lc = 'green')
         self.run.info('Genes', self.genes_in_contigs)
         self.run.info('Proteins', self.proteins_in_contigs)
         self.run.info('Log file', log_file_path)
@@ -68,7 +68,7 @@ class HMMSearch:
 
 
     def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag = "--cut_ga"):
-        self.run.info('HMM Profiling for %s' % source, '', header=True)
+        self.run.warning('', header = 'HMM Profiling for %s' % source, lc = 'green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))

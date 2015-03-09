@@ -277,7 +277,7 @@ class Table(object):
 
         table_content = annotation_db.db.get_table_as_dict(tables_to_clear[0])
         if key in table_content:
-            self.run.info('WARNING', 'Previous entries for "%s" is being removed from "%s"' % (key, ', '.join(tables_to_clear)), header = True, display_only = True)
+            self.run.warning('Previous entries for "%s" is being removed from "%s"' % (key, ', '.join(tables_to_clear)))
             for table_name in tables_to_clear:
                 annotation_db.db._exec('''DELETE FROM %s WHERE %s = "%s"''' % (table_name, table_column, key))
 
@@ -305,17 +305,15 @@ class TablesForCollections(Table):
         contigs_only_in_db = [c for c in self.contig_lengths if c not in contigs_in_clusters_dict]
 
         if len(contigs_only_in_clusters_dict):
-            self.run.info('WARNING', '%d of %d contigs found in "%s" results are not in the database. This may be OK,\
+            self.run.warning('%d of %d contigs found in "%s" results are not in the database. This may be OK,\
                                       but you must be the judge of it. If this is somewhat surprising, please use caution\
                                       and make sure all is fine before going forward with you analysis.'\
-                                            % (len(contigs_only_in_clusters_dict), len(contigs_in_clusters_dict), source),\
-                                      header = True, display_only = True)
+                                            % (len(contigs_only_in_clusters_dict), len(contigs_in_clusters_dict), source))
 
         if len(contigs_only_in_db):
-            self.run.info('WARNING', '%d of %d contigs found in the database were missing from the "%s" results. If this\
+            self.run.warning('%d of %d contigs found in the database were missing from the "%s" results. If this\
                                       does not make any sense, please make sure you know why before going any further.'\
-                                            % (len(contigs_only_in_db), len(contigs_in_clusters_dict), source),\
-                                      header = True, display_only = True)
+                                            % (len(contigs_only_in_db), len(contigs_in_clusters_dict), source))
 
 
         annotation_db = AnnotationDatabase(self.db_path)
@@ -333,7 +331,7 @@ class TablesForCollections(Table):
         annotation_db.disconnect()
 
         self.run.info('Collections', '%s annotations for %d splits have been successfully added to the annotation database.'\
-                                        % (source, len(db_entries)))
+                                        % (source, len(db_entries)), mc='green')
 
 
     def process_splits(self, source, clusters_dict):
@@ -474,7 +472,7 @@ class TablesForGenes(Table):
         # test whether there are already genes tables populated
         genes_annotation_source = annotation_db.db.get_meta_value('genes_annotation_source')
         if genes_annotation_source:
-            self.run.info('WARNING', 'Previous genes annotation data from "%s" will be replaced with the incoming data' % parser, header = True, display_only = True)
+            self.run.warning('Previous genes annotation data from "%s" will be replaced with the incoming data' % parser)
             annotation_db.db._exec('''DELETE FROM %s''' % (genes_contigs_table_name))
             annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_table_name))
             annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_summary_table_name))

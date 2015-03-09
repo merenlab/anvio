@@ -14,7 +14,6 @@ Please read the COPYING file.
 
 import os
 import sys
-from ete2 import Tree
 
 import PaPi.db
 import PaPi.profiler
@@ -26,6 +25,9 @@ import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
 import PaPi.completeness as completeness
 import PaPi.ccollections as ccollections
+
+with terminal.SuppressAllOutput():
+    from ete2 import Tree
 
 progress = terminal.Progress()
 run = terminal.Run()
@@ -183,12 +185,9 @@ class InputHandler:
 
         # if the user wants to see available views, show them and exit.
         if args.show_views:
-            num_views = len(self.views)
-            print "* %d view%s available for this run is listed below." % (num_views,
-                                                                           's' if num_views > 1 else '')
-            run.info('Available views', None, header = True)
+            run.warning('', header = 'Available views (%d)' % len(self.views), lc = 'green')
             for view in self.views:
-                run.info(view, 'Via "%s" table' % self.views[view])
+                run.info(view, 'Via "%s" table' % self.views[view], lc='crimson', mc='crimson')
             print
             sys.exit()
 
@@ -269,17 +268,16 @@ class InputHandler:
             if len(contigs_only_in_additional_metadata):
                 one_example = contigs_only_in_additional_metadata[-1]
                 num_all = len(contigs_only_in_additional_metadata)
-                run.info('WARNING', utils.remove_spaces("Some of the contigs in your addtional metadata file does not\
-                                                         appear to be in anywhere else. Additional metadata file is not\
-                                                         required to list all contigs (which means, there may be contigs\
-                                                         in the database that are not in the additional metadata file),\
-                                                         however, finding contigs that are only in the additional metadata\
-                                                         file usually means trouble. PaPi will continue, but please\
-                                                         go back and check your files if you think there may be something\
-                                                         wrong. Here is a random contig name that was only in the\
-                                                         metadata file: '%s'. And there were %d of them in total. You\
-                                                         are warned!" % (one_example, num_all)),
-                                                         display_only = True, header = True)
+                run.warning("Some of the contigs in your addtional metadata file does not\
+                            appear to be in anywhere else. Additional metadata file is not\
+                            required to list all contigs (which means, there may be contigs\
+                            in the database that are not in the additional metadata file),\
+                            however, finding contigs that are only in the additional metadata\
+                            file usually means trouble. PaPi will continue, but please\
+                            go back and check your files if you think there may be something\
+                            wrong. Here is a random contig name that was only in the\
+                            metadata file: '%s'. And there were %d of them in total. You\
+                            are warned!" % (one_example, num_all))
 
 
     def update_runinfo_on_disk(self):

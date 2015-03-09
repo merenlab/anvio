@@ -22,7 +22,7 @@ import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.filesnpaths as filesnpaths
 import PaPi.interactive as interactive
-
+import PaPi.terminal as terminal
 
 __author__ = "Özcan Esen"
 __copyright__ = "Copyright 2015, The PaPi Project"
@@ -32,6 +32,9 @@ __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+run = terminal.Run()
 
 
 # get the absolute path for static directory under PaPi
@@ -136,7 +139,7 @@ def send_data(tree_id):
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
 
     if tree_id in d.runinfo['clusterings']:
-        print "* Clustering of '%s' has been requested" % (tree_id)
+        run.info_single("Clustering of '%s' has been requested" % (tree_id))
         return json.dumps(d.runinfo['clusterings'][tree_id]['newick'])
 
 @route('/data/charts/<contig_name>')
@@ -205,15 +208,10 @@ def completeness():
     split_names = json.loads(request.forms.get('split_names'))
     group_name = json.loads(request.forms.get('group_name'))
 
-    print '* Completeness info has been requested for %d splits in %s' % (len(split_names), group_name)
+    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), group_name))
+
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
     default_source = 'Wu_et_al' if 'Wu_et_al' in completeness_stats else completeness_stats.keys()[0]
-    # FIXME: sorry for the following BS list comp:
-    print '        %s' % '; '.join(['%s: %.1f%% complete / %.1f%% contaminated'\
-                                            % (source,\
-                                               completeness_stats[source]['percent_complete'],\
-                                               completeness_stats[source]['percent_contamination'])\
-                                                                                for source in completeness_stats])
 
     return json.dumps({'stats': completeness_stats, 'default_source': default_source})
 
@@ -270,10 +268,8 @@ port = parser.parse_args().port_number
 port = utils.get_available_port_num(start = port)
 
 if not port:
-    print 'Error: PaPi failed to find a port number that is available :('
+    run.info_single('PaPi failed to find a port number that is available :(', mc='red')
     sys.exit(-1)
-else:
-    print '(using port number %d)' % port
 
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
@@ -282,9 +278,9 @@ try:
     server_process = Process(target=run_server, kwargs={'host': '127.0.0.1', 'port': port, 'quiet': True})
     server_process.start()
     webbrowser.open_new("http://127.0.0.1:%d" % port)
-    print "\n\n -- When you are finished, press CTRL+C to terminate the server..\n\n"
+    run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', new_lines = 2)
     server_process.join()
 except KeyboardInterrupt:
-    print("\n\n -- Server is being terminated, please wait.\n\n")
+    run.warning('The server is being terminated.', header='Please wait...')
     server_process.terminate()
     sys.exit(1)
