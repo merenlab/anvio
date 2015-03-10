@@ -278,7 +278,7 @@ try:
     server_process = Process(target=run_server, kwargs={'host': '127.0.0.1', 'port': port, 'quiet': True})
     server_process.start()
     webbrowser.open_new("http://127.0.0.1:%d" % port)
-    run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', new_lines = 2)
+    run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
     run.warning('The server is being terminated.', header='Please wait...')
