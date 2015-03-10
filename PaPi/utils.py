@@ -245,7 +245,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 
     fields_of_interest = []
     if cols_to_return:
-        fields_of_interest = [f for f in range(0, len(columns)) if columns[f] in cols_to_return]
+        fields_of_interest = [columns.index(col) for col in cols_to_return]
     else:
         fields_of_interest = [f for f in range(0, len(columns)) if IS_ESSENTIAL_FIELD(columns[f])]
 
@@ -267,7 +267,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         fields = line.strip().split('\t')[1:]
 
         if fields_of_interest:
-            vector = [float(fields[i]) for i in range(0, len(fields)) if i in fields_of_interest]
+            vector = [float(fields[i]) for i in fields_of_interest]
         else:
             vector = [float(f) for f in fields]
 
@@ -591,7 +591,7 @@ def get_scaled_vectors(vectors, user_seed = None, n_components = 12, normalize=T
 
 def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False), pad_zeros = True):
     progress.update('Normalizing vectors using "%s" norm' % norm)
-    vectors = np.array(vectors)
+    vectors = np.array(vectors, dtype=np.float64)
     if pad_zeros:
         vectors += 0.0000001
     normalizer = preprocessing.Normalizer(norm=norm)
