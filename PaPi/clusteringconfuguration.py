@@ -38,9 +38,8 @@ config_template = {
                             'required': 'more than one, comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
-                'alias': {'mandatory': True, 'test': lambda x: NameIsOK(x),
-                         'required': 'a single word alias composed of these characters alone: "%s"' % allowed_chars},
                 'normalize': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
+                'log': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
                },
 }
 
@@ -93,20 +92,24 @@ class ClusteringConfiguration:
 
         self.matrices_dict = {}
         self.matrices = []
-        for matrix in self.get_other_sections(config):
-            self.matrices.append(matrix)
+        for section in self.get_other_sections(config):
+            alias, matrix = section.split()
+
+            self.matrices.append(alias)
+
             m = {}
-            columns_to_use = self.get_option(config, matrix, 'columns_to_use', str)
-            m['name'] = matrix
+            columns_to_use = self.get_option(config, section, 'columns_to_use', str)
+            m['alias'] = alias
+            m['matrix'] = matrix
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
-            m['ratio'] = self.get_option(config, matrix, 'ratio', int)
-            m['alias'] = self.get_option(config, matrix, 'alias', str)
-            m['path'] = self.matrix_paths[matrix]
-            m['normalize'] = False if self.get_option(config, matrix, 'normalize', str) == 'False' else True 
+            m['ratio'] = self.get_option(config, section, 'ratio', int)
+            m['path'] = self.matrix_paths[alias]
+            m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True 
+            m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False 
             # next two variables are necessary to follow the order of vectors
             m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
             m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
-            self.matrices_dict[matrix] = m
+            self.matrices_dict[alias] = m
 
         # make sure all matrices have equal number of entries:
         if len(set([m['id_to_sample'].values().__str__() for m in self.matrices_dict.values()])) > 1:
@@ -117,7 +120,7 @@ class ClusteringConfiguration:
             # the smallest matrix is 'master_matrix', and the rows it has is master_rows. so every other matrix
             # must match that, or we will throw a tantrum.
             for matrix in [m for m in self.matrices if m != master_matrix]:
-                m = self.matrices_dict[matrix]
+                m = self.matrices_dict[alias]
                 m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
                 if len(m['vectors']) != len(master_rows):
                     raise ConfigError, 'The content of rows differed between input matrices. So I tried to\
@@ -152,16 +155,18 @@ class ClusteringConfiguration:
 
 
     def print_summary(self, r):
+        r.info_single('Summary of the config file:', mc='green', nl_before=2)
         r.warning('', header = 'General')
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
         r.info('Seed', self.seed)
         r.info('Output file', self.output_file_name)
-        for matrix in self.matrices:
-            m = self.matrices_dict[matrix]
-            r.warning('', header = '%s (%s) %s' % (matrix, m['alias'], '[MASTER]' if matrix == self.master else ''))
+        for alias in self.matrices:
+            m = self.matrices_dict[alias]
+            r.warning('', header = '%s (%s) %s' % (alias, m['alias'], '[MASTER]' if alias == self.master else ''))
             r.info('Ratio', m['ratio'])
             r.info('Normalize', m['normalize'])
+            r.info('Log', m['log'])
             r.info('Columns to use', m['columns_to_use'] or 'ALL')
             r.info('Num Columns', len(m['cols']))
             r.info('Num Rows', len(m['vectors']))
@@ -198,17 +203,23 @@ class ClusteringConfiguration:
 
 
     def set_default_paths(self, config):
-        matrices = self.get_other_sections(config)
+        sections = self.get_other_sections(config)
 
         # set default paths:
-        for matrix in matrices:
-            self.matrix_paths[matrix] = os.path.join(self.input_directory, matrix)
+        for section in sections:
+            try:
+                alias, matrix = section.split()
+            except:
+                raise ConfigError, 'Each section must have "alias" and "matrix" fields separated by\
+                                    a white space.'
+            self.matrix_paths[alias] = os.path.join(self.input_directory, matrix)
 
 
     def check_for_db_requests(self, config):
-        matrices = self.get_other_sections(config)
+        sections = self.get_other_sections(config)
         # look for requests from the database, create temporary tab delimited files:
-        for matrix in matrices:
+        for section in sections:
+            alias, matrix = section.split()
             if matrix.find('::') > -1:
                 database, table = matrix.split('::')
                 database_path = os.path.join(self.input_directory, database)
@@ -225,7 +236,7 @@ class ClusteringConfiguration:
                 table_structure = dbc.get_table_structure(table)
                 columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
                 store_array(table_rows, tmp_file_path, table_structure, exclude_columns = columns_to_exclude)
-                self.matrix_paths[matrix] = tmp_file_path
+                self.matrix_paths[alias] = tmp_file_path
 
 
     def sanity_check(self, config):
@@ -239,31 +250,32 @@ class ClusteringConfiguration:
 
         self.check_section(config, 'general', 'general')
 
-        matrices = self.get_other_sections(config)
+        sections = self.get_other_sections(config)
 
+        for section in sections:
+            alias, matrix = section.split()
 
-        for matrix in matrices:
-            if not os.path.exists(self.matrix_paths[matrix]):
+            if not os.path.exists(self.matrix_paths[alias]):
                 raise ConfigError, 'The matrix file "%s" you mentioned in %s has not been found in the\
                                     input directory :/' % (matrix, os.path.basename(self.config_file_path))
 
-
-            self.check_section(config, matrix, 'matrix')
+            self.check_section(config, section, 'matrix')
 
             # it is not very elegant to do this here, but carrying this test in the template was going to
             # cause a lot of uncalled for complexity (or reporting was going to be very vague):
-            columns_to_use_str = self.get_option(config, matrix, 'columns_to_use', str)
+            columns_to_use_str = self.get_option(config, section, 'columns_to_use', str)
             columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
-            if columns_to_use and not cols_present(columns_to_use, self.matrix_paths[matrix]):
+            if columns_to_use and not cols_present(columns_to_use, self.matrix_paths[alias]):
                 raise ConfigError, 'One or more of the columns declared for "%s" in the config file\
                                     seem(s) to be missing in the matrix :/' % (matrix)
 
+
         # 'ratio' must be defined either for all, or for none of the matrices
-        with_ratio = len([True for matrix in matrices if self.get_option(config, matrix, 'ratio', int)])
-        if with_ratio and with_ratio != len(matrices):
+        with_ratio = len([True for section in sections if self.get_option(config, section, 'ratio', int)])
+        if with_ratio and with_ratio != len(sections):
             raise ConfigError, 'Ratio value must be defined either for all, or none of the matrices. In your\
                                 configuration only %d of %d matrices have ratio values defined. Either remove\
-                                all, or complete the remaining one%s.' % (with_ratio, len(matrices),
-                                                                          's' if (len(matrices) - with_ratio) > 1 else '')
+                                all, or complete the remaining one%s.' % (with_ratio, len(sections),
+                                                                          's' if (len(sections) - with_ratio) > 1 else '')
 
 
