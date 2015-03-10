@@ -33,14 +33,143 @@ def set_null_ratios_for_matrices(config):
     return config
 
 
-def get_tree_object_in_newick(tree, id_to_sample_dict):
+def depth(current_root):
+    """
+    current_root: represent for root, used in for loops.
+    diff: distance between farthest_node and current_root.
+    first_dist : in the beginning value for compare distances
+    dist : distance between current node and root node in for loop.
+
+    """
+
+    diff = 0
+
+    if current_root.get_sisters():
+        node_sister = current_root.get_sisters()[0]
+        farthest_node = current_root
+
+        if current_root.get_children():
+            farthest_node = current_root.get_children()[0]
+
+        first_dist = farthest_node.get_distance(current_root, topology_only=True)
+
+        # node variable is current root
+        for cr_node in current_root.traverse("preorder"):
+            # it's mean, all the cr_node children visited.
+            if cr_node == node_sister:
+                break
+
+            # finding farthest_node to current_root
+            else:
+                dist = cr_node.get_distance(current_root, topology_only=True)
+
+                if dist > first_dist:
+                    farthest_node = cr_node
+                    first_dist = dist
+
+        diff = farthest_node.get_distance(current_root)
+
+    return diff
+
+
+def synchronize(current_root, control):
+        # If the node modified in previous step. modified by node's sister.
+        if not current_root.name.endswith(control):
+            # this control catch root node.
+            if current_root.get_sisters():
+                new_root_sister = current_root.get_sisters()[0]
+
+                current_node_depth = depth(current_root)
+                sister_node_depth = depth(new_root_sister)
+
+                if current_node_depth > sister_node_depth:
+                    diff = current_node_depth - sister_node_depth
+                    new_root_sister.dist += diff
+
+                elif current_node_depth < sister_node_depth:
+                    diff = sister_node_depth - current_node_depth
+                    current_root.dist += diff
+
+                # "_!$!" added into node names, cause this function modify the couples
+                # but for loop in main function, send nodes one by one, not both of.
+                current_root.name += control
+                new_root_sister.name += control
+
+
+def get_normalized_newick(root):
+    """A function written by Doğan Can Kilment. It converts this:
+                         /-C
+                        |
+                        |--D
+                        |
+               /--------|                              /-r4
+              |         |                    /--------|
+              |         |          /--------|          \-r3
+              |         |         |         |
+              |         |         |          \-r5
+              |          \--------|
+     ---------|                   |                    /-r6
+              |                   |          /--------|
+              |                    \--------|          \-r2
+              |                             |
+              |                              \-r1
+              |
+               \-B
+
+
+       into this, for visualization purposes:
+
+                         /--------------------------------C
+                        |
+                        |---------------------------------D
+                        |
+               /--------|                              /-r4
+              |         |                    /--------|
+              |         |          /--------|          \-r3
+              |         |         |         |
+              |         |         |          \-----------r5
+              |          \--------|
+     ---------|                   |                    /-r6
+              |                   |          /--------|
+              |                    \--------|          \-r2
+              |                             |
+              |                              \-----------r1
+              |
+               \------------------------------------------B
+
+
+    """
+
+    farthest_node = root.get_farthest_node()
+    circle_radius = farthest_node[0].get_distance(root)
+
+    control = '_!$!' # this is to keep track of what is edited
+    for cr_node in root.traverse("levelorder"):
+        if not cr_node.is_leaf():
+            farthest_leaf = cr_node.get_farthest_leaf()[0]
+            dist_to_root = farthest_leaf.get_distance(root)
+            diff = circle_radius - dist_to_root
+            cr_node.dist = cr_node.dist + diff
+        else:
+            synchronize(cr_node, control)
+
+
+    # final traverse to clean 'control' strings.
+    for cr_node in root.traverse("levelorder"):
+        if cr_node.name.endswith(control):
+            cr_node.name = cr_node.name[:-len(control)]
+
+    return root
+
+
+def get_tree_object_in_newick(tree, id_to_sample_dict, normalize_branches = False):
     """i.e., tree = hcluster.to_tree(c_res)"""
 
     root = Tree()
     root.dist = 0
     root.name = "root"
     item2node = {tree: root}
-    
+
     to_visit = [tree]
     while to_visit:
         node = to_visit.pop()
@@ -59,7 +188,10 @@ def get_tree_object_in_newick(tree, id_to_sample_dict):
                 item2node[ch_node] = ch
                 to_visit.append(ch_node)
 
-    return root.write(format=1) 
+    if normalize_branches:
+        root = get_normalized_newick(root)
+
+    return root.write(format=1)
 
 
 def order_contigs_simple(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
@@ -141,7 +273,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
         # "num_components" per matrix.
         config = set_num_components_for_each_matrix(config)
 
-        
+
 
         # now we know the exact number of components for each matrix. we can scale them to the expected number of
         # dimensions now.
