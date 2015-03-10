@@ -4,4 +4,4 @@
 
 [Abundance PROFILE.db::metadata_contigs]
 normalize=False
-columns_to_use = abundance,coverage
+columns_to_use = abundance,mean_coverage
