@@ -4,6 +4,7 @@
 
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+var dragging = false;
 
 var LINE_COLOR='#888888';
 var HIGHLIGHT_COLOR= "#FFC000";

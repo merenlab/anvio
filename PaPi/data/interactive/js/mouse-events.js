@@ -8,6 +8,9 @@ function getGroupId() {
 }
 
 function lineClickHandler(event) {
+    if (dragging)
+        return;
+    
     var p = getNodeFromEvent(event);
 
     if (p.id == 0)

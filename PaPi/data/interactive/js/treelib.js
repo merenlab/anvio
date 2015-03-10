@@ -2178,6 +2178,12 @@ function draw_tree(settings) {
         tree_group.addEventListener('mouseout', lineMouseLeaveHandler, false);
         document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
         document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
+
+        // code below required to stop clicking on contings while panning.
+        var viewport = document.getElementById('viewport');
+        viewport.addEventListener('mousedown', function() { dragging = false; });
+        viewport.addEventListener('mousemove', function() { dragging = true; });
+
     }
 
     $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
