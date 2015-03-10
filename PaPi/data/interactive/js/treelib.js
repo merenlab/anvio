@@ -2066,6 +2066,7 @@ function draw_tree(settings) {
             if (isParent || isCategorical)
             {
                 var layer_items = categorical_layers_ordered[layer_index];
+                layer_items.push(null);
 
                 var prev_value = layer_items[0];
                 var prev_start = 0;
