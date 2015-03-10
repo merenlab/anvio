@@ -70,7 +70,10 @@ INFO "Generating network descriptions for samples based on ORFs and functions ..
 # generate gene and function networks for the merge
 papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
+INFO "Use papi-experimental-organization to generate another tree"
+# this is meaningless here, but it is an example to show how one could generate new trees
+papi-experimental-organization ../../PaPi/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-papi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt
+papi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
