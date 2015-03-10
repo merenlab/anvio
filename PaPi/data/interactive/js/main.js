@@ -4,6 +4,7 @@
 
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+var dragging = false;
 
 var LINE_COLOR='#888888';
 var HIGHLIGHT_COLOR= "#FFC000";
@@ -13,6 +14,7 @@ var scale = 0;
 var id_to_node_map = new Array();
 var label_to_node_map = {};
 var order_to_node_map = {};
+var leaf_count;
 
 var angle_per_leaf;
 var height_per_leaf;
@@ -21,6 +23,7 @@ var margin;
 var order_counter;
 
 var total_radius = 0;
+var layer_boundaries;
 
 var SELECTED = new Array();
 var newick;

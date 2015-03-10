@@ -8,7 +8,13 @@ function getGroupId() {
 }
 
 function lineClickHandler(event) {
-    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+    if (dragging)
+        return;
+    
+    var p = getNodeFromEvent(event);
+
+    if (p.id == 0)
+        return; // skip root
 
     var group_id = getGroupId();
 
@@ -61,7 +67,7 @@ function lineContextMenuHandler(event) {
         if (tooltip)
             tooltip.parentNode.removeChild(tooltip);
 
-        context_menu_target_id = event.target.id.replace('path_', '');
+        context_menu_target_id = getNodeFromEvent(event).id;
 
         $('#control_contextmenu').show();
 
@@ -89,7 +95,10 @@ function lineContextMenuHandler(event) {
         return false;
     }
 
-    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+    var p = getNodeFromEvent(event);
+
+    if (p.id == 0)
+        return; // skip root
 
     if (group_id === 'undefined')
         return;
@@ -117,7 +126,12 @@ function lineContextMenuHandler(event) {
 }
 
 function lineMouseEnterHandler(event) {
-    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+    var p = getNodeFromEvent(event);
+
+    $('#path_hover').remove();
+
+    if (p.id == 0)
+        return; // skip root
 
     var group_id = getGroupId();
 
@@ -182,7 +196,7 @@ function lineMouseEnterHandler(event) {
 }
 
 function lineMouseLeaveHandler(event) {
-    var p = id_to_node_map[event.target.id.match(/\d+/)[0]];
+    var p = getNodeFromEvent(event);
 
     $('#path_hover').remove();
 
@@ -192,6 +206,9 @@ function lineMouseLeaveHandler(event) {
         document.focus();
         return;
     }
+
+    if (!p)
+        return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
@@ -248,33 +265,36 @@ function lineMouseLeaveHandler(event) {
 }
 
 function mouseMoveHandler(event) {
-    var id = event.target.id.match(/path_(\d+)(_parent)?/);
+    var p = getNodeFromEvent(event);
 
+    if (event.target.id && event.target.id == 'path_event')
+        lineMouseEnterHandler(event);
+    
     var tooltip = document.getElementById('aToolTip');
     if (tooltip)
         tooltip.parentNode.removeChild(tooltip);
 
-    if (id)
-    {
-        id = id[1];
+    if (!p)
+        return;
 
-        var layer_id = event.target.parentNode.id.match(/\d+/)[0];
+    var layer_id_exp = event.target.parentNode.id.match(/\d+/);
+    if (!layer_id_exp)
+        return;
+    var layer_id = layer_id_exp[0];
 
-        var tooltip_arr = metadata_title[id_to_node_map[id].label].slice(0);
-        tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
-        var message = tooltip_arr.join('<br />\n');
+    var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
+    tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
+    var message = tooltip_arr.join('<br />\n');
 
-        var tooltip = document.createElement('div');
-        tooltip.setAttribute('id', 'aToolTip');
-        tooltip.setAttribute('class', 'defaultTheme');
-        tooltip.innerHTML = "<p class='aToolTipContent'>"+message+"</p>";
+    var tooltip = document.createElement('div');
+    tooltip.setAttribute('id', 'aToolTip');
+    tooltip.setAttribute('class', 'defaultTheme');
+    tooltip.innerHTML = "<p class='aToolTipContent'>"+message+"</p>";
 
-        tooltip.style['top'] = (event.y+10) + 'px';
-        tooltip.style['left'] = (event.x+10) + 'px';
+    tooltip.style['top'] = (event.y+10) + 'px';
+    tooltip.style['left'] = (event.x+10) + 'px';
 
-        document.body.appendChild(tooltip);
-    }
-
+    document.body.appendChild(tooltip);
 }
 
 
@@ -313,5 +333,88 @@ function menu_callback(action) {
             metadata[0].forEach(function (e,i,a) {if(["contigs", "__parent__"].indexOf(e) < 0) layers.push(e);});
             window.open('charts.html?contig=' + contig_name, '_blank');
             break;
+    }
+}
+
+// globals related single background
+var rect_left;
+var rect_width;
+
+var origin_x;
+var origin_y;
+
+function updateSingleBackgroundGlobals()
+{
+    if (tree_type == 'phylogram')
+    {
+        var path_event = document.getElementById('path_event');
+        var rect = path_event.getBoundingClientRect();
+
+        rect_left = rect.left;
+        rect_width = rect.width;
+    }
+    else // circlephylogram
+    {
+        var root = document.getElementById('line0');
+        var rect = root.getBoundingClientRect();
+
+        var angle = id_to_node_map[0].angle;
+
+        var halfPI = Math.PI / 2;
+
+        if (angle < halfPI)
+        {
+            origin_x = rect.left;
+            origin_y = rect.top;
+        }
+        else if (angle < 2 * halfPI)
+        {
+            origin_x = rect.left + rect.width;
+            origin_y = rect.top;
+        }
+        else if (angle < 3 * halfPI)
+        {
+            origin_x = rect.left + rect.width;
+            origin_y = rect.top + rect.height;
+        }
+        else // 4 * halfPI
+        {
+            origin_x = rect.left;
+            origin_y = rect.top + rect.height;
+        }
+    }
+}
+
+function getNodeFromEvent(event)
+{
+    if (event.target.id == 'path_event')
+    {
+        if (tree_type == 'phylogram')
+        {
+            return order_to_node_map[leaf_count - parseInt((event.clientX - rect_left) / (rect_width / leaf_count)) - 1];
+        }
+        else
+        {
+            var _y = event.clientY - origin_y;
+            var _x = event.clientX - origin_x;
+
+            var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
+            if (angle < 0)
+                angle = 2 * Math.PI + angle;
+
+            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min'])) / angle_per_leaf);
+            
+            if (order < 1 || order > leaf_count)
+                order = 0;
+
+            return order_to_node_map[order]
+        }
+    }
+    else
+    {
+        var id = event.target.id.match(/\d+/);
+
+        if (id)
+            return id_to_node_map[id[0]];
     }
 }
