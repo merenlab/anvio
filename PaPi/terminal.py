@@ -194,24 +194,27 @@ class Run:
             sys.stderr.write(info_line)
 
 
-    def info_single(self, message, mc = 'yellow', new_lines = 0):
+    def info_single(self, message, mc = 'yellow', nl_before = 0, nl_after = 0):
         if type(message) == str:
             message = remove_spaces(message)
 
         message_line = c("* %s\n" % (textwrap.fill(str(message), 80)), mc)
 
         if self.verbose:
-            sys.stderr.write('\n' * new_lines)
+            sys.stderr.write('\n' * nl_before)
             sys.stderr.write(message_line)
-            sys.stderr.write('\n' * new_lines)
+            sys.stderr.write('\n' * nl_after)
 
 
-    def warning(self, message, header='WARNING', lc = 'red'):
+    def warning(self, message, header='WARNING', lc = 'red', raw = False):
         if type(message) == str:
             message = remove_spaces(message)
 
         header_line = c("\n%s\n%s\n" % (header, '=' * (self.width + 2)), lc)
-        message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
+        if raw:
+            message_line = c("%s\n\n" % (message), lc)
+        else:
+            message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
 
         if self.verbose:
             sys.stderr.write(header_line)
