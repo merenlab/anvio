@@ -210,12 +210,12 @@ class InputHandler:
         self.profile_db = PaPi.db.DB(self.P(self.runinfo['profile_db']), PaPi.profiler.__version__)
         self.runinfo['clusterings'] = self.profile_db.get_table_as_dict('clusterings')
 
-        # clustering_newick is only necessary for sanity check. interface does not use it.
         if args.tree:
-            run.info('Warning', "The default tree in RUNINFO is being overriden by '%s'." % args.tree)
-            self.runinfo['clustering_newick'] = os.path.abspath(args.tree).read()
-        else:
-            self.runinfo['clustering_newick'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick']
+            entry_id = os.path.basename(args.tree).split('.')[0]
+            run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
+            self.runinfo['clusterings'][entry_id] = {'newick': open(os.path.abspath(args.tree)).read()}
+
+        self.runinfo['clustering_newick'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick']
 
         if args.summary_index:
             run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
