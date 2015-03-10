@@ -1,4 +1,3 @@
 [general]
 
-[PROFILE.db::tnf_contigs]
-alias=TNF
+[TNF PROFILE.db::tnf_contigs]

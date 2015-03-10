@@ -1,7 +1,13 @@
 [general]
 
-[PROFILE.db::tnf_contigs]
-alias = TNF
+[TNF PROFILE.db::tnf_contigs]
 
-[PROFILE.db::mean_coverage_contigs]
-alias = Coverage
+[Coverage PROFILE.db::mean_coverage_contigs]
+
+[Coverage_N PROFILE.db::mean_coverage_contigs]
+normalize = False
+log = True
+
+[GC_content PROFILE.db::mean_coverage_contigs]
+columns_to_use = GC_content,GC_content,GC_content
+normalize = False

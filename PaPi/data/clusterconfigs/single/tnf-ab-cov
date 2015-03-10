@@ -1,9 +1,7 @@
 [general]
 
-[PROFILE.db::tnf_contigs]
-alias = TNF
+[TNF PROFILE.db::tnf_contigs]
 
-[PROFILE.db::metadata_contigs]
-alias = Abundance
+[Abundance PROFILE.db::metadata_contigs]
 normalize=False
 columns_to_use = abundance,coverage

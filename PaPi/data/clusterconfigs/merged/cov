@@ -1,4 +1,7 @@
 [general]
 
-[PROFILE.db::mean_coverage_contigs]
-alias = Coverage
+[Coverage PROFILE.db::mean_coverage_contigs]
+
+[Coverage_N PROFILE.db::mean_coverage_contigs]
+normalize = False
+log = True

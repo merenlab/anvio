@@ -66,12 +66,23 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
 
+    if debug:
+        run.info_single('Peak at the first 5 items in the first 5 rows in matrices:', mc='green', nl_before=2)
+
     for matrix in config.matrices:
         m = config.matrices_dict[matrix]
+
+        m['scaled_vectors'] = np.array(m['vectors'], dtype=np.float64)
+
         if m['normalize']:
-            m['scaled_vectors'] = utils.get_normalized_vectors(m['vectors'])
-        else:
-            m['scaled_vectors'] = np.array(m['vectors'])
+            m['scaled_vectors'] = utils.get_normalized_vectors(m['scaled_vectors'])
+
+        if m['log']:
+            m['scaled_vectors'] = np.log10(m['scaled_vectors'] + 1)
+
+        if debug:
+            summary = '\n'.join(['%s (...)' % m['scaled_vectors'][i][0:5] for i in range(0, 5)])
+            run.warning(summary, 'Vectors for "%s" (%d by %d)' % (matrix, len(m['scaled_vectors']), len(m['scaled_vectors'][0])), lc='crimson', raw=True)
 
     progress.new('Vectors from %d matrices' % config.num_matrices)
     progress.update('Combining ...')
@@ -83,10 +94,6 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
         config.combined_id_to_sample[i] = config.master_rows[i]
         combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in config.matrices_dict.values()]
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
-
-    if debug:
-        for i in range(0, 10):
-            print config.combined_vectors[i]
 
     progress.update('Clustering ...')
     tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)

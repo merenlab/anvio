@@ -1,11 +1,13 @@
 [general]
 
-[PROFILE.db::tnf_contigs]
-alias = TNF
+[TNF PROFILE.db::tnf_contigs]
 
-[PROFILE.db::abundance_contigs]
+[Abundance PROFILE.db::abundance_contigs]
 alias = Abundance
 normalize=False
 
-[PROFILE.db::mean_coverage_contigs]
-alias = Coverage
+[Coverage PROFILE.db::mean_coverage_contigs]
+
+[Coverage_N PROFILE.db::mean_coverage_contigs]
+normalize = False
+log = True
