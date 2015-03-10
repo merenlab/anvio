@@ -3,7 +3,6 @@
 [TNF PROFILE.db::tnf_contigs]
 
 [Abundance PROFILE.db::abundance_contigs]
-alias = Abundance
 normalize=False
 
 [Coverage PROFILE.db::mean_coverage_contigs]
