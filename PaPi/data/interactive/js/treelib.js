@@ -1893,6 +1893,18 @@ function draw_tree(settings) {
 
         odd_even_flag = -1
 
+        var categorical_layers_ordered = {};
+
+        for (var i = 0; i < settings['layer-order'].length; i++) {
+            var layer_index = i+1;
+            var pindex = settings['layer-order'][i];
+
+            if (layer_types[pindex] == 2 || layer_types[pindex] == 0) // categorical or parent
+            {
+                categorical_layers_ordered[layer_index] = new Array();
+            }
+        }
+
         switch (settings['tree-type']) {
             case 'phylogram':
                 while (q != null) {
@@ -1938,54 +1950,11 @@ function draw_tree(settings) {
                                         categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
                                 }
 
-                                if (typeof(metadata_dict[q.label][pindex]) != typeof(null))
-                                {
-                                    var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
-
-                                    drawPhylogramRectangle('layer_' + layer_index,
-                                        q.id,
-                                        layer_boundaries[layer_index][0],
-                                        q.xy['y'],
-                                        height_per_leaf,
-                                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                        color,
-                                        1,
-                                        false);
-                                }
+                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
                             }
                             else if (isParent)
                             {
-                                if (metadata_dict[q.label][pindex] == '')
-                                    continue;
-
-                                var color = prev_parent_color;
-
-                                if (prev_parent_name != metadata_dict[q.label][pindex])
-                                {
-                                    if (prev_parent_color == parent_odd)
-                                    {
-                                        var color = parent_even;
-                                    }
-                                    else
-                                    {
-                                        var color = parent_odd;
-                                    }
-                                    prev_parent_items = new Array();
-                                    parent_count++;
-                                }
-                                drawPhylogramRectangle('layer_' + layer_index,
-                                    q.id + "_parent",
-                                    layer_boundaries[layer_index][0],
-                                    q.xy['y'],
-                                    height_per_leaf,
-                                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                    color,
-                                    1,
-                                    false);
-
-                                prev_parent_color = color;
-                                prev_parent_name = metadata_dict[q.label][pindex];
-                                prev_parent_items.push(q.id + "_parent");
+                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
                             }
                             else // numerical
                             {
@@ -2054,57 +2023,11 @@ function draw_tree(settings) {
                                         categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
                                 }
 
-                                if (typeof(metadata_dict[q.label][pindex]) != typeof(null))
-                                {
-                                    var color = categorical_data_colors[pindex][metadata_dict[q.label][pindex]];
-
-                                    drawPie('layer_' + layer_index,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[layer_index][0], 
-                                        layer_boundaries[layer_index][1],
-                                        0,
-                                        color,
-                                        1,
-                                        false);
-                                }
+                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
                             }
                             else if (isParent)
                             {
-                                if (metadata_dict[q.label][pindex] == '')
-                                    continue;
-
-                                var color = prev_parent_color;
-
-                                if (prev_parent_name != metadata_dict[q.label][pindex])
-                                {
-                                    if (prev_parent_color == parent_odd)
-                                    {
-                                        var color = parent_even;
-                                    }
-                                    else
-                                    {
-                                        var color = parent_odd;
-                                    }
-                                    prev_parent_items = new Array();
-                                    parent_count++;
-                                }
-
-                                drawPie('layer_' + layer_index,
-                                    q.id + "_parent",
-                                    q.angle - angle_per_leaf / 2,
-                                    q.angle + angle_per_leaf / 2,
-                                    layer_boundaries[layer_index][0], 
-                                    layer_boundaries[layer_index][1],
-                                    0,
-                                    color,
-                                    1,
-                                    false);
-
-                                prev_parent_color = color;
-                                prev_parent_name = metadata_dict[q.label][pindex];
-                                prev_parent_items.push(q.id + "_parent");
+                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
                             }
                             else // numerical
                             {
@@ -2131,13 +2054,85 @@ function draw_tree(settings) {
                 break;
         }
 
-        // parent count odd-even check
+        // cluster categorical items and draw them
         
-        if ((parent_count % 2) == 1)
-        {
-            for (var i = 0; i < prev_parent_items.length; i++)
+        for (var i = 0; i < settings['layer-order'].length; i++) {
+            var layer_index = i+1;
+            var pindex = settings['layer-order'][i];
+
+            var isParent      = (layer_types[pindex] == 0) ? true : false;
+            var isCategorical = (layer_types[pindex] == 2) ? true : false;
+
+            if (isParent || isCategorical)
             {
-                $('#path_' + prev_parent_items[i]).css('fill', parent_residual);
+                var layer_items = categorical_layers_ordered[layer_index];
+
+                var prev_value = layer_items[0];
+                var prev_start = 0;
+
+                var items_to_draw = new Array();
+
+                for (var j=1; j < layer_items.length; j++)
+                {
+                    if (prev_value != layer_items[j])
+                    {
+                        if (prev_value != null)
+                            items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
+
+                        prev_start = j;
+                    }
+                    prev_value = layer_items[j];
+                }
+
+                for (var j=0; j < items_to_draw.length; j++)
+                {
+                    var categorical_item = items_to_draw[j];
+
+                    var color;
+
+                    if (isCategorical)
+                    {
+                        color = categorical_data_colors[pindex][categorical_item[2]];
+                    } 
+                    else // parent
+                    {
+                        if (j % 2 == 1 && j == items_to_draw.length - 1)
+                            color = '#AAAAAA';
+                        else if (j % 2 == 1)
+                            color = '#888888';
+                        else
+                            color = '#666666';
+                    }
+
+                    var start = order_to_node_map[categorical_item[0]];
+                    var end = order_to_node_map[categorical_item[1]];
+
+                    if (tree_type == 'circlephylogram')
+                    {
+                        drawPie('layer_' + layer_index,
+                            'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
+                            start.angle - angle_per_leaf / 2,
+                            end.angle + angle_per_leaf / 2,
+                            layer_boundaries[layer_index][0], 
+                            layer_boundaries[layer_index][1],
+                            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                            color,
+                            1,
+                            false);
+                    }
+                    else
+                    {
+                        drawPhylogramRectangle('layer_' + layer_index,
+                            'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
+                            layer_boundaries[layer_index][0],
+                            start.xy['y'],
+                            end.xy['y'] - start.xy['y'],
+                            layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                            color,
+                            1,
+                            false);
+                    }
+                }
             }
         }
 
