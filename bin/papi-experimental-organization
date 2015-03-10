@@ -22,13 +22,16 @@ from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
 from PaPi.clusteringconfuguration import ClusteringConfiguration
 
+run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='why yes we do stuff here.')
 parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
-                    help = 'Config file for clustering of contigs. See XXX for help.')
-parser.add_argument('-i', '--input-directory', metavar = 'PATH', default = None, type=str,
-                    help = 'Input directory to find matrix files')
+                    help = 'Config file for clustering of contigs. See documentation for help.')
+parser.add_argument('-i', '--input-directory', metavar = 'INPUT_DIR', default = None, type=str,
+                    help = 'Input directory where the input files can be found')
+parser.add_argument('-o', '--output-file', metavar = 'FILE', default = None, type=str,
+                    help = 'To store the newick output/')
 parser.add_argument('-D', '--dry-run', default = False, action = 'store_true', 
                     help = 'Do not do anything, just print out the configuration.')
 
@@ -43,10 +46,13 @@ except FilesNPathsError, e:
     print e
     sys.exit(-2)
 
-# FIXME: This should take a Run argument.
-config.print_summary(terminal.Run())
+config.print_summary(run)
 
 if args.dry_run:
     sys.exit()
 
-clustering.order_contigs_simple(config, progress = terminal.Progress(), debug = True)
+newick = clustering.order_contigs_simple(config, progress = terminal.Progress(), debug = True)
+
+if args.output_file:
+    open(args.output_file, 'w').write(newick + '\n')
+    run.info('Output', args.output_file, mc='green')
