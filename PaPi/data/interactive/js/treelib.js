@@ -2123,11 +2123,13 @@ function draw_tree(settings) {
                     }
                     else
                     {
+                        var height = end.xy['y'] - start.xy['y'];
+
                         drawPhylogramRectangle('layer_' + layer_index,
                             'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
                             layer_boundaries[layer_index][0],
-                            start.xy['y'],
-                            end.xy['y'] - start.xy['y'],
+                            start.xy['y'] + height / 2,
+                            height + height_per_leaf,
                             layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                             color,
                             1,
