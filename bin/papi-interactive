@@ -211,9 +211,8 @@ def completeness():
     run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), group_name))
 
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
-    default_source = 'Wu_et_al' if 'Wu_et_al' in completeness_stats else completeness_stats.keys()[0]
 
-    return json.dumps({'stats': completeness_stats, 'default_source': default_source})
+    return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
 
 @route('/save_state', method='POST')
 def save_state():
