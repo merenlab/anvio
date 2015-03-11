@@ -2342,6 +2342,12 @@ function rebuildIntersections()
                 var node = label_to_node_map[SELECTED[gid][cursor]];
                 var parent = node.ancestor;
 
+                if (parent.ancestor == null) 
+                {
+                    // skip root
+                    continue;
+                }
+
                 if (SELECTED[gid].indexOf(parent.label) > -1)
                 {
                     // parent already in selected list
