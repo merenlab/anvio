@@ -146,14 +146,7 @@
                     <li class="save-svg" onmousedown="exportSvg();"></li>
                 </ul>
             </div>
-            <div id="messagePopup" class="dialogs">
-                <textarea id="messagePopup_context" onclick="this.focus();this.select();" readonly="readonly" style="width: 400px; height: 300px"></textarea>
-                <br />
-                <br />
-                
-                <center><input type="button" value="Close" onclick="$('#messagePopup').dialog('close');"></center>
-            </div>
-            <div id="searchBox" class="dialogs">
+            <div id="searchBox" class="dialogs2">
                 Expression: 
                 <select id="searchLayerList"></select>
                 <select id="searchOperator">
@@ -175,16 +168,6 @@
                 <input type="button" onclick="redrawGroups();" value="Clear">
                 <input type="button" onclick="appendResult();" value="Append to group">
                 <input type="button" onclick="removeResult();" value="Remove from group">
-                <br />
-                <br /> 
-                <center><input type="button" onclick="$('#searchBox').dialog('close');" value="Close"></center>
-
-            </div>
-            <div id="completenessBox" class="dialogs">
-                <input type="hidden" id="completenessBox_source_gid" value="">
-                <div id="completenessBox_content"></div>
-                <br />
-                <center><input type="button" onclick="$('#completenessBox_source_gid').val(''); $('#completenessBox').dialog('close');" value="Close"></center>
             </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>

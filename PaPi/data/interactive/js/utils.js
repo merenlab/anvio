@@ -203,6 +203,9 @@ PreorderIterator.prototype.Next = function()
 //---------------------------------------------------------
 
 function initializeDialogs() {
+
+    // dialogs without close button
+
     $('.dialogs').dialog({
         resizable: false,
         width: 'auto',
@@ -211,11 +214,8 @@ function initializeDialogs() {
         beforeclose: function(event, ui) {
             return false;
         },
-        dialogClass: "noclose"
+        open: function(event, ui) { $(".ui-dialog-titlebar-close", $(this).parent()).hide(); }
     });
-
-    $("#treeControls").dialog("option", "title", "Tree Settings");
-    $("#groups").dialog("option", "title", "Groups");
 
     $("#zoomDialog").dialog("option", "title", "Zoom").dialog("option", "position", {
             my: "right bottom",
@@ -223,44 +223,51 @@ function initializeDialogs() {
             of: window
         });
 
-    $("#messagePopup").dialog("option", "title", "Contig Names").dialog("option", "position", {
-            my: "center",
-            at: "center",
-            of: window
-        }).dialog('close');
-
-    $("#searchBox").dialog("option", "title", "Search Contigs").dialog("option", "position", {
-            my: "center",
-            at: "center",
-            of: window
-        }).dialog('close');
-
-    $("#completenessBox").dialog("option", "title", "Completeness Info").dialog("option", "position", {
-            my: "center",
-            at: "center",
-            of: window
-        }).dialog('close');    
-
-    $("#treeControls").dialog("option", "position", {
+    $("#treeControls").dialog("option", "title", "Tree Settings").dialog("option", "position", {
             my: "left top",
             at: "left top",
             of: window
         });
 
-    $("#groups").dialog("option", "position", {
+    $("#groups").dialog("option", "title", "Groups").dialog("option", "position", {
             my: "right-20px top",
             at: "right-20px top",
             of: window
         }).dialog('option', 'minHeight', 0);
+
+    // diaglos with close button.
+
+    $("#searchBox").dialog({
+            resizable: false,
+            collapseEnabled: false,
+            width: 'auto',
+            title: 'Search',
+            position: {
+                my: "center",
+                at: "center",
+                of: window
+            }}).dialog('close');
 }
 //---------------------------------------------------------
 //  message popup
 //---------------------------------------------------------
 function messagePopupShow(title, context)
 {
-    $('#messagePopup').dialog("option", "title", title);
-    $('#messagePopup_context').val(context);
-    $('#messagePopup').dialog('open');
+    $('<div> \
+        <textarea id="messagePopup_context" onclick="this.focus();this.select();" readonly="readonly" style="width: 400px; height: 300px">' + context + '</textarea> \
+       </div>').dialog({
+            resizable: false,
+            collapseEnabled: false,
+            width: 'auto',
+            title: title,
+            position: {
+                my: "center",
+                at: "center",
+                of: window
+            },
+            close: function(ev, ui) {
+                $(this).remove();
+            }});
 }
 
 

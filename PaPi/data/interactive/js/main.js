@@ -64,6 +64,7 @@ var completeness_dict = {};
 $(document).ready(function() {
 
     $('.dialogs').hide();
+    $('.dialogs2').hide();
 
     var timestamp = new Date().getTime(); 
 
@@ -908,10 +909,7 @@ function updateComplateness(gid) {
 
             completeness_dict[gid] = completeness_info_dict;
 
-            //check if completenessBox for this group already on the screen, if yes update content.
-            if ($('#completenessBox_source_gid').val()==gid) {
-                $('#completenessBox_content').html(buildCompletenessTable(completeness_info_dict));
-            }
+            showCompleteness(gid, true); 
 
             // it is sad that one liner with a list comprehension takes this much code in JS:
             sum_completeness = 0.0;
@@ -932,14 +930,34 @@ function updateComplateness(gid) {
     });
 }
 
-function showCompleteness(gid) {
+function showCompleteness(gid, updateOnly) {
     if (!completeness_dict.hasOwnProperty(gid))
         return;
 
-    $('#completenessBox_source_gid').val(gid);
-    $('#completenessBox_content').html(buildCompletenessTable(completeness_dict[gid]));
-    $('#completenessBox').dialog('open');
+    if ($('#completeness_content_' + gid).length)
+    {
+        $('#completeness_content_' + gid).html(buildCompletenessTable(completeness_dict[gid]));
+        return;
+    }
 
+    if (!updateOnly)
+    {
+        $('<div> \
+           <div id="completeness_content_' + gid + '">' + buildCompletenessTable(completeness_dict[gid]) + '</div> \
+           </div>').dialog({
+                resizable: false,
+                collapseEnabled: false,
+                width: 'auto',
+                title: 'Completeness Info',
+                position: {
+                    my: "center",
+                    at: "center",
+                    of: window
+                },
+                close: function(ev, ui) {
+                    $(this).remove();
+                }});
+    }
 }
 
 function buildCompletenessTable(info_dict) {

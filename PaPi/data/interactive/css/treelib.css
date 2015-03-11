@@ -70,20 +70,6 @@ div#treeContainer svg {
     height:100%;
 }
 
-.noclose .ui-dialog-titlebar-close
-{
-    display:none;
-}
-/*
-    .ui-dialog
-    {
-        opacity: 0.8;
-    }
-    .ui-dialog:hover
-    {
-        opacity: 1;
-    }
-*/
 .colorpicker {
     background-color: #FFF;
     border: 1px solid;
