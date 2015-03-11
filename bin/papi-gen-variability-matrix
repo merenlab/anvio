@@ -25,6 +25,7 @@ import PaPi.utils as utils
 import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 import PaPi.dictio as dictio
+import PaPi.annotation as annotation
 
 progress = terminal.Progress()
 run = terminal.Run(width = 30)
@@ -61,25 +62,25 @@ def entropy(l):
 
 
 class ContigVariability:
-    def __init__(self, contig_name, contig_data, contig_sequence, num_positions_from_each_contig = 2):
-        self.contig_name = contig_name
-        self.contig_data = contig_data
-        self.contig_sequence = contig_sequence
+    def __init__(self, split_name, split_data, split_sequence, num_positions_from_each_split = 2):
+        self.split_name = split_name
+        self.split_data = split_data
+        self.split_sequence = split_sequence
 
-        self.layer_names = sorted(self.contig_data.keys())
+        self.layer_names = sorted(self.split_data.keys())
         self.layer_index = dict(zip(self.layer_names, range(0, len(self.layer_names))))
 
         self.positions_dict = {}
-        self.num_positions_from_each_contig = num_positions_from_each_contig
+        self.num_positions_from_each_split = num_positions_from_each_split
         self.positions_selected = None
 
         self.TOP = lambda key, num: [x[1] for x in sorted([(self.positions_dict[p][key], p) for p in self.positions_selected], reverse = True)[:num]]
 
 
     def populate_positions_dict(self):
-        '''We take a contig, and create a record of each variable position in it.'''
+        '''We take a split, and create a record of each variable position in it.'''
         counter = Counter()
-        for variable_positions_in_layer in [t['competing_nucleotides'].keys() for t in self.contig_data.values()]:
+        for variable_positions_in_layer in [t['competing_nucleotides'].keys() for t in self.split_data.values()]:
             for pos in variable_positions_in_layer:
                 counter[pos] += 1
 
@@ -97,7 +98,7 @@ class ContigVariability:
         # fill in more information to finalize the dict
         for p in self.positions_dict:
             for layer_name in self.layer_names:
-                layer = self.contig_data[layer_name]
+                layer = self.split_data[layer_name]
                 self.positions_dict[p]['variability'] += layer['variability'][p]
                 self.positions_dict[p]['coverages'].append(layer['coverage'][p])
 
@@ -105,7 +106,7 @@ class ContigVariability:
                     content = layer['competing_nucleotides'][p]
                 else:
                     if layer['coverage'][p]:
-                        content = self.contig_sequence[p] + self.contig_sequence[pos]
+                        content = self.split_sequence[p] + self.split_sequence[p]
                     else:
                         content = 'NN'
                 self.positions_dict[p]['contents'].append(content)
@@ -128,19 +129,19 @@ class ContigVariability:
 
     def position_selection_heuristics(self):
         '''The main purpose of this function is to normalize the number of positions across
-           multiple contigs by selecting only top `self.num_positions_from_each_contig` positions
-           fom each contig.
+           multiple splits by selecting only top `self.num_positions_from_each_split` positions
+           fom each split.
         '''
 
-        # first order all positions in a contig based on entropy
-        self.positions_selected = self.TOP('entropy', self.num_positions_from_each_contig * 3)
+        # first order all positions in a split based on entropy
+        self.positions_selected = self.TOP('entropy', self.num_positions_from_each_split * 3)
         # first order them by variability
-        self.positions_selected = self.TOP('variability', self.num_positions_from_each_contig * 2)
+        self.positions_selected = self.TOP('variability', self.num_positions_from_each_split * 2)
         # then order by coverage
-        self.positions_selected = self.TOP('mean_coverage', self.num_positions_from_each_contig)
+        self.positions_selected = self.TOP('mean_coverage', self.num_positions_from_each_split)
 
 
-    def analyze_contig_summary(self):
+    def analyze_split_summary(self):
         # get a dictionary with all positions in all layers with their occurrences
         self.populate_positions_dict()
 
@@ -149,12 +150,12 @@ class ContigVariability:
 
 
     def text_report(self):
-        run.info(contig_name, None, header = True)
+        run.warning('', header = split_name, lc = 'crimson')
         for pos in self.positions_selected:
             run.info('%d (entropy: %f)' % (pos, self.positions_dict[pos]['entropy']), None, header = True)
             for layer_name in self.layer_names:
                 i = self.layer_index[layer_name]
-                layer = self.contig_data[layer_name]
+                layer = self.split_data[layer_name]
                 content = self.positions_dict[pos]['contents'][i]
                 run.info(layer_name, '%s %s %f %d' % (content, states_dict[content], layer['variability'][pos], self.positions_dict[pos]['coverages'][i]))
 
@@ -162,17 +163,17 @@ class ContigVariability:
 class VariabilityWrapper:
     def __init__(self):
         self.samples_dict = None
-        self.contigs = []
-        self.contig_positions = {}
+        self.splits = []
+        self.split_positions = {}
         self.layer_names = []
         self.units = []
 
-    def add_contig(self, contig_name, contig_data, contig_sequence, num_positions_from_each_contig = 2):
-        v = ContigVariability(contig_name, contig_data, contig_sequence, num_positions_from_each_contig)
-        v.analyze_contig_summary()
+    def add_split(self, split_name, split_data, split_sequence, num_positions_from_each_split = 2):
+        v = ContigVariability(split_name, split_data, split_sequence, num_positions_from_each_split)
+        v.analyze_split_summary()
 
-        self.contigs.append(contig_name)
-        self.contig_positions[contig_name] = v.positions_selected
+        self.splits.append(split_name)
+        self.split_positions[split_name] = v.positions_selected
 
         # create an empty samples_dict
         if not self.samples_dict:
@@ -182,7 +183,7 @@ class VariabilityWrapper:
             self.layer_names = v.layer_names
 
         for pos in v.positions_selected:
-            unit = '%s_pos_%d' % (contig_name, pos)
+            unit = '%s_pos_%d' % (split_name, pos)
             self.units.append(unit)
 
             for layer_name in v.layer_names:
@@ -224,16 +225,16 @@ class VariabilityWrapper:
 ##############################################################################
 
 parser = argparse.ArgumentParser(description='Generate Variability Matrix')
-parser.add_argument('summary_dict', metavar = 'PATH', default = None,
+parser.add_argument('summary_dict', metavar = 'SUMMARY_DICT', default = None,
                     help = 'Summary file')
-parser.add_argument('contigs', help = 'List of contigs to work with')
-parser.add_argument('sequences', help = 'Contigs')
-parser.add_argument('-n', '--num-positions-from-each-contig', type=int, default = 2,
-                    help = 'Each contig may have one or more variable positions. What is the maximum number of positons\
-                            to report from each contig is described via this paramter.')
+parser.add_argument('splits', help = 'List of splits to work with', metavar = "SPLITS")
+parser.add_argument('annotation_db', help = 'Annotation database.', metavar = "ANNOTATION_DB")
+parser.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
+                    help = 'Each split may have one or more variable positions. What is the maximum number of positons\
+                            to report from each split is described via this paramter.')
 parser.add_argument('-m', '--minimum-scatter', type=int, default = 1,
                     help = 'This is tricky. If you have N samples in your dataset, a given variable position x in one\
-                            of your contigs can split your N samples into t groups based on the identity of the\
+                            of your splits can split your N samples into t groups based on the identity of the\
                             variation they harbor at position x. For instance, t would have been 1, if all samples had the same\
                             type of variation at position x (which would not be very interesting, because in this case\
                             position x would have zero contribution to a deeper understanding of how these samples differ\
@@ -252,22 +253,33 @@ args = parser.parse_args()
 
 run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
 summary_index = dictio.read_serialized_object(args.summary_dict)
-contigs = [c.strip() for c in open(args.contigs).readlines()]
-sequences = utils.get_FASTA_file_as_dictionary(args.sequences)
-num_positions_from_each_contig = args.num_positions_from_each_contig
+num_positions_from_each_split = args.num_positions_from_each_split
 min_scatter = args.minimum_scatter
+
+splits = [c.strip() for c in open(args.splits).readlines()]
+num_splits = len(splits)
+run.info('Splits', '%d splits found' % (num_splits))
+
+annotation_db = annotation.AnnotationDatabase(args.annotation_db)
+splits_info = annotation_db.db.get_table_as_dict(annotation.splits_info_table_name)
+contig_sequences = annotation_db.db.get_table_as_dict(annotation.contig_sequences_table_name)
+annotation_db.disconnect()
 
 w = VariabilityWrapper()
 
-num_contigs = len(contigs)
+progress.new('Analyzing splits')
+for i in range(0, num_splits):
+    split_name = splits[i]
+    progress.update('%d of %d' % (i + 1, num_splits))
+    d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[split_name]))
 
-run.info('Contigs', '%d contigs found' % (num_contigs))
-progress.new('Analyzing contigs')
-for i in range(0, num_contigs):
-    contig_name = contigs[i]
-    progress.update('%d of %d' % (i + 1, num_contigs))
-    d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[contig_name]))
-    w.add_contig(contig_name, d, sequences[contig_name], num_positions_from_each_contig)
+    parent = splits_info[split_name]['parent']
+    start = splits_info[split_name]['start']
+    end = splits_info[split_name]['end']
+
+    split_sequence = contig_sequences[parent]['sequence'][start:end]
+
+    w.add_split(split_name, d, split_sequence, num_positions_from_each_split)
 
 progress.update('Generating output ...')
 w.create_TAB_delim_file(args.output, min_scatter)
