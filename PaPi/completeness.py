@@ -36,6 +36,12 @@ class Completeness:
         # read info table to get what is available in the db
         info_table = annotation_db.db.get_table_as_dict(annotation.hmm_hits_info_table_name)
         self.sources = info_table.keys()
+
+        # a little convenience for potential clients:
+        self.http_refs = {}
+        for source_in_db in info_table:
+            self.http_refs[source_in_db] = [h for h in info_table[source_in_db]['ref'].split() if h.startswith('http')][0]
+
         self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table if info_table[s]['search_type'] == 'singlecopy'])
 
         # read search table (which holds hmmscan hits for splits).

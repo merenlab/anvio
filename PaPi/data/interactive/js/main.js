@@ -903,8 +903,8 @@ function updateComplateness(gid) {
         success: function(data){
             completeness_info_dict = JSON.parse(data);
 
-            default_source = completeness_info_dict['default_source'];
             stats = completeness_info_dict['stats'];
+            refs = completeness_info_dict['refs'];
 
             completeness_dict[gid] = completeness_info_dict;
 
@@ -913,8 +913,18 @@ function updateComplateness(gid) {
                 $('#completenessBox_content').html(buildCompletenessTable(completeness_info_dict));
             }
 
-            $('#completeness_' + gid).val(stats[default_source]['percent_complete'].toFixed(1) + '%');
-            $('#contamination_' + gid).val(stats[default_source]['percent_contamination'].toFixed(1) + '%');
+            // it is sad that one liner with a list comprehension takes this much code in JS:
+            sum_completeness = 0.0;
+            sum_contamination = 0.0;
+            for(source in stats){
+                sum_completeness += stats[source]['percent_complete'];
+                sum_contamination += stats[source]['percent_contamination'];
+            }
+            average_completeness = sum_completeness / Object.keys(stats).length;
+            average_contamination = sum_contamination / Object.keys(stats).length;
+
+            $('#completeness_' + gid).val(average_completeness.toFixed(1) + '%');
+            $('#contamination_' + gid).val(average_contamination.toFixed(1) + '%');
 
             $('#completeness_' + gid).attr("disabled", false);
             $('#contamination_' + gid).attr("disabled", false);
@@ -934,13 +944,15 @@ function showCompleteness(gid) {
 
 function buildCompletenessTable(info_dict) {
     var stats = info_dict['stats'];
+    var refs = info_dict['refs'];
+
     var output = '<table style="margin: 5px;">';
 
     header_template = '<td style="font-variant: small-caps; font-size: 125%; padding: 0px 10px;">{TXT}</td>';
     percentages_template = '<td style="text-align: center; font-weight: bold;">{VAL}%</td>';
-    source_template = '<td style="text-align: left;">{VAL}</td>';
+    source_template = '<td style="text-align: left;"><a href="{REF}" target="_blank" style="text-decoration:none; outline: 0;">{VAL}</a></td>';
 
-    headers = ['', 'source', 'completeness', 'contamination'];
+    headers = ['source', 'completeness', 'contamination'];
     entry_keys = ['percent_complete', 'percent_contamination'];
 
     // header line:
@@ -953,13 +965,7 @@ function buildCompletenessTable(info_dict) {
     for (var source in stats) {
         output += '<tr>';
 
-        if (source == info_dict['default_source']){
-            output += source_template.replace('{VAL}', '>');
-        } else {
-            output += source_template.replace('{VAL}', '');
-        }
-
-        output += source_template.replace('{VAL}', source);
+        output += source_template.replace('{VAL}', source).replace('{REF}', refs[source]);
 
         entry_keys.forEach(function(key) {
             output += percentages_template.replace('{VAL}', stats[source][key].toFixed(1));
