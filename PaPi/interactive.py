@@ -289,7 +289,6 @@ class InputHandler:
         '''This function's name must change to something more meaningful.'''
 
         genes_in_splits_summary_dict, genes_in_splits_summary_headers = None, []
-        splits_header = None
         if self.annotation_db:
             genes_in_splits_summary_dict = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_summary_table_name)
             genes_in_splits_summary_headers = self.annotation_db.db.get_table_structure(annotation.genes_splits_summary_table_name)[1:]
@@ -309,7 +308,7 @@ class InputHandler:
             # set the header line:
             json_header = ['contigs']
             # first annotation, if exists
-            if genes_in_splits_summary_headers:
+            if genes_in_splits_summary_dict:
                 json_header.extend(genes_in_splits_summary_headers)
             # then, the view!
             json_header.extend(view_headers)
@@ -322,7 +321,8 @@ class InputHandler:
             for split_name in view_dict:
                 json_entry = [split_name]
 
-                json_entry.extend([genes_in_splits_summary_dict[split_name][header] for header in genes_in_splits_summary_headers])
+                if genes_in_splits_summary_dict:
+                    json_entry.extend([genes_in_splits_summary_dict[split_name][header] for header in genes_in_splits_summary_headers])
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
                 json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
 
