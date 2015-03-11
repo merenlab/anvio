@@ -2155,11 +2155,11 @@ function draw_tree(settings) {
         switch (settings['tree-type']) {
             case 'phylogram':
                 drawLegend(0, 100);
-                drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -100}, document.title, '72px', 'center');
+                drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
                 break;
             case 'circlephylogram':
                 drawLegend(20 - total_radius, total_radius + 100);
-                drawText('viewport', {'x': 0, 'y': -1 * total_radius - 100}, document.title, '72px', 'center');
+                drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
                 break;
         }
 
@@ -2249,7 +2249,16 @@ function redrawGroups(search_results)
         var start = order_to_node_map[groups_to_draw[i][0]];
         var end = order_to_node_map[groups_to_draw[i][1]];
 
-        var color = (groups_to_draw[i][2] == -1) ? HIGHLIGHT_COLOR : document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
+        if (groups_to_draw[i][2] == -1)
+        {
+            var color = HIGHLIGHT_COLOR;
+            var outer_ring_size = 6;
+        }
+        else
+        {
+            var color = document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
+            var outer_ring_size = 4;
+        }
 
         if (tree_type == 'circlephylogram')
         {
@@ -2269,7 +2278,7 @@ function redrawGroups(search_results)
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 total_radius + margin,
-                total_radius + margin * 4,
+                total_radius + margin * outer_ring_size,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 1,
@@ -2293,7 +2302,7 @@ function redrawGroups(search_results)
                 total_radius + margin,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
-                margin * 4,
+                margin * outer_ring_size,
                 color,
                 1,
                 false);
