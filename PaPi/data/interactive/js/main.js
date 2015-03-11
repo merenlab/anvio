@@ -474,11 +474,14 @@ function buildLayersTable(order, settings)
                 var height = '30';  
 
                 // pick random color for stack bar items
-                stack_bar_colors[layer_id] = new Array();
-                for (var j=0; j < layer_name.split(";").length; j++)
+                if (!(layer_id in stack_bar_colors))
                 {
-                    stack_bar_colors[layer_id].push(randomColor());
-                }              
+                    stack_bar_colors[layer_id] = new Array();
+                    for (var j=0; j < layer_name.split(";").length; j++)
+                    {
+                        stack_bar_colors[layer_id].push(randomColor());
+                    } 
+                }             
             }
 
             var template = '<tr>' +
@@ -522,7 +525,10 @@ function buildLayersTable(order, settings)
             {
                 var height = 30;
 
-                categorical_data_colors[layer_id] = {};
+                if (!(layer_id in categorical_data_colors))
+                {
+                    categorical_data_colors[layer_id] = {};
+                }
             }
             
             var template = '<tr>' +
