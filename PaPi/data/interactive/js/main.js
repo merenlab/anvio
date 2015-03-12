@@ -909,7 +909,8 @@ function updateComplateness(gid) {
 
             completeness_dict[gid] = completeness_info_dict;
 
-            showCompleteness(gid, true); 
+            showCompleteness(gid, true);
+            showContaminants(gid, true);
 
             // it is sad that one liner with a list comprehension takes this much code in JS:
             sum_completeness = 0.0;
@@ -958,6 +959,77 @@ function showCompleteness(gid, updateOnly) {
                     $(this).remove();
                 }});
     }
+}
+
+function showContaminants(gid, updateOnly) {
+    if (!completeness_dict.hasOwnProperty(gid))
+        return;
+
+    if ($('#contaminants_content_' + gid).length)
+    {
+        $('#contaminants_content_' + gid).html(buildContaminantsTable(completeness_dict[gid]));
+        return;
+    }
+
+    if (!updateOnly)
+    {
+        $('<div> \
+           <div id="contaminants_content_' + gid + '">' + buildContaminantsTable(completeness_dict[gid]) + '</div> \
+           </div>').dialog({
+                resizable: false,
+                collapseEnabled: false,
+                width: 'auto',
+                title: 'Contaminants Info',
+                position: {
+                    my: "center",
+                    at: "center",
+                    of: window
+                },
+                close: function(ev, ui) {
+                    $(this).remove();
+                }});
+    }
+}
+
+function buildContaminantsTable(info_dict) {
+    var stats = info_dict['stats'];
+
+    var output = '<div style="max-height: 400px; width: 480px; margin; 5px; overflow: auto;"><table style="width: 100%;">';
+    var header = '<tr>';
+    var body = '<tr>';
+
+    for(var source in stats) {
+        header += '<td><b>' + source + ' (' + Object.keys(stats[source]['contaminants']).length + ')</br></td>';
+
+        var contaminants_html = '';
+
+        for (var contaminant in stats[source]['contaminants']) {
+            var title = '';
+            var order_array = '[';
+            for (var i = 0; i < stats[source]['contaminants'][contaminant].length; i++)
+            {
+                var contig = stats[source]['contaminants'][contaminant][i];
+
+                for (var j = 0; j < contig.length; j++) {
+                    // splits
+                    title += contig[j] + '&#xA;'; // it's a hack for using newline in tooltips
+                    order_array += label_to_node_map[contig[j]].order + ', ';
+                }
+            }
+            order_array += ']';
+
+            contaminants_html += '<span style="cursor:pointer;" \
+                                    title="' + title + '" \
+                                    onclick="redrawGroups(' + order_array + ');"> \
+                                    ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
+                                  </span><br />';
+        }0
+
+        body += '<td valign="top">' + contaminants_html + '</td>';
+    }
+
+    output += header + '</tr><tr><td colspan="' + Object.keys(stats).length + '"><hr /></td>' + body + '</tr></table></div>';
+    return output;
 }
 
 function buildCompletenessTable(info_dict) {
