@@ -1023,7 +1023,7 @@ function buildContaminantsTable(info_dict) {
                                     onclick="redrawGroups(' + order_array + ');"> \
                                     ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
                                   </span><br />';
-        }0
+        }
 
         body += '<td valign="top">' + contaminants_html + '</td>';
     }
