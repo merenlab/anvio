@@ -323,12 +323,17 @@ class MultipleRuns:
         self.profile_db.disconnect()
 
 
+    def get_normalized_coverage_of_split(self, target, sample_id, split_name):
+        return self.metadata_for_each_run[target][sample_id][split_name]['normalized_coverage'] * self.normalization_multiplier[sample_id]
+
+
+    def get_relative_abundance_of_split(self, target, sample_id, split_name):
+        return self.normalized_coverages[target][split_name][sample_id] * 1.0 / sum(self.normalized_coverages[target][split_name].values())
+
+
     def merge_metadata_files(self):
         essential_fields = [f for f in self.metadata_fields if constants.IS_ESSENTIAL_FIELD(f)]
         auxiliary_fields = [f for f in self.metadata_fields if constants.IS_AUXILIARY_FIELD(f)]
-        # FIXME: these are pretty embarrassing, and should be fixed at some point:
-        Length = "length"
-        GC_content = "GC_content"
 
         views = {}
 
@@ -340,6 +345,13 @@ class MultipleRuns:
         merged_mtable_structure = ['contig', 'length', 'GC_content'] + self.merged_sample_ids + auxiliary_fields
         merged_mtable_types = ['text'] + ['numeric'] * (len(self.merged_sample_ids) + 2) + ['text']
 
+        # generate a dictionary for normalized coverage of each contig across samples per target
+        self.normalized_coverages = {'contigs': {}, 'splits': {}}
+        for target in ['contigs', 'splits']:
+            for split_name in self.split_names:
+                self.normalized_coverages[target][split_name] = {}
+                for sample_id in self.merged_sample_ids:
+                    self.normalized_coverages[target][split_name][sample_id] = self.get_normalized_coverage_of_split(target, sample_id, split_name)
 
         self.progress.new('Generating metadata tables')
         for target in ['contigs', 'splits']:
@@ -353,14 +365,16 @@ class MultipleRuns:
                     m[split_name] = {'GC_content': self.GC_content_for_splits[split_name],
                                      'length': self.contig_lengths[split_name],
                                      '__parent__': self.split_parents[split_name]}
+
                     for sample_id in self.merged_sample_ids:
                         if essential_field == 'normalized_coverage':
-                            # and here my programming career hits a new bottom with the following line. I will fix all this
-                            # shit very soon; that is how I contain my rage towards myself.
-                            m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field] * self.normalization_multiplier[sample_id]
+                            m[split_name][sample_id] = self.normalized_coverages[target][split_name][sample_id]
+                        if essential_field == 'relative_abundance':
+                            m[split_name][sample_id] = self.get_relative_abundance_of_split(target, sample_id, split_name)
                         else:
                             m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field]
 
+                # variable 'm' for the essential field is now ready to be its own table:
                 self.profile_db.create_table(target_table, merged_mtable_structure, merged_mtable_types)
                 db_entries = [tuple([split_name] + [m[split_name][h] for h in merged_mtable_structure[1:]]) for split_name in self.split_names]
                 self.profile_db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
