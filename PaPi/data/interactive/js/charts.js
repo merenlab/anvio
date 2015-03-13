@@ -118,6 +118,12 @@ function createCharts(){
     }
 
 
+    var contextSvg = d3.select("#context-container").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", (height + margin.top + margin.bottom));
+
+    $('#context-container').css("width", (width + 150) + "px");
+
     /* Context down below */
     var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
     
@@ -135,7 +141,7 @@ function createCharts(){
                 .x(contextXScale)
                 .on("brush", onBrush);
 
-    var context = svg.append("g")
+    var context = contextSvg.append("g")
                 .attr("class","context")
                 .attr("transform", "translate(" + (margin.left) + "," + (height + margin.top * 3) + ")");
     

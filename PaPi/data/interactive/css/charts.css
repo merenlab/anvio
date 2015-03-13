@@ -8,6 +8,12 @@
     padding: 20px 30px;
 }
 
+#context-container {
+  position: fixed;
+  bottom: 0;
+  margin-left: 30px;
+}
+
 #chart-container h2 {
     color: #444;
     margin: 0 0 10px;
