@@ -120,13 +120,87 @@ function createCharts(){
 
     var contextSvg = d3.select("#context-container").append("svg")
             .attr("width", width + margin.left + margin.right)
-            .attr("height", (height + margin.top + margin.bottom));
+            .attr("height", 260);
+
+    var defs = contextSvg.append('svg:defs');
+
+    contextSvg.append("rect")
+       .attr("width", width)
+       .attr("height", "130px")
+       .attr("fill", "black")
+       .attr("fill-opacity", "0.2")
+       .attr('transform', 'translate(50, 20)');
+
+    var paths = contextSvg.append('svg:g')
+      .attr('id', 'markers')
+      .attr('transform', 'translate(50, 20)');
+
+    // Define arrow markers
+    defs.append('svg:marker')
+        .attr('id', 'arrow')
+        .attr('markerHeight', 2)
+        .attr('markerWidth', 2)
+        // .attr('markerUnits', 'strokeWidth')
+        .attr('orient', 'auto')
+        .attr('refX', 0)
+        .attr('refY', 0)
+        .attr('viewBox', '-5 -5 10 10')
+        .append('svg:path')
+          .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
+          .attr('fill', 'green');
+
+    paths.selectAll('path'); //.enter()
+
+    // Find the max_split, Dunno if we need that
+    var max_split = 0;
+
+    (Object.keys(genes)).forEach(function(ind) {
+
+      gene = genes[ind];
+      if (gene.stop_in_split > max_split) {
+        max_split = gene.stop_in_split;
+      }
+
+    });
+
+    // I'll find a better way for this two loop. ^^
+
+    // Find the ratio based on screen width and max_split
+    var ratio = (width - margin.right) / max_split;
+
+    var y = 10;
+
+    // Draw arrows
+    (Object.keys(genes)).forEach(function(ind) {
+
+      gene = genes[ind];
+
+      start = Math.ceil(ratio * gene.start_in_split);
+      stop  = Math.ceil((gene.stop_in_split - gene.start_in_split) * ratio);
+      y    += 5;
+      // M10 15 l20 0
+      path = paths.append('svg:path')
+           .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
+           .attr('stroke', function() {
+             return gene.function !== null ? 'green' : 'gray';
+           })
+           .attr('stroke-width', 5)
+           .attr('marker-end', function() {
+             return gene.percentage_in_split == 100 ? 'url(#arrow)' : '';
+           })
+           .attr('transform', function() {
+               return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
+             })
+           .append('svg:title')
+             .text(gene.function + '');
+
+    });
 
     $('#context-container').css("width", (width + 150) + "px");
 
     /* Context down below */
     var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
-    
+
     var contextAxis = d3.svg.axis()
                 .scale(contextXScale)
                 .tickSize(contextHeight);
@@ -143,20 +217,20 @@ function createCharts(){
 
     var context = contextSvg.append("g")
                 .attr("class","context")
-                .attr("transform", "translate(" + (margin.left) + "," + (height + margin.top * 3) + ")");
-    
+                .attr("transform", "translate(" + (margin.left) + ", 160)");
+
     context.append("g")
                 .attr("class", "x axis top")
                 .attr("transform", "translate(0,0)")
                 .call(contextAxis)
-                                        
+
     context.append("g")
                 .attr("class", "x brush")
                 .call(brush)
                 .selectAll("rect")
                 .attr("y", 0)
                 .attr("height", contextHeight);
-    
+
     function onBrush(){
         /* this will return a date range to pass into the chart object */
         var b = brush.empty() ? contextXScale.domain() : brush.extent();
