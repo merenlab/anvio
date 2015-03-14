@@ -12,10 +12,12 @@
 
 import sys
 import argparse
-import hcluster
 
-import PaPi.utils as utils
+import PaPi.terminal as terminal
+import PaPi.clustering as clustering
 
+run = terminal.Run()
+progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree')
 parser.add_argument('input_matrix', metavar = 'PATH', default = None,
@@ -25,5 +27,11 @@ parser.add_argument('-o', '--output-file-name', metavar = 'PATH', default = None
 
 args = parser.parse_args()
 
-newick = utils.get_newick_tree_data(args.input_matrix, args.output_file_name)
-print newick
+if not args.output_file_name:
+    args.output_file_name = args.input_matrix + '.newick'
+
+run.info('Input matrix file', args.input_matrix)
+progress.new('Analyzing input file')
+clustering.get_newick_tree_data(args.input_matrix, args.output_file_name, progress = progress)
+progress.end()
+run.info('Output newick', args.output_file_name)
