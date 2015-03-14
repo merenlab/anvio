@@ -328,7 +328,9 @@ class MultipleRuns:
 
 
     def get_relative_abundance_of_split(self, target, sample_id, split_name):
-        return self.normalized_coverages[target][split_name][sample_id] * 1.0 / sum(self.normalized_coverages[target][split_name].values())
+        denominator = float(sum(self.normalized_coverages[target][split_name].values()))
+        if denominator:
+            return self.normalized_coverages[target][split_name][sample_id] / denominator
 
 
     def merge_metadata_files(self):
