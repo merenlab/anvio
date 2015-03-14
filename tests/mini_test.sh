@@ -66,6 +66,9 @@ papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED
 INFO "Generating coverages and sequences files for splits (for external binning) ..."
 papi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
 
+INFO "Cluster contigs in the newly generated coverages file ..."
+papi-matrix-to-newick test-output/204-MERGED/s204_MERGED-COVs.txt
+
 INFO "Generating network descriptions for samples based on ORFs and functions ..."
 # generate gene and function networks for the merge
 papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
