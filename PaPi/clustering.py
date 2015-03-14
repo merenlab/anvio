@@ -10,12 +10,23 @@
 #
 # Please read the COPYING file.
 
+import os
+import hcluster
 import numpy as np
+from sklearn import manifold
+from sklearn import preprocessing
+
 import PaPi.utils as utils
 import PaPi.terminal as terminal
+import PaPi.filesnpaths as filesnpaths
 
 with terminal.SuppressAllOutput():
     from ete2 import Tree
+
+run = terminal.Run()
+progress = terminal.Progress()
+progress.verbose = False
+
 
 def set_num_components_for_each_matrix(config):
     denominator = float(sum([r['ratio'] for r in config.matrices_dict.values()]))
@@ -162,6 +173,81 @@ def get_normalized_newick(root):
     return root
 
 
+def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean',
+                         clustering_method = 'complete', norm = 'l1', progress = progress):
+    filesnpaths.is_file_exists(observation_matrix_path)
+    filesnpaths.is_file_tab_delimited(observation_matrix_path)
+
+    if output_file_name:
+        output_file_name = os.path.abspath(output_file_name)
+        output_directory = os.path.dirname(output_file_name)
+        if not os.access(output_directory, os.W_OK):
+            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+    
+    id_to_sample_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path)
+
+    vectors = np.array(vectors)
+
+    # normalize vectors:
+    vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
+
+    tree = get_clustering_as_tree(vectors, clustering_distance, clustering_method, progress)
+    newick = get_tree_object_in_newick(tree, id_to_sample_dict)
+   
+    if output_file_name:
+        open(output_file_name, 'w').write(newick.strip() + '\n')
+
+    return newick
+
+
+def get_scaled_vectors(vectors, user_seed = None, n_components = 12, normalize=True, progress = progress):
+    if user_seed:
+        seed = np.random.RandomState(seed=user_seed)
+    else:
+        seed = np.random.RandomState()
+
+    # FIXME: Make this optional:
+    from sklearn.metrics.pairwise import euclidean_distances as d
+
+    vectors = get_normalized_vectors(np.array(vectors)) if normalize else np.array(vectors)
+
+    # compute similarities based on d
+    progress.update('Computing similarity matrix')
+    similarities = d(vectors)
+
+    progress.update('Scaling using %d components' % n_components)
+    mds = manifold.MDS(n_components=n_components, max_iter=300, eps=1e-10, random_state=seed,
+                       dissimilarity="precomputed", n_jobs=1)
+
+    progress.update('Fitting')
+    scaled_vectors = mds.fit(similarities).embedding_
+
+    return scaled_vectors
+
+
+def get_normalized_vectors(vectors, norm='l1', progress = progress, pad_zeros = True):
+    progress.update('Normalizing vectors using "%s" norm' % norm)
+    vectors = np.array(vectors, dtype=np.float64)
+    if pad_zeros:
+        vectors += 0.0000001
+    normalizer = preprocessing.Normalizer(norm=norm)
+    return normalizer.fit_transform(vectors)
+
+
+def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean', clustering_method = 'complete', progress = progress):
+    if ward:
+        progress.update('Clustering data with Ward linkage and euclidean distances')
+        clustering_result = hcluster.ward(vectors)
+    else:
+        progress.update('Computing distance matrix using "%s" distance' % clustering_distance)
+        distance_matrix = hcluster.pdist(vectors, clustering_distance)
+        progress.update('Clustering data with "%s" linkage' % clustering_method)
+        clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
+
+    progress.update('Returning results')
+    return hcluster.to_tree(clustering_result)
+
+
 def get_tree_object_in_newick(tree, id_to_sample_dict, normalize_branches = False):
     """i.e., tree = hcluster.to_tree(c_res)"""
 
@@ -194,7 +280,7 @@ def get_tree_object_in_newick(tree, id_to_sample_dict, normalize_branches = Fals
     return root.write(format=1)
 
 
-def order_contigs_simple(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
+def order_contigs_simple(config, progress = progress, run = run, debug = False):
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
 
@@ -207,7 +293,7 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
         m['scaled_vectors'] = np.array(m['vectors'], dtype=np.float64)
 
         if m['normalize']:
-            m['scaled_vectors'] = utils.get_normalized_vectors(m['scaled_vectors'])
+            m['scaled_vectors'] = get_normalized_vectors(m['scaled_vectors'])
 
         if m['log']:
             m['scaled_vectors'] = np.log10(m['scaled_vectors'] + 1)
@@ -228,7 +314,7 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
     progress.update('Clustering ...')
-    tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
+    tree = get_clustering_as_tree(config.combined_vectors, progress = progress)
     newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
     progress.end()
 
@@ -238,7 +324,7 @@ def order_contigs_simple(config, progress = terminal.Progress(verbose=False), ru
     return newick
 
 
-def order_contigs_experimental(config, progress = terminal.Progress(verbose=False), run = terminal.Run(), debug = False):
+def order_contigs_experimental(config, progress = progress, run = run, debug = False):
     if not config.multiple_matrices:
         # there is one matrix. could be coverage, could be tnf. we don't care.
         # we do what we gotta do: skip scaling and perform clustering using all
@@ -247,7 +333,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
 
         progress.new('Single matrix (%s)' % m['alias'])
         progress.update('Performing cluster analysis ...')
-        tree = utils.get_clustering_as_tree(m['vectors'], progress = progress)
+        tree = get_clustering_as_tree(m['vectors'], progress = progress)
         newick = get_tree_object_in_newick(tree, m['id_to_sample'])
         progress.end()
 
@@ -285,14 +371,14 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
                                                                               m['alias'],
                                                                               m['num_components']))
 
-            m['scaled_vectors'] = utils.get_scaled_vectors(m['vectors'],
+            m['scaled_vectors'] = get_scaled_vectors(m['vectors'],
                                                            user_seed = config.seed,
                                                            n_components = m['num_components'],
                                                            normalize = m['normalize'],
                                                            progress=progress)
 
             progress.update('Normalizing scaled vectors ...')
-            m['scaled_vectors'] = utils.get_normalized_vectors(m['scaled_vectors'])
+            m['scaled_vectors'] = get_normalized_vectors(m['scaled_vectors'])
             progress.end()
 
 
@@ -308,7 +394,7 @@ def order_contigs_experimental(config, progress = terminal.Progress(verbose=Fals
             config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
         progress.update('Clustering ...')
-        tree = utils.get_clustering_as_tree(config.combined_vectors, progress = progress)
+        tree = get_clustering_as_tree(config.combined_vectors, progress = progress)
         newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
         progress.end()
 

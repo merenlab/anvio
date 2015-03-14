@@ -15,15 +15,11 @@ import time
 import json
 import copy
 import socket
-import hcluster
 import textwrap
 import itertools
 import subprocess
 import multiprocessing
 
-import numpy as np
-from sklearn import manifold
-from sklearn import preprocessing
 
 from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, digits, complements
 import PaPi.fastalib as u
@@ -536,68 +532,6 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
 
     return d
 
-
-def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean',
-                         clustering_method = 'complete', norm = 'l1', progress = Progress(verbose=False)):
-    filesnpaths.is_file_exists(observation_matrix_path)
-    filesnpaths.is_file_tab_delimited(observation_matrix_path)
-
-    if output_file_name:
-        output_file_name = os.path.abspath(output_file_name)
-        output_directory = os.path.dirname(output_file_name)
-        if not os.access(output_directory, os.W_OK):
-            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
-    
-    id_to_sample_dict, header, vectors = get_vectors_from_TAB_delim_matrix(observation_matrix_path)
-
-    vectors = np.array(vectors)
-
-    # normalize vectors:
-    vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
-
-    tree = get_clustering_as_tree(vectors, clustering_distance, clustering_method, progress)
-    newick = get_tree_object_in_newick(tree, id_to_sample_dict)
-   
-    if output_file_name:
-        open(output_file_name, 'w').write(newick.strip() + '\n')
-
-    return newick
-
-
-def get_scaled_vectors(vectors, user_seed = None, n_components = 12, normalize=True, progress = Progress(verbose=False)):
-    if user_seed:
-        seed = np.random.RandomState(seed=user_seed)
-    else:
-        seed = np.random.RandomState()
-
-    # FIXME: Make this optional:
-    from sklearn.metrics.pairwise import euclidean_distances as d
-
-    vectors = get_normalized_vectors(np.array(vectors)) if normalize else np.array(vectors)
-
-    # compute similarities based on d
-    progress.update('Computing similarity matrix')
-    similarities = d(vectors)
-
-    progress.update('Scaling using %d components' % n_components)
-    mds = manifold.MDS(n_components=n_components, max_iter=300, eps=1e-10, random_state=seed,
-                       dissimilarity="precomputed", n_jobs=1)
-
-    progress.update('Fitting')
-    scaled_vectors = mds.fit(similarities).embedding_
-
-    return scaled_vectors
-
-
-def get_normalized_vectors(vectors, norm='l1', progress = Progress(verbose=False), pad_zeros = True):
-    progress.update('Normalizing vectors using "%s" norm' % norm)
-    vectors = np.array(vectors, dtype=np.float64)
-    if pad_zeros:
-        vectors += 0.0000001
-    normalizer = preprocessing.Normalizer(norm=norm)
-    return normalizer.fit_transform(vectors)
-
-
 def get_filtered_dict(d, property, values):
     # removes any entry from d, where the value of the 'property' of items in d does not match
     # with desired 'values'
@@ -610,20 +544,6 @@ def get_filtered_dict(d, property, values):
         d.pop(entry_id)
 
     return d
-
-
-def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean', clustering_method = 'complete', progress = Progress(verbose=False)):
-    if ward:
-        progress.update('Clustering data with Ward linkage and euclidean distances')
-        clustering_result = hcluster.ward(vectors)
-    else:
-        progress.update('Computing distance matrix using "%s" distance' % clustering_distance)
-        distance_matrix = hcluster.pdist(vectors, clustering_distance)
-        progress.update('Clustering data with "%s" linkage' % clustering_method)
-        clustering_result = hcluster.linkage(distance_matrix, method = clustering_method)
-
-    progress.update('Returning results')
-    return hcluster.to_tree(clustering_result)
 
 
 def get_HMM_sources_dictionary(source_dirs=[]):
