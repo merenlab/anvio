@@ -2251,7 +2251,8 @@ function redrawGroups(search_results)
 
         if (groups_to_draw[i][2] == -1)
         {
-            var color = HIGHLIGHT_COLOR;
+            // these are search results
+            var color = document.getElementById('picker_highlight').getAttribute('color');
             var outer_ring_size = 6;
         }
         else

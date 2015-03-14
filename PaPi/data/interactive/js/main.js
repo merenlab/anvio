@@ -7,7 +7,6 @@ var VIEWER_HEIGHT;
 var dragging = false;
 
 var LINE_COLOR='#888888';
-var HIGHLIGHT_COLOR= "#FFC000";
 
 var scale = 0;
 
@@ -356,6 +355,21 @@ $(document).ready(function() {
             }
         } // response callback
     ); // promise
+
+    // initialize colorpicker for search result highlight color.
+    $('#picker_highlight').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
 
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
