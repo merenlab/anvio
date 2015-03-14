@@ -313,7 +313,7 @@ class TablesForCollections(Table):
         if len(splits_only_in_db):
             self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
                                       does not make any sense, please make sure you know why before going any further.'\
-                                            % (len(splits_only_in_db), len(splits_in_clusters_dict), source))
+                                            % (len(splits_only_in_db), len(self.splits), source))
 
 
         annotation_db = AnnotationDatabase(self.db_path)
