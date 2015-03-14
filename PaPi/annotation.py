@@ -343,6 +343,10 @@ class TablesForCollections(Table):
 
         contigs_processed = set([])
         for split_name in split_to_cluster_id:
+            if split_name not in self.splits:
+                # which means this split only appears in the input file, but not in the database.
+                continue
+
             contig_name = self.splits[split_name]['parent']
 
             if contig_name in contigs_processed:
