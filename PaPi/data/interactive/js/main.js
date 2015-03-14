@@ -2,8 +2,8 @@
 //  Globals
 //--------------------------------------------------------------------------------------------------
 
-var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+var VIEWER_WIDTH;
+var VIEWER_HEIGHT;
 var dragging = false;
 
 var LINE_COLOR='#888888';
@@ -678,6 +678,9 @@ function saveCurrentState() {
 }
 
 function drawTree() {
+    // get current client size
+    VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+    VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
