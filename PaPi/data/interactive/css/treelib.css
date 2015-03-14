@@ -70,6 +70,10 @@ div#treeContainer svg {
     height:100%;
 }
 
+td select {
+    width: 100%;
+}
+
 .colorpicker {
     background-color: #FFF;
     border: 1px solid;
