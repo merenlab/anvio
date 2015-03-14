@@ -18,14 +18,14 @@ from PaPi.parsers.base import Parser
 
 
 class CONCOCT(Parser):
-    def __init__(self, input_files):
+    def __init__(self, input_files, contigs = 'False'):
         if type(input_files) != type(list()):
             input_files = [input_files]
 
         files_expected = {'clusters': input_files[0]}
 
         files_structure = {'clusters': 
-                                {'col_names': ['contig', 'cluster_id'],
+                                {'col_names': ['split', 'cluster_id'],
                                  'col_mapping': [str, str],
                                  'separator': ',',
                                  'indexing_field': -1,

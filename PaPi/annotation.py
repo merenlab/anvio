@@ -300,20 +300,20 @@ class TablesForCollections(Table):
         # remove any pre-existing information for 'source'
         self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name])
 
-        contigs_in_clusters_dict = set(v['contig'] for v in clusters_dict.values())
-        contigs_only_in_clusters_dict = [c for c in contigs_in_clusters_dict if c not in self.contig_lengths]
-        contigs_only_in_db = [c for c in self.contig_lengths if c not in contigs_in_clusters_dict]
+        splits_in_clusters_dict = set(v['split'] for v in clusters_dict.values())
+        splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits]
+        splits_only_in_db = [c for c in self.splits if c not in splits_in_clusters_dict]
 
-        if len(contigs_only_in_clusters_dict):
-            self.run.warning('%d of %d contigs found in "%s" results are not in the database. This may be OK,\
+        if len(splits_only_in_clusters_dict):
+            self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
                                       but you must be the judge of it. If this is somewhat surprising, please use caution\
                                       and make sure all is fine before going forward with you analysis.'\
-                                            % (len(contigs_only_in_clusters_dict), len(contigs_in_clusters_dict), source))
+                                            % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
 
-        if len(contigs_only_in_db):
-            self.run.warning('%d of %d contigs found in the database were missing from the "%s" results. If this\
+        if len(splits_only_in_db):
+            self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
                                       does not make any sense, please make sure you know why before going any further.'\
-                                            % (len(contigs_only_in_db), len(contigs_in_clusters_dict), source))
+                                            % (len(splits_only_in_db), len(splits_in_clusters_dict), source))
 
 
         annotation_db = AnnotationDatabase(self.db_path)
@@ -321,12 +321,14 @@ class TablesForCollections(Table):
         # push information about this search result into serach_info table.
         db_entries = tuple([source, ''])
         annotation_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % collections_info_table_name, db_entries)
-        # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(collections_contigs_table_name), source] + [v[h] for h in collections_contigs_table_structure[2:]]) for v in clusters_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
 
-        db_entries = self.process_splits(source, clusters_dict)
+        # populate splits table
+        db_entries = [tuple([self.next_id(collections_splits_table_name), source] + [v[h] for h in collections_splits_table_structure[2:]]) for v in clusters_dict.values()]
         annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
+
+        # then populate contigs table.
+        db_entries = self.process_contigs(source, clusters_dict)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
 
         annotation_db.disconnect()
 
@@ -334,19 +336,24 @@ class TablesForCollections(Table):
                                         % (source, len(db_entries)), mc='green')
 
 
-    def process_splits(self, source, clusters_dict):
-        db_entries_for_splits = []
+    def process_contigs(self, source, clusters_dict):
+        db_entries_for_contigs = []
 
-        contig_to_cluster_id = dict([(d['contig'], d['cluster_id']) for d in clusters_dict.values()])
+        split_to_cluster_id = dict([(d['split'], d['cluster_id']) for d in clusters_dict.values()])
 
-        for contig_name in contig_to_cluster_id:
-            if not contig_name in self.contig_name_to_splits:
+        contigs_processed = set([])
+        for split_name in split_to_cluster_id:
+            contig_name = self.splits[split_name]['parent']
+
+            if contig_name in contigs_processed:
                 continue
-            for split_name in self.contig_name_to_splits[contig_name]:
-                db_entry = tuple([self.next_id(collections_splits_table_name), source, split_name, contig_to_cluster_id[contig_name]])
-                db_entries_for_splits.append(db_entry)
+            else:
+                contigs_processed.add(contig_name)
 
-        return db_entries_for_splits
+            db_entry = tuple([self.next_id(collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
+            db_entries_for_contigs.append(db_entry)
+
+        return db_entries_for_contigs
 
 
 class TablesForSearches(Table):
