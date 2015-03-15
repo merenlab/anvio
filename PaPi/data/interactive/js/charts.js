@@ -136,18 +136,19 @@ function createCharts(){
       .attr('transform', 'translate(50, 20)');
 
     // Define arrow markers
-    defs.append('svg:marker')
-        .attr('id', 'arrow')
-        .attr('markerHeight', 2)
-        .attr('markerWidth', 2)
-        // .attr('markerUnits', 'strokeWidth')
-        .attr('orient', 'auto')
-        .attr('refX', 0)
-        .attr('refY', 0)
-        .attr('viewBox', '-5 -5 10 10')
-        .append('svg:path')
-          .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-          .attr('fill', 'green');
+    ['green', 'gray'].forEach(function(color){
+      defs.append('svg:marker')
+          .attr('id', 'arrow_' + color )
+          .attr('markerHeight', 2)
+          .attr('markerWidth', 2)
+          .attr('orient', 'auto')
+          .attr('refX', 0)
+          .attr('refY', 0)
+          .attr('viewBox', '-5 -5 10 10')
+          .append('svg:path')
+            .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
+            .attr('fill', color);
+    });
 
     paths.selectAll('path'); //.enter()
 
@@ -168,8 +169,6 @@ function createCharts(){
     // Find the ratio based on screen width and max_split
     var ratio = (width - margin.right) / max_split;
 
-    var y = 10;
-
     // Draw arrows
     (Object.keys(genes)).forEach(function(ind) {
 
@@ -177,16 +176,17 @@ function createCharts(){
 
       start = Math.ceil(ratio * gene.start_in_split);
       stop  = Math.ceil((gene.stop_in_split - gene.start_in_split) * ratio);
-      y    += 5;
+      var y = 10 + (gene.level * 20);
+
+      color = (gene.function !== null ? 'green' : 'gray');
+
       // M10 15 l20 0
       path = paths.append('svg:path')
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', function() {
-             return gene.function !== null ? 'green' : 'gray';
-           })
+           .attr('stroke', color)
            .attr('stroke-width', 5)
            .attr('marker-end', function() {
-             return gene.percentage_in_split == 100 ? 'url(#arrow)' : '';
+             return gene.percentage_in_split == 100 ? 'url(#arrow_' + color + ')' : '';
            })
            .attr('transform', function() {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
