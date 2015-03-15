@@ -146,7 +146,7 @@ function createCharts(){
 
     contextSvg = d3.select("#context-container").append("svg")
             .attr("width", width + margin.left + margin.right)
-            .attr("height", 130);
+            .attr("height", 150);
 
     var defs = contextSvg.append('svg:defs');
 
@@ -155,7 +155,7 @@ function createCharts(){
        .attr("height", "60px")
        .attr("fill", "black")
        .attr("fill-opacity", "0.2")
-       .attr('transform', 'translate(50, 1)');
+       .attr('transform', 'translate(50, 10)');
 
     // Define arrow markers
     ['green', 'gray'].forEach(function(color){
@@ -193,7 +193,7 @@ function createCharts(){
 
     var context = contextSvg.append("g")
                 .attr("class","context")
-                .attr("transform", "translate(" + (margin.left) + ", 60)");
+                .attr("transform", "translate(" + (margin.left) + ", 80)");
 
     context.append("g")
                 .attr("class", "x axis top")
