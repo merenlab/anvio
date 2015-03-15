@@ -175,12 +175,30 @@ def charts(contig_name):
         data['variability'].append(contigs[layer]['variability'])
         data['competing_nucleotides'].append(contigs[layer]['competing_nucleotides'])
 
+    levels_occupied = {1: []}
     if d.split_to_genes_in_splits_ids.has_key(contig_name):
         for entry_id in d.split_to_genes_in_splits_ids[contig_name]:
             prot_id = d.genes_in_splits[entry_id]['prot']
-            data['genes'][prot_id] = d.genes_in_splits[entry_id]
+            p = d.genes_in_splits[entry_id]
+            # {'percentage_in_split': 100, 'start_in_split': 16049, 'prot': u'prot2_03215', 'split': u'D23-1contig18_split_00036', 'stop_in_split': 16633}
+            data['genes'][prot_id] = p
             data['genes'][prot_id]['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
-            data['genes'][prot_id]['function'] = d.genes_in_contigs_dict[prot_id]['function'] or 'hypothetical'
+            data['genes'][prot_id]['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
+
+            for level in levels_occupied:
+                level_ok = True
+                for gene_tuple in levels_occupied[level]:
+                    if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100):
+                        level_ok = False
+                        break
+                if level_ok:
+                    levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
+                    data['genes'][prot_id]['level'] = level
+                    break
+            if not level_ok:
+                levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
+                data['genes'][prot_id]['level'] = level + 1
 
     return json.dumps(data)
 
