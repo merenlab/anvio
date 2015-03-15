@@ -169,6 +169,8 @@ function createCharts(){
     // Find the ratio based on screen width and max_split
     var ratio = (width - margin.right) / max_split;
 
+    var y = 10;
+
     // Draw arrows
     (Object.keys(genes)).forEach(function(ind) {
 
@@ -176,7 +178,7 @@ function createCharts(){
 
       start = Math.ceil(ratio * gene.start_in_split);
       stop  = Math.ceil((gene.stop_in_split - gene.start_in_split) * ratio);
-      var y = 10 + (gene.level * 20);
+      y    += 5;
 
       color = (gene.function !== null ? 'green' : 'gray');
 
