@@ -168,8 +168,6 @@ function createCharts(){
     // Find the ratio based on screen width and max_split
     var ratio = (width - margin.right) / max_split;
 
-    var y = 10;
-
     // Draw arrows
     (Object.keys(genes)).forEach(function(ind) {
 
@@ -177,7 +175,7 @@ function createCharts(){
 
       start = Math.ceil(ratio * gene.start_in_split);
       stop  = Math.ceil((gene.stop_in_split - gene.start_in_split) * ratio);
-      y    += 5;
+      var y = 10 + (gene.level * 20);
       // M10 15 l20 0
       path = paths.append('svg:path')
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
