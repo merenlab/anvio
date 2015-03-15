@@ -9,37 +9,18 @@ var contextSvg;
 GeneParser = (function() {
   function GeneParser(data) {
     this.data = data;
-    this.parseData();
-    this.filterCache = {};
   }
 
-  GeneParser.prototype.parseData = function() {
-    var gene, _ref, _results;
-    this.dataList = [];
-    _ref = this.data;
-    _results = [];
-    for (gene in _ref) {
-      data = _ref[gene];
-      _results.push(this.dataList.push(data));
-    }
-    return _results;
-  };
-
   GeneParser.prototype.filterData = function(start, stop) {
-    var cacheKey, cached, gene, _data, _i, _len, _ref;
-    cacheKey = "" + start + "-" + stop;
-    if (cached = this.filterCache[cacheKey]) {
-      return cached;
-    }
+    var gene, _data, _i, _len, _ref;
     _data = [];
-    _ref = this.dataList;
+    _ref = this.data;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       gene = _ref[_i];
-      if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop) {
+      if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split < start && gene.stop_in_split > stop) {
         _data.push(gene);
       }
     }
-    this.filterCache[cacheKey] = _data;
     return _data;
   };
 
@@ -271,10 +252,18 @@ function drawArrows(_start, _stop) {
     // Draw arrows
     genes.forEach(function(gene) {
 
+      diff = 0;
+
+      if (gene.start_in_split < _start) {
+        start = 0;
+        diff  = _start - gene.start_in_split;
+      }
+
       start = gene.start_in_split < _start ? 0 : (gene.start_in_split - _start) * ratio;
       // start = ratio * (start - gene.start_in_split);
-      __stop= (gene.stop_in_split > _stop ? _stop : gene.stop_in_split)
-      stop  = (__stop - gene.start_in_split) * ratio;
+      __stop= (gene.stop_in_split > _stop ? _stop : gene.stop_in_split);
+      stop  = (__stop - gene.start_in_split - diff) * ratio;
+
       var y = 10 + (gene.level * 20);
 
       color = (gene.function !== null ? 'green' : 'gray');
@@ -285,7 +274,14 @@ function drawArrows(_start, _stop) {
            .attr('stroke', color)
            .attr('stroke-width', 5)
            .attr('marker-end', function() {
-             return (gene.percentage_in_split == 100 && gene.stop_in_split < _stop) ? 'url(#arrow_' + color + ')' : '';
+
+             if ((gene.percentage_in_split == 100) &&
+                 (gene.direction == 'r' && gene.start_in_split > _start) ||
+                 (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
+                   return 'url(#arrow_' + color + ')';
+                 }
+
+              return '';
            })
            .attr('transform', function() {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
