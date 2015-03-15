@@ -155,7 +155,7 @@ def charts(contig_name):
              'competing_nucleotides': [],
              'previous_contig_name': None,
              'next_contig_name': None,
-             'genes': {}}
+             'genes': []}
 
     if not d.contigs_summary_index.has_key(contig_name):
         return data
@@ -183,10 +183,17 @@ def charts(contig_name):
         for entry_id in d.split_to_genes_in_splits_ids[contig_name]:
             prot_id = d.genes_in_splits[entry_id]['prot']
             p = d.genes_in_splits[entry_id]
-            # {'percentage_in_split': 100, 'start_in_split': 16049, 'prot': u'prot2_03215', 'split': u'D23-1contig18_split_00036', 'stop_in_split': 16633}
-            data['genes'][prot_id] = p
-            data['genes'][prot_id]['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
-            data['genes'][prot_id]['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
+            # p looks like this at this point:
+            #
+            # {'percentage_in_split': 100,
+            #  'start_in_split'     : 16049,
+            #  'stop_in_split'      : 16633}
+            #  'prot'               : u'prot2_03215',
+            #  'split'              : u'D23-1contig18_split_00036'}
+            #
+            # we will add two more attributes:
+            p['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
+            p['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
 
             for level in levels_occupied:
                 level_ok = True
@@ -197,12 +204,15 @@ def charts(contig_name):
                         break
                 if level_ok:
                     levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
-                    data['genes'][prot_id]['level'] = level
+                    p['level'] = level
                     break
             if not level_ok:
                 levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
-                data['genes'][prot_id]['level'] = level + 1
+                p['level'] = level + 1
 
+            data['genes'].append(p)
+
+    print data
     return json.dumps(data)
 
 @route('/data/contig/<contig_name>')
