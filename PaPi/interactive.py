@@ -79,7 +79,8 @@ class InputHandler:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
             self.additional_metadata_path = args.additional_metadata
 
-        tree = Tree(self.runinfo['clustering_newick'])
+        tree = Tree(self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick'])
+
         self.contig_names_ordered = [n.name for n in tree.get_leaves()]
 
         self.check_names_consistency()
@@ -96,15 +97,16 @@ class InputHandler:
         filesnpaths.is_file_exists(db_path)
         self.annotation_db = annotation.AnnotationDatabase(db_path)
 
-        profiling_split_length = int(self.runinfo['split_length'])
-        annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
-        if profiling_split_length != annotation_split_length:
-            raise utils.ConfigError, "The split length (-L) used to profile these merged runs (which is '%s') seem\
-                                      to differ from the split length used to generate %s (which is\
-                                      '%s'). Probably the best option is to re-create the annotation database with\
-                                      an identical split length parameter." % (terminal.pretty_print(profiling_split_length),
-                                                                               os.path.basename(db_path),
-                                                                               terminal.pretty_print(annotation_split_length))
+        if self.args.runinfo:
+            profiling_split_length = int(self.runinfo['split_length'])
+            annotation_split_length = int(self.annotation_db.db.get_meta_value('split_length'))
+            if profiling_split_length != annotation_split_length:
+                raise utils.ConfigError, "The split length (-L) used to profile these merged runs (which is '%s') seem\
+                                          to differ from the split length used to generate %s (which is\
+                                          '%s'). Probably the best option is to re-create the annotation database with\
+                                          an identical split length parameter." % (terminal.pretty_print(profiling_split_length),
+                                                                                   os.path.basename(db_path),
+                                                                                   terminal.pretty_print(annotation_split_length))
 
         self.genes_in_contigs_dict = self.annotation_db.db.get_table_as_dict(annotation.genes_contigs_table_name)
         self.genes_in_splits = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_table_name)
@@ -140,7 +142,7 @@ class InputHandler:
         self.runinfo['default_view'] = 'single'
         self.runinfo['default_clustering'] = 'default'
         self.runinfo['available_clusterings'] = ['default']
-        self.runinfo['clusterings'] = {'default': {'newick': os.path.abspath(args.tree).read()}}
+        self.runinfo['clusterings'] = {'default': {'newick': open(os.path.abspath(args.tree)).read()}}
 
         if args.summary_index:
             self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
@@ -214,8 +216,6 @@ class InputHandler:
             entry_id = os.path.basename(args.tree).split('.')[0]
             run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
             self.runinfo['clusterings'][entry_id] = {'newick': open(os.path.abspath(args.tree)).read()}
-
-        self.runinfo['clustering_newick'] = self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick']
 
         if args.summary_index:
             run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
@@ -291,6 +291,15 @@ class InputHandler:
         genes_in_splits_summary_dict, genes_in_splits_summary_headers = None, []
         if self.annotation_db:
             genes_in_splits_summary_dict = self.annotation_db.db.get_table_as_dict(annotation.genes_splits_summary_table_name)
+
+            # FIXME: Gotta think about more carefully;
+            self.args.simplify_taxonomy = False
+            if self.args.simplify_taxonomy:
+                for split_name in genes_in_splits_summary_dict:
+                    s = genes_in_splits_summary_dict[split_name]
+                    if s['taxonomy']:
+                        s['taxonomy'] = s['taxonomy'].split()[0]
+
             genes_in_splits_summary_headers = self.annotation_db.db.get_table_structure(annotation.genes_splits_summary_table_name)[1:]
 
         additional_dict, additional_headers = None, []
