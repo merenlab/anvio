@@ -73,6 +73,9 @@ parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
 parser.add_argument('-p', '--port-number', metavar = 'INT', default = 8080, type=int,
                     help = 'Port number to use for communication; the default\
                             (%(default)d) should be OK for almost everyone.')
+parser.add_argument('-I', '--ip-address', metavar = 'IO', default = '0.0.0.0', type=str,
+                    help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
+                            work just fine for most.')
 parser.add_argument('-s', '--state', metavar = "FILE", default = None,
                     help = "State file for loading previous session.")
 parser.add_argument('--show-views', action = 'store_true', default = False,
@@ -281,8 +284,9 @@ def submit():
 
 
 port = parser.parse_args().port_number
+ip = parser.parse_args().ip_address
 
-port = utils.get_available_port_num(start = port)
+port = utils.get_available_port_num(start = port, ip=ip)
 
 if not port:
     run.info_single('PaPi failed to find a port number that is available :(', mc='red')
@@ -292,9 +296,9 @@ if not port:
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
 
 try:
-    server_process = Process(target=run_server, kwargs={'host': '0.0.0.0', 'port': port, 'quiet': True})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
     server_process.start()
-    webbrowser.open_new("http://127.0.0.1:%d" % port)
+    webbrowser.open_new("http://%s:%d" % (ip, port))
     run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:

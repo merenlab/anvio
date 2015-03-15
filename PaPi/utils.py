@@ -114,21 +114,21 @@ class Multiprocessing:
             time.sleep(1)
 
 
-def get_available_port_num(start = 8080, look_upto_next_num_ports = 100):
+def get_available_port_num(start = 8080, look_upto_next_num_ports = 100, ip='0.0.0.0'):
     """Starts from 'start' and incrementally looks for an available port
        until 'start + look_upto_next_num_ports', and returns the first
        available one."""
     for p in range(start, start + look_upto_next_num_ports):
-        if not is_port_in_use(p):
+        if not is_port_in_use(p, ip):
             return p
 
     return None
 
 
-def is_port_in_use(port):
+def is_port_in_use(port, ip='0.0.0.0'):
     in_use = False
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(('127.0.0.1', port))
+    result = sock.connect_ex((ip, port))
 
     if(result == 0) :
         in_use = True
