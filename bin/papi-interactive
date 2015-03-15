@@ -212,7 +212,6 @@ def charts(contig_name):
 
             data['genes'].append(p)
 
-    print data
     return json.dumps(data)
 
 @route('/data/contig/<contig_name>')
