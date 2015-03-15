@@ -3,6 +3,49 @@ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || 
 var layers;
 var coverage;
 var variability;
+var geneParser;
+var contextSvg;
+
+GeneParser = (function() {
+  function GeneParser(data) {
+    this.data = data;
+    this.parseData();
+    this.filterCache = {};
+  }
+
+  GeneParser.prototype.parseData = function() {
+    var gene, _ref, _results;
+    this.dataList = [];
+    _ref = this.data;
+    _results = [];
+    for (gene in _ref) {
+      data = _ref[gene];
+      _results.push(this.dataList.push(data));
+    }
+    return _results;
+  };
+
+  GeneParser.prototype.filterData = function(start, stop) {
+    var cacheKey, cached, gene, _data, _i, _len, _ref;
+    cacheKey = "" + start + "-" + stop;
+    if (cached = this.filterCache[cacheKey]) {
+      return cached;
+    }
+    _data = [];
+    _ref = this.dataList;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      gene = _ref[_i];
+      if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop) {
+        _data.push(gene);
+      }
+    }
+    this.filterCache[cacheKey] = _data;
+    return _data;
+  };
+
+  return GeneParser;
+
+})();
 
 function getUrlVars() {
     var map = {};
@@ -61,6 +104,8 @@ function createCharts(){
 
     console.log(genes);
 
+    geneParser = new GeneParser(genes);
+
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
@@ -118,7 +163,7 @@ function createCharts(){
     }
 
 
-    var contextSvg = d3.select("#context-container").append("svg")
+    contextSvg = d3.select("#context-container").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", 260);
 
@@ -130,10 +175,6 @@ function createCharts(){
        .attr("fill", "black")
        .attr("fill-opacity", "0.2")
        .attr('transform', 'translate(50, 20)');
-
-    var paths = contextSvg.append('svg:g')
-      .attr('id', 'markers')
-      .attr('transform', 'translate(50, 20)');
 
     // Define arrow markers
     ['green', 'gray'].forEach(function(color){
@@ -148,52 +189,6 @@ function createCharts(){
           .append('svg:path')
             .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
             .attr('fill', color);
-    });
-
-    paths.selectAll('path'); //.enter()
-
-    // Find the max_split, Dunno if we need that
-    var max_split = 0;
-
-    (Object.keys(genes)).forEach(function(ind) {
-
-      gene = genes[ind];
-      if (gene.stop_in_split > max_split) {
-        max_split = gene.stop_in_split;
-      }
-
-    });
-
-    // I'll find a better way for this two loop. ^^
-
-    // Find the ratio based on screen width and max_split
-    var ratio = (width - margin.right) / max_split;
-
-    // Draw arrows
-    (Object.keys(genes)).forEach(function(ind) {
-
-      gene = genes[ind];
-
-      start = Math.ceil(ratio * gene.start_in_split);
-      stop  = Math.ceil((gene.stop_in_split - gene.start_in_split) * ratio);
-      var y = 10 + (gene.level * 20);
-
-      color = (gene.function !== null ? 'green' : 'gray');
-
-      // M10 15 l20 0
-      path = paths.append('svg:path')
-           .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', color)
-           .attr('stroke-width', 5)
-           .attr('marker-end', function() {
-             return gene.percentage_in_split == 100 ? 'url(#arrow_' + color + ')' : '';
-           })
-           .attr('transform', function() {
-               return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
-             })
-           .append('svg:title')
-             .text(gene.function + '');
-
     });
 
     $('#context-container').css("width", (width + 150) + "px");
@@ -213,7 +208,7 @@ function createCharts(){
 
     var brush = d3.svg.brush()
                 .x(contextXScale)
-                .on("brush", onBrush);
+                .on("brushend", onBrush);
 
     var context = contextSvg.append("g")
                 .attr("class","context")
@@ -238,7 +233,67 @@ function createCharts(){
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
         }
+        drawArrows(b[0], b[1]);
     }
+
+    drawArrows(0, charts[0].xScale.domain()[1]);
+}
+
+function removeGeneChart() {
+  var node = document.getElementById("gene-arrow-chart");
+  if (node && node.parentNode) {
+    node.parentNode.removeChild(node);
+  }
+}
+
+function drawArrows(_start, _stop) {
+
+    width = VIEWER_WIDTH * 0.80;
+    genes = geneParser.filterData(_start, _stop);
+
+    console.log("Start/Stop:", _start, _stop);
+    console.log("Filtered genes:", genes);
+
+    removeGeneChart();
+
+    paths = contextSvg.append('svg:g')
+      .attr('id', 'gene-arrow-chart')
+      .attr('transform', 'translate(50, 20)');
+
+    paths.selectAll('path');
+
+    // Find the max_split
+    max_split = _stop - _start;
+
+    // Find the ratio based on screen width and max_split
+    ratio = width / max_split;
+
+    // Draw arrows
+    genes.forEach(function(gene) {
+
+      start = gene.start_in_split < _start ? 0 : (gene.start_in_split - _start) * ratio;
+      // start = ratio * (start - gene.start_in_split);
+      __stop= (gene.stop_in_split > _stop ? _stop : gene.stop_in_split)
+      stop  = (__stop - gene.start_in_split) * ratio;
+      var y = 10 + (gene.level * 20);
+
+      color = (gene.function !== null ? 'green' : 'gray');
+
+      // M10 15 l20 0
+      path = paths.append('svg:path')
+           .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
+           .attr('stroke', color)
+           .attr('stroke-width', 5)
+           .attr('marker-end', function() {
+             return (gene.percentage_in_split == 100 && gene.stop_in_split < _stop) ? 'url(#arrow_' + color + ')' : '';
+           })
+           .attr('transform', function() {
+               return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
+             })
+           .append('svg:title')
+             .text(gene.function + '');
+    });
+
 }
 
 
