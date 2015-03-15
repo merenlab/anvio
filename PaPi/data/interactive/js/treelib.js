@@ -1675,6 +1675,14 @@ function draw_tree(settings) {
         createGroup('viewport', 'tree_group');
         createGroup('tree_group', 'tree');
 
+        var width = settings['tree-width'];
+        var height = settings['tree-height'];
+
+        if (width == 0)
+            width = VIEWER_WIDTH;
+        if (height == 0)
+            height = VIEWER_HEIGHT;
+
         switch (settings['tree-type']) {
             case 'phylogram':
                 if (t.has_edge_lengths) {
@@ -1682,14 +1690,15 @@ function draw_tree(settings) {
                 } else {
                     td = new RectangleTreeDrawer();
                 }
+
                 td.Init(t, {
                     svg_id: 'tree',
-                    width: VIEWER_HEIGHT,
-                    height: VIEWER_WIDTH,
+                    width: height,
+                    height: width,
                     fontHeight: 10,
                     root_length: 0.1
                 });
-                $('#tree_group').attr('transform', 'rotate(90)');
+                $('#tree_group').attr('transform', 'rotate(90)'); // height and width swapped because of this.
                 break;
 
             case 'circlephylogram':
@@ -1752,7 +1761,7 @@ function draw_tree(settings) {
                 layer_boundaries.push( [0, tree_max_x] );
                 
                 // calculate height per leaf
-                height_per_leaf = VIEWER_WIDTH / (t.num_leaves - 1);
+                height_per_leaf = width / (t.num_leaves - 1);
 
                 break;
 

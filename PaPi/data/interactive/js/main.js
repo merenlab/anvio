@@ -65,6 +65,19 @@ $(document).ready(function() {
     $('.dialogs').hide();
     $('.dialogs2').hide();
 
+    $('#tree_type').change(function() {
+        if ($('#tree_type').val()=='circlephylogram') 
+        {
+            $('.phylogram_settings').hide();
+            $('.circlephylogram_settings').show();
+        }
+        else
+        {
+            $('.phylogram_settings').show();
+            $('.circlephylogram_settings').hide();
+        }
+    });
+
     var timestamp = new Date().getTime(); 
 
     $.when(    
@@ -137,6 +150,10 @@ $(document).ready(function() {
                     $('#tree_type').val(state['tree-type']);
                 if (state.hasOwnProperty('angle-min'))
                     $('#angle-min').val(state['angle-min']);
+                if (state.hasOwnProperty('tree-height'))
+                    $('#tree_height').val(state['tree-height']);
+                if (state.hasOwnProperty('tree-width'))
+                    $('#tree_width').val(state['tree-width']);
                 if (state.hasOwnProperty('angle-max'))
                     $('#angle-max').val(state['angle-max']);
                 if (state.hasOwnProperty('layer-margin'))
@@ -653,6 +670,8 @@ function serializeSettings() {
     state['current-view'] = $('#views_container').val();
     state['angle-min'] = $('#angle-min').val();
     state['angle-max'] = $('#angle-max').val();
+    state['tree-height'] = $('#tree_height').val();
+    state['tree-width'] = $('#tree_width').val();
     state['layer-margin'] = $('#layer-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
 
