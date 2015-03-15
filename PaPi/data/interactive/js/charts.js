@@ -146,16 +146,16 @@ function createCharts(){
 
     contextSvg = d3.select("#context-container").append("svg")
             .attr("width", width + margin.left + margin.right)
-            .attr("height", 260);
+            .attr("height", 130);
 
     var defs = contextSvg.append('svg:defs');
 
     contextSvg.append("rect")
        .attr("width", width)
-       .attr("height", "130px")
+       .attr("height", "60px")
        .attr("fill", "black")
        .attr("fill-opacity", "0.2")
-       .attr('transform', 'translate(50, 20)');
+       .attr('transform', 'translate(50, 1)');
 
     // Define arrow markers
     ['green', 'gray'].forEach(function(color){
@@ -193,7 +193,7 @@ function createCharts(){
 
     var context = contextSvg.append("g")
                 .attr("class","context")
-                .attr("transform", "translate(" + (margin.left) + ", 160)");
+                .attr("transform", "translate(" + (margin.left) + ", 60)");
 
     context.append("g")
                 .attr("class", "x axis top")
@@ -239,7 +239,7 @@ function drawArrows(_start, _stop) {
 
     paths = contextSvg.append('svg:g')
       .attr('id', 'gene-arrow-chart')
-      .attr('transform', 'translate(50, 20)');
+      .attr('transform', 'translate(50, -10)');
 
     paths.selectAll('path');
 
