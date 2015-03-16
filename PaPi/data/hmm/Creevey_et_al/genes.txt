@@ -22,7 +22,7 @@ Ribosomal_S13	COG0099	http://pfam.xfam.org/family/PF00416
 Ribosomal_S11	COG0100	http://pfam.xfam.org/family/PF00411
 Ribosomal_L13	COG0102	http://pfam.xfam.org/family/PF00572
 Ribosomal_S9	COG0103	http://pfam.xfam.org/family/PF00380
-tRNA-synt_2b	COG0124	http://pfam.xfam.org/family/PF00587
+His-tRNA-synt	COG0124	http://pfam.xfam.org/family/PF13393.1
 Seryl_tRNA_N	COG0172	http://pfam.xfam.org/family/PF02403
 Ribosomal_S15	COG0184	http://pfam.xfam.org/family/PF00312
 Ribosomal_S19	COG0185	http://pfam.xfam.org/family/PF00203
