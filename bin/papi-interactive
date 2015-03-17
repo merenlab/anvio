@@ -80,6 +80,8 @@ parser.add_argument('-s', '--state', metavar = "FILE", default = None,
                     help = "State file for loading previous session.")
 parser.add_argument('--show-views', action = 'store_true', default = False,
                         help = 'When declared, the program will show a list of available views, and exit.')
+parser.add_argument('--dry-run', action = 'store_true', default = False,
+                        help = 'Do not start the server, do not fire up the browser.')
 
 
 try:
@@ -291,9 +293,10 @@ def submit():
 # bottle callbacks end
 #######################################################################################################################
 
+args = parser.parse_args()
 
-port = parser.parse_args().port_number
-ip = parser.parse_args().ip_address
+port = args.port_number
+ip = args.ip_address
 
 port = utils.get_available_port_num(start = port, ip=ip)
 
@@ -303,6 +306,10 @@ if not port:
 
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
+
+if args.dry_run:
+    run.info_single('Dry run, eh? Bye!', 'red', nl_before = 1, nl_after=1)
+    sys.exit()
 
 try:
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
