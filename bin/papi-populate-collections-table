@@ -18,6 +18,7 @@ import sys
 import PaPi.utils as utils
 import PaPi.terminal as terminal 
 import PaPi.annotation as annotation
+import PaPi.ccollections as ccollections
 
 from PaPi.utils import ConfigError
 from PaPi.parsers import parser_modules
@@ -50,7 +51,7 @@ def main(args):
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
                             you should send an e-mail to PaPi developers! Sorry for this!" % (args.parser)
 
-    collections = annotation.TablesForCollections(args.annotation_db_path)
+    collections = ccollections.TablesForCollections(args.annotation_db_path, annotation.__version__)
     collections.append(args.parser, clusters_dict)
 
 

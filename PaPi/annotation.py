@@ -13,55 +13,6 @@
     Classes to create and access the annotation database.
 """
 
-contig_sequences_table_name          = 'contig_sequences'
-contig_sequences_table_structure     = ['contig', 'sequence']
-contig_sequences_table_types         = [  'str' ,   'str'   ]
-
-contig_lengths_table_name            = 'contig_lengths'
-contig_lengths_table_structure       = ['contig', 'length' ]
-contig_lengths_table_types           = [  'str' , 'numeric']
-
-splits_info_table_name               = 'splits_info'
-splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'parent' ]
-splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric',  'text'  ]
-
-genes_contigs_table_name             = 'genes_in_contigs'
-genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-genes_contigs_table_types            = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
-
-genes_splits_summary_table_name      = 'genes_in_splits_summary'
-genes_splits_summary_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
-genes_splits_summary_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
-
-genes_splits_table_name              = 'genes_in_splits'
-genes_splits_table_structure         = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-genes_splits_table_types             = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
-
-hmm_hits_info_table_name             = 'hmm_hits_info'
-hmm_hits_info_table_structure        = ['source', 'ref' , 'search_type', 'genes']
-hmm_hits_info_table_types            = [ 'text' , 'text',    'text'    , 'text' ]
-
-hmm_hits_contigs_table_name          = 'hmm_hits_in_contigs'
-hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
-hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
-
-hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
-hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
-hmm_hits_splits_table_types          = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
-
-collections_info_table_name          = 'collections_info'
-collections_info_table_structure     = ['source',  'ref']
-collections_info_table_types         = [ 'text' , 'text']
-
-collections_contigs_table_name       = 'collections_of_contigs'
-collections_contigs_table_structure  = ['entry_id', 'source', 'contig', 'cluster_id']
-collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text'   ]
-
-collections_splits_table_name        = 'collections_of_splits'
-collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
-collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
-
-
 __version__ = "0.4.3"
 
 
@@ -80,7 +31,9 @@ import PaPi.contig as contig
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
+import PaPi.ccollections as ccollections
 
+from PaPi.tables import *
 from PaPi.utils import ConfigError
 from PaPi.commandline import HMMSearch
 from PaPi.parsers import parser_modules
@@ -141,6 +94,8 @@ class AnnotationDatabase:
 
         self.db = db.DB(self.db_path, __version__, new_database = True)
 
+        # know thyself
+        self.db.set_meta_value('db_type', 'annotation')
         # this will be the unique information that will be passed downstream whenever this db is used:
         self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
         # set split length variable in the meta table
@@ -187,9 +142,7 @@ class AnnotationDatabase:
         self.db.create_table(genes_contigs_table_name, genes_contigs_table_structure, genes_contigs_table_types)
         self.db.create_table(genes_splits_summary_table_name, genes_splits_summary_table_structure, genes_splits_summary_table_types)
         self.db.create_table(genes_splits_table_name, genes_splits_table_structure, genes_splits_table_types)
-        self.db.create_table(collections_info_table_name, collections_info_table_structure, collections_info_table_types)
-        self.db.create_table(collections_contigs_table_name, collections_contigs_table_structure, collections_contigs_table_types)
-        self.db.create_table(collections_splits_table_name, collections_splits_table_structure, collections_splits_table_types)
+        ccollections.create_blank_collections_tables(self.db)
 
         self.disconnect()
 
@@ -203,170 +156,13 @@ class AnnotationDatabase:
         self.db.disconnect()
 
 
-class Table(object):
-    """Superclass for rudimentary table needs and operations"""
-    def __init__(self, db_path, run=run, progress=progress, quiet = False):
-        if not os.path.exists(db_path):
-            raise ConfigError, "Annotation database ('%s') does not exist. You must create one first." % db_path
-
-        self.quiet = quiet
-        self.db_path = db_path
-        self.next_available_id = {}
-
-        self.run = run
-        self.progress = progress
-
-        annotation_db = AnnotationDatabase(self.db_path, quiet = self.quiet)
-        self.split_length = annotation_db.db.get_meta_value('split_length')
-        contig_lengths_table = annotation_db.db.get_table_as_dict(contig_lengths_table_name)
-        self.splits = annotation_db.db.get_table_as_dict(splits_info_table_name)
-        annotation_db.disconnect()
-
-        self.contig_name_to_splits = {}
-        for split_name in self.splits:
-            parent = self.splits[split_name]['parent']
-            if self.contig_name_to_splits.has_key(parent):
-                self.contig_name_to_splits[parent].append(split_name)
-            else:
-                self.contig_name_to_splits[parent] = [split_name]
-
-        self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
-
-
-    def next_id(self, table):
-        if table not in self.next_available_id:
-            raise ConfigError, "If you need unique ids, you must call 'set_next_available_id' first"
-
-        self.next_available_id[table] += 1
-        return self.next_available_id[table] - 1
-
-
-    def set_next_available_id(self, table):
-        annotation_db = AnnotationDatabase(self.db_path)
-        table_content = annotation_db.db.get_table_as_dict(table)
-        if table_content:
-            self.next_available_id[table] = max(table_content.keys()) + 1
-        else:
-            self.next_available_id[table] = 0
-
-        annotation_db.disconnect()
-
-
-    def export_contigs_in_db_into_FASTA_file(self):
-        annotation_db = AnnotationDatabase(self.db_path, quiet = True)
-        contig_sequences_table = annotation_db.db.get_table_as_dict(contig_sequences_table_name)
-        annotation_db.disconnect()
-
-        self.progress.new('Exporting contigs into a FASTA file')
-        self.progress.update('...')
-        contigs_fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'contigs.fa')
-        contigs_fasta = u.FastaOutput(contigs_fasta_path)
-        for contig in contig_sequences_table:
-            contigs_fasta.write_id(contig)
-            contigs_fasta.write_seq(contig_sequences_table[contig]['sequence'], split=False)
-
-        self.progress.end()
-        self.run.info('FASTA for contigs', contigs_fasta_path)
-
-        return contigs_fasta_path
-
-
-    def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
-        # removes rows from each table in 'tables_to_remove' where 'table_column' equals 'value'
-        annotation_db = AnnotationDatabase(self.db_path)
-
-        table_content = annotation_db.db.get_table_as_dict(tables_to_clear[0])
-        if key in table_content:
-            self.run.warning('Previous entries for "%s" is being removed from "%s"' % (key, ', '.join(tables_to_clear)))
-            for table_name in tables_to_clear:
-                annotation_db.db._exec('''DELETE FROM %s WHERE %s = "%s"''' % (table_name, table_column, key))
-
-        annotation_db.disconnect()
-
-
-class TablesForCollections(Table):
-    """Populates the collections_* tables, where clusters of contigs and splits are kept"""
-    def __init__(self, db_path, run=run, progress=progress):
-        self.db_path = db_path
-
-        Table.__init__(self, self.db_path, run, progress)
-
-        # set these dudes so we have access to unique IDs:
-        self.set_next_available_id(collections_contigs_table_name)
-        self.set_next_available_id(collections_splits_table_name)
-
-
-    def append(self, source, clusters_dict):
-        # remove any pre-existing information for 'source'
-        self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name])
-
-        splits_in_clusters_dict = set(v['split'] for v in clusters_dict.values())
-        splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits]
-        splits_only_in_db = [c for c in self.splits if c not in splits_in_clusters_dict]
-
-        if len(splits_only_in_clusters_dict):
-            self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
-                                      but you must be the judge of it. If this is somewhat surprising, please use caution\
-                                      and make sure all is fine before going forward with you analysis.'\
-                                            % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
-
-        if len(splits_only_in_db):
-            self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
-                                      does not make any sense, please make sure you know why before going any further.'\
-                                            % (len(splits_only_in_db), len(self.splits), source))
-
-
-        annotation_db = AnnotationDatabase(self.db_path)
-
-        # push information about this search result into serach_info table.
-        db_entries = tuple([source, ''])
-        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % collections_info_table_name, db_entries)
-
-        # populate splits table
-        db_entries = [tuple([self.next_id(collections_splits_table_name), source] + [v[h] for h in collections_splits_table_structure[2:]]) for v in clusters_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
-
-        # then populate contigs table.
-        db_entries = self.process_contigs(source, clusters_dict)
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
-
-        annotation_db.disconnect()
-
-        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the annotation database.'\
-                                        % (source, len(db_entries)), mc='green')
-
-
-    def process_contigs(self, source, clusters_dict):
-        db_entries_for_contigs = []
-
-        split_to_cluster_id = dict([(d['split'], d['cluster_id']) for d in clusters_dict.values()])
-
-        contigs_processed = set([])
-        for split_name in split_to_cluster_id:
-            if split_name not in self.splits:
-                # which means this split only appears in the input file, but not in the database.
-                continue
-
-            contig_name = self.splits[split_name]['parent']
-
-            if contig_name in contigs_processed:
-                continue
-            else:
-                contigs_processed.add(contig_name)
-
-            db_entry = tuple([self.next_id(collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
-            db_entries_for_contigs.append(db_entry)
-
-        return db_entries_for_contigs
-
-
-class TablesForSearches(Table):
+class TablesForSearches(AnnotationDBTable):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
         self.debug = False
 
-        Table.__init__(self, self.db_path, run, progress)
+        AnnotationDBTable.__init__(self, self.db_path, __version__, run, progress)
 
         self.set_next_available_id(hmm_hits_contigs_table_name)
         self.set_next_available_id(hmm_hits_splits_table_name)
@@ -461,11 +257,11 @@ class TablesForSearches(Table):
         return db_entries_for_splits
 
 
-class TablesForGenes(Table):
+class TablesForGenes(AnnotationDBTable):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, run, progress)
+        AnnotationDBTable.__init__(self, self.db_path, __version__, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database

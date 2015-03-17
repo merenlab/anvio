@@ -16,9 +16,10 @@ import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.constants as constants
+import PaPi.clustering as clustering
 import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
-import PaPi.clustering as clustering
+import PaPi.ccollections as ccollections
 
 from PaPi.genes import Genes
 from PaPi.metadata import Metadata
@@ -111,6 +112,13 @@ class BAMProfiler:
         # init a new db
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         self.profile_db = db.DB(self.profile_db_path, __version__, new_database = True)
+
+        # know thyself
+        self.profile_db.set_meta_value('db_type', 'profile')
+
+        # this will be the unique information that will be passed downstream whenever this db is used:
+        # create empty collections tables in newly generated profile database:
+        ccollections.create_blank_collections_tables(self.profile_db)
 
         # put sample id into the meta table
         self.profile_db.set_meta_value('sample_id', self.sample_id)

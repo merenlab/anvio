@@ -19,6 +19,7 @@ import PaPi.terminal as terminal
 import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.filesnpaths as filesnpaths
+import PaPi.ccollections as ccollections
 
 from PaPi.clusteringconfuguration import ClusteringConfiguration
 from PaPi.metadata import gen_tnf_tables
@@ -255,6 +256,7 @@ class MultipleRuns:
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
         self.profile_db = PaPi.db.DB(self.profile_db_path, __version__, new_database = True)
+        self.profile_db.set_meta_value('db_type', 'profile')
         # put sample id into the meta table
         self.profile_db.set_meta_value('sample_id', self.sample_id)
         self.profile_db.set_meta_value('samples', ','.join(self.merged_sample_ids))
@@ -262,6 +264,7 @@ class MultipleRuns:
         annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         self.profile_db.set_meta_value('annotation_hash', annotation_hash)
         self.run.info('annotation_hash', annotation_hash)
+        ccollections.create_blank_collections_tables(self.profile_db)
 
         # get metadata information for both contigs and splits:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()

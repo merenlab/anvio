@@ -47,7 +47,7 @@ class InputHandler:
         self.contig_lengths = {}
         self.additional_metadata_path = None
         self.completeness = None
-        self.collections = None
+        self.collections = ccollections.Collections()
 
         # if annotation db exists, these dicts will be populated in self.init_annotation_db():
         self.genes_in_contigs_dict = {}
@@ -73,7 +73,7 @@ class InputHandler:
         if args.annotation_db:
             self.init_annotation_db(args.annotation_db)
             self.completeness = completeness.Completeness(args.annotation_db)
-            self.collections = ccollections.Collections(args.annotation_db)
+            self.collections.populate_sources_dict(args.annotation_db, annotation.__version__)
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
@@ -208,8 +208,13 @@ class InputHandler:
         if not self.runinfo.has_key('runinfo'):
             raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
 
+        profile_db_path = self.P(self.runinfo['profile_db'])
+
         # connect to the PROFILE.db
-        self.profile_db = PaPi.db.DB(self.P(self.runinfo['profile_db']), PaPi.profiler.__version__)
+        self.profile_db = PaPi.db.DB(profile_db_path, PaPi.profiler.__version__)
+
+        self.collections.populate_sources_dict(profile_db_path, PaPi.profiler.__version__)
+
         self.runinfo['clusterings'] = self.profile_db.get_table_as_dict('clusterings')
 
         if args.tree:

@@ -98,24 +98,24 @@ except filesnpaths.FilesNPathsError, e:
 # bottle callbacks start
 #######################################################################################################################
 
+def set_default_headers(response):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
 @route('/')
 def redirect_to_app():
     redirect('/app/index.html')
 
 @route('/app/:filename#.*#')
 def send_static(filename):
-    response.set_header('Content-Type', 'application/json')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
-    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    set_default_headers(response)
     return static_file(filename, root=static_dir)
 
 @route('/data/<name>')
 def send_data(name):
-    response.set_header('Content-Type', 'application/json')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
-    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    set_default_headers(response)
     if name == "clusterings":
         return json.dumps((d.runinfo['default_clustering'], d.runinfo['clusterings']), )
     elif name == "views":
@@ -138,10 +138,7 @@ def get_view_data(view_id):
 
 @route('/tree/<tree_id>')
 def send_data(tree_id):
-    response.set_header('Content-Type', 'application/json')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
-    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    set_default_headers(response)
 
     if tree_id in d.runinfo['clusterings']:
         run.info_single("Clustering of '%s' has been requested" % (tree_id))
@@ -222,14 +219,20 @@ def contig_info(contig_name):
 
 @route('/data/collections')
 def collections():
-    response.set_header('Content-Type', 'application/json')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
-    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    set_default_headers(response)
+    return json.dumps(d.collections.sources_dict)
 
-    collections_dict = d.collections.get_collections_dict()
+@route('/data/collection/<collection_source>')
+def get_collection_dict(collection_source):
+    set_default_headers(response)
+    return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
+                       'colors': d.collections.get_collection_colors(collection_source)})
 
-    return json.dumps(collections_dict)
+@route('/store_collections', method='POST')
+def store_collections_dict():
+    source = json.loads(request.forms.get('source'))
+    data = json.loads(request.forms.get('data'))
+    colors = json.loads(request.forms.get('colors'))
 
 @route('/data/completeness', method='POST')
 def completeness():
