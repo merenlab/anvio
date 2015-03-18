@@ -683,21 +683,6 @@ function serializeSettings() {
     state['views'] = views;
     state['layer-order'] = layer_order;
 
-    state['groups'] = {};
-    $('#tbody_groups tr').each(
-        function(index, group) {
-            var gid = $(group).attr('group-id');
-
-            state['groups'][gid] = {};
-            state['groups'][gid]['name'] = $('#group_name_' + gid).val();
-            state['groups'][gid]['color'] = $('#group_color_' + gid).attr('color');
-            state['groups'][gid]['contig-length'] = $('#contig_length_' + gid).text();
-            state['groups'][gid]['contig-count'] = $('#contig_count_' + gid).val();
-            state['groups'][gid]['completeness'] = $('#completeness_' + gid).val();
-            state['groups'][gid]['contamination'] = $('#contamination_' + gid).val();
-        }
-    );
-
     state['categorical_data_colors'] = categorical_data_colors;
     state['stack_bar_colors'] = stack_bar_colors;
 
@@ -1318,4 +1303,28 @@ function showStoreCollectionWindow() {
             $('#storeCollectionWindow').dialog('open');
         }
     });
+}
+
+function storeCollection() {
+    var collection_name = $('#storeCollection_name').val();
+
+    data = {};
+    colors = {};
+
+    $('#tbody_groups tr').each(
+        function(index, group) {
+            var gid = $(group).attr('group-id');
+            var gname = $('#group_name_' + gid).val();
+
+            colors[gname] = $('#group_color_' + gid).attr('color');
+            data[gname] = SELECTED[gid];
+        }
+    );
+
+    $.post("/store_collections", {
+        source: collection_name,
+        data: JSON.stringify(data, null, 4),
+        colors: JSON.stringify(colors, null, 4),
+    });
+    
 }
