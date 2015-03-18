@@ -1328,3 +1328,30 @@ function storeCollection() {
     });
     
 }
+
+function showLoadCollectionWindow() {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collections?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            $('#loadCollection_list').empty();
+
+            for (source in data) {
+                var read_only = data[source]["read_only"];
+
+                if (read_only) {
+                    var _name = source + ' (read only)';
+                }
+                else
+                {
+                    var _name = source;
+                }
+
+                $('#loadCollection_list').append('<option val="' + source + '">' + _name + '</option>');
+            }
+
+            $('#loadCollectionWindow').dialog('open');
+        }
+    });
+}

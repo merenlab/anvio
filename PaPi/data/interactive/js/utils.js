@@ -249,6 +249,8 @@ function initializeDialogs() {
 
     $('#searchBox').dialog("option", "title", "Search");
     $('#storeCollectionWindow').dialog("option", "title", "Store Collection");
+    $('#loadCollectionWindow').dialog("option", "title", "Load Collection");
+
 
 }
 //---------------------------------------------------------
