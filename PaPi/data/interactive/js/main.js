@@ -1292,5 +1292,30 @@ function removeResult() {
 }
 
 function showStoreCollectionWindow() {
-    $('#storeCollectionWindow').dialog('open');
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collections?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            $('#storeCollection_list').empty();
+
+            for (source in data) {
+                var read_only = data[source]["read_only"];
+
+                if (read_only) {
+                    var _disabled = ' disabled="true"';
+                    var _name = source + ' (read only)';
+                }
+                else
+                {
+                    var _disabled = '';
+                    var _name = source;
+                }
+
+                $('#storeCollection_list').append('<option val="' + source + '"' + _disabled + '>' + _name + '</option>');
+            }
+
+            $('#storeCollectionWindow').dialog('open');
+        }
+    });
 }
