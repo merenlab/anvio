@@ -342,26 +342,7 @@ $(document).ready(function() {
             /*
             //  Add groups
             */
-            if (hasState)
-            {
-                if (state.hasOwnProperty('SELECTED'))
-                    SELECTED = state['SELECTED'];
-
-                if (state.hasOwnProperty('group-counter'))
-                    group_counter = state['group-counter'];
-
-                if (state.hasOwnProperty('groups'))
-                {
-                    for (gid in state['groups'])
-                    {
-                        newGroup(gid, state['groups'][gid]);
-                    }              
-                }
-            }
-            else
-            {
-                newGroup();
-            }
+            newGroup();
 
             initializeDialogs();
 
