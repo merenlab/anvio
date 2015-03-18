@@ -139,6 +139,7 @@
                 <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
                 </p><hr /><p align="center">
                 <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
+                <input type="button" onclick="showStoreCollectionWindow();" value="Store collection">
                 </p>
                 </div>
             </div>
@@ -177,6 +178,13 @@
                 <input type="button" onclick="redrawGroups();" value="Clear">
                 <input type="button" onclick="appendResult();" value="Append to group">
                 <input type="button" onclick="removeResult();" value="Remove from group">
+            </div>
+            <div id="storeCollectionWindow" class="dialogs2">
+                <div style="margin: 10px; ">
+                <select id="storeCollection_list" size="10" style="width: 100%;" onChange="$('#storeCollection_name').val($(this).val());"></select></br></br>
+                Collection Name: <input type="text" id="storeCollection_name" value="" size="30">
+                <input type="button" id="storeCollection_store" value="Store">
+                </div>
             </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>

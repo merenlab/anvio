@@ -1290,3 +1290,7 @@ function removeResult() {
     updateGroupWindow(groups_to_update);
     redrawGroups();
 }
+
+function showStoreCollectionWindow() {
+    $('#storeCollectionWindow').dialog('open');
+}

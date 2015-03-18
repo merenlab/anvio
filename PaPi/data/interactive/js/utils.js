@@ -237,16 +237,19 @@ function initializeDialogs() {
 
     // diaglos with close button.
 
-    $("#searchBox").dialog({
+    $(".dialogs2").dialog({
             resizable: false,
             collapseEnabled: false,
             width: 'auto',
-            title: 'Search',
             position: {
                 my: "center",
                 at: "center",
                 of: window
             }}).dialog('close');
+
+    $('#searchBox').dialog("option", "title", "Search");
+    $('#storeCollectionWindow').dialog("option", "title", "Store Collection");
+
 }
 //---------------------------------------------------------
 //  message popup
