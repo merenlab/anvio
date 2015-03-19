@@ -742,14 +742,14 @@ function newGroup(id, groupState) {
     }
     else
     {
-        // we are adding groups from state file
+        // we are adding groups from collection
         var from_state = true;
         var name = groupState['name'];
         var color = groupState['color'];
-        var contig_count = groupState['contig-count'];
-        var contig_length = groupState['contig-length'];
-        var completeness = groupState['completeness'];
-        var contamination = groupState['contamination'];
+        var contig_count = 0;
+        var contig_length = 0;
+        var completeness = "---";
+        var contamination = "---";
     }
 
     var template = '<tr group-id="{id}" id="group_row_{id}">' +
@@ -1278,7 +1278,7 @@ function showStoreCollectionWindow() {
                     var _name = source;
                 }
 
-                $('#storeCollection_list').append('<option val="' + source + '"' + _disabled + '>' + _name + '</option>');
+                $('#storeCollection_list').append('<option value="' + source + '"' + _disabled + '>' + _name + '</option>');
             }
 
             $('#storeCollectionWindow').dialog('open');
@@ -1329,10 +1329,67 @@ function showLoadCollectionWindow() {
                     var _name = source;
                 }
 
-                $('#loadCollection_list').append('<option val="' + source + '">' + _name + '</option>');
+                $('#loadCollection_list').append('<option value="' + source + '">' + _name + '</option>');
             }
 
             $('#loadCollectionWindow').dialog('open');
+        }
+    });
+}
+
+function loadCollection() {
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('You should draw tree before load collection.');
+        return;
+    }
+
+    var collection = $('#loadCollection_list').val();
+    if (collection === null)
+        return;
+
+    if (!confirm("You will lost current groups, please be sure you stored current groups. Do you want to continue?"))
+        return;
+
+    var coldata 
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            // empty group window
+            $('#tbody_groups').empty();
+            SELECTED = new Array();
+            group_count = 0;
+            group_counter = 0;
+
+            // load new groups
+            var gid=0;
+            for (group in data['data'])
+            {
+                gid++;
+                group_counter++;
+
+                // collection may be contain unknown splits/contigs, we should clear them.
+                var contigs = new Array();
+
+                for (index in data['data'][group])
+                {
+                    if (typeof contig_lengths[data['data'][group][index]] !== 'undefined') {
+                        contigs.push(data['data'][group][index]);
+                    }
+                    
+                }
+
+                SELECTED[gid] = contigs;
+
+                var _color =  (data['colors'][groups]) ? data['colors'][groups] : '#000000';
+
+                newGroup(gid, {'name': group, 'color': _color});
+            }
+
+            updateGroupWindow();
+            redrawGroups();
+            $('#loadCollectionWindow').dialog('close');
         }
     });
 }
