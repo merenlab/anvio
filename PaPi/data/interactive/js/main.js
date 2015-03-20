@@ -1387,6 +1387,7 @@ function loadCollection() {
                 newGroup(gid, {'name': group, 'color': _color});
             }
 
+            rebuildIntersections();
             updateGroupWindow();
             redrawGroups();
             $('#loadCollectionWindow').dialog('close');
