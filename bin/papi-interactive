@@ -230,9 +230,11 @@ def get_collection_dict(collection_source):
 
 @route('/store_collections', method='POST')
 def store_collections_dict():
-    source = json.loads(request.forms.get('source'))
+    source = request.forms.get('source')
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
+
+    print source + " stored."
 
 @route('/data/completeness', method='POST')
 def completeness():

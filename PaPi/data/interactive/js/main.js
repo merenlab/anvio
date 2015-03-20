@@ -1307,7 +1307,7 @@ function storeCollection() {
         data: JSON.stringify(data, null, 4),
         colors: JSON.stringify(colors, null, 4),
     });
-    
+    $('#storeCollectionWindow').dialog('close');    
 }
 
 function showLoadCollectionWindow() {
