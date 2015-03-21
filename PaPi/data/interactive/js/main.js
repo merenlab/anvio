@@ -1362,13 +1362,18 @@ function loadCollection() {
             group_count = 0;
             group_counter = 0;
 
+            // count groups.
+            var skip_empty = false;
+            var num_groups = Object.keys(data['data']).length;
+
+            if (num_groups > 16) {
+                skip_empty = confirm("This collection has " + num_groups + " groups, Do you want to skip empty groups to improve user interface performance?");
+            }
+
             // load new groups
             var gid=0;
             for (group in data['data'])
             {
-                gid++;
-                group_counter++;
-
                 // collection may be contain unknown splits/contigs, we should clear them.
                 var contigs = new Array();
 
@@ -1380,11 +1385,16 @@ function loadCollection() {
                     
                 }
 
-                SELECTED[gid] = contigs;
+                if (!(skip_empty && contigs.length == 0))
+                {
+                    gid++;
+                    group_counter++;
+                    SELECTED[gid] = contigs;
 
-                var _color =  (data['colors'][groups]) ? data['colors'][groups] : '#000000';
+                    var _color =  (data['colors'][groups]) ? data['colors'][groups] : '#000000';
 
-                newGroup(gid, {'name': group, 'color': _color});
+                    newGroup(gid, {'name': group, 'color': _color});
+                }
             }
 
             rebuildIntersections();
