@@ -1078,11 +1078,17 @@ function exportSvg() {
     var settings = serializeSettings();
 
     var groups_to_draw = new Array();
-    for (var gid = 1; gid <= group_counter; gid++) {
-        if(SELECTED[gid].length > 0) {
-            groups_to_draw.push(settings['groups'][gid]);
+    $('#tbody_groups tr').each(
+        function(index, group) {
+            var gid = $(group).attr('group-id');
+            groups_to_draw.push({
+                'name': $('#group_name_' + gid).val(),
+                'color': $('#group_color_' + gid).attr('color'),
+                'contig-length': $('#contig_length_' + gid).html(),
+                'contig-count': $('#contig_count_' + gid).val(),
+            });
         }
-    }
+    );
 
     var left = 0 - total_radius - 400; // draw on the left top
     var top = 20 - total_radius;
