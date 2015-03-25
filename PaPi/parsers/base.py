@@ -76,7 +76,8 @@ class Parser(object):
                 self.dicts[alias] = get_dict(self.paths[alias], no_header = no_header,
                                              column_names = self.files_structure[alias]['col_names'],
                                              column_mapping = self.files_structure[alias]['col_mapping'],
-                                             indexing_field = indexing_field, separator = separator)
+                                             indexing_field = indexing_field, separator = separator,
+                                             ascii_only = True)
 
 
 if __name__ == "__main__":

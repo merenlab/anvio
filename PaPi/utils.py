@@ -438,9 +438,18 @@ def get_FASTA_file_as_dictionary(file_path):
     return d
 
 
+def is_ascii_only(text):
+    """test whether 'text' is composed of ASCII characters only"""
+    try:
+        text.decode('ascii')
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
                                         column_mapping = None, indexing_field = 0, assign_none_for_missing = False,\
-                                        separator = '\t', no_header = False):
+                                        separator = '\t', no_header = False, ascii_only = False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
@@ -480,6 +489,11 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     line_counter = 0
 
     for line in f.readlines():
+        if ascii_only:
+            if not is_ascii_only(line):
+                raise ConfigError, "The input file conitans non-ascii characters at line number %d. Those lines\
+                                    either should be removed, or edited." % (line_counter + 2)
+
         line_fields = line.strip('\n').split(separator)
 
         if column_mapping:
