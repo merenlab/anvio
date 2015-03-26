@@ -33,6 +33,8 @@ class DB:
             os.remove(self.db_path)
 
         self.conn = sqlite3.connect(self.db_path)
+        self.conn.text_factory = str
+
         self.cursor = self.conn.cursor()
 
         if new_database:
