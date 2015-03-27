@@ -13,6 +13,7 @@ import subprocess
 
 import PaPi.db as db
 import PaPi.utils as utils
+import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.constants as constants
@@ -53,6 +54,7 @@ class BAMProfiler:
         self.min_contig_length = 10000 
         self.min_mean_coverage = 10
         self.contig_names_of_interest = None
+        self.contigs_shall_be_clustered = False
 
         if args:
             self.args = args
@@ -63,6 +65,7 @@ class BAMProfiler:
             self.list_contigs_and_exit = args.list_contigs
             self.min_contig_length = args.min_contig_length
             self.min_mean_coverage = args.min_mean_coverage
+            self.contigs_shall_be_clustered = args.cluster_contigs
             self.number_of_threads = 4 
             self.no_trehading = True
             self.sample_id = args.sample_id
@@ -113,6 +116,10 @@ class BAMProfiler:
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         self.profile_db = db.DB(self.profile_db_path, __version__, new_database = True)
 
+        # generate standard tables
+        # FIXME: need a profiledb.py to do all these stuff and the things that are done in the metadata.py:
+        self.profile_db.create_table(tables.clusterings_table_name, tables.clusterings_table_structure, tables.clusterings_table_types)
+
         # know thyself
         self.profile_db.set_meta_value('db_type', 'profile')
 
@@ -127,6 +134,7 @@ class BAMProfiler:
         # well used for merged studies.
         self.profile_db.set_meta_value('samples', self.sample_id)
         self.profile_db.set_meta_value('merged', False)
+        self.profile_db.set_meta_value('contigs_clustered', self.contigs_shall_be_clustered)
 
         self.progress.update('Initializing the annotation database ...')
         self.annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
@@ -154,12 +162,12 @@ class BAMProfiler:
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('annotation_db', True if self.annotation_db_path else False)
-        self.run.info('default_clustering', constants.single_default)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
         self.run.info('split_length', self.split_length)
         self.run.info('min_contig_length', self.min_contig_length)
         self.run.info('min_mean_coverage', self.min_mean_coverage)
+        self.run.info('clustering_performed', self.contigs_shall_be_clustered)
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -190,7 +198,8 @@ class BAMProfiler:
 
         self.store_consenus_FASTA_files_for_splits_and_contigs()
 
-        self.cluster_contigs()
+        if self.contigs_shall_be_clustered:
+            self.cluster_contigs()
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
         self.run.info('runinfo', runinfo_serialized)
@@ -502,12 +511,6 @@ class BAMProfiler:
 
 
     def cluster_contigs(self):
-        # FIXME: need a profiledb.py to do all these stuff and the things that are done in the metadata.py:
-        clusterings_table_name      = 'clusterings'
-        clusterings_table_structure = ['clustering', 'newick' ]
-        clusterings_table_types     = [   'str'    ,  'str'   ]
-        self.profile_db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
-
         clusterings = []
 
         for config_name in self.clustering_configs:
@@ -518,8 +521,9 @@ class BAMProfiler:
 
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
-            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % clusterings_table_name, db_entries)
+            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
 
+        self.run.info('default_clustering', constants.single_default)
         self.run.info('available_clusterings', clusterings)
 
 

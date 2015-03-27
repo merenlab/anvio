@@ -24,6 +24,8 @@ __status__ = "Development"
 run = terminal.Run()
 progress = terminal.Progress()
 
+# ANNOTATION DATABASE TABLES:
+
 contig_sequences_table_name          = 'contig_sequences'
 contig_sequences_table_structure     = ['contig', 'sequence']
 contig_sequences_table_types         = [  'str' ,   'str'   ]
@@ -75,6 +77,13 @@ collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text
 collections_splits_table_name        = 'collections_of_splits'
 collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
+
+
+# PRFOFILE DATABASE TABLES
+
+clusterings_table_name               = 'clusterings'
+clusterings_table_structure          = ['clustering', 'newick' ]
+clusterings_table_types              = [   'str'    ,  'str'   ]
 
 
 class AnnotationDBTable(object):

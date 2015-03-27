@@ -30,6 +30,10 @@ if __name__ == '__main__':
                                 provide one, PaPi will make up one for you based on the output_directory\
                                 name you set (although, you should never let the software to decide these\
                                 things).')
+    parser.add_argument('--skip-clustering', action = 'store_true', default = False,
+                        help = 'If you are not planning to use the interactive interface (or if you have other\
+                                means to add a tree of contigs in the database) you may skip the clustering step\
+                                and simply just merge multiple runs')
 
     args = parser.parse_args()
 

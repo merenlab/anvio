@@ -14,6 +14,7 @@ import PaPi.genes
 import PaPi.contig
 import PaPi.fastalib as u
 import PaPi.utils as utils
+import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.constants as constants
@@ -55,6 +56,7 @@ class MultipleRuns:
         self.normalization_multiplier = {}
         self.profiles = []
         self.output_directory = args.output_dir
+        self.skip_clustering = args.skip_clustering
 
         self.profile_db = None
         self.profile_db_path = None
@@ -261,10 +263,13 @@ class MultipleRuns:
         self.profile_db.set_meta_value('sample_id', self.sample_id)
         self.profile_db.set_meta_value('samples', ','.join(self.merged_sample_ids))
         self.profile_db.set_meta_value('merged', True)
+        self.profile_db.set_meta_value('contigs_clustered', not self.skip_clustering)
         annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         self.profile_db.set_meta_value('annotation_hash', annotation_hash)
         self.run.info('annotation_hash', annotation_hash)
         ccollections.create_blank_collections_tables(self.profile_db)
+
+        self.profile_db.create_table(tables.clusterings_table_name, tables.clusterings_table_structure, tables.clusterings_table_types)
 
         # get metadata information for both contigs and splits:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
@@ -284,6 +289,7 @@ class MultipleRuns:
         self.run.info('num_runs_processed', len(self.contigs))
         self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
+        self.run.info('clustering_performed', not self.skip_clustering)
  
         self.set_normalization_multiplier()
  
@@ -313,10 +319,12 @@ class MultipleRuns:
 
         # critical part:
         self.merge_metadata_files()
-        self.cluster_contigs()
+
+        # we cluster?
+        if not self.skip_clustering:
+            self.cluster_contigs()
 
         self.progress.end()
-
 
         runinfo_serialized = os.path.join(self.output_directory, 'RUNINFO.mcp')
         self.run.info('runinfo', runinfo_serialized)
@@ -399,13 +407,6 @@ class MultipleRuns:
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
         # every metadata file that may be required.
-
-        # FIXME: need a profiledb.py to do all these stuff and the things that are done in the metadata.py:
-        clusterings_table_name      = 'clusterings'
-        clusterings_table_structure = ['clustering', 'newick' ]
-        clusterings_table_types     = [   'str'    ,  'str'   ]
-        self.profile_db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
-
         clusterings = []
 
         for config_name in self.clustering_configs:
@@ -416,7 +417,7 @@ class MultipleRuns:
 
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
-            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % clusterings_table_name, db_entries)
+            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
 
         self.run.info('available_clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
