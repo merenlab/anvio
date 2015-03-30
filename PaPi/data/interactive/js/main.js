@@ -1397,7 +1397,7 @@ function loadCollection() {
                     group_counter++;
                     SELECTED[gid] = contigs;
 
-                    var _color =  (data['colors'][groups]) ? data['colors'][groups] : '#000000';
+                    var _color =  (data['colors'][groups]) ? data['colors'][groups] : randomColor();
 
                     newGroup(gid, {'name': group, 'color': _color});
                 }
