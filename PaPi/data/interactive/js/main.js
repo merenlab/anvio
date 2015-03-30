@@ -1312,7 +1312,11 @@ function storeCollection() {
         source: collection_name,
         data: JSON.stringify(data, null, 4),
         colors: JSON.stringify(colors, null, 4),
+    },
+    function(server_response, status){
+          alert("Server: " + server_response + "\n\n(status: " + status + ")");
     });
+
     $('#storeCollectionWindow').dialog('close');    
 }
 
@@ -1397,7 +1401,7 @@ function loadCollection() {
                     group_counter++;
                     SELECTED[gid] = contigs;
 
-                    var _color =  (data['colors'][groups]) ? data['colors'][groups] : randomColor();
+                    var _color =  (data['colors'][group]) ? data['colors'][group] : randomColor();
 
                     newGroup(gid, {'name': group, 'color': _color});
                 }
