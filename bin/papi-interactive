@@ -20,9 +20,11 @@ from bottle import run as run_server
 
 import PaPi.utils as utils
 import PaPi.dictio as dictio
+import PaPi.terminal as terminal
+import PaPi.profiler as profiler
 import PaPi.filesnpaths as filesnpaths
 import PaPi.interactive as interactive
-import PaPi.terminal as terminal
+import PaPi.ccollections as ccollections
 
 __author__ = "Özcan Esen"
 __copyright__ = "Copyright 2015, The PaPi Project"
@@ -219,11 +221,14 @@ def contig_info(contig_name):
 
 @route('/data/collections')
 def collections():
+    csd = d.collections.sources_dict
+    run.info_single('Collection sources has been requested (info dict with %d item(s) has been returned).' % len(csd), cut_after = None)
     set_default_headers(response)
-    return json.dumps(d.collections.sources_dict)
+    return json.dumps(csd)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
+    run.info_single('Data for collection source "%s" has been requested.' % len(collection_source))
     set_default_headers(response)
     return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
                        'colors': d.collections.get_collection_colors(collection_source)})
@@ -234,7 +239,12 @@ def store_collections_dict():
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
 
-    print source + " stored."
+    run.info_single('A request to store %d groups under the collection id "%s" has been made.' % (len(data), source), cut_after = None)
+
+    collections = ccollections.TablesForCollections(d.profile_db_path, profiler.__version__)
+    collections.append(source, data, colors)
+    d.collections.populate_sources_dict(d.profile_db_path, profiler.__version__)
+    return json.dumps("%d group%s been stored under the collection ID '%s'" % (len(data), 's have' if len(data) > 1 else ' has', source))
 
 @route('/data/completeness', method='POST')
 def completeness():

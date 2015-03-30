@@ -41,6 +41,8 @@ class InputHandler:
         self.runinfo = {}
         self.title = 'Unknown Project'
         self.annotation_db = None
+        self.annotation_db_path = args.annotation_db
+        self.profile_db_path = None
         self.contig_names_ordered = None
         self.contig_rep_seqs = {}
         self.contigs_summary_index = {}
@@ -208,14 +210,14 @@ class InputHandler:
         if not self.runinfo.has_key('runinfo'):
             raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
 
-        profile_db_path = self.P(self.runinfo['profile_db'])
+        self.profile_db_path = self.P(self.runinfo['profile_db'])
 
         # connect to the PROFILE.db
-        self.profile_db = PaPi.db.DB(profile_db_path, PaPi.profiler.__version__)
+        profile_db = PaPi.db.DB(self.profile_db_path, PaPi.profiler.__version__)
 
-        self.collections.populate_sources_dict(profile_db_path, PaPi.profiler.__version__)
+        self.collections.populate_sources_dict(self.profile_db_path, PaPi.profiler.__version__)
 
-        self.runinfo['clusterings'] = self.profile_db.get_table_as_dict('clusterings')
+        self.runinfo['clusterings'] = profile_db.get_table_as_dict('clusterings')
 
         if args.tree:
             entry_id = os.path.basename(args.tree).split('.')[0]
@@ -239,12 +241,13 @@ class InputHandler:
         # read available views from the profile database:
         for view in self.views:
             table = self.views[view]
-            self.views[view] = {'header': self.profile_db.get_table_structure(table)[1:],
-                                'dict': self.profile_db.get_table_as_dict(table)}
+            self.views[view] = {'header': profile_db.get_table_structure(table)[1:],
+                                'dict': profile_db.get_table_as_dict(table)}
 
         self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
         self.runinfo['self_path'] = args.runinfo
+        profile_db.disconnect()
 
 
     def check_names_consistency(self):
