@@ -194,11 +194,14 @@ class Run:
             sys.stderr.write(info_line)
 
 
-    def info_single(self, message, mc = 'yellow', nl_before = 0, nl_after = 0):
+    def info_single(self, message, mc = 'yellow', nl_before = 0, nl_after = 0, cut_after = 80):
         if type(message) == str:
             message = remove_spaces(message)
 
-        message_line = c("* %s\n" % (textwrap.fill(str(message), 80)), mc)
+        if cut_after:
+            message_line = c("* %s\n" % (textwrap.fill(str(message), cut_after)), mc)
+        else:
+            message_line = c("* %s\n" % str(message), mc)
 
         if self.verbose:
             sys.stderr.write('\n' * nl_before)
