@@ -36,5 +36,14 @@ class CONCOCT(Parser):
 
 
     def get_clusters_dict(self):
-        return self.dicts['clusters']
+        c = self.dicts['clusters']
+
+        clusters_dict = {}
+        for cluster_id in set([e['cluster_id'] for e in c.values()]):
+            clusters_dict[cluster_id] = []
+
+        for entry in c.values():
+            clusters_dict[entry['cluster_id']].append(entry['split'])
+            
+        return clusters_dict
 
