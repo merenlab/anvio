@@ -156,13 +156,13 @@ class AnnotationDatabase:
         self.db.disconnect()
 
 
-class TablesForSearches(AnnotationDBTable):
+class TablesForSearches(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
         self.debug = False
 
-        AnnotationDBTable.__init__(self, self.db_path, __version__, run, progress)
+        Table.__init__(self, self.db_path, __version__, run, progress)
 
         self.set_next_available_id(hmm_hits_contigs_table_name)
         self.set_next_available_id(hmm_hits_splits_table_name)
@@ -257,11 +257,11 @@ class TablesForSearches(AnnotationDBTable):
         return db_entries_for_splits
 
 
-class TablesForGenes(AnnotationDBTable):
+class TablesForGenes(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        AnnotationDBTable.__init__(self, self.db_path, __version__, run, progress)
+        Table.__init__(self, self.db_path, __version__, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database

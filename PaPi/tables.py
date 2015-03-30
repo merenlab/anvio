@@ -86,35 +86,45 @@ clusterings_table_structure          = ['clustering', 'newick' ]
 clusterings_table_types              = [   'str'    ,  'str'   ]
 
 
-class AnnotationDBTable(object):
+class Table(object):
     """Superclass for rudimentary needs and operations for annotation db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet = False):
         if not os.path.exists(db_path):
             raise ConfigError, "Database ('%s') does not exist. You must create one first." % db_path
 
         self.quiet = quiet
+        self.db_type = None
         self.db_path = db_path
         self.version = version
         self.next_available_id = {}
+
+        self.splits = None
+        self.split_length = None
 
         self.run = run
         self.progress = progress
 
         database = db.DB(self.db_path, version)
-        self.split_length = database.get_meta_value('split_length')
-        contig_lengths_table = database.get_table_as_dict(contig_lengths_table_name)
-        self.splits = database.get_table_as_dict(splits_info_table_name)
+        self.db_type = database.get_meta_value('db_type')
+
+        if self.db_type == 'annotation': 
+            # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
+            # and annotation db calls.
+            self.split_length = database.get_meta_value('split_length')
+            contig_lengths_table = database.get_table_as_dict(contig_lengths_table_name)
+            self.splits = database.get_table_as_dict(splits_info_table_name)
+
+            self.contig_name_to_splits = {}
+            for split_name in self.splits:
+                parent = self.splits[split_name]['parent']
+                if self.contig_name_to_splits.has_key(parent):
+                    self.contig_name_to_splits[parent].append(split_name)
+                else:
+                    self.contig_name_to_splits[parent] = [split_name]
+
+            self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
+
         database.disconnect()
-
-        self.contig_name_to_splits = {}
-        for split_name in self.splits:
-            parent = self.splits[split_name]['parent']
-            if self.contig_name_to_splits.has_key(parent):
-                self.contig_name_to_splits[parent].append(split_name)
-            else:
-                self.contig_name_to_splits[parent] = [split_name]
-
-        self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 
 
     def next_id(self, table):
@@ -137,6 +147,9 @@ class AnnotationDBTable(object):
 
 
     def export_contigs_in_db_into_FASTA_file(self):
+        if self.db_type != 'annotation':
+            return None
+
         database = db.DB(self.db_path, self.version)
         contig_sequences_table = database.get_table_as_dict(contig_sequences_table_name)
         database.disconnect()

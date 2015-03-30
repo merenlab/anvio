@@ -11,6 +11,7 @@ this information from the database, and presents it as an intuitive data structu
 for the client.
 """
 
+from itertools import chain
 from collections import Counter
 
 import PaPi.db as db
@@ -124,13 +125,13 @@ class Collections:
         return collection_color_dict
 
 
-class TablesForCollections(AnnotationDBTable):
+class TablesForCollections(Table):
     """Populates the collections_* tables, where clusters of contigs and splits are kept"""
     def __init__(self, db_path, version, run=run, progress=progress):
         self.db_path = db_path
         self.version = version
 
-        AnnotationDBTable.__init__(self, self.db_path, version, run, progress)
+        Table.__init__(self, self.db_path, version, run, progress)
 
         # set these dudes so we have access to unique IDs:
         self.set_next_available_id(collections_colors_table_name)
@@ -142,28 +143,20 @@ class TablesForCollections(AnnotationDBTable):
         # remove any pre-existing information for 'source'
         self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name, collections_colors_table_name])
 
-        splits_in_clusters_dict = set(v['split'] for v in clusters_dict.values())
-        splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits]
-        splits_only_in_db = [c for c in self.splits if c not in splits_in_clusters_dict]
-
-        if len(splits_only_in_clusters_dict):
-            self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
-                                      but you must be the judge of it. If this is somewhat surprising, please use caution\
-                                      and make sure all is fine before going forward with you analysis.'\
-                                            % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
-
-        if len(splits_only_in_db):
-            self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
-                                      does not make any sense, please make sure you know why before going any further.'\
-                                            % (len(splits_only_in_db), len(self.splits), source))
+        num_splits_in_clusters_dict = sum([len(splits) for splits in clusters_dict.values()])
+        splits_in_clusters_dict = set(list(chain.from_iterable(clusters_dict.values())))
+        if len(splits_in_clusters_dict) != num_splits_in_clusters_dict:
+            raise ConfigError, "TablesForCollections::append: %d of the split or contig IDs appear more than once in\
+                                your collections input. It is unclear to PaPi how did you manage to do this, but we\
+                                cannot go anywhere with this :/" % (num_splits_in_clusters_dict - len(splits_in_clusters_dict))
 
         database = db.DB(self.db_path, self.version)
 
         # how many clusters are defined in 'clusters_dict'?
-        cluster_ids = set([v['cluster_id'] for v in clusters_dict.values()])
+        cluster_ids = clusters_dict.keys()
 
         # push information about this search result into serach_info table.
-        db_entries = tuple([source, len(clusters_dict), len(cluster_ids)])
+        db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids)])
         database._exec('''INSERT INTO %s VALUES (?,?,?)''' % collections_info_table_name, db_entries)
 
         # populate colors table.
@@ -173,23 +166,50 @@ class TablesForCollections(AnnotationDBTable):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_colors_table_name, db_entries)
 
         # populate splits table
-        db_entries = [tuple([self.next_id(collections_splits_table_name), source] + [v[h] for h in collections_splits_table_structure[2:]]) for v in clusters_dict.values()]
+        db_entries = []
+        for cluster_id in clusters_dict:
+            for split_name in clusters_dict[cluster_id]:
+                db_entries.append(tuple([self.next_id(collections_splits_table_name), source, split_name, cluster_id]))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
 
-        # then populate contigs table.
-        db_entries = self.process_contigs(source, clusters_dict)
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
+
+        # FIXME: This function can be called to populate the annotation database (via papi-populate-collections), or
+        # the profile database. when it is annotation database, the superclass Table has the self.splits variable
+        # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
+        # the profile database. hence some special controls for annotation db (note that collections_contigs_table is
+        # only populated in the annotations database):
+        if self.db_type == 'annotation':
+            splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits]
+            splits_only_in_db = [c for c in self.splits if c not in splits_in_clusters_dict]
+
+            if len(splits_only_in_clusters_dict):
+                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
+                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
+                                          and make sure all is fine before going forward with you analysis.'\
+                                                % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
+
+            if len(splits_only_in_db):
+                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
+                                          does not make any sense, please make sure you know why before going any further.'\
+                                                % (len(splits_only_in_db), len(self.splits), source))
+
+            # then populate contigs table.
+            db_entries = self.process_contigs(source, clusters_dict)
+            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
 
         database.disconnect()
 
-        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the annotation database.'\
-                                        % (source, len(db_entries)), mc='green')
+        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the database at "%s".'\
+                                        % (source, len(db_entries), self.db_path), mc='green')
 
 
     def process_contigs(self, source, clusters_dict):
         db_entries_for_contigs = []
 
-        split_to_cluster_id = dict([(d['split'], d['cluster_id']) for d in clusters_dict.values()])
+        split_to_cluster_id = {}
+        for cluster_id in clusters_dict:
+            for split_name in clusters_dict[cluster_id]:
+                split_to_cluster_id[split_name] = cluster_id
 
         contigs_processed = set([])
         for split_name in split_to_cluster_id:
