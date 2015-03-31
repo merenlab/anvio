@@ -36,6 +36,7 @@ def set_contigs_abundance(contigs):
 def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
+
 class Contig:
     def __init__(self, name):
         self.name = name
@@ -54,6 +55,7 @@ class Contig:
              'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
+             'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,
@@ -119,6 +121,7 @@ class Split:
              'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
+             'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,

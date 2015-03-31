@@ -13,8 +13,8 @@
 '''Storing and retrieving metadata regarding contigs and splits'''
 
 
-metadata_table_structure = ['contig', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
-metadata_table_types     = [ 'text' ,'numeric',   'numeric' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,       'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
+metadata_table_structure = ['contig', 'length', 'GC_content', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
+metadata_table_types     = [ 'text' ,'numeric',   'numeric' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 
 import copy
@@ -84,11 +84,11 @@ def gen_metadata_tables(metadata_splits, metadata_contigs, db):
     # all objects are ready, creating tables next.
     db.create_table('metadata_splits', metadata_table_structure, metadata_table_types)
     db_entries = [tuple([split] + [metadata_splits[split][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
-    db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+    db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
     db.create_table('metadata_contigs', metadata_table_structure, metadata_table_types)
     db_entries = [tuple([split] + [metadata_contigs[metadata_splits[split]['__parent__']][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
-    db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
+    db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
     db.commit()
 

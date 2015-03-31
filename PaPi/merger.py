@@ -338,6 +338,16 @@ class MultipleRuns:
         return self.metadata_for_each_run[target][sample_id][split_name]['normalized_coverage'] * self.normalization_multiplier[sample_id]
 
 
+    def get_max_normalized_ratio_of_split(self, target, split_name):
+        denominator = float(max(self.normalized_coverages[target][split_name].values()))
+
+        d = {}
+        for sample_id in self.merged_sample_ids:
+            d[sample_id] = self.normalized_coverages[target][split_name][sample_id] / denominator
+
+        return d
+
+
     def get_relative_abundance_of_split(self, target, sample_id, split_name):
         denominator = float(sum(self.normalized_coverages[target][split_name].values()))
         if denominator:
@@ -366,6 +376,12 @@ class MultipleRuns:
                 for sample_id in self.merged_sample_ids:
                     self.normalized_coverages[target][split_name][sample_id] = self.get_normalized_coverage_of_split(target, sample_id, split_name)
 
+        # generate a dictionary for max normalized ratio of each contig across samples per target
+        self.max_normalized_ratios = {'contigs': {}, 'splits': {}}
+        for target in ['contigs', 'splits']:
+            for split_name in self.split_names:
+                self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
+
         self.progress.new('Generating metadata tables')
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
@@ -382,7 +398,9 @@ class MultipleRuns:
                     for sample_id in self.merged_sample_ids:
                         if essential_field == 'normalized_coverage':
                             m[split_name][sample_id] = self.normalized_coverages[target][split_name][sample_id]
-                        if essential_field == 'relative_abundance':
+                        elif essential_field == 'max_normalized_ratio':
+                            m[split_name][sample_id] = self.max_normalized_ratios[target][split_name][sample_id]
+                        elif essential_field == 'relative_abundance':
                             m[split_name][sample_id] = self.get_relative_abundance_of_split(target, sample_id, split_name)
                         else:
                             m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field]
