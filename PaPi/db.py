@@ -145,6 +145,10 @@ class DB:
         return [t[0] for t in response.description]
 
 
+    def get_table_as_list_of_tuples(self, table, table_structure = None):
+        return self.get_all_rows_from_table(table)
+
+
     def get_table_as_dict(self, table, table_structure = None):
         rows = self.get_all_rows_from_table(table)
 
