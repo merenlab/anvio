@@ -16,8 +16,8 @@ import os
 import sys
 
 import PaPi.db as db
-import PaPi.genes as genes
 import PaPi.utils as utils
+import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.annotation as annotation 
@@ -159,13 +159,13 @@ class NetworkDescriptonSamples:
             raise utils.ConfigError, "The profile database describes a single run. Current implementation of this\
                                       program restricts its use to merged runs. Sorry :/"
 
-        if 'genes' not in table_names:
-            raise utils.ConfigError, "There is no 'genes' table in the profile database. This does not really make\
-                                      any sense :/"
+        if tables.gene_coverages_table_name not in table_names:
+            raise utils.ConfigError, "There is no '%s' table in the profile database. This does not really make\
+                                      any sense :/" % gene_coverages_table_name
 
         progress.new('Init')
         progress.update('Reading genes table from %s ...' % self.profile_db_path)
-        self.genes_dict = self.profile_db.get_table_as_dict('genes')
+        self.genes_dict = self.profile_db.get_table_as_dict(tables.gene_coverages_table_name)
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
         self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
