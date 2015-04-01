@@ -44,6 +44,8 @@ digits = string.digits
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
 
+nucleotides = 'ATCGN'
+
 pretty_names = {}
 
 def get_pretty_name(key):
