@@ -9,14 +9,13 @@ import sys
 import pysam
 import hashlib
 import subprocess
-import PaPi.db
-import PaPi.genes
 import PaPi.contig
 import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
+import PaPi.annotation as annotation
 import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.filesnpaths as filesnpaths
@@ -58,7 +57,6 @@ class MultipleRuns:
         self.output_directory = args.output_dir
         self.skip_clustering = args.skip_clustering
 
-        self.profile_db = None
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
@@ -197,35 +195,63 @@ class MultipleRuns:
             utils.check_sample_id(self.sample_id)
 
 
-    def merge_genes_tables(self):
-        gene_tables_present = [runinfo['genes_table'] for runinfo in self.merged_sample_runinfos.values()]
+    def is_all_samples_have_it(self, runinfo_variable):
+        presence = [runinfo[runinfo_variable] for runinfo in self.merged_sample_runinfos.values() if runinfo.has_key(runinfo_variable)]
 
-        if gene_tables_present.count(True) == len(self.merged_sample_runinfos.values()):
-            self.run.info('genes_table', True, quiet = True)
-        elif gene_tables_present.count(False) == len(self.merged_sample_runinfos.values()):
+        if not len(presence):
+            raise utils.ConfigError, "Something is wrong. Your profiles are not compatible with the merger. Please\
+                                      re-profile everything you are trying to merge, and run merger again."
+
+        if presence.count(True) == len(self.merged_sample_runinfos.values()):
+            self.run.info(runinfo_variable, True, quiet = True)
+        elif presence.count(False) == len(self.merged_sample_runinfos.values()):
             # none has it
-            self.run.info('genes_table', False, quiet = True)
+            self.run.info(runinfo_variable, False, quiet = True)
             return
         else:
             # some weird shit must have happened.
             raise utils.ConfigError, "PaPi is confused. While merging multiple runs, it seem some of the runs have the\
-                                      'genes' table in their PROFILE.db's, and others do not. This is so weird, and it\
-                                      does not make any sense. Probably you should profile everything from scratch just\
-                                      to be on the safe side :/"
+                                      '%s' in their PROFILE.db's, and others do not. This should never happen. Probably\
+                                      your best bet is to profile everything (with of course using the same parameters)\
+                                      from scratch :/"
+
+    def merge_variable_positions_tables(self):
+        self.is_all_samples_have_it('variable_positions_table')
+
+        variable_positions_table = annotation.TableForVariability(self.profile_db_path, __version__, progress = self.progress)
+
+        for runinfo in self.merged_sample_runinfos.values():
+            sample_profile_db_path = P(runinfo, runinfo['profile_db'])
+
+            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, __version__, quiet = True)
+            sample_variable_positions_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_positions_table_name, tables.variable_positions_table_structure)
+            sample_profile_db.disconnect()
+
+            for tpl in sample_variable_positions_table:
+                entry = tuple([variable_positions_table.next_id(tables.variable_positions_table_name)] + list(tpl[1:]))
+                variable_positions_table.db_entries.append(entry)
+
+        variable_positions_table.store()
+
+
+    def merge_gene_coverages_tables(self):
+        self.is_all_samples_have_it('gene_coverages_table')
 
         # create an instance from genes
-        genes = PaPi.genes.Genes()
+        gene_coverages_table = annotation.TableForGeneCoverages(self.profile_db_path, __version__, progress = self.progress)
 
         # fill "genes" instance from all samples
         for runinfo in self.merged_sample_runinfos.values():
             sample_id = runinfo['sample_id']
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
-            sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
-            sample_gene_profiles = sample_profile_db.get_table_as_dict('genes', PaPi.genes.genes_table_structure)
-            for g in sample_gene_profiles.values():
-                genes.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
 
-        genes.create_genes_table(self.profile_db)
+            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, __version__, quiet = True)
+            sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
+            for g in sample_gene_profiles.values():
+                gene_coverages_table.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
+            sample_profile_db.disconnect()
+
+        gene_coverages_table.store()
 
 
     def set_normalization_multiplier(self):
@@ -257,19 +283,17 @@ class MultipleRuns:
 
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
-        self.profile_db = PaPi.db.DB(self.profile_db_path, __version__, new_database = True)
-        self.profile_db.set_meta_value('db_type', 'profile')
-        # put sample id into the meta table
-        self.profile_db.set_meta_value('sample_id', self.sample_id)
-        self.profile_db.set_meta_value('samples', ','.join(self.merged_sample_ids))
-        self.profile_db.set_meta_value('merged', True)
-        self.profile_db.set_meta_value('contigs_clustered', not self.skip_clustering)
-        annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
-        self.profile_db.set_meta_value('annotation_hash', annotation_hash)
-        self.run.info('annotation_hash', annotation_hash)
-        ccollections.create_blank_collections_tables(self.profile_db)
 
-        self.profile_db.create_table(tables.clusterings_table_name, tables.clusterings_table_structure, tables.clusterings_table_types)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__)
+
+        self.annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
+        meta_values = {'db_type': 'profile',
+                       'sample_id': self.sample_id,
+                       'samples': ','.join(self.merged_sample_ids),
+                       'merged': True,
+                       'contigs_clustered': not self.skip_clustering,
+                       'annotation_hash': self.annotation_hash}
+        profile_db.create(meta_values)
 
         # get metadata information for both contigs and splits:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
@@ -284,6 +308,7 @@ class MultipleRuns:
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('merged', True)
+        self.run.info('annotation_hash', self.annotation_hash)
         self.run.info('merged_sample_ids', self.merged_sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('num_runs_processed', len(self.contigs))
@@ -293,10 +318,14 @@ class MultipleRuns:
  
         self.set_normalization_multiplier()
  
-        self.progress.new('Merging genes tables')
-        self.merge_genes_tables()
+        self.progress.new('Merging gene coverages tables')
+        self.merge_gene_coverages_tables()
         self.progress.end()
- 
+
+        self.progress.new('Merging variable positions tables')
+        self.merge_variable_positions_tables()
+        self.progress.end()
+
         self.progress.new('Generating merged summary')
         summary_dir, profile_summary_index = self.merge_split_summaries()
         self.progress.end()
@@ -331,7 +360,6 @@ class MultipleRuns:
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
 
         self.run.quit()
-        self.profile_db.disconnect()
 
 
     def get_normalized_coverage_of_split(self, target, sample_id, split_name):
@@ -343,7 +371,7 @@ class MultipleRuns:
 
         d = {}
         for sample_id in self.merged_sample_ids:
-            d[sample_id] = self.normalized_coverages[target][split_name][sample_id] / denominator
+            d[sample_id] = (self.normalized_coverages[target][split_name][sample_id] / denominator) if denominator else 0
 
         return d
 
@@ -383,6 +411,7 @@ class MultipleRuns:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating metadata tables')
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
                 self.progress.update('Processing %s for %s ...' % (essential_field, target))
@@ -406,14 +435,14 @@ class MultipleRuns:
                             m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field]
 
                 # variable 'm' for the essential field is now ready to be its own table:
-                self.profile_db.create_table(target_table, merged_mtable_structure, merged_mtable_types)
+                profile_db.db.create_table(target_table, merged_mtable_structure, merged_mtable_types)
                 db_entries = [tuple([split_name] + [m[split_name][h] for h in merged_mtable_structure[1:]]) for split_name in self.split_names]
-                self.profile_db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
+                profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
 
                 if target == 'splits':
                     views[essential_field] = target_table
 
-        self.profile_db.commit()
+        profile_db.disconnect()
         self.progress.end()
         # fill the runinfo dict with visualization targets:
         self.run.info('views', views, quiet = True)
@@ -435,7 +464,10 @@ class MultipleRuns:
 
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
-            self.profile_db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
+
+            profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
+            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
+            profile_db.disconnect()
 
         self.run.info('available_clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
@@ -576,7 +608,9 @@ class MultipleRuns:
             tnf_splits[split_name]['__parent__'] = self.split_parents[split_name]
 
         self.progress.update('Creating TNF tables ...')
-        gen_tnf_tables(sorted(list(keys)), tnf_splits, tnf_contigs, self.profile_db)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
+        gen_tnf_tables(sorted(list(keys)), tnf_splits, tnf_contigs, profile_db.db)
+        profile_db.disconnect()
 
 
     def store_splits_consensus(self):

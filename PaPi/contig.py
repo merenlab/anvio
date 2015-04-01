@@ -13,11 +13,11 @@ import copy
 import numpy
 
 from PaPi.kmers import KMers
-from PaPi.variability import ColumnProfile
+from PaPi.variability import ColumnProfile, VariablityTestFactory
 from PaPi.sequence import Coverage, Composition
 
 kmers = KMers()
-
+variability_test_class = VariablityTestFactory()
 
 def set_contigs_abundance(contigs):
     """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
@@ -113,7 +113,7 @@ class Split:
         self.explicit_length = 0
         self.abundance = 0.0
         self.tnf = {}
-
+        self.column_profiles = {}
 
     def get_metadata_dict(self):
         d = {'length': self.length,
@@ -132,9 +132,11 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam):
+    def __init__(self, split, bam, min_coverage = 10):
         self.rep_seq = ''
+        self.min_coverage = min_coverage
         self.split = split
+        self.column_profile = self.split.column_profiles
         self.variability_score = 0.0
         self.v = []
         self.competing_nucleotides = {}
@@ -143,32 +145,37 @@ class Auxiliary:
 
 
     def run(self, bam):
-        column_profile = {}
         ratios = []
+
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
             if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
                 continue
 
+            coverage = pileupcolumn.n
+            if coverage < self.min_coverage:
+                continue
+
             column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
 
-            column_profile[pileupcolumn.pos] = ColumnProfile(column, pileupcolumn.pos)
+            cp = ColumnProfile(column,
+                               coverage = coverage,
+                               split_name = self.split.name,
+                               pos = pileupcolumn.pos - self.split.start,
+                               test_class = variability_test_class).profile
 
-            c = column_profile[pileupcolumn.pos]
-            ratios.append((c.n2n1ratio, c.coverage), )
+            if cp['n2n1ratio']:
+                ratios.append((cp['n2n1ratio'], cp['coverage']), )
+                self.column_profile[pileupcolumn.pos] = cp
 
-        # take top 100 based on n2n1ratio, then take top 50 of those with highest coverage:
-        variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:100]], reverse=True)[0:50]
-        self.variability_score = sum([x[1] for x in variable_positions_with_high_cov])
+        # take top 50 based on n2n1ratio, then take top 25 of those with highest coverage:
+        variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:50]], reverse=True)[0:25]
+        self.variability_score = sum([x[1] * x[0] for x in variable_positions_with_high_cov])
 
         for i in range(self.split.start, self.split.end):
-            if column_profile.has_key(i):
-                self.rep_seq += column_profile[i].consensus_nucleotide
-                self.v.append(column_profile[i].n2n1ratio)
-                if column_profile[i].n2n1ratio > 0:
-                    # here populating the dict with i - self.split start, instead if i, because I want to
-                    # have a record of the relative position of the competing nucleotide withing the context
-                    # of the split. i itself holds the position for the entire contig
-                    self.competing_nucleotides[i - self.split.start] = column_profile[i].competing_nucleotides
+            if self.column_profile.has_key(i):
+                self.rep_seq += self.column_profile[i]['consensus']
+                self.v.append(self.column_profile[i]['n2n1ratio'])
+                self.competing_nucleotides[self.column_profile[i]['pos']] = self.column_profile[i]['competing_nts']
             else:
                 self.rep_seq += 'N'
                 self.v.append(0)

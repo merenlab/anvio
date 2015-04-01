@@ -42,6 +42,60 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+class ProfileDatabase:
+    """To create an empty profile database and/or access one."""
+    def __init__(self, db_path, version, run=run, progress=progress, quiet = True):
+        self.db = None
+        self.db_path = db_path
+        self.version = version
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+        if os.path.exists(self.db_path):
+            self.db = db.DB(self.db_path, self.version)
+
+            self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
+            self.run.info('Samples', self.db.get_meta_value('samples'), quiet = self.quiet)
+        else:
+            self.db = None
+
+
+    def create(self, meta_values = {}):
+        if os.path.exists(self.db_path):
+            raise ConfigError, "PaPi will not overwrite an existing profile database. Please choose a different name\
+                                or remove the existing database ('%s') first." % (self.db_path)
+
+        if not self.db_path.lower().endswith('.db'):
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+                                for imposing their views on how local databases should be named, and are humbled by your\
+                                cooperation."
+
+        self.db = db.DB(self.db_path, self.version, new_database = True)
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        # creating empty default tables
+        self.db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
+        self.db.create_table(gene_coverages_table_name, gene_coverages_table_structure, gene_coverages_table_types)
+        self.db.create_table(variable_positions_table_name, variable_positions_table_structure, variable_positions_table_types)
+        ccollections.create_blank_collections_tables(self.db)
+
+        self.disconnect()
+
+        self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 class AnnotationDatabase:
     """To create an empty annotation database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet = True):
@@ -154,6 +208,73 @@ class AnnotationDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+
+
+class TableForVariability(Table):
+    def __init__(self, db_path, version, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, version, run, progress)
+
+        self.num_entries = 0
+        self.db_entries = []
+        self.set_next_available_id(variable_positions_table_name)
+
+
+    def append(self, profile):
+        db_entry = tuple([self.next_id(variable_positions_table_name)] + [profile[h] for h in variable_positions_table_structure[1:]])
+        self.db_entries.append(db_entry)
+        self.num_entries += 1
+        if self.num_entries % 100 == 0:
+            progress.update('Information for %d SNP sites have been added ...' % self.num_entries)
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path, self.version)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % variable_positions_table_name, self.db_entries)
+        profile_db.disconnect()
+
+
+class TableForGeneCoverages(Table):
+    '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
+       Simply, you create an instance from it, keep sending contig instances from contig.py::Contig class along with
+       a list of inferred start/stop locations for each reading frame. Once you are done, you call create_gene_coverages_table.'''
+    def __init__(self, db_path, version, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, version, run, progress)
+
+        self.genes = []
+        self.set_next_available_id(gene_coverages_table_name)
+
+        # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
+        # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
+        # should change for good. but for now I will generate a dict to keep contig coverages to avoid
+        # even more redundant computations:
+        self.contig_coverages = {}
+
+
+    def analyze_contig(self, contig, sample_id, start_stop_pos_list):
+        if contig.name not in self.contig_coverages:
+            contig_coverage = []
+            for split in contig.splits:
+                contig_coverage.extend(split.coverage.c)
+            self.contig_coverages[contig.name] = contig_coverage
+
+        for prot, start, stop in start_stop_pos_list:
+            gene_coverage = numpy.mean(self.contig_coverages[contig.name][start:stop])
+            self.add_gene_entry(prot, sample_id, gene_coverage)
+
+
+    def add_gene_entry(self, prot, sample_id, coverage):
+        self.genes.append({'prot': prot, 'sample_id': sample_id, 'mean_coverage': coverage})
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path, self.version)
+        db_entries = [tuple([self.next_id(gene_coverages_table_name)] + [gene[h] for h in gene_coverages_table_structure[1:]]) for gene in self.genes]
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % gene_coverages_table_name, db_entries)
+        profile_db.disconnect()
 
 
 class TablesForSearches(Table):

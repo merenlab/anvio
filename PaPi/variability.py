@@ -9,46 +9,64 @@
 #
 # Please read the COPYING file.
 
-import operator
-from scipy import log2 as log
-from numpy import sqrt
+from __future__ import division
+from collections import Counter
+
+from PaPi.constants import nucleotides
+
+
+class VariablityTestFactory:
+    # an experimental class to make sense whether the nucleotide variation in a column
+    # is meaningful beyond sequencing errors, given the coverage of that position.
+    def __init__(self, params = {'b': 3, 'm': 1.45, 'c': 0.05}):
+        self.params = params
+        self.coverage_upper_limit = 500
+
+        # for fast access
+        self.cov_var_map_dict = dict([(c, self.curve(c)) for c in range(0, self.coverage_upper_limit + 1)])
+
+
+    def min_acceptable_ratio_given_coverage(self, coverage):
+        if coverage >= self.coverage_upper_limit:
+            coverage = self.coverage_upper_limit
+
+        return self.cov_var_map_dict[coverage]
+
+
+    def curve(self, coverage, b=3, m=1.45, c=0.05):
+        # https://www.desmos.com/calculator/qwocua4zi5
+        y = ((1 / b) ** ((coverage ** (1/b)) - m)) + c
+        return y
 
 
 class ColumnProfile:
-    def __init__(self, column, pos):
-        self.pos = pos
-        self.coverage = len(column)
-        self.nucleotide_counts = {}
-        self.consensus_nucleotide = None
-        self.n2n1ratio = 0
-        self.competing_nucleotides = ''
+    def __init__(self, column, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
+        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'consensus': None,
+                        'coverage': coverage if coverage else len(column),
+                        'n2n1ratio': 0, 'competing_nts': None}
 
-        nucleotides = list(set(column))
-        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
-        nucleotides_sorted_by_occurence = [x[0] for x in sorted(self.nucleotide_counts.iteritems(), key=operator.itemgetter(1), reverse=True)]
+        nt_counts = Counter(column)
+        for nt in nucleotides:
+            self.profile[nt] = nt_counts[nt] if nt_counts.has_key(nt) else 0
 
-        if len(nucleotides_sorted_by_occurence) == 1:
+        competing_two = nt_counts.most_common(2)
+        if len(competing_two) == 1:
             # no variation.
-            self.consensus_nucleotide = column[0]
+            self.profile['consensus'] = competing_two[0][0]
             return
 
-        nucleotides = list(set(column))
-        denominator = float(len(column))
-        self.nucleotide_counts = dict([(n, column.count(n)) for n in nucleotides])
+        n1_tuple, n2_tuple = competing_two
+        competing_nts = n1_tuple[0] + n2_tuple[0]
 
-        n1 = nucleotides_sorted_by_occurence[0]
-        n2 = nucleotides_sorted_by_occurence[1]
-
-        self.consensus_nucleotide = n1
-        self.competing_nucleotides = n1 + n2
-
-        if 'N' in self.competing_nucleotides or 'n' in self.competing_nucleotides:
+        if n1_tuple[0] == 'N':
             return
 
-        if len(column) < 20:
+        self.profile['consensus'] = n1_tuple[0]
+
+        if n2_tuple[0] == 'N':
             return
 
-        if self.nucleotide_counts[n1] * 1.0 / self.nucleotide_counts[n2] > 10:
-            return
-
-        self.n2n1ratio = 1.0 * self.nucleotide_counts[n2] / self.nucleotide_counts[n1]
+        n2n1ratio = n2_tuple[1] / n1_tuple[1]
+        if test_class and n2n1ratio > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
+            self.profile['competing_nts'] = competing_nts
+            self.profile['n2n1ratio'] = n2n1ratio
