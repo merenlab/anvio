@@ -12,11 +12,11 @@
 import copy
 import numpy
 
-from PaPi.kmers import KMers
+
 from PaPi.variability import ColumnProfile, VariablityTestFactory
 from PaPi.sequence import Coverage, Composition
 
-kmers = KMers()
+
 variability_test_class = VariablityTestFactory()
 
 def set_contigs_abundance(contigs):
@@ -44,7 +44,6 @@ class Contig:
         self.splits = []
         self.length = 0
         self.abundance = 0.0
-        self.tnf = {}
         self.coverage = Coverage()
         self.composition = None
 
@@ -81,7 +80,6 @@ class Contig:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
                                  % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
             split.auxiliary = Auxiliary(split, bam)
-            split.tnf = kmers.get_kmer_frequency(split.auxiliary.rep_seq)
 
 
     def analyze_composition(self, bam, progress):
@@ -96,11 +94,6 @@ class Contig:
         return ''.join([s.auxiliary.rep_seq for s in self.splits])
 
 
-    def analyze_tnf(self, progress):
-        progress.update('TNF')
-        rep_seq = self.get_rep_seq()
-        self.tnf = kmers.get_kmer_frequency(rep_seq)
-
 
 class Split:
     def __init__(self, name, parent, order, start = 0, end = 0):
@@ -112,7 +105,6 @@ class Split:
         self.length = end - start
         self.explicit_length = 0
         self.abundance = 0.0
-        self.tnf = {}
         self.column_profiles = {}
 
     def get_metadata_dict(self):
