@@ -60,10 +60,16 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory = None, version = None):
+    def __init__(self, config_file_path, input_directory = None, version = None, db_paths = {}):
         self.input_directory = input_directory or os.getcwd()
         self.config_file_path = config_file_path
         self.version = version
+
+        # these are the database files that may be referenced from within the config files
+        # with !DATABASE.db::table notation. If a database entry has an exclamation mark,
+        # it will be searched for in the db_paths dict to associate it with the relative
+        # path that is only known to the client
+        self.db_paths = db_paths
 
         # read the config
         filesnpaths.is_file_exists(self.config_file_path)
@@ -221,12 +227,30 @@ class ClusteringConfiguration:
         for section in sections:
             alias, matrix = section.split()
             if matrix.find('::') > -1:
-                database, table = matrix.split('::')
-                database_path = os.path.join(self.input_directory, database)
+                if matrix.startswith('!'):
+                    database, table = matrix.split('::')
+                    database = database[1:]
+
+                    if database not in self.db_paths:
+                        raise ConfigError, 'PaPi could not recover the actual path of the database\
+                                            (!%s) referenced in the config file, because the database\
+                                            paths variable sent from the client does not have an entry\
+                                            for it :( There are two options. One is to get a db_paths\
+                                            dictionary sent to this class that contains a key for %s\
+                                            with the full path to the dataase as a value. Or the table\
+                                            "%s" can be exported to a TAB-delimited matrix and declared in\
+                                            the config file. If you are experimenting and stuck here, please\
+                                            see the documentation or send an e-mail to the developers.'\
+                                                                                % (database, database, table)
+                    database_path = self.db_paths[database]
+                else:
+                    database, table = matrix.split('::')
+                    database_path = os.path.join(self.input_directory, database)
+
                 if not os.path.exists(database_path):
                     raise ConfigError, 'The database you requested (%s) is not in the input directory :/' % database
 
-                dbc = db.DB(database_path, self.version)
+                dbc = db.DB(database_path, None, ignore_version = True)
 
                 if not table in dbc.get_table_names():
                     raise ConfigError, 'The table you requested (%s) does not seem to be in %s :/' % (table, database)
