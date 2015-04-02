@@ -23,6 +23,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Merge multiple PaPi profiles')
     parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
                         help = 'PaPi RUNINFO files to create a merged output')
+    parser.add_argument('-a', '--annotation-db-path', default = None, metavar = 'ANNOTATION_DB',
+                        help = 'PaPi annotation database (particularly the one used to profile each run\
+                                you will be merging.')
     parser.add_argument('-o', '--output-dir', help = 'Output directory')
     parser.add_argument('-s', '--sample-id', metavar = 'NAME', default = None,
                         help = 'It is important to set a sample name (using only ASCII letters and digits\

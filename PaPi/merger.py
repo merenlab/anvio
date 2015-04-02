@@ -22,7 +22,6 @@ import PaPi.filesnpaths as filesnpaths
 import PaPi.ccollections as ccollections
 
 from PaPi.clusteringconfuguration import ClusteringConfiguration
-from PaPi.metadata import gen_tnf_tables
 from PaPi.profiler import __version__
 
 
@@ -37,7 +36,6 @@ __status__ = "Development"
 
 
 pp = terminal.pretty_print
-kmers = PaPi.kmers.KMers()
 P = lambda x, y: os.path.join(x['output_dir'], y)
 
 
@@ -57,9 +55,12 @@ class MultipleRuns:
         self.output_directory = args.output_dir
         self.skip_clustering = args.skip_clustering
 
+        self.annotation_db_path = args.annotation_db_path
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
+
+        self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
 
 
     def read_runinfo_dict(self, path):
@@ -134,6 +135,11 @@ class MultipleRuns:
             raise utils.ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
                                            to be useful."
 
+        if not self.annotation_db_path:
+            raise utils.ConfigError, "You must provide an annotation database for this operation."
+        if not os.path.exists(self.annotation_db_path):
+            raise utils.ConfigError, "PaPi couldn't find the annotation database where you said it would be :/"
+
         missing = [p for p in self.merged_sample_runinfo_dict_paths if not os.path.exists(p)]
         if missing:
             raise utils.ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
@@ -170,9 +176,9 @@ class MultipleRuns:
         self.split_names = sorted(list(self.split_names))
 
         # make sure all runs were profiled using the same annotation database (if one used):
-        annotation_hashes = set([r['annotation_hash'] for r in sample_runinfos])
-        if len(annotation_hashes) != 1:
-            if None in annotation_hashes:
+        hashes_for_profile_dbs = set([r['annotation_hash'] for r in sample_runinfos])
+        if len(hashes_for_profile_dbs) != 1:
+            if None in hashes_for_profile_dbs:
                 raise utils.ConfigError, "It seems there is at least one run in the mix that was profiled using an\
                                           annotation database, and at least one other that was profiled without using\
                                           one. This is not good. All runs must be profiled using the same annotation\
@@ -182,6 +188,16 @@ class MultipleRuns:
                                           different versions of the same annotation database). All runs must be\
                                           profiled using the same annotation database, or all runs must be profiled\
                                           without an annotation database :/"
+
+        # make sure annotation hash that is common across runs is also identical to the annotation database
+        annotation_db = annotation.AnnotationDatabase(self.annotation_db_path, quiet = True)
+        annotation_db_hash = annotation_db.db.get_meta_value('annotation_hash')
+        annotation_db.disconnect()
+
+        if list(hashes_for_profile_dbs)[0] != annotation_db_hash:
+            raise utils.ConfigError, "The annotation database you provided, which is identified with hash '%s', does\
+                                      not seem to match the run profiles you are trying to merge, which share the\
+                                      hash identifier of '%s'. What's up with that?" % (annotation_db_hash, hashes_for_profile_dbs[0])
 
 
     def set_sample_id(self):
@@ -342,10 +358,6 @@ class MultipleRuns:
         self.GC_content_for_splits = utils.get_GC_content_for_FASTA_entries(splits_fasta)
         self.progress.end()
 
-        self.progress.new('Analyzing TNF of contigs')
-        self.store_tnf_for_contigs_and_splits()
-        self.progress.end()
-
         # critical part:
         self.merge_metadata_files()
 
@@ -459,7 +471,7 @@ class MultipleRuns:
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
+            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__, db_paths = self.database_paths)
             newick = clustering.order_contigs_simple(config, progress = self.progress)
 
             clusterings.append(config_name)
@@ -551,66 +563,6 @@ class MultipleRuns:
             while fasta.next():
                 contigs[fasta.id] = fasta.seq
             self.contigs[sample_id] = contigs
-
-
-    def store_tnf_for_contigs_and_splits(self):
-        # what we call a contig, is actually a split. we can't run TNF analysis on a split; instead,
-        # we analyze TNF on the parent contig where each split is coming form. it is handled very
-        # clearly in papi-profiler, but unfortunately I have been doing some pretty horrible coding
-        # here for no reason. so, we already identified which split is associated with what parent
-        # contig at this point. now we will generate a parents dict where we will keep properly
-        # merged split seqs and their TNF. because we will concatenate split seqs the way they are
-        # ordered, it is critical for metadata file to be sorted properly (a later split in order
-        # should not appear in the METADATA file earlier). OK. First, lets put sequences in:
-        num_splits = len(self.split_names)
-        parents_dict = {}
-        for i in range(0, num_splits):
-            if (i + 1) % 10 == 0 or (i + 1) == num_splits:
-                self.progress.update('Generating merged split consensus sequences :: %.2f%%' % ((i + 1) * 100.0/ num_splits))
-
-            split_name = self.split_names[i]
-            parent = self.split_parents[split_name]
-            
-            if parents_dict.has_key(parent):
-                parents_dict[parent]['seq'] += self.consensus_splits[split_name]
-            else:
-                parents_dict[parent] = {'seq': self.consensus_splits[split_name]}
-
-        # ok. now parents_dict contains all the sequences. lets get TNF info:
-        parents = parents_dict.keys()
-        num_parents = len(parents)
-        for i in range(0, num_parents):
-            self.progress.update('Computing TNF for merged splits :: %.2f%%' % ((i + 1) * 100.0/ num_parents))
-
-            parent = parents[i]
-            parents_dict[parent]['tnf'] = kmers.get_kmer_frequency(parents_dict[parent]['seq'])
-
-        # nice. parents_dict looks like this:
-        #
-        # {
-        #    'contig_1': {'seq': 'ATCATCATC(...)', 'tnf':{'AAAA': 100, 'AAAC': 100, (...)}},
-        #    'contig_2': {'seq': 'GATGATGAT(...)', 'tnf':{'AAAA': 100, 'AAAC': 100, (...)}},
-        #    (...)
-        # }
-        #
-
-        self.progress.update('Populating TNF variables ...')
-        tnf_splits = {}
-        tnf_contigs = {}
-
-        keys = kmers.kmers.values()[0]
-
-        for parent in set(self.split_parents.values()):
-            tnf_contigs[parent] = parents_dict[parent]['tnf']
-
-        for split_name in self.split_names:
-            tnf_splits[split_name] = kmers.get_kmer_frequency(self.consensus_splits[split_name])
-            tnf_splits[split_name]['__parent__'] = self.split_parents[split_name]
-
-        self.progress.update('Creating TNF tables ...')
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
-        gen_tnf_tables(sorted(list(keys)), tnf_splits, tnf_contigs, profile_db.db)
-        profile_db.disconnect()
 
 
     def store_splits_consensus(self):

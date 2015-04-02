@@ -79,6 +79,8 @@ class BAMProfiler:
         self.contigs = {}
         self.genes_in_contigs = {}
 
+        self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
+
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['single']
@@ -450,8 +452,6 @@ class BAMProfiler:
 
             contig.analyze_composition(self.bam, self.progress)
 
-            contig.analyze_tnf(self.progress)
-
             self.progress.end()
 
             # add contig to the dict.
@@ -529,7 +529,7 @@ class BAMProfiler:
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__)
+            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__, db_paths = self.database_paths)
             newick = clustering.order_contigs_simple(config, progress = self.progress)
 
             clusterings.append(config_name)
