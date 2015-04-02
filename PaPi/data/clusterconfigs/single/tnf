@@ -1,3 +1,3 @@
 [general]
 
-[TNF PROFILE.db::tnf_contigs]
+[TNF !ANNOTATION.db::kmer_contigs]
