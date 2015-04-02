@@ -17,8 +17,10 @@ import itertools
 complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
                                'tgcayrkmvhdbTGCAYRKMVHDB')
 
+
 def rev_comp(seq):
     return seq.translate(complements)[::-1]
+
 
 class KMers:
     def __init__(self, k = 4):

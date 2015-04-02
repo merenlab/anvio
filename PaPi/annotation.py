@@ -27,6 +27,7 @@ from collections import Counter
 import PaPi.db as db
 import PaPi.fastalib as u
 import PaPi.utils as utils
+import PaPi.kmers as kmers
 import PaPi.contig as contig
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
@@ -122,7 +123,7 @@ class AnnotationDatabase:
             self.db = None
 
 
-    def create(self, contigs_fasta, split_length):
+    def create(self, contigs_fasta, split_length, kmer_size = 4):
         if os.path.exists(self.db_path):
             raise ConfigError, "PaPi will not overwrite an existing annotation database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
@@ -146,6 +147,14 @@ class AnnotationDatabase:
         except:
             raise ConfigError, "Split size must be an integer."
 
+        try:
+            kmer_size = int(kmer_size)
+        except:
+            raise ConfigError, "K-mer size must be an integer."
+        if kmer_size < 2 or kmer_size > 8:
+            raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
+                                source code if you are not happy to be told what you can't do, let us know how it goes!)."
+
         self.db = db.DB(self.db_path, __version__, new_database = True)
 
         # know thyself
@@ -166,18 +175,35 @@ class AnnotationDatabase:
         db_entries_contig_lengths = []
         db_entries_splits_info = []
 
+        contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
+        splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
+
         while fasta.next():
             num_contigs += 1
             contig_length = len(fasta.seq)
             chunks = utils.get_chunks(contig_length, split_length)
 
+            contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
+
             for order in range(0, len(chunks)):
                 start, end = chunks[order]
-                db_entries_splits_info.append((contig.gen_split_name(fasta.id, order), order, start, end, fasta.id), )
+                split_name = contig.gen_split_name(fasta.id, order)
+                db_entries_splits_info.append((split_name, order, start, end, fasta.id), )
+
+                # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
+                # holds kmer values for splits only. in one table, each split has a kmer value of their
+                # contigs (to not lose the genomic context while clustering based on kmers), in the other
+                # one each split holds its own kmer value.
+                contigs_kmer_table.append(split_name, fasta.seq[start:end], kmer_freq = contig_kmer_freq)
+                splits_kmer_table.append(split_name, fasta.seq[start:end])
 
             db_entries_contig_sequences.append((fasta.id, fasta.seq), )
             db_entries_contig_lengths.append((fasta.id, contig_length), )
             total_length += contig_length
+
+        self.db.set_meta_value('kmer_size', kmer_size)
+        contigs_kmer_table.store(self.db)
+        splits_kmer_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_sequences_table_name, db_entries_contig_sequences)
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_lengths_table_name, db_entries_contig_lengths)
@@ -208,6 +234,36 @@ class AnnotationDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+
+
+class KMerTablesForContigsAndSplits:
+    def __init__(self, table_name, k = 4):
+        self.table_name = table_name
+        self.kmers_class = kmers.KMers(k)
+        self.kmers = sorted(list(self.kmers_class.kmers[k]))
+
+        self.kmer_dict = {}
+        self.db_entries = []
+
+        self.kmers_table_structure = ['contig'] + self.kmers
+        self.kmers_table_types = ['text'] + ['numeric'] * len(self.kmers)
+
+
+    def get_kmer_freq(self, sequence):
+        return self.kmers_class.get_kmer_frequency(sequence)
+
+
+    def append(self, seq_id, sequence, kmer_freq = None):
+        if not kmer_freq:
+            kmer_freq = self.kmers_class.get_kmer_frequency(sequence)
+
+        db_entry = tuple([seq_id] + [kmer_freq[kmer] for kmer in self.kmers])
+        self.db_entries.append(db_entry)
+
+
+    def store(self, db):
+        db.create_table(self.table_name, self.kmers_table_structure, self.kmers_table_types)
+        db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
 
 
 class TableForVariability(Table):
