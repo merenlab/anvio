@@ -3,13 +3,8 @@
 
 import os
 import sys
-import numpy
 import pysam
-import random
-import string
 import shutil
-import operator
-import subprocess
 
 import PaPi.utils as utils
 import PaPi.tables as tables
@@ -19,7 +14,6 @@ import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
-import PaPi.ccollections as ccollections
 
 from PaPi.metadata import Metadata
 from PaPi.contig import Split, Contig, set_contigs_abundance
