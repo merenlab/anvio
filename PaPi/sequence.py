@@ -19,11 +19,6 @@ import numpy
 class Composition:
     def __init__(self, sequence):
         self.sequence = sequence
-        self.A = 0
-        self.T = 0
-        self.C = 0
-        self.G = 0
-        self.N = 0
         self.GC_content = 0.0
 
         self.report()
@@ -38,7 +33,6 @@ class Composition:
         self.C = s.count('C')
         self.G = s.count('G')
         self.N = raw_length - (self.A + self.T + self.C + self.G)
-    
         length = raw_length - self.N
     
         if not length:

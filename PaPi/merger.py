@@ -5,12 +5,7 @@ The default client of this library is under bin/papi-merge"""
 
 
 import os
-import sys
-import pysam
-import hashlib
-import subprocess
 import PaPi.contig
-import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.tables as tables
 import PaPi.dictio as dictio
@@ -19,11 +14,9 @@ import PaPi.annotation as annotation
 import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.filesnpaths as filesnpaths
-import PaPi.ccollections as ccollections
 
 from PaPi.clusteringconfuguration import ClusteringConfiguration
 from PaPi.profiler import __version__
-
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The PaPi Project"
@@ -48,7 +41,6 @@ class MultipleRuns:
         self.merged_sample_ids = []
         self.merged_sample_runinfos = {}
         self.merged_sample_runinfo_dict_paths = args.input
-        self.contigs = {}
         self.split_names = None
         self.normalization_multiplier = {}
         self.profiles = []
@@ -315,10 +307,6 @@ class MultipleRuns:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
         self.split_parents = self.get_split_parents()
 
-        self.progress.new('Reading contigs into memory')
-        self.read_contigs()
-        self.progress.end()
-
         self.run.info('profiler_version', __version__)
         self.run.info('output_dir', self.output_directory)
         self.run.info('sample_id', self.sample_id)
@@ -327,9 +315,9 @@ class MultipleRuns:
         self.run.info('annotation_hash', self.annotation_hash)
         self.run.info('merged_sample_ids', self.merged_sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
-        self.run.info('num_runs_processed', len(self.contigs))
-        self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
-        self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
+        self.run.info('num_runs_processed', len(self.merged_sample_ids))
+        #self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
+        #self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
         self.run.info('clustering_performed', not self.skip_clustering)
  
         self.set_normalization_multiplier()
@@ -347,11 +335,6 @@ class MultipleRuns:
         self.progress.end()
         self.run.info('profile_summary_dir', summary_dir)
         self.run.info('profile_summary_index', profile_summary_index)
-
-        self.progress.new('Analyzing contigs for consensus')
-        splits_fasta = self.store_splits_consensus()
-        self.progress.end()
-        self.run.info('splits_fasta', splits_fasta)
 
         self.progress.new('GC content for consensus splits')
         self.progress.update('Computing...')
@@ -551,62 +534,3 @@ class MultipleRuns:
         split_names = db.get_single_column_from_table('metadata_splits', 'contig')
         db.disconnect()
         return split_names
-
-
-    def read_contigs(self):
-        for i in range(0, len(self.merged_sample_ids)):
-            self.progress.update('%d of %d' % (i + 1, len(self.merged_sample_ids)))
-            sample_id = self.merged_sample_ids[i]
-            runinfo = self.merged_sample_runinfos[sample_id]
-            fasta = u.SequenceSource(P(runinfo, runinfo['splits_fasta']))
-            contigs = {}
-            while fasta.next():
-                contigs[fasta.id] = fasta.seq
-            self.contigs[sample_id] = contigs
-
-
-    def store_splits_consensus(self):
-        self.consensus_splits = {}
-        num_splits = len(self.split_names)
-        for i in range(0, num_splits):
-            if (i + 1) % 10 == 0:
-                self.progress.update('%.2f%%' % ((i + 1) * 100.0/ num_splits))
-            
-            split_name = self.split_names[i]
-
-            sequences = set()
-
-            for run in self.contigs:
-                sequences.add(self.contigs[run][split_name])
-            contig_length = len(self.contigs[run][split_name])
-
-            if len(sequences) == 1:
-                # perfect. all consensus sequences recovered by PaPi profiler for each sample is identical
-                # this happens only when all reads from all samples were mapped on the contig.
-                self.consensus_splits[split_name] = sequences.pop()
-            else:
-                # this means there are more than one consensus sequences. they are going to be identical,
-                # except some of them will have N's because not all samples mapped at all regions of the
-                # consensus.
-                #
-                # (inline FIXME: ^^ this information is critical to retain and visualize.)
-                #
-                # now these need to be merged into contigs that have no N's.
-                #
-                new_consensus = ''
-                for j in range(0, contig_length):
-                    nt_list = [seq[j] for seq in sequences if seq[j] != 'N']
-                    if nt_list:
-                        new_consensus += nt_list[0]
-                    else:
-                        new_consensus += 'N'
-                self.consensus_splits[split_name] = new_consensus
-
-        self.progress.update('Storing contigs ...')
-        output_file_path = os.path.join(self.output_directory, 'CONTIGS-CONSENSUS.fa')
-        output = open(output_file_path, 'w')
-        for split_name in self.consensus_splits:
-            output.write('>%s\n%s\n' % (split_name, self.consensus_splits[split_name]))
-        output.close()
-
-        return output_file_path

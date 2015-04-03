@@ -188,8 +188,6 @@ class BAMProfiler:
         self.run.info('default_view', 'single', quiet = True)
         self.run.info('views', {'single': 'metadata_splits'}, quiet = True)
 
-        self.store_consenus_FASTA_files_for_splits_and_contigs()
-
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
@@ -504,23 +502,6 @@ class BAMProfiler:
     def check_contigs(self):
         if not len(self.contigs):
             raise utils.ConfigError, "0 contigs to work with. Bye."
-
-
-    def store_consenus_FASTA_files_for_splits_and_contigs(self):
-        # generate a sorted list of contigs based on length
-        self.contig_names = [t[1] for t in sorted([(self.contigs[k].length, k)\
-                                                for k in self.contigs], reverse = True)]
-
-        # splits FASTA
-        self.progress.new('Consensus FASTA')
-        splits_fasta = open(self.generate_output_destination('SPLITS-CONSENSUS.fa'), 'w')
-        for contig in self.contig_names:
-            for split in self.contigs[contig].splits:
-                splits_fasta.write(">%s\n%s\n" % (split.name,
-                                                  split.auxiliary.rep_seq))
-        splits_fasta.close()
-        self.progress.end()
-        self.run.info('splits_fasta', splits_fasta.name)
 
 
     def cluster_contigs(self):
