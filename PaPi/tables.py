@@ -30,13 +30,13 @@ contig_sequences_table_name          = 'contig_sequences'
 contig_sequences_table_structure     = ['contig', 'sequence']
 contig_sequences_table_types         = [  'str' ,   'str'   ]
 
-contig_lengths_table_name            = 'contig_lengths'
-contig_lengths_table_structure       = ['contig', 'length' ]
-contig_lengths_table_types           = [  'str' , 'numeric']
+contigs_info_table_name              = 'contigs_basic_info'
+contigs_info_table_structure         = ['contig', 'length' , 'gc_content']
+contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ]
 
-splits_info_table_name               = 'splits_info'
-splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'parent' ]
-splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric',  'text'  ]
+splits_info_table_name               = 'splits_basic_info'
+splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'parent' ]
+splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,  'text'  ]
 
 genes_contigs_table_name             = 'genes_in_contigs'
 genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -106,7 +106,8 @@ class Table(object):
         self.version = version
         self.next_available_id = {}
 
-        self.splits = None
+        self.splits_info = None
+        self.contigs_info = None
         self.split_length = None
 
         self.run = run
@@ -119,18 +120,16 @@ class Table(object):
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
             # and annotation db calls.
             self.split_length = database.get_meta_value('split_length')
-            contig_lengths_table = database.get_table_as_dict(contig_lengths_table_name)
-            self.splits = database.get_table_as_dict(splits_info_table_name)
+            self.contigs_info = database.get_table_as_dict(contigs_info_table_name)
+            self.splits_info  = database.get_table_as_dict(splits_info_table_name)
 
             self.contig_name_to_splits = {}
-            for split_name in self.splits:
-                parent = self.splits[split_name]['parent']
+            for split_name in self.splits_info:
+                parent = self.splits_info[split_name]['parent']
                 if self.contig_name_to_splits.has_key(parent):
                     self.contig_name_to_splits[parent].append(split_name)
                 else:
                     self.contig_name_to_splits[parent] = [split_name]
-
-            self.contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 
         database.disconnect()
 

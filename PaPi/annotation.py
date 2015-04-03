@@ -29,9 +29,7 @@ import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.kmers as kmers
 import PaPi.contig as contig
-import PaPi.dictio as dictio
 import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
 import PaPi.ccollections as ccollections
 
 from PaPi.tables import *
@@ -165,22 +163,19 @@ class AnnotationDatabase:
         self.db.set_meta_value('split_length', split_length)
 
         self.db.create_table(contig_sequences_table_name, contig_sequences_table_structure, contig_sequences_table_types)
-        self.db.create_table(contig_lengths_table_name, contig_lengths_table_structure, contig_lengths_table_types)
-        self.db.create_table(splits_info_table_name, splits_info_table_structure, splits_info_table_types)
 
         # lets process and store the FASTA file.
         fasta = u.SequenceSource(contigs_fasta)
-        num_contigs, total_length = 0, 0
         db_entries_contig_sequences = []
-        db_entries_contig_lengths = []
-        db_entries_splits_info = []
 
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
 
+        contigs_info_table = InfoTableForContigs()
+        splits_info_table = InfoTableForSplits()
+
         while fasta.next():
-            num_contigs += 1
-            contig_length = len(fasta.seq)
+            contig_length = contigs_info_table.append(fasta.id, fasta.seq)
             chunks = utils.get_chunks(contig_length, split_length)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
@@ -188,7 +183,6 @@ class AnnotationDatabase:
             for order in range(0, len(chunks)):
                 start, end = chunks[order]
                 split_name = contig.gen_split_name(fasta.id, order)
-                db_entries_splits_info.append((split_name, order, start, end, fasta.id), )
 
                 # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
                 # holds kmer values for splits only. in one table, each split has a kmer value of their
@@ -197,22 +191,22 @@ class AnnotationDatabase:
                 contigs_kmer_table.append(split_name, fasta.seq[start:end], kmer_freq = contig_kmer_freq)
                 splits_kmer_table.append(split_name, fasta.seq[start:end])
 
+                splits_info_table.append(split_name, fasta.seq[start:end], order, start, end, fasta.id)
+
             db_entries_contig_sequences.append((fasta.id, fasta.seq), )
-            db_entries_contig_lengths.append((fasta.id, contig_length), )
-            total_length += contig_length
 
         self.db.set_meta_value('kmer_size', kmer_size)
         contigs_kmer_table.store(self.db)
         splits_kmer_table.store(self.db)
+        contigs_info_table.store(self.db)
+        splits_info_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_sequences_table_name, db_entries_contig_sequences)
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_lengths_table_name, db_entries_contig_lengths)
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % splits_info_table_name, db_entries_splits_info)
 
         # set some useful meta values:
-        self.db.set_meta_value('num_contigs', num_contigs)
-        self.db.set_meta_value('total_length', total_length)
-        self.db.set_meta_value('num_splits', len(db_entries_splits_info))
+        self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
+        self.db.set_meta_value('total_length', contigs_info_table.total_nts)
+        self.db.set_meta_value('num_splits', splits_info_table.total_splits)
         self.db.set_meta_value('genes_annotation_source', None)
 
         # creating empty default tables
@@ -227,13 +221,55 @@ class AnnotationDatabase:
         self.disconnect()
 
         self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
-        self.run.info('Number of contigs', num_contigs, quiet = self.quiet)
-        self.run.info('Total number of nucleotides', total_length, quiet = self.quiet)
+        self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet = self.quiet)
+        self.run.info('Number of contigs', splits_info_table.total_splits, quiet = self.quiet)
+        self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
         self.run.info('Split length', split_length, quiet = self.quiet)
 
 
     def disconnect(self):
         self.db.disconnect()
+
+
+class InfoTableForContigs:
+    def __init__(self):
+        self.db_entries = []
+        self.total_nts = 0
+        self.total_contigs = 0
+
+
+    def append(self, seq_id, sequence):
+        sequence_length = len(sequence)
+        self.total_nts += sequence_length
+        self.total_contigs += 1
+        db_entry = tuple([seq_id, sequence_length, utils.get_GC_content_for_sequence(sequence)])
+        self.db_entries.append(db_entry)
+        return sequence_length
+
+
+    def store(self, db):
+        db.create_table(contigs_info_table_name, contigs_info_table_structure, contigs_info_table_types)
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+class InfoTableForSplits:
+    def __init__(self):
+        self.db_entries = []
+        self.total_splits = 0
+
+
+    def append(self, seq_id, sequence, order, start, end, parent):
+        self.total_splits += 1
+        sequence_length = len(sequence)
+        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent])
+        self.db_entries.append(db_entry)
+
+
+    def store(self, db):
+        db.create_table(splits_info_table_name, splits_info_table_structure, splits_info_table_types)
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
 class KMerTablesForContigsAndSplits:
@@ -409,7 +445,7 @@ class TablesForSearches(Table):
 
         db_entries_for_splits = []
 
-        for contig in self.contig_lengths:
+        for contig in self.contigs_info:
             if not hits_per_contig.has_key(contig):
                 # no hits for this contig. pity!
                 continue
@@ -487,7 +523,7 @@ class TablesForGenes(Table):
 
 
         contig_names_in_matrix = set([v['contig'] for v in self.genes_dict.values()])
-        contig_names_in_db  = set(self.contig_lengths.keys())
+        contig_names_in_db  = set(self.contigs_info.keys())
 
         for contig in contig_names_in_matrix:
             if contig not in contig_names_in_db:
@@ -518,15 +554,14 @@ class TablesForGenes(Table):
             else:
                 prots_in_contig[contig] = set([prot])
 
-        contigs_without_annotation = list(set(self.contig_lengths.keys()) - set(prots_in_contig.keys()))
-        run.info('Percent of contigs annotated', '%.1f%%' % (len(prots_in_contig) * 100.0 / len(self.contig_lengths)))
+        contigs_without_annotation = list(set(self.contigs_info.keys()) - set(prots_in_contig.keys()))
+        run.info('Percent of contigs annotated', '%.1f%%' % (len(prots_in_contig) * 100.0 / len(self.contigs_info)))
 
         for contig in contigs_without_annotation:
             prots_in_contig[contig] = set([])
 
         splits_dict = {}
-        split_to_prot = {}
-        for contig in self.contig_lengths:
+        for contig in self.contigs_info:
             for split_name in self.contig_name_to_splits[contig]:
                 start = self.splits[split_name]['start']
                 stop = self.splits[split_name]['end']
