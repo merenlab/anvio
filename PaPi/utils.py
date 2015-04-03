@@ -16,12 +16,11 @@ import json
 import copy
 import socket
 import textwrap
-import itertools
 import subprocess
 import multiprocessing
 
 
-from PaPi.constants import IS_ESSENTIAL_FIELD, IS_AUXILIARY_FIELD, allowed_chars, digits, complements
+from PaPi.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
 import PaPi.fastalib as u
 import PaPi.filesnpaths as filesnpaths
 from PaPi.sequence import Composition
@@ -106,7 +105,7 @@ class Multiprocessing:
                 time.sleep(1)
                 break
 
-            progress_obj.update('%d of %d done in %d threads (currently running processes: %d)'\
+            progress.update('%d of %d done in %d threads (currently running processes: %d)'\
                                                          % (sent_to_run - NumRunningProceses(),
                                                             tot_num_processes,
                                                             self.num_thread,
@@ -161,7 +160,7 @@ def is_program_exists(program):
 def run_command(cmdline):
     try:
         if subprocess.call(cmdline, shell = True) < 0:
-            raise ConfigError, "command was terminated by signal: %d" % (-retcode)
+            raise ConfigError, "command was terminated"
     except OSError, e:
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
