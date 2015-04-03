@@ -13,7 +13,6 @@ import gzip
 import cPickle
 import textwrap
 
-import PaPi.constants as constants
 
 class DictIOError(Exception):
     def __init__(self, e = None):
@@ -45,7 +44,7 @@ def read_serialized_object(input_file_path):
     try:
         return cPickle.loads(data)
     except:
-        raise DictIOError, "The input file ('%s') does not seem to be a cPickle object." % (runinfo_dict_path)
+        raise DictIOError, "The input file ('%s') does not seem to be a cPickle object." % (input_file_path)
 
 
 def strip_prefix_from_dict_values(d, prefix):
