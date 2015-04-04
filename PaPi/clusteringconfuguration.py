@@ -11,16 +11,13 @@
 
 
 import os
-import sys
 import ConfigParser
 
 import PaPi.db as db
-import PaPi.terminal as terminal
 import PaPi.filesnpaths as filesnpaths
 
 from PaPi.utils import ConfigError
 from PaPi.utils import check_sample_id
-from PaPi.constants import allowed_chars
 from PaPi.utils import store_array_as_TAB_delimited_file as store_array
 from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 from PaPi.utils import get_vectors_from_TAB_delim_matrix as get_vectors
@@ -117,7 +114,7 @@ class ClusteringConfiguration:
             m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
             self.matrices_dict[alias] = m
 
-        # make sure all matrices have equal number of entries:
+        # make sure all matrices have identical rows:
         if len(set([m['id_to_sample'].values().__str__() for m in self.matrices_dict.values()])) > 1:
             master_rows, master_matrix = sorted([(len(self.matrices_dict[m]['id_to_sample']), self.matrices_dict[m]['id_to_sample'].values(), m)\
                                                             for m in self.matrices_dict])[0][1:]
@@ -126,7 +123,7 @@ class ClusteringConfiguration:
             # the smallest matrix is 'master_matrix', and the rows it has is master_rows. so every other matrix
             # must match that, or we will throw a tantrum.
             for matrix in [m for m in self.matrices if m != master_matrix]:
-                m = self.matrices_dict[alias]
+                m = self.matrices_dict[matrix]
                 m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
                 if len(m['vectors']) != len(master_rows):
                     raise ConfigError, 'The content of rows differed between input matrices. So I tried to\
