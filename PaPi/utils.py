@@ -257,6 +257,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     rows_to_return = set(rows_to_return)
     vectors = []
     id_to_sample_dict = {}
+    sample_to_id_dict = {}
 
     input_matrix = open(file_path)
     columns = input_matrix.readline().strip().split('\t')[1:]
@@ -292,7 +293,9 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 
         id_counter += 1
 
-    return id_to_sample_dict, columns, vectors
+    sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.iteritems()])
+
+    return id_to_sample_dict, sample_to_id_dict, columns, vectors
 
 
 def get_all_ids_from_fasta(input_file):

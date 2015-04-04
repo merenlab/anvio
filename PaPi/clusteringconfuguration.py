@@ -110,8 +110,7 @@ class ClusteringConfiguration:
             m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True 
             m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False 
             # next two variables are necessary to follow the order of vectors
-            m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
-            m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
+            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
             self.matrices_dict[alias] = m
 
         # make sure all matrices have identical rows:
@@ -124,8 +123,10 @@ class ClusteringConfiguration:
             # must match that, or we will throw a tantrum.
             for matrix in [m for m in self.matrices if m != master_matrix]:
                 m = self.matrices_dict[matrix]
-                m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
-                m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
+
+                # get reduced set of vectors from rows that match `master_rows`:
+                m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
+
                 if len(m['vectors']) != len(master_rows):
                     raise ConfigError, 'The content of rows differed between input matrices. So I tried to\
                                         match all other matrices to the matrix with the smallest number of\
