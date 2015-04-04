@@ -26,6 +26,8 @@ progress = terminal.Progress()
 
 # ANNOTATION DATABASE TABLES:
 
+annotation_db_version = "1.0.0"
+
 contig_sequences_table_name          = 'contig_sequences'
 contig_sequences_table_structure     = ['contig', 'sequence']
 contig_sequences_table_types         = [  'str' ,   'str'   ]
@@ -35,8 +37,8 @@ contigs_info_table_structure         = ['contig', 'length' , 'gc_content']
 contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ]
 
 splits_info_table_name               = 'splits_basic_info'
-splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'parent' ]
-splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,  'text'  ]
+splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
+splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
 genes_contigs_table_name             = 'genes_in_contigs'
 genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -80,6 +82,8 @@ collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'
 
 
 # PRFOFILE DATABASE TABLES
+
+profile_db_version = "1.0.0"
 
 clusterings_table_name               = 'clusterings'
 clusterings_table_structure          = ['clustering', 'newick' ]

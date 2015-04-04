@@ -6,8 +6,8 @@ import sys
 import pysam
 import shutil
 
+import PaPi.tables as t
 import PaPi.utils as utils
-import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.constants as constants
@@ -24,7 +24,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The PaPi Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "0.9.0"
+__version__ = t.profile_db_version
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -85,7 +85,7 @@ class BAMProfiler:
         self.metadata = Metadata(self.progress)
 
         # following variable will be populated during the profiling, and its content will eventually
-        # be stored in tables.variable_positions_table_name
+        # be stored in t.variable_positions_table_name
         self.variable_positions_table_entries = []
 
 
@@ -116,7 +116,7 @@ class BAMProfiler:
         self.progress.update('Creating a new single profile database with annotation hash "%s" ...' % self.annotation_hash)
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
 
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version)
 
         meta_values = {'db_type': 'profile',
                        'sample_id': self.sample_id,
@@ -144,7 +144,7 @@ class BAMProfiler:
         if self.annotation_db_path and not self.list_contigs_and_exit:
             self.populate_genes_in_contigs_dict()
 
-        self.run.info('profiler_version', __version__)
+        self.run.info('profiler_version', t.profile_db_version)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('annotation_db', True if self.annotation_db_path else False)
@@ -171,7 +171,7 @@ class BAMProfiler:
         self.generate_gene_coverages_table()
 
         # here we store both metadata and TNF information into the database:
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet=True)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
         profile_db.disconnect()
 
@@ -196,7 +196,7 @@ class BAMProfiler:
         self.progress.new('Annotation')
         self.progress.update('Reading genes in contigs table')
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
-        genes_in_contigs_table = annotation_db.db.get_table_as_dict(annotation.genes_contigs_table_name, annotation.genes_contigs_table_structure)
+        genes_in_contigs_table = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name, t.genes_contigs_table_structure)
         annotation_db.disconnect()
 
         self.progress.update('Populating ORFs dictionary for each contig ...')
@@ -212,7 +212,7 @@ class BAMProfiler:
 
 
     def generate_variabile_positions_table(self):
-        variable_positions_table = annotation.TableForVariability(self.profile_db_path, __version__, progress = self.progress)
+        variable_positions_table = annotation.TableForVariability(self.profile_db_path, t.profile_db_version, progress = self.progress)
 
         self.progress.new('Storing variability information')
         for contig in self.contigs.values():
@@ -227,7 +227,7 @@ class BAMProfiler:
 
 
     def generate_gene_coverages_table(self):
-        gene_coverages_table = annotation.TableForGeneCoverages(self.profile_db_path, __version__, progress = self.progress)
+        gene_coverages_table = annotation.TableForGeneCoverages(self.profile_db_path, t.profile_db_version, progress = self.progress)
 
         self.progress.new('Profiling genes')
         num_contigs = len(self.contigs)
@@ -347,7 +347,7 @@ class BAMProfiler:
             raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
 
         # store num reads mapped for later use.
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet=True)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
         profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
         profile_db.disconnect()
 
@@ -382,7 +382,7 @@ class BAMProfiler:
 
         # finally, compute contig splits.
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
-        self.splits = annotation_db.db.get_table_as_dict(annotation.splits_info_table_name)
+        self.splits = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
         annotation_db.disconnect()
 
         self.contig_name_to_splits = {}
@@ -441,8 +441,6 @@ class BAMProfiler:
                 continue
 
             contig.analyze_auxiliary(self.bam, self.progress)
-
-            contig.analyze_composition(self.bam, self.progress)
 
             self.progress.end()
 
@@ -504,14 +502,14 @@ class BAMProfiler:
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__, db_paths = self.database_paths)
+            config = ClusteringConfiguration(config_path, self.output_directory, version = t.profile_db_version, db_paths = self.database_paths)
             newick = clustering.order_contigs_simple(config, progress = self.progress)
 
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
 
-            profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet=True)
-            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
+            profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
+            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, db_entries)
             profile_db.disconnect()
 
         self.run.info('default_clustering', constants.single_default)

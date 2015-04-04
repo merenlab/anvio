@@ -9,15 +9,13 @@
 #
 # Please read the COPYING file.
 
-import copy
-import numpy
-
 
 from PaPi.variability import ColumnProfile, VariablityTestFactory
-from PaPi.sequence import Coverage, Composition
+from PaPi.sequence import Coverage
 
 
 variability_test_class = VariablityTestFactory()
+
 
 def set_contigs_abundance(contigs):
     """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
@@ -45,13 +43,10 @@ class Contig:
         self.length = 0
         self.abundance = 0.0
         self.coverage = Coverage()
-        self.composition = None
 
 
     def get_metadata_dict(self):
-        d = {'length': self.length,
-             'GC_content': self.composition.GC_content,
-             'std_coverage': self.coverage.std,
+        d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
              'max_normalized_ratio': 1.0,
@@ -82,19 +77,6 @@ class Contig:
             split.auxiliary = Auxiliary(split, bam)
 
 
-    def analyze_composition(self, bam, progress):
-        for split in self.splits:
-            progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
-            split.composition = Composition(split.auxiliary.rep_seq)
-        progress.update('Composition (split: %d of %d)' % (split.order, len(self.splits)))
-        self.composition = Composition(self.get_rep_seq())
-
-
-    def get_rep_seq(self):
-        return ''.join([s.auxiliary.rep_seq for s in self.splits])
-
-
-
 class Split:
     def __init__(self, name, parent, order, start = 0, end = 0):
         self.name = name
@@ -108,9 +90,7 @@ class Split:
         self.column_profiles = {}
 
     def get_metadata_dict(self):
-        d = {'length': self.length,
-             'GC_content': self.composition.GC_content,
-             'std_coverage': self.coverage.std,
+        d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
              'max_normalized_ratio': 1.0,

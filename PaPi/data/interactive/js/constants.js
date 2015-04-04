@@ -34,7 +34,7 @@ var named_layers = {
 		'color': '#414141',
 		'norm': 'none',
 	},
-	'GC_content': {
+	'gc_content': {
 		'height': 180,
 		'color': '#004a0f',
 		'norm': 'none',

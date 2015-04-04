@@ -16,13 +16,12 @@
 
 from collections import Counter
 
-import PaPi.fastalib as u
+import PaPi.tables as t
 import PaPi.utils as utils
 import PaPi.terminal as terminal
 import PaPi.annotation as annotation
 
 from PaPi.utils import ConfigError
-from PaPi.filesnpaths import FilesNPathsError
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -34,7 +33,7 @@ class Completeness:
         annotation_db = annotation.AnnotationDatabase(annotation_db_path)
 
         # read info table to get what is available in the db
-        info_table = annotation_db.db.get_table_as_dict(annotation.hmm_hits_info_table_name)
+        info_table = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.sources = info_table.keys()
 
         # a little convenience for potential clients:
@@ -45,7 +44,7 @@ class Completeness:
         self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table if info_table[s]['search_type'] == 'singlecopy'])
 
         # read search table (which holds hmmscan hits for splits).
-        self.search_table = annotation_db.db.get_table_as_dict(annotation.hmm_hits_splits_table_name)
+        self.search_table = annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
 
         # an example entry in self.search_table looks loke this:
         #

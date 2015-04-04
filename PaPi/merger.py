@@ -336,11 +336,6 @@ class MultipleRuns:
         self.run.info('profile_summary_dir', summary_dir)
         self.run.info('profile_summary_index', profile_summary_index)
 
-        self.progress.new('GC content for consensus splits')
-        self.progress.update('Computing...')
-        self.GC_content_for_splits = utils.get_GC_content_for_FASTA_entries(splits_fasta)
-        self.progress.end()
-
         # critical part:
         self.merge_metadata_files()
 
@@ -383,13 +378,9 @@ class MultipleRuns:
 
         views = {}
 
-        # get split lenghs from one of the metadata files for fast access:
-        m = self.metadata_for_each_run['splits'].values()[0]
-        self.contig_lengths = dict([(split_name, m[split_name]['length']) for split_name in m])
-
         # setting standard metadata table structure and types
-        merged_mtable_structure = ['contig', 'length', 'GC_content'] + self.merged_sample_ids + auxiliary_fields
-        merged_mtable_types = ['text'] + ['numeric'] * (len(self.merged_sample_ids) + 2) + ['text']
+        merged_mtable_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
+        merged_mtable_types = ['text'] + ['numeric'] * len(self.merged_sample_ids) + ['text']
 
         # generate a dictionary for normalized coverage of each contig across samples per target
         self.normalized_coverages = {'contigs': {}, 'splits': {}}
@@ -415,9 +406,7 @@ class MultipleRuns:
 
                 m = {}
                 for split_name in self.split_names:
-                    m[split_name] = {'GC_content': self.GC_content_for_splits[split_name],
-                                     'length': self.contig_lengths[split_name],
-                                     '__parent__': self.split_parents[split_name]}
+                    m[split_name] = {'__parent__': self.split_parents[split_name]}
 
                     for sample_id in self.merged_sample_ids:
                         if essential_field == 'normalized_coverage':

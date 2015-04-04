@@ -61,7 +61,7 @@ done
 
 INFO "Merging profiles ..."
 # merge samples
-papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED
+papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -a test-output/ANNOTATION.db
 
 INFO "Generating coverages and sequences files for splits (for external binning) ..."
 papi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
@@ -75,7 +75,7 @@ papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
 INFO "Use papi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
-papi-experimental-organization ../../PaPi/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt
+papi-experimental-organization ../../PaPi/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.

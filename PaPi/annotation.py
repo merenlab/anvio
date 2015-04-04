@@ -13,8 +13,6 @@
     Classes to create and access the annotation database.
 """
 
-__version__ = "0.5.0"
-
 
 import os
 import sys
@@ -25,6 +23,7 @@ import operator
 from collections import Counter
 
 import PaPi.db as db
+import PaPi.tables as t
 import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.kmers as kmers
@@ -32,7 +31,7 @@ import PaPi.contig as contig
 import PaPi.terminal as terminal
 import PaPi.ccollections as ccollections
 
-from PaPi.tables import *
+from PaPi.tables import Table
 from PaPi.utils import ConfigError
 from PaPi.commandline import HMMSearch
 from PaPi.parsers import parser_modules
@@ -81,9 +80,9 @@ class ProfileDatabase:
             self.db.set_meta_value(key, meta_values[key])
 
         # creating empty default tables
-        self.db.create_table(clusterings_table_name, clusterings_table_structure, clusterings_table_types)
-        self.db.create_table(gene_coverages_table_name, gene_coverages_table_structure, gene_coverages_table_types)
-        self.db.create_table(variable_positions_table_name, variable_positions_table_structure, variable_positions_table_types)
+        self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
+        self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
+        self.db.create_table(t.variable_positions_table_name, t.variable_positions_table_structure, t.variable_positions_table_types)
         ccollections.create_blank_collections_tables(self.db)
 
         self.disconnect()
@@ -110,7 +109,7 @@ class AnnotationDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            self.db = db.DB(self.db_path, __version__)
+            self.db = db.DB(self.db_path, t.annotation_db_version)
 
             self.run.info('Annotation database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
             self.run.info('Number of contigs', self.db.get_meta_value('num_contigs'), quiet = self.quiet)
@@ -153,7 +152,7 @@ class AnnotationDatabase:
             raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!)."
 
-        self.db = db.DB(self.db_path, __version__, new_database = True)
+        self.db = db.DB(self.db_path, t.annotation_db_version, new_database = True)
 
         # know thyself
         self.db.set_meta_value('db_type', 'annotation')
@@ -162,7 +161,7 @@ class AnnotationDatabase:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        self.db.create_table(contig_sequences_table_name, contig_sequences_table_structure, contig_sequences_table_types)
+        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
 
         # lets process and store the FASTA file.
         fasta = u.SequenceSource(contigs_fasta)
@@ -175,7 +174,7 @@ class AnnotationDatabase:
         splits_info_table = InfoTableForSplits()
 
         while fasta.next():
-            contig_length = contigs_info_table.append(fasta.id, fasta.seq)
+            contig_length, contig_gc_content = contigs_info_table.append(fasta.id, fasta.seq)
             chunks = utils.get_chunks(contig_length, split_length)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
@@ -191,7 +190,7 @@ class AnnotationDatabase:
                 contigs_kmer_table.append(split_name, fasta.seq[start:end], kmer_freq = contig_kmer_freq)
                 splits_kmer_table.append(split_name, fasta.seq[start:end])
 
-                splits_info_table.append(split_name, fasta.seq[start:end], order, start, end, fasta.id)
+                splits_info_table.append(split_name, fasta.seq[start:end], order, start, end, contig_gc_content, fasta.id)
 
             db_entries_contig_sequences.append((fasta.id, fasta.seq), )
 
@@ -201,7 +200,7 @@ class AnnotationDatabase:
         contigs_info_table.store(self.db)
         splits_info_table.store(self.db)
 
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % contig_sequences_table_name, db_entries_contig_sequences)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
 
         # set some useful meta values:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
@@ -210,12 +209,12 @@ class AnnotationDatabase:
         self.db.set_meta_value('genes_annotation_source', None)
 
         # creating empty default tables
-        self.db.create_table(hmm_hits_info_table_name, hmm_hits_info_table_structure, hmm_hits_info_table_types)
-        self.db.create_table(hmm_hits_splits_table_name, hmm_hits_splits_table_structure, hmm_hits_splits_table_types)
-        self.db.create_table(hmm_hits_contigs_table_name, hmm_hits_contigs_table_structure, hmm_hits_contigs_table_types)
-        self.db.create_table(genes_contigs_table_name, genes_contigs_table_structure, genes_contigs_table_types)
-        self.db.create_table(genes_splits_summary_table_name, genes_splits_summary_table_structure, genes_splits_summary_table_types)
-        self.db.create_table(genes_splits_table_name, genes_splits_table_structure, genes_splits_table_types)
+        self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
+        self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
+        self.db.create_table(t.hmm_hits_contigs_table_name, t.hmm_hits_contigs_table_structure, t.hmm_hits_contigs_table_types)
+        self.db.create_table(t.genes_contigs_table_name, t.genes_contigs_table_structure, t.genes_contigs_table_types)
+        self.db.create_table(t.genes_splits_summary_table_name, t.genes_splits_summary_table_structure, t.genes_splits_summary_table_types)
+        self.db.create_table(t.genes_splits_table_name, t.genes_splits_table_structure, t.genes_splits_table_types)
         ccollections.create_blank_collections_tables(self.db)
 
         self.disconnect()
@@ -240,17 +239,18 @@ class InfoTableForContigs:
 
     def append(self, seq_id, sequence):
         sequence_length = len(sequence)
+        gc_content = utils.get_GC_content_for_sequence(sequence)
         self.total_nts += sequence_length
         self.total_contigs += 1
-        db_entry = tuple([seq_id, sequence_length, utils.get_GC_content_for_sequence(sequence)])
+        db_entry = tuple([seq_id, sequence_length, gc_content])
         self.db_entries.append(db_entry)
-        return sequence_length
+        return (sequence_length, gc_content)
 
 
     def store(self, db):
-        db.create_table(contigs_info_table_name, contigs_info_table_structure, contigs_info_table_types)
+        db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
 class InfoTableForSplits:
@@ -259,17 +259,17 @@ class InfoTableForSplits:
         self.total_splits = 0
 
 
-    def append(self, seq_id, sequence, order, start, end, parent):
+    def append(self, seq_id, sequence, order, start, end, parent_gc_content, parent):
         self.total_splits += 1
         sequence_length = len(sequence)
-        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent])
+        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent_gc_content, parent])
         self.db_entries.append(db_entry)
 
 
     def store(self, db):
-        db.create_table(splits_info_table_name, splits_info_table_structure, splits_info_table_types)
+        db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
 class KMerTablesForContigsAndSplits:
@@ -310,11 +310,11 @@ class TableForVariability(Table):
 
         self.num_entries = 0
         self.db_entries = []
-        self.set_next_available_id(variable_positions_table_name)
+        self.set_next_available_id(t.variable_positions_table_name)
 
 
     def append(self, profile):
-        db_entry = tuple([self.next_id(variable_positions_table_name)] + [profile[h] for h in variable_positions_table_structure[1:]])
+        db_entry = tuple([self.next_id(t.variable_positions_table_name)] + [profile[h] for h in t.variable_positions_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
         if self.num_entries % 100 == 0:
@@ -323,7 +323,7 @@ class TableForVariability(Table):
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path, self.version)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % variable_positions_table_name, self.db_entries)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
         profile_db.disconnect()
 
 
@@ -337,7 +337,7 @@ class TableForGeneCoverages(Table):
         Table.__init__(self, self.db_path, version, run, progress)
 
         self.genes = []
-        self.set_next_available_id(gene_coverages_table_name)
+        self.set_next_available_id(t.gene_coverages_table_name)
 
         # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
         # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
@@ -364,8 +364,8 @@ class TableForGeneCoverages(Table):
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path, self.version)
-        db_entries = [tuple([self.next_id(gene_coverages_table_name)] + [gene[h] for h in gene_coverages_table_structure[1:]]) for gene in self.genes]
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % gene_coverages_table_name, db_entries)
+        db_entries = [tuple([self.next_id(t.gene_coverages_table_name)] + [gene[h] for h in t.gene_coverages_table_structure[1:]]) for gene in self.genes]
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_coverages_table_name, db_entries)
         profile_db.disconnect()
 
 
@@ -375,10 +375,10 @@ class TablesForSearches(Table):
 
         self.debug = False
 
-        Table.__init__(self, self.db_path, __version__, run, progress)
+        Table.__init__(self, self.db_path, t.annotation_db_version, run, progress)
 
-        self.set_next_available_id(hmm_hits_contigs_table_name)
-        self.set_next_available_id(hmm_hits_splits_table_name)
+        self.set_next_available_id(t.hmm_hits_contigs_table_name)
+        self.set_next_available_id(t.hmm_hits_splits_table_name)
 
 
     def populate_search_tables(self, sources = {}):
@@ -418,19 +418,19 @@ class TablesForSearches(Table):
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
-        self.delete_entries_for_key('source', source, [hmm_hits_info_table_name, hmm_hits_contigs_table_name, hmm_hits_splits_table_name])
+        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
 
         annotation_db = AnnotationDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
-        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % hmm_hits_info_table_name, db_entries)
+        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
         # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(hmm_hits_contigs_table_name), source] + [v[h] for h in hmm_hits_contigs_table_structure[2:]]) for v in search_results_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % hmm_hits_contigs_table_name, db_entries)
+        db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name), source] + [v[h] for h in t.hmm_hits_contigs_table_structure[2:]]) for v in search_results_dict.values()]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
 
         db_entries = self.process_splits(source, search_results_dict)
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % hmm_hits_splits_table_name, db_entries)
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
 
         annotation_db.disconnect()
 
@@ -451,8 +451,8 @@ class TablesForSearches(Table):
                 continue
 
             for split_name in self.contig_name_to_splits[contig]:
-                start = self.splits[split_name]['start']
-                stop = self.splits[split_name]['end']
+                start = self.splits_info[split_name]['start']
+                stop = self.splits_info[split_name]['end']
 
                 # FIXME: this really needs some explanation.
                 for hit in hits_per_contig[contig]:
@@ -464,7 +464,7 @@ class TablesForSearches(Table):
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
                         gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
-                        db_entry = tuple([self.next_id(hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
@@ -474,7 +474,7 @@ class TablesForGenes(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, __version__, run, progress)
+        Table.__init__(self, self.db_path, t.annotation_db_version, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database
@@ -489,20 +489,22 @@ class TablesForGenes(Table):
         # oepn connection
         annotation_db = AnnotationDatabase(self.db_path)
 
+        self.splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+
         # test whether there are already genes tables populated
         genes_annotation_source = annotation_db.db.get_meta_value('genes_annotation_source')
         if genes_annotation_source:
             self.run.warning('Previous genes annotation data from "%s" will be replaced with the incoming data' % parser)
-            annotation_db.db._exec('''DELETE FROM %s''' % (genes_contigs_table_name))
-            annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_table_name))
-            annotation_db.db._exec('''DELETE FROM %s''' % (genes_splits_summary_table_name))
+            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_contigs_table_name))
+            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_table_name))
+            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_summary_table_name))
 
         # set the parser
         annotation_db.db.remove_meta_key_value_pair('genes_annotation_source')
         annotation_db.db.set_meta_value('genes_annotation_source', parser)
         # push raw entries
-        db_entries = [tuple([prot] + [self.genes_dict[prot][h] for h in genes_contigs_table_structure[1:]]) for prot in self.genes_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % genes_contigs_table_name, db_entries)
+        db_entries = [tuple([prot] + [self.genes_dict[prot][h] for h in t.genes_contigs_table_structure[1:]]) for prot in self.genes_dict]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.genes_contigs_table_name, db_entries)
         # disconnect like a pro.
         annotation_db.disconnect()
 
@@ -514,12 +516,12 @@ class TablesForGenes(Table):
     def sanity_check(self):
         # check whether input matrix dict 
         keys_found = ['prot'] + self.genes_dict.values()[0].keys()
-        missing_keys = [key for key in genes_contigs_table_structure if key not in keys_found]
+        missing_keys = [key for key in t.genes_contigs_table_structure if key not in keys_found]
         if len(missing_keys):
             raise ConfigError, "Your input lacks one or more header fields to generate a PaPi annotation db. Here is\
                                 what you are missing: %s. The complete list (and order) of headers in your TAB\
                                 delimited matrix file (or dictionary) must follow this: %s." % (', '.join(missing_keys),
-                                                                                                ', '.join(genes_contigs_table_structure))
+                                                                                                ', '.join(t.genes_contigs_table_structure))
 
 
         contig_names_in_matrix = set([v['contig'] for v in self.genes_dict.values()])
@@ -563,8 +565,8 @@ class TablesForGenes(Table):
         splits_dict = {}
         for contig in self.contigs_info:
             for split_name in self.contig_name_to_splits[contig]:
-                start = self.splits[split_name]['start']
-                stop = self.splits[split_name]['end']
+                start = self.splits_info[split_name]['start']
+                stop = self.splits_info[split_name]['end']
 
                 taxa = []
                 functions = []
@@ -580,7 +582,7 @@ class TablesForGenes(Table):
                         self.genes_in_splits.add(split_name, start, stop, prot, self.genes_dict[prot]['start'], self.genes_dict[prot]['stop'])
 
 
-                taxonomy_strings = [t for t in taxa if t]
+                taxonomy_strings = [tt for tt in taxa if tt]
                 function_strings = [f for f in functions if f]
 
                 # here we identify genes that are associated with a split even if one base of the gene spills into 
@@ -625,11 +627,11 @@ class TablesForGenes(Table):
         # open connection
         annotation_db = AnnotationDatabase(self.db_path)
         # push raw entries for splits table
-        db_entries = [tuple([split] + [splits_dict[split][h] for h in genes_splits_summary_table_structure[1:]]) for split in splits_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % genes_splits_summary_table_name, db_entries)
+        db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_splits_summary_table_structure[1:]]) for split in splits_dict]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_splits_summary_table_name, db_entries)
         # push entries for genes in splits table
-        db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in genes_splits_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % genes_splits_table_name, db_entries)
+        db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_splits_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_splits_table_name, db_entries)
         # disconnect
         annotation_db.disconnect()
 
@@ -638,15 +640,15 @@ class TablesForGenes(Table):
         """Returns (c, n, t, o) where,
             c: consensus taxonomy (the most common taxonomic call for each gene found in the contig),
             n: total number of genes found in the contig,
-            t: total number of genes with known taxonomy,
-            o: number of taxonomic calls that matches the consensus among t
+            tt: total number of genes with known taxonomy,
+            o: number of taxonomic calls that matches the consensus among tt
         """
 
-        response = self.db.cursor.execute("""SELECT %s FROM %s WHERE contig='%s' and stop > %d and start < %d""" % (t_level, genes_contigs_table_name, contig, start, stop))
+        response = self.db.cursor.execute("""SELECT %s FROM %s WHERE contig='%s' and stop > %d and start < %d""" % (t_level, t.genes_contigs_table_name, contig, start, stop))
         rows = response.fetchall()
 
         num_genes = len(rows)
-        tax_str_list = [t[0] for t in rows if t[0]]
+        tax_str_list = [tt[0] for tt in rows if tt[0]]
         distinct_taxa = set(tax_str_list)
 
         if not len(distinct_taxa):
@@ -656,8 +658,8 @@ class TablesForGenes(Table):
             return distinct_taxa.pop(), num_genes, len(tax_str_list), len(tax_str_list)
         else:
             d = Counter()
-            for t in tax_str_list:
-                d[t] += 1
+            for tt in tax_str_list:
+                d[tt] += 1
             consensus, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
             return consensus, num_genes, len(tax_str_list), occurrence
 

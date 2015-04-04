@@ -12,16 +12,13 @@ for the client.
 """
 
 from itertools import chain
-from collections import Counter
 
 import PaPi.db as db
-import PaPi.fastalib as u
 import PaPi.utils as utils
 import PaPi.terminal as terminal
 
 from PaPi.tables import *
 from PaPi.utils import ConfigError
-from PaPi.filesnpaths import FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -174,13 +171,13 @@ class TablesForCollections(Table):
 
 
         # FIXME: This function can be called to populate the annotation database (via papi-populate-collections), or
-        # the profile database. when it is annotation database, the superclass Table has the self.splits variable
+        # the profile database. when it is annotation database, the superclass Table has the self.splits_info variable
         # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
         # the profile database. hence some special controls for annotation db (note that collections_contigs_table is
         # only populated in the annotations database):
         if self.db_type == 'annotation':
-            splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits]
-            splits_only_in_db = [c for c in self.splits if c not in splits_in_clusters_dict]
+            splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits_info]
+            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_clusters_dict]
 
             if len(splits_only_in_clusters_dict):
                 self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
@@ -191,7 +188,7 @@ class TablesForCollections(Table):
             if len(splits_only_in_db):
                 self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
                                           does not make any sense, please make sure you know why before going any further.'\
-                                                % (len(splits_only_in_db), len(self.splits), source))
+                                                % (len(splits_only_in_db), len(self.splits_info), source))
 
             # then populate contigs table.
             db_entries = self.process_contigs(source, clusters_dict)
@@ -213,11 +210,11 @@ class TablesForCollections(Table):
 
         contigs_processed = set([])
         for split_name in split_to_cluster_id:
-            if split_name not in self.splits:
+            if split_name not in self.splits_info:
                 # which means this split only appears in the input file, but not in the database.
                 continue
 
-            contig_name = self.splits[split_name]['parent']
+            contig_name = self.splits_info[split_name]['parent']
 
             if contig_name in contigs_processed:
                 continue

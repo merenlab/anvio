@@ -30,6 +30,8 @@ parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
                     help = 'Config file for clustering of contigs. See documentation for help.')
 parser.add_argument('-i', '--input-directory', metavar = 'INPUT_DIR', default = None, type=str,
                     help = 'Input directory where the input files can be found')
+parser.add_argument('-a', '--annotation-db-path', default = None, metavar = 'ANNOTATION_DB',
+                    help = 'PaPi annotation database.', required = True)
 parser.add_argument('-o', '--output-file', metavar = 'FILE', default = None, type=str,
                     help = 'To store the newick output/')
 parser.add_argument('-D', '--dry-run', default = False, action = 'store_true', 
@@ -38,7 +40,8 @@ parser.add_argument('-D', '--dry-run', default = False, action = 'store_true',
 args = parser.parse_args()
 
 try:
-    config = ClusteringConfiguration(args.config_file, args.input_directory, __version__)
+    db_paths = {'ANNOTATION.db': args.annotation_db_path}
+    config = ClusteringConfiguration(args.config_file, args.input_directory, version = __version__, db_paths = db_paths)
 except ConfigError, e:
     print e
     sys.exit(-1)

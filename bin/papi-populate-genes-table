@@ -12,11 +12,11 @@ any later version.
 Please read the COPYING file.
 """
 
-import os
 import sys
 
 import PaPi.terminal as terminal
 import PaPi.annotation as annotation
+import PaPi.tables as t
 
 from PaPi.utils import ConfigError
 from PaPi.parsers import parser_modules
@@ -42,7 +42,7 @@ def main(args):
                             parser you chose. Please see the documentation for details."
 
 
-    parser = parser_modules['genes'][args.parser](args.input_files, annotation.genes_contigs_table_structure)
+    parser = parser_modules['genes'][args.parser](args.input_files, t.genes_contigs_table_structure)
     genes_dict = parser.get_annotations_dict()
 
     if not len(genes_dict):

@@ -8,7 +8,6 @@ and this file implements the bottle callbacks."""
 import os
 import sys
 import json
-import base64
 import shutil
 import argparse
 import webbrowser
@@ -130,7 +129,8 @@ def send_data(name):
             return static_file(os.path.abspath(d.state), root='/')
         return "{}"
     elif name == "contig_lengths":
-        return json.dumps(d.contig_lengths)
+        contig_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
+        return json.dumps(contig_lengths)
     elif name == "title":
         return json.dumps(d.title)
 
@@ -139,7 +139,7 @@ def get_view_data(view_id):
     return json.dumps(d.runinfo['views'][view_id])
 
 @route('/tree/<tree_id>')
-def send_data(tree_id):
+def send_tree(tree_id):
     set_default_headers(response)
 
     if tree_id in d.runinfo['clusterings']:

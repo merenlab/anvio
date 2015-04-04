@@ -16,13 +16,11 @@ import os
 import sys
 
 import PaPi.db as db
+import PaPi.tables as t
 import PaPi.utils as utils
-import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation 
 import PaPi.filesnpaths as filesnpaths
-from PaPi.profiler import __version__
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -70,7 +68,7 @@ def generate_gexf_network_file(units, samples_dict, output_file, sample_mapping_
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
         if sample_mapping_dict and sample_mapping_dict.has_key('colors'):
             output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
-                                             HTMLColorToRGB(sample_mapping_dict['colors'][sample], scaled = False))
+                                             utils.HTMLColorToRGB(sample_mapping_dict['colors'][sample], scaled = False))
 
         if sample_mapping_categories:
             output.write('''        <attvalues>\n''')
@@ -145,9 +143,9 @@ class NetworkDescriptonSamples:
 
         self.runinfo = dictio.read_serialized_object(self.runinfo_path)
         self.profile_db_path = self.P(self.runinfo['profile_db'])
-        self.profile_db = db.DB(self.profile_db_path, __version__)
+        self.profile_db = db.DB(self.profile_db_path, t.profile_db_version)
 
-        self.annotation_db = db.DB(self.annotation_db_path, annotation.__version__)
+        self.annotation_db = db.DB(self.annotation_db_path, t.annotation_db_version)
 
         if self.annotation_db.get_meta_value('annotation_hash') != self.profile_db.get_meta_value('annotation_hash'):
             raise utils.ConfigError, "OK. The run described in '%s' was not profiled using the annotation database\
@@ -159,18 +157,18 @@ class NetworkDescriptonSamples:
             raise utils.ConfigError, "The profile database describes a single run. Current implementation of this\
                                       program restricts its use to merged runs. Sorry :/"
 
-        if tables.gene_coverages_table_name not in table_names:
+        if t.gene_coverages_table_name not in table_names:
             raise utils.ConfigError, "There is no '%s' table in the profile database. This does not really make\
-                                      any sense :/" % gene_coverages_table_name
+                                      any sense :/" % t.gene_coverages_table_name
 
         progress.new('Init')
         progress.update('Reading genes table from %s ...' % self.profile_db_path)
-        self.genes_dict = self.profile_db.get_table_as_dict(tables.gene_coverages_table_name)
+        self.genes_dict = self.profile_db.get_table_as_dict(t.gene_coverages_table_name)
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
         self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
         progress.update('Reading annotations table from %s  ...' % self.annotation_db_path)
-        self.genes_in_contigs = self.annotation_db.get_table_as_dict(annotation.genes_contigs_table_name)
+        self.genes_in_contigs = self.annotation_db.get_table_as_dict(t.genes_contigs_table_name)
 
         # read functions.
         progress.update('Sifting through genes with non-hypothetical functions ...')
@@ -187,9 +185,7 @@ class NetworkDescriptonSamples:
         network_desc_output_path = self.P('SAMPLE-GENE-NETWORK.gexf')
         progress.new('Processing')
         progress.update('Generating network description for %d genes across %d samples ... ' % (len(self.genes), len(self.samples_dict)))
-        network_desc = generate_gexf_network_file(self.genes,
-                                                  self.samples_dict,
-                                                  network_desc_output_path)
+        generate_gexf_network_file(self.genes, self.samples_dict, network_desc_output_path)
         progress.end()
         run.info('network with genes', network_desc_output_path)
 
@@ -200,10 +196,8 @@ class NetworkDescriptonSamples:
         progress.update('Generating network description for %d genes w/functions across %d samples ... ' % (len(genes_with_functions), len(self.samples_dict)))
 
         network_desc_output_path = self.P('SAMPLE-FUNCTION-NETWORK.gexf')
-        network_desc = generate_gexf_network_file(genes_with_functions,
-                                                  self.samples_dict,
-                                                  network_desc_output_path,
-                                                  unit_mapping_dict = self.functions)
+        generate_gexf_network_file(genes_with_functions, self.samples_dict,
+                                   network_desc_output_path, unit_mapping_dict = self.functions)
         progress.end()
         run.info('network with functions', network_desc_output_path)
 
