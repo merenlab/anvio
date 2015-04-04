@@ -250,10 +250,11 @@ def get_json_obj_from_TAB_delim_metadata(input_file):
     return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = None):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = []):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
+    rows_to_return = set(rows_to_return)
     vectors = []
     id_to_sample_dict = {}
 
@@ -267,8 +268,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         fields_of_interest = [f for f in range(0, len(columns)) if IS_ESSENTIAL_FIELD(columns[f])]
 
     # update columns:
-    columns = [columns[i] for i in range(0, len(columns)) if i in fields_of_interest]
-
+    columns = [columns[i] for i in fields_of_interest]
 
     if not len(columns):
         raise ConfigError, "Only a subset (%d) of fields were requested by the caller, but none of them was found\
@@ -277,7 +277,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
-        if rows_to_return:
+        if len(rows_to_return):
             if row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
