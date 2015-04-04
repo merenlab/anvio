@@ -125,6 +125,7 @@ class ClusteringConfiguration:
             for matrix in [m for m in self.matrices if m != master_matrix]:
                 m = self.matrices_dict[matrix]
                 m['id_to_sample'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
+                m['sample_to_id'] = dict([(v, k) for k, v in m['id_to_sample'].iteritems()])
                 if len(m['vectors']) != len(master_rows):
                     raise ConfigError, 'The content of rows differed between input matrices. So I tried to\
                                         match all other matrices to the matrix with the smallest number of\
