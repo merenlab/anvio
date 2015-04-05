@@ -13,18 +13,15 @@ Please read the COPYING file.
 """
 
 import os
-import sys
 import numpy
 import argparse
-import operator
 from collections import Counter
 from numpy import log2 as log
 
 
-import PaPi.utils as utils
-import PaPi.filesnpaths as filesnpaths
-import PaPi.terminal as terminal
+import PaPi.tables as t
 import PaPi.dictio as dictio
+import PaPi.terminal as terminal
 import PaPi.annotation as annotation
 
 progress = terminal.Progress()
@@ -80,7 +77,7 @@ class ContigVariability:
     def populate_positions_dict(self):
         '''We take a split, and create a record of each variable position in it.'''
         counter = Counter()
-        for variable_positions_in_layer in [t['competing_nucleotides'].keys() for t in self.split_data.values()]:
+        for variable_positions_in_layer in [s['competing_nucleotides'].keys() for s in self.split_data.values()]:
             for pos in variable_positions_in_layer:
                 counter[pos] += 1
 
@@ -261,8 +258,8 @@ num_splits = len(splits)
 run.info('Splits', '%d splits found' % (num_splits))
 
 annotation_db = annotation.AnnotationDatabase(args.annotation_db)
-splits_info = annotation_db.db.get_table_as_dict(annotation.splits_info_table_name)
-contig_sequences = annotation_db.db.get_table_as_dict(annotation.contig_sequences_table_name)
+splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
 annotation_db.disconnect()
 
 w = VariabilityWrapper()
