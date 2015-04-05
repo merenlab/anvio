@@ -44,9 +44,9 @@ class InputHandler:
         self.annotation_db_path = args.annotation_db
         self.profile_db_path = None
 
-        self.contig_names_ordered = None
-        self.splits_sequences = {}
-        self.contigs_summary_index = {}
+        self.split_names_ordered = None
+        self.split_sequences = {}
+        self.splits_summary_index = {}
         self.contigs_basic_info = {}
         self.additional_metadata_path = None
         self.completeness = None
@@ -71,6 +71,10 @@ class InputHandler:
         else:
             self.load_from_files(args)
 
+        tree = Tree(self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick'])
+
+        self.split_names_ordered = [n.name for n in tree.get_leaves()]
+
         # if we have an annotation_db, lets load it up. the split length used when the annotation db
         # created must match with the split length used to profile these merged runs. the problem is,
         # if interactive binning is being called without a runinfo, we are going to have to ask the
@@ -83,10 +87,6 @@ class InputHandler:
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
             self.additional_metadata_path = args.additional_metadata
-
-        tree = Tree(self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick'])
-
-        self.contig_names_ordered = [n.name for n in tree.get_leaves()]
 
         self.check_names_consistency()
         self.convert_metadata_into_json()
@@ -114,9 +114,13 @@ class InputHandler:
         contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
 
         for split_name in self.splits_basic_info:
+            # if split_name does not occur in self.split_names_ordered, don't add its sequence
+            # to the dictionary:
+            if split_name not in self.split_names_ordered:
+                continue
             split = self.splits_basic_info[split_name]
             contig_sequence = contigs_sequences[split['parent']]['sequence']
-            self.splits_sequences[split_name] = contig_sequence[split['start']:split['end']]
+            self.split_sequences[split_name] = contig_sequence[split['start']:split['end']]
 
 
         self.genes_in_contigs_dict = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
@@ -159,7 +163,7 @@ class InputHandler:
 
         if args.summary_index:
             self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
-            self.contigs_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
+            self.splits_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
 
         # sanity of the metadata
         filesnpaths.is_file_tab_delimited(metadata_path)
@@ -255,38 +259,38 @@ class InputHandler:
             self.views[view] = {'header': profile_db.get_table_structure(table)[1:],
                                 'dict': profile_db.get_table_as_dict(table)}
 
-        self.contigs_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
+        self.splits_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
 
         self.runinfo['self_path'] = args.runinfo
         profile_db.disconnect()
 
 
     def check_names_consistency(self):
-        contigs_in_tree = sorted(self.contig_names_ordered)
-        contigs_in_metadata = sorted(self.views[self.runinfo['default_view']]['dict'].keys())
-        contigs_in_database = sorted(self.splits_sequences)
+        splits_in_tree = sorted(self.split_names_ordered)
+        splits_in_metadata = sorted(self.views[self.runinfo['default_view']]['dict'].keys())
+        splits_in_database = sorted(self.split_sequences)
 
         try:
-            assert(contigs_in_database == contigs_in_tree == contigs_in_metadata)
+            assert(splits_in_database == splits_in_tree == splits_in_metadata)
         except:
             S = lambda x, y: "agrees" if x == y else "does not agree"
-            raise utils.ConfigError, "Contigs name found in the annotation database, the tree file and the\
-                                      metadata needs to match perfectly. It seems it is not the\
+            raise utils.ConfigError, "Entries found in the annotation database, the tree file and the\
+                                      metadata need to match perfectly. It seems it is not the\
                                       case for the input you provided (the metadata %s with the tree,\
                                       the tree %s with the database, the database %s with the metadata;\
-                                      HTH!)." % (S(contigs_in_metadata, contigs_in_tree),
-                                                   S(contigs_in_database, contigs_in_tree),
-                                                   S(contigs_in_metadata, contigs_in_database))
+                                      HTH!)." % (S(splits_in_metadata, splits_in_tree),
+                                                 S(splits_in_database, splits_in_tree),
+                                                 S(splits_in_metadata, splits_in_database))
 
         if self.additional_metadata_path:
-            contigs_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
-            contigs_only_in_additional_metadata = []
-            for contig_name in contigs_in_additional_metadata:
-                if contig_name not in contigs_in_tree:
-                    contigs_only_in_additional_metadata.append(contig_name)
-            if len(contigs_only_in_additional_metadata):
-                one_example = contigs_only_in_additional_metadata[-1]
-                num_all = len(contigs_only_in_additional_metadata)
+            splits_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
+            splits_only_in_additional_metadata = []
+            for split_name in splits_in_additional_metadata:
+                if split_name not in splits_in_tree:
+                    splits_only_in_additional_metadata.append(split_name)
+            if len(splits_only_in_additional_metadata):
+                one_example = splits_only_in_additional_metadata[-1]
+                num_all = len(splits_only_in_additional_metadata)
                 run.warning("Some of the contigs in your addtional metadata file does not\
                             appear to be in anywhere else. Additional metadata file is not\
                             required to list all contigs (which means, there may be contigs\
