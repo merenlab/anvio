@@ -10,7 +10,7 @@ This is going to be very brief and simple, but don't hesitate to send me your qu
 
 PaPi has some dependencies, some of which will be taken care of the installer. There are two you need to make sure you have installed:
 
-* [Prodigal](http://prodigal.ornl.gov/) (go to your terminal, type `prodigal` if you get an error, you need to install it). Here is a quick way to install it:
+* [Prodigal](http://prodigal.ornl.gov/) (go to your terminal, type `prodigal` if you get an error, you need to install it). Here is a quick way to install it (the first line will not work if you don't have wget, but you can get wget installed esily typing `sudo port install wget` if you are using MacPorts system on your Mac computer):
 
 <div style="padding-left:30px">
 <pre>
@@ -32,8 +32,9 @@ First get the codebase:
 
     git clone https://github.com/meren/PaPi.git
 
-Then go into the PaPi directory, and type this:
+Then go into the PaPi directory, and then run the installation:
 
+	cd PaPi
 	sudo python setup.py install
 
 If you want to update your installation, you are going to need to run these commands from within the PaPi directory:
@@ -57,8 +58,8 @@ All fine? Perfect!
 
 To run PaPi you need these files:
 
-* __A FASTA file__ of your contigs (lets call it `contigs.fa`)
-* And __BAM files__ for your samples (lets say you have two of them for your samples `X` and `Y`, `X-raw.bam` and `Y-raw.bam`.
+* __A FASTA file__ of your contigs. I will call it `contigs.fa` throughout this manual.
+* And __BAM files__ for your samples. Let's say, for the sake of brevity, you have two samples in your analysis, `X` and `Y`, and the BAM files for these samples are named `X-raw.bam` and `Y-raw.bam`.
 
 Contig names in `contigs.fa` must match names found in your bam files. To make sure that is the case, do this:
 
@@ -104,7 +105,7 @@ If you have to re-create the annotation database for some reason, you can use th
 
 PaPi can do wonders with HMM models. To decorate your annotation database with hits from standard HMM models (which, at this point, constitute published single-copy gene collections), run this command:
 
-    papi-populate-search-tables annotation.db
+    papi-populate-search-table annotation.db
 
 ### Storing CONCOCT results
 
