@@ -109,14 +109,14 @@ class BAMProfiler:
 
         self.progress.update('Initializing the annotation database ...')
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
-        self.split_length = int(annotation_db.db.get_meta_value('split_length'))
-        self.annotation_hash = annotation_db.db.get_meta_value('annotation_hash')
+        self.split_length = int(annotation_db.meta['split_length'])
+        self.annotation_hash = annotation_db.meta['annotation_hash']
         annotation_db.disconnect()
 
         self.progress.update('Creating a new single profile database with annotation hash "%s" ...' % self.annotation_hash)
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
 
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path)
 
         meta_values = {'db_type': 'profile',
                        'sample_id': self.sample_id,
@@ -174,7 +174,7 @@ class BAMProfiler:
         self.generate_gene_coverages_table()
 
         # here we store both metadata and TNF information into the database:
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet=True)
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
         profile_db.disconnect()
 
@@ -369,7 +369,7 @@ class BAMProfiler:
             raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
 
         # store num reads mapped for later use.
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet=True)
         profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
         profile_db.disconnect()
 
@@ -530,7 +530,7 @@ class BAMProfiler:
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
 
-            profile_db = annotation.ProfileDatabase(self.profile_db_path, t.profile_db_version, quiet=True)
+            profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet=True)
             profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, db_entries)
             profile_db.disconnect()
 

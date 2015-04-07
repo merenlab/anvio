@@ -98,7 +98,7 @@ class InputHandler:
 
         if self.args.runinfo:
             profiling_split_length = int(self.runinfo['split_length'])
-            annotation_split_length = int(annotation_db.db.get_meta_value('split_length'))
+            annotation_split_length = int(annotation_db.meta['split_length'])
             if profiling_split_length != annotation_split_length:
                 raise utils.ConfigError, "The split length (-L) used to profile these merged runs (which is '%s') seem\
                                           to differ from the split length used to generate %s (which is\
@@ -132,7 +132,7 @@ class InputHandler:
             else:
                 self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
 
-        genes_annotation_source = annotation_db.db.get_meta_value('genes_annotation_source')
+        genes_annotation_source = annotation_db.meta['genes_annotation_source']
         run.info('Annotation Database', 'Initialized: %s (v. %s) (gene annotations via "%s")' % (self.annotation_db_path,
                                                                                                  annotation_db.db.version,
                                                                                                  genes_annotation_source))

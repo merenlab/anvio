@@ -183,7 +183,7 @@ class MultipleRuns:
 
         # make sure annotation hash that is common across runs is also identical to the annotation database
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path, quiet = True)
-        annotation_db_hash = annotation_db.db.get_meta_value('annotation_hash')
+        annotation_db_hash = annotation_db.meta['annotation_hash']
         annotation_db.disconnect()
 
         if list(hashes_for_profile_dbs)[0] != annotation_db_hash:
@@ -231,7 +231,7 @@ class MultipleRuns:
         for runinfo in self.merged_sample_runinfos.values():
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
 
-            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, __version__, quiet = True)
+            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, quiet = True)
             sample_variable_positions_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_positions_table_name, tables.variable_positions_table_structure)
             sample_profile_db.disconnect()
 
@@ -253,7 +253,7 @@ class MultipleRuns:
             sample_id = runinfo['sample_id']
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
 
-            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, __version__, quiet = True)
+            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, quiet = True)
             sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
             for g in sample_gene_profiles.values():
                 gene_coverages_table.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
@@ -271,6 +271,7 @@ class MultipleRuns:
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
             sample_profile_db = PaPi.db.DB(sample_profile_db_path, __version__)
             num_reads_mapped_per_sample[runinfo['sample_id']] = int(sample_profile_db.get_meta_value('total_reads_mapped'))
+            sample_profile_db.disconnect()
 
         smallest_sample_size = min(num_reads_mapped_per_sample.values())
 
@@ -292,7 +293,7 @@ class MultipleRuns:
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
 
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path)
 
         self.annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         meta_values = {'db_type': 'profile',
@@ -397,7 +398,7 @@ class MultipleRuns:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating metadata tables')
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
+        profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet = True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
                 self.progress.update('Processing %s for %s ...' % (essential_field, target))
@@ -449,7 +450,7 @@ class MultipleRuns:
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
 
-            profile_db = annotation.ProfileDatabase(self.profile_db_path, __version__, quiet = True)
+            profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet = True)
             profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
             profile_db.disconnect()
 
