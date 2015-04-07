@@ -40,12 +40,32 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path):
+    annotation_db = AnnotationDatabase(annotation_db_path)
+    profile_db = ProfileDatabase(profile_db_path)
+
+    a_hash = annotation_db.meta['annotation_hash']
+    p_hash = profile_db.meta['annotation_hash']
+    merged = profile_db.meta['merged']
+
+    annotation_db.disconnect()
+    profile_db.disconnect()
+
+    if a_hash != p_hash:
+        raise ConfigError, 'The annotation database and the profile database does not\
+                            seem to be compatible. More specifically, this annotation\
+                            database is not the one that was used when %s generated\
+                            this profile database.'\
+                                % 'papi-merge' if merged else 'papi-profile'
+
+    return True
+
+
 class ProfileDatabase:
     """To create an empty profile database and/or access one."""
-    def __init__(self, db_path, version, run=run, progress=progress, quiet = True):
+    def __init__(self, db_path, run=run, progress=progress, quiet = True):
         self.db = None
         self.db_path = db_path
-        self.version = version
 
         self.run = run
         self.progress = progress
@@ -56,10 +76,12 @@ class ProfileDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            self.db = db.DB(self.db_path, self.version)
+            self.db = db.DB(self.db_path, t.profile_db_version)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
-            self.run.info('Samples', self.db.get_meta_value('samples'), quiet = self.quiet)
+            self.run.info('Samples', self.meta['samples'], quiet = self.quiet)
         else:
             self.db = None
 
@@ -74,7 +96,7 @@ class ProfileDatabase:
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
-        self.db = db.DB(self.db_path, self.version, new_database = True)
+        self.db = db.DB(self.db_path, t.profile_db_version, new_database = True)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -104,18 +126,21 @@ class AnnotationDatabase:
         self.progress = progress
         self.quiet = quiet
 
+        self.meta = {}
         self.init()
 
 
     def init(self):
         if os.path.exists(self.db_path):
             self.db = db.DB(self.db_path, t.annotation_db_version)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             self.run.info('Annotation database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
-            self.run.info('Number of contigs', self.db.get_meta_value('num_contigs'), quiet = self.quiet)
-            self.run.info('Number of splits', self.db.get_meta_value('num_splits'), quiet = self.quiet)
-            self.run.info('Total number of nucleotides', self.db.get_meta_value('total_length'), quiet = self.quiet)
-            self.run.info('Split length', self.db.get_meta_value('split_length'), quiet = self.quiet)
+            self.run.info('Number of contigs', self.meta['num_contigs'], quiet = self.quiet)
+            self.run.info('Number of splits', self.meta['num_splits'], quiet = self.quiet)
+            self.run.info('Total number of nucleotides', self.meta['total_length'], quiet = self.quiet)
+            self.run.info('Split length', self.meta['split_length'], quiet = self.quiet)
         else:
             self.db = None
 
@@ -322,7 +347,7 @@ class TableForVariability(Table):
 
 
     def store(self):
-        profile_db = ProfileDatabase(self.db_path, self.version)
+        profile_db = ProfileDatabase(self.db_path)
         profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
         profile_db.disconnect()
 
@@ -363,7 +388,7 @@ class TableForGeneCoverages(Table):
 
 
     def store(self):
-        profile_db = ProfileDatabase(self.db_path, self.version)
+        profile_db = ProfileDatabase(self.db_path)
         db_entries = [tuple([self.next_id(t.gene_coverages_table_name)] + [gene[h] for h in t.gene_coverages_table_structure[1:]]) for gene in self.genes]
         profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_coverages_table_name, db_entries)
         profile_db.disconnect()
@@ -492,7 +517,7 @@ class TablesForGenes(Table):
         self.splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
 
         # test whether there are already genes tables populated
-        genes_annotation_source = annotation_db.db.get_meta_value('genes_annotation_source')
+        genes_annotation_source = annotation_db.meta['genes_annotation_source']
         if genes_annotation_source:
             self.run.warning('Previous genes annotation data from "%s" will be replaced with the incoming data' % parser)
             annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_contigs_table_name))
