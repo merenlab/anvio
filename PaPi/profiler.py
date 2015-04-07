@@ -134,14 +134,17 @@ class BAMProfiler:
 
         self.set_sample_id()
 
-        if not self.list_contigs_and_exit:
-            self.init_dirs_and_dbs()
+        if self.list_contigs_and_exit:
+            self.list_contigs()
+            sys.exit()
+
+        self.init_dirs_and_dbs()
 
         # we will set up things here so the information in the annotation_db
         # can be utilized directly from within the contigs for loop. contig to
         # gene associations will be stored in self.genes_in_contigs dictionary for
         # fast access.
-        if self.annotation_db_path and not self.list_contigs_and_exit:
+        if self.annotation_db_path:
             self.populate_genes_in_contigs_dict()
 
         self.run.info('profiler_version', t.profile_db_version)
@@ -292,11 +295,6 @@ class BAMProfiler:
         self.run.info('profile_loaded_from', self.serialized_profile_path)
         self.run.info('num_contigs', pp(len(self.contigs)))
 
-        if self.list_contigs_and_exit:
-            for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
-            sys.exit()
-
         if self.contig_names_of_interest:
             contigs_to_discard = set()
             for contig in self.contigs:
@@ -325,6 +323,35 @@ class BAMProfiler:
         self.check_contigs()
 
 
+    def list_contigs(self):
+        if self.input_file_path:
+            self.progress.new('Init')
+            self.progress.update('Reading BAM File')
+            self.bam = pysam.Samfile(self.input_file_path, 'rb')
+            self.progress.end()
+
+            self.contig_names = self.bam.references
+            self.contig_lenghts = self.bam.lengths
+
+            utils.check_contig_names(self.contig_names)
+
+            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
+                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+
+        else:
+            self.progress.new('Init')
+            self.progress.update('Reading serialized profile')
+            self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
+            self.progress.end()
+
+            self.run.info('profile_loaded_from', self.serialized_profile_path)
+            self.run.info('num_contigs', pp(len(self.contigs)))
+
+            for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
+                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+
+
+
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
@@ -333,11 +360,6 @@ class BAMProfiler:
 
         self.contig_names = self.bam.references
         self.contig_lenghts = self.bam.lengths
-
-        if self.list_contigs_and_exit:
-            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
-            sys.exit()
 
         utils.check_contig_names(self.contig_names)
 
