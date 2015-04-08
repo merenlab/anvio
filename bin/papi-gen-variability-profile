@@ -1,0 +1,162 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Fetches information from the variable positions table"""
+
+import argparse
+
+import PaPi.tables as t
+import PaPi.utils as utils
+import PaPi.terminal as terminal
+import PaPi.annotation as annotation
+import PaPi.filesnpaths as filesnpath
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The PaPi Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = t.profile_db_version
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
+pp = terminal.pretty_print
+progress = terminal.Progress()
+run = terminal.Run(width = 30)
+
+
+class VariablePositions:
+    def __init__(self, args = None):
+        self.samples_of_interest = set([])
+        self.splits_of_interest = set([])
+        self.min_ratio = 0
+        self.profile_db_path = None
+        self.annotation_db_path = None
+        self.output_file_path = None
+
+        if args:
+            self.process_cmd_line_args(args)
+
+        self.variable_positions_table = {} 
+        self.unique_pos_identifier = 0
+        self.split_name_position_dict = {}
+
+
+    def process_cmd_line_args(self, args):
+        if args.splits_of_interest:
+            filesnpath.is_file_exists(args.splits_of_interest)
+            self.splits_of_interest = set([c.strip() for c in open(args.splits_of_interest).readlines()])
+
+        if args.samples_of_interest:
+            filesnpath.is_file_exists(args.samples_of_interest)
+            self.samples_of_interest = set([s.strip() for s in open(args.samples_of_interest).readlines()])
+
+        self.min_ratio = int(args.min_ratio)
+        self.profile_db_path = args.profile_db
+        self.annotation_db_path = args.annotation_db
+
+        if args.output:
+            self.output_file_path = args.output
+            filesnpath.is_output_file_writable(self.output_file_path)
+
+
+    def init(self):
+        if not self.profile_db_path:
+            raise utils.ConfigError, 'You need to provide a profile database.'
+
+        if not self.annotation_db_path:
+            raise utils.ConfigError, 'You need to provide an annotation database.'
+
+        filesnpath.is_file_exists(self.annotation_db_path)
+        filesnpath.is_file_exists(self.profile_db_path)
+
+        annotation.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
+
+        profile_db = annotation.ProfileDatabase(self.profile_db_path)
+        self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
+        profile_db.disconnect()
+
+        annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
+        self.splits_info_table = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        annotation_db.disconnect()
+
+        self.sample_ids_in_db = set([e['sample_id'] for e in self.variable_positions_table.values()])
+        self.num_splits_in_db = len(set([e['split_name'] for e in self.variable_positions_table.values()]))
+
+        run.info('Variable Positions', '%s positions in %s splits across %s samples'\
+                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids_in_db))))
+        run.info('Min n2/n1 ratio', args.min_ratio)
+
+        self.filter_variable_positions_table()
+
+
+    def filter_variable_positions_table(self):
+        run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids_in_db)))
+
+        if self.samples_of_interest:
+            run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
+
+        if self.splits_of_interest:
+            run.info('Num splits of interest', pp(len(self.splits_of_interest)))
+
+        entry_ids_to_remove = set([])
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            if self.splits_of_interest and v['split_name'] not in self.splits_of_interest:
+                entry_ids_to_remove.add(entry_id)
+            if self.samples_of_interest and v['sample_id'] not in self.samples_of_interest:
+                entry_ids_to_remove.add(entry_id)
+
+        for entry_id in entry_ids_to_remove:
+            self.variable_positions_table.pop(entry_id)
+
+
+    def get_unique_pos_identifier(self, split_name, pos):
+        key = '_'.join([split_name, str(pos)])
+
+        if key in self.split_name_position_dict:
+            return self.split_name_position_dict[key]
+        else:
+            self.split_name_position_dict[key] = self.unique_pos_identifier
+            self.unique_pos_identifier += 1
+            return self.split_name_position_dict[key]
+
+
+    def report(self):
+        # set the order
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            v['order'] = self.get_unique_pos_identifier(v['split_name'], v['pos'])
+            v['parent'] = self.splits_info_table[v['split_name']]['parent']
+
+        new_structure = [t.variable_positions_table_structure[0]] + ['order'] + t.variable_positions_table_structure[1:] + ['parent']
+        utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
+        run.info('Num positions reported', pp(len(self.variable_positions_table)))
+        run.info('Output File', args.output) 
+
+
+##############################################################################
+
+parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
+parser.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
+                    help = 'Annotation database.')
+parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,\
+                    help = 'Profile database.')
+parser.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
+                    help = 'List of splits to analyze.')
+parser.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
+                    help = 'List of samples to retain. If not declared, all samples are used.')
+parser.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
+                    help = 'Each split may have one or more variable positions. What is the maximum number of positons\
+                            to report from each split is described via this paramter.')
+parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
+                    help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
+parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
+args = parser.parse_args()
+
+
+variable_positions = VariablePositions(args)
+variable_positions.init()
+variable_positions.report()
+
