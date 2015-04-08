@@ -18,12 +18,12 @@ import argparse
 from collections import Counter
 from numpy import log2 as log
 
-
 import PaPi.tables as t
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.annotation as annotation
 
+pp = terminal.pretty_print
 progress = terminal.Progress()
 run = terminal.Run(width = 30)
 
@@ -147,7 +147,7 @@ class ContigVariability:
 
 
     def text_report(self):
-        run.warning('', header = split_name, lc = 'crimson')
+        run.warning('', lc = 'crimson')
         for pos in self.positions_selected:
             run.info('%d (entropy: %f)' % (pos, self.positions_dict[pos]['entropy']), None, header = True)
             for layer_name in self.layer_names:
@@ -158,12 +158,49 @@ class ContigVariability:
 
 
 class VariabilityWrapper:
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         self.samples_dict = None
         self.splits = []
         self.split_positions = {}
         self.layer_names = []
         self.units = []
+
+    def analyze(self):
+        run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
+        summary_index = dictio.read_serialized_object(args.summary_dict)
+        num_positions_from_each_split = args.num_positions_from_each_split
+        min_scatter = args.minimum_scatter
+        
+        splits = [c.strip() for c in open(args.splits_of_interest).readlines()]
+        num_splits = len(splits)
+        run.info('Splits', '%d splits found' % (num_splits))
+        
+        annotation_db = annotation.AnnotationDatabase(args.annotation_db)
+        splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        annotation_db.disconnect()
+
+
+        progress.new('Analyzing splits')
+        for i in range(0, num_splits):
+            split_name = splits[i]
+            progress.update('%d of %d' % (i + 1, num_splits))
+            d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[split_name]))
+
+            parent = splits_info[split_name]['parent']
+            start = splits_info[split_name]['start']
+            end = splits_info[split_name]['end']
+
+            split_sequence = contig_sequences[parent]['sequence'][start:end]
+
+            w.add_split(split_name, d, split_sequence, num_positions_from_each_split)
+
+        progress.update('Generating output ...')
+        w.create_TAB_delim_file(args.output, min_scatter)
+        progress.end()
+        run.info('Output matrix', args.output)
+
 
     def add_split(self, split_name, split_data, split_sequence, num_positions_from_each_split = 2):
         v = ContigVariability(split_name, split_data, split_sequence, num_positions_from_each_split)
@@ -174,7 +211,7 @@ class VariabilityWrapper:
 
         # create an empty samples_dict
         if not self.samples_dict:
-            self.samples_dict = {}
+            self.samples_dict ={}
             for layer_name in v.layer_names:
                 self.samples_dict[layer_name] = {}
             self.layer_names = v.layer_names
@@ -224,11 +261,17 @@ class VariabilityWrapper:
 parser = argparse.ArgumentParser(description='Generate Variability Matrix')
 parser.add_argument('summary_dict', metavar = 'SUMMARY_DICT', default = None,
                     help = 'Summary file')
-parser.add_argument('splits', help = 'List of splits to work with', metavar = "SPLITS")
-parser.add_argument('annotation_db', help = 'Annotation database.', metavar = "ANNOTATION_DB")
+parser.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
+                    help = 'Annotation database.')
+parser.add_argument('-s', '--splits-of-interest', metavar = "SPLITS", required = True,\
+                    help = 'List of splits to analyze.')
+parser.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
+                    help = 'List of samples to retain. If not declared, all samples are used.')
 parser.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
                     help = 'Each split may have one or more variable positions. What is the maximum number of positons\
                             to report from each split is described via this paramter.')
+parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
+                    help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
 parser.add_argument('-m', '--minimum-scatter', type=int, default = 1,
                     help = 'This is tricky. If you have N samples in your dataset, a given variable position x in one\
                             of your splits can split your N samples into t groups based on the identity of the\
@@ -248,37 +291,5 @@ parser.add_argument('-o', '--output', type=str, default = 'variability.txt', hel
 args = parser.parse_args()
 
 
-run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
-summary_index = dictio.read_serialized_object(args.summary_dict)
-num_positions_from_each_split = args.num_positions_from_each_split
-min_scatter = args.minimum_scatter
-
-splits = [c.strip() for c in open(args.splits).readlines()]
-num_splits = len(splits)
-run.info('Splits', '%d splits found' % (num_splits))
-
-annotation_db = annotation.AnnotationDatabase(args.annotation_db)
-splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
-contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
-annotation_db.disconnect()
-
-w = VariabilityWrapper()
-
-progress.new('Analyzing splits')
-for i in range(0, num_splits):
-    split_name = splits[i]
-    progress.update('%d of %d' % (i + 1, num_splits))
-    d = dictio.read_serialized_object(os.path.join(run_files_path, summary_index[split_name]))
-
-    parent = splits_info[split_name]['parent']
-    start = splits_info[split_name]['start']
-    end = splits_info[split_name]['end']
-
-    split_sequence = contig_sequences[parent]['sequence'][start:end]
-
-    w.add_split(split_name, d, split_sequence, num_positions_from_each_split)
-
-progress.update('Generating output ...')
-w.create_TAB_delim_file(args.output, min_scatter)
-progress.end()
-run.info('Output matrix', args.output)
+w = VariabilityWrapper(args)
+w.analyze()
