@@ -525,7 +525,12 @@ class BAMProfiler:
             config_path = self.clustering_configs[config_name]
 
             config = ClusteringConfiguration(config_path, self.output_directory, version = t.profile_db_version, db_paths = self.database_paths)
-            newick = clustering.order_contigs_simple(config, progress = self.progress)
+
+            try:
+                newick = clustering.order_contigs_simple(config, progress = self.progress)
+            except Exception as e:
+                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
+                continue
 
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
