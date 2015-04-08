@@ -81,6 +81,7 @@ class Progress:
         self.pid = None
         self.verbose = verbose
         self.terminal_width = None
+        self.is_tty = sys.stdout.isatty()
 
         self.get_terminal_width()
         self.color_prefix = '\033[0;30m\033[46m'
@@ -93,7 +94,7 @@ class Progress:
         try:
             self.terminal_width = get_terminal_size()[0]
         except:
-            self.terminal_width = 80
+            self.terminal_width = 120
 
 
     def new(self, pid):
