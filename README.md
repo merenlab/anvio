@@ -177,6 +177,43 @@ Once the merging is done you can finally run the interactive interface:
 
     papi-interactive -r XY-MERGED/RUNINFO.cp -a annotation.db
 
+# Other examples
+
+## Exporting tables from databases
+
+You can export the information stored in any PaPi database using `papi-get-db-table-as-matrix`.
+
+You can see what tables are available in a given PaPi dataase,
+
+<pre>
+$ papi-get-db-table-as-matrix ANNOTATION.db --list-tables
+self
+contig_sequences
+kmer_contigs
+kmer_splits
+contigs_basic_info
+splits_basic_info
+hmm_hits_info
+hmm_hits_in_splits
+hmm_hits_in_contigs
+genes_in_contigs
+genes_in_splits_summary
+genes_in_splits
+collections_info
+collections_colors
+collections_of_contigs
+collections_of_splits
+</pre>
+
+And expert one of them:
+
+<pre>
+$ papi-get-db-table-as-matrix ANNOTATION.db -t hmm_hits_in_contigs
+Database .....................................: "ANNOTATION.db" has been initiated with its 16 tables.
+Table ........................................: "hmm_hits_in_contigs" has been read with 2 entries and 8 columns.
+Output .......................................: hmm_hits_in_contigs.txt
+</pre>
+
 
 ---
 
