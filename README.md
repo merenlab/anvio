@@ -186,7 +186,7 @@ You can export the information stored in any PaPi database using `papi-get-db-ta
 You can see what tables are available in a given PaPi dataase,
 
 <pre>
-$ papi-get-db-table-as-matrix ANNOTATION.db --list-tables
+$ papi-get-db-table-as-matrix ANNOTATION.db --list
 self
 contig_sequences
 kmer_contigs
@@ -205,7 +205,7 @@ collections_of_contigs
 collections_of_splits
 </pre>
 
-And expert one of them:
+And export one of them:
 
 <pre>
 $ papi-get-db-table-as-matrix ANNOTATION.db -t hmm_hits_in_contigs
@@ -213,6 +213,27 @@ Database .....................................: "ANNOTATION.db" has been initiat
 Table ........................................: "hmm_hits_in_contigs" has been read with 2 entries and 8 columns.
 Output .......................................: hmm_hits_in_contigs.txt
 </pre>
+
+You can also export only certain fileds from a table. To see what fields are available, use `--list` with a table:
+
+<pre>
+$ papi-get-db-table-as-matrix ANNOTATION.db -t hmm_hits_in_contigs --list
+Database .....................................: "ANNOTATION.db" has been initiated with its 16 tables.
+Table ........................................: "hmm_hits_in_contigs" has been read with 2 entries and 8 columns.
+Table columns ................................: "entry_id, source, contig, start, stop, gene_name, gene_id, e_value"
+</pre>
+
+Then you can specify which columns you would like to be exported from the table of interest like this:
+
+<pre>
+$ papi-get-db-table-as-matrix ANNOTATION.db -t hmm_hits_in_contigs --fields "contig, gene_name"
+Database .....................................: "ANNOTATION.db" has been initiated with its 16 tables.
+Table ........................................: "hmm_hits_in_contigs" has been read with 2 entries and 8 columns.
+Columns to report ............................: "contig, gene_name"
+Output .......................................: hmm_hits_in_contigs.txt
+</pre>
+
+This time `hmm_hits_in_contigs.txt` will contain only two of the columns you specified. 
 
 
 ---
