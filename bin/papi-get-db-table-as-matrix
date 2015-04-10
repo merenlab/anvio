@@ -3,12 +3,10 @@
 """Takes a database and a table name as parameters, stores the content as
 a TAB-delimited matrix."""
 
-import os
 import sys
 
 import PaPi.db as db
 import PaPi.utils as utils
-import PaPi.dictio as dictio
 import PaPi.filesnpaths as filesnpaths
 import PaPi.terminal as terminal
 
@@ -32,23 +30,37 @@ def main(args):
     database = db.DB(args.db_path, None, ignore_version=True)
     tables_in_database = database.get_table_names()
 
-    if args.list_tables:
+    if args.list and not args.table:
         for table in tables_in_database:
             print table
         sys.exit()
 
-    run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
 
     if not args.table:
         raise utils.ConfigError, "You must specify a table name."
 
     if args.table not in tables_in_database:
-        print args.table
         raise utils.ConfigError, "Table '%s' is not seem to be in this databse :/" % args.table
+
+    run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
 
     table_content = database.get_table_as_dict(args.table)
     table_columns = database.get_table_structure(args.table)
     run.info('Table', '"%s" has been read with %d entries and %d columns.' % (args.table, len(table_content), len(table_columns)))
+
+    if args.list:
+        run.info('Table columns', '"%s"' % ', '.join(table_columns))
+        sys.exit()
+
+    if args.fields:
+        fields_of_interest = [f.strip() for f in args.fields.split(',')]
+        table_columns = [f for f in table_columns if f in fields_of_interest]
+
+        if not len(table_columns):
+            raise utils.ConfigError, "None of the fields you are interested in are in the table header..." 
+
+        run.info('Columns to report', '"%s"' % ', '.join(table_columns))
+
 
     if not args.output:
         args.output = args.table + '.txt'
@@ -64,8 +76,13 @@ if __name__ == '__main__':
                         help = 'Database to read.')
     parser.add_argument('-t', '--table', default = None, metavar = 'TABLE',
                         help = 'Table name to export.')
-    parser.add_argument('-l', '--list-tables', action="store_true", default = False,
-                        help = 'Gives a list of tables in a database and quits.')
+    parser.add_argument('-l', '--list', action="store_true", default = False,
+                        help = 'Gives a list of tables in a database and quits. If a table is already declared\
+                                this time it lists all the fields in a given table, in case you would to export\
+                                only a specific list of fields from the table using --fields parameter.')
+    parser.add_argument('-f', '--fields', default = None, metavar = 'TABLE',
+                        help='Fields to report. USe --list parameter with a table name to see available\
+                                fields  You can list fields using this notation: --fields "field_1, field_2, ... field_N"')
     parser.add_argument('-o', '--output', type=str, default = None,
                         help = 'Output file path.')
 
