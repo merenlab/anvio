@@ -27,7 +27,7 @@ run = terminal.Run(width = 30)
 
 
 class VariablePositions:
-    def __init__(self, args = None):
+    def __init__(self, args = None, p=progress, r=run):
         self.samples_of_interest = set([])
         self.splits_of_interest = set([])
         self.min_ratio = 0
@@ -35,6 +35,9 @@ class VariablePositions:
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_file_path = None
+
+        self.progress = p
+        self.run = r
 
         if args:
             self.process_cmd_line_args(args)
@@ -75,57 +78,76 @@ class VariablePositions:
 
         annotation.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
 
+        self.progress.new('Init')
+
+        self.progress.update('Reading variable positions table ...')
         profile_db = annotation.ProfileDatabase(self.profile_db_path)
+        self.sample_ids_in_db = profile_db.samples
         self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
         profile_db.disconnect()
 
+        self.progress.update('Reading splits info table ...')
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
         self.splits_info_table = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        self.num_splits_in_db = len(self.splits_info_table)
         annotation_db.disconnect()
 
-        self.sample_ids_in_db = set([e['sample_id'] for e in self.variable_positions_table.values()])
-        self.num_splits_in_db = len(set([e['split_name'] for e in self.variable_positions_table.values()]))
+        self.progress.end()
 
-        run.info('Variable Positions', '%s positions in %s splits across %s samples'\
+        self.run.info('Variable Positions', '%s positions in %s splits across %s samples'\
                 % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids_in_db))))
-        run.info('Min n2/n1 ratio', args.min_ratio)
+        self.run.info('Min n2/n1 ratio', args.min_ratio)
 
         self.filter_variable_positions_table()
 
 
     def filter_variable_positions_table(self):
-        run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids_in_db)))
+        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids_in_db)))
 
         if self.samples_of_interest:
-            run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
+            self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
 
         if self.splits_of_interest:
-            run.info('Num splits of interest', pp(len(self.splits_of_interest)))
+            self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
 
-        entry_ids_to_remove = set([])
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
-            if self.splits_of_interest and v['split_name'] not in self.splits_of_interest:
-                entry_ids_to_remove.add(entry_id)
-            if self.samples_of_interest and v['sample_id'] not in self.samples_of_interest:
-                entry_ids_to_remove.add(entry_id)
-            if self.min_ratio and v['n2n1ratio'] < self.min_ratio:
-                entry_ids_to_remove.add(entry_id)
+        if self.min_occurrence > 1:
+            self.run.info('Min occurrence requested', self.min_occurrence)
 
-        for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+        self.progress.new('Filtering')
+        entry_ids_to_remove, counter = set([]), 0
 
-        # set unique identifiers
+        if self.splits_of_interest or self.samples_of_interest or self.min_ratio:
+            for entry_id in self.variable_positions_table:
+                if counter % 1000 == 0:
+                    self.progress.update('identifying entries to remove :: %s' % pp(counter))
+
+                counter += 1
+
+                v = self.variable_positions_table[entry_id]
+                if self.splits_of_interest and v['split_name'] not in self.splits_of_interest:
+                    entry_ids_to_remove.add(entry_id)
+                    continue
+                if self.samples_of_interest and v['sample_id'] not in self.samples_of_interest:
+                    entry_ids_to_remove.add(entry_id)
+                    continue
+                if self.min_ratio and v['n2n1ratio'] < self.min_ratio:
+                    entry_ids_to_remove.add(entry_id)
+                    continue
+
+            self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
+            for entry_id in entry_ids_to_remove:
+                self.variable_positions_table.pop(entry_id)
+
+        self.progress.update('setting unique identifiers to track split/position pairs across samples ...')
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             v['unique_position_id'] = '_'.join([v['split_name'], str(v['pos'])])
 
         if self.min_occurrence == 1:
+            self.progress.end()
             return
 
-        run.info('Min occurrence requested', self.min_occurrence)
-
-        # count occurrences of each position across samples
+        self.progress.update('counting occurrences of each position across samples ...')
         unique_position_id_occurrences = {}
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
@@ -134,15 +156,18 @@ class VariablePositions:
             else:
                 unique_position_id_occurrences[v['unique_position_id']] = 1
 
-        # identify entry_ids that occur in less than self.min_occurrence times
+        self.progress.update('identifying entries that occurr in less than %d samples ...' % (self.min_occurrence))
         entry_ids_to_remove = set([])
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
+        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
             self.variable_positions_table.pop(entry_id)
+
+        self.progress.end()
 
 
     def get_unique_pos_identification_number(self, unique_position_id):
@@ -155,16 +180,21 @@ class VariablePositions:
 
 
     def report(self):
-        # set unique_pos_identifier
+        self.progress.new('Reporting')
+        self.progress.update('re-setting unique identifiers to track split/position pairs across samples')
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
             v['parent'] = self.splits_info_table[v['split_name']]['parent']
 
         new_structure = [t.variable_positions_table_structure[0]] + ['unique_pos_identifier'] + t.variable_positions_table_structure[1:] + ['parent']
+
+        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
         utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
-        run.info('Num positions reported', pp(len(self.variable_positions_table)))
-        run.info('Output File', args.output) 
+        self.progress.end()
+
+        self.run.info('Num positions reported', pp(len(self.variable_positions_table)))
+        self.run.info('Output File', args.output) 
 
 
 ##############################################################################
