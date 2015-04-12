@@ -59,6 +59,7 @@ class ProfileDatabase:
             self.db = db.DB(self.db_path, t.profile_db_version)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+            self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
             self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
             self.run.info('Samples', self.meta['samples'], quiet = self.quiet)
