@@ -35,6 +35,7 @@ class VariablityTestFactory:
 
     def curve(self, coverage, b=3, m=1.45, c=0.05):
         # https://www.desmos.com/calculator/qwocua4zi5
+        # and/or https://i.imgur.com/zd04pui.png
         y = ((1 / b) ** ((coverage ** (1/b)) - m)) + c
         return y
 
@@ -67,6 +68,12 @@ class ColumnProfile:
             return
 
         n2n1ratio = n2_tuple[1] / n1_tuple[1]
-        if test_class and n2n1ratio > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
+
+        if test_class:
+            if n2n1ratio > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
+                self.profile['competing_nts'] = competing_nts
+                self.profile['n2n1ratio'] = n2n1ratio
+        else:
+            # if there is no test class, just report everything.
             self.profile['competing_nts'] = competing_nts
             self.profile['n2n1ratio'] = n2n1ratio

@@ -44,6 +44,9 @@ class Contig:
         self.abundance = 0.0
         self.coverage = Coverage()
 
+        self.min_coverage_for_variability = 10
+        self.report_variability_full = False
+
 
     def get_metadata_dict(self):
         d = {'std_coverage': self.coverage.std,
@@ -74,7 +77,9 @@ class Contig:
         for split in self.splits:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
                                  % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
-            split.auxiliary = Auxiliary(split, bam)
+
+            split.auxiliary = Auxiliary(split, bam, min_coverage = self.min_coverage_for_variability,
+                                        report_full = self.report_variability_full)
 
 
 class Split:
@@ -104,9 +109,10 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, min_coverage = 10):
+    def __init__(self, split, bam, min_coverage = 10, report_full = False):
         self.rep_seq = ''
         self.min_coverage = min_coverage
+        self.report_full = report_full
         self.split = split
         self.column_profile = self.split.column_profiles
         self.variability_score = 0.0
@@ -133,7 +139,7 @@ class Auxiliary:
                                coverage = coverage,
                                split_name = self.split.name,
                                pos = pileupcolumn.pos - self.split.start,
-                               test_class = variability_test_class).profile
+                               test_class = None if self.report_full else variability_test_class).profile
 
             if cp['n2n1ratio']:
                 ratios.append((cp['n2n1ratio'], cp['coverage']), )

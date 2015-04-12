@@ -44,9 +44,11 @@ class BAMProfiler:
         self.output_directory = None 
         self.list_contigs_and_exit = None 
         self.min_contig_length = 10000 
-        self.min_mean_coverage = 10
+        self.min_mean_coverage = 0
+        self.min_coverage_for_variability = 10 # if a nucleotide position is covered less than this, don't bother
         self.contig_names_of_interest = None
         self.contigs_shall_be_clustered = False
+        self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
 
         if args:
             self.args = args
@@ -57,10 +59,12 @@ class BAMProfiler:
             self.list_contigs_and_exit = args.list_contigs
             self.min_contig_length = args.min_contig_length
             self.min_mean_coverage = args.min_mean_coverage
+            self.min_coverage_for_variability = args.min_coverage_for_variability
             self.contigs_shall_be_clustered = args.cluster_contigs
             self.number_of_threads = 4 
             self.no_trehading = True
             self.sample_id = args.sample_id
+            self.report_variability_full = args.report_variability_full
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
@@ -94,18 +98,21 @@ class BAMProfiler:
             raise utils.ConfigError, "You can not run profiling without an annotation database. You can create\
                                       one using 'papi-gen-annotation-database'. Not sure how? Please see the\
                                       user manual."
-        self.progress.new('Initializing')
-
-        self.progress.update('Creating the output directory ...')
 
         Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
-
         if not self.output_directory:
             self.output_directory = Absolute(self.input_file_path) + '-PAPI_PROFILE'
         else:
             self.output_directory = Absolute(self.output_directory)
-        filesnpaths.gen_output_directory(self.output_directory, self.progress)
+        if os.path.exists(self.output_directory):
+            raise utils.ConfigError, "The output directory ('%s') already exists. PaPi does not like oerwriting\
+                                      stuff. Please either remove it, or change your output destination."\
+                                                % self.output_directory
 
+        self.progress.new('Initializing')
+
+        self.progress.update('Creating the output directory ...')
+        filesnpaths.gen_output_directory(self.output_directory, self.progress)
 
         self.progress.update('Initializing the annotation database ...')
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
@@ -115,7 +122,6 @@ class BAMProfiler:
 
         self.progress.update('Creating a new single profile database with annotation hash "%s" ...' % self.annotation_hash)
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
-
         profile_db = annotation.ProfileDatabase(self.profile_db_path)
 
         meta_values = {'db_type': 'profile',
@@ -123,6 +129,8 @@ class BAMProfiler:
                        'samples': self.sample_id,
                        'merged': False,
                        'contigs_clustered': self.contigs_shall_be_clustered,
+                       'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'report_variability_full': self.report_variability_full,
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
 
@@ -158,6 +166,8 @@ class BAMProfiler:
         self.run.info('min_contig_length', self.min_contig_length)
         self.run.info('min_mean_coverage', self.min_mean_coverage)
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
+        self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
+        self.run.info('report_variability_full', self.report_variability_full)
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -439,6 +449,8 @@ class BAMProfiler:
             contig = Contig(contig_name)
             contig.length = self.contig_lenghts[i]
             contig.split_length = self.split_length
+            contig.min_coverage_for_variability = self.min_coverage_for_variability
+            contig.report_variability_full = self.report_variability_full
 
             self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
                                                                       i + 1,
@@ -555,6 +567,8 @@ class BAMProfiler:
             raise utils.ConfigError, "No such file: '%s'" % self.input_file_path
         if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
             raise utils.ConfigError, "No such file: '%s'" % self.serialized_profile_path
+        if not self.min_coverage_for_variability >= 0:
+            raise utils.ConfigError, "Minimum coverage for variability must be 0 or larger."
         if not self.min_mean_coverage >= 0:
             raise utils.ConfigError, "Minimum mean coverage must be 0 or larger."
         if not self.min_contig_length >= 0:
