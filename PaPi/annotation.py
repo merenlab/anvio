@@ -40,27 +40,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path):
-    annotation_db = AnnotationDatabase(annotation_db_path)
-    profile_db = ProfileDatabase(profile_db_path)
-
-    a_hash = annotation_db.meta['annotation_hash']
-    p_hash = profile_db.meta['annotation_hash']
-    merged = profile_db.meta['merged']
-
-    annotation_db.disconnect()
-    profile_db.disconnect()
-
-    if a_hash != p_hash:
-        raise ConfigError, 'The annotation database and the profile database does not\
-                            seem to be compatible. More specifically, this annotation\
-                            database is not the one that was used when %s generated\
-                            this profile database.'\
-                                % 'papi-merge' if merged else 'papi-profile'
-
-    return True
-
-
 class ProfileDatabase:
     """To create an empty profile database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet = True):
@@ -76,6 +55,7 @@ class ProfileDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
+            is_profile_db(self.db_path)
             self.db = db.DB(self.db_path, t.profile_db_version)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
@@ -132,6 +112,7 @@ class AnnotationDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
+            is_annotation_db(self.db_path)
             self.db = db.DB(self.db_path, t.annotation_db_version)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
@@ -714,4 +695,64 @@ class GenesInSplits:
                                                'stop_in_split': stop_in_split,
                                                'percentage_in_split': percentage_in_split}
         self.entry_id += 1
+
+
+
+####################################################################################################
+#
+#     HELPER FUNCTIONS
+#
+####################################################################################################
+
+
+def is_annotation_db(db_path):
+    if get_db_type(db_path) != 'annotation':
+        raise ConfigError, '"%s" is not a PaPi annotation database.' % db_path
+
+
+def is_profile_db(db_path):
+    if get_db_type(db_path) != 'profile':
+        raise ConfigError, '"%s" is not a PaPi profile database.' % db_path
+
+
+def get_db_type(db_path):
+    try:
+        database = db.DB(db_path, None, ignore_version = True)
+    except:
+        raise ConfigError, 'Are you sure "%s" is a database file? Because, you know, probably\
+                            it is not at all..' % db_path
+
+    tables = database.get_table_names()
+    if 'self' not in tables:
+        database.disconnect()
+        raise ConfigError, '"%s" does not seem to be a PaPi database...' % db_path
+
+    db_type = database.get_meta_value('db_type')
+    database.disconnect()
+
+    return db_type
+
+
+def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path):
+    is_annotation_db(annotation_db_path)
+    is_profile_db(profile_db_path)
+
+    annotation_db = AnnotationDatabase(annotation_db_path)
+    profile_db = ProfileDatabase(profile_db_path)
+
+    a_hash = annotation_db.meta['annotation_hash']
+    p_hash = profile_db.meta['annotation_hash']
+    merged = profile_db.meta['merged']
+
+    annotation_db.disconnect()
+    profile_db.disconnect()
+
+    if a_hash != p_hash:
+        raise ConfigError, 'The annotation database and the profile database does not\
+                            seem to be compatible. More specifically, this annotation\
+                            database is not the one that was used when %s generated\
+                            this profile database.'\
+                                % 'papi-merge' if merged else 'papi-profile'
+
+    return True
 
