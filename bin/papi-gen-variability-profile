@@ -31,6 +31,7 @@ class VariablePositions:
         self.samples_of_interest = set([])
         self.splits_of_interest = set([])
         self.min_ratio = 0
+        self.min_occurrence = 1
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_file_path = None
@@ -52,7 +53,8 @@ class VariablePositions:
             filesnpath.is_file_exists(args.samples_of_interest)
             self.samples_of_interest = set([s.strip() for s in open(args.samples_of_interest).readlines()])
 
-        self.min_ratio = int(args.min_ratio)
+        self.min_ratio = float(args.min_ratio)
+        self.min_occurrence = int(args.min_occurrence)
         self.profile_db_path = args.profile_db
         self.annotation_db_path = args.annotation_db
 
@@ -107,30 +109,59 @@ class VariablePositions:
                 entry_ids_to_remove.add(entry_id)
             if self.samples_of_interest and v['sample_id'] not in self.samples_of_interest:
                 entry_ids_to_remove.add(entry_id)
+            if self.min_ratio and v['n2n1ratio'] < self.min_ratio:
+                entry_ids_to_remove.add(entry_id)
+
+        for entry_id in entry_ids_to_remove:
+            self.variable_positions_table.pop(entry_id)
+
+        # set unique identifiers
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            v['unique_position_id'] = '_'.join([v['split_name'], str(v['pos'])])
+
+        if self.min_occurrence == 1:
+            return
+
+        run.info('Min occurrence requested', self.min_occurrence)
+
+        # count occurrences of each position across samples
+        unique_position_id_occurrences = {}
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            if unique_position_id_occurrences.has_key(v['unique_position_id']):
+                unique_position_id_occurrences[v['unique_position_id']] += 1
+            else:
+                unique_position_id_occurrences[v['unique_position_id']] = 1
+
+        # identify entry_ids that occur in less than self.min_occurrence times
+        entry_ids_to_remove = set([])
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
+                entry_ids_to_remove.add(entry_id)
 
         for entry_id in entry_ids_to_remove:
             self.variable_positions_table.pop(entry_id)
 
 
-    def get_unique_pos_identifier(self, split_name, pos):
-        key = '_'.join([split_name, str(pos)])
-
-        if key in self.split_name_position_dict:
-            return self.split_name_position_dict[key]
+    def get_unique_pos_identification_number(self, unique_position_id):
+        if unique_position_id in self.split_name_position_dict:
+            return self.split_name_position_dict[unique_position_id]
         else:
-            self.split_name_position_dict[key] = self.unique_pos_identifier
+            self.split_name_position_dict[unique_position_id] = self.unique_pos_identifier
             self.unique_pos_identifier += 1
-            return self.split_name_position_dict[key]
+            return self.split_name_position_dict[unique_position_id]
 
 
     def report(self):
-        # set the order
+        # set unique_pos_identifier
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
-            v['order'] = self.get_unique_pos_identifier(v['split_name'], v['pos'])
+            v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
             v['parent'] = self.splits_info_table[v['split_name']]['parent']
 
-        new_structure = [t.variable_positions_table_structure[0]] + ['order'] + t.variable_positions_table_structure[1:] + ['parent']
+        new_structure = [t.variable_positions_table_structure[0]] + ['unique_pos_identifier'] + t.variable_positions_table_structure[1:] + ['parent']
         utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
         run.info('Num positions reported', pp(len(self.variable_positions_table)))
         run.info('Output File', args.output) 
@@ -152,6 +183,8 @@ parser.add_argument('-n', '--num-positions-from-each-split', type=int, default =
                             to report from each split is described via this paramter.')
 parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
                     help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
+parser.add_argument('-x', '--min-occurrence', type=float, default = 1, metavar = 'NUM_SAMPLES',
+                    help = 'Minimum number of samples for a nucleotide position to be variable. Default is %(default)d.')
 parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
 args = parser.parse_args()
 
