@@ -2,10 +2,14 @@
 # -*- coding: utf-8
 """Fetches information from the variable positions table"""
 
+import os
+import sys
+import copy
 import argparse
 
 import PaPi.tables as t
 import PaPi.utils as utils
+import PaPi.dictio as dictio
 import PaPi.terminal as terminal
 import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpath
@@ -35,6 +39,7 @@ class VariablePositions:
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_file_path = None
+        self.quince_mode = False
 
         self.progress = p
         self.run = r
@@ -45,6 +50,9 @@ class VariablePositions:
         self.variable_positions_table = {} 
         self.unique_pos_identifier = 0
         self.split_name_position_dict = {}
+        self.summaries = None
+        self.contig_sequences = None
+        self.input_file_path = None
 
 
     def process_cmd_line_args(self, args):
@@ -60,6 +68,7 @@ class VariablePositions:
         self.min_occurrence = int(args.min_occurrence)
         self.profile_db_path = args.profile_db
         self.annotation_db_path = args.annotation_db
+        self.quince_mode = args.quince_mode
 
         if args.output:
             self.output_file_path = args.output
@@ -77,6 +86,7 @@ class VariablePositions:
         filesnpath.is_file_exists(self.profile_db_path)
 
         annotation.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
+        self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
         self.progress.new('Init')
 
@@ -90,6 +100,11 @@ class VariablePositions:
         annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
         self.splits_info_table = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
         self.num_splits_in_db = len(self.splits_info_table)
+        if self.quince_mode:
+            self.progress.update('Reading summaries ...')
+            self.summaries = dictio.read_serialized_object(os.path.join(self.input_file_path, 'SUMMARY.cp'))
+            self.progress.update('Reading contig sequences table ...')
+            self.contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
         annotation_db.disconnect()
 
         self.progress.end()
@@ -99,6 +114,11 @@ class VariablePositions:
         self.run.info('Min n2/n1 ratio', args.min_ratio)
 
         self.filter_variable_positions_table()
+
+        self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
+
+        if self.quince_mode: # will be very costly...
+            self.recover_base_frequencies_for_all_samples() 
 
 
     def filter_variable_positions_table(self):
@@ -163,6 +183,12 @@ class VariablePositions:
             if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
+        # just in case:
+        if len(entry_ids_to_remove) == len(self.variable_positions_table):
+            self.progress.end()
+            self.run.info_single('No variable positions left to work with. Quitting.', 'red', 1, 1)
+            sys.exit()
+
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
             self.variable_positions_table.pop(entry_id)
@@ -179,13 +205,80 @@ class VariablePositions:
             return self.split_name_position_dict[unique_position_id]
 
 
-    def report(self):
-        self.progress.new('Reporting')
+    def set_unique_pos_identification_numbers(self):
+        self.progress.new('Further processing')
         self.progress.update('re-setting unique identifiers to track split/position pairs across samples')
+
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
             v['parent'] = self.splits_info_table[v['split_name']]['parent']
+
+        self.progress.end()
+
+
+    def recover_base_frequencies_for_all_samples(self):
+        """this function populates variable_positions_table dict with entries from samples that have no
+           variation at nucleotide positions reported in the table"""
+
+        self.progress.new('Recovering base frequencies for all')
+
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids_in_db
+        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_info_table.keys())
+        next_available_entry_id = max(self.variable_positions_table.keys()) + 1
+
+        self.progress.update('creating a dicts to track missing base frequencies for each sample / split / pos')
+        split_pos_to_unique_pos_identifier = {}
+        splits_to_consider = {}
+        for split_name in splits_wanted:
+            splits_to_consider[split_name] = {}
+            split_pos_to_unique_pos_identifier[split_name] = {}
+
+        self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            p = v['pos']
+            d = splits_to_consider[v['split_name']]
+            u = split_pos_to_unique_pos_identifier[v['split_name']]
+
+            if d.has_key(p):
+                d[p].remove(v['sample_id'])
+            else:
+                d[p] = copy.deepcopy(samples_wanted)
+                d[p].remove(v['sample_id'])
+
+            if not u.has_key(p):
+                u[p] = v['unique_pos_identifier']
+
+        counter = 0
+        for split in splits_to_consider:
+            if counter % 100 == 0:
+                self.progress.update('accessing split summaries and updating variable positions dict :: %s' % pp(counter))
+            counter += 1
+
+            split_info = self.splits_info_table[split]
+            summary = dictio.read_serialized_object(os.path.join(self.input_file_path, self.summaries[split]))
+            for pos in splits_to_consider[split]:
+                parent_seq = self.contig_sequences[split_info['parent']]['sequence']
+                base_at_pos = parent_seq[split_info['start'] + pos]
+                for sample in splits_to_consider[split][pos]:
+                    self.variable_positions_table[next_available_entry_id] = {'parent': split_info['parent'],
+                                                                              'n2n1ratio': 0,
+                                                                              'consensus': base_at_pos,
+                                                                              'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
+                                                                              'pos': pos,
+                                                                              'coverage': summary[sample]['coverage'][pos],
+                                                                              'sample_id': sample,
+                                                                              'competing_nts': base_at_pos + base_at_pos,
+                                                                              'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
+                                                                              'split_name': split}
+                    self.variable_positions_table[next_available_entry_id][base_at_pos] = summary[sample]['coverage'][pos]
+                    next_available_entry_id += 1
+
+        self.progress.end()
+
+    def report(self):
+        self.progress.new('Reporting')
 
         new_structure = [t.variable_positions_table_structure[0]] + ['unique_pos_identifier'] + t.variable_positions_table_structure[1:] + ['parent']
 
@@ -215,6 +308,13 @@ parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RAT
                     help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
 parser.add_argument('-x', '--min-occurrence', type=float, default = 1, metavar = 'NUM_SAMPLES',
                     help = 'Minimum number of samples for a nucleotide position to be variable. Default is %(default)d.')
+parser.add_argument('--quince-mode', action='store_true', default=False,
+                    help = 'The default behavior is to report base frequencies of nucleotide positions only if there\
+                            is variation. It means, if there are 10 samples, and a given position in a contig is variable\
+                            in only one of them, there is no information about the rest of the samples. When this flag is\
+                            used, we go back to each sample, and report the base frequency of each position even if they\
+                            do not vary. It probably will take forever, and increase the file size dramatically, but it is\
+                            inevitable for some statistical approaches.')
 parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
 args = parser.parse_args()
 
