@@ -252,9 +252,8 @@ class VariablePositions:
 
         counter = 0
         for split in splits_to_consider:
-            if counter % 100 == 0:
-                self.progress.update('accessing split summaries and updating variable positions dict :: %s' % pp(counter))
             counter += 1
+            self.progress.update('accessing split summaries and updating variable positions dict :: %s' % pp(counter))
 
             split_info = self.splits_info_table[split]
             summary = dictio.read_serialized_object(os.path.join(self.input_file_path, self.summaries[split]))
