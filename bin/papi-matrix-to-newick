@@ -10,7 +10,6 @@
 #
 # Please read the COPYING file.
 
-import sys
 import argparse
 
 import PaPi.terminal as terminal

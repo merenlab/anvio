@@ -15,9 +15,9 @@ Please read the COPYING file.
 import os
 import sys
 
+import PaPi.dbops as dbops
 import PaPi.utils as utils
 import PaPi.terminal as terminal 
-import PaPi.annotation as annotation
 
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
@@ -46,7 +46,7 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    search_tables = annotation.TablesForSearches(args.annotation_db_path)
+    search_tables = dbops.TablesForSearches(args.annotation_db_path)
     search_tables.debug = args.debug
     search_tables.populate_search_tables(sources)
 

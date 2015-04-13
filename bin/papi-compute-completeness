@@ -17,8 +17,8 @@ import sys
 import argparse
 
 import PaPi.tables as t
+import PaPi.dbops as dbops
 import PaPi.terminal as terminal 
-import PaPi.annotation as annotation
 
 from PaPi.completeness import Completeness
 from PaPi.utils import ConfigError
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     splits_in_users_list = set([s.strip() for s in open(args.splits_txt).readlines() if s.strip() and not s.startswith('#')])
 
-    annotation_db = annotation.AnnotationDatabase(args.annotation_db)
+    annotation_db = dbops.AnnotationDatabase(args.annotation_db)
     splits_in_db = set(annotation_db.db.get_table_as_dict(t.splits_info_table_name).keys())
     annotation_db.disconnect()
 

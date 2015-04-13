@@ -17,9 +17,9 @@
 from collections import Counter
 
 import PaPi.tables as t
+import PaPi.dbops as dbops
 import PaPi.utils as utils
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 
 from PaPi.utils import ConfigError
 
@@ -30,7 +30,7 @@ progress = terminal.Progress()
 class Completeness:
     def __init__(self, annotation_db_path, source = None, run = run, progress = progress):
         # hi db
-        annotation_db = annotation.AnnotationDatabase(annotation_db_path)
+        annotation_db = dbops.AnnotationDatabase(annotation_db_path)
 
         # read info table to get what is available in the db
         info_table = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)

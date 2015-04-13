@@ -16,7 +16,6 @@ import sys
 
 import PaPi.tables as t
 import PaPi.terminal as terminal 
-import PaPi.annotation as annotation
 import PaPi.ccollections as ccollections
 
 from PaPi.utils import ConfigError

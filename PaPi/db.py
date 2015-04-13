@@ -10,7 +10,7 @@
 # Please read the COPYING file.
 
 """
-    Basic DB operations.
+    Low-level db operations.
 """
 
 import os

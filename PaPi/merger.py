@@ -7,10 +7,10 @@ The default client of this library is under bin/papi-merge"""
 import os
 import PaPi.contig
 import PaPi.utils as utils
+import PaPi.dbops as dbops
 import PaPi.tables as tables
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 import PaPi.constants as constants
 import PaPi.clustering as clustering
 import PaPi.filesnpaths as filesnpaths
@@ -182,7 +182,7 @@ class MultipleRuns:
                                           without an annotation database :/"
 
         # make sure annotation hash that is common across runs is also identical to the annotation database
-        annotation_db = annotation.AnnotationDatabase(self.annotation_db_path, quiet = True)
+        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path, quiet = True)
         annotation_db_hash = annotation_db.meta['annotation_hash']
         annotation_db.disconnect()
 
@@ -226,12 +226,12 @@ class MultipleRuns:
     def merge_variable_positions_tables(self):
         self.is_all_samples_have_it('variable_positions_table')
 
-        variable_positions_table = annotation.TableForVariability(self.profile_db_path, __version__, progress = self.progress)
+        variable_positions_table = dbops.TableForVariability(self.profile_db_path, __version__, progress = self.progress)
 
         for runinfo in self.merged_sample_runinfos.values():
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
 
-            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, quiet = True)
+            sample_profile_db = dbops.ProfileDatabase(sample_profile_db_path, quiet = True)
             sample_variable_positions_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_positions_table_name, tables.variable_positions_table_structure)
             sample_profile_db.disconnect()
 
@@ -246,14 +246,14 @@ class MultipleRuns:
         self.is_all_samples_have_it('gene_coverages_table')
 
         # create an instance from genes
-        gene_coverages_table = annotation.TableForGeneCoverages(self.profile_db_path, __version__, progress = self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, __version__, progress = self.progress)
 
         # fill "genes" instance from all samples
         for runinfo in self.merged_sample_runinfos.values():
             sample_id = runinfo['sample_id']
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
 
-            sample_profile_db = annotation.ProfileDatabase(sample_profile_db_path, quiet = True)
+            sample_profile_db = dbops.ProfileDatabase(sample_profile_db_path, quiet = True)
             sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
             for g in sample_gene_profiles.values():
                 gene_coverages_table.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
@@ -293,7 +293,7 @@ class MultipleRuns:
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
 
-        profile_db = annotation.ProfileDatabase(self.profile_db_path)
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         self.annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         meta_values = {'db_type': 'profile',
@@ -397,7 +397,7 @@ class MultipleRuns:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating metadata tables')
-        profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet = True)
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
                 self.progress.update('Processing %s for %s ...' % (essential_field, target))
@@ -454,7 +454,7 @@ class MultipleRuns:
             clusterings.append(config_name)
             db_entries = tuple([config_name, newick])
 
-            profile_db = annotation.ProfileDatabase(self.profile_db_path, quiet = True)
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
             profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
             profile_db.disconnect()
 

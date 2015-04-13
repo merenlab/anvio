@@ -8,10 +8,10 @@ import copy
 import argparse
 
 import PaPi.tables as t
+import PaPi.dbops as dbops
 import PaPi.utils as utils
 import PaPi.dictio as dictio
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpath
 
 
@@ -85,19 +85,19 @@ class VariablePositions:
         filesnpath.is_file_exists(self.annotation_db_path)
         filesnpath.is_file_exists(self.profile_db_path)
 
-        annotation.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
+        dbops.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
         self.progress.new('Init')
 
         self.progress.update('Reading variable positions table ...')
-        profile_db = annotation.ProfileDatabase(self.profile_db_path)
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.sample_ids_in_db = profile_db.samples
         self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
         profile_db.disconnect()
 
         self.progress.update('Reading splits info table ...')
-        annotation_db = annotation.AnnotationDatabase(self.annotation_db_path)
+        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
         self.splits_info_table = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
         self.num_splits_in_db = len(self.splits_info_table)
         if self.quince_mode:

@@ -14,8 +14,8 @@ Please read the COPYING file.
 
 import sys
 
+import PaPi.dbops as dbops
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 import PaPi.tables as t
 
 from PaPi.utils import ConfigError
@@ -52,7 +52,7 @@ def main(args):
                             you should send an e-mail to PaPi developers! Sorry for this!" % (args.parser)
 
 
-    tables_for_genes = annotation.TablesForGenes(args.annotation_db_path, run, progress)
+    tables_for_genes = dbops.TablesForGenes(args.annotation_db_path, run, progress)
     tables_for_genes.create(genes_dict, args.parser)
 
 

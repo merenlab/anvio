@@ -14,6 +14,7 @@ import sys
 import numpy
 import hashlib
 
+
 class FastaOutput:
     def __init__(self, output_file_path):
         self.output_file_path = output_file_path

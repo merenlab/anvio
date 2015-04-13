@@ -12,11 +12,10 @@ any later version.
 Please read the COPYING file.
 """
 
-import os
 import sys
 
+import PaPi.dbops as dbops
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 
 from PaPi.utils import ConfigError
 from PaPi.filesnpaths import FilesNPathsError
@@ -55,7 +54,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        a = annotation.AnnotationDatabase(args.db_path, run, progress, quiet=False)
+        a = dbops.AnnotationDatabase(args.db_path, run, progress, quiet=False)
         a.create(args.contigs_fasta, args.split_length, args.kmer_size)
     except ConfigError, e:
         print e

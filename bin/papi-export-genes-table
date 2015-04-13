@@ -16,15 +16,15 @@ import os
 import sys
 
 import PaPi.tables as t
+import PaPi.dbops as dbops
 import PaPi.utils as utils
 import PaPi.terminal as terminal
-import PaPi.annotation as annotation
 import PaPi.filesnpaths as filesnpaths
 
 run = terminal.Run()
 
 def main(args):
-    annotation_db = annotation.AnnotationDatabase(args.db_path)
+    annotation_db = dbops.AnnotationDatabase(args.db_path)
     genes_contigs_table = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
     genes_contigs_table_headers = annotation_db.db.get_table_structure(t.genes_contigs_table_name)
     utils.store_dict_as_TAB_delimited_file(genes_contigs_table, args.output, genes_contigs_table_headers)

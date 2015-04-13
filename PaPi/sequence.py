@@ -11,8 +11,6 @@
 
 '''Primitive classes for basic DNA sequence properties.'''
 
-
-import copy
 import numpy
 
 
