@@ -10,7 +10,7 @@
 # Please read the COPYING file.
 
 """
-    Classes to create and access the annotation database.
+    Classes to create, access, and/or populate annotation and profile databases.
 """
 
 
@@ -29,6 +29,7 @@ import PaPi.utils as utils
 import PaPi.kmers as kmers
 import PaPi.contig as contig
 import PaPi.terminal as terminal
+import PaPi.filesnpaths as filesnpaths
 import PaPi.ccollections as ccollections
 
 from PaPi.tables import Table
@@ -38,6 +39,138 @@ from PaPi.parsers import parser_modules
 
 run = terminal.Run()
 progress = terminal.Progress()
+
+
+class AnnotationSuperclass(object):
+    def __init__(self, args, r = run, p = progress):
+        self.run = r
+        self.progress = p
+
+        self.genes_in_contigs_dict = {}
+        self.genes_in_splits = {}
+        self.genes_in_splits_summary_dict = {}
+        self.genes_in_splits_summary_headers = []
+        self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
+        self.contigs_basic_info = {}
+        self.split_sequences = {}
+
+        try:
+            self.annotation_db_path = args.annotation_db
+        except:
+            self.run.warning('AnnotationSuperclass class called with args without annotation_db member')
+            return
+
+        if not self.annotation_db_path:
+            return
+
+        filesnpaths.is_file_exists(self.annotation_db_path)
+
+        self.progress.new('Loading the annotation DB')
+        annotation_db = AnnotationDatabase(self.annotation_db_path)
+
+        self.progress.update('Reading contigs basic info')
+        self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name)
+
+        self.progress.update('Reading splits basic info')
+        self.splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+
+        self.progress.update('Reading contig sequences')
+        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
+
+        self.progress.update('Generating split sequences dict')
+        for split_name in self.splits_basic_info:
+            split = self.splits_basic_info[split_name]
+            contig_sequence = contigs_sequences[split['parent']]['sequence']
+            self.split_sequences[split_name] = contig_sequence[split['start']:split['end']]
+
+        self.progress.update('Reading genes in contigs table')
+        self.genes_in_contigs_dict = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
+
+        self.progress.update('Reading genes in splits table')
+        self.genes_in_splits = annotation_db.db.get_table_as_dict(t.genes_splits_table_name)
+
+        self.progress.update('Reading genes in splits summary table')
+        self.genes_in_splits_summary_dict = annotation_db.db.get_table_as_dict(t.genes_splits_summary_table_name)
+        self.genes_in_splits_summary_headers = annotation_db.db.get_table_structure(t.genes_splits_summary_table_name)
+
+        self.progress.update('Generating split to genes in splits mapping dict')
+        for entry_id in self.genes_in_splits:
+            split_name = self.genes_in_splits[entry_id]['split']
+            if split_name in self.split_to_genes_in_splits_ids:
+                self.split_to_genes_in_splits_ids[split_name].add(entry_id)
+            else:
+                self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
+
+        self.progress.end()
+
+        annotation_db.disconnect()
+        run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, annotation_db.db.version))
+
+
+class ProfileSuperclass(object):
+    def __init__(self, args, r = run, p = progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.clusterings = {}
+        self.views = {}
+
+        try:
+            self.profile_db_path = args.profile_db
+        except:
+            self.run.warning('ProfileSuperclass class called with args without profile_db member')
+            return
+
+        if not self.profile_db_path:
+            return
+
+        filesnpaths.is_file_exists(self.profile_db_path)
+
+        self.progress.new('Loading the annotation DB')
+        profile_db = ProfileDatabase(self.profile_db_path)
+
+        self.progress.update('Reading clusterings dict')
+        self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
+
+        profile_db.disconnect()
+
+    # FIXME: THIS IS RIDICULOUS. PROFILE.db should know what views it holds.
+    # TODO: Change profiler.py to store this info in table 'self', remove this
+    # function, fix interactive.py.
+    def load_views(self, views_requested):
+        profile_db = ProfileDatabase(self.profile_db_path)
+
+        for view in views_requested:
+            table = views_requested[view]
+            self.views[view] = {'header': profile_db.db.get_table_structure(table)[1:],
+                                'dict': profile_db.db.get_table_as_dict(table)}
+
+        profile_db.disconnect()
+
+
+class DatabasesMetaclass(ProfileSuperclass, AnnotationSuperclass, object):
+    """Essential data to load for a given run"""
+    def __init__(self, args, r = run, p = progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        filesnpaths.is_file_exists(args.annotation_db)
+        filesnpaths.is_file_exists(args.profile_db)
+
+        is_annotation_and_profile_dbs_compatible(args.annotation_db, args.profile_db)
+
+        AnnotationSuperclass.__init__(self, self.args, self.run, self.progress)
+        ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
+
+
+
+####################################################################################################
+#
+#     DATABASES
+#
+####################################################################################################
 
 
 class ProfileDatabase:
@@ -235,6 +368,13 @@ class AnnotationDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+
+
+####################################################################################################
+#
+#     TABLES
+#
+####################################################################################################
 
 
 class InfoTableForContigs:
@@ -681,7 +821,7 @@ class GenesInSplits:
         gene_length = prot_end - prot_start
 
         if gene_length <= 0:
-            raise ConfigError, "annotation.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
+            raise ConfigError, "dbops.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
                                 which starts at position %d and ends at position %d. Well, it doesn't look right,\
                                 does it?" % (prot_id, prot_start, prot_end)
 
@@ -696,7 +836,6 @@ class GenesInSplits:
                                                'stop_in_split': stop_in_split,
                                                'percentage_in_split': percentage_in_split}
         self.entry_id += 1
-
 
 
 ####################################################################################################
