@@ -5,14 +5,14 @@ a TAB-delimited matrix."""
 
 import sys
 
-import PaPi.db as db
-import PaPi.utils as utils
-import PaPi.filesnpaths as filesnpaths
-import PaPi.terminal as terminal
+import anvio.db as db
+import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The PaPi Project"
+__copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
@@ -71,7 +71,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='A script to export PaPi tables as TAB-delimited matrices.')
+    parser = argparse.ArgumentParser(description='A script to export anvio tables as TAB-delimited matrices.')
     parser.add_argument('db_path', metavar = 'DB',
                         help = 'Database to read.')
     parser.add_argument('-t', '--table', default = None, metavar = 'TABLE',

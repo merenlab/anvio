@@ -5,7 +5,7 @@ say you have your contigs.fa.
 
 if you run this:
 
-    papi-script-gen_stats_for_single_copy_genes.sh contigs.fa
+    anvi-script-gen_stats_for_single_copy_genes.sh contigs.fa
 
 you should get a PDF that looks like this:
 

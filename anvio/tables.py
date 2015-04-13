@@ -4,22 +4,23 @@
 
 import os
 
-import PaPi.db as db
-import PaPi.fastalib as u
-import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
+import anvio.db as db
+import anvio.fastalib as u
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
-from PaPi.utils import ConfigError
+from anvio.utils import ConfigError
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The PaPi Project"
+__copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
 
 run = terminal.Run()
 progress = terminal.Progress()

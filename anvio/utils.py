@@ -1,13 +1,6 @@
 # -*- coding: utf-8
-#
-# Copyright (C) 2010 - 2012, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
+
+"""Lonely, helper functions that are broadly used and don't fit anywhere"""
 
 import os
 import sys
@@ -20,12 +13,23 @@ import subprocess
 import multiprocessing
 
 
-from PaPi.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
-import PaPi.fastalib as u
-import PaPi.filesnpaths as filesnpaths
-from PaPi.sequence import Composition
+from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
+import anvio.fastalib as u
+import anvio.filesnpaths as filesnpaths
+from anvio.sequence import Composition
 
-from PaPi.terminal import Progress
+from anvio.terminal import Progress
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 
 # Mock progress object that will not report anything, for general clarity.
 progress = Progress()
@@ -151,7 +155,7 @@ def is_program_exists(program):
             if IsExe(exe_file):
                 return True
 
-    raise ConfigError, "A PaPi function needs '%s' to be installed on your system, but it doesn't seem to appear\
+    raise ConfigError, "A anvio function needs '%s' to be installed on your system, but it doesn't seem to appear\
                         in your path :/ If you are certain you have it on your system (for instance you can run it\
                         by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
                         % (program, program)
@@ -422,24 +426,24 @@ def check_sample_id(sample_id):
 
         allowed_chars_for_samples = allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
-            raise ConfigError, "Sample name ('%s') contains characters that PaPi does not like. Please\
+            raise ConfigError, "Sample name ('%s') contains characters that anvio does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
                                 digits, and the underscore character ('_')." % sample_id
 
 
 def check_contig_names(contig_names):
     all_characters_in_contig_names = set(''.join(contig_names))
-    characters_PaPi_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
-    if len(characters_PaPi_doesnt_like):
-        raise ConfigError, "The name of at least one contig in your BAM file %s PaPi does not\
+    characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
+    if len(characters_anvio_doesnt_like):
+        raise ConfigError, "The name of at least one contig in your BAM file %s anvio does not\
                             like (%s). Please go back to your original files and make sure that\
                             the characters in contig names are limited to to ASCII letters,\
                             digits. Names can also contain underscore ('_'), dash ('-') and dot ('.')\
-                            characters. PaPi knows how much work this may require for you to go back and\
+                            characters. anvio knows how much work this may require for you to go back and\
                             re-generate your BAM files and is very sorry for asking you to do that, however,\
                             it is critical for later steps in the analysis." \
-                                % ("contains multiple characters" if len(characters_PaPi_doesnt_like) > 1 else "contains a character",
-                                   ", ".join(['"%s"' % c for c in characters_PaPi_doesnt_like]))
+                                % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
+                                   ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like]))
 
 
 def get_FASTA_file_as_dictionary(file_path):
@@ -600,7 +604,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         if not PROPER(os.path.basename(source)):
             raise ConfigError, "One of the search database directories ('%s') contains characters in its name\
-                                PaPi does not like. Directory names should be at least three characters long\
+                                anvio does not like. Directory names should be at least three characters long\
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source)
 

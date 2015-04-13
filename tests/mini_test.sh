@@ -13,7 +13,7 @@ INFO "Initializing raw BAM files ..."
 # init raw bam files.
 for f in 6M 7M 9M
 do
-    papi-init-bam 204_3contigs_"$f".bam -o test-output/204-$f
+    anvi-init-bam 204_3contigs_"$f".bam -o test-output/204-$f
     echo
 done
 
@@ -22,28 +22,28 @@ done
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
 # size is much better for most projects. the small split size used here is simply for testing purposes)
 INFO "Generating an EMPTY annotation database ..."
-papi-gen-annotation-database -f contigs.fa -o test-output/ANNOTATION.db -L 1000
+anvi-gen-annotation-database -f contigs.fa -o test-output/ANNOTATION.db -L 1000
 
 INFO "Populating the genes tables in the annotation database using 'myrast_gui' parser ..."
-papi-populate-genes-table test-output/ANNOTATION.db -i myrast_gui/* -p myrast_gui
+anvi-populate-genes-table test-output/ANNOTATION.db -i myrast_gui/* -p myrast_gui
 
 INFO "Populating the genes tables in the annotation database using 'myrast_cmdline_dont_use' parser ..."
-papi-populate-genes-table test-output/ANNOTATION.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
+anvi-populate-genes-table test-output/ANNOTATION.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
 INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-papi-populate-genes-table test-output/ANNOTATION.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+anvi-populate-genes-table test-output/ANNOTATION.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
 INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
-papi-export-genes-table test-output/ANNOTATION.db -o test-output/ANNOTATION_recovered.txt
+anvi-export-genes-table test-output/ANNOTATION.db -o test-output/ANNOTATION_recovered.txt
 
 INFO "Re-populating the genes tables in the annotation database using the recovered matrix file with 'default_matrix' parser ..."
-papi-populate-genes-table test-output/ANNOTATION.db -p default_matrix -i test-output/ANNOTATION_recovered.txt
+anvi-populate-genes-table test-output/ANNOTATION.db -p default_matrix -i test-output/ANNOTATION_recovered.txt
 
 INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
-papi-populate-search-table test-output/ANNOTATION.db
+anvi-populate-search-table test-output/ANNOTATION.db
 
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-papi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
+anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
 
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
@@ -54,29 +54,29 @@ sqlite3 test-output/ANNOTATION.db '.tables'
 for f in 6M 7M 9M
 do
     INFO "Profiling sample 204-$f ..."
-    papi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db
+    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db
     echo
 done
 
 
 INFO "Merging profiles ..."
 # merge samples
-papi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -a test-output/ANNOTATION.db
+anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -a test-output/ANNOTATION.db
 
 INFO "Generating coverages and sequences files for splits (for external binning) ..."
-papi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
+anvi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
 
 INFO "Cluster contigs in the newly generated coverages file ..."
-papi-matrix-to-newick test-output/204-MERGED/s204_MERGED-COVs.txt
+anvi-matrix-to-newick test-output/204-MERGED/s204_MERGED-COVs.txt
 
 INFO "Generating network descriptions for samples based on ORFs and functions ..."
 # generate gene and function networks for the merge
-papi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
+anvi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
-INFO "Use papi-experimental-organization to generate another tree"
+INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
-papi-experimental-organization ../../PaPi/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
+anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-papi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
+anvi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt

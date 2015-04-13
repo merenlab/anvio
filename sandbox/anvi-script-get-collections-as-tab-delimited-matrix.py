@@ -11,12 +11,12 @@ import os
 import sys
 import argparse
 
-import PaPi.utils as utils
-import PaPi.terminal as terminal 
-import PaPi.annotation as annotation
+import anvio.utils as utils
+import anvio.terminal as terminal 
+import anvio.annotation as annotation
 
-from PaPi.utils import ConfigError
-from PaPi.filesnpaths import FilesNPathsError
+from anvio.utils import ConfigError
+from anvio.filesnpaths import FilesNPathsError
 
 run = terminal.Run()
 progress = terminal.Progress()

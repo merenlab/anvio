@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
+"""To make sense of config files for mixed clustering"""
 
 import os
 import ConfigParser
 
-import PaPi.db as db
-import PaPi.filesnpaths as filesnpaths
+import anvio.db as db
+import anvio.filesnpaths as filesnpaths
 
-from PaPi.utils import ConfigError
-from PaPi.utils import check_sample_id
-from PaPi.utils import store_array_as_TAB_delimited_file as store_array
-from PaPi.utils import is_all_columns_present_in_TAB_delim_file as cols_present
-from PaPi.utils import get_vectors_from_TAB_delim_matrix as get_vectors
+from anvio.utils import ConfigError
+from anvio.utils import check_sample_id
+from anvio.utils import store_array_as_TAB_delimited_file as store_array
+from anvio.utils import is_all_columns_present_in_TAB_delim_file as cols_present
+from anvio.utils import get_vectors_from_TAB_delim_matrix as get_vectors
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 config_template = {
@@ -231,7 +232,7 @@ class ClusteringConfiguration:
                     database = database[1:]
 
                     if database not in self.db_paths:
-                        raise ConfigError, 'PaPi could not recover the actual path of the database\
+                        raise ConfigError, 'anvio could not recover the actual path of the database\
                                             (!%s) referenced in the config file, because the database\
                                             paths variable sent from the client does not have an entry\
                                             for it :( There are two options. One is to get a db_paths\

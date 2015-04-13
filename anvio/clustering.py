@@ -1,14 +1,5 @@
-#!/usr/bin/env python
 # -*- coding: utf-8
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
+"""Clustering operations and helper functions"""
 
 import os
 import hcluster
@@ -16,12 +7,21 @@ import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
 
-import PaPi.utils as utils
-import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 with terminal.SuppressAllOutput():
     from ete2 import Tree
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 run = terminal.Run()
 progress = terminal.Progress()

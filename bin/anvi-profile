@@ -1,33 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
-import os
 import sys
-import PaPi.profiler
-from PaPi.utils import ConfigError
+import anvio.profiler
+from anvio.utils import ConfigError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
-    groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for PaPi profiler. You must\
+    groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
                                                   to declare either of these two.')
     groupI.add_argument('-i', '--input-file', metavar = 'PATH', default = None,
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
     groupI.add_argument('-a', '--annotation-db-path', default = None, metavar = 'ANNOTATION_DB',
-                        help = 'PaPi annotation database.')
+                        help = 'anvio annotation database.')
     groupI.add_argument('-d', '--profile', default = None, metavar = 'PATH',
-                        help = 'Serialized profile. This file would be a result of a previous PaPi profiling\
+                        help = 'Serialized profile. This file would be a result of a previous anvio profiling\
                                 run. It is faster, and can be used to refine previously obtained results.')
 
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but very useful if declared.')
@@ -35,22 +36,22 @@ if __name__ == '__main__':
                         help = 'Single profiles are rarely used for genome binning or visualization, and since\
                                 clustering step increases the profiling runtime for no good reason, the default\
                                 behavior is to not cluster contigs for individual runs. However, if you are\
-                                planning to do binning on one sample, you must use this flag to tell PaPi to\
+                                planning to do binning on one sample, you must use this flag to tell anvio to\
                                 run cluster configurations for single runs on your sample.')
     groupM.add_argument('-o', '--output-directory', default = None,
                         help = 'The directory for output files to be stored.')
     groupM.add_argument('-s', '--sample-id', metavar = 'NAME', default = None,
                         help = 'It is important to set a sample name (using only ASCII letters and digits\
                                 and without spaces) that is unique to a particular profile. If you do not\
-                                provide one, PaPi will generate one for you based on the input BAM file\
+                                provide one, anvio will generate one for you based on the input BAM file\
                                 name (it usually is a good practice to not let software decide for these\
                                 kinds of things).')
     groupM.add_argument('--report-variability-full', default = False, action="store_true",
-                        help = 'One of the things papi-profile does is to store information about variable\
+                        help = 'One of the things anvi-profile does is to store information about variable\
                                 nucleotide positions. Usually it does not report every variable position, since\
                                 not every variable position is geniune variation. Say, if you have 1,000 coverage,\
                                 and all nucleotides at that position are Ts and only one of them is a C, the\
-                                confidence of that C being a real variation is quite low. PaPi has a simple\
+                                confidence of that C being a real variation is quite low. anvio has a simple\
                                 algorithm in place to reduce the impact of noise. However, using this flag\
                                 you can diable it and ask profiler to report every single variation (which\
                                 may result in very large output files and millions of reports, but you are the\
@@ -76,7 +77,7 @@ if __name__ == '__main__':
                                 merged for a cross-sectional or time series analysis. Do not change it if\
                                 you are not sure this is what you want to do.')
     groupQ.add_argument('--min-coverage-for-variability', metavar = "INTEGER", default = 10, type=int,
-                        help = 'By default, PaPi will not attempt to make sense of variation in a given\
+                        help = 'By default, anvio will not attempt to make sense of variation in a given\
                                 nucleotide position if it is covered less than %(default)dX. You can\
                                 change that minimum using this parameter.')
     groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
@@ -95,7 +96,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        profiler = PaPi.profiler.BAMProfiler(args)
+        profiler = anvio.profiler.BAMProfiler(args)
         profiler._run()
     except ConfigError, e:
         print e

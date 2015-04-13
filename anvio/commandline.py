@@ -1,26 +1,19 @@
 # -*- coding: utf-8
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
 """
-    Here described a class that takes care of search using HMM profiles. it takes genes.txt and genes.hmm.gz files,
-    and returns a dictionary back. See PaPi/data/hmm directory for examples.
+    A place for classes for binary calls.
+
+    At this point there is one class described which takes care of search using HMM profiles.
+    It simply takes genes.txt and genes.hmm.gz files as input and returns a dictionary back
+    with results. See anvio/data/hmm directory for examples.
 """
 
 import os
 import gzip
 import shutil
 
-import PaPi.utils as utils
-import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 run = terminal.Run()
 progress = terminal.Progress()

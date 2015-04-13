@@ -6,22 +6,22 @@ import sys
 import pysam
 import shutil
 
-import PaPi.tables as t
-import PaPi.dbops as dbops
-import PaPi.utils as utils
-import PaPi.dictio as dictio
-import PaPi.terminal as terminal
-import PaPi.constants as constants
-import PaPi.clustering as clustering
-import PaPi.filesnpaths as filesnpaths
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.dictio as dictio
+import anvio.terminal as terminal
+import anvio.constants as constants
+import anvio.clustering as clustering
+import anvio.filesnpaths as filesnpaths
 
-from PaPi.metadata import Metadata
-from PaPi.contig import Split, Contig, set_contigs_abundance
-from PaPi.clusteringconfuguration import ClusteringConfiguration
+from anvio.metadata import Metadata
+from anvio.contig import Split, Contig, set_contigs_abundance
+from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The PaPi Project"
+__copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = t.profile_db_version
@@ -96,16 +96,16 @@ class BAMProfiler:
     def init_dirs_and_dbs(self):
         if not self.annotation_db_path:
             raise utils.ConfigError, "You can not run profiling without an annotation database. You can create\
-                                      one using 'papi-gen-annotation-database'. Not sure how? Please see the\
+                                      one using 'anvi-gen-annotation-database'. Not sure how? Please see the\
                                       user manual."
 
         Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
         if not self.output_directory:
-            self.output_directory = Absolute(self.input_file_path) + '-PAPI_PROFILE'
+            self.output_directory = Absolute(self.input_file_path) + '-ANVIO-PROFILE'
         else:
             self.output_directory = Absolute(self.output_directory)
         if os.path.exists(self.output_directory):
-            raise utils.ConfigError, "The output directory ('%s') already exists. PaPi does not like oerwriting\
+            raise utils.ConfigError, "The output directory ('%s') already exists. anvio does not like oerwriting\
                                       stuff. Please either remove it, or change your output destination."\
                                                 % self.output_directory
 
@@ -376,7 +376,7 @@ class BAMProfiler:
         try:
             self.num_reads_mapped = self.bam.mapped
         except ValueError:
-            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'papi-init-bam' script."
+            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
 
         # store num reads mapped for later use.
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)

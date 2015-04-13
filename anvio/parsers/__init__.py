@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-# Copyright (C) 2015, PaPi Developers
+# Copyright (C) 2015, anvio Developers
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free
@@ -10,12 +10,12 @@
 #
 # Please read the COPYING file.
 
-from PaPi.parsers.defaultmatrix import DefaultMatrix
-from PaPi.parsers.myrastgui import MyRastGUI
-from PaPi.parsers.myrastcmdline import MyRastCMDLine 
-from PaPi.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
-from PaPi.parsers.hmmscan import HMMScan
-from PaPi.parsers.concoct import CONCOCT
+from anvio.parsers.defaultmatrix import DefaultMatrix
+from anvio.parsers.myrastgui import MyRastGUI
+from anvio.parsers.myrastcmdline import MyRastCMDLine 
+from anvio.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
+from anvio.parsers.hmmscan import HMMScan
+from anvio.parsers.concoct import CONCOCT
 
 parser_modules = {}
 parser_modules['genes']       = {"default_matrix": DefaultMatrix,

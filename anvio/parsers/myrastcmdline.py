@@ -11,7 +11,7 @@
 # Please read the COPYING file.
 
 
-from PaPi.parsers.base import Parser
+from anvio.parsers.base import Parser
 
 
 class MyRastCMDLine(Parser):

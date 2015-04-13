@@ -1,20 +1,20 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
-
-# Copyright (C) 2015, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
 
 """
-    This is the module to parse CONCOCT clusters.
+    Module to parse CONCOCT clusters.
 """
 
-from PaPi.parsers.base import Parser
+from anvio.parsers.base import Parser
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 class CONCOCT(Parser):

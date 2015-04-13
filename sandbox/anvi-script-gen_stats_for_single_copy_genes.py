@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 """
-Copyright (C) 2015, PaPi Authors
+Copyright (C) 2015, anvio Authors
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
@@ -18,13 +18,13 @@ import sys
 import argparse
 from collections import Counter
 
-import PaPi.fastalib as u
-import PaPi.utils as utils
-import PaPi.terminal as terminal 
-import PaPi.annotation as annotation
+import anvio.fastalib as u
+import anvio.utils as utils
+import anvio.terminal as terminal 
+import anvio.annotation as annotation
 
-from PaPi.utils import ConfigError
-from PaPi.filesnpaths import FilesNPathsError
+from anvio.utils import ConfigError
+from anvio.filesnpaths import FilesNPathsError
 
 run = terminal.Run()
 progress = terminal.Progress()

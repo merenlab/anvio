@@ -1,26 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-"""
-Copyright (C) 2015, PaPi Authors
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option)
-any later version.
-
-Please read the COPYING file.
-"""
-
 import sys
 
-import PaPi.dbops as dbops
-import PaPi.terminal as terminal
-import PaPi.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.tables as t
 
-from PaPi.utils import ConfigError
-from PaPi.parsers import parser_modules
-from PaPi.filesnpaths import FilesNPathsError
+from anvio.utils import ConfigError
+from anvio.parsers import parser_modules
+from anvio.filesnpaths import FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 run = terminal.Run()
@@ -49,7 +48,7 @@ def main(args):
         raise ConfigError, "Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong.\
                             Maybe you selected a wrong parser, or the input file format has changed between when this\
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
-                            you should send an e-mail to PaPi developers! Sorry for this!" % (args.parser)
+                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
 
 
     tables_for_genes = dbops.TablesForGenes(args.annotation_db_path, run, progress)
@@ -58,7 +57,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Create and store information into a PaPi annotation database using\
+    parser = argparse.ArgumentParser(description='Create and store information into a anvio annotation database using\
                                                   available parsers for various gene annotation resources.')
     parser.add_argument('annotation_db_path', metavar = 'ANNOTATION_DB',
                         help = 'Annotation database to update.')
@@ -67,14 +66,14 @@ if __name__ == '__main__':
                                 It is OK if you do not select a parser, but in that case there will be no additional\
                                 annotation available except the identification of single-copy genes in your contigs\
                                 for later use. Using a parser will not prevent the analysis of single-copy genes,\
-                                but make PaPi more powerful to help you make sense of your results. Please see the\
+                                but make anvio more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
                                 regarding parsers.' % (len(parser_modules['genes']), parser_modules['genes'].keys()))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
-                                process that you generate before running PaPi. Please see the documentation for details.')
+                                process that you generate before running anvio. Please see the documentation for details.')
     parser.add_argument('--debug', action='store_true', default = False,
-                        help = 'When declared, PaPi will not remove temporary directories with intermediate search\
+                        help = 'When declared, anvio will not remove temporary directories with intermediate search\
                                 results that may be useful to investigate unexpected behavior.')
 
     args = parser.parse_args()

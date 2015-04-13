@@ -9,7 +9,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 
 
 setup(
-    name = "papi",
+    name = "anvio",
     version = open('VERSION').read().strip(),
 
     scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
@@ -19,13 +19,13 @@ setup(
 
     install_requires = ['bottle>=0.12.7', 'pysam==0.7.7', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15'],
 
-    author = "PaPi Authors",
+    author = "anvio Authors",
     author_email = "a.murat.eren@gmail.com",
-    description = "Post-assembly Environmental (Meta)genomics Pipeline",
+    description = "An interactive analysis and visualization platform for 'omics data'",
     longer_description=README,
     license = "GPLv3+",
     keywords = "metagenomics microbiology shotgun genomics MBL pipeline sequencing bam",
-    url = "https://meren.github.io/projects/papi/",
+    url = "https://meren.github.io/projects/anvio/",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',

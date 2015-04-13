@@ -1,32 +1,32 @@
-#!/usr/bin/env python
 # -*- coding: utf-8
-
-"""
-Copyright (C) 2015, PaPi Authors
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option)
-any later version.
-
-Please read the COPYING file.
-"""
+"""The module that curates data for the interactive interface"""
 
 import os
 import sys
 
-import PaPi.tables as t
-import PaPi.utils as utils
-import PaPi.dictio as dictio
-import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
-import PaPi.ccollections as ccollections
-import PaPi.completeness as completeness
+import anvio.tables as t
+import anvio.utils as utils
+import anvio.dictio as dictio
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
+import anvio.completeness as completeness
 
-from PaPi.dbops import ProfileSuperclass, AnnotationSuperclass
+from anvio.dbops import ProfileSuperclass, AnnotationSuperclass
 
 with terminal.SuppressAllOutput():
     from ete2 import Tree
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 
 progress = terminal.Progress()
 run = terminal.Run()
@@ -62,7 +62,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # here is where the big deal stuff takes place:
         if args.runinfo:
             if not self.annotation_db_path:
-                raise utils.ConfigError, "PaPi needs the annotation database to make sense of this run."
+                raise utils.ConfigError, "anvio needs the annotation database to make sense of this run."
 
             self.runinfo = self.read_runinfo_dict(args)
 
@@ -147,7 +147,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         r = dictio.read_serialized_object(args.runinfo)
 
         if not r.has_key('runinfo'):
-            raise utils.ConfigError, "'%s' does not seem to be a PaPi RUNINFO.cp." % (args.runinfo)
+            raise utils.ConfigError, "'%s' does not seem to be a anvio RUNINFO.cp." % (args.runinfo)
 
         r['self_path'] = args.runinfo
         r['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(args.runinfo))
@@ -157,9 +157,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
     def load_from_runinfo_dict(self, args):
         if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != t.profile_db_version:
-            raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of PaPi\
+            raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of anvio\
                                            profiler that is not compatible with the current interactive interface\
-                                           anymore. You need to re-run PaPi profiler on these projects."
+                                           anymore. You need to re-run anvio profiler on these projects."
 
         # load views from the profile database
         self.load_views(self.runinfo['views'])
@@ -233,7 +233,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                             required to list all contigs (which means, there may be contigs\
                             in the database that are not in the additional metadata file),\
                             however, finding contigs that are only in the additional metadata\
-                            file usually means trouble. PaPi will continue, but please\
+                            file usually means trouble. anvio will continue, but please\
                             go back and check your files if you think there may be something\
                             wrong. Here is a random contig name that was only in the\
                             metadata file: '%s'. And there were %d of them in total. You\

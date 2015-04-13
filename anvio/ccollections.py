@@ -13,16 +13,16 @@ for the client.
 
 from itertools import chain
 
-import PaPi.db as db
-import PaPi.utils as utils
-import PaPi.terminal as terminal
+import anvio.db as db
+import anvio.utils as utils
+import anvio.terminal as terminal
 
-from PaPi.tables import *
-from PaPi.utils import ConfigError
+from anvio.tables import *
+from anvio.utils import ConfigError
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The PaPi Project"
+__copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
@@ -71,7 +71,7 @@ class Collections:
     def sanity_check(self, source):
         if source not in self.sources_dict:
             raise ConfigError, 'There is no "%s" I know of. Maybe the populate_sources_dict was not called\
-                                for whatever database you are trying to get collections from? (PaPi asks this\
+                                for whatever database you are trying to get collections from? (anvio asks this\
                                 rhetorical question to the programmer).'
 
 
@@ -144,7 +144,7 @@ class TablesForCollections(Table):
         splits_in_clusters_dict = set(list(chain.from_iterable(clusters_dict.values())))
         if len(splits_in_clusters_dict) != num_splits_in_clusters_dict:
             raise ConfigError, "TablesForCollections::append: %d of the split or contig IDs appear more than once in\
-                                your collections input. It is unclear to PaPi how did you manage to do this, but we\
+                                your collections input. It is unclear to anvio how did you manage to do this, but we\
                                 cannot go anywhere with this :/" % (num_splits_in_clusters_dict - len(splits_in_clusters_dict))
 
         database = db.DB(self.db_path, self.version)
@@ -170,7 +170,7 @@ class TablesForCollections(Table):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
 
 
-        # FIXME: This function can be called to populate the annotation database (via papi-populate-collections), or
+        # FIXME: This function can be called to populate the annotation database (via anvi-populate-collections), or
         # the profile database. when it is annotation database, the superclass Table has the self.splits_info variable
         # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
         # the profile database. hence some special controls for annotation db (note that collections_contigs_table is

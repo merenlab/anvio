@@ -1,24 +1,23 @@
-#!/usr/bin/env python
 # -*- coding: utf-8
-
-# Copyright (C) 2015, PaPi Developers
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
 """
     Base class for parsers to take care of the boring stuff.
 """
 
 import os
 
-from PaPi.utils import ConfigError
-from PaPi.utils import get_TAB_delimited_file_as_dictionary as get_dict
-from PaPi.utils import get_FASTA_file_as_dictionary as get_dict_f
+from anvio.utils import ConfigError
+from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
+from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 class Parser(object):

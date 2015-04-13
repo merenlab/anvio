@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-"""
-Copyright (C) 2015, PaPi Authors
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option)
-any later version.
-
-Please read the COPYING file.
-"""
-
 import sys
 
-import PaPi.dbops as dbops
-import PaPi.terminal as terminal
+import anvio.dbops as dbops
+import anvio.terminal as terminal
 
-from PaPi.utils import ConfigError
-from PaPi.filesnpaths import FilesNPathsError
+from anvio.utils import ConfigError
+from anvio.filesnpaths import FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -26,11 +26,11 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='Generate a new PaPi annotation database.')
+    parser = argparse.ArgumentParser(description='Generate a new anvio annotation database.')
     parser.add_argument('-f', '--contigs-fasta', metavar = 'FASTA', default = None,
                         help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
                                 could be a reference genome, or contigs from your assembler. Contig names in this file\
-                                must match to those in other input files. If there is a problem, PaPi will gracefully\
+                                must match to those in other input files. If there is a problem, anvio will gracefully\
                                 complain about it.')
     parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
                         help = 'Splitting very large contigs into multiple pieces improves\

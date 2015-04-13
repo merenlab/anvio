@@ -1,4 +1,4 @@
 include *.txt *.md
-recursive-include PaPi/data *
+recursive-include anvio/data *
 recursive-include tests *.bam *.txt *.fa *.tbl *.sh 
 global-exclude test-output *.pyc

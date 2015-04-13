@@ -1,26 +1,24 @@
 # -*- coding: utf-8
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
-
 '''Storing and retrieving metadata regarding contigs and splits'''
 
 
 metadata_table_structure = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
 metadata_table_types     = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
+from anvio.terminal import Progress
+from anvio.terminal import pretty_print as pp
 
-from PaPi.terminal import Progress
-from PaPi.terminal import pretty_print as pp
 
-# Mock progress object that will not report anything, for general clarity.
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
 progress = Progress()
 progress.verbose = False
 

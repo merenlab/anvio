@@ -1,18 +1,7 @@
 # -*- coding: utf-8
-
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
 """
     Classes to create, access, and/or populate annotation and profile databases.
 """
-
 
 import os
 import sys
@@ -22,20 +11,31 @@ import hashlib
 import operator
 from collections import Counter
 
-import PaPi.db as db
-import PaPi.tables as t
-import PaPi.fastalib as u
-import PaPi.utils as utils
-import PaPi.kmers as kmers
-import PaPi.contig as contig
-import PaPi.terminal as terminal
-import PaPi.filesnpaths as filesnpaths
-import PaPi.ccollections as ccollections
+import anvio.db as db
+import anvio.tables as t
+import anvio.fastalib as u
+import anvio.utils as utils
+import anvio.kmers as kmers
+import anvio.contig as contig
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
 
-from PaPi.tables import Table
-from PaPi.utils import ConfigError
-from PaPi.commandline import HMMSearch
-from PaPi.parsers import parser_modules
+from anvio.tables import Table
+from anvio.utils import ConfigError
+from anvio.commandline import HMMSearch
+from anvio.parsers import parser_modules
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -202,11 +202,11 @@ class ProfileDatabase:
 
     def create(self, meta_values = {}):
         if os.path.exists(self.db_path):
-            raise ConfigError, "PaPi will not overwrite an existing profile database. Please choose a different name\
+            raise ConfigError, "anvio will not overwrite an existing profile database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
 
         if not self.db_path.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
@@ -262,7 +262,7 @@ class AnnotationDatabase:
 
     def create(self, contigs_fasta, split_length, kmer_size = 4):
         if os.path.exists(self.db_path):
-            raise ConfigError, "PaPi will not overwrite an existing annotation database. Please choose a different name\
+            raise ConfigError, "anvio will not overwrite an existing annotation database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
 
         if not split_length:
@@ -275,7 +275,7 @@ class AnnotationDatabase:
 
 
         if not self.db_path.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. PaPi developers apologize\
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
@@ -530,8 +530,8 @@ class TablesForSearches(Table):
 
     def populate_search_tables(self, sources = {}):
         if not len(sources):
-            import PaPi.data.hmm
-            sources = PaPi.data.hmm.sources
+            import anvio.data.hmm
+            sources = anvio.data.hmm.sources
 
         if not sources:
             return
@@ -665,7 +665,7 @@ class TablesForGenes(Table):
         keys_found = ['prot'] + self.genes_dict.values()[0].keys()
         missing_keys = [key for key in t.genes_contigs_table_structure if key not in keys_found]
         if len(missing_keys):
-            raise ConfigError, "Your input lacks one or more header fields to generate a PaPi annotation db. Here is\
+            raise ConfigError, "Your input lacks one or more header fields to generate a anvio annotation db. Here is\
                                 what you are missing: %s. The complete list (and order) of headers in your TAB\
                                 delimited matrix file (or dictionary) must follow this: %s." % (', '.join(missing_keys),
                                                                                                 ', '.join(t.genes_contigs_table_structure))
@@ -689,7 +689,7 @@ class TablesForGenes(Table):
                                     here is one from your input files you just provided: '%s'. You should make them\
                                     identical (and make sure whatever solution you come up with will not make them\
                                     incompatible with names in your BAM files later on. Sorry about this mess, but\
-                                    there is nothing much PaPi can do about this issue." %\
+                                    there is nothing much anvio can do about this issue." %\
                                                     (contig, contig_names_in_db.pop(), contig_names_in_matrix.pop())
 
 
@@ -847,12 +847,12 @@ class GenesInSplits:
 
 def is_annotation_db(db_path):
     if get_db_type(db_path) != 'annotation':
-        raise ConfigError, '"%s" is not a PaPi annotation database.' % db_path
+        raise ConfigError, '"%s" is not a anvio annotation database.' % db_path
 
 
 def is_profile_db(db_path):
     if get_db_type(db_path) != 'profile':
-        raise ConfigError, '"%s" is not a PaPi profile database.' % db_path
+        raise ConfigError, '"%s" is not a anvio profile database.' % db_path
 
 
 def get_db_type(db_path):
@@ -865,7 +865,7 @@ def get_db_type(db_path):
     tables = database.get_table_names()
     if 'self' not in tables:
         database.disconnect()
-        raise ConfigError, '"%s" does not seem to be a PaPi database...' % db_path
+        raise ConfigError, '"%s" does not seem to be a anvio database...' % db_path
 
     db_type = database.get_meta_value('db_type')
     database.disconnect()
@@ -892,7 +892,7 @@ def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path
                             seem to be compatible. More specifically, this annotation\
                             database is not the one that was used when %s generated\
                             this profile database.'\
-                                % 'papi-merge' if merged else 'papi-profile'
+                                % 'anvi-merge' if merged else 'anvi-profile'
 
     return True
 

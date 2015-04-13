@@ -1,13 +1,5 @@
 # -*- coding: utf-8
-#
-# Copyright (C) 2010 - 2012, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
+"""Module to submit/track jobs for SUN Grid Engine"""
 
 import os
 import time
@@ -16,10 +8,20 @@ import random
 import string
 import subprocess
 
-import PaPi.fastalib as u
-import PaPi.utils as utils
-import PaPi.filesnpaths as filesnpaths
-from PaPi.terminal import pretty_print as pp
+import anvio.fastalib as u
+import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
+from anvio.terminal import pretty_print as pp
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = "1.0.0"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
 
 
 QSUB_SCRIPT = """#!/bin/sh
@@ -52,7 +54,7 @@ class SGE:
             ----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
                 import os
                 import utils
-                from PaPi.sge import SGE
+                from anvio.sge import SGE
                 sge = SGE()
                 sge.check_sge_binaries()
                 sge.input_file_path = ...
