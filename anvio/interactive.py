@@ -66,6 +66,11 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
             self.runinfo = self.read_runinfo_dict(args)
 
+            # this is a weird place to do it, but we are going to ask AnnotationSuperclass function to load
+            # all the split sequences since only now we know the mun_contig_length that was used to profile
+            # this stuff
+            self.init_split_sequences(self.runinfo['min_contig_length'])
+
             args.profile_db = self.P(self.runinfo['profile_db'])
             ProfileSuperclass.__init__(self, args)
             self.collections.populate_sources_dict(self.profile_db_path, t.profile_db_version)

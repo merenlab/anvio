@@ -74,15 +74,6 @@ class AnnotationSuperclass(object):
         self.progress.update('Reading splits basic info')
         self.splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
 
-        self.progress.update('Reading contig sequences')
-        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
-
-        self.progress.update('Generating split sequences dict')
-        for split_name in self.splits_basic_info:
-            split = self.splits_basic_info[split_name]
-            contig_sequence = contigs_sequences[split['parent']]['sequence']
-            self.split_sequences[split_name] = contig_sequence[split['start']:split['end']]
-
         self.progress.update('Reading genes in contigs table')
         self.genes_in_contigs_dict = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
 
@@ -105,6 +96,36 @@ class AnnotationSuperclass(object):
 
         annotation_db.disconnect()
         run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, annotation_db.db.version))
+
+
+    def init_split_sequences(self, min_contig_length = 0):
+        self.progress.new('Loading split sequences')
+
+        annotation_db = AnnotationDatabase(self.annotation_db_path)
+
+        contigs_shorter_than_M = [c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length]
+
+        self.progress.update('Reading contig sequences')
+        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
+
+        self.progress.update('Filtering out shorter contigs')
+        for contig_name in contigs_shorter_than_M:
+            contigs_sequences.pop(contig_name)
+
+        self.progress.update('Generating split sequences dict')
+        for split_name in self.splits_basic_info:
+            split = self.splits_basic_info[split_name]
+
+            if split['parent'] in contigs_shorter_than_M:
+                continue
+
+            parent_sequence = contigs_sequences[split['parent']]['sequence']
+            self.split_sequences[split_name] = parent_sequence[split['start']:split['end']]
+
+        self.progress.end()
+
+        annotation_db.disconnect()
+        
 
 
 class ProfileSuperclass(object):
