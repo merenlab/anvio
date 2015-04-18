@@ -99,15 +99,7 @@ class BAMProfiler:
                                       one using 'anvi-gen-annotation-database'. Not sure how? Please see the\
                                       user manual."
 
-        Absolute = lambda x: os.path.join(os.getcwd(), x) if not x.startswith('/') else x
-        if not self.output_directory:
-            self.output_directory = Absolute(self.input_file_path) + '-ANVIO-PROFILE'
-        else:
-            self.output_directory = Absolute(self.output_directory)
-        if os.path.exists(self.output_directory):
-            raise utils.ConfigError, "The output directory ('%s') already exists. anvio does not like oerwriting\
-                                      stuff. Please either remove it, or change your output destination."\
-                                                % self.output_directory
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE')
 
         self.progress.new('Initializing')
 

@@ -150,6 +150,18 @@ def get_num_lines_in_file(file_path):
     return num_lines
 
 
+def check_output_directory(output_directory):
+    if not output_directory:
+        raise FilesNPathsError, "Sorry. You must declare an output directory path."
+
+    output_directory = os.path.abspath(output_directory)
+
+    if os.path.exists(output_directory):
+        raise FilesNPathsError, "The output directory already exists. anvio does not like overwriting stuff."
+
+    return output_directory
+
+
 def gen_output_directory(output_directory, progress=Progress(verbose=False), delete_if_exits = False):
     if os.path.exists(output_directory) and delete_if_exits:
         try:

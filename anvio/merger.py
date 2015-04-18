@@ -116,13 +116,7 @@ class MultipleRuns:
 
 
     def sanity_check(self):
-        if not self.output_directory:
-            raise utils.ConfigError, "Sorry. You must declare an output directory path."
-
-        self.output_directory = os.path.abspath(self.output_directory)
-
-        if os.path.exists(self.output_directory):
-            raise utils.ConfigError, "The output directory you asked for exists. anvio does not like overwriting stuff."
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
 
         if not len(self.merged_sample_runinfo_dict_paths) > 1:
             raise utils.ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
