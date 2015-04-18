@@ -8,17 +8,16 @@ import time
 import json
 import copy
 import socket
-import textwrap
 import subprocess
 import multiprocessing
 
-
-from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
 import anvio.fastalib as u
 import anvio.filesnpaths as filesnpaths
-from anvio.sequence import Composition
 
 from anvio.terminal import Progress
+from anvio.errors import ConfigError
+from anvio.sequence import Composition
+from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
 
 
 __author__ = "A. Murat Eren"
@@ -366,35 +365,6 @@ def concatenate_files(dest_file, file_list):
 
     dest_file_obj.close()
     return dest_file
-
-
-def remove_spaces(text):
-    while 1:
-        if text.find("  ") > -1:
-            text = text.replace("  ", " ")
-        else:
-            break
-
-    return text
-
-
-class ConfigError(Exception):
-    def __init__(self, e = None):
-        Exception.__init__(self)
-        self.e = remove_spaces(e)
-        return
-    def __str__(self):
-        error_type = 'Config Error'
-
-        max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        error_lines = ['\033[0;30m\033[46m%s%s\033[0m' % (l, ' ' * (max_len - len(l)))\
-                                         for l in textwrap.fill(self.e, 80).split('\n')]
-
-        error_message = ['%s: %s' % (error_type, error_lines[0])]
-        for error_line in error_lines[1:]:
-            error_message.append('%s%s' % (' ' * (len(error_type) + 2), error_line))
-
-        return '\n' + '\n'.join(error_message)
 
 
 def get_chunks(contig_length, desired_length):
