@@ -154,7 +154,10 @@ class ProfileSuperclass(object):
         self.progress.update('Reading clusterings dict')
         self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
 
+        self.progress.end()
+
         profile_db.disconnect()
+
 
     # FIXME: THIS IS RIDICULOUS. PROFILE.db should know what views it holds.
     # TODO: Change profiler.py to store this info in table 'self', remove this
