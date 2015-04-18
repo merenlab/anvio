@@ -46,6 +46,7 @@ class AnnotationSuperclass(object):
         self.run = r
         self.progress = p
 
+        self.a_meta = {}
         self.genes_in_contigs_dict = {}
         self.genes_in_splits = {}
         self.genes_in_splits_summary_dict = {}
@@ -67,6 +68,9 @@ class AnnotationSuperclass(object):
 
         self.progress.new('Loading the annotation DB')
         annotation_db = AnnotationDatabase(self.annotation_db_path)
+
+        self.progress.update('Setting annotation metadata dict')
+        self.a_meta = annotation_db.meta
 
         self.progress.update('Reading contigs basic info')
         self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name)
@@ -150,6 +154,9 @@ class ProfileSuperclass(object):
 
         self.progress.new('Loading the annotation DB')
         profile_db = ProfileDatabase(self.profile_db_path)
+
+        self.progress.update('Setting profile metadata dict')
+        self.p_meta = profile_db.meta
 
         self.progress.update('Reading clusterings dict')
         self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
