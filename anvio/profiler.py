@@ -396,7 +396,7 @@ class BAMProfiler:
         # check for the -M parameter.
         contigs_longer_than_M = set()
         for i in range(0, len(self.contig_names)):
-            if self.contig_lenghts[i] > self.min_contig_length:
+            if self.contig_lenghts[i] >= self.min_contig_length:
                 contigs_longer_than_M.add(i)
         if not len(contigs_longer_than_M):
             raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
