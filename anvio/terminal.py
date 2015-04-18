@@ -12,6 +12,8 @@ import textwrap
 import anvio.constants as constants
 import anvio.dictio as dictio
 
+from anvio.errors import TerminalError
+from anvio.ttycolors import color_text as c
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -21,19 +23,6 @@ __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
-
-
-tty_colors = {
-    'gray'    :{'normal': '\033[1;30m%s\033[1m', 'bold': '\033[0;30m%s\033[0m'},
-    'red'     :{'normal': '\033[1;31m%s\033[1m', 'bold': '\033[0;31m%s\033[0m'},
-    'green'   :{'normal': '\033[1;32m%s\033[1m', 'bold': '\033[0;32m%s\033[0m'},
-    'yellow'  :{'normal': '\033[1;33m%s\033[1m', 'bold': '\033[0;33m%s\033[0m'},
-    'blue'    :{'normal': '\033[1;34m%s\033[1m', 'bold': '\033[0;34m%s\033[0m'},
-    'magenta' :{'normal': '\033[1;35m%s\033[1m', 'bold': '\033[0;35m%s\033[0m'},
-    'cyan'    :{'normal': '\033[1;36m%s\033[1m', 'bold': '\033[0;36m%s\033[0m'},
-    'white'   :{'normal': '\033[1;37m%s\033[1m', 'bold': '\033[0;37m%s\033[0m'},
-    'crimson' :{'normal': '\033[1;38m%s\033[1m', 'bold': '\033[0;38m%s\033[0m'}
-}
 
 
 class SuppressAllOutput(object):
@@ -52,13 +41,6 @@ class SuppressAllOutput(object):
         sys.stdout = self.old_stdout
 
 
-def c(text, color="crimson", weight="bold"):
-    if sys.stdout.isatty():
-        return tty_colors[color][weight] % text
-    else:
-        return text
-
-
 def remove_spaces(text):
     while 1:
         if text.find("  ") > -1:
@@ -67,15 +49,6 @@ def remove_spaces(text):
             break
 
     return text
-
-
-class TerminalError(Exception):
-    def __init__(self, e = None):
-        Exception.__init__(self)
-        self.e = remove_spaces(e)
-        return
-    def __str__(self):
-        return 'Config Error: %s' % textwrap.fill(self.e, 80)
 
 
 class Progress:
