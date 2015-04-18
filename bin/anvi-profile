@@ -4,6 +4,7 @@
 import sys
 import anvio.profiler
 from anvio.utils import ConfigError
+from anvio.filesnpaths import FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -99,5 +100,8 @@ if __name__ == '__main__':
         profiler = anvio.profiler.BAMProfiler(args)
         profiler._run()
     except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
         print e
         sys.exit(-1)

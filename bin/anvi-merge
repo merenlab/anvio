@@ -5,8 +5,10 @@
 import sys
 import argparse
 
-import anvio.utils as utils
 import anvio.merger as merger
+
+from anvio.utils import ConfigError
+from anvio.filesnpaths import FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -42,7 +44,10 @@ if __name__ == '__main__':
 
     try:
         merger.MultipleRuns(args).merge()
-    except utils.ConfigError, e:
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
         print e
         sys.exit(-1)
 
