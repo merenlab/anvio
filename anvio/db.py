@@ -7,7 +7,7 @@ import os
 import sqlite3
 
 import anvio.filesnpaths as filesnpaths
-from anvio.utils import ConfigError
+from anvio.errors import ConfigError
 
 
 __author__ = "A. Murat Eren"

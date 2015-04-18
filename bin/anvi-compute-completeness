@@ -8,8 +8,8 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.terminal as terminal 
 
+from anvio.errors import ConfigError
 from anvio.completeness import Completeness
-from anvio.utils import ConfigError
 
 
 __author__ = "A. Murat Eren"

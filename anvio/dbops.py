@@ -22,7 +22,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.tables import Table
-from anvio.utils import ConfigError
+from anvio.errors import ConfigError
 from anvio.commandline import HMMSearch
 from anvio.parsers import parser_modules
 

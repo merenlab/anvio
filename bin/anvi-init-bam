@@ -5,8 +5,9 @@ import os
 import sys
 import pysam
 
-import anvio.utils as utils
 import anvio.terminal as terminal
+
+from anvio.errors import ConfigError
 
 
 __author__ = "A. Murat Eren"
@@ -35,7 +36,7 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         output_directory = os.path.dirname(output_file_path)
 
         if not os.access(output_directory, os.W_OK):
-            raise utils.ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
 
         if not already_sorted:
             progress.new('SORT')
@@ -45,7 +46,7 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
             run.info('Sorted BAM File', output_file_path)
             sorted_file_path = output_file_path + '.bam'
             if not os.path.exists(sorted_file_path):
-                raise utils.ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
+                raise ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
         else:
             sorted_file_path = input_file_path
 
@@ -77,6 +78,6 @@ if __name__ == '__main__':
         sys.exit(init_bam_file(input_file_path = args.input_file,
                                output_file_path = args.output_file,
                                already_sorted = args.sorted))
-    except utils.ConfigError, e:
+    except ConfigError, e:
         print e
         sys.exit(-1)

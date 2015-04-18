@@ -13,6 +13,7 @@ import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
 from anvio.dbops import ProfileSuperclass, AnnotationSuperclass
+from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
     from ete2 import Tree
@@ -62,7 +63,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # here is where the big deal stuff takes place:
         if args.runinfo:
             if not self.annotation_db_path:
-                raise utils.ConfigError, "anvio needs the annotation database to make sense of this run."
+                raise ConfigError, "anvio needs the annotation database to make sense of this run."
 
             self.runinfo = self.read_runinfo_dict(args)
 
@@ -93,15 +94,15 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
     def load_from_files(self, args):
         if (not args.fasta_file) or (not args.metadata) or (not args.tree) or (not args.output_dir):
-            raise utils.ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
+            raise ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                            '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                            more detailed information on them."
 
         if args.view:
-            raise utils.ConfigError, "You can't use '-v' parameter when this program is not called with a RUNINFO.cp"
+            raise ConfigError, "You can't use '-v' parameter when this program is not called with a RUNINFO.cp"
 
         if args.show_views:
-            raise utils.ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
+            raise ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
         metadata_path = os.path.abspath(args.metadata)
         self.runinfo['splits_fasta'] = os.path.abspath(args.fasta_file)
@@ -120,7 +121,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         filesnpaths.is_file_tab_delimited(metadata_path)
         metadata_columns = utils.get_columns_of_TAB_delim_file(metadata_path, include_first_column=True)
         if not metadata_columns[0] == "contig":
-            raise utils.ConfigError, "The first row of the first column of the metadata file must\
+            raise ConfigError, "The first row of the first column of the metadata file must\
                                       say 'contig', which is not the case for your metadata file\
                                       ('%s'). Please make sure this is a properly formatted metadata\
                                       file." % (metadata_path)
@@ -142,17 +143,17 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
     def read_runinfo_dict(self, args):
         if args.fasta_file or args.metadata:
-            raise utils.ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
+            raise ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
                                       declare any of '-f', '-m', or '-t' parameters if you have a\
                                       RUNINFO dict. Please refer to the documentation."
  
         if not os.path.exists(args.runinfo):
-            raise utils.ConfigError, "'%s'? No such file." % (args.runinfo)
+            raise ConfigError, "'%s'? No such file." % (args.runinfo)
 
         r = dictio.read_serialized_object(args.runinfo)
 
         if not r.has_key('runinfo'):
-            raise utils.ConfigError, "'%s' does not seem to be a anvio RUNINFO.cp." % (args.runinfo)
+            raise ConfigError, "'%s' does not seem to be a anvio RUNINFO.cp." % (args.runinfo)
 
         r['self_path'] = args.runinfo
         r['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(args.runinfo))
@@ -162,7 +163,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
     def load_from_runinfo_dict(self, args):
         if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != t.profile_db_version:
-            raise utils.ConfigError, "RUNINFO.cp seems to be generated from an older version of anvio\
+            raise ConfigError, "RUNINFO.cp seems to be generated from an older version of anvio\
                                            profiler that is not compatible with the current interactive interface\
                                            anymore. You need to re-run anvio profiler on these projects."
 
@@ -182,7 +183,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # if the user specifies a view, set it as default:
         if args.view:
             if not args.view in self.views:
-                raise utils.ConfigError, "The requested view ('%s') is not available for this run. Please see\
+                raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
                                           available views by running this program with --show-views flag." % args.view
 
             self.runinfo['default_view'] = args.view
@@ -216,7 +217,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             assert(splits_in_database == splits_in_tree == splits_in_metadata)
         except:
             S = lambda x, y: "agrees" if x == y else "does not agree"
-            raise utils.ConfigError, "Entries found in the annotation database, the tree file and the\
+            raise ConfigError, "Entries found in the annotation database, the tree file and the\
                                       metadata need to match perfectly. It seems it is not the\
                                       case for the input you provided (the metadata %s with the tree,\
                                       the tree %s with the database, the database %s with the metadata;\

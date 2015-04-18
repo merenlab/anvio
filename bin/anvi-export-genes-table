@@ -8,8 +8,8 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -43,9 +43,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except utils.ConfigError, e:
+    except ConfigError, e:
         print e
         sys.exit(-1)
-    except filesnpaths.FilesNPathsError, e:
+    except FilesNPathsError, e:
         print e
         sys.exit(-2)

@@ -20,9 +20,10 @@ import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.profiler as profiler
-import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 import anvio.ccollections as ccollections
+
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Özcan Esen"
@@ -87,10 +88,10 @@ parser.add_argument('--dry-run', action = 'store_true', default = False,
 
 try:
     d = interactive.InputHandler(parser.parse_args())
-except utils.ConfigError, e:
+except ConfigError, e:
     print e
     sys.exit(-1)
-except filesnpaths.FilesNPathsError, e:
+except FilesNPathsError, e:
     print e
     sys.exit(-1)
 

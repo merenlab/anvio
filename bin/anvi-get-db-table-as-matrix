@@ -10,6 +10,8 @@ import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
 
+from anvio.errors import ConfigError, FilesNPathsError
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -37,10 +39,10 @@ def main(args):
 
 
     if not args.table:
-        raise utils.ConfigError, "You must specify a table name."
+        raise ConfigError, "You must specify a table name."
 
     if args.table not in tables_in_database:
-        raise utils.ConfigError, "Table '%s' is not seem to be in this databse :/" % args.table
+        raise ConfigError, "Table '%s' is not seem to be in this databse :/" % args.table
 
     run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
 
@@ -57,7 +59,7 @@ def main(args):
         table_columns = [f for f in table_columns if f in fields_of_interest]
 
         if not len(table_columns):
-            raise utils.ConfigError, "None of the fields you are interested in are in the table header..." 
+            raise ConfigError, "None of the fields you are interested in are in the table header..." 
 
         run.info('Columns to report', '"%s"' % ', '.join(table_columns))
 
@@ -90,9 +92,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except utils.ConfigError, e:
+    except ConfigError, e:
         print e
         sys.exit(-1)
-    except filesnpaths.FilesNPathsError, e:
+    except FilesNPathsError, e:
         print e
         sys.exit(-2)

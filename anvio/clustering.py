@@ -11,8 +11,10 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 with terminal.SuppressAllOutput():
     from ete2 import Tree
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -182,7 +184,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name = None, clust
         output_file_name = os.path.abspath(output_file_name)
         output_directory = os.path.dirname(output_file_name)
         if not os.access(output_directory, os.W_OK):
-            raise utils.ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
     
     id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path)
 

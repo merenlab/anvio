@@ -11,6 +11,8 @@ import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError, FilesNPathsError
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -148,17 +150,17 @@ class NetworkDescriptonSamples:
         self.annotation_db = db.DB(self.annotation_db_path, t.annotation_db_version)
 
         if self.annotation_db.get_meta_value('annotation_hash') != self.profile_db.get_meta_value('annotation_hash'):
-            raise utils.ConfigError, "OK. The run described in '%s' was not profiled using the annotation database\
+            raise ConfigError, "OK. The run described in '%s' was not profiled using the annotation database\
                                       you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.annotation_db_path)
 
         table_names = self.profile_db.get_table_names()
 
         if not int(self.profile_db.get_meta_value('merged')):
-            raise utils.ConfigError, "The profile database describes a single run. Current implementation of this\
+            raise ConfigError, "The profile database describes a single run. Current implementation of this\
                                       program restricts its use to merged runs. Sorry :/"
 
         if t.gene_coverages_table_name not in table_names:
-            raise utils.ConfigError, "There is no '%s' table in the profile database. This does not really make\
+            raise ConfigError, "There is no '%s' table in the profile database. This does not really make\
                                       any sense :/" % t.gene_coverages_table_name
 
         progress.new('Init')
@@ -230,9 +232,9 @@ if __name__ == '__main__':
         network.init()
         network.generate_genes_network()
         network.generate_functions_network()
-    except utils.ConfigError, e:
+    except ConfigError, e:
         print e
         sys.exit(-1)
-    except filesnpaths.FilesNPathsError, e:
+    except FilesNPathsError, e:
         print e
         sys.exit(-2)

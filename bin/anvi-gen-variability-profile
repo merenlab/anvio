@@ -14,6 +14,8 @@ import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpath
 
+from anvio.errors import ConfigError
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -77,10 +79,10 @@ class VariablePositions:
 
     def init(self):
         if not self.profile_db_path:
-            raise utils.ConfigError, 'You need to provide a profile database.'
+            raise ConfigError, 'You need to provide a profile database.'
 
         if not self.annotation_db_path:
-            raise utils.ConfigError, 'You need to provide an annotation database.'
+            raise ConfigError, 'You need to provide an annotation database.'
 
         filesnpath.is_file_exists(self.annotation_db_path)
         filesnpath.is_file_exists(self.profile_db_path)

@@ -8,8 +8,7 @@ import anvio.terminal as terminal
 import anvio.clustering as clustering
 from anvio.profiler import __version__
 
-from anvio.utils import ConfigError
-from anvio.filesnpaths import FilesNPathsError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
 

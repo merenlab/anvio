@@ -15,6 +15,7 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 from anvio.metadata import Metadata
 from anvio.contig import Split, Contig, set_contigs_abundance
 from anvio.clusteringconfuguration import ClusteringConfiguration
@@ -68,7 +69,7 @@ class BAMProfiler:
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
-                    raise utils.ConfigError, "Contigs file (%s) is missing..." % (args.contigs_of_interest)
+                    raise ConfigError, "Contigs file (%s) is missing..." % (args.contigs_of_interest)
 
                 self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                                if c.strip() and not c.startswith('#')])
@@ -95,7 +96,7 @@ class BAMProfiler:
 
     def init_dirs_and_dbs(self):
         if not self.annotation_db_path:
-            raise utils.ConfigError, "You can not run profiling without an annotation database. You can create\
+            raise ConfigError, "You can not run profiling without an annotation database. You can create\
                                       one using 'anvi-gen-annotation-database'. Not sure how? Please see the\
                                       user manual."
 
@@ -368,7 +369,7 @@ class BAMProfiler:
         try:
             self.num_reads_mapped = self.bam.mapped
         except ValueError:
-            raise utils.ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
 
         # store num reads mapped for later use.
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
@@ -398,7 +399,7 @@ class BAMProfiler:
             if self.contig_lenghts[i] > self.min_contig_length:
                 contigs_longer_than_M.add(i)
         if not len(contigs_longer_than_M):
-            raise utils.ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+            raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
             self.contig_lenghts = [self.contig_lenghts[i] for i in contigs_longer_than_M]
@@ -519,7 +520,7 @@ class BAMProfiler:
 
     def check_contigs(self):
         if not len(self.contigs):
-            raise utils.ConfigError, "0 contigs to work with. Bye."
+            raise ConfigError, "0 contigs to work with. Bye."
 
 
     def cluster_contigs(self):
@@ -549,19 +550,19 @@ class BAMProfiler:
 
     def check_args(self):
         if (not self.input_file_path) and (not self.serialized_profile_path):
-            raise utils.ConfigError, "You must declare either an input file, or a serialized profile. Use '--help'\
+            raise ConfigError, "You must declare either an input file, or a serialized profile. Use '--help'\
                                       to learn more about the command line parameters."
         if self.input_file_path and self.serialized_profile_path:
-            raise utils.ConfigError, "You can't declare both an input file and a serialized profile."
+            raise ConfigError, "You can't declare both an input file and a serialized profile."
         if self.serialized_profile_path and (not self.output_directory):
-            raise utils.ConfigError, "When loading serialized profiles, you need to declare an output directory."
+            raise ConfigError, "When loading serialized profiles, you need to declare an output directory."
         if self.input_file_path and not os.path.exists(self.input_file_path):
-            raise utils.ConfigError, "No such file: '%s'" % self.input_file_path
+            raise ConfigError, "No such file: '%s'" % self.input_file_path
         if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
-            raise utils.ConfigError, "No such file: '%s'" % self.serialized_profile_path
+            raise ConfigError, "No such file: '%s'" % self.serialized_profile_path
         if not self.min_coverage_for_variability >= 0:
-            raise utils.ConfigError, "Minimum coverage for variability must be 0 or larger."
+            raise ConfigError, "Minimum coverage for variability must be 0 or larger."
         if not self.min_mean_coverage >= 0:
-            raise utils.ConfigError, "Minimum mean coverage must be 0 or larger."
+            raise ConfigError, "Minimum mean coverage must be 0 or larger."
         if not self.min_contig_length >= 0:
-            raise utils.ConfigError, "Minimum contig length must be 0 or larger."
+            raise ConfigError, "Minimum contig length must be 0 or larger."

@@ -7,8 +7,7 @@ import argparse
 
 import anvio.merger as merger
 
-from anvio.utils import ConfigError
-from anvio.filesnpaths import FilesNPathsError
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "A. Murat Eren"

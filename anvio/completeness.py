@@ -12,7 +12,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 
-from anvio.utils import ConfigError
+from anvio.errors import ConfigError
 
 
 __author__ = "A. Murat Eren"

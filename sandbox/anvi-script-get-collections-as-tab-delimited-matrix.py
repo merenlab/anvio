@@ -6,17 +6,11 @@ Goes through the collections_* tables and creates a TAB delimited matrix based o
 all available collections in a given annotation database.
 """
 
-
-import os
-import sys
 import argparse
 
-import anvio.utils as utils
 import anvio.terminal as terminal 
 import anvio.annotation as annotation
 
-from anvio.utils import ConfigError
-from anvio.filesnpaths import FilesNPathsError
 
 run = terminal.Run()
 progress = terminal.Progress()

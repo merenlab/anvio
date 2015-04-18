@@ -18,7 +18,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables import *
-from anvio.utils import ConfigError
+from anvio.errors import ConfigError
 
 
 __author__ = "A. Murat Eren"

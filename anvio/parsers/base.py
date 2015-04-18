@@ -5,7 +5,7 @@
 
 import os
 
-from anvio.utils import ConfigError
+from anvio.errors import ConfigError
 from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
 

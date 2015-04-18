@@ -13,18 +13,12 @@ Please read the COPYING file.
 """
 
 
-import os
 import sys
 import argparse
-from collections import Counter
 
-import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.terminal as terminal 
 import anvio.annotation as annotation
 
-from anvio.utils import ConfigError
-from anvio.filesnpaths import FilesNPathsError
 
 run = terminal.Run()
 progress = terminal.Progress()
