@@ -3,12 +3,13 @@
 
 import os
 import mmap
+import json
 import shutil
-import textwrap
 import tempfile
 import anvio.fastalib as u
 
 from anvio.terminal import Progress
+from anvio.errors import FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -19,30 +20,6 @@ __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
-
-
-class FilesNPathsError(Exception):
-    def __init__(self, e = None):
-        Exception.__init__(self)
-        while 1:
-            if e.find("  ") > -1:
-                e = e.replace("  ", " ")
-            else:
-                break
-        self.e = e
-        return
-    def __str__(self):
-        error_type = 'File/Path Error'
-
-        max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        error_lines = ['\033[0;30m\033[46m%s%s\033[0m' % (l, ' ' * (max_len - len(l)))\
-                                         for l in textwrap.fill(self.e, 80).split('\n')]
-
-        error_message = ['%s: %s' % (error_type, error_lines[0])]
-        for error_line in error_lines[1:]:
-            error_message.append('%s%s' % (' ' * (len(error_type) + 2), error_line))
-
-        return '\n'.join(error_message)
 
 
 def is_file_exists(file_path):
