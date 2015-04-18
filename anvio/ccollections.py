@@ -43,8 +43,10 @@ def create_blank_collections_tables(db):
 
 
 class Collections:
-    def __init__(self, run = run, progress = progress):
+    def __init__(self, r = run, p = progress):
         self.sources_dict = {}
+        self.run = r
+        self.progress = p
 
 
     def populate_sources_dict(self, db_path, version):
@@ -120,6 +122,13 @@ class Collections:
             collection_color_dict[entry['cluster_id']] = entry['htmlcolor']
 
         return collection_color_dict
+
+
+    def list_collections(self):
+        for collection_id in self.sources_dict:
+            c = self.sources_dict[collection_id]
+            output = '%s (%d clusters, representing %d splits).' % (collection_id, c['num_clusters'], c['num_splits'])
+            self.run.info_single(output)
 
 
 class TablesForCollections(Table):
