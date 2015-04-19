@@ -209,6 +209,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
 
     def check_names_consistency(self):
+        if self.args.skip_check_names:
+            return
+
         splits_in_tree = sorted(self.split_names_ordered)
         splits_in_metadata = sorted(self.views[self.runinfo['default_view']]['dict'].keys())
         splits_in_database = sorted(self.split_sequences)

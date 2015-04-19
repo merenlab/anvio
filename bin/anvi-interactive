@@ -84,6 +84,8 @@ parser.add_argument('--show-views', action = 'store_true', default = False,
                         help = 'When declared, the program will show a list of available views, and exit.')
 parser.add_argument('--dry-run', action = 'store_true', default = False,
                         help = 'Do not start the server, do not fire up the browser.')
+parser.add_argument('--skip-check-names', action = 'store_true', default = False,
+                        help = 'For debugging purposes. If you are reading this, you should not use it.')
 
 
 try:
