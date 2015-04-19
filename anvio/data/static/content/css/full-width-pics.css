@@ -1,0 +1,76 @@
+/*!
+ * Start Bootstrap - Full Width Pics HTML Template (http://startbootstrap.com)
+ * Code licensed under the Apache License v2.0.
+ * For details, see http://www.apache.org/licenses/LICENSE-2.0.
+ */
+
+body {
+    margin-top: 0px; /* Required margin for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+	background: url('../pics/bg.jpg') center center scroll;
+}
+
+.header-summary-div {
+  width: 80%;
+  height: 200px;
+  text-align: left;
+  padding-left: 15px;
+  margin-left: 50px;
+  margin-right: 10px;
+}
+
+
+.image-bg-fluid-height,
+.image-bg-fixed-height {
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+    -o-background-size: cover;
+}
+
+.image-bg-fluid-height {
+	background: url('../pics/fractal.jpg') center center scroll;
+    padding-top: 75px;
+    padding-bottom: 25px;
+    border-bottom: 1px #808080 solid;
+}
+
+.image-bg-fixed-height {
+	background: url('../pics/fractal.jpg') center center scroll;
+    height: 200px;
+}
+
+.img-center {
+	margin: 0 auto;
+}
+
+section {
+    padding-top: 45px;
+}
+
+.section-heading {
+    margin: 30px 0;
+    font-size: 4em;
+}
+
+.section-lead {
+    margin: 30px 0;
+}
+
+.section-paragraph {
+    margin: 30px 0;
+}
+
+footer {
+    margin: 50px 0;
+}
+
+@media(max-width:768px) {
+    section {
+        padding-top: 25px;
+        padding-bottom: 25px;
+    }
+
+    .section-heading {
+        font-size: 2em;
+    }
+}
