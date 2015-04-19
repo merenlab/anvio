@@ -195,6 +195,8 @@ class DatabasesMetaclass(ProfileSuperclass, AnnotationSuperclass, object):
         AnnotationSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
+        self.init_split_sequences()
+
 
 
 ####################################################################################################
