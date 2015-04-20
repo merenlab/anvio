@@ -11,13 +11,20 @@ body {
 
 .header-summary-div {
   width: 80%;
-  height: 200px;
-  text-align: left;
   padding-left: 15px;
-  margin-left: 50px;
+  margin-left: 15px;
   margin-right: 10px;
+  display: table;
+  height: 200px;
+  overflow: hidden;
 }
 
+.header-text {
+    display: table-cell;
+    vertical-align: middle;
+    padding-left: 30px;
+    font-size: 150%;
+}
 
 .image-bg-fluid-height,
 .image-bg-fixed-height {
@@ -48,8 +55,19 @@ section {
 }
 
 .section-heading {
-    margin: 30px 0;
+    margin-top: 10px;
     font-size: 4em;
+}
+
+.group-tag-line {
+    font-size: 1.3em;
+    width: 96%;
+    border-bottom: 1px dashed #A59292;
+    padding-left: 20px;
+    font-weight: bold;
+    opacity: 0.4;
+    background-color: #E3E4D1;
+    border-radius: 15px;
 }
 
 .section-lead {
