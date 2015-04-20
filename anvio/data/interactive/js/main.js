@@ -1304,7 +1304,15 @@ function storeCollection() {
             var gname = $('#group_name_' + gid).val();
 
             colors[gname] = $('#group_color_' + gid).attr('color');
-            data[gname] = SELECTED[gid];
+            data[gname] = new Array();
+
+            for (var i=0; i < SELECTED[gid].length; i++)
+            {
+                if (label_to_node_map[SELECTED[gid][i]].IsLeaf())
+                {
+                    data[gname].push(SELECTED[gid][i]);
+                }
+            }
         }
     );
 
