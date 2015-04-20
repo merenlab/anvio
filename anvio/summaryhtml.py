@@ -49,8 +49,6 @@ class SummaryHTMLOutput:
         self.run = r
         self.progress = p
         self.summary_dict = summary_dict
-        print self.summary_dict
-
 
 
     def generate(self):
@@ -87,6 +85,20 @@ def lookup(d, index):
         return d[index]
     return ''
 
+
 @register.filter(name='humanize')
-def lookup(s):
+def humanize(s):
     return s.replace('_', ' ')
+
+
+@register.filter(name='humanize_n')
+def humanize_n(n):
+    for unit in ['', ' Kb', ' Mb']:
+        if abs(n) < 1000.0:
+            return "%3.2f%s" % (n, unit)
+        n /= 1000.0
+    return "%.2f%s" % (n, 'Gb')
+
+@register.filter(name='pretty')
+def pretty(n):
+    return pp(n)

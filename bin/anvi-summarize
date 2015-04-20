@@ -38,6 +38,8 @@ if __name__ == '__main__':
                         help = 'Directory path to store static summary files.')
     parser.add_argument('--list-collections', action='store_true', default=False,
                         help = 'Show available collections and exit.')
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help = 'Print out debug info.')
 
     args = parser.parse_args()
 

@@ -10,6 +10,7 @@ import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass
@@ -36,6 +37,7 @@ class Summarizer(DatabasesMetaclass):
     def __init__(self, args = None, r = run, p = progress):
         self.summary = {}
 
+        self.debug = False
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_directory = None
@@ -49,6 +51,8 @@ class Summarizer(DatabasesMetaclass):
         self.collections.populate_sources_dict(self.annotation_db_path, t.annotation_db_version)
         self.collections.populate_sources_dict(self.profile_db_path, t.profile_db_version)
 
+        self.completeness = completeness.Completeness(self.annotation_db_path)
+
         self.collection_id = None
 
         if args:
@@ -58,6 +62,7 @@ class Summarizer(DatabasesMetaclass):
 
             self.collection_id = args.collection_id
             self.output_directory = args.output_directory
+            self.debug = args.debug
 
         self.sanity_check()
 
@@ -85,7 +90,15 @@ class Summarizer(DatabasesMetaclass):
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
                                 'groups': collection_dict.keys(),
-                                'collection_id': self.collection_id}
+                                'num_groups': len(collection_dict.keys()),
+                                'collection_id': self.collection_id,
+                                'total_length': 0,
+                                'num_contigs': 0,
+                                'profile': self.p_meta,
+                                'annotation': self.a_meta,
+                                'samples': self.samples,
+                                'percent_described': 0.0}
+
         self.summary['groups'] = {}
 
         for group_id in collection_dict: 
@@ -94,8 +107,23 @@ class Summarizer(DatabasesMetaclass):
 
             self.summary['groups'][group_id] = group.create()
             self.summary['groups'][group_id]['color'] = collection_colors[group_id] or '#212121'
+            self.summary['meta']['total_length'] += self.summary['groups'][group_id]['total_length']
+            self.summary['meta']['num_contigs'] += self.summary['groups'][group_id]['num_contigs']
+
+        # final additions
+        self.summary['meta']['percent_described'] = '%.2f' % (self.summary['meta']['total_length'] * 100.0 / int(self.a_meta['total_length']))
+        self.summary['meta']['groups'] = self.get_groups_ordered_by_size()
 
         SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
+
+        if self.debug:
+            import json
+            print json.dumps(self.summary, sort_keys=True, indent=4)
+
+
+    def get_groups_ordered_by_size(self):
+        return [t[1] for t in sorted([(self.summary['groups'][gid]['total_length'], gid) for gid in self.summary['groups']], reverse=True)]
+
 
 
 class Group:
@@ -135,6 +163,9 @@ class Group:
         self.progress.new('[Collection "%s"] Creating the FASTA file' % self.group_id)
         self.store_contigs_fasta()
 
+        self.progress.new('[Collection "%s"] Accessing completeness scores' % self.group_id)
+        self.access_completeness_scores()
+
         return self.group_info_dict
 
 
@@ -162,6 +193,30 @@ class Group:
         return open(file_path, 'w')
 
 
+    def access_completeness_scores(self):
+        self.progress.update('...')
+
+        completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
+
+        self.group_info_dict['completeness'] = completeness
+
+        num_sources = len(completeness)
+
+        # set up for the average completeness / contamination scores:
+        for k in ['percent_contamination', 'percent_complete']:
+            self.group_info_dict[k] = 0.0
+
+        # go through all single-copy gene reporting sources
+        for c in completeness.values():
+            for k in ['percent_contamination', 'percent_complete']:
+                self.group_info_dict[k] += c[k]
+
+        for k in ['percent_contamination', 'percent_complete']:
+            self.group_info_dict[k] /= num_sources
+
+        self.progress.end()
+
+
     def store_contigs_fasta(self):
         """Storing contig sequences.
         
@@ -177,6 +232,10 @@ class Group:
         """
 
         fasta_file = self.get_output_file_handle('contigs.fa')
+
+        # some null values:
+        self.group_info_dict['total_length'] = 0
+        self.group_info_dict['num_contigs'] = 0
 
         # this dict will keep all the contig ids found in this group:
         contigs_represented = {}
@@ -231,6 +290,10 @@ class Group:
                 self.progress.update('Writing contig sequence into file ...')
                 fasta_file.write('>%s\n' % fasta_id)
                 fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens = False))
+
+                # fill in basic info about contigs in group
+                self.group_info_dict['total_length'] += len(sequence)
+                self.group_info_dict['num_contigs'] += 1
 
         fasta_file.close()
         self.progress.end()
