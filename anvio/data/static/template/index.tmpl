@@ -46,6 +46,9 @@
                     <li>
                         <a href="#">Contact</a>
                     </li>
+                    <li>
+                        <a href="#">Anvi'o version: {{ meta|lookup:"profile"|lookup:"version"  }}</a>
+                    </li>
                 </ul>
             </div>
             <!-- /.navbar-collapse -->
@@ -56,10 +59,12 @@
     <!-- Image backgrounds are set within the full-width-pics.css file. -->
     <header class="image-bg-fluid-height">
         <div class="header-summary-div">
-        <img class="img-responsive img-left" style="float:left" src=".html/pics/logo.png" alt="">
-        <p style="font-size: 12pt; padding-left: 225px; font: bold;">
-        Lorem ipsum dolor sit amet, consectetur adipisicing elit. Aliquid, suscipit, rerum quos facilis repellat architeto commodi officia atque nemo facere eum non illo voluptatem quae delectus odit vel itaque amet.
-        </p>
+            <div style="width: 200px;">
+                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+            </div>
+            <div class="header-text">
+                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_groups"|pretty }}</b> groups that resulted in <b>{{ meta|lookup:"num_contigs"|pretty }}</b> contigs in total accountig for <b>{{ meta|lookup:"total_length"|pretty  }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_described" }}%</b> of the original assembly for this project stored in the annotation database.
+            </div>
         </div>
     </header>
 
@@ -69,7 +74,12 @@
         <div class="container" style="border-left: 25px {{ groups|lookup:group_id|lookup:"color" }} solid; border-radius: 25px; background-color: rgba(200, 200, 200, .2);">
             <div class="row">
                 <div class="col-lg-12">
-                    <h2 class="section-heading">{{ group_id|humanize }}</h2>
+                    <h2 class="section-heading">{{ group_id|humanize }} <span style="opacity: 0.4">[{{ groups|lookup:group_id|lookup:"total_length"|humanize_n }}]</span></h2>
+                    <div class="group-tag-line">
+                            <span style="color: rgb(16, 73, 16); font-size: larger;">~{{groups|lookup:group_id|lookup:"percent_complete"|humanize_n}}%</span> complete,
+                            <span style="color: rgb(73, 19, 19); font-size: larger;">~{{groups|lookup:group_id|lookup:"percent_contamination"|humanize_n}}%</span> contaminated.
+                    </div>
+
                     <p class="lead section-lead">Downloads:</p>
                     <p class="section-paragraph"><a href="{{ groups|lookup:group_id|lookup:"files"|lookup:"contigs"   }}">Fasta File</a></p>
                 </div>
