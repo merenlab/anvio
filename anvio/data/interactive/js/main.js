@@ -1355,6 +1355,28 @@ function showLoadCollectionWindow() {
     });
 }
 
+function showCollectionDetails() {
+    var cname = $('#loadCollection_list>option:selected').val();
+    
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collections?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            var tbl = "<table>" +
+                "<tr><td>Read Only: </td><td>" + data[cname]['read_only'] + "</td></tr>" + 
+                "<tr><td>Source DB Path: </td><td>" + data[cname]['source_db_path'] + "</td></tr>" +
+                "<tr><td>Source DB Version: </td><td>" + data[cname]['source_db_version'] + "</td></tr>" +
+                "<tr><td colspan='2'><hr></td></tr>" +
+                "<tr><td>Number of Splits: </td><td>" + data[cname]['num_splits'] + "</td></tr>" +
+                "<tr><td>Number of Clusters: </td><td>" + data[cname]['num_clusters'] + "</td></tr>" +
+                "</table>";
+
+            $('#loadCollection_details').html(tbl);
+        }
+    });
+}
+
 function loadCollection() {
     if ($.isEmptyObject(label_to_node_map)) {
         alert('You should draw tree before load collection.');

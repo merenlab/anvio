@@ -188,10 +188,22 @@
                 </div>
             </div>
             <div id="loadCollectionWindow" class="dialogs2">
-                <div style="margin: 10px; ">
-                <select id="loadCollection_list" size="10" style="width: 100%;" ondblclick="loadCollection();"></select></br></br>
-                <center><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();">
+                <div style="margin: 10px; display: inline-block; float: left">
+                <select id="loadCollection_list" size="10" style="width: 100%;" ondblclick="loadCollection();" onChange="showCollectionDetails();"></select></br></br>
                 </div>
+                <div style="margin: 10px; display: inline-block; float: left" id="loadCollection_details">
+                    <table>
+                    <tr><td>Read Only: </td><td>n/a</td></tr>
+                    <tr><td>Source DB Path: </td><td>n/a</td></tr>
+                    <tr><td>Source DB Version: </td><td>n/a</td></tr>
+                    <tr><td colspan="2"><hr></td></tr>
+                    <tr><td>Number of Splits: </td><td>n/a</td></tr>
+                    <tr><td>Number of Clusters: </td><td>n/a</td></tr>
+                    </table>
+                </div>
+                <br />
+                <div style="clear: both; "><center><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();"></center></div>
+
             </div>
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>
