@@ -112,7 +112,7 @@ class Summarizer(DatabasesMetaclass):
 
         # final additions
         self.summary['meta']['percent_described'] = '%.2f' % (self.summary['meta']['total_length'] * 100.0 / int(self.a_meta['total_length']))
-        self.summary['meta']['groups'] = self.get_groups_ordered_by_size()
+        self.summary['meta']['groups'] = self.get_groups_ordered_by_completeness_and_size()
 
         SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
 
@@ -121,8 +121,8 @@ class Summarizer(DatabasesMetaclass):
             print json.dumps(self.summary, sort_keys=True, indent=4)
 
 
-    def get_groups_ordered_by_size(self):
-        return [t[1] for t in sorted([(self.summary['groups'][gid]['total_length'], gid) for gid in self.summary['groups']], reverse=True)]
+    def get_groups_ordered_by_completeness_and_size(self):
+        return [t[2] for t in sorted([(self.summary['groups'][gid]['percent_complete'], self.summary['groups'][gid]['total_length'], gid) for gid in self.summary['groups']], reverse=True)]
 
 
 
