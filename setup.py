@@ -17,7 +17,7 @@ setup(
 
     packages = find_packages(),
 
-    install_requires = ['bottle>=0.12.7', 'pysam==0.7.7', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15'],
+    install_requires = ['bottle>=0.12.7', 'pysam==0.7.7', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15', 'django>=1.7'],
 
     author = "anvio Authors",
     author_email = "a.murat.eren@gmail.com",
