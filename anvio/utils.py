@@ -339,6 +339,15 @@ def get_GC_content_for_sequence(sequence):
     return Composition(sequence).GC_content
 
 
+def get_N50(contig_lengths):
+    h, S = sum(contig_lengths) / 2.0, 0
+
+    for l in sorted(contig_lengths, reverse=True):
+        S += l
+        if h < S:
+            return l
+
+
 def get_cmd_line():
     c_argv = []
     for i in sys.argv:
