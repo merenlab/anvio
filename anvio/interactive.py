@@ -131,6 +131,13 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                 'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
 
         filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
+        self.split_sequences = utils.get_FASTA_file_as_dictionary(self.runinfo['splits_fasta'])
+
+        # setup a mock splits_basic_info dict
+        self.splits_basic_info = {}
+        for split_id in self.split_sequences:
+            self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
+                                                'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
         # reminder: this is being stored in the output dir provided as a commandline parameter:
         self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
