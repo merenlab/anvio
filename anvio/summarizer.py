@@ -4,9 +4,11 @@
 
 import os
 import sys
+import numpy
 import textwrap
 
 import anvio.tables as t
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -137,6 +139,7 @@ class Group:
         self.group_info_dict = {'files': {}}
 
         self.output_directory = None
+        self.contig_lengths = []
 
         # make sure all split_ids in the collection is actually in the annotation database.
         # in collections stored in the annotation database, split_ids that are not in the
@@ -165,6 +168,9 @@ class Group:
 
         self.progress.new('[Collection "%s"] Accessing completeness scores' % self.group_id)
         self.access_completeness_scores()
+
+        self.progress.new('[Collection "%s"] Computing basic stats' % self.group_id)
+        self.compute_basic_stats()
 
         return self.group_info_dict
 
@@ -292,10 +298,21 @@ class Group:
                 fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens = False))
 
                 # fill in basic info about contigs in group
-                self.group_info_dict['total_length'] += len(sequence)
+                len_seq = len(sequence)
+                self.group_info_dict['total_length'] += len_seq
+                self.contig_lengths.append(len_seq)
                 self.group_info_dict['num_contigs'] += 1
 
         fasta_file.close()
+        self.progress.end()
+
+
+    def compute_basic_stats(self):
+        self.progress.update('...')
+
+        self.group_info_dict['N50'] = utils.get_N50(self.contig_lengths)
+        self.group_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
+
         self.progress.end()
 
 
