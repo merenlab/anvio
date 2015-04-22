@@ -12,6 +12,7 @@
 
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
+    <link href=".html/css/bootstrap-sortable.css" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link href=".html/css/anvio.css" rel="stylesheet">
@@ -67,9 +68,60 @@
     </header>
 
 
+    <section>
+            <div class="row">
+                <div class="col-lg-12">
+                </div>
+            </div>
+            <!-- /.row -->
+        </div>
+    </section>
+
+
+    <section>
+        <div class="container">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Groups Overview for '{{ meta|lookup:"profile"|lookup:"sample_id"|humanize  }}'</h1>
+                </div>
+    
+                <div class="panel-body">
+                    <table class="table table-striped sortable" id="tblGrid">
+                        <thead id="tblHead">
+                            <tr>
+                                <th>Group</th>
+                                <th class="text-center">Total Size</th>
+                                <th class="text-center">Num Contigs</th>
+                                <th class="text-center">N50</th>
+                                <th class="text-center">GC Content</th>
+                                <th class="text-center">Compl.</th>
+                                <th class="text-center">Contam.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group_id in meta.groups %}
+                            <tr>
+                                <td style="vertical-align: middle;">{{ group_id }}</td>
+                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{group_id}}">{{ groups|lookup:group_id|lookup:"total_length"|humanize_n }}</button></td>
+                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"num_contigs" }}">{{ groups|lookup:group_id|lookup:"num_contigs"|pretty }}</td>
+                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"N50" }}">{{ groups|lookup:group_id|lookup:"N50"|pretty }}</td>
+                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"GC_content" }}">{{ groups|lookup:group_id|lookup:"GC_content"|humanize_n }}%</td>
+                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{group_id}}">{{ groups|lookup:group_id|lookup:"percent_complete"|humanize_n }}%</button></td>
+                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"percent_contamination"|humanize_n }}">{{ groups|lookup:group_id|lookup:"percent_contamination"|humanize_n }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
     {% for group_id in meta.groups %}
 
-    <div class="modal fade" id="modFiles_{{group_id}}" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <!-- FILES FOR EACH GROUP -->
+    <div class="modal fade" id="modFiles_{{group_id}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -100,25 +152,43 @@
       </div>
     </div>
 
-    <section>
-        <div class="container" style="border-left: 25px {{ groups|lookup:group_id|lookup:"color" }} solid; border-radius: 25px; background-color: rgba(200, 200, 200, .2);">
-            <div class="row">
-                <div class="col-lg-12">
-                    <h2 class="section-heading">{{ group_id|humanize }} <span style="opacity: 0.4;">// {{ groups|lookup:group_id|lookup:"total_length"|humanize_n }}</span></h2>
-                    <div class="group-tag-line">
-                            <span style="color: rgb(16, 73, 16); font-size: larger;">~{{groups|lookup:group_id|lookup:"percent_complete"|humanize_n}}%</span> complete,
-                            <span style="color: rgb(73, 19, 19); font-size: larger;">~{{groups|lookup:group_id|lookup:"percent_contamination"|humanize_n}}%</span> contaminated.
-                    </div>
 
-                    <div class="group-buttons">
-                        <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{group_id}}">Files</button>
-                    </div>
-
-                </div>
-            </div>
-            <!-- /.row -->
+    <!-- COMPLETENESS INFO FOR EACH GROUP -->
+    <div class="modal fade" id="modCompleteness_{{group_id}}" role="dialog" aria-labelledby="modCompleteness" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Completeness estimations for "{{ group_id|humanize }}"</h4>
+          </div>
+          <div class="modal-body">
+            <table class="table table-striped" id="tblGrid">
+                <thead id="tblHead">
+                  <tr>
+                    <th>Source</th>
+                    <th class="text-center">Percent completeness</th>
+                    <th class="text-center">Percent contamination</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for source in groups|lookup:group_id|lookup:"completeness" %}
+                  <tr>
+                    <td>{{ source|humanize }}</td>
+                    <td class="text-center">{{ groups|lookup:group_id|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
+                    <td class="text-center">{{ groups|lookup:group_id|lookup:"completeness"|lookup:source|lookup:"percent_contamination"|humanize_n }}%</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+          </table>
+            <p class="section-paragraph"></p>
+          <p style="color: #AAAAAA; padding: 10px;">See the documentation for more information on single-copy gene data.</h5>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
     {% endfor %}
 
     <!-- jQuery -->
@@ -127,5 +197,7 @@
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/bootstrap.min.js"></script>
 
+    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
+    <script src=".html/js/bootstrap-sortable.js"></script>
 </body>
 </html>
