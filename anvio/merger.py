@@ -445,6 +445,7 @@ class MultipleRuns:
                 newick = clustering.order_contigs_simple(config, progress = self.progress)
             except Exception as e:
                 self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
+                self.progress.end()
                 continue
 
             clusterings.append(config_name)
