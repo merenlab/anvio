@@ -1,8 +1,9 @@
 # -*- coding: utf-8
 """Classes for handling contigs and splits"""
 
-from anvio.variability import ColumnProfile, VariablityTestFactory
+from anvio.variability import VariablityTestFactory
 from anvio.sequence import Coverage
+from anvio.columnprofile import ColumnProfile
 
 
 __author__ = "A. Murat Eren"
