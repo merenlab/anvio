@@ -1,9 +1,17 @@
 # -*- coding: utf-8
 """Classes for handling contigs and splits"""
 
+from anvio.terminal import Run
 from anvio.variability import VariablityTestFactory
 from anvio.sequence import Coverage
-from anvio.columnprofile import ColumnProfile
+
+run = Run()
+
+try:
+    from anvio.columnprofile import ColumnProfile
+except ImportError:
+    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc = 'gray')
+    from anvio.variability import ColumnProfile
 
 
 __author__ = "A. Murat Eren"
