@@ -165,13 +165,13 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     competing_nts[0] = nucleotides[(int)nucleotides_arr[4][1]];
     competing_nts[1] = nucleotides[(int)nucleotides_arr[3][1]];
 
-    if (nucleotides_arr[4][1] == 5) {
+    if (nucleotides_arr[4][1] == 4) {
         return 0;
     }
 
     PyDict_SetItemString(self->profile, "consensus", PyString_FromString(np));
 
-    if (nucleotides_arr[3][1] == 5) {
+    if (nucleotides_arr[3][1] == 4) {
         return 0;
     }
 
