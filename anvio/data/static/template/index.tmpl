@@ -8,7 +8,7 @@
     <meta name="description" content="">
     <meta name="author" content="Anvi'o">
 
-    <title>Anvi'o Output for PROJECT</title>
+    <title>Anvi'o: {{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</title>
 
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
@@ -89,7 +89,9 @@
                     <table class="table table-striped sortable" id="tblGrid">
                         <thead id="tblHead">
                             <tr>
+                                <th data-defaultsort='disabled' class="text-center"></th>
                                 <th>Group</th>
+                                <th class="text-center">Taxonomy</th>
                                 <th class="text-center">Total Size</th>
                                 <th class="text-center">Num Contigs</th>
                                 <th class="text-center">N50</th>
@@ -101,7 +103,9 @@
                         <tbody>
                             {% for group_id in meta.groups %}
                             <tr>
+                                <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ groups|lookup:group_id|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                 <td style="vertical-align: middle;">{{ group_id }}</td>
+                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{group_id}}"><i>{{ groups|lookup:group_id|lookup:"taxon" }}</i></button></td>
                                 <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{group_id}}">{{ groups|lookup:group_id|lookup:"total_length"|humanize_n }}</button></td>
                                 <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"num_contigs" }}">{{ groups|lookup:group_id|lookup:"num_contigs"|pretty }}</td>
                                 <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"N50" }}">{{ groups|lookup:group_id|lookup:"N50"|pretty }}</td>
@@ -120,7 +124,42 @@
 
     {% for group_id in meta.groups %}
 
-    <!-- FILES FOR EACH GROUP -->
+    <!-- TAXONOMY FOR GROUP -->
+    <div class="modal fade" id="modTaxonomy_{{group_id}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Taxonomy calls for {{ group_id|humanize }}</h4>
+          </div>
+          <div class="modal-body">
+            <table class="table table-striped" id="tblGrid">
+                <thead id="tblHead">
+                  <tr>
+                    <th>Taxon call</th>
+                    <th>Relative occurrence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for taxon_call in groups|lookup:group_id|lookup:"taxon_calls" %}
+                  <tr>
+                    <td>{{ taxon_call.0 }}</td>
+                    <td>{{ taxon_call.1|humanize_n }}%</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+          </table>
+            <p class="section-paragraph"></p>
+          <p style="color: #AAAAAA; padding: 10px;">Taxonomy calls for splits in your {{ groups|lookup:group_id|lookup:"num_contigs" }} contigs
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILES FOR GROUP -->
     <div class="modal fade" id="modFiles_{{group_id}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -137,13 +176,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td>Contigs FASTA</td>
+                  <tr>
+                    <td>Contigs FASTA</td>
                     <td><a href="{{ groups|lookup:group_id|lookup:"files"|lookup:"contigs" }}">{{ groups|lookup:group_id|lookup:"files"|lookup:"contigs" }}</a></td>
                   </tr>
                 </tbody>
           </table>
             <p class="section-paragraph"></p>
-          <p style="color: #AAAAAA; padding: 10px;">These are some of the files generated for your bin. As these files sit on your disk, you do not need to download them</h5>
+          <p style="color: #AAAAAA; padding: 10px;">Files that were generated for your bin.
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -153,7 +193,7 @@
     </div>
 
 
-    <!-- COMPLETENESS INFO FOR EACH GROUP -->
+    <!-- COMPLETENESS INFO FOR GROUP -->
     <div class="modal fade" id="modCompleteness_{{group_id}}" role="dialog" aria-labelledby="modCompleteness" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">

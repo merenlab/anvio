@@ -7,6 +7,8 @@ import sys
 import numpy
 import textwrap
 
+from collections import Counter
+
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -172,6 +174,9 @@ class Group:
         self.progress.new('[Collection "%s"] Computing basic stats' % self.group_id)
         self.compute_basic_stats()
 
+        self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.group_id)
+        self.set_taxon_calls()
+
         return self.group_info_dict
 
 
@@ -304,6 +309,34 @@ class Group:
                 self.group_info_dict['num_contigs'] += 1
 
         fasta_file.close()
+        self.progress.end()
+
+
+    def set_taxon_calls(self):
+        self.progress.update('...')
+
+        taxon_calls_counter = Counter()
+        for split_id in self.split_ids:
+            taxon_calls_counter[self.summary.genes_in_splits_summary_dict[split_id]['taxonomy']] += 1
+
+        taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key = lambda x: int(x[1]), reverse = True)
+
+        self.group_info_dict['taxon_calls'] = taxon_calls
+
+        # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
+        l = [tc for tc in taxon_calls if tc[0]]
+        num_calls = sum(taxon_calls_counter.values())
+        # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
+        if l and l[0][1] > num_calls / 4.0:
+            # if l[0] is associated with more than 25 percent of splits:
+            self.group_info_dict['taxon'] = l[0][0]
+        else:
+            self.group_info_dict['taxon'] = 'Unknown'
+
+        # convert to percents..
+        for tc in taxon_calls:
+            tc[1] = tc[1] * 100.0 / num_calls
+
         self.progress.end()
 
 
