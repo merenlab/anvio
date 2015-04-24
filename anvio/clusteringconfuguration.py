@@ -58,10 +58,15 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory = None, version = None, db_paths = {}):
+    def __init__(self, config_file_path, input_directory = None, db_paths = {}, row_ids_of_interest = []):
         self.input_directory = input_directory or os.getcwd()
         self.config_file_path = config_file_path
-        self.version = version
+
+        # `row_ids_of_interest` gives opportunity to filter out irrelevant entries quickly
+        # while vectors are being obtained from each matrix described in the config file.
+        # to see why it is important in the context of anvi'o, see
+        # https://github.com/meren/anvio/issues/100
+        self.row_ids_of_interest = row_ids_of_interest
 
         # these are the database files that may be referenced from within the config files
         # with !DATABASE.db::table notation. If a database entry has an exclamation mark,
@@ -111,7 +116,7 @@ class ClusteringConfiguration:
             m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True 
             m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False 
             # next two variables are necessary to follow the order of vectors
-            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'])
+            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], self.row_ids_of_interest)
             self.matrices_dict[alias] = m
 
         # make sure all matrices have identical rows:
