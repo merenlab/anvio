@@ -403,6 +403,7 @@ class BAMProfiler:
         for i in range(0, len(self.contig_names)):
             if self.contig_lenghts[i] >= self.min_contig_length:
                 contigs_longer_than_M.add(i)
+
         if not len(contigs_longer_than_M):
             raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
         else:
@@ -412,16 +413,34 @@ class BAMProfiler:
 
         # finally, compute contig splits.
         annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        self.splits = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        self.splits_in_annotation_db = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
         annotation_db.disconnect()
 
+        contigs_longer_than_M = set(self.contig_names) # for fast access
+        self.split_names = set([])
         self.contig_name_to_splits = {}
-        for split_name in self.splits:
-            parent = self.splits[split_name]['parent']
+        for split_name in self.splits_in_annotation_db:
+            parent = self.splits_in_annotation_db[split_name]['parent']
+
+            if parent not in contigs_longer_than_M:
+                continue
+
+            self.split_names.add(split_name)
+
             if self.contig_name_to_splits.has_key(parent):
                 self.contig_name_to_splits[parent].append(split_name)
             else:
                 self.contig_name_to_splits[parent] = [split_name]
+
+        # we just recovered number of splits that are coming from contigs
+        # longer than M. let's appreciate this expensive information and
+        # store it everywhere!
+        num_splits = len(self.split_names)
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('num_splits', num_splits)
+        profile_db.disconnect()
+
+        self.run.info('num_splits', len(self.split_names))
 
 
     def generate_output_destination(self, postfix, directory = False):
@@ -457,7 +476,7 @@ class BAMProfiler:
 
             # populate contig with empty split objects and 
             for split_name in self.contig_name_to_splits[contig_name]:
-                s = self.splits[split_name]
+                s = self.splits_in_annotation_db[split_name]
                 split = Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
@@ -534,7 +553,7 @@ class BAMProfiler:
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, version = t.profile_db_version, db_paths = self.database_paths)
+            config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
 
             try:
                 newick = clustering.order_contigs_simple(config, progress = self.progress)
