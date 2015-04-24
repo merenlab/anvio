@@ -281,8 +281,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
-        if len(rows_to_return):
-            if row_name not in rows_to_return:
+        if rows_to_return and row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip().split('\t')[1:]
