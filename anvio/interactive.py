@@ -175,14 +175,17 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                            anymore. You need to re-run anvio profiler on these projects."
 
         # load views from the profile database
-        self.load_views(self.runinfo['views'])
-        self.runinfo['views'] = {}
+        self.load_views()
+        self.default_view = self.p_meta['default_view']
 
         # if the user wants to see available views, show them and exit.
         if args.show_views:
             run.warning('', header = 'Available views (%d)' % len(self.views), lc = 'green')
             for view in self.views:
-                run.info(view, 'Via "%s" table' % self.views[view], lc='crimson', mc='crimson')
+                run.info(view,
+                         'Via "%s" table' % self.views[view]['table_name'],
+                         lc='crimson',
+                         mc='green' if view == self.default_view else 'crimson')
             print
             sys.exit()
 
@@ -193,7 +196,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                 raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
                                           available views by running this program with --show-views flag." % args.view
 
-            self.runinfo['default_view'] = args.view
+            self.p_meta = args.view
 
         # set clusterig
         self.runinfo['clusterings'] = self.clusterings 
@@ -210,9 +213,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         # set title
         if args.title:
-            self.title = args.title + ' (%s)' % self.runinfo['default_view']
+            self.title = args.title + ' (%s)' % self.default_view
         else:
-            self.title = self.runinfo['sample_id'] + ' (%s)' % self.runinfo['default_view']
+            self.title = self.runinfo['sample_id'] + ' (%s)' % self.default_view
 
 
     def check_names_consistency(self):
@@ -220,7 +223,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             return
 
         splits_in_tree = sorted(self.split_names_ordered)
-        splits_in_metadata = sorted(self.views[self.runinfo['default_view']]['dict'].keys())
+        splits_in_metadata = sorted(self.views[self.default_view]['dict'].keys())
         splits_in_database = sorted(self.split_sequences)
 
         try:
@@ -319,7 +322,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
                 json_object.append(json_entry)
 
-            self.runinfo['views'][view] = json_object
+            self.views[view] = json_object
 
 
     def end(self):

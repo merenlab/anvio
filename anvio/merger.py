@@ -297,6 +297,7 @@ class MultipleRuns:
                        'samples': ','.join(self.merged_sample_ids),
                        'merged': True,
                        'contigs_clustered': not self.skip_clustering,
+                       'default_view': 'mean_coverage',
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
 
@@ -372,7 +373,7 @@ class MultipleRuns:
         essential_fields = [f for f in self.metadata_fields if constants.IS_ESSENTIAL_FIELD(f)]
         auxiliary_fields = [f for f in self.metadata_fields if constants.IS_AUXILIARY_FIELD(f)]
 
-        views = {}
+        views_table = dbops.TableForViews(self.profile_db_path, __version__, progress = self.progress)
 
         # setting standard metadata table structure and types
         merged_mtable_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
@@ -420,14 +421,13 @@ class MultipleRuns:
                 profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
 
                 if target == 'splits':
-                    views[essential_field] = target_table
+                    views_table.append(essential_field, target_table)
 
         profile_db.disconnect()
         self.progress.end()
-        # fill the runinfo dict with visualization targets:
-        self.run.info('views', views, quiet = True)
-        # this is not very flexible:
-        self.run.info('default_view', 'mean_coverage', quiet = True)
+
+        # store views in the database
+        views_table.store()
 
 
     def cluster_contigs(self):

@@ -123,6 +123,7 @@ class BAMProfiler:
                        'merged': False,
                        'contigs_clustered': self.contigs_shall_be_clustered,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'report_variability_full': self.report_variability_full,
                        'annotation_hash': self.annotation_hash}
@@ -182,12 +183,11 @@ class BAMProfiler:
         self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
         profile_db.disconnect()
 
-        # so this is a little sloppy. views variable holds all the table names that are appropriate for visualization.
-        # for single runs there is only one table in the PROFILE.db that is relevant for visualization; which is the
-        # 'metadata_splits' table. so we set it up here in such a way that it will be seamless to visualize both single
-        # and merged runs:
-        self.run.info('default_view', 'single', quiet = True)
-        self.run.info('views', {'single': 'metadata_splits'}, quiet = True)
+        # the only view for the single PROFILE database is ready, and already
+        # set as the default view. store the info in the db:
+        views_table = dbops.TableForViews(self.profile_db_path, t.profile_db_version)
+        views_table.append('single', 'metadata_splits')
+        views_table.store()
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()

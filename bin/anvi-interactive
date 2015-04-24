@@ -123,10 +123,10 @@ def send_data(name):
     if name == "clusterings":
         return json.dumps((d.runinfo['default_clustering'], d.runinfo['clusterings']), )
     elif name == "views":
-        available_views = dict(zip(d.runinfo['views'].keys(), d.runinfo['views'].keys()))
-        return json.dumps((d.runinfo['default_view'], available_views), )
+        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        return json.dumps((d.default_view, available_views), )
     elif name == "default_view":
-        return json.dumps(d.runinfo['views'][d.runinfo['default_view']])
+        return json.dumps(d.views[d.default_view])
     elif name == "state":
         if d.state:
             return static_file(os.path.abspath(d.state), root='/')
@@ -139,7 +139,7 @@ def send_data(name):
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
-    return json.dumps(d.runinfo['views'][view_id])
+    return json.dumps(d.views[view_id])
 
 @route('/tree/<tree_id>')
 def send_tree(tree_id):
