@@ -4,6 +4,7 @@
 import sys
 import argparse
 
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.clustering as clustering
 from anvio.profiler import __version__
@@ -30,8 +31,10 @@ parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
                     help = 'Config file for clustering of contigs. See documentation for help.')
 parser.add_argument('-i', '--input-directory', metavar = 'INPUT_DIR', default = None, type=str,
                     help = 'Input directory where the input files can be found')
-parser.add_argument('-a', '--annotation-db-path', default = None, metavar = 'ANNOTATION_DB',
+parser.add_argument('-a', '--annotation-db', default = None, metavar = 'ANNOTATION_DB',
                     help = 'anvio annotation database.', required = True)
+parser.add_argument('-p', '--profile-db', default = None, metavar = 'PROFILE_DB',
+                    help = 'anvio annotation database.', required = False)
 parser.add_argument('-o', '--output-file', metavar = 'FILE', default = None, type=str,
                     help = 'To store the newick output/')
 parser.add_argument('-D', '--dry-run', default = False, action = 'store_true', 
@@ -39,9 +42,19 @@ parser.add_argument('-D', '--dry-run', default = False, action = 'store_true',
 
 args = parser.parse_args()
 
+
 try:
-    db_paths = {'ANNOTATION.db': args.annotation_db_path}
-    config = ClusteringConfiguration(args.config_file, args.input_directory, version = __version__, db_paths = db_paths)
+    split_names = []
+    if args.profile_db:
+        profile_db = dbops.ProfileDatabase(args.profile_db)
+        if int(profile_db.meta['merged']):
+            split_names = profile_db.db.get_single_column_from_table('mean_coverage_splits', 'contig')
+        else:
+            split_names = profile_db.db.get_single_column_from_table('metadata_splits', 'contig')
+        profile_db.disconnect()
+
+    db_paths = {'ANNOTATION.db': args.annotation_db}
+    config = ClusteringConfiguration(args.config_file, args.input_directory, db_paths = db_paths, row_ids_of_interest = split_names)
 except ConfigError, e:
     print e
     sys.exit(-1)
