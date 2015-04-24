@@ -178,16 +178,16 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
 
-    # FIXME: THIS IS RIDICULOUS. PROFILE.db should know what views it holds.
-    # TODO: Change profiler.py to store this info in table 'self', remove this
-    # function, fix interactive.py.
-    def load_views(self, views_requested):
+    def load_views(self):
         profile_db = ProfileDatabase(self.profile_db_path)
 
-        for view in views_requested:
-            table = views_requested[view]
-            self.views[view] = {'header': profile_db.db.get_table_structure(table)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table)}
+        views_table = profile_db.db.get_table_as_dict(t.views_table_name)
+
+        for view in views_table:
+            table_name = views_table[view]['target_table']
+            self.views[view] = {'table_name': table_name,
+                                'header': profile_db.db.get_table_structure(table_name)[1:],
+                                'dict': profile_db.db.get_table_as_dict(table_name)}
 
         profile_db.disconnect()
 
@@ -264,6 +264,7 @@ class ProfileDatabase:
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
         self.db.create_table(t.variable_positions_table_name, t.variable_positions_table_structure, t.variable_positions_table_types)
+        self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         ccollections.create_blank_collections_tables(self.db)
 
         self.disconnect()
@@ -497,6 +498,25 @@ class KMerTablesForContigsAndSplits:
     def store(self, db):
         db.create_table(self.table_name, self.kmers_table_structure, self.kmers_table_types)
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
+
+
+class TableForViews(Table):
+    def __init__(self, db_path, version, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, version, run, progress)
+
+        self.db_entries = []
+
+
+    def append(self, view_id, target_table):
+        self.db_entries.append((view_id, target_table),)
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, self.db_entries)
+        profile_db.disconnect()
 
 
 class TableForVariability(Table):

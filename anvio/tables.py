@@ -90,13 +90,17 @@ clusterings_table_name               = 'clusterings'
 clusterings_table_structure          = ['clustering', 'newick' ]
 clusterings_table_types              = [   'str'    ,  'str'   ]
 
-variable_positions_table_name       = 'variable_positions'
-variable_positions_table_structure  = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
-variable_positions_table_types      = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
+variable_positions_table_name        = 'variable_positions'
+variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
+variable_positions_table_types       = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
 gene_coverages_table_name            = 'gene_coverages'
 gene_coverages_table_structure       = ['entry_id', 'prot', 'sample_id', 'mean_coverage']
 gene_coverages_table_types           = [ 'numeric', 'text',   'text'   ,    'numeric'   ]
+
+views_table_name                     = 'views'
+views_table_structure                = ['view_id', 'target_table']
+views_table_types                    = [  'str'  ,      'str'    ]
 
 
 class Table(object):
