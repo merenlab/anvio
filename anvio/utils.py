@@ -376,18 +376,19 @@ def concatenate_files(dest_file, file_list):
     return dest_file
 
 
-def get_chunks(contig_length, desired_length):
-    num_chunks = contig_length / desired_length
+def get_split_start_stops(contig_length, split_length):
+    """Returns split start stop locations for a given contig length"""
+    num_chunks = contig_length / split_length
 
     if num_chunks < 2:
         return [(0, contig_length)]
 
     chunks = []
     for i in range(0, num_chunks):
-        chunks.append((i * desired_length, (i + 1) * desired_length),)
-    chunks.append(((i + 1) * desired_length, contig_length),)
+        chunks.append((i * split_length, (i + 1) * split_length),)
+    chunks.append(((i + 1) * split_length, contig_length),)
 
-    if (chunks[-1][1] - chunks[-1][0]) < (desired_length / 2):
+    if (chunks[-1][1] - chunks[-1][0]) < (split_length / 2):
         # last chunk is too small :/ merge it to the previous one.
         last_tuple = (chunks[-2][0], contig_length)
         chunks.pop()

@@ -107,7 +107,8 @@ class AnnotationSuperclass(object):
 
         annotation_db = AnnotationDatabase(self.annotation_db_path)
 
-        contigs_shorter_than_M = [c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length]
+        self.progress.update('Identifying contigs shorter than M')
+        contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
         self.progress.update('Reading contig sequences')
         contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
@@ -121,15 +122,17 @@ class AnnotationSuperclass(object):
             split = self.splits_basic_info[split_name]
 
             if split['parent'] in contigs_shorter_than_M:
+                contigs_shorter_than_M.remove(split['parent'])
                 continue
 
-            parent_sequence = contigs_sequences[split['parent']]['sequence']
-            self.split_sequences[split_name] = parent_sequence[split['start']:split['end']]
+            if self.contigs_basic_info[split['parent']]['num_splits'] == 1:
+                self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence']
+            else:
+                self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence'][split['start']:split['end']]
 
         self.progress.end()
 
         annotation_db.disconnect()
-        
 
 
 class ProfileSuperclass(object):
@@ -343,17 +346,16 @@ class AnnotationDatabase:
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
 
-        contigs_info_table = InfoTableForContigs()
+        contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
         while fasta.next():
-            contig_length, contig_gc_content = contigs_info_table.append(fasta.id, fasta.seq)
-            chunks = utils.get_chunks(contig_length, split_length)
+            contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(fasta.id, fasta.seq)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
 
-            for order in range(0, len(chunks)):
-                start, end = chunks[order]
+            for order in range(0, len(split_start_stops)):
+                start, end = split_start_stops[order]
                 split_name = contig.gen_split_name(fasta.id, order)
 
                 # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
@@ -411,20 +413,26 @@ class AnnotationDatabase:
 
 
 class InfoTableForContigs:
-    def __init__(self):
+    def __init__(self, split_length):
         self.db_entries = []
         self.total_nts = 0
         self.total_contigs = 0
+        self.split_length = split_length
 
 
     def append(self, seq_id, sequence):
         sequence_length = len(sequence)
         gc_content = utils.get_GC_content_for_sequence(sequence)
+
+        # how many splits will there be?
+        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length)
+
         self.total_nts += sequence_length
         self.total_contigs += 1
-        db_entry = tuple([seq_id, sequence_length, gc_content])
+        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
         self.db_entries.append(db_entry)
-        return (sequence_length, gc_content)
+
+        return (sequence_length, split_start_stops, gc_content)
 
 
     def store(self, db):

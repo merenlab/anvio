@@ -123,6 +123,7 @@ class BAMProfiler:
                        'merged': False,
                        'contigs_clustered': self.contigs_shall_be_clustered,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'min_contig_length': self.min_contig_length,
                        'report_variability_full': self.report_variability_full,
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
@@ -358,7 +359,11 @@ class BAMProfiler:
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        try:
+            self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        except ValueError as e:
+            self.progress.end()
+            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_file_path, e)
         self.progress.end()
 
         self.contig_names = self.bam.references

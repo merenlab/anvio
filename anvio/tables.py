@@ -34,8 +34,8 @@ contig_sequences_table_structure     = ['contig', 'sequence']
 contig_sequences_table_types         = [  'str' ,   'str'   ]
 
 contigs_info_table_name              = 'contigs_basic_info'
-contigs_info_table_structure         = ['contig', 'length' , 'gc_content']
-contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ]
+contigs_info_table_structure         = ['contig', 'length' , 'gc_content', 'num_splits']
+contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ,   'numeric' ]
 
 splits_info_table_name               = 'splits_basic_info'
 splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
@@ -84,7 +84,7 @@ collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'
 
 # PRFOFILE DATABASE TABLES
 
-profile_db_version = "1.0.0"
+profile_db_version = "1.1.0"
 
 clusterings_table_name               = 'clusterings'
 clusterings_table_structure          = ['clustering', 'newick' ]
