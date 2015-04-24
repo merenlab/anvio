@@ -439,7 +439,7 @@ class MultipleRuns:
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, version = __version__, db_paths = self.database_paths)
+            config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
 
             try:
                 newick = clustering.order_contigs_simple(config, progress = self.progress)
@@ -521,7 +521,8 @@ class MultipleRuns:
 
 
     def get_split_names(self, sample_runinfo):
-        db = anvio.db.DB(os.path.join(sample_runinfo['output_dir'], sample_runinfo['profile_db']), __version__)
-        split_names = db.get_single_column_from_table('metadata_splits', 'contig')
-        db.disconnect()
+        profile_db = dbops.ProfileDatabase(os.path.join(sample_runinfo['output_dir'], sample_runinfo['profile_db']))
+        split_names = profile_db.db.get_single_column_from_table('metadata_splits', 'contig')
+        profile_db.disconnect()
+
         return split_names
