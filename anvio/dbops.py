@@ -117,6 +117,15 @@ class AnnotationSuperclass(object):
         for contig_name in contigs_shorter_than_M:
             contigs_sequences.pop(contig_name)
 
+        self.progress.update('Discarding split names coming from short contigs')
+        split_names_to_discard = set([])
+        for split_name in self.splits_basic_info:
+            if self.splits_basic_info[split_name]['parent'] in contigs_shorter_than_M:
+                split_names_to_discard.add(split_name)
+
+        for split_name in split_names_to_discard:
+            self.splits_basic_info.pop(split_name)
+
         self.progress.update('Generating split sequences dict')
         for split_name in self.splits_basic_info:
             split = self.splits_basic_info[split_name]
