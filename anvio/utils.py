@@ -357,6 +357,15 @@ def get_cmd_line():
     return ' '.join(c_argv)
 
 
+def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
+    try:
+        local_time = float(local_time)
+    except ValueError:
+        raise ConfigError, "utils::get_time_to_date is called with bad local_time."
+
+    return time.strftime(fmt, time.localtime(local_time))
+
+
 def concatenate_files(dest_file, file_list):
     if not dest_file:
         raise ConfigError, "Destination cannot be empty."
