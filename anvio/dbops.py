@@ -5,6 +5,7 @@
 
 import os
 import sys
+import time
 import numpy
 import random
 import hashlib
@@ -72,6 +73,8 @@ class AnnotationSuperclass(object):
         self.progress.update('Setting annotation metadata dict')
         self.a_meta = annotation_db.meta
 
+        self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
+
         self.progress.update('Reading contigs basic info')
         self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name)
 
@@ -126,6 +129,9 @@ class AnnotationSuperclass(object):
         for split_name in split_names_to_discard:
             self.splits_basic_info.pop(split_name)
 
+        # FIXME: THIS VARIABLE SHOULD BE REMOVED ONCE WE TAG version 1.0
+        db_has_num_splits = 'num_splits' in self.contigs_basic_info.keys()
+
         self.progress.update('Generating split sequences dict')
         for split_name in self.splits_basic_info:
             split = self.splits_basic_info[split_name]
@@ -134,7 +140,7 @@ class AnnotationSuperclass(object):
                 contigs_shorter_than_M.remove(split['parent'])
                 continue
 
-            if self.contigs_basic_info[split['parent']]['num_splits'] == 1:
+            if db_has_num_splits and self.contigs_basic_info[split['parent']]['num_splits'] == 1:
                 self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence']
             else:
                 self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence'][split['start']:split['end']]
@@ -169,6 +175,9 @@ class ProfileSuperclass(object):
 
         self.progress.update('Setting profile metadata dict')
         self.p_meta = profile_db.meta
+
+        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
+        self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
 
         self.progress.update('Reading clusterings dict')
         self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
@@ -259,6 +268,8 @@ class ProfileDatabase:
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
 
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
@@ -388,6 +399,7 @@ class AnnotationDatabase:
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
 
         # set some useful meta values:
+        self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
