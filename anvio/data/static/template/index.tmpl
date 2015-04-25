@@ -46,7 +46,7 @@
                         <a href="#">Contact</a>
                     </li>
                     <li>
-                        <a href="#">Anvi'o version: {{ meta|lookup:"profile"|lookup:"version"  }}</a>
+                        <a href="#">Anvi'o version: {{ meta|lookup:"profile"|lookup:"version" }}</a>
                     </li>
                 </ul>
             </div>
@@ -62,86 +62,78 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_groups"|pretty }}</b> groups that resulted in <b>{{ meta|lookup:"num_contigs"|pretty }}</b> contigs in total accountig for <b>{{ meta|lookup:"total_length"|pretty  }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_described" }}%</b> of the original assembly for this project stored in the annotation database.
+                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins that resulted in <b>{{ meta|lookup:"num_contigs"|pretty }}</b> contigs in total accountig for <b>{{ meta|lookup:"total_length"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_described" }}%</b> of the original assembly for this project stored in the annotation database.
             </div>
         </div>
     </header>
 
 
     <section>
-            <div class="row">
-                <div class="col-lg-12">
-                </div>
-            </div>
-            <!-- /.row -->
-        </div>
-    </section>
-
-
-    <section>
         <div class="container">
-            <div class="panel panel-primary">
+            <div class="panel panel-info" id="bins_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title">Groups Overview for '{{ meta|lookup:"profile"|lookup:"sample_id"|humanize  }}'</h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Bins Overview ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
-    
-                <div class="panel-body">
-                    <table class="table table-striped sortable" id="tblGrid">
-                        <thead id="tblHead">
-                            <tr>
-                                <th data-defaultsort='disabled' class="text-center"></th>
-                                <th>Group</th>
-                                <th class="text-center">Taxonomy</th>
-                                <th class="text-center">Total Size</th>
-                                <th class="text-center">Num Contigs</th>
-                                <th class="text-center">N50</th>
-                                <th class="text-center">GC Content</th>
-                                <th class="text-center">Compl.</th>
-                                <th class="text-center">Contam.</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for group_id in meta.groups %}
-                            <tr>
-                                <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ groups|lookup:group_id|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
-                                <td style="vertical-align: middle;">{{ group_id }}</td>
-                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{group_id}}"><i>{{ groups|lookup:group_id|lookup:"taxon" }}</i></button></td>
-                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{group_id}}">{{ groups|lookup:group_id|lookup:"total_length"|humanize_n }}</button></td>
-                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"num_contigs" }}">{{ groups|lookup:group_id|lookup:"num_contigs"|pretty }}</td>
-                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"N50" }}">{{ groups|lookup:group_id|lookup:"N50"|pretty }}</td>
-                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"GC_content" }}">{{ groups|lookup:group_id|lookup:"GC_content"|humanize_n }}%</td>
-                                <td class="text-center" data-value="{{ groups|lookup:group_id|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{group_id}}">{{ groups|lookup:group_id|lookup:"percent_complete"|humanize_n }}%</button></td>
-                                <td class="text-center" style="vertical-align: middle;" data-value="{{ groups|lookup:group_id|lookup:"percent_contamination"|humanize_n }}">{{ groups|lookup:group_id|lookup:"percent_contamination"|humanize_n }}%</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+
+                <div id="collapse-bins" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <table class="table table-striped sortable" id="tblGrid_bin">
+                            <thead id="tblHead_bin">
+                                <tr>
+                                    <th data-defaultsort='disabled' class="text-center"></th>
+                                    <th>Bin</th>
+                                    <th class="text-center">Taxonomy</th>
+                                    <th class="text-center">Total Size</th>
+                                    <th class="text-center">Num Contigs</th>
+                                    <th class="text-center">N50</th>
+                                    <th class="text-center">GC Content</th>
+                                    <th class="text-center">Compl.</th>
+                                    <th class="text-center">Contam.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bin in meta.collection %}
+                                <tr>
+                                    <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                    <td style="vertical-align: middle;">{{ bin }}</td>
+                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
+                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
+                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
 
-    {% for group_id in meta.groups %}
+    {% for bin in meta.collection %}
 
     <!-- TAXONOMY FOR GROUP -->
-    <div class="modal fade" id="modTaxonomy_{{group_id}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
+    <div class="modal fade" id="modTaxonomy_{{bin}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title">Taxonomy calls for {{ group_id|humanize }}</h4>
+            <h4 class="modal-title">Taxonomy calls for {{ bin|humanize }}</h4>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid">
-                <thead id="tblHead">
+            <table class="table table-striped" id="tblGrid_tax_{{ bin }}">
+                <thead id="tblHead_tax_{{ bin }}">
                   <tr>
                     <th>Taxon call</th>
                     <th>Relative occurrence</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for taxon_call in groups|lookup:group_id|lookup:"taxon_calls" %}
+                  {% for taxon_call in collection|lookup:bin|lookup:"taxon_calls" %}
                   <tr>
                     <td>{{ taxon_call.0 }}</td>
                     <td>{{ taxon_call.1|humanize_n }}%</td>
@@ -150,7 +142,7 @@
                 </tbody>
           </table>
             <p class="section-paragraph"></p>
-          <p style="color: #AAAAAA; padding: 10px;">Taxonomy calls for splits in your {{ groups|lookup:group_id|lookup:"num_contigs" }} contigs
+          <p style="color: #AAAAAA; padding: 10px;">Taxonomy calls for splits in your {{ collection|lookup:bin|lookup:"num_contigs" }} contigs
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -160,16 +152,16 @@
     </div>
 
     <!-- FILES FOR GROUP -->
-    <div class="modal fade" id="modFiles_{{group_id}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
+    <div class="modal fade" id="modFiles_{{bin}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title">Static files for {{ group_id|humanize }}</h4>
+            <h4 class="modal-title">Static files for {{ bin|humanize }}</h4>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid">
-                <thead id="tblHead">
+            <table class="table table-striped" id="tblGrid_files_{{ bin }}">
+                <thead id="tblHead_files_{{ bin }}">
                   <tr>
                     <th>File</th>
                     <th>Location</th>
@@ -178,7 +170,7 @@
                 <tbody>
                   <tr>
                     <td>Contigs FASTA</td>
-                    <td><a href="{{ groups|lookup:group_id|lookup:"files"|lookup:"contigs" }}">{{ groups|lookup:group_id|lookup:"files"|lookup:"contigs" }}</a></td>
+                    <td><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"contigs" }}">{{ collection|lookup:bin|lookup:"files"|lookup:"contigs" }}</a></td>
                   </tr>
                 </tbody>
           </table>
@@ -194,16 +186,16 @@
 
 
     <!-- COMPLETENESS INFO FOR GROUP -->
-    <div class="modal fade" id="modCompleteness_{{group_id}}" role="dialog" aria-labelledby="modCompleteness" aria-hidden="true">
+    <div class="modal fade" id="modCompleteness_{{bin}}" role="dialog" aria-labelledby="modCompleteness" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title">Completeness estimations for "{{ group_id|humanize }}"</h4>
+            <h4 class="modal-title">Completeness estimations for "{{ bin|humanize }}"</h4>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid">
-                <thead id="tblHead">
+            <table class="table table-striped" id="tblGrid_completeness_{{ bin }}">
+                <thead id="tblHead_completeness_{{ bin }}">
                   <tr>
                     <th>Source</th>
                     <th class="text-center">Percent completeness</th>
@@ -211,17 +203,17 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {% for source in groups|lookup:group_id|lookup:"completeness" %}
+                  {% for source in collection|lookup:bin|lookup:"completeness" %}
                   <tr>
                     <td>{{ source|humanize }}</td>
-                    <td class="text-center">{{ groups|lookup:group_id|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
-                    <td class="text-center">{{ groups|lookup:group_id|lookup:"completeness"|lookup:source|lookup:"percent_contamination"|humanize_n }}%</td>
+                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
+                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_contamination"|humanize_n }}%</td>
                   </tr>
                   {% endfor %}
                 </tbody>
           </table>
             <p class="section-paragraph"></p>
-          <p style="color: #AAAAAA; padding: 10px;">See the documentation for more information on single-copy gene data.</h5>
+          <p style="color: #AAAAAA; padding: 10px;">See the documentation for more information on single-copy gene data.
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

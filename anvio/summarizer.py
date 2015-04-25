@@ -93,8 +93,8 @@ class Summarizer(DatabasesMetaclass):
 
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
-                                'groups': collection_dict.keys(),
-                                'num_groups': len(collection_dict.keys()),
+                                'collection': collection_dict.keys(),
+                                'num_bins': len(collection_dict.keys()),
                                 'collection_id': self.collection_id,
                                 'total_length': 0,
                                 'num_contigs': 0,
@@ -103,20 +103,20 @@ class Summarizer(DatabasesMetaclass):
                                 'samples': self.samples,
                                 'percent_described': 0.0}
 
-        self.summary['groups'] = {}
+        self.summary['collection'] = {}
 
-        for group_id in collection_dict: 
-            group = Group(self, group_id, collection_dict[group_id], self.run, self.progress)
-            group.output_directory = os.path.join(self.output_directory, 'collections', group_id)
+        for bin_id in collection_dict: 
+            bin = Bin(self, bin_id, collection_dict[bin_id], self.run, self.progress)
+            bin.output_directory = os.path.join(self.output_directory, 'collections', bin_id)
 
-            self.summary['groups'][group_id] = group.create()
-            self.summary['groups'][group_id]['color'] = collection_colors[group_id] or '#212121'
-            self.summary['meta']['total_length'] += self.summary['groups'][group_id]['total_length']
-            self.summary['meta']['num_contigs'] += self.summary['groups'][group_id]['num_contigs']
+            self.summary['collection'][bin_id] = bin.create()
+            self.summary['collection'][bin_id]['color'] = collection_colors[bin_id] or '#212121'
+            self.summary['meta']['total_length'] += self.summary['collection'][bin_id]['total_length']
+            self.summary['meta']['num_contigs'] += self.summary['collection'][bin_id]['num_contigs']
 
         # final additions
         self.summary['meta']['percent_described'] = '%.2f' % (self.summary['meta']['total_length'] * 100.0 / int(self.a_meta['total_length']))
-        self.summary['meta']['groups'] = self.get_groups_ordered_by_completeness_and_size()
+        self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
 
@@ -125,20 +125,20 @@ class Summarizer(DatabasesMetaclass):
             print json.dumps(self.summary, sort_keys=True, indent=4)
 
 
-    def get_groups_ordered_by_completeness_and_size(self):
-        return [t[2] for t in sorted([(self.summary['groups'][gid]['percent_complete'], self.summary['groups'][gid]['total_length'], gid) for gid in self.summary['groups']], reverse=True)]
+    def get_bins_ordered_by_completeness_and_size(self):
+        return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
 
 
 
-class Group:
-    def __init__(self, summary, group_id, split_ids, r = run, p = progress):
+class Bin:
+    def __init__(self, summary, bin_id, split_ids, r = run, p = progress):
         self.summary = summary
-        self.group_id = group_id
+        self.bin_id = bin_id
         self.split_ids = split_ids
         self.progress = p
         self.run = r
 
-        self.group_info_dict = {'files': {}}
+        self.bin_info_dict = {'files': {}}
 
         self.output_directory = None
         self.contig_lengths = []
@@ -152,40 +152,40 @@ class Group:
             for missing_id in missing_ids:
                 self.split_ids.remove(missing_id)
 
-            self.run.warning('%d split id(s) in group "%s" reported by collection "%s" is not found in the\
-                              annotation database and removed from the group summary. If this does not make\
+            self.run.warning('%d split id(s) in bin "%s" reported by collection "%s" is not found in the\
+                              annotation database and removed from the bin summary. If this does not make\
                               any sense, you may need make sure everything is in order. The thing is,\
                               sometimes external clustering results that are added to the annotation via\
                               `anvi-populate-collections-table` may include split names that are not used\
                               while the annotation database was generated.'\
-                                                % (len(missing_ids), group_id, self.summary.collection_id))
+                                                % (len(missing_ids), bin_id, self.summary.collection_id))
 
 
     def create(self):
-        self.progress.new('[Collection "%s"] Creating the output directory' % self.group_id)
-        self.create_group_dir()
+        self.progress.new('[Collection "%s"] Creating the output directory' % self.bin_id)
+        self.create_bin_dir()
 
-        self.progress.new('[Collection "%s"] Creating the FASTA file' % self.group_id)
+        self.progress.new('[Collection "%s"] Creating the FASTA file' % self.bin_id)
         self.store_contigs_fasta()
 
-        self.progress.new('[Collection "%s"] Accessing completeness scores' % self.group_id)
+        self.progress.new('[Collection "%s"] Accessing completeness scores' % self.bin_id)
         self.access_completeness_scores()
 
-        self.progress.new('[Collection "%s"] Computing basic stats' % self.group_id)
+        self.progress.new('[Collection "%s"] Computing basic stats' % self.bin_id)
         self.compute_basic_stats()
 
-        self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.group_id)
+        self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.bin_id)
         self.set_taxon_calls()
 
-        return self.group_info_dict
+        return self.bin_info_dict
 
 
-    def create_group_dir(self):
+    def create_bin_dir(self):
         self.progress.update('...')
 
         if not self.output_directory:
             self.progress.end()
-            raise ConfigError, 'You caled Group.create before setting an output directory. Anvio says "nope, thanks".'
+            raise ConfigError, 'You caled Bin.create before setting an output directory. Anvio says "nope, thanks".'
 
         filesnpaths.gen_output_directory(self.output_directory)
 
@@ -193,13 +193,13 @@ class Group:
 
 
     def get_output_file_handle(self, prefix = 'output.txt', overwrite = False):
-        file_path = os.path.join(self.output_directory, '%s-%s' % (self.group_id, prefix))
+        file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
         if os.path.exists(file_path) and not overwrite:
             raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
 
 
         key = prefix.split('.')[0].replace('-', '_')
-        self.group_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
+        self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
 
         return open(file_path, 'w')
 
@@ -209,21 +209,21 @@ class Group:
 
         completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
 
-        self.group_info_dict['completeness'] = completeness
+        self.bin_info_dict['completeness'] = completeness
 
         num_sources = len(completeness)
 
         # set up for the average completeness / contamination scores:
         for k in ['percent_contamination', 'percent_complete']:
-            self.group_info_dict[k] = 0.0
+            self.bin_info_dict[k] = 0.0
 
         # go through all single-copy gene reporting sources
         for c in completeness.values():
             for k in ['percent_contamination', 'percent_complete']:
-                self.group_info_dict[k] += c[k]
+                self.bin_info_dict[k] += c[k]
 
         for k in ['percent_contamination', 'percent_complete']:
-            self.group_info_dict[k] /= num_sources
+            self.bin_info_dict[k] /= num_sources
 
         self.progress.end()
 
@@ -237,7 +237,7 @@ class Group:
            the contig (only if all splits are selected from a contig in to the same bin). So, this
            function first identifies all splits coming from the same parent, then identifies sequential
            blocks of splits (see `SequentialBlocks` class), then checks whether all splits of a given
-           contig is included in the group. If that is the case, it puts the contig as a single entry,
+           contig is included in the bin. If that is the case, it puts the contig as a single entry,
            witht he identical FASTA id to the original contigs in the assembly file. Otherwise it appends
            `_partial_X_Y` to the FASTA id, X and Y being the start and stop positions.
         """
@@ -245,13 +245,13 @@ class Group:
         fasta_file = self.get_output_file_handle('contigs.fa')
 
         # some null values:
-        self.group_info_dict['total_length'] = 0
-        self.group_info_dict['num_contigs'] = 0
+        self.bin_info_dict['total_length'] = 0
+        self.bin_info_dict['num_contigs'] = 0
 
-        # this dict will keep all the contig ids found in this group:
+        # this dict will keep all the contig ids found in this bin:
         contigs_represented = {}
 
-        # go through all splits in this group, and populate `contigs_represented`
+        # go through all splits in this bin, and populate `contigs_represented`
         self.progress.update('Identifying contigs involved ...')
         for split_id in self.split_ids:
             s = self.summary.splits_basic_info[split_id]
@@ -261,7 +261,7 @@ class Group:
                 contigs_represented[s['parent']] = {s['order_in_parent']: split_id}
 
         # now it is time to go through each contig found in contigs_represented to
-        # figure out how much of the contig is in fact in this group
+        # figure out how much of the contig is in fact in this bin
         for contig_id in contigs_represented:
             splits_order = contigs_represented[contig_id].keys()
 
@@ -302,11 +302,11 @@ class Group:
                 fasta_file.write('>%s\n' % fasta_id)
                 fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens = False))
 
-                # fill in basic info about contigs in group
+                # fill in basic info about contigs in bin
                 len_seq = len(sequence)
-                self.group_info_dict['total_length'] += len_seq
+                self.bin_info_dict['total_length'] += len_seq
                 self.contig_lengths.append(len_seq)
-                self.group_info_dict['num_contigs'] += 1
+                self.bin_info_dict['num_contigs'] += 1
 
         fasta_file.close()
         self.progress.end()
@@ -321,7 +321,7 @@ class Group:
 
         taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key = lambda x: int(x[1]), reverse = True)
 
-        self.group_info_dict['taxon_calls'] = taxon_calls
+        self.bin_info_dict['taxon_calls'] = taxon_calls
 
         # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
         l = [tc for tc in taxon_calls if tc[0]]
@@ -329,9 +329,9 @@ class Group:
         # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
         if l and l[0][1] > num_calls / 4.0:
             # if l[0] is associated with more than 25 percent of splits:
-            self.group_info_dict['taxon'] = l[0][0]
+            self.bin_info_dict['taxon'] = l[0][0]
         else:
-            self.group_info_dict['taxon'] = 'Unknown'
+            self.bin_info_dict['taxon'] = 'Unknown'
 
         # convert to percents..
         for tc in taxon_calls:
@@ -343,8 +343,8 @@ class Group:
     def compute_basic_stats(self):
         self.progress.update('...')
 
-        self.group_info_dict['N50'] = utils.get_N50(self.contig_lengths)
-        self.group_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
+        self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
+        self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
 
         self.progress.end()
 
