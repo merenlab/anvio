@@ -18,6 +18,7 @@ typedef struct {
 static void
 ColumnProfile_dealloc(ColumnProfile* self)
 {
+
     Py_XDECREF(self->column);
     Py_XDECREF(self->split_name);
     Py_XDECREF(self->test_class);
@@ -25,6 +26,7 @@ ColumnProfile_dealloc(ColumnProfile* self)
 
     self->ob_type->tp_free((PyObject*)self);
 }
+
 
 static PyObject *
 ColumnProfile_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -53,10 +55,11 @@ ColumnProfile_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             Py_DECREF(self);
             return NULL;
           }
-        
+
         PyObject *variability_module = PyImport_ImportModule("anvio.variability");
-        PyObject *variablity_class = PyObject_GetAttrString(variability_module, "VariablityTestFactory");     
-        self->test_class = PyInstance_NewRaw(variablity_class, NULL);
+        PyObject *variablity_class = PyObject_GetAttrString(variability_module, "VariablityTestFactory");
+        self->test_class = PyInstance_NewRaw(variablity_class, NULL);     
+
         if (self->test_class == NULL)
           {
             Py_DECREF(self);
@@ -94,7 +97,7 @@ int compare ( const void *pa, const void *pb )
 static int
 ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *column=NULL, *split_name=NULL, *test_class=NULL, *tmp;
+    PyObject *column=NULL, *split_name=NULL, *test_class=Py_None, *tmp;
 
     static char *kwlist[] = {"column", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
 
@@ -144,6 +147,7 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     char np[2] = "";
     char competing_nts[3] = "";
     double n2n1ratio;
+    double minratio;
 
     for (i=0; i<5; i++){
         int cc = count_chars(_column, nucleotides[i]); 
@@ -176,9 +180,20 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     }
 
     n2n1ratio = ((double)nucleotides_arr[3][0] / (double)nucleotides_arr[4][0]);
-    PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(n2n1ratio));
-    
-    PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));
+    PyObject *min_acceptable_ratio_given_coverage = PyObject_CallMethod(self->test_class, "min_acceptable_ratio_given_coverage", "I", self->coverage);
+    minratio = PyFloat_AsDouble(min_acceptable_ratio_given_coverage);
+
+    if (test_class != Py_None) {
+        if (n2n1ratio > minratio){
+            PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(n2n1ratio));
+            PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));        
+        }
+    }
+
+    else {
+        PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(n2n1ratio));
+        PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));   
+    }
 
     return 0;
 }
@@ -204,44 +219,44 @@ static PyMemberDef ColumnProfile_members[] = {
 
 static PyTypeObject ColumnProfileType = {
     PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "columnprofile.ColumnProfile",             /*tp_name*/
-    sizeof(ColumnProfile),             /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)ColumnProfile_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "ColumnProfile objects",           /* tp_doc */
-    0,                   /* tp_traverse */
-    0,                   /* tp_clear */
-    0,                   /* tp_richcompare */
-    0,                   /* tp_weaklistoffset */
-    0,                   /* tp_iter */
-    0,                   /* tp_iternext */
-    0,                  /* tp_methods */
-    ColumnProfile_members,             /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)ColumnProfile_init,      /* tp_init */
-    0,                         /* tp_alloc */
-    ColumnProfile_new,                 /* tp_new */
+    0,                                          /* ob_size */
+    "columnprofile.ColumnProfile",              /* tp_name */
+    sizeof(ColumnProfile),                      /* tp_basicsize */
+    0,                                          /* tp_itemsize */
+    (destructor)ColumnProfile_dealloc,          /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
+    0,                                          /* tp_repr */
+    0,                                          /* tp_as_number */
+    0,                                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    0,                                          /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    0,                                          /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    "ColumnProfile objects",                    /* tp_doc */
+    0,                                          /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    0,                                          /* tp_iter */
+    0,                                          /* tp_iternext */
+    0,                                          /* tp_methods */
+    ColumnProfile_members,                      /* tp_members */
+    0,                                          /* tp_getset */
+    0,                                          /* tp_base */
+    0,                                          /* tp_dict */
+    0,                                          /* tp_descr_get */
+    0,                                          /* tp_descr_set */
+    0,                                          /* tp_dictoffset */
+    (initproc)ColumnProfile_init,               /* tp_init */
+    0,                                          /* tp_alloc */
+    ColumnProfile_new,                          /* tp_new */
 };
 
 static PyMethodDef module_methods[] = {
