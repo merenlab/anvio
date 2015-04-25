@@ -101,4 +101,7 @@ def humanize_n(n):
 
 @register.filter(name='pretty')
 def pretty(n):
-    return pp(n)
+    try:
+        return pp(int(n))
+    except ValueError:
+        return n
