@@ -18,7 +18,7 @@ import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass
-from anvio.summaryhtml import SummaryHTMLOutput
+from anvio.summaryhtml import SummaryHTMLOutput, humanize, humanize_n, pretty
 
 
 __author__ = "A. Murat Eren"
@@ -72,9 +72,6 @@ class Summarizer(DatabasesMetaclass):
 
         filesnpaths.gen_output_directory(self.output_directory)
 
-        # set samples
-        self.samples = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
-
 
     def sanity_check(self):
         if not self.collection_id:
@@ -91,6 +88,9 @@ class Summarizer(DatabasesMetaclass):
         collection_dict = self.collections.get_collection_dict(self.collection_id)
         collection_colors = self.collections.get_collection_colors(self.collection_id)
 
+        # FIXME: REMOVE THIS BEFORE 1.0
+        G = lambda d, k: d[k] if d.has_key(k) else 'unknown'
+
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
                                 'collection': collection_dict.keys(),
@@ -100,11 +100,29 @@ class Summarizer(DatabasesMetaclass):
                                 'num_contigs': 0,
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
-                                'samples': self.samples,
                                 'percent_described': 0.0}
 
-        self.summary['collection'] = {}
+        # I am not sure whether this is the best place to do this, 
+        self.summary['basics_pretty'] = {'profile': [
+                                                     ('Created on', self.p_meta['creation_date']),
+                                                     ('Version', self.p_meta['version']),
+                                                     ('Profile ID', humanize(self.p_meta['sample_id'])),
+                                                     ('Minimum conting length', pretty(G(self.p_meta, 'min_contig_length'))),
+                                                     ('Number of samples', len(self.p_meta['samples'])),
+                                                    ],
+                                         'annotation': [
+                                                        ('Created on', self.p_meta['creation_date']),
+                                                        ('Version', self.a_meta['version']),
+                                                        ('Num conitgs', pretty(int(self.a_meta['num_contigs']))),
+                                                        ('Num splits', pretty(int(self.a_meta['num_splits']))),
+                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
+                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('K-mer size', self.a_meta['kmer_size']),
+                                                    ],
+                                        }
 
+        # summarize bins:
+        self.summary['collection'] = {}
         for bin_id in collection_dict: 
             bin = Bin(self, bin_id, collection_dict[bin_id], self.run, self.progress)
             bin.output_directory = os.path.join(self.output_directory, 'collections', bin_id)

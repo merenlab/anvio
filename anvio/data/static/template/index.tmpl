@@ -55,7 +55,7 @@
         <!-- /.container -->
     </nav>
 
-    <!-- Image backgrounds are set within the full-width-pics.css file. -->
+
     <header class="image-bg-fluid-height">
         <div class="header-summary-div">
             <div style="width: 200px;">
@@ -70,9 +70,76 @@
 
     <section>
         <div class="container">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
+                </div>
+
+                <div id="collapse-basics" class="panel-collapse collapse">
+                <div class="row">
+                    <div class="col-lg-6 col-md-6 col-sm-6">
+                      <div class="panel panel-default" style="margin:10px;">
+                            <div class="panel-heading">
+                                Profile DB
+                            </div>
+                            <div class="panel-body">
+                                <table class="table table-striped">
+                                    <thead id="tblHead_basics_profile">
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in basics_pretty|lookup:"profile" %}
+                                        <tr>
+                                            <td>{{ entry.0 }}</td>
+                                            <td>{{ entry.1 }}</td>
+                                        </tr>
+                                      {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6 col-md-6 col-sm-6">
+                        <div class="panel panel-default" style="margin:10px;">
+                            <div class="panel-heading">
+                                Annotation
+                            </div>
+                            <div class="panel-body">
+                                <table class="table table-striped">
+                                    <thead id="tblHead_basics_annotation">
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in basics_pretty|lookup:"annotation" %}
+                                        <tr>
+                                            <td>{{ entry.0 }}</td>
+                                            <td>{{ entry.1 }}</td>
+                                        </tr>
+                                      {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section>
+        <div class="container">
             <div class="panel panel-info" id="bins_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Bins Overview ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins" class="panel-collapse collapse">

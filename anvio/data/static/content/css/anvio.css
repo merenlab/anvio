@@ -50,8 +50,11 @@ body {
 	margin: 0 auto;
 }
 
+header {
+    margin-bottom: 20px;
+}
+
 section {
-    padding-top: 45px;
 }
 
 .section-heading {
