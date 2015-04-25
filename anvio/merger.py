@@ -141,7 +141,8 @@ class MultipleRuns:
 
         for k, p in [('split_length', 'Split length (-L)'),
                      ('min_contig_length', 'Minimum contig length (-M)'),
-                     ('min_mean_coverage', 'Minimum mean coverage (-C)')]:
+                     ('min_mean_coverage', 'Minimum mean coverage (-C)'),
+                     ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)')]:
             v = set([r[k] for r in self.merged_sample_runinfos.values()])
             if len(v) > 1:
                 raise ConfigError, "%s is not identical for all runs to be merged, which is a \
@@ -292,12 +293,14 @@ class MultipleRuns:
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         self.annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
+        self.min_contig_length = self.merged_sample_runinfos.values()[0]['min_contig_length']
         meta_values = {'db_type': 'profile',
                        'sample_id': self.sample_id,
                        'samples': ','.join(self.merged_sample_ids),
                        'merged': True,
                        'contigs_clustered': not self.skip_clustering,
                        'default_view': 'mean_coverage',
+                       'min_contig_length': self.min_contig_length,
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
 
