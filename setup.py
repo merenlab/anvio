@@ -1,12 +1,11 @@
 import os
 import glob
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
-
 
 setup(
     name = "anvio",
@@ -18,6 +17,8 @@ setup(
     packages = find_packages(),
 
     install_requires = ['bottle>=0.12.7', 'pysam==0.7.7', 'hcluster>=0.2.0', 'ete2>=2.2', 'scipy>=0.14.0', 'scikit-learn>=0.15', 'django>=1.7'],
+
+    ext_modules = [Extension('anvio.columnprofile', sources = ['./anvio/c/columnprofile.c'])],
 
     author = "anvio Authors",
     author_email = "a.murat.eren@gmail.com",
