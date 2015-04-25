@@ -10,13 +10,13 @@ run = Run()
 try:
     from anvio.columnprofile import ColumnProfile
 except ImportError:
-    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc = 'gray')
+    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc = 'gray', nl_after = 1)
     from anvio.variability import ColumnProfile
 
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
-__credits__ = []
+__credits__ = ["Faruk Uzun"]
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
