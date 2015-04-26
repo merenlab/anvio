@@ -60,14 +60,8 @@ function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
     var group_id = getGroupId();
 
-    if (event.target.id.indexOf('path_') > -1) // if layer -> show popup
+    if (event.target.id.indexOf('path_') > -1)
     {
-        // hide tooltip
-        /*
-        var tooltip = document.getElementById('aToolTip');
-        if (tooltip)
-            tooltip.parentNode.removeChild(tooltip);
-        */
         context_menu_target_id = getNodeFromEvent(event).id;
 
         $('#control_contextmenu').show();
