@@ -236,9 +236,9 @@ function initializeDialogs() {
         }).dialog('option', 'minHeight', 0);
 
     $("#tooltip").dialog("option", "title", "Split details").dialog("option", "position", {
-            my: "right top",
-            at: "left-10px top",
-            of: $('#zoomDialog').closest('div.ui-dialog')
+            my: "left top",
+            at: "right+10px top",
+            of: $('#treeControls').closest('div.ui-dialog')
         }).dialog('option', 'minHeight', 0).dialog('close');
 
     // diaglos with close button.
