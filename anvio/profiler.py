@@ -409,7 +409,8 @@ class BAMProfiler:
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
             self.contig_lenghts = [self.contig_lenghts[i] for i in contigs_longer_than_M]
-            self.run.info('contigs_raw_longer_than_M', len(self.contig_names))
+            self.num_contigs = len(self.contig_names)    # we will store these two
+            self.total_length = sum(self.contig_lenghts) # into the db in a second.
 
         # finally, compute contig splits.
         annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
@@ -433,14 +434,19 @@ class BAMProfiler:
                 self.contig_name_to_splits[parent] = [split_name]
 
         # we just recovered number of splits that are coming from contigs
-        # longer than M. let's appreciate this expensive information and
-        # store it everywhere!
-        num_splits = len(self.split_names)
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        profile_db.db.set_meta_value('num_splits', num_splits)
-        profile_db.disconnect()
+        # longer than M:
+        self.num_splits = len(self.split_names)
 
-        self.run.info('num_splits', len(self.split_names))
+        self.run.info('num_contigs_after_M', self.num_contigs, display_only = True)
+        self.run.info('num_contigs', self.num_contigs, quiet = True)
+        self.run.info('num_splits', self.num_splits)
+        self.run.info('total_length', self.total_length)
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('num_splits', self.num_splits)
+        profile_db.db.set_meta_value('num_contigs', self.num_contigs)
+        profile_db.db.set_meta_value('total_length', self.total_length)
+        profile_db.disconnect()
 
 
     def generate_output_destination(self, postfix, directory = False):

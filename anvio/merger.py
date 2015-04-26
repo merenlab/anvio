@@ -139,7 +139,10 @@ class MultipleRuns:
             raise ConfigError, "This is very cute, but you can't merge already merged runs. anvio can only merge\
                                       individual profiles (which are generated through anvi-profile program). Sorry."
 
-        for k, p in [('split_length', 'Split length (-L)'),
+        for k, p in [('total_length', 'Number of nucleotides described'),
+                     ('num_contigs', 'Number of contigs'),
+                     ('num_splits', 'Number of splits'),
+                     ('split_length', 'Split length (-L)'),
                      ('min_contig_length', 'Minimum contig length (-M)'),
                      ('min_mean_coverage', 'Minimum mean coverage (-C)'),
                      ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)')]:
@@ -294,6 +297,9 @@ class MultipleRuns:
 
         self.annotation_hash = self.merged_sample_runinfos.values()[0]['annotation_hash']
         self.min_contig_length = self.merged_sample_runinfos.values()[0]['min_contig_length']
+        self.num_contigs = self.merged_sample_runinfos.values()[0]['num_contigs']
+        self.num_splits = self.merged_sample_runinfos.values()[0]['num_splits']
+        self.total_length = self.merged_sample_runinfos.values()[0]['total_length']
         meta_values = {'db_type': 'profile',
                        'sample_id': self.sample_id,
                        'samples': ','.join(self.merged_sample_ids),
@@ -301,6 +307,9 @@ class MultipleRuns:
                        'contigs_clustered': not self.skip_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
+                       'num_contigs': self.num_contigs,
+                       'num_splits': self.num_splits,
+                       'total_length': self.total_length,
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
 
