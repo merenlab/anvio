@@ -43,6 +43,7 @@ var context_menu_target_id = 0;
 
 var metadata_title = {};
 var metadata_dict;
+var empty_tooltip = "";
 
 var last_settings;
 

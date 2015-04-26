@@ -63,10 +63,11 @@ function lineContextMenuHandler(event) {
     if (event.target.id.indexOf('path_') > -1) // if layer -> show popup
     {
         // hide tooltip
+        /*
         var tooltip = document.getElementById('aToolTip');
         if (tooltip)
             tooltip.parentNode.removeChild(tooltip);
-
+        */
         context_menu_target_id = getNodeFromEvent(event).id;
 
         $('#control_contextmenu').show();
@@ -269,10 +270,6 @@ function mouseMoveHandler(event) {
 
     if (event.target.id && event.target.id == 'path_event')
         lineMouseEnterHandler(event);
-    
-    var tooltip = document.getElementById('aToolTip');
-    if (tooltip)
-        tooltip.parentNode.removeChild(tooltip);
 
     if (!p)
         return;
@@ -283,18 +280,21 @@ function mouseMoveHandler(event) {
     var layer_id = layer_id_exp[0];
 
     var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
-    tooltip_arr[layer_id] = '<font color="lime">' + tooltip_arr[layer_id] + '</font>';
-    var message = tooltip_arr.join('<br />\n');
+    
+    var message = "";
+    for (var i=0; i < tooltip_arr.length; i++)
+    {
+        if (i == layer_id)
+        {
+            message += '<tr style="color:red;">' + tooltip_arr[i] + '</tr>';
+        }
+        else
+        {
+            message += '<tr>' + tooltip_arr[i] + '</tr>';
+        }
+    }
 
-    var tooltip = document.createElement('div');
-    tooltip.setAttribute('id', 'aToolTip');
-    tooltip.setAttribute('class', 'defaultTheme');
-    tooltip.innerHTML = "<p class='aToolTipContent'>"+message+"</p>";
-
-    tooltip.style['top'] = (event.y+10) + 'px';
-    tooltip.style['left'] = (event.x+10) + 'px';
-
-    document.body.appendChild(tooltip);
+    $('#tooltip_content').html("<table>" + message + '</table>');
 }
 
 

@@ -1474,13 +1474,27 @@ function draw_tree(settings) {
     // generate tooltip text before normalization
     metadata_dict = new Array();
 
+    empty_tooltip = '<table>';
+    empty_tooltip += '<tr><td>Name: </td><td>n/a</td></tr>';
+    empty_tooltip += '<tr><td>Parent: </td><td>n/a</td></tr>';
+
+    for (var i = 1; i < settings['layer-order'].length; i++)
+    {
+        var pindex = settings['layer-order'][i];
+        empty_tooltip += '<tr><td>' + metadata[0][pindex] + '</td><td>n/a</td></tr>';
+    }
+    empty_tooltip += '</table>';
+
+    $('#tooltip_content').html(empty_tooltip);
+    $('#tooltip').dialog('open');
+
     for (var index = 1; index < metadata.length; index++) 
     {
         var params = metadata[index];
         metadata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        title.push("<b>" + metadata[index][0] + "</b>");
+        title.push('<td>Name: </td><td>' + metadata[index][0] + '</td>');
         for (var i = 0; i < settings['layer-order'].length; i++) 
         {
             var pindex = settings['layer-order'][i];
@@ -1489,17 +1503,17 @@ function draw_tree(settings) {
             {   
                 if (metadata[index][pindex] == '')
                 {
-                    title.push("<b>Parent: </b>n/a");
+                    title.push('<td>Parent: </td><td>n/a</td>');
                 }
                 else
                 {
-                    title.push("<b>Parent: </b>" + metadata[index][pindex]);
+                    title.push('<td>Parent: </td><td>' + metadata[index][pindex] + '</td>');
                 }
                 
             }
             else
             {
-                title.push("<b>" + metadata[0][pindex] + ": </b>" + metadata[index][pindex]);
+                title.push('<td>' + metadata[0][pindex] + '</td><td>' + metadata[index][pindex] + '</td>');
             }
         }
 
