@@ -18,7 +18,7 @@ import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass
-from anvio.summaryhtml import SummaryHTMLOutput, humanize, humanize_n, pretty
+from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 
 
 __author__ = "A. Murat Eren"
@@ -34,6 +34,7 @@ __status__ = "Development"
 pp = terminal.pretty_print
 run = terminal.Run()
 progress = terminal.Progress()
+P = lambda x, y: float(x) * 100 / float(y)
 
 
 class Summarizer(DatabasesMetaclass):
@@ -70,7 +71,7 @@ class Summarizer(DatabasesMetaclass):
 
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = True)
 
 
     def sanity_check(self):
@@ -80,7 +81,7 @@ class Summarizer(DatabasesMetaclass):
         if self.collection_id not in self.collections.sources_dict:
             raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_id
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists = True)
 
 
     def process(self):
@@ -96,27 +97,33 @@ class Summarizer(DatabasesMetaclass):
                                 'collection': collection_dict.keys(),
                                 'num_bins': len(collection_dict.keys()),
                                 'collection_id': self.collection_id,
-                                'total_length': 0,
-                                'num_contigs': 0,
+                                'total_nts_in_collection': 0,
+                                'num_contigs_in_collection': 0,
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
-                                'percent_described': 0.0}
+                                'percent_annotation_nts_described_by_collection': 0.0,
+                                'percent_profile_nts_described_by_collection': 0.0,
+                                'percent_annotation_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
+                                'percent_annotation_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']) ,
+                                'percent_annotation_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']) ,
+                                    }
 
         # I am not sure whether this is the best place to do this, 
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Profile ID', humanize(self.p_meta['sample_id'])),
                                                      ('Minimum conting length', pretty(G(self.p_meta, 'min_contig_length'))),
-                                                     ('Number of samples', len(self.p_meta['samples'])),
+                                                     ('Number of conitgs', pretty(int(self.p_meta['num_contigs']))),
+                                                     ('Number of splits', pretty(int(self.p_meta['num_splits']))),
+                                                     ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
                                                     ],
                                          'annotation': [
                                                         ('Created on', self.p_meta['creation_date']),
                                                         ('Version', self.a_meta['version']),
-                                                        ('Num conitgs', pretty(int(self.a_meta['num_contigs']))),
-                                                        ('Num splits', pretty(int(self.a_meta['num_splits']))),
-                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Number of conitgs', pretty(int(self.a_meta['num_contigs']))),
+                                                        ('Number of splits', pretty(int(self.a_meta['num_splits']))),
+                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('K-mer size', self.a_meta['kmer_size']),
                                                     ],
                                         }
@@ -129,11 +136,12 @@ class Summarizer(DatabasesMetaclass):
 
             self.summary['collection'][bin_id] = bin.create()
             self.summary['collection'][bin_id]['color'] = collection_colors[bin_id] or '#212121'
-            self.summary['meta']['total_length'] += self.summary['collection'][bin_id]['total_length']
-            self.summary['meta']['num_contigs'] += self.summary['collection'][bin_id]['num_contigs']
+            self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
+            self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
 
         # final additions
-        self.summary['meta']['percent_described'] = '%.2f' % (self.summary['meta']['total_length'] * 100.0 / int(self.a_meta['total_length']))
+        self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
+        self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()

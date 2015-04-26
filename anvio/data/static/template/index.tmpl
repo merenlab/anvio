@@ -62,7 +62,7 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins that resulted in <b>{{ meta|lookup:"num_contigs"|pretty }}</b> contigs in total accountig for <b>{{ meta|lookup:"total_length"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_described" }}%</b> of the original assembly for this project stored in the annotation database.
+                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_annotation_nts_described_by_collection" }}%</b> of all nucleotides stored in the annotation database, and <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database.
             </div>
         </div>
     </header>
@@ -75,12 +75,21 @@
                     <h1 class="panel-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
                 </div>
 
-                <div id="collapse-basics" class="panel-collapse collapse">
+                <div id="collapse-basics" class="panel-collapse collapse in">
+
+                <div class="well" style="margin: 10px;">The {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile database that was generated
+                                                        with the minimum contig length of <b>{{ meta|lookup:"profile"|lookup:"min_contig_length"|pretty }}</b>
+                                                        contained <b>{{ meta|lookup:"profile"|lookup:"num_contigs"|pretty }}</b> contigs, which correspond to
+                                                        <b>{{ meta|lookup:"percent_annotation_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
+                                                        <b>{{ meta|lookup:"percent_annotation_nts_described_by_profile"|pretty }}%</b> of all nucleotides found
+                                                        in the annotation database.
+                                                        </div>
+
                 <div class="row">
                     <div class="col-lg-6 col-md-6 col-sm-6">
-                      <div class="panel panel-default" style="margin:10px;">
+                      <div class="panel panel-default" style="margin-left:10px;">
                             <div class="panel-heading">
-                                Profile DB
+                                Profile DB for <b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b> w/ {{ meta|lookup:"profile"|lookup:"samples"|length|pretty }} samples.
                             </div>
                             <div class="panel-body">
                                 <table class="table table-striped">
@@ -104,9 +113,9 @@
                     </div>
 
                     <div class="col-lg-6 col-md-6 col-sm-6">
-                        <div class="panel panel-default" style="margin:10px;">
+                        <div class="panel panel-default" style="margin-right:10px;">
                             <div class="panel-heading">
-                                Annotation
+                                Annotation DB
                             </div>
                             <div class="panel-body">
                                 <table class="table table-striped">
