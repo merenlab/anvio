@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import anvio.fastalib as u
 
+from anvio.terminal import Run
 from anvio.terminal import Progress
 from anvio.errors import FilesNPathsError
 
@@ -127,21 +128,24 @@ def get_num_lines_in_file(file_path):
     return num_lines
 
 
-def check_output_directory(output_directory):
+def check_output_directory(output_directory, ok_if_exists = False):
     if not output_directory:
         raise FilesNPathsError, "Sorry. You must declare an output directory path."
 
     output_directory = os.path.abspath(output_directory)
 
-    if os.path.exists(output_directory):
+    if os.path.exists(output_directory) and not ok_if_exists:
         raise FilesNPathsError, "The output directory already exists. anvio does not like overwriting stuff."
 
     return output_directory
 
 
-def gen_output_directory(output_directory, progress=Progress(verbose=False), delete_if_exits = False):
-    if os.path.exists(output_directory) and delete_if_exits:
+def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists = False):
+    if os.path.exists(output_directory) and delete_if_exists:
         try:
+            run.warning('filesnpaths::gen_output_directory: the client asked\
+                         the existing directory "%s" to be removed.. Just so\
+                         you know :/' % output_directory)
             shutil.rmtree(output_directory)
         except:
             progress.end()
