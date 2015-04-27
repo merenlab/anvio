@@ -16,6 +16,9 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
+    if (shiftPressed)
+        newGroup();
+
     var group_id = getGroupId();
 
     if (group_id === 'undefined')

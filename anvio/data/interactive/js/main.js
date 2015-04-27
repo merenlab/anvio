@@ -5,6 +5,7 @@
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 var dragging = false;
+var shiftPressed = false;
 
 var LINE_COLOR='#888888';
 
@@ -373,6 +374,16 @@ $(document).ready(function() {
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
     }, false);
+
+    $(window).keydown(function(evt) {
+      if (evt.which == 16) { // shift
+        shiftPressed = true;
+      }
+    }).keyup(function(evt) {
+      if (evt.which == 16) { // shift
+        shiftPressed = false;
+      }
+    });
 }); // document ready
 
 function syncViews() {
