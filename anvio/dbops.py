@@ -22,10 +22,10 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
-from anvio.tables import Table
 from anvio.errors import ConfigError
 from anvio.commandline import HMMSearch
 from anvio.parsers import parser_modules
+from anvio.tableops import Table
 
 
 __author__ = "A. Murat Eren"
@@ -977,4 +977,3 @@ def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path
                                 % 'anvi-merge' if merged else 'anvi-profile'
 
     return True
-

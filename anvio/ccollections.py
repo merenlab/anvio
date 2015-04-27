@@ -14,10 +14,11 @@ for the client.
 from itertools import chain
 
 import anvio.db as db
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 
-from anvio.tables import *
+from anvio.tableops import Table
 from anvio.errors import ConfigError
 
 
@@ -36,10 +37,10 @@ progress = terminal.Progress()
 
 
 def create_blank_collections_tables(db):
-    db.create_table(collections_info_table_name, collections_info_table_structure, collections_info_table_types)
-    db.create_table(collections_colors_table_name, collections_colors_table_structure, collections_colors_table_types)
-    db.create_table(collections_contigs_table_name, collections_contigs_table_structure, collections_contigs_table_types)
-    db.create_table(collections_splits_table_name, collections_splits_table_structure, collections_splits_table_types)
+    db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+    db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
+    db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+    db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
 
 
 class Collections:
@@ -52,7 +53,7 @@ class Collections:
     def populate_sources_dict(self, db_path, version):
         database = db.DB(db_path, version)
         db_type = database.get_meta_value('db_type')
-        collections_info_table = database.get_table_as_dict(collections_info_table_name)
+        collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
 
         # collections info must be read only if its coming from the annotation database.
@@ -83,7 +84,7 @@ class Collections:
         c = self.sources_dict[source]
 
         database = db.DB(c['source_db_path'], c['source_db_version'])
-        collections_splits_table = database.get_table_as_dict(collections_splits_table_name)
+        collections_splits_table = database.get_table_as_dict(t.collections_splits_table_name)
         database.disconnect()
 
         # FIXME: this could be resolved with a WHERE clause in the SQL query:
@@ -110,7 +111,7 @@ class Collections:
         c = self.sources_dict[source]
 
         database = db.DB(c['source_db_path'], c['source_db_version'])
-        collections_colors = database.get_table_as_dict(collections_colors_table_name)
+        collections_colors = database.get_table_as_dict(t.collections_colors_table_name)
         database.disconnect()
 
         # FIXME: this could be resolved with a WHERE clause in the SQL query:
@@ -140,14 +141,14 @@ class TablesForCollections(Table):
         Table.__init__(self, self.db_path, version, run, progress)
 
         # set these dudes so we have access to unique IDs:
-        self.set_next_available_id(collections_colors_table_name)
-        self.set_next_available_id(collections_contigs_table_name)
-        self.set_next_available_id(collections_splits_table_name)
+        self.set_next_available_id(t.collections_colors_table_name)
+        self.set_next_available_id(t.collections_contigs_table_name)
+        self.set_next_available_id(t.collections_splits_table_name)
 
 
     def append(self, source, clusters_dict, cluster_colors = None):
         # remove any pre-existing information for 'source'
-        self.delete_entries_for_key('source', source, [collections_info_table_name, collections_contigs_table_name, collections_splits_table_name, collections_colors_table_name])
+        self.delete_entries_for_key('source', source, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_colors_table_name])
 
         num_splits_in_clusters_dict = sum([len(splits) for splits in clusters_dict.values()])
         splits_in_clusters_dict = set(list(chain.from_iterable(clusters_dict.values())))
@@ -163,20 +164,20 @@ class TablesForCollections(Table):
 
         # push information about this search result into serach_info table.
         db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids)])
-        database._exec('''INSERT INTO %s VALUES (?,?,?)''' % collections_info_table_name, db_entries)
+        database._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_info_table_name, db_entries)
 
         # populate colors table.
         if not cluster_colors:
             cluster_colors = utils.get_random_colors_dict(cluster_ids)
-        db_entries = [(self.next_id(collections_colors_table_name), source, cid, cluster_colors[cid]) for cid in cluster_ids]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_colors_table_name, db_entries)
+        db_entries = [(self.next_id(t.collections_colors_table_name), source, cid, cluster_colors[cid]) for cid in cluster_ids]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_colors_table_name, db_entries)
 
         # populate splits table
         db_entries = []
         for cluster_id in clusters_dict:
             for split_name in clusters_dict[cluster_id]:
-                db_entries.append(tuple([self.next_id(collections_splits_table_name), source, split_name, cluster_id]))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_splits_table_name, db_entries)
+                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), source, split_name, cluster_id]))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
 
 
         # FIXME: This function can be called to populate the annotation database (via anvi-populate-collections), or
@@ -201,7 +202,7 @@ class TablesForCollections(Table):
 
             # then populate contigs table.
             db_entries = self.process_contigs(source, clusters_dict)
-            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % collections_contigs_table_name, db_entries)
+            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
 
         database.disconnect()
 
@@ -230,7 +231,7 @@ class TablesForCollections(Table):
             else:
                 contigs_processed.add(contig_name)
 
-            db_entry = tuple([self.next_id(collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
+            db_entry = tuple([self.next_id(t.collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
             db_entries_for_contigs.append(db_entry)
 
         return db_entries_for_contigs
