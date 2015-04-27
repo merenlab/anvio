@@ -8,6 +8,8 @@ cd mini_test
 rm -rf test-output
 mkdir test-output
 
+INFO "Anvo'o version ..."
+anvi-profile --version
 
 INFO "Initializing raw BAM files ..."
 # init raw bam files.
