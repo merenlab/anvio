@@ -321,9 +321,10 @@ For usage and examples: colpick.com/plugin
 						var options = $.extend({}, opt);
 						options.origColor = opt.color;
 						//Generate and assign a random ID
+						var id;
 						do
 						{
-							var id = 'collorpicker_' + parseInt(Math.random() * 10000000000);
+							id = 'collorpicker_' + parseInt(Math.random() * 10000000000);
 						}
 						while ($(id).length > 0)
 
