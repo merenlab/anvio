@@ -260,11 +260,15 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string, font_size, align) {
+function drawText(svg_id, p, string, font_size, align, color) {
 
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
-    text.setAttribute('style', 'alignment-baseline:middle');
+
+    if (typeof color !== 'undefined')
+        text.setAttribute('fill', color);
+
+    text.setAttribute('style', 'alignment-baseline:middle;');
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
     text.setAttribute('font-size', font_size);
@@ -2184,6 +2188,27 @@ function draw_tree(settings) {
                 drawLegend(20 - total_radius, total_radius + 100);
                 drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
                 break;
+        }
+
+        // draw layer names (in circlephylogram with 0-270)
+        if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] == 270)
+        {
+            for (var i = 0; i < settings['layer-order'].length; i++) {
+                var layer_index = i+1;
+                var pindex = settings['layer-order'][i];
+                var layer = settings['views'][current_view][pindex];
+
+                var layer_title = metadata[0][pindex];
+                if (layer_title == '__parent__')
+                {
+                    layer_title = 'Parent';
+                }
+
+                drawText('tree_group', {
+                    'x': 0,
+                    'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
+                }, layer_title , layer['height'] + 'px', 'left', layer['color']);
+            }
         }
 
         // Scale to fit window
