@@ -138,9 +138,13 @@ class DB:
         return [t[0] for t in response.fetchall()]
 
 
+    def get_table_column_types(self, table):
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table)
+        return [t[2] for t in response.fetchall()]
+
+
     def get_table_structure(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
-        row = response.fetchone()
         return [t[0] for t in response.description]
 
 
