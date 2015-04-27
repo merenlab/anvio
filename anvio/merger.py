@@ -474,7 +474,7 @@ class MultipleRuns:
     def merge_split_summaries(self):
         merged_summary_index = {}
         merged_summary_index_path = os.path.join(self.output_directory, 'SUMMARY.cp')
-        summary_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'SUMMARY'), delete_if_exits = True)
+        summary_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'SUMMARY'), delete_if_exists = True)
 
         
         # read all index files per run into a dict here, so the access is easier from within
