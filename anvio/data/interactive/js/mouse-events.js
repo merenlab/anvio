@@ -291,7 +291,25 @@ function mouseMoveHandler(event) {
         }
     }
 
-    $('#tooltip_content').html("<table>" + message + '</table>');
+    var belongs = "n/a";
+    var stop = false;
+    var gcolor = '#FFFFFF';
+
+    for (var gid = 1; !stop && gid <= group_counter; gid++) 
+    {
+        for (var i = 0; !stop && i < SELECTED[gid].length; i++) {
+            if (SELECTED[gid][i] == p.label) {
+                belongs = $('#group_name_' + gid).val();
+                gcolor = $('#group_color_'+ gid).attr('color');
+                stop = true; // break nested loop
+                break;
+            }
+        }
+    }
+
+    var tr_group = '<tr><td>Group</td><td><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + gcolor + '"></div>' + belongs + '</td></tr>'
+
+    $('#tooltip_content').html('<table>' + message + tr_group + '</table>');
 }
 
 
