@@ -2,6 +2,9 @@ import os
 import glob
 from setuptools import setup, find_packages, Extension
 
+if os.environ.get('USER','') == 'vagrant':
+    del os.link
+
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
@@ -20,10 +23,10 @@ setup(
 
     ext_modules = [Extension('anvio.columnprofile', sources = ['./anvio/extensions/columnprofile.c'])],
 
-    author = "anvio Authors",
+    author = "anvi'o Authors",
     author_email = "a.murat.eren@gmail.com",
-    description = "An interactive analysis and visualization platform for 'omics data'",
-    longer_description=README,
+    description = "An interactive analysis and visualization platform for 'omics data",
+    longer_description="Please see https://meren.github.io/projects/anvio/ for more information.",
     license = "GPLv3+",
     keywords = "metagenomics microbiology shotgun genomics MBL pipeline sequencing bam",
     url = "https://meren.github.io/projects/anvio/",
