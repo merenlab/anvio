@@ -144,7 +144,7 @@ class Summarizer(DatabasesMetaclass):
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
-        SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
+        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
 
         if self.debug:
             import json

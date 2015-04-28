@@ -60,6 +60,8 @@ class SummaryHTMLOutput:
 
         self.run.info('HTML Output', index_html)
 
+        return index_html
+
 
     def copy_files(self):
         self.progress.update('...')
