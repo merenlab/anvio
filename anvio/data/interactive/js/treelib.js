@@ -2273,7 +2273,6 @@ function draw_tree(settings) {
                         $('#divzoom_inner').css({"width": _width , "height": w_ratio * VIEWER_HEIGHT});
                     }
 
-
                     // when you drawing rectangle, if you drag over text on the screen browser selects that text
                     // with this hack you can continue drawing.
                     clearTextSelection(); // in utils.js
@@ -2281,7 +2280,22 @@ function draw_tree(settings) {
                 }
             });
 
-        viewport.addEventListener('mouseup', function() { drawing_zoom=false; zoomBox = {}; $('#divzoom').hide(); });
+        viewport.addEventListener('mouseup', 
+            function() {
+                if (drawing_zoom)
+                {
+                    var inner_rect = document.getElementById('divzoom_inner').getBoundingClientRect();
+                    var _dx = (VIEWER_WIDTH / 2) - (inner_rect.left + inner_rect.width / 2);
+                    var _dy = (VIEWER_HEIGHT / 2) - (inner_rect.top + inner_rect.height / 2);
+                    pan(_dx,_dy);
+                    zoom(VIEWER_WIDTH / inner_rect.width);
+                }
+
+                drawing_zoom=false; 
+                zoomBox = {}; 
+                $('#divzoom').hide(); 
+
+            });
     }
 
     $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
