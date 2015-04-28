@@ -7,6 +7,7 @@ var VIEWER_HEIGHT;
 var dragging = false;
 var shiftPressed = false;
 var ctrlPressed = false;
+var windowsMinimized = false;
 
 var zoomBox = {};
 var drawing_zoom = false;
@@ -393,6 +394,18 @@ $(document).ready(function() {
       }
       if (evt.which == 17) { // ctrl
         ctrlPressed = false;
+      }
+      if (evt.altKey && (evt.which == 84)) // alt+t for toggle windows
+      {
+        if (windowsMinimized)
+        {
+            $("button[title='collapse']").trigger('click');
+        }
+        else
+        {
+            $("button[title='restore']").trigger('click');
+        }
+        windowsMinimized = !windowsMinimized;
       }
     });
 }); // document ready
