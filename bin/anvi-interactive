@@ -20,6 +20,7 @@ import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.profiler as profiler
+import anvio.summarizer as summarizer
 import anvio.interactive as interactive
 import anvio.ccollections as ccollections
 
@@ -37,6 +38,7 @@ __status__ = "Development"
 
 
 run = terminal.Run()
+progress = terminal.Progress()
 
 
 # get the absolute path for static directory under anvio
@@ -235,6 +237,31 @@ def get_collection_dict(collection_source):
     set_default_headers(response)
     return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
                        'colors': d.collections.get_collection_colors(collection_source)})
+
+@route('/summarize/<collection_id>')
+def gen_summary(collection_id):
+    run.info_single('A summary of collection "%s" has been requested.' % collection_id)
+    set_default_headers(response)
+
+    class Args:
+        pass
+
+    args = Args()
+    args.profile_db = d.profile_db_path
+    args.annotation_db = d.annotation_db_path
+    args.collection_id = collection_id
+    args.list_collections = None
+    args.debug = None
+    args.output_directory = os.path.join(os.path.dirname(args.profile_db), 'SUMMARY_%s' % collection_id)
+
+    try:
+        summary = summarizer.Summarizer(args, r = run, p = progress)
+        summary.process()
+    except Exception as e:
+        return json.dumps({'error'  : 'Something failed. This is what we know: %s' % e})
+
+    run.info_single('HTML output for summary is ready: %s' % summary.index_html)
+    return json.dumps({'success'  : summary.index_html})
 
 @route('/store_collections', method='POST')
 def store_collections_dict():
