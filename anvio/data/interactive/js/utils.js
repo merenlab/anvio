@@ -256,6 +256,8 @@ function initializeDialogs() {
     $('#searchBox').dialog("option", "title", "Search");
     $('#storeCollectionWindow').dialog("option", "title", "Store Collection");
     $('#loadCollectionWindow').dialog("option", "title", "Load Collection");
+    $('#summarizeCollectionWindow').dialog("option", "title", "Summarize collection");
+    $('#summaryResultWindow').dialog("option", "title", "Summary results");
 
 
 }

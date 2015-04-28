@@ -836,45 +836,33 @@ function deleteGroup(id) {
     }
 }
 
-function submitGroups() {
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('You should draw tree before submit.');
-        return;
-    }
+function showGenSummaryWindow() {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collections?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            $('#summaryCollection_list').empty();
 
-    var output = {};
-    var msg_group_count = 0;
-    var msg_contig_count = 0;
+            for (source in data) {
+                var read_only = data[source]["read_only"];
 
-    for (var gid = 1; gid <= group_counter; gid++) {
-        if (SELECTED[gid].length > 0) {
-            msg_group_count++;
-            var group_name = $('#group_name_' + gid).val();
-
-            output[group_name] = new Array();
-            for (var i = 0; i < SELECTED[gid].length; i++) {
-                if (label_to_node_map[SELECTED[gid][i]].IsLeaf()) {
-                    output[group_name].push(SELECTED[gid][i]);
-                    msg_contig_count++;
+                if (read_only) {
+                    var _name = source + ' (read only)';
                 }
+                else
+                {
+                    var _name = source;
+                }
+
+                $('#summaryCollection_list').append('<option value="' + source + '">' + _name + '</option>');
             }
+
+            $('#summarizeCollectionWindow').dialog('open');
         }
-    }
-
-    if (!confirm('You\'ve selected ' + msg_contig_count + ' contigs in ' + msg_group_count + ' group. You won\'t able to select more contigs after submit. Do you want to continue?')) {
-        return;
-    }
-
-    $('#tbody_groups input[type=radio]').prop('checked', false).attr("disabled", true);
-    $('#submit-groups').attr("disabled", true);
-    $('#btn_new_group').attr("disabled", true);
-    window.deleteGroup = function() {};
-
-    $.post("/submit", {
-        groups: JSON.stringify(output),
-        svg: null
     });
 }
+
 
 function updateGroupWindow(group_list) {
     if (typeof group_list === 'undefined')
@@ -1340,6 +1328,31 @@ function storeCollection() {
     $('#storeCollectionWindow').dialog('close');    
 }
 
+function generateSummary() {
+    var collection = $('#summaryCollection_list').val();
+
+    if (collection === null)
+        return;
+
+    alert('This may take a while. Please click OK and wait while anvio generates the summary page..');
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            $('#summarizeCollectionWindow').dialog('close');
+            if ('error' in data){
+                alert(data['error']);
+            } else {
+                $('#summaryResultWindow').dialog('open');
+                $('#summaryDestination').html('<a href="file://' + data['success'] + '">here</a>.');
+            }
+        }
+    });
+}
+
+
 function showLoadCollectionWindow() {
     $.ajax({
         type: 'GET',
@@ -1367,8 +1380,8 @@ function showLoadCollectionWindow() {
     });
 }
 
-function showCollectionDetails() {
-    var cname = $('#loadCollection_list>option:selected').val();
+function showCollectionDetails(target_id) {
+    var cname = $('#' + target_id + 'Collection_list>option:selected').val();
     
     $.ajax({
         type: 'GET',
@@ -1377,14 +1390,12 @@ function showCollectionDetails() {
         success: function(data) {
             var tbl = "<table>" +
                 "<tr><td>Read Only: </td><td>" + data[cname]['read_only'] + "</td></tr>" + 
-                "<tr><td>Source DB Path: </td><td>" + data[cname]['source_db_path'] + "</td></tr>" +
-                "<tr><td>Source DB Version: </td><td>" + data[cname]['source_db_version'] + "</td></tr>" +
                 "<tr><td colspan='2'><hr></td></tr>" +
                 "<tr><td>Number of Splits: </td><td>" + data[cname]['num_splits'] + "</td></tr>" +
                 "<tr><td>Number of Clusters: </td><td>" + data[cname]['num_clusters'] + "</td></tr>" +
                 "</table>";
 
-            $('#loadCollection_details').html(tbl);
+            $('#' + target_id + 'Collection_details').html(tbl);
         }
     });
 }
