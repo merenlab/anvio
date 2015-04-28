@@ -8,7 +8,7 @@ function getGroupId() {
 }
 
 function lineClickHandler(event) {
-    if (dragging)
+    if (dragging || drawing_zoom)
         return;
     
     var p = getNodeFromEvent(event);
@@ -16,7 +16,7 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
-    if (shiftPressed)
+    if (ctrlPressed)
         newGroup();
 
     var group_id = getGroupId();

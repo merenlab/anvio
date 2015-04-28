@@ -6,6 +6,8 @@ var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 var dragging = false;
 var shiftPressed = false;
+var ctrlPressed = false;
+
 var zoomBox = {};
 var drawing_zoom = false;
 
@@ -381,9 +383,16 @@ $(document).ready(function() {
       if (evt.which == 16) { // shift
         shiftPressed = true;
       }
+      if (evt.which == 17) { // ctrl
+        ctrlPressed = true;
+      }
+
     }).keyup(function(evt) {
-      if (evt.which == 16) { // shift
+      if (evt.which == 16) { // shift 
         shiftPressed = false;
+      }
+      if (evt.which == 17) { // ctrl
+        ctrlPressed = false;
       }
     });
 }); // document ready
