@@ -2199,15 +2199,13 @@ function draw_tree(settings) {
                 var layer = settings['views'][current_view][pindex];
 
                 var layer_title = metadata[0][pindex];
-
-                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
-                    layer_title = named_layers[layer_title]['pretty_name'];
-                } else {
-                    layer_title = layer_title.replace(/_/g, " ");
-                } 
+                if (layer_title == '__parent__')
+                {
+                    layer_title = 'Parent';
+                }
 
                 drawText('tree_group', {
-                    'x': 10,
+                    'x': 0,
                     'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
                 }, layer_title , layer['height'] + 'px', 'left', layer['color']);
             }
@@ -2233,10 +2231,42 @@ function draw_tree(settings) {
         document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
 
         // code below required to stop clicking on contings while panning.
-        var viewport = document.getElementById('viewport');
-        viewport.addEventListener('mousedown', function() { dragging = false; });
-        viewport.addEventListener('mousemove', function() { dragging = true; });
+        var viewport = document.getElementById('svg');
+        viewport.addEventListener('mousedown', 
+            function(event) { 
+                dragging = false; 
 
+                if (shiftPressed)
+                {
+                    drawing_zoom = true;
+
+                    zoomBox['start_x'] = event.clientX;
+                    zoomBox['start_y'] = event.clientY;
+
+                    $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0 });
+                    $('#divzoom').show();
+                }
+            });
+        viewport.addEventListener('mousemove', 
+            function(event) { 
+                dragging = true; 
+
+                if (shiftPressed && drawing_zoom)
+                {
+                    var _top = zoomBox['start_y'] > event.clientY ? event.clientY : zoomBox['start_y'];
+                    var _left = zoomBox['start_x'] > event.clientX ? event.clientX : zoomBox['start_x'];
+                    var _height = Math.abs(zoomBox['start_y'] - event.clientY);
+                    var _width = Math.abs(zoomBox['start_x'] - event.clientX);
+                    $('#divzoom').css({"top": _top, "left": _left, "width": _width, "height": _height });
+
+                    // when you drawing rectangle, if you drag over text on the screen browser selects that text
+                    // with this hack you can continue drawing.
+                    clearTextSelection(); // in utils.js
+
+                }
+            });
+
+        viewport.addEventListener('mouseup', function() { drawing_zoom=false; zoomBox = {}; $('#divzoom').hide(); });
     }
 
     $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');

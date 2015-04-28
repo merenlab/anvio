@@ -11,6 +11,20 @@ function isNumber (o) {
 }
 
 //--------------------------------------------------------------------------------------------------
+// http://stackoverflow.com/questions/3169786/clear-text-selection-with-javascript
+function clearTextSelection() {
+    if (window.getSelection) {
+      if (window.getSelection().empty) {  // Chrome
+        window.getSelection().empty();
+      } else if (window.getSelection().removeAllRanges) {  // Firefox
+        window.getSelection().removeAllRanges();
+      }
+    } else if (document.selection) {  // IE?
+      document.selection.empty();
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 function ctype_alnum (str)
 {
     return (str.match(/^[a-z0-9]+$/i) != null);

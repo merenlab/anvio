@@ -6,6 +6,22 @@
     margin: 5px;
 }
 
+svg text::selection { background: none; }
+
+#divzoom {
+    position: absolute; 
+    width:0px; 
+    height:0px;
+    pointer-events: none; 
+    background-color:
+    rgba(0,0,255,0.4); 
+    border-style: dashed;
+    border-width: 2px;
+    border-color: rgb(0,0,255);
+    display: none;
+
+}
+
 body {
     font-family: Arial;
     font-size: 10px;

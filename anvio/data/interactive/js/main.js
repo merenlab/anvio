@@ -6,6 +6,8 @@ var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 var dragging = false;
 var shiftPressed = false;
+var zoomBox = {};
+var drawing_zoom = false;
 
 var LINE_COLOR='#888888';
 
