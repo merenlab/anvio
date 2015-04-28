@@ -2261,6 +2261,19 @@ function draw_tree(settings) {
                     var _width = Math.abs(zoomBox['start_x'] - event.clientX);
                     $('#divzoom').css({"top": _top, "left": _left, "width": _width, "height": _height });
 
+                    var w_ratio = _width / VIEWER_WIDTH;
+                    var h_ratio = _height / VIEWER_HEIGHT;
+
+                    if (w_ratio > h_ratio)
+                    {
+                        $('#divzoom_inner').css({"width": h_ratio * VIEWER_WIDTH , "height": _height });
+                    }
+                    else
+                    {
+                        $('#divzoom_inner').css({"width": _width , "height": w_ratio * VIEWER_HEIGHT});
+                    }
+
+
                     // when you drawing rectangle, if you drag over text on the screen browser selects that text
                     // with this hack you can continue drawing.
                     clearTextSelection(); // in utils.js
