@@ -124,6 +124,9 @@ function lineContextMenuHandler(event) {
 }
 
 function lineMouseEnterHandler(event) {
+    if (drawing_zoom)
+        return;
+
     var p = getNodeFromEvent(event);
 
     $('#path_hover').remove();
@@ -194,6 +197,9 @@ function lineMouseEnterHandler(event) {
 }
 
 function lineMouseLeaveHandler(event) {
+    if (drawing_zoom)
+        return;
+
     var p = getNodeFromEvent(event);
 
     $('#path_hover').remove();
@@ -263,6 +269,9 @@ function lineMouseLeaveHandler(event) {
 }
 
 function mouseMoveHandler(event) {
+    if (drawing_zoom)
+        return;
+    
     var p = getNodeFromEvent(event);
 
     if (event.target.id && event.target.id == 'path_event')
