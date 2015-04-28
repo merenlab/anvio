@@ -2199,13 +2199,15 @@ function draw_tree(settings) {
                 var layer = settings['views'][current_view][pindex];
 
                 var layer_title = metadata[0][pindex];
-                if (layer_title == '__parent__')
-                {
-                    layer_title = 'Parent';
+
+                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
+                    layer_title = named_layers[layer_title]['pretty_name'];
+                } else {
+                    layer_title = layer_title.replace(/_/g, " ");
                 }
 
                 drawText('tree_group', {
-                    'x': 0,
+                    'x': 10,
                     'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
                 }, layer_title , layer['height'] + 'px', 'left', layer['color']);
             }
