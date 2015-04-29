@@ -113,6 +113,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.runinfo['available_clusterings'] = ['default']
         self.runinfo['clusterings'] = {'default': {'newick': open(os.path.abspath(args.tree)).read()}}
 
+        self.default_view = self.runinfo['default_view']
+
         if args.summary_index:
             self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
             self.splits_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
@@ -127,15 +129,16 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                       file." % (metadata_path)
 
         # store metadata as view:
-        self.views['single'] = {'header': metadata_columns[1:],
-                                'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
+        self.views[self.default_view] = {'header': metadata_columns[1:],
+                                         'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
+        self.split_names_ordered = self.views[self.default_view]['dict'].keys()
 
         filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
         self.split_sequences = utils.get_FASTA_file_as_dictionary(self.runinfo['splits_fasta'])
 
         # setup a mock splits_basic_info dict
         self.splits_basic_info = {}
-        for split_id in self.split_sequences:
+        for split_id in self.split_names_ordered:
             self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
                                                 'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
