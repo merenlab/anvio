@@ -152,7 +152,7 @@ class DB:
         return self.get_all_rows_from_table(table)
 
 
-    def get_table_as_dict(self, table, table_structure = None):
+    def get_table_as_dict(self, table, table_structure = None, string_the_key = False):
         rows = self.get_all_rows_from_table(table)
 
         if not table_structure:
@@ -164,7 +164,11 @@ class DB:
             entry = {}
             for i in range(1, len(table_structure)):
                 entry[table_structure[i]] = row[i]
-            results_dict[row[0]] = entry
+
+            if string_the_key:
+                results_dict[str(row[0])] = entry
+            else:
+                results_dict[row[0]] = entry
 
         return results_dict
 

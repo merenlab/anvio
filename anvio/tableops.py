@@ -61,7 +61,7 @@ class Table(object):
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
             # and annotation db calls.
             self.split_length = database.get_meta_value('split_length')
-            self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name)
+            self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
             self.splits_info  = database.get_table_as_dict(t.splits_info_table_name)
 
             self.contig_name_to_splits = {}

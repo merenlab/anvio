@@ -79,7 +79,7 @@ class AnnotationSuperclass(object):
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
 
         self.progress.update('Reading contigs basic info')
-        self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name)
+        self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
 
         self.progress.update('Reading splits basic info')
         self.splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
