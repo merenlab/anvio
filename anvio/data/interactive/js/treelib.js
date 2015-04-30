@@ -2259,18 +2259,27 @@ function draw_tree(settings) {
                     var _left = zoomBox['start_x'] > event.clientX ? event.clientX : zoomBox['start_x'];
                     var _height = Math.abs(zoomBox['start_y'] - event.clientY);
                     var _width = Math.abs(zoomBox['start_x'] - event.clientX);
-                    $('#divzoom').css({"top": _top, "left": _left, "width": _width, "height": _height });
+
+                    var divzoom = document.getElementById('divzoom');
+                    var divzoom_inner = document.getElementById('divzoom_inner');
+
+                    divzoom.style.top = _top + "px";
+                    divzoom.style.left = _left + "px";
+                    divzoom.style.width = _width + "px";
+                    divzoom.style.height = _height + "px";
 
                     var w_ratio = _width / VIEWER_WIDTH;
                     var h_ratio = _height / VIEWER_HEIGHT;
 
                     if (w_ratio > h_ratio)
                     {
-                        $('#divzoom_inner').css({"width": h_ratio * VIEWER_WIDTH , "height": _height });
+                        divzoom_inner.style.width = h_ratio * VIEWER_WIDTH + "px";
+                        divzoom_inner.style.height = _height + "px";
                     }
                     else
                     {
-                        $('#divzoom_inner').css({"width": _width , "height": w_ratio * VIEWER_HEIGHT});
+                        divzoom_inner.style.width = _width + "px";
+                        divzoom_inner.style.height = w_ratio * VIEWER_HEIGHT + "px";
                     }
 
                     // when you drawing rectangle, if you drag over text on the screen browser selects that text

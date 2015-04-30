@@ -381,32 +381,31 @@ $(document).ready(function() {
     }, false);
 
     $(window).keydown(function(evt) {
-      if (evt.which == 16) { // shift
-        shiftPressed = true;
-      }
-      if (evt.which == 17) { // ctrl
-        ctrlPressed = true;
-      }
-
+        if (evt.shiftKey) {
+            shiftPressed = true;
+        }
+        if (evt.ctrlKey) {
+            ctrlPressed = true;
+        }
     }).keyup(function(evt) {
-      if (evt.which == 16) { // shift 
-        shiftPressed = false;
-      }
-      if (evt.which == 17) { // ctrl
-        ctrlPressed = false;
-      }
-      if (evt.altKey && (evt.which == 84)) // alt+t for toggle windows
-      {
-        if (windowsMinimized)
-        {
-            $("button[title='collapse']").trigger('click');
+        if (evt.shiftKey) {
+            shiftPressed = false;
         }
-        else
-        {
-            $("button[title='restore']").trigger('click');
+        if (evt.ctrlKey) {
+            ctrlPressed = false;
         }
-        windowsMinimized = !windowsMinimized;
-      }
+        if (evt.altKey && (evt.which == 84)) // alt+t for toggle windows
+        {
+            if (windowsMinimized)
+            {
+                $("button[title='collapse']").trigger('click');
+            }
+            else
+            {
+                $("button[title='restore']").trigger('click');
+            }
+            windowsMinimized = !windowsMinimized;
+        }
     });
 }); // document ready
 
