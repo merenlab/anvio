@@ -3,6 +3,7 @@
 
 import os
 import sys
+import copy
 
 import anvio.tables as t
 import anvio.utils as utils
@@ -52,8 +53,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.split_names_ordered = None
         self.splits_summary_index = {}
+        self.hmm_searches_dict = {}
+        self.hmm_searches_header = []
         self.additional_metadata_path = None
-
 
         self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
         self.cwd = os.getcwd()
@@ -83,6 +85,25 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         tree = Tree(self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick'])
         self.split_names_ordered = [n.name for n in tree.get_leaves()]
 
+        # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
+        # we would like to visualize them as additional layers.
+        if len(self.non_singlecopy_gene_hmm_sources):
+            hmm_searches_dict = utils.get_filtered_dict(self.non_singlecopy_gene_hmm_results_dict, 'split', set(self.split_names_ordered))
+
+            sources_tmpl = {}
+            for source in self.non_singlecopy_gene_hmm_sources:
+                search_type = self.hmm_sources_info[source]['search_type']
+                sources_tmpl[search_type] = {}
+                self.hmm_searches_header.append(search_type)
+
+            for e in hmm_searches_dict.values():
+                if not e['split'] in self.hmm_searches_dict:
+                    self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
+                # FIXME: THIS IS OFFICIALLY THE SHITTIEST PIECE OF CODE IN THE 
+                # ENTIRE PROJECT, GOTTA DO SOMETHING ABOUT MULTIPLE HITS IN ONE
+                # SPLIT:
+                search_type = self.hmm_sources_info[e['source']]['search_type']
+                self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
@@ -291,38 +312,53 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
             json_object = []
 
-            # set the header line:
+            # (1) set the header line with the first entry:
             json_header = ['contigs']
 
-            # first annotation, if exists
+            # (2) then add annotation db stuff, if exists
             if len(self.genes_in_splits_summary_dict):
                 json_header.extend(self.genes_in_splits_summary_headers[1:])
 
-            # add length and GC content
+            # (3) then add length and GC content
             basic_info_headers = ['length', 'gc_content']
             json_header.extend(basic_info_headers)
 
-            # then, the view!
+            # (4) then add the view!
             json_header.extend(view_headers)
 
-            # additional headers as the outer ring:
+            # (5) then add 'additional' headers as the outer ring:
             if additional_headers:
                 json_header.extend(additional_headers)
 
-            # finalize it:
+            # (6) finally add hmm search results
+            if self.hmm_searches_header:
+                json_header.extend(self.hmm_searches_header)
+
+            # (7) and finalize it (yay):
             json_object.append(json_header)
 
             for split_name in view_dict:
+                # (1)
                 json_entry = [split_name]
 
+                # (2)
                 if self.genes_in_splits_summary_dict:
                     json_entry.extend([self.genes_in_splits_summary_dict[split_name][header] for header in self.genes_in_splits_summary_headers[1:]])
 
+                # (3)
                 json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
+                # (4) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
+
+                # (5) adding additional data
                 json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
 
+                # (6) hmm stuff
+                if self.hmm_searches_dict:
+                    json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in self.hmm_searches_header])
+
+                # (7) send it along!
                 json_object.append(json_entry)
 
             self.views[view] = json_object
