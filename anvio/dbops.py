@@ -6,6 +6,7 @@
 import os
 import sys
 import time
+import copy
 import numpy
 import random
 import hashlib
@@ -59,6 +60,9 @@ class AnnotationSuperclass(object):
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
 
+        self.hmm_searches_dict = {}   # <--- upon initiation, this dict only keeps hmm hits for non-singlecopy
+        self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
+
         try:
             self.annotation_db_path = args.annotation_db
         except:
@@ -98,10 +102,6 @@ class AnnotationSuperclass(object):
         self.hmm_sources_info = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
         self.non_singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
-        if len(self.non_singlecopy_gene_hmm_sources):
-            self.non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
-        else:
-            self.non_singlecopy_gene_hmm_results_dict = {}
 
         self.progress.update('Generating split to genes in splits mapping dict')
         for entry_id in self.genes_in_splits:
@@ -160,6 +160,38 @@ class AnnotationSuperclass(object):
         self.progress.end()
 
         annotation_db.disconnect()
+
+
+    def init_non_singlecopy_gene_hmm_sources(self, with_splits = None):
+        self.progress.new('Loading split sequences')
+        self.progress.update('...')
+
+        annotation_db = AnnotationDatabase(self.annotation_db_path)
+
+        if len(self.non_singlecopy_gene_hmm_sources):
+            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        else:
+            return 
+
+        if with_splits:
+            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(with_splits))
+
+        sources_tmpl = {}
+        for source in self.non_singlecopy_gene_hmm_sources:
+            search_type = self.hmm_sources_info[source]['search_type']
+            sources_tmpl[search_type] = {}
+            self.hmm_searches_header.append(search_type)
+
+        for e in non_singlecopy_gene_hmm_results_dict.values():
+            if not e['split'] in self.hmm_searches_dict:
+                self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
+            # FIXME: THIS IS OFFICIALLY THE SHITTIEST PIECE OF CODE IN THE 
+            # ENTIRE PROJECT, GOTTA DO SOMETHING ABOUT MULTIPLE HITS IN ONE
+            # SPLIT:
+            search_type = self.hmm_sources_info[e['source']]['search_type']
+            self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
+
+        self.progress.end()
 
 
 class ProfileSuperclass(object):

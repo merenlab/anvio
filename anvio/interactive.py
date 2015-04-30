@@ -3,7 +3,6 @@
 
 import os
 import sys
-import copy
 
 import anvio.tables as t
 import anvio.utils as utils
@@ -53,8 +52,6 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.split_names_ordered = None
         self.splits_summary_index = {}
-        self.hmm_searches_dict = {}
-        self.hmm_searches_header = []
         self.additional_metadata_path = None
 
         self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
@@ -86,24 +83,10 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.split_names_ordered = [n.name for n in tree.get_leaves()]
 
         # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
-        # we would like to visualize them as additional layers.
-        if len(self.non_singlecopy_gene_hmm_sources):
-            hmm_searches_dict = utils.get_filtered_dict(self.non_singlecopy_gene_hmm_results_dict, 'split', set(self.split_names_ordered))
-
-            sources_tmpl = {}
-            for source in self.non_singlecopy_gene_hmm_sources:
-                search_type = self.hmm_sources_info[source]['search_type']
-                sources_tmpl[search_type] = {}
-                self.hmm_searches_header.append(search_type)
-
-            for e in hmm_searches_dict.values():
-                if not e['split'] in self.hmm_searches_dict:
-                    self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
-                # FIXME: THIS IS OFFICIALLY THE SHITTIEST PIECE OF CODE IN THE 
-                # ENTIRE PROJECT, GOTTA DO SOMETHING ABOUT MULTIPLE HITS IN ONE
-                # SPLIT:
-                search_type = self.hmm_sources_info[e['source']]['search_type']
-                self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
+        # we would like to visualize them as additional layers. following function is inherited from
+        # Annotation DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
+        # search tables:
+        self.init_non_singlecopy_gene_hmm_sources()
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
