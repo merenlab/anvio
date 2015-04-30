@@ -36,17 +36,15 @@ class Completeness:
 
         # read info table to get what is available in the db
         info_table = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
-        self.sources = info_table.keys()
 
-        # a little convenience for potential clients:
-        self.http_refs = {}
-        for source_in_db in info_table:
-            self.http_refs[source_in_db] = [h for h in info_table[source_in_db]['ref'].split() if h.startswith('http')][0]
-
-        self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table if info_table[s]['search_type'] == 'singlecopy'])
+        # identify and remove non-single-copy sources of hmm search results:
+        non_singlecopy_sources = set([k for k in info_table.keys() if info_table[k]['search_type'] != 'singlecopy'])
+        singlecopy_sources = set([k for k in info_table.keys() if info_table[k]['search_type'] == 'singlecopy'])
+        for non_singlecopy_source in non_singlecopy_sources:
+            info_table.pop(non_singlecopy_source)
 
         # read search table (which holds hmmscan hits for splits).
-        self.search_table = annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        self.search_table = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
 
         # an example entry in self.search_table looks loke this:
         #
@@ -60,8 +58,19 @@ class Completeness:
         # }
         #
 
+
+        # a little convenience for potential clients:
+        self.http_refs = {}
+        for source_in_db in info_table:
+            self.http_refs[source_in_db] = [h for h in info_table[source_in_db]['ref'].split() if h.startswith('http')][0]
+
+        self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table])
+
+
         # we're done with the db
         annotation_db.disconnect()
+
+        self.sources = info_table.keys()
 
         if source:
             if source not in self.sources:
