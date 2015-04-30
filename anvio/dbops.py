@@ -55,6 +55,9 @@ class AnnotationSuperclass(object):
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.contigs_basic_info = {}
         self.split_sequences = {}
+        self.hmm_sources_info = {}
+        self.singlecopy_gene_hmm_sources = set([])
+        self.non_singlecopy_gene_hmm_sources = set([])
 
         try:
             self.annotation_db_path = args.annotation_db
@@ -90,6 +93,15 @@ class AnnotationSuperclass(object):
         self.progress.update('Reading genes in splits summary table')
         self.genes_in_splits_summary_dict = annotation_db.db.get_table_as_dict(t.genes_splits_summary_table_name)
         self.genes_in_splits_summary_headers = annotation_db.db.get_table_structure(t.genes_splits_summary_table_name)
+
+        self.progress.update('Identifying HMM searches for single-copy genes and others')
+        self.hmm_sources_info = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
+        self.non_singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
+        if len(self.non_singlecopy_gene_hmm_sources):
+            self.non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        else:
+            self.non_singlecopy_gene_hmm_results_dict = {}
 
         self.progress.update('Generating split to genes in splits mapping dict')
         for entry_id in self.genes_in_splits:
