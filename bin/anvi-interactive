@@ -90,6 +90,18 @@ parser.add_argument('--skip-check-names', action = 'store_true', default = False
                         help = 'For debugging purposes. If you are reading this, you should not use it.')
 
 
+args = parser.parse_args()
+
+port = args.port_number
+ip = args.ip_address
+
+port = utils.get_available_port_num(start = port, ip=ip)
+
+if not port:
+    run.info_single('anvio failed to find a port number that is available :(', mc='red')
+    sys.exit(-1)
+
+
 try:
     d = interactive.InputHandler(parser.parse_args())
 except ConfigError, e:
@@ -238,6 +250,11 @@ def get_collection_dict(collection_source):
     return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
                        'colors': d.collections.get_collection_colors(collection_source)})
 
+@route('/summary/<collection_id>/:filename#.*#')
+def send_summary_static(collection_id, filename):
+    set_default_headers(response)
+    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_id))
+
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
     run.info_single('A summary of collection "%s" has been requested.' % collection_id)
@@ -261,7 +278,8 @@ def gen_summary(collection_id):
         return json.dumps({'error'  : 'Something failed. This is what we know: %s' % e})
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
-    return json.dumps({'success'  : summary.index_html})
+    webbrowser.open_new("http://%s:%d/summary/%s/index.html" % (ip, port, collection_id))
+
 
 @route('/store_collections', method='POST')
 def store_collections_dict():
@@ -310,25 +328,9 @@ def save_state():
     state_output.write(state)
     state_output.close()
 
-@route('/submit', method='POST')
-def submit():
-    bins = json.loads(request.forms.get('groups'))
-    # jump to summary..
-
 #######################################################################################################################
 # bottle callbacks end
 #######################################################################################################################
-
-args = parser.parse_args()
-
-port = args.port_number
-ip = args.ip_address
-
-port = utils.get_available_port_num(start = port, ip=ip)
-
-if not port:
-    run.info_single('anvio failed to find a port number that is available :(', mc='red')
-    sys.exit(-1)
 
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
