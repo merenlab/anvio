@@ -126,7 +126,7 @@ class AnnotationSuperclass(object):
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
         self.progress.update('Reading contig sequences')
-        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
 
         self.progress.update('Filtering out shorter contigs')
         for contig_name in contigs_shorter_than_M:
