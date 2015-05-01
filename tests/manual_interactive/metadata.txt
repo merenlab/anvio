@@ -1,0 +1,301 @@
+contig	first_letters	random_property	numeric_property
+cathetus	c	x	0.01
+centrist	c	y	0.02
+cascaded	c		0.03
+crocking	c	x	0.04
+cinchona	c	y	0.05
+couchant	c		0.06
+creviced	c	x	0.07
+clovered	c	y	0.08
+contempt	c		0.09
+cicatrix	c	x	0.1
+chenopod	c	y	0.11
+clarinet	c		0.12
+calibred	c	x	0.13
+castalia	c	y	0.14
+carabine	c	x	0.15
+caesuras	c	y	0.16
+celature	c		0.17
+chambord	c	x	0.18
+comanche	c	y	0.19
+caviling	c		0.2
+cynewulf	c	x	0.21
+caftaned	c	y	0.22
+confetti	c		0.23
+colonize	c	x	0.24
+chekiang	c	y	0.25
+couloirs	c	x	0.26
+cultured	c	y	0.27
+carouser	c		0.28
+conflict	c	x	0.29
+cavaedia	c	y	0.3
+chilopod	c		0.31
+callosal	c	x	0.32
+censured	c	y	0.33
+cloudlet	c		0.34
+cinquain	c	x	0.35
+colorful	c	y	0.36
+corroded	c	x	0.37
+coinable	c	y	0.38
+covertly	c		0.39
+cindylou	c	x	0.4
+cudgeled	c	y	0.41
+comprize	c		0.42
+claimant	c	x	0.43
+cesarean	c	y	0.44
+cotquean	c		0.45
+corneous	c	x	0.46
+craftily	c	y	0.47
+carboyed	c	x	0.48
+cachucha	c	y	0.49
+calebite	c		0.5
+canonize	c	x	0.51
+culinary	c	y	0.52
+colonial	c		0.53
+cheribon	c	x	0.54
+chivying	c	y	0.55
+carneous	c		0.56
+congener	c	x	0.57
+converse	c	y	0.58
+cuxhaven	c	x	0.59
+chondrus	c	y	0.6
+codpiece	c		0.61
+cerastes	c	x	0.62
+cancroid	c	y	0.63
+cavatina	c		0.64
+cyrtosis	c	x	0.65
+clymenus	c	y	0.66
+canoness	c		0.67
+coevally	c	x	0.68
+costumer	c	y	0.69
+caterina	c	x	0.7
+cityless	c	y	0.71
+challahs	c		0.72
+caseless	c	x	0.73
+caingang	c	y	0.74
+childbed	c		0.75
+chorioid	c	x	0.76
+cymatium	c	y	0.77
+conquian	c		0.78
+copperas	c	x	0.79
+canceled	c	y	0.8
+chartist	c	x	0.81
+carboloy	c	y	0.82
+combated	c		0.83
+charring	c	x	0.84
+caracara	c	y	0.85
+churlish	c		0.86
+crippler	c	x	0.87
+canelike	c	y	0.88
+catchall	c		0.89
+cerotype	c	x	0.9
+charango	c	y	0.91
+cutpurse	c	x	0.92
+claymore	c	y	0.93
+crankpin	c		0.94
+consuelo	c	x	0.95
+czarevna	c	y	0.96
+chellean	c		0.97
+cotillon	c	x	0.98
+calfless	c	y	0.99
+campania	c		1
+especial	e	x	1.01
+everyday	e	y	1.02
+etherize	e	x	1.03
+eubuleus	e	y	1.04
+eateries	e		1.05
+eulachan	e	x	1.06
+enginery	e	y	1.07
+eloquent	e		1.08
+employe	e	x	1.09
+embitter	e	y	1.1
+expiable	e		1.11
+eumolpus	e	x	1.12
+edgeways	e	y	1.13
+estocada	e	x	1.14
+eastmost	e	y	1.15
+enfacing	e		1.16
+enchased	e	x	1.17
+exoergic	e	y	1.18
+exterior	e		1.19
+eutrophy	e	x	1.2
+etruscan	e	y	1.21
+egestion	e		1.22
+einstein	e	x	1.23
+estampie	e	y	1.24
+exequial	e	x	1.25
+edgebone	e	y	1.26
+excusing	e		1.27
+eckhardt	e	x	1.28
+environs	e	y	1.29
+encaenia	e		1.3
+epilepsy	e	x	1.31
+embracer	e	y	1.32
+eurasian	e		1.33
+enplaned	e	x	1.34
+ecaudate	e	y	1.35
+eatonton	e	x	1.36
+esoteric	e	y	1.37
+estivate	e		1.38
+expiator	e	x	1.39
+euctemon	e	y	1.4
+eyeglass	e		1.41
+euplotes	e	x	1.42
+erenburg	e	y	1.43
+excircle	e		1.44
+ecumenic	e	x	1.45
+exorable	e	y	1.46
+enuresis	e	x	1.47
+ennobler	e	y	1.48
+eskimoan	e		1.49
+elmhurst	e	x	1.5
+tovarish	t	y	1.51
+tucotuco	t		1.52
+trimodal	t	x	1.53
+terrapin	t	y	1.54
+trioxide	t		1.55
+turanian	t	x	1.56
+trimeter	t	y	1.57
+terentia	t	x	1.58
+toadfish	t	y	1.59
+tenpenny	t		1.6
+teetotum	t	x	1.61
+tautonym	t	y	1.62
+toboggan	t		1.63
+titicaca	t	x	1.64
+teammate	t	y	1.65
+toponymy	t		1.66
+torchier	t	x	1.67
+tortoise	t	y	1.68
+teosinte	t	x	1.69
+trousers	t	y	1.7
+thallium	t		1.71
+trotting	t	x	1.72
+tressier	t	y	1.73
+thiazine	t		1.74
+traditor	t	x	1.75
+tigereye	t	y	1.76
+trevally	t		1.77
+tomentum	t	x	1.78
+thalloid	t	y	1.79
+thankful	t	x	1.8
+tyrtaeus	t	y	1.81
+tegyrius	t		1.82
+tiresome	t	x	1.83
+tallness	t	y	1.84
+tristram	t		1.85
+triolein	t	x	1.86
+tuskless	t	y	1.87
+tailrace	t		1.88
+tinnient	t	x	1.89
+tetrapod	t	y	1.9
+twelvemo	t	x	1.91
+tragopan	t	y	1.92
+tripping	t		1.93
+tabbying	t	x	1.94
+traviata	t	y	1.95
+thrombin	t		1.96
+trecento	t	x	1.97
+technics	t	y	1.98
+tinnitus	t		1.99
+tetracyn	t	x	2
+belittle	b	y	2.01
+broidery	b	x	2.02
+bluebell	b	y	2.03
+bushnell	b		2.04
+backyard	b	x	2.05
+biblical	b	y	2.06
+blazonry	b		2.07
+bughouse	b	x	2.08
+beyrouth	b	y	2.09
+bouncing	b		2.1
+bokharan	b	x	2.11
+bagpiped	b	y	2.12
+bewrayer	b	x	2.13
+bohemian	b	y	2.14
+brickish	b		2.15
+blooding	b	x	2.16
+biunique	b	y	2.17
+bedeguar	b		2.18
+baetylus	b	x	2.19
+bourrit	b	y	2.2
+bandsman	b		2.21
+beltline	b	x	2.22
+betjeman	b	y	2.23
+bergamot	b	x	2.24
+bandaged	b	y	2.25
+bearbush	b		2.26
+boskiest	b	x	2.27
+beadlike	b	y	2.28
+bohuslav	b		2.29
+begabled	b	x	2.3
+burliest	b	y	2.31
+bicepses	b		2.32
+birdseed	b	x	2.33
+breviate	b	y	2.34
+buddhism	b	x	2.35
+bisector	b	y	2.36
+busywork	b		2.37
+blueness	b	x	2.38
+bimodule	b	y	2.39
+boatload	b		2.4
+brackish	b	x	2.41
+belabour	b	y	2.42
+bustling	b		2.43
+busyness	b	x	2.44
+brandish	b	y	2.45
+betiding	b	x	2.46
+banausic	b	y	2.47
+burnable	b		2.48
+backward	b	x	2.49
+bevatron	b	y	2.5
+basanite	b		2.51
+bouffant	b	x	2.52
+boscobel	b	y	2.53
+bloodier	b		2.54
+banterer	b	x	2.55
+bitxynia	b	y	2.56
+bithynia	b	x	2.57
+balkiest	b	y	2.58
+bogalusa	b		2.59
+bushveld	b	x	2.6
+barrable	b	y	2.61
+billfish	b		2.62
+bacteria	b	x	2.63
+bergre	b	y	2.64
+bearable	b		2.65
+bonhomie	b	x	2.66
+borating	b	y	2.67
+baptized	b	x	2.68
+backwind	b	y	2.69
+biologic	b		2.7
+benzoate	b	x	2.71
+bookless	b	y	2.72
+barrater	b		2.73
+billings	b	x	2.74
+bareness	b	y	2.75
+bulfinch	b		2.76
+bravoing	b	x	2.77
+backrest	b	y	2.78
+bidarkee	b	x	2.79
+bullpout	b	y	2.8
+beamiest	b		2.81
+bigamous	b	x	2.82
+blackboy	b	y	2.83
+biocycle	b		2.84
+boweries	b	x	2.85
+ballarat	b	y	2.86
+banneret	b		2.87
+boughpot	b	x	2.88
+balconet	b	y	2.89
+bulkiest	b	x	2.9
+balinese	b	y	2.91
+beryline	b		2.92
+blantyre	b	x	2.93
+brucella	b	y	2.94
+bassetts	b		2.95
+bastogne	b	x	2.96
+berkeley	b	y	2.97
+bacterin	b		2.98
+bluejack	b	x	2.99
+batangas	b	y	3
