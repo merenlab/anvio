@@ -381,14 +381,14 @@ $(document).ready(function() {
     }, false);
 
     $(window).keydown(function(evt) {
-        if (evt.shiftKey) {
+        if (evt.shiftKey || evt.which == 16) {
             shiftPressed = true;
         }
         if (evt.ctrlKey) {
             ctrlPressed = true;
         }
     }).keyup(function(evt) {
-        if (evt.shiftKey) {
+        if (evt.shiftKey || evt.which == 16) {
             shiftPressed = false;
         }
         if (evt.ctrlKey) {
