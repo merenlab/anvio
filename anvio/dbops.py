@@ -163,6 +163,9 @@ class AnnotationSuperclass(object):
 
 
     def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
+        if not self.annotation_db_path:
+            return
+
         self.progress.new('Loading split sequences')
         self.progress.update('...')
 

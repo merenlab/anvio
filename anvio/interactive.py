@@ -47,6 +47,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         if self.annotation_db_path:
             self.completeness = completeness.Completeness(self.annotation_db_path)
             self.collections.populate_sources_dict(self.annotation_db_path, t.annotation_db_version)
+        else:
+            self.completeness = None
 
         self.profile_db_path = None
 
