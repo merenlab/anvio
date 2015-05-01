@@ -162,7 +162,7 @@ class AnnotationSuperclass(object):
         annotation_db.disconnect()
 
 
-    def init_non_singlecopy_gene_hmm_sources(self, with_splits = None):
+    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
         self.progress.new('Loading split sequences')
         self.progress.update('...')
 
@@ -170,26 +170,46 @@ class AnnotationSuperclass(object):
 
         if len(self.non_singlecopy_gene_hmm_sources):
             non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+            non_singlecopy_gene_hmm_info_dict = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+            for source in self.singlecopy_gene_hmm_sources:
+                non_singlecopy_gene_hmm_info_dict.pop(source)
         else:
             return 
 
-        if with_splits:
-            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(with_splits))
+        if split_names_of_interest:
+            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
 
         sources_tmpl = {}
-        for source in self.non_singlecopy_gene_hmm_sources:
-            search_type = self.hmm_sources_info[source]['search_type']
-            sources_tmpl[search_type] = {}
-            self.hmm_searches_header.append(search_type)
 
-        for e in non_singlecopy_gene_hmm_results_dict.values():
-            if not e['split'] in self.hmm_searches_dict:
-                self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
-            # FIXME: THIS IS OFFICIALLY THE SHITTIEST PIECE OF CODE IN THE 
-            # ENTIRE PROJECT, GOTTA DO SOMETHING ABOUT MULTIPLE HITS IN ONE
-            # SPLIT:
-            search_type = self.hmm_sources_info[e['source']]['search_type']
-            self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
+        # the following conditional is pretty critical. here is more info about the difference:
+        # https://github.com/meren/anvio/issues/123
+        if return_each_gene_as_a_layer:
+            for source in self.non_singlecopy_gene_hmm_sources:
+                search_type = self.hmm_sources_info[source]['search_type']
+                for gene_name in [g.strip() for g in non_singlecopy_gene_hmm_info_dict[source]['genes'].split(',')]:
+                    search_term = 'hmmx_%s_%s' % (search_type, gene_name)
+                    sources_tmpl[search_term] = 0
+                    self.hmm_searches_header.append(search_term)
+
+            # fill all splits with 0s, so this is treated as a numeric column:
+            for split_name in split_names_of_interest if split_names_of_interest else self.splits_basic_info:
+                self.hmm_searches_dict[split_name] = copy.deepcopy(sources_tmpl)
+
+            for e in non_singlecopy_gene_hmm_results_dict.values():
+                search_term = 'hmmx_%s_%s' % (self.hmm_sources_info[e['source']]['search_type'], e['gene_name'])
+                self.hmm_searches_dict[e['split']][search_term] = 1
+        else:
+            for source in self.non_singlecopy_gene_hmm_sources:
+                search_type = self.hmm_sources_info[source]['search_type']
+                sources_tmpl[search_type] = {}
+                self.hmm_searches_header.append(search_type)
+
+            for e in non_singlecopy_gene_hmm_results_dict.values():
+                if not e['split'] in self.hmm_searches_dict:
+                    self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
+
+                search_type = self.hmm_sources_info[e['source']]['search_type']
+                self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
 
         self.progress.end()
 
