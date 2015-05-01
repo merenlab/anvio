@@ -277,7 +277,7 @@
                  * Handle click event.
                  */
                 handleMouseDown = function (evt) {
-                    if (shiftPressed)
+                    if (evt.shiftKey)
                         return;
 
                     if (evt.preventDefault) {

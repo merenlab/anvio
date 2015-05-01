@@ -16,7 +16,7 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
-    if (ctrlPressed)
+    if (event.ctrlKey)
         newGroup();
 
     var group_id = getGroupId();

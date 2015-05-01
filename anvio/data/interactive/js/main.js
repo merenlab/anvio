@@ -5,8 +5,6 @@
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 var dragging = false;
-var shiftPressed = false;
-var ctrlPressed = false;
 var windowsMinimized = false;
 
 var zoomBox = {};
@@ -380,20 +378,7 @@ $(document).ready(function() {
         $('#control_contextmenu').hide();
     }, false);
 
-    $(window).keydown(function(evt) {
-        if (evt.shiftKey || evt.which == 16) {
-            shiftPressed = true;
-        }
-        if (evt.ctrlKey) {
-            ctrlPressed = true;
-        }
-    }).keyup(function(evt) {
-        if (evt.shiftKey || evt.which == 16) {
-            shiftPressed = false;
-        }
-        if (evt.ctrlKey) {
-            ctrlPressed = false;
-        }
+    $(window).keyup(function(evt) {
         if (evt.altKey && (evt.which == 84)) // alt+t for toggle windows
         {
             if (windowsMinimized)
