@@ -48,7 +48,7 @@ If you want to update your installation, you are going to need to run these comm
 "Mini test" is a minimum test set that runs almost everything in the codebase. If you have a proper installation, you shouldn't get any errors from running this test. To run it go to your anvio installation directory, and type these:
 
     cd tests
-    ./mini_test.sh
+    ./run_mini_test.sh
 
 All fine? Perfect!
 
@@ -179,6 +179,63 @@ Once the merging is done you can finally run the interactive interface:
 
 # Other examples
 
+## Running the visualization interface with manual input
+
+`anvi-interactive` can also be run using text files alone, without any annotation or profile databases. In order to do that, your command line should look like this:
+
+    anvi-interactive -f FASTA.fa -m METADATA.txt -t TREE.txt -o OUTPUT_DIRECTORY
+
+`FASTA.fa` is a FASTA formatted file for your contigs. `METADATA.txt` is a TAB-delimited file that contains information for each entry appears in the FASTA file. Finally, the `TREE.txt` is the file where you describe the organization of your entries you have in your FASTA file. The names of the leaves of the tree, the deflines found in your FASTA file and the first column of your metadata file must match, perfectly.
+
+Here is an example FASTA file:
+
+<pre>
+>A
+ATCG
+>B
+GTCA
+>C
+GACT
+>D
+TACG
+>E
+TTCG
+>F
+GGCA
+>G
+ACAC
+>H
+CATC
+</pre>
+
+That can go together with this example metadata file:
+
+
+| contig 	| C1   	| C2        	|
+|--------	|------	|-----------	|
+| A      	| 0.5  	| Cluster_1 	|
+| B      	| 0.5  	| Cluster_1 	|
+| C      	| 1.2  	| Cluster_0 	|
+| D      	| 0.6  	| Cluster_3 	|
+| E      	| 0.7  	| Cluster_3 	|
+| F      	| 0.8  	| Cluster_3 	|
+| G      	| 0.9  	| Cluster_4 	|
+| H      	| 0.9  	| Cluster_4 	|
+
+And finally this tree:
+
+    ((G:0.0122349,H:0.0122349)Int11:0.450561,((C:0.0103605,D:0.0103605)Int10:0.0791402,(E:0.0262071,(F:0.00364725,(A:0,B:0)Int8:0.00364725)Int9:0.0262071)Int12:0.0791402)Int13:0.450561);
+
+If you put these examples into cognate files, `anvi-interactive` command I showed before will work, yet it is clear this is a mock example. Files for a bit more realistic looking example is in the [`tests/manual_interactive`](https://github.com/meren/anvio/tree/master/tests/manual_interactive) directory in the codebase. Also, `run_manual_interactive.sh` in the `tests` directory demonstrates how those files should be run.
+
+
+## Generating a newick tree file from an input matrix
+
+Please see example files stored in the [`tests/manual_interactive`](https://github.com/meren/anvio/tree/master/tests/manual_interactive) directory. If you have a matrix file (such as [`data.txt`](https://github.com/meren/anvio/blob/master/tests/manual_interactive/data.txt)), you can get a newick file for it by running this anvi'o command:
+
+    anvi-matrix-to-newick data.txt -o tree.txt
+
+
 ## Exporting tables from databases
 
 You can export the information stored in any anvio database using `anvi-get-db-table-as-matrix`.
@@ -250,4 +307,4 @@ This is great. That's exactly why you have accesss to this codebase. Either file
 
 ### Do I have permission to change the codebase?
 
-Yes. Don't forget run `mini_test.sh` to make sure everything is running, and don't be worried. I will make sure you didn't break anything :)
+Yes. Don't forget run `run_mini_test.sh` to make sure everything is running, and don't be worried. I will make sure you didn't break anything :)
