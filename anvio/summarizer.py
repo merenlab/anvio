@@ -47,8 +47,8 @@ class Summarizer(DatabasesMetaclass):
         self.annotation_db_path = None
         self.output_directory = None
 
-        self.run = run
-        self.progress = progress
+        self.run = r
+        self.progress = p
 
         DatabasesMetaclass.__init__(self, args, self.run, self.progress)
 
