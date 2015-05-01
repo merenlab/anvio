@@ -2248,6 +2248,7 @@ function draw_tree(settings) {
                     zoomBox['start_y'] = event.clientY;
 
                     $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0 });
+                    $('#divzoom_inner').css({"width": 0, "height": 0 });
                     $('#divzoom').show();
                 }
             });
@@ -2297,7 +2298,7 @@ function draw_tree(settings) {
                 {
                     var inner_rect = document.getElementById('divzoom_inner').getBoundingClientRect();
                     
-                    if (inner_rect.width > 4 && inner_rect.height > 4)
+                    if (inner_rect.width > 2 && inner_rect.height > 2)
                     {
                         var _dx = (VIEWER_WIDTH / 2) - (inner_rect.left + inner_rect.width / 2);
                         var _dy = (VIEWER_HEIGHT / 2) - (inner_rect.top + inner_rect.height / 2);
@@ -2305,6 +2306,7 @@ function draw_tree(settings) {
                         zoom(VIEWER_WIDTH / inner_rect.width);
                     }
                 }
+
                 clearTextSelection();
                 drawing_zoom=false; 
                 zoomBox = {}; 
