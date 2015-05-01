@@ -88,6 +88,10 @@ parser.add_argument('--dry-run', action = 'store_true', default = False,
                         help = 'Do not start the server, do not fire up the browser.')
 parser.add_argument('--skip-check-names', action = 'store_true', default = False,
                         help = 'For debugging purposes. If you are reading this, you should not use it.')
+parser.add_argument('--split-hmm-layers', action = 'store_true', default = False,
+                        help = 'When declared, this flag tells the interface to split every gene found in HMM\
+                                searches that were performed against non-singlecopy gene HMM profiles into\
+                                their own layer. Please see the documentation for details.')
 
 
 args = parser.parse_args()

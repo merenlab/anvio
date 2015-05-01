@@ -86,7 +86,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # we would like to visualize them as additional layers. following function is inherited from
         # Annotation DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
-        self.init_non_singlecopy_gene_hmm_sources()
+        self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = args.split_hmm_layers)
 
         if args.additional_metadata:
             filesnpaths.is_file_tab_delimited(args.additional_metadata)
