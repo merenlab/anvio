@@ -1,4 +1,4 @@
-# Poor Man's Manual for anvio
+# User Manual
 
 This is going to be very brief and simple, but don't hesitate to send me your questions.
 
@@ -8,7 +8,9 @@ This is going to be very brief and simple, but don't hesitate to send me your qu
 
 ### Dependencies
 
-anvio has some dependencies, some of which will be taken care of the installer. There are two you need to make sure you have installed:
+anvi'o has some dependencies, some of which will be taken care of the installer. There are two you need to make sure you have installed:
+
+* [Chrome Web Browser](https://www.google.com/chrome/browser/desktop/). Chrome should be not only installed on your system, but unfortunately it should also be the default browser (otherwise everytime interactive interface pops up, you will need to copy-paste the address to a Chrome window). anvi'o does not support any other browser, and it will not perform optimally on others.
 
 * [Prodigal](http://prodigal.ornl.gov/) (go to your terminal, type `prodigal` if you get an error, you need to install it). Here is a quick way to install it (the first line will not work if you don't have wget, but you can get wget installed esily typing `sudo port install wget` if you are using MacPorts system on your Mac computer):
 
@@ -226,7 +228,9 @@ And finally this tree:
 
     ((G:0.0122349,H:0.0122349)Int11:0.450561,((C:0.0103605,D:0.0103605)Int10:0.0791402,(E:0.0262071,(F:0.00364725,(A:0,B:0)Int8:0.00364725)Int9:0.0262071)Int12:0.0791402)Int13:0.450561);
 
-If you put these examples into cognate files, `anvi-interactive` command I showed before will work, yet it is clear this is a mock example. Files for a bit more realistic looking example is in the [`tests/manual_interactive`](https://github.com/meren/anvio/tree/master/tests/manual_interactive) directory in the codebase. Also, `run_manual_interactive.sh` in the `tests` directory demonstrates how those files should be run.
+If you put these examples into cognate files, `anvi-interactive` command I showed before will work, yet it is clear this is a mock example.
+
+Files for a bit more realistic looking example is in the [`tests/manual_interactive`](https://github.com/meren/anvio/tree/master/tests/manual_interactive) directory in the codebase. Also, `run_manual_interactive.sh` in the `tests` directory demonstrates how those files should be run.
 
 
 ## Generating a newick tree file from an input matrix
