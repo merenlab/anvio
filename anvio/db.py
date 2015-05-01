@@ -152,17 +152,41 @@ class DB:
         return self.get_all_rows_from_table(table)
 
 
-    def get_table_as_dict(self, table, table_structure = None, string_the_key = False):
-        rows = self.get_all_rows_from_table(table)
-
+    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None):
         if not table_structure:
             table_structure = self.get_table_structure(table)
 
+        columns_to_return = range(0, len(table_structure))
+
+        if columns_of_interest:
+            for col in table_structure[1:]:
+                if col not in columns_of_interest:
+                    columns_to_return.pop(table_structure.index(col))
+
+        if len(columns_to_return) == 1:
+            raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
+                                of interest by the client, nothing was left to return..."
+
+        if keys_of_interest:
+            keys_of_interest = set(keys_of_interest)
+
         results_dict = {}
+
+        rows = self.get_all_rows_from_table(table)
 
         for row in rows:
             entry = {}
-            for i in range(1, len(table_structure)):
+
+            if keys_of_interest:
+                if row[0] in keys_of_interest:
+                    # so we are interested in keeping this, reduce the size of the
+                    # hash size to improve the next inquiry, and keep going.
+                    keys_of_interest.remove(row[0])
+                else:
+                    # we are not intersted in this one, continue:
+                    continue
+
+            for i in columns_to_return[1:]:
                 entry[table_structure[i]] = row[i]
 
             if string_the_key:
