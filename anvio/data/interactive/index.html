@@ -205,7 +205,14 @@
                     </table>
                 </div>
                 <br />
-                <div style="clear: both; "><center><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();"></center></div>
+                <div style="clear: both; "><center>Minimum bin size: 
+                <input type="text" id="loadCollection_threshold" value="1" size="3">
+                <select id="loadCollection_threshold_base">
+                    <option value="1000">K</option>
+                    <option value="1000000">M</option>
+                    <option value="1000000000">G</option>
+                </select> bases.
+                <br /><br /><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();"></center></div>
             </div>
 
             <div id="summarizeCollectionWindow" class="dialogs2">
@@ -222,6 +229,10 @@
                 </div>
                 <br />
                 <div style="clear: both; "><center><input type="button" id="summarizeCollection" value="Generate summary" onClick="generateSummary();"></center></div>
+            </div>
+
+            <div id="legendsWindow" class="dialogs3">
+
             </div>
 
             <div id="tooltip" class="dialogs">

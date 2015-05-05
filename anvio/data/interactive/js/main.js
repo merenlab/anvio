@@ -1422,31 +1422,27 @@ function loadCollection() {
     }
 
     var collection = $('#loadCollection_list').val();
-    if (collection === null)
+    if (collection === null) {
+        alert('Please select a collection.');
         return;
+    }
 
     if (!confirm("You will lost current groups, please be sure you stored current groups. Do you want to continue?"))
         return;
 
-    var coldata 
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             // empty group window
-            $('#tbody_groups').empty();
+            var groups_cleared = false;
             SELECTED = new Array();
             group_count = 0;
             group_counter = 0;
 
-            // count groups.
-            var skip_empty = false;
-            var num_groups = Object.keys(data['data']).length;
-
-            if (num_groups > 16) {
-                skip_empty = confirm("This collection has " + num_groups + " groups, Do you want to skip empty groups to improve user interface performance?");
-            }
+            // calculate treshold.
+            var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
 
             // load new groups
             var gid=0;
@@ -1454,17 +1450,24 @@ function loadCollection() {
             {
                 // collection may be contain unknown splits/contigs, we should clear them.
                 var contigs = new Array();
+                var sum_contig_length = 0;
 
                 for (index in data['data'][group])
                 {
                     if (typeof contig_lengths[data['data'][group][index]] !== 'undefined') {
                         contigs.push(data['data'][group][index]);
+                        sum_contig_length += contig_lengths[data['data'][group][index]];
                     }
                     
                 }
 
-                if (!(skip_empty && contigs.length == 0))
+                if (sum_contig_length >= threshold)
                 {
+                    if (!groups_cleared)
+                    {
+                        $('#tbody_groups').empty();
+                        groups_cleared = true;
+                    }
                     gid++;
                     group_counter++;
                     SELECTED[gid] = contigs;
