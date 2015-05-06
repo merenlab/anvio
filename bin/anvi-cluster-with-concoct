@@ -33,9 +33,15 @@ class CONCOCT(dbops.DatabasesMetaclass):
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_directory = None
+        self.lengths = {}
+        self.kmers = {}
+        self.coverages = {}
 
         self.run = r
         self.progress = p
+
+        dbops.DatabasesMetaclass.__init__(self, args)
+        self.init_split_sequences(min_contig_length = 1000)
 
         profile_db = dbops.ProfileDatabase(args.profile_db)
         self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest = profile_db.samples)
@@ -43,9 +49,17 @@ class CONCOCT(dbops.DatabasesMetaclass):
 
         annotation_db = dbops.AnnotationDatabase(args.annotation_db)
         self.kmers = annotation_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
+        splits_basic_info = annotation_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
         annotation_db.disconnect()
 
-        #import cPickle
+        for split_name in splits_basic_info:
+            self.lengths[split_name] = splits_basic_info[split_name]['length']
+
+        map(lambda split_name: self.split_sequences.pop(split_name), set(self.split_sequences.keys()) - set(self.kmers.keys()))
+
+        import cPickle
+        cPickle.dump(self.split_sequences, open('sequences.cPickle', 'w'))
+        #cPickle.dump(self.lengths, open('lengths.cPickle', 'w'))
         #cPickle.dump(self.coverages, open('coverages.cPickle', 'w'))
         #cPickle.dump(self.kmers, open('kmers.cPickle', 'w'))
 
