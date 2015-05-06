@@ -81,6 +81,8 @@ class AnnotationSuperclass(object):
         self.a_meta = annotation_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
+        for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs']:
+            self.a_meta[key] = int(self.a_meta[key])
 
         self.progress.update('Reading contigs basic info')
         self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
@@ -226,6 +228,8 @@ class ProfileSuperclass(object):
         self.clusterings = {}
         self.views = {}
 
+        self.collection_profile = {}
+
         try:
             self.profile_db_path = args.profile_db
         except:
@@ -245,11 +249,51 @@ class ProfileSuperclass(object):
 
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
+        self.p_meta['num_samples'] = len(self.p_meta['samples'])
+
+        for key in ['merged', 'contigs_clustered', 'min_contig_length', 'total_length', 'num_splits', 'num_contigs']:
+            self.p_meta[key] = int(self.p_meta[key])
 
         self.progress.update('Reading clusterings dict')
         self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
 
         self.progress.end()
+
+        profile_db.disconnect()
+
+
+    def init_collection_profile(self, collection):
+        profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
+
+        # table names we want to learn about depends on the profile type:
+        if self.p_meta['merged']:
+            table_names = [table_name for table_name in t.metadata_table_structure[1:-1]]
+        else:
+            table_names = ['metadata']
+
+        samples_template = dict([(s, []) for s in self.p_meta['samples']])
+
+        for bin_id in collection:
+            self.collection_profile[bin_id] = {}
+
+        for table_name in table_names:
+            table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column = True)
+
+            for bin_id in collection:
+                # populate averages per bin
+                averages = copy.deepcopy(samples_template)
+                for split_name in collection[bin_id]:
+                    if split_name not in table_data:
+                        continue
+
+                    for sample_name in samples_template:
+                        averages[sample_name].append(table_data[split_name][sample_name])
+
+                # finalize averages per bin:
+                for sample_name in samples_template:
+                    averages[sample_name] = numpy.mean(averages[sample_name])
+
+                self.collection_profile[bin_id][table_name] = averages
 
         profile_db.disconnect()
 
