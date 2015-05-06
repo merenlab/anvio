@@ -89,8 +89,8 @@ class Summarizer(DatabasesMetaclass):
         collection_dict = self.collections.get_collection_dict(self.collection_id)
         collection_colors = self.collections.get_collection_colors(self.collection_id)
 
-        # FIXME: REMOVE THIS BEFORE 1.0
-        G = lambda d, k: d[k] if d.has_key(k) else 'unknown'
+        # init profile data for colletion.
+        self.init_collection_profile(collection_dict)
 
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
@@ -112,7 +112,7 @@ class Summarizer(DatabasesMetaclass):
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Minimum conting length', pretty(G(self.p_meta, 'min_contig_length'))),
+                                                     ('Minimum conting length', pretty(self.p_meta['min_contig_length'])),
                                                      ('Number of conitgs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
@@ -128,16 +128,35 @@ class Summarizer(DatabasesMetaclass):
                                                     ],
                                         }
 
-        # summarize bins:
+        self.summary['max_shown_samples'] = 15
+        self.summary['slice_samples_tmpl'] = '0:%d' % self.summary['max_shown_samples']
+        self.summary['num_not_shown_samples'] = len(self.p_meta['samples']) - self.summary['max_shown_samples']
+
+        self.summary['files'] = {}
         self.summary['collection'] = {}
+        self.summary['collection_profile'] = self.collection_profile
+        self.summary['collection_profile_items'] = self.collection_profile.values()[0].keys()
+
+        # summarize bins:
         for bin_id in collection_dict: 
             bin = Bin(self, bin_id, collection_dict[bin_id], self.run, self.progress)
-            bin.output_directory = os.path.join(self.output_directory, 'collections', bin_id)
+            bin.output_directory = os.path.join(self.output_directory, 'bin_by_bin', bin_id)
+            bin.bin_profile = self.collection_profile[bin_id]
 
             self.summary['collection'][bin_id] = bin.create()
             self.summary['collection'][bin_id]['color'] = collection_colors[bin_id] or '#212121'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
-            self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
+            self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
+
+        # save merged matrices for bins x samples
+        for table_name in self.collection_profile.values()[0].keys():
+            d = {}
+            for bin_id in self.collection_profile:
+                d[bin_id] = self.collection_profile[bin_id][table_name]
+
+            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
+            utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + self.p_meta['samples'], file_obj = output_file_obj)
+
 
         # final additions
         self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
@@ -155,6 +174,25 @@ class Summarizer(DatabasesMetaclass):
         return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
 
 
+    def get_output_file_handle(self, sub_directory = None, prefix = 'output.txt', overwrite = False):
+        if sub_directory:
+            output_directory = os.path.join(self.output_directory, sub_directory)
+        else:
+            output_directory = self.output_directory
+
+        if not os.path.exists(output_directory):
+            filesnpaths.gen_output_directory(output_directory)
+
+        file_path = os.path.join(output_directory, '%s' % (prefix))
+        if os.path.exists(file_path) and not overwrite:
+            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
+
+        key = prefix.split('.')[0].replace('-', '_')
+        self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
+
+        return open(file_path, 'w')
+
+
 
 class Bin:
     def __init__(self, summary, bin_id, split_ids, r = run, p = progress):
@@ -163,6 +201,8 @@ class Bin:
         self.split_ids = split_ids
         self.progress = p
         self.run = r
+        self.across_samples = {}
+        self.bin_profile = {}
 
         self.bin_info_dict = {'files': {}}
 
@@ -202,6 +242,9 @@ class Bin:
 
         self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.bin_id)
         self.set_taxon_calls()
+
+        self.progress.new('[Collection "%s"] Storing profile data' % self.bin_id)
+        self.store_profile_data()
 
         return self.bin_info_dict
 
@@ -250,6 +293,14 @@ class Bin:
 
         for k in ['percent_contamination', 'percent_complete']:
             self.bin_info_dict[k] /= num_sources
+
+        self.progress.end()
+
+
+    def store_profile_data(self):
+        for table_name in self.bin_profile:
+            output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
+            utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers = ['bin'] + self.summary.p_meta['samples'], file_obj = output_file_obj)
 
         self.progress.end()
 

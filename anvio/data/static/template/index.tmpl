@@ -144,6 +144,7 @@
     </section>
 
 
+    <!-- BINS PANEL -->
     <section>
         <div class="container">
             <div class="panel panel-info" id="bins_panel">
@@ -168,7 +169,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for bin in meta.collection %}
+                                {% for bin in meta|lookup:"bins" %}
                                 <tr>
                                     <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                     <td style="vertical-align: middle;">{{ bin }}</td>
@@ -245,9 +246,16 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Contigs FASTA</td>
+                    <td><b>Contigs FASTA</b></td>
                     <td><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"contigs" }}">{{ collection|lookup:bin|lookup:"files"|lookup:"contigs" }}</a></td>
                   </tr>
+                  {% for fname in collection|lookup:bin|lookup:"files" %}
+                  {% if fname != "contigs" %}
+                  <tr>
+                    <td>{{ fname  }}</td>
+                    <td><a href="{{ collection|lookup:bin|lookup:"files"|lookup:fname }}">{{ collection|lookup:bin|lookup:"files"|lookup:fname }}</a></td>
+                  {% endif %}
+                  {% endfor %}
                 </tbody>
           </table>
             <p class="section-paragraph"></p>
@@ -299,6 +307,81 @@
     </div>
     {% endfor %}
 
+
+    <!-- BINS ACROSS SAMPLES PANEL -->
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="bins_across_samples_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Bins Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1>
+                </div>
+
+                <div id="collapse-bins-across-samples" class="panel-collapse collapse">
+
+                    <div role="tabpanel" style="margin: 10px;">
+                         <!-- Nav tabs -->
+                         <ul class="nav nav-tabs" role="tablist">
+                         {% for item in collection_profile_items %}
+                           <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ item }}" aria-controls="{{ item }}" role="tab" data-toggle="tab">{{ item|humanize }}</a></li>
+                         {% endfor %}
+                         </ul>
+                    
+                         <!-- Tab panes -->
+                         <div class="tab-content">
+                         {% for item in collection_profile_items %}
+                           <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ item }}">
+
+                                <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
+                                <table class="table table-striped sortable" style="margin: 10px;">
+                                    <thead id="tblHead_bin">
+                                       <tr>
+                                           <th data-defaultsort='disabled' class="text-center"></th>
+                                           <th>Bin</th>
+                                            {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_samples_tmpl %}
+                                            {% if sample|length > 5 %}
+                                            <th class="text-center">{{ sample|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ sample }}">...</a></th>
+                                            {% else %}
+                                            <th class="text-center">{{ sample }}</th>
+                                            {% endif %} 
+                                            {% endfor %}
+
+                                            {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_samples %}
+                                            <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></th>
+                                            {% endif %} 
+                                       </tr>
+                                    </thead>
+                                    <tbody>
+                                       {% for bin in meta|lookup:"bins" %}
+                                       <tr>
+                                            <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                            <td style="vertical-align: middle;">{{ bin }}</td>
+
+                                            {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_samples_tmpl %}
+                                                <td class="text-center" data-value="{{ collection_profile|lookup:bin|lookup:item|lookup:sample }}">{{ collection_profile|lookup:bin|lookup:item|lookup:sample|humanize_n }}</td>
+                                            {% endfor %}
+
+                                            {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_samples %}
+                                                <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></td>
+                                            {% endif %} 
+                                       </tr>
+                                       {% endfor %}
+                                    </tbody>
+                                </table>
+
+                           </div>
+                         {% endfor %}
+                         </div>
+                    
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
+
+
     <!-- jQuery -->
     <script src=".html/js/jquery.js"></script>
 
@@ -307,5 +390,12 @@
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script src=".html/js/bootstrap-sortable.js"></script>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+    $(document).ready(function() {
+        $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+    });
+</script>
 </body>
 </html>
