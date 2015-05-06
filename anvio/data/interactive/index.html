@@ -125,11 +125,31 @@
                         <tr>
                             <td>Select</td>
                             <td>Color</td>
-                            <td>Name</td>
-                            <td>Contigs</td>
-                            <td>Length</td>
-                            <td title="Completeness">Comp.</td>
-                            <td title="Contamination">Cont.</td>
+                            <td>
+                                <a href="#" onclick="sortGroups('name');">
+                                Name<span class="sort-icon" id="sort-icon-name"></span>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="#" onclick="sortGroups('contigs');">
+                                Contigs<span class="sort-icon" id="sort-icon-contigs"></span>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="#" onclick="sortGroups('length');">
+                                Length<span class="sort-icon" id="sort-icon-length"></span>
+                                </a>
+                            </td>
+                            <td title="Completeness">
+                                <a href="#" onclick="sortGroups('comp');">
+                                Comp.<span class="sort-icon" id="sort-icon-comp"></span>
+                                </a>
+                            </td>
+                            <td title="Contamination">
+                                <a href="#" onclick="sortGroups('cont');">
+                                Cont.<span class="sort-icon" id="sort-icon-cont"></span>
+                                </a>
+                            </td>
                             <td>Delete</td>
                         </tr>
                     </thead>
