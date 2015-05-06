@@ -1,0 +1,3 @@
+[submodule "anvio/data/static/content/chartsjs"]
+	path = anvio/data/static/content/chartsjs
+	url = https://github.com/nnnick/Chart.js
