@@ -152,7 +152,7 @@ class DB:
         return self.get_all_rows_from_table(table)
 
 
-    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None):
+    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None, omit_parent_column = False):
         if not table_structure:
             table_structure = self.get_table_structure(table)
 
@@ -162,6 +162,10 @@ class DB:
             for col in table_structure[1:]:
                 if col not in columns_of_interest:
                     columns_to_return.remove(table_structure.index(col))
+
+        if omit_parent_column:
+            if '__parent__' in table_structure:
+                columns_to_return.remove(table_structure.index('__parent__'))
 
         if len(columns_to_return) == 1:
             raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
