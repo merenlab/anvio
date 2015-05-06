@@ -194,10 +194,15 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = 
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers):
-    filesnpaths.is_output_file_writable(output_path)
+def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
+    if not file_obj:
+        filesnpaths.is_output_file_writable(output_path)
 
-    f = open(output_path, 'w')
+    if not file_obj:
+        f = open(output_path, 'w')
+    else:
+        f = file_obj
+
     f.write('%s\n' % '\t'.join(headers))
 
     for k in d.keys():
