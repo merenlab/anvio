@@ -1,9 +1,7 @@
 # -*- coding: utf-8
 '''Storing and retrieving metadata regarding contigs and splits'''
 
-
-metadata_table_structure = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
-metadata_table_types     = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
+import anvio.tables as t
 
 from anvio.terminal import Progress
 from anvio.terminal import pretty_print as pp
@@ -45,14 +43,14 @@ class Metadata:
             contig_metadata = contig.get_metadata_dict()
 
             self.metadata_contigs[contig.name] = {'contig': contig.name}
-            for metadata_field in metadata_table_structure[1:]:
+            for metadata_field in t.metadata_table_structure[1:]:
                 self.metadata_contigs[contig.name][metadata_field] = contig_metadata[metadata_field]
 
             # contig is done, deal with splits in it:
             for split in contig.splits:
                 split_metadata = split.get_metadata_dict()
                 self.metadata_splits[split.name] = {'contig': split.name}
-                for metadata_field in metadata_table_structure[1:]:
+                for metadata_field in t.metadata_table_structure[1:]:
                     self.metadata_splits[split.name][metadata_field] = split_metadata[metadata_field]
 
 
@@ -64,12 +62,12 @@ class Metadata:
 
 def gen_metadata_tables(metadata_splits, metadata_contigs, db):
     # all objects are ready, creating tables next.
-    db.create_table('metadata_splits', metadata_table_structure, metadata_table_types)
-    db_entries = [tuple([split] + [metadata_splits[split][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
+    db.create_table('metadata_splits', t.metadata_table_structure, t.metadata_table_types)
+    db_entries = [tuple([split] + [metadata_splits[split][h] for h in t.metadata_table_structure[1:]]) for split in metadata_splits]
     db._exec_many('''INSERT INTO metadata_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
-    db.create_table('metadata_contigs', metadata_table_structure, metadata_table_types)
-    db_entries = [tuple([split] + [metadata_contigs[metadata_splits[split]['__parent__']][h] for h in metadata_table_structure[1:]]) for split in metadata_splits]
+    db.create_table('metadata_contigs', t.metadata_table_structure, t.metadata_table_types)
+    db_entries = [tuple([split] + [metadata_contigs[metadata_splits[split]['__parent__']][h] for h in t.metadata_table_structure[1:]]) for split in metadata_splits]
     db._exec_many('''INSERT INTO metadata_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
 
     db.commit()

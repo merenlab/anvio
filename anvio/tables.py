@@ -81,6 +81,12 @@ collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'
 #
 ####################################################################################################
 
+# notice that metadata table is the only table that doesn't have a name. because it is a bit tricky.
+# for single profiles, metadata_table is stored as "metadata", however, for merged profiles,
+# each metadata item in the metadata_table_structure becomes its own table, where the values of splits
+# for a given table name class is stored accross samples.
+metadata_table_structure             = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
+metadata_table_types                 = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 clusterings_table_name               = 'clusterings'
 clusterings_table_structure          = ['clustering', 'newick' ]
