@@ -1,3 +1,6 @@
 [submodule "anvio/data/static/content/chartsjs"]
 	path = anvio/data/static/content/chartsjs
 	url = https://github.com/nnnick/Chart.js
+[submodule "anvio/data/static/content/bootstrap-sortable"]
+	path = anvio/data/static/content/bootstrap-sortable
+	url = https://github.com/drvic10k/bootstrap-sortable
