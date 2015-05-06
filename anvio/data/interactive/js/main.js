@@ -163,6 +163,8 @@ $(document).ready(function() {
                     $('#angle-max').val(state['angle-max']);
                 if (state.hasOwnProperty('layer-margin'))
                     $('#layer-margin').val(state['layer-margin']);
+                if (state.hasOwnProperty('outer-ring-height'))
+                    $('#outer-ring-height').val(state['outer-ring-height']);
             }
             else {
                 layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
@@ -681,6 +683,7 @@ function serializeSettings() {
     state['tree-height'] = $('#tree_height').val();
     state['tree-width'] = $('#tree_width').val();
     state['layer-margin'] = $('#layer-margin').val();
+    state['outer-ring-height'] = $('#outer-ring-height').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
 
     state['SELECTED'] = SELECTED;
@@ -722,7 +725,9 @@ function drawTree() {
             // last_settings used in export svg for layer information,
             // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
             // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
-            last_settings = serializeSettings(); 
+            last_settings = serializeSettings();
+
+            redrawGroups();
 
             $('#img_loading').hide();
             $('#btn_draw_tree').prop('disabled', false);

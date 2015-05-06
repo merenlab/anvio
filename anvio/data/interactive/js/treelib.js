@@ -2168,7 +2168,7 @@ function draw_tree(settings) {
 
         rebuildIntersections();
         createGroup('tree_group', 'group');
-        redrawGroups();
+        // redrawGroups() call moved to draw_tree_callback because redrawGroups needs last_settings to be set.
 
         // observe for transform matrix change
         var observer = new MutationObserver(updateSingleBackgroundGlobals);
@@ -2366,7 +2366,7 @@ function redrawGroups(search_results)
         var end = order_to_node_map[groups_to_draw[i][1]];
 
         var color = document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
-        var outer_ring_size = 4;
+        var outer_ring_size = parseInt(last_settings['outer-ring-height']);
 
         if (tree_type == 'circlephylogram')
         {
@@ -2386,7 +2386,7 @@ function redrawGroups(search_results)
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 total_radius + margin,
-                total_radius + margin * outer_ring_size,
+                total_radius + margin + outer_ring_size,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 1,
@@ -2410,7 +2410,7 @@ function redrawGroups(search_results)
                 total_radius + margin,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
-                margin * outer_ring_size,
+                outer_ring_size,
                 color,
                 1,
                 false);
@@ -2426,7 +2426,7 @@ function redrawGroups(search_results)
             var end = start;
 
             var color = document.getElementById('picker_highlight').getAttribute('color');
-            var outer_ring_size = 6;
+            var outer_ring_size = parseInt(last_settings['outer-ring-height']);
 
             if (tree_type == 'circlephylogram')
             {
@@ -2434,8 +2434,8 @@ function redrawGroups(search_results)
                     'group_outer_' + 1,
                     start.angle - angle_per_leaf / 2,
                     end.angle + angle_per_leaf / 2,
-                    total_radius + margin,
-                    total_radius + margin * outer_ring_size,
+                    total_radius + margin + outer_ring_size,
+                    total_radius + margin + outer_ring_size * 2,
                     (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                     color,
                     1,
@@ -2445,10 +2445,10 @@ function redrawGroups(search_results)
             {
                 drawPhylogramRectangle('group',
                     'group_outer_' + 1,
-                    total_radius + margin,
+                    total_radius + margin + outer_ring_size,
                     (start.xy.y + end.xy.y) / 2,
                     end.xy.y - start.xy.y + height_per_leaf,
-                    margin * outer_ring_size,
+                    outer_ring_size,
                     color,
                     1,
                     false);
