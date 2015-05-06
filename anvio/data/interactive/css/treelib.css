@@ -6,6 +6,13 @@
     margin: 5px;
 }
 
+.ui-icon {
+    vertical-align:middle;
+    display: inline-block;
+}
+
+td > a {text-decoration: none}
+
 svg text::selection { background: none; }
 
 #divzoom {
