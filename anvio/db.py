@@ -161,7 +161,7 @@ class DB:
         if columns_of_interest:
             for col in table_structure[1:]:
                 if col not in columns_of_interest:
-                    columns_to_return.pop(table_structure.index(col))
+                    columns_to_return.remove(table_structure.index(col))
 
         if len(columns_to_return) == 1:
             raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
