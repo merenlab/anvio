@@ -19,6 +19,7 @@
    to the vbgmm module. 
 """
 
+import random
 import numpy as np
 
 from sklearn.decomposition import PCA
@@ -29,12 +30,13 @@ import anvio.terminal as terminal
 import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
+from anvio.profiler import __version__
+
 
 __author__ = "Christopher Quince"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -44,10 +46,12 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class CONCOCT(dbops.DatabasesMetaclass):
-    def __init__(self, args = None, r = run, p = progress):
+class CONCOCT:
+    def __init__(self, args, r = run, p = progress):
         self.run = r
         self.progress = p
+        self.profile_db_path = args.profile_db
+        self.annotation_db_path = args.annotation_db
 
         self.clusters = {}
 
@@ -67,9 +71,11 @@ class CONCOCT(dbops.DatabasesMetaclass):
         for split_name in splits_basic_info:
             self.lengths[split_name] = splits_basic_info[split_name]['length']
 
+
     def cluster(self):
         self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages).cluster()
         return self.clusters
+
 
     def store_clusters_as_TAB_delimited_text(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
@@ -85,6 +91,27 @@ class CONCOCT(dbops.DatabasesMetaclass):
         self.progress.end()
 
         self.run.info('Concoct clusters', output_file_path)
+
+
+    def store_clusters_in_db(self, source = 'CONCOCT'):
+       # convert id -> group mapping dict into a group -> ids dict
+        data = {}
+        colors = {}
+
+        for split_name in self.clusters:
+            group_id = self.clusters[split_name]
+            if data.has_key(group_id):
+                data[group_id].add(split_name)
+            else:
+                data[group_id] = set([split_name])
+                colors[group_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
+
+        collections = dbops.TablesForCollections(self.profile_db_path, __version__)
+        collections.append(source, data, colors)
+
+        self.run.info('concoct_results_stored', True, display_only = True)
+
+
 
 
 class CONCOCT_INTERFACE():
