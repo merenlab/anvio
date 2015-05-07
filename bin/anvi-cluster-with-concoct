@@ -1,73 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Takes a merged PROFILE.db, and sends the data to CONCOCT for unsupervised clustering."""
+"""A script to call CONCOCT clustering on a merged anvi'o profile"""
 
 import sys
 
-import anvio.dbops as dbops
-import anvio.terminal as terminal
+import anvio.concoct as concoct
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Christopher Quince"
 __copyright__ = "Copyright 2015, The anvio Project"
-__credits__ = ["A. Murat Eren"]
+__credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
-
-
-run = terminal.Run()
-progress = terminal.Progress()
-
-
-class CONCOCT(dbops.DatabasesMetaclass):
-    def __init__(self, args = None, r = run, p = progress):
-        self.run = r
-        self.concoct_clusters = {}
-
-        self.debug = False
-        self.profile_db_path = None
-        self.annotation_db_path = None
-        self.output_directory = None
-        self.lengths = {}
-        self.kmers = {}
-        self.coverages = {}
-
-        self.run = r
-        self.progress = p
-
-        dbops.DatabasesMetaclass.__init__(self, args)
-        self.init_split_sequences(min_contig_length = 1000)
-
-        profile_db = dbops.ProfileDatabase(args.profile_db)
-        self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest = profile_db.samples)
-        profile_db.disconnect()
-
-        annotation_db = dbops.AnnotationDatabase(args.annotation_db)
-        self.kmers = annotation_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
-        splits_basic_info = annotation_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
-        annotation_db.disconnect()
-
-        for split_name in splits_basic_info:
-            self.lengths[split_name] = splits_basic_info[split_name]['length']
-
-        map(lambda split_name: self.split_sequences.pop(split_name), set(self.split_sequences.keys()) - set(self.kmers.keys()))
-
-        import cPickle
-        cPickle.dump(self.split_sequences, open('sequences.cPickle', 'w'))
-        #cPickle.dump(self.lengths, open('lengths.cPickle', 'w'))
-        #cPickle.dump(self.coverages, open('coverages.cPickle', 'w'))
-        #cPickle.dump(self.kmers, open('kmers.cPickle', 'w'))
-
-    def cluster(self):
-        # we have our split sequences here:
-        self.split_sequences
-        self.coverages
-        pass
 
 
 if __name__ == '__main__':
@@ -77,13 +27,26 @@ if __name__ == '__main__':
                         help = 'Profile database.')
     parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
                         help = 'anvio annotation database.')
+    parser.add_argument('-o', '--output-file', metavar = 'OUTPUT.txt', default = None,
+                        help = 'Store results as a TAB-delimited file')
     args = parser.parse_args()
 
     try:
-        c = CONCOCT(args)
+        # make sure output file is writable before the analysis...
+        if args.output_file:
+            filesnpaths.is_output_file_writable(args.output_file)
+
+        c = concoct.CONCOCT(args)
+        c.cluster()
+
+        if args.output_file:
+            c.store_clusters_as_TAB_delimited_text(args.output_file)
+
     except ConfigError, e:
         print e
         sys.exit(-1)
     except FilesNPathsError, e:
         print e
         sys.exit(-2)
+
+    
