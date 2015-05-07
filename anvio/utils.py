@@ -212,6 +212,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
                 val = d[k][header]
             except KeyError:
                 raise ConfigError, "Header ('%s') is not found in the dict :/" % (header)
+            except TypeError:
+                raise ConfigError, "Your dictionary is not properly formatted to be exported\
+                                    as a TAB-delimited file :/ You ask for '%s', but it is not\
+                                    even a key in the dictionary" % (header)
+
             line.append(str(val) if type(val) != type(None) else '')
 
         f.write('%s\n' % '\t'.join(line))
