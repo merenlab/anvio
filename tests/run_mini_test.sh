@@ -45,7 +45,7 @@ INFO "Populating search tables in the latest annotation database using default H
 anvi-populate-search-table test-output/ANNOTATION.db
 
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct_mock -i concoct.txt
+anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
 
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
