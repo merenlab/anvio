@@ -1,4 +1,4 @@
-import sys, getopt
+import sys
 import cPickle
 import numpy as np
 import vbgmm
@@ -18,14 +18,14 @@ class Concoct():
         NK = len(kmer_names)
     
         #number of contigs to cluster
-        contig_names = coverages.keys()
+        self.contig_names = coverages.keys()
         self.NC = len(coverages.keys())
 
         cov_array = np.zeros((self.NC,NS))
         kmer_array = np.zeros((self.NC,NK))
     
         p = 0
-        for k in contig_names:
+        for k in self.contig_names:
             vk = kmers[k]
             valuesk = [vk[x] for x in kmer_names]
             kmer_array[p,:] = valuesk[:]
@@ -64,12 +64,15 @@ class Concoct():
     
         self.NClusters = NClusters
         self.assign = np.zeros((self.NC),dtype=np.int32)
-    
+
+
     def cluster(self): 
         vbgmm.fit(self.transformed_data,self.assign,self.NClusters)
-        
-        return self.assign
-        
+
+        # construct and return a results dictionary:
+        return dict(zip(self.contig_names, ['Group_%d' % g for g in self.assign]))
+
+
 def main(args):
 
     kmers = cPickle.load(open('kmers.cPickle'))
