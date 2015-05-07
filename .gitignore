@@ -4,3 +4,4 @@
 /dist/
 test-output/
 /*.egg-info/
+anvio/extensions/concoct/vbgmm.c
