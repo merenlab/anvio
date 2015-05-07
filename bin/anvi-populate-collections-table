@@ -3,9 +3,9 @@
 
 import sys
 
+import anvio.dbops as dbops
 import anvio.tables as t
 import anvio.terminal as terminal 
-import anvio.ccollections as ccollections
 
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
@@ -48,7 +48,7 @@ def main(args):
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
                             you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
 
-    collections = ccollections.TablesForCollections(args.annotation_db_path, t.annotation_db_version)
+    collections = dbops.TablesForCollections(args.annotation_db_path, t.annotation_db_version)
     collections.append(args.parser, clusters_dict)
 
 

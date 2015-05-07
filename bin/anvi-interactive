@@ -16,13 +16,13 @@ from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
 from bottle import run as run_server
 
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.profiler as profiler
 import anvio.summarizer as summarizer
 import anvio.interactive as interactive
-import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -299,7 +299,7 @@ def store_collections_dict():
             run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
-    collections = ccollections.TablesForCollections(d.profile_db_path, profiler.__version__)
+    collections = dbops.TablesForCollections(d.profile_db_path, profiler.__version__)
     collections.append(source, data, colors)
     d.collections.populate_sources_dict(d.profile_db_path, profiler.__version__)
     msg = "New collection '%s' with %d group%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')

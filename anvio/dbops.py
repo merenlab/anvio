@@ -11,6 +11,7 @@ import numpy
 import random
 import hashlib
 import operator
+from itertools import chain
 from collections import Counter
 
 import anvio.db as db
@@ -387,7 +388,10 @@ class ProfileDatabase:
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
         self.db.create_table(t.variable_positions_table_name, t.variable_positions_table_structure, t.variable_positions_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
-        ccollections.create_blank_collections_tables(self.db)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
 
         self.disconnect()
 
@@ -523,7 +527,10 @@ class AnnotationDatabase:
         self.db.create_table(t.genes_contigs_table_name, t.genes_contigs_table_structure, t.genes_contigs_table_types)
         self.db.create_table(t.genes_splits_summary_table_name, t.genes_splits_summary_table_structure, t.genes_splits_summary_table_types)
         self.db.create_table(t.genes_splits_table_name, t.genes_splits_table_structure, t.genes_splits_table_types)
-        ccollections.create_blank_collections_tables(self.db)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
 
         self.disconnect()
 
@@ -808,6 +815,112 @@ class TablesForSearches(Table):
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
+
+
+class TablesForCollections(Table):
+    """Populates the collections_* tables, where clusters of contigs and splits are kept"""
+    def __init__(self, db_path, version, run=run, progress=progress):
+        self.db_path = db_path
+        self.version = version
+
+        Table.__init__(self, self.db_path, version, run, progress)
+
+        # set these dudes so we have access to unique IDs:
+        self.set_next_available_id(t.collections_colors_table_name)
+        self.set_next_available_id(t.collections_contigs_table_name)
+        self.set_next_available_id(t.collections_splits_table_name)
+
+
+    def append(self, source, clusters_dict, cluster_colors = None):
+        # remove any pre-existing information for 'source'
+        self.delete_entries_for_key('source', source, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_colors_table_name])
+
+        num_splits_in_clusters_dict = sum([len(splits) for splits in clusters_dict.values()])
+        splits_in_clusters_dict = set(list(chain.from_iterable(clusters_dict.values())))
+        if len(splits_in_clusters_dict) != num_splits_in_clusters_dict:
+            raise ConfigError, "TablesForCollections::append: %d of the split or contig IDs appear more than once in\
+                                your collections input. It is unclear to anvio how did you manage to do this, but we\
+                                cannot go anywhere with this :/" % (num_splits_in_clusters_dict - len(splits_in_clusters_dict))
+
+        database = db.DB(self.db_path, self.version)
+
+        # how many clusters are defined in 'clusters_dict'?
+        cluster_ids = clusters_dict.keys()
+
+        # push information about this search result into serach_info table.
+        db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids)])
+        database._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_info_table_name, db_entries)
+
+        # populate colors table.
+        if not cluster_colors:
+            cluster_colors = utils.get_random_colors_dict(cluster_ids)
+        db_entries = [(self.next_id(t.collections_colors_table_name), source, cid, cluster_colors[cid]) for cid in cluster_ids]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_colors_table_name, db_entries)
+
+        # populate splits table
+        db_entries = []
+        for cluster_id in clusters_dict:
+            for split_name in clusters_dict[cluster_id]:
+                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), source, split_name, cluster_id]))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
+        num_splits = len(db_entries)
+
+
+        # FIXME: This function can be called to populate the annotation database (via anvi-populate-collections), or
+        # the profile database. when it is annotation database, the superclass Table has the self.splits_info variable
+        # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
+        # the profile database. hence some special controls for annotation db (note that collections_contigs_table is
+        # only populated in the annotations database):
+        if self.db_type == 'annotation':
+            splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits_info]
+            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_clusters_dict]
+
+            if len(splits_only_in_clusters_dict):
+                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
+                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
+                                          and make sure all is fine before going forward with you analysis.'\
+                                                % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
+
+            if len(splits_only_in_db):
+                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
+                                          does not make any sense, please make sure you know why before going any further.'\
+                                                % (len(splits_only_in_db), len(self.splits_info), source))
+
+            # then populate contigs table.
+            db_entries = self.process_contigs(source, clusters_dict)
+            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
+
+        database.disconnect()
+
+        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the database at "%s".'\
+                                        % (source, num_splits, self.db_path), mc='green')
+
+
+    def process_contigs(self, source, clusters_dict):
+        db_entries_for_contigs = []
+
+        split_to_cluster_id = {}
+        for cluster_id in clusters_dict:
+            for split_name in clusters_dict[cluster_id]:
+                split_to_cluster_id[split_name] = cluster_id
+
+        contigs_processed = set([])
+        for split_name in split_to_cluster_id:
+            if split_name not in self.splits_info:
+                # which means this split only appears in the input file, but not in the database.
+                continue
+
+            contig_name = self.splits_info[split_name]['parent']
+
+            if contig_name in contigs_processed:
+                continue
+            else:
+                contigs_processed.add(contig_name)
+
+            db_entry = tuple([self.next_id(t.collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
+            db_entries_for_contigs.append(db_entry)
+
+        return db_entries_for_contigs
 
 
 class TablesForGenes(Table):
