@@ -60,23 +60,33 @@ class CONCOCT:
         self.kmers = {}
         self.coverages = {}
 
+        self.progress.new('Init')
+
+        self.progress.update('accessing the profile database ...')
         profile_db = dbops.ProfileDatabase(args.profile_db)
+
         if not int(profile_db.meta['merged']):
+            self.progress.end()
             raise ConfigError, 'CONCOCT can only be used to cluster merged runs...'
+
         self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest = profile_db.samples)
         profile_db.disconnect()
 
-        annotation_db = dbops.AnnotationDatabase(args.annotation_db)
+        self.progress.update('accessing the profile database ...')
+        annotation_db = dbops.AnnotationDatabase(args.annotation_db, quiet = True)
         self.kmers = annotation_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
         splits_basic_info = annotation_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
         annotation_db.disconnect()
 
+        self.progress.update('computing split lenghts ...')
         for split_name in splits_basic_info:
             self.lengths[split_name] = splits_basic_info[split_name]['length']
 
+        self.progress.end()
+
 
     def cluster(self):
-        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages).cluster()
+        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths).cluster()
         return self.clusters
 
 
@@ -93,7 +103,7 @@ class CONCOCT:
         utils.store_dict_as_TAB_delimited_file(clusters_dict, output_file_path, ['contig', 'concoct_bin'])
         self.progress.end()
 
-        self.run.info('Concoct clusters', output_file_path)
+        self.run.info('CONCOCT results in txt', output_file_path, display_only = True)
 
 
     def store_clusters_in_db(self, source = 'CONCOCT'):
@@ -112,33 +122,35 @@ class CONCOCT:
         collections = dbops.TablesForCollections(self.profile_db_path, __version__)
         collections.append(source, data, colors)
 
-        self.run.info('concoct_results_stored', True, display_only = True)
-
-
+        self.run.info('CONCOCT results in db', self.profile_db_path, display_only = True)
 
 
 class CONCOCT_INTERFACE():
-    def __init__(self, kmers, coverages, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
+    def __init__(self, kmers, coverages, lengths, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
         self.run = r
         self.progress = p
 
-        #calc number of samples
+        self.progress.new('CONCOCT')
+
+
+        self.progress.update('Checking the number of samples ...')
         first_cov = coverages.itervalues().next()
         sample_names = first_cov.keys()
         NS = len(sample_names)
     
-        #calc number of kmers
+        self.progress.update('Checking the number of k-mers ...')
         first_kmer = kmers.itervalues().next()
         kmer_names = first_kmer.keys()
         NK = len(kmer_names)
     
-        #number of contigs to cluster
+        self.progress.update('Checking the number of contigs to cluster ...')
         self.contig_names = coverages.keys()
         self.NC = len(coverages.keys())
 
         cov_array = np.zeros((self.NC,NS))
         kmer_array = np.zeros((self.NC,NK))
 
+        self.progress.update('Setting up kmer and coverage arrays ...')
         p = 0
         for k in self.contig_names:
             vk = kmers[k]
@@ -170,19 +182,27 @@ class CONCOCT_INTERFACE():
         
         cov_array = np.log(cov_array)
             
-        #join log transformed composition and coverage together
+        self.progress.update('Joining coverage and composition arrays ...')
         self.original_data = np.concatenate((kmer_array,cov_array),axis=1)
         
-        #perform PCA
+        self.progress.update('Performing PCA ...')
         pca_object = PCA(n_components=nc).fit(self.original_data)
         self.transformed_data = pca_object.transform(self.original_data)
     
         self.NClusters = NClusters
         self.assign = np.zeros((self.NC),dtype=np.int32)
 
+        self.progress.end()
+        self.run.info('CONCOCT INIT', 'Complete for %d splits' % len(self.contig_names))
+
 
     def cluster(self): 
-        vbgmm.fit(self.transformed_data,self.assign,self.NClusters)
+        self.progress.new('VBGMM')
+        self.progress.update('Clustering ...')
+        vbgmm.fit(self.transformed_data, self.assign, self.NClusters)
+
+        self.progress.end()
+        self.run.info('CONCOCT VGBMM', 'Done with %d clusters' % (len(set(self.assign))))
 
         # construct and return a results dictionary:
         return dict(zip(self.contig_names, ['Group_%d' % g for g in self.assign]))
