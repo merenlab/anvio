@@ -31,6 +31,7 @@ import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
 from anvio.profiler import __version__
+from anvio.errors import ConfigError
 
 
 __author__ = "Christopher Quince"
@@ -60,6 +61,8 @@ class CONCOCT:
         self.coverages = {}
 
         profile_db = dbops.ProfileDatabase(args.profile_db)
+        if not int(profile_db.meta['merged']):
+            raise ConfigError, 'CONCOCT can only be used to cluster merged runs...'
         self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest = profile_db.samples)
         profile_db.disconnect()
 
