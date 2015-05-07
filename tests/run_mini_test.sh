@@ -45,7 +45,7 @@ INFO "Populating search tables in the latest annotation database using default H
 anvi-populate-search-table test-output/ANNOTATION.db
 
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
+anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct_mock -i concoct.txt
 
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
@@ -79,9 +79,8 @@ INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
 anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
-INFO "Use CONCOCT to cluster splits in the merged profile ..."
+INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt
-
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
