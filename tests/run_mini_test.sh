@@ -79,6 +79,10 @@ INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
 anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
+INFO "Use CONCOCT to cluster splits in the merged profile ..."
+anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt
+
+
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
