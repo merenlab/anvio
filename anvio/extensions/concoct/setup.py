@@ -11,5 +11,5 @@ setup(
     ext_modules = [Extension("vbgmm",
                              sources=["vbgmm.pyx", "c_vbgmm_fit.c"],
 			     libraries =['gsl',  'gslcblas'],
-                             include_dirs=[numpy.get_include()])],
+                             include_dirs=[numpy.get_include(), '/opt/local/include/'])],
 )
