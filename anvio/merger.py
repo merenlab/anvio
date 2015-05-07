@@ -5,7 +5,6 @@ The default client of this library is under bin/anvi-merge"""
 
 
 import os
-import random
 
 import anvio.contig
 import anvio.utils as utils
@@ -461,24 +460,9 @@ class MultipleRuns:
 
         c = concoct.CONCOCT(args)
         c.cluster()
+        c.store_clusters_in_db()
 
-        # convert id -> group mapping dict into a group -> ids dict
-        data = {}
-        colors = {}
-        for split_name in c.clusters:
-            group_id = c.clusters[split_name]
-            if data.has_key(group_id):
-                data[group_id].add(split_name)
-            else:
-                data[group_id] = set([split_name])
-                colors[group_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
-
-        collections = dbops.TablesForCollections(self.profile_db_path, __version__)
-        collections.append('CONCOCT', data, colors)
-
-        self.run.info('concoct_results_stored', True, display_only = True)
-
-
+ 
     def cluster_contigs_anvio(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
