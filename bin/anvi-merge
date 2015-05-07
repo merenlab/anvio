@@ -34,10 +34,16 @@ if __name__ == '__main__':
                                 provide one, anvio will make up one for you based on the output_directory\
                                 name you set (although, you should never let the software to decide these\
                                 things).')
-    parser.add_argument('--skip-clustering', action = 'store_true', default = False,
+    parser.add_argument('--skip-hierarchical-clustering', action = 'store_true', default = False,
                         help = 'If you are not planning to use the interactive interface (or if you have other\
                                 means to add a tree of contigs in the database) you may skip the clustering step\
                                 and simply just merge multiple runs')
+
+    parser.add_argument('--skip-concoct-binning', action = 'store_true', default = False,
+                        help = "Anvi'o uses CONCOCT (Alneberg et al.) by default for unsupervised genome binning\
+                                for merged runs. CONCOCT results are stored in the profile database, which then\
+                                can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
+                                etc). Use this flag if you would like to skip this step")
 
     args = parser.parse_args()
 

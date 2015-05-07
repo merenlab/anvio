@@ -5,11 +5,14 @@ The default client of this library is under bin/anvi-merge"""
 
 
 import os
+import random
+
 import anvio.contig
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
 import anvio.dictio as dictio
+import anvio.concoct as concoct
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -47,7 +50,8 @@ class MultipleRuns:
         self.normalization_multiplier = {}
         self.profiles = []
         self.output_directory = args.output_dir
-        self.skip_clustering = args.skip_clustering
+        self.skip_hierarchical_clustering = args.skip_hierarchical_clustering
+        self.skip_concoct_binning = args.skip_concoct_binning
 
         self.annotation_db_path = args.annotation_db_path
         self.profile_db_path = None
@@ -304,7 +308,7 @@ class MultipleRuns:
                        'sample_id': self.sample_id,
                        'samples': ','.join(self.merged_sample_ids),
                        'merged': True,
-                       'contigs_clustered': not self.skip_clustering,
+                       'contigs_clustered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'num_contigs': self.num_contigs,
@@ -328,7 +332,7 @@ class MultipleRuns:
         self.run.info('num_runs_processed', len(self.merged_sample_ids))
         #self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         #self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
-        self.run.info('clustering_performed', not self.skip_clustering)
+        self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
  
         self.set_normalization_multiplier()
  
@@ -350,14 +354,19 @@ class MultipleRuns:
         self.merge_metadata_files()
 
         # we cluster?
-        if not self.skip_clustering:
-            self.cluster_contigs()
+        if not self.skip_hierarchical_clustering:
+            self.cluster_contigs_anvio()
 
         self.progress.end()
 
+        # store everything
         runinfo_serialized = os.path.join(self.output_directory, 'RUNINFO.mcp')
         self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
+
+        # run CONCOCT, if otherwise is not requested:
+        if not self.skip_concoct_binning:
+            self.bin_contigs_concoct()
 
         self.run.quit()
 
@@ -442,7 +451,35 @@ class MultipleRuns:
         views_table.store()
 
 
-    def cluster_contigs(self):
+    def bin_contigs_concoct(self):
+        class Args:
+            pass
+
+        args = Args()
+        args.profile_db = self.profile_db_path
+        args.annotation_db = self.annotation_db_path
+
+        c = concoct.CONCOCT(args)
+        c.cluster()
+
+        # convert id -> group mapping dict into a group -> ids dict
+        data = {}
+        colors = {}
+        for split_name in c.clusters:
+            group_id = c.clusters[split_name]
+            if data.has_key(group_id):
+                data[group_id].add(split_name)
+            else:
+                data[group_id] = set([split_name])
+                colors[group_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
+
+        collections = dbops.TablesForCollections(self.profile_db_path, __version__)
+        collections.append('CONCOCT', data, colors)
+
+        self.run.info('concoct_results_stored', True, display_only = True)
+
+
+    def cluster_contigs_anvio(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
         # every metadata file that may be required.
