@@ -4,6 +4,7 @@
 
 import sys
 
+import anvio.utils as utils
 import anvio.concoct as concoct
 import anvio.filesnpaths as filesnpaths
 
@@ -29,9 +30,28 @@ if __name__ == '__main__':
                         help = 'anvio annotation database.')
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT.txt', default = None,
                         help = 'Store results as a TAB-delimited file')
+    parser.add_argument('--skip-db', default = False, action = 'store_true',
+                        help = 'By default, results are stored in the profile database that is given as a parameter\
+                                Use this flag if you would like to skip that step')
+    parser.add_argument('--source-identifier', default = 'CONCOCT', metavar = 'SOURCE',
+                        help = "The source identifier when results are stored in the profile database. The default id\
+                                is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
+                                with new results. Using this parameter you can avoid that.")
     args = parser.parse_args()
 
+
+
     try:
+        source = args.source_identifier.strip()
+        if not len(source):
+            raise ConfigError, 'Nice try. Source identifier cannot be emtpy'
+        try:
+            utils.check_sample_id(source)
+        except:
+            raise ConfigError, '"%s" is not a proper source name. A proper one should be a single word and not contain\
+                                ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                                any space characters, and the source ID shoudl not start with a digit.' % source
+
         # make sure output file is writable before the analysis...
         if args.output_file:
             filesnpaths.is_output_file_writable(args.output_file)
@@ -41,6 +61,8 @@ if __name__ == '__main__':
 
         if args.output_file:
             c.store_clusters_as_TAB_delimited_text(args.output_file)
+        if not args.skip_db:
+            c.store_clusters_in_db(source = source)
 
     except ConfigError, e:
         print e
