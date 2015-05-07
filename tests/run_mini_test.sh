@@ -80,7 +80,7 @@ INFO "Use anvi-experimental-organization to generate another tree"
 anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
-anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt
+anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt --source-identifier 'cmdline_concoct'
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
