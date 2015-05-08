@@ -10,7 +10,7 @@ suppressPackageStartupMessages(library(optparse))
 
 # command line options
 option_list <- list(
-        make_option(c("--e_value"), default=1e-10,
+        make_option(c("--e_value"), default=1e-0,
                 help = "e-value to retain hits [default \"%default\"]"),
         make_option(c("--output_prefix"),
                 help = "Output file name *prefix* (without the extension)")
@@ -35,9 +35,9 @@ if(length(arguments$args) != 2) {
 }
 
 if(invalid(options$output_prefix)){
-    output_prefix <- paste(hits, '-(', e_value, ')', sep='')
+    output_prefix <- paste(hits, '_e_', e_value, '_', sep='')
 } else {
-    output_prefix <- paste(options$output_prefix, '-(', e_value, ')', sep='')
+    output_prefix <- paste(options$output_prefix, '_e_', e_value, '_', sep='')
 }
 
 # check if the input file is accessible

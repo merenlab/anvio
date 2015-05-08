@@ -16,8 +16,9 @@ Please read the COPYING file.
 import sys
 import argparse
 
-import anvio.terminal as terminal 
-import anvio.annotation as annotation
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal
 
 
 run = terminal.Run()
@@ -39,10 +40,10 @@ contig_lengths = {}
 contig_genes = {}
 genes = {}
 
-db = annotation.AnnotationDatabase(args.annotation_db, quiet=False)
-search_contigs_dict = db.db.get_table_as_dict(annotation.hmm_hits_contigs_table_name)
-search_info_dict = db.db.get_table_as_dict(annotation.hmm_hits_info_table_name)
-contig_lengths_table = db.db.get_table_as_dict(annotation.contig_lengths_table_name)
+db = dbops.AnnotationDatabase(args.annotation_db, quiet=False)
+search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+search_info_dict = db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+contig_lengths_table = db.db.get_table_as_dict(t.contigs_info_table_name)
 contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 db.disconnect()
 
