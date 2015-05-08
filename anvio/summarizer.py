@@ -273,6 +273,12 @@ class Bin:
         return open(file_path, 'w')
 
 
+    def store_data_in_file(self, output_file_name_posfix, content):
+        output_file_obj = self.get_output_file_handle(output_file_name_posfix)
+        output_file_obj.write('%s\n' % content)
+        output_file_obj.close()
+
+
     def access_completeness_scores(self):
         self.progress.update('...')
 
@@ -293,6 +299,7 @@ class Bin:
 
         for k in ['percent_contamination', 'percent_complete']:
             self.bin_info_dict[k] /= num_sources
+            self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
 
         self.progress.end()
 
@@ -318,6 +325,9 @@ class Bin:
            witht he identical FASTA id to the original contigs in the assembly file. Otherwise it appends
            `_partial_X_Y` to the FASTA id, X and Y being the start and stop positions.
         """
+
+        # store original split names:
+        self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_ids))
 
         fasta_file = self.get_output_file_handle('contigs.fa')
 
@@ -386,6 +396,10 @@ class Bin:
                 self.bin_info_dict['num_contigs'] += 1
 
         fasta_file.close()
+
+        self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
+        self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
+
         self.progress.end()
 
 
@@ -422,6 +436,9 @@ class Bin:
 
         self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
         self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
+
+        self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'])
+        self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
         self.progress.end()
 
