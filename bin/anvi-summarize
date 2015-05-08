@@ -34,7 +34,7 @@ if __name__ == '__main__':
                         help = 'Profile database.')
     parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
                         help = 'anvio annotation database.')
-    parser.add_argument('-o', '--output-directory', default = None,
+    parser.add_argument('-o', '--output-directory', required = True,
                         help = 'Directory path to store static summary files.')
     parser.add_argument('--list-collections', action='store_true', default=False,
                         help = 'Show available collections and exit.')
