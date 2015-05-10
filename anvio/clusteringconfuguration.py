@@ -73,7 +73,7 @@ class ClusteringConfiguration:
         # while vectors are being obtained from each matrix described in the config file.
         # to see why it is important in the context of anvi'o, see
         # https://github.com/meren/anvio/issues/100
-        self.row_ids_of_interest = row_ids_of_interest
+        self.row_ids_of_interest = set(row_ids_of_interest)
 
         # these are the database files that may be referenced from within the config files
         # with !DATABASE.db::table notation. If a database entry has an exclamation mark,
@@ -268,6 +268,10 @@ class ClusteringConfiguration:
                     raise ConfigError, 'The table you requested (%s) does not seem to be in %s :/' % (table, database)
 
                 table_rows = dbc.get_all_rows_from_table(table)
+
+                if self.row_ids_of_interest:
+                    table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
+
                 tmp_file_path = filesnpaths.get_temp_file_path()
                 table_structure = dbc.get_table_structure(table)
                 columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
