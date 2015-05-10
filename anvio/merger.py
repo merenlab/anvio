@@ -355,9 +355,8 @@ class MultipleRuns:
         # critical part:
         self.merge_metadata_files()
 
-        # we cluster?
-        if not self.skip_hierarchical_clustering:
-            self.cluster_contigs_anvio()
+        # We cluster? Note: the check is being done in the function!
+        self.cluster_contigs_anvio()
 
         self.progress.end()
 
@@ -472,24 +471,25 @@ class MultipleRuns:
         # every metadata file that may be required.
         clusterings = []
 
-        for config_name in self.clustering_configs:
-            config_path = self.clustering_configs[config_name]
+        if not self.skip_hierarchical_clustering:
+            for config_name in self.clustering_configs:
+                config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
+                config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
 
-            try:
-                newick = clustering.order_contigs_simple(config, progress = self.progress)
-            except Exception as e:
-                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
-                self.progress.end()
-                continue
+                try:
+                    newick = clustering.order_contigs_simple(config, progress = self.progress)
+                except Exception as e:
+                    self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
+                    self.progress.end()
+                    continue
 
-            clusterings.append(config_name)
-            db_entries = tuple([config_name, newick])
+                clusterings.append(config_name)
+                db_entries = tuple([config_name, newick])
 
-            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
-            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
-            profile_db.disconnect()
+                profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
+                profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
+                profile_db.disconnect()
 
         self.run.info('available_clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
