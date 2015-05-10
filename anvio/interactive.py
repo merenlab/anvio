@@ -35,16 +35,32 @@ run = terminal.Run()
 
 class InputHandler(ProfileSuperclass, AnnotationSuperclass):
     """The class that loads everything for the interactive interface. Wow. Such glory."""
-    def __init__(self, args):
+    def __init__(self, args, external_clustering = None):
         self.args = args
         self.views = {}
         self.p_meta = {}
         self.title = 'Unknown Project'
 
-        self.profile_db_path = None
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.state = A('state')
+        self.split_hmm_layers = A('split_hmm_layers')
+        self.additional_metadata_path = A('additional_metadata')
+        self.profile_db_path = A('profile_db')
+        self.annotation_db_path = A('annotation_db')
+        self.view = A('view')
+        self.fasta_file = A('fasta_file')
+        self.metadata = A('metadata')
+        self.tree = A('tree')
+        self.title = A('title')
+        self.summary_index = A('summary_index')
+        self.output_dir = A('output_dir')
+        self.show_views = A('show_views')
+        self.skip_check_names = A('skip_check_names')
+
         self.split_names_ordered = None
         self.splits_summary_index = {}
-        self.additional_metadata_path = None
+        self.additional_metadata = None
+        self.external_clustering = external_clustering
 
         self.collections = ccollections.Collections()
 
@@ -59,10 +75,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
-        self.state = args.state
-
         # here is where the big deal stuff takes place:
-        if args.profile_db:
+        if self.profile_db_path:
             if not self.annotation_db_path:
                 raise ConfigError, "Anvi'o needs the annotation database to make sense of this run."
 
@@ -79,48 +93,56 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         else:
             self.load_from_files(args)
 
+        if self.external_clustering:
+            self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
+            self.p_meta['available_clusterings'] = self.clusterings.keys()
+            self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
+
         tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
+
+        # self.split_names_ordered is going to be the 'master' names list. everything else is going to
+        # need to match these names:
         self.split_names_ordered = [n.name for n in tree.get_leaves()]
 
         # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
         # Annotation DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
-        self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = args.split_hmm_layers)
+        self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
 
-        if args.additional_metadata:
-            filesnpaths.is_file_tab_delimited(args.additional_metadata)
-            self.additional_metadata_path = args.additional_metadata
+        if self.additional_metadata_path:
+            filesnpaths.is_file_tab_delimited(self.additional_metadata_path)
+            self.additional_metadata = self.additional_metadata_path
 
         self.check_names_consistency()
         self.convert_metadata_into_json()
 
 
     def load_from_files(self, args):
-        if (not args.fasta_file) or (not args.metadata) or (not args.tree) or (not args.output_dir):
+        if (not self.fasta_file) or (not self.metadata) or (not self.tree) or (not self.output_dir):
             raise ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                            '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                            more detailed information on them."
 
-        if args.view:
+        if self.view:
             raise ConfigError, "You can't use '-v' parameter when this program is not called with a RUNINFO.cp"
 
-        if args.show_views:
+        if self.show_views:
             raise ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
-        metadata_path = os.path.abspath(args.metadata)
-        self.p_meta['splits_fasta'] = os.path.abspath(args.fasta_file)
-        self.p_meta['output_dir'] = os.path.abspath(args.output_dir)
+        metadata_path = os.path.abspath(self.metadata)
+        self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
+        self.p_meta['output_dir'] = os.path.abspath(self.output_dir)
         self.p_meta['views'] = {}
         self.p_meta['default_view'] = 'single'
         self.p_meta['default_clustering'] = 'default'
         self.p_meta['available_clusterings'] = ['default']
-        self.p_meta['clusterings'] = {'default': {'newick': open(os.path.abspath(args.tree)).read()}}
+        self.p_meta['clusterings'] = {'default': {'newick': open(os.path.abspath(self.tree)).read()}}
 
         self.default_view = self.p_meta['default_view']
 
-        if args.summary_index:
-            self.p_meta['profile_summary_index'] = os.path.abspath(args.summary_index)
+        if self.summary_index:
+            self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
             self.splits_summary_index = dictio.read_serialized_object(self.p_meta['profile_summary_index'])
 
         # sanity of the metadata
@@ -149,8 +171,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # reminder: this is being stored in the output dir provided as a commandline parameter:
         self.p_meta['self_path'] = os.path.join(self.p_meta['output_dir'], 'RUNINFO.cp')
 
-        if args.title:
-            self.title = args.title
+        if self.title:
+            self.title = self.title
 
         filesnpaths.gen_output_directory(self.p_meta['output_dir'])
 
@@ -161,15 +183,15 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                 for this codebase (the profile database is at '%s', and the codebase is at '%s'). Very\
                                 unfortunately, you need to re-profile and re-merge this project using the current anvi'o :("
 
-        self.p_meta['self_path'] = args.profile_db
-        self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(args.profile_db))
+        self.p_meta['self_path'] = self.profile_db_path
+        self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(self.profile_db_path))
 
         # load views from the profile database
         self.load_views()
         self.default_view = self.p_meta['default_view']
 
         # if the user wants to see available views, show them and exit.
-        if args.show_views:
+        if self.show_views:
             run.warning('', header = 'Available views (%d)' % len(self.views), lc = 'green')
             for view in self.views:
                 run.info(view,
@@ -180,52 +202,53 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             sys.exit()
 
         # if the user specifies a view, set it as default:
-        if args.view:
-            if not args.view in self.views:
+        if self.view:
+            if not self.view in self.views:
                 raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
-                                          available views by running this program with --show-views flag." % args.view
+                                          available views by running this program with --show-views flag." % self.view
 
-            self.default_view = args.view
+            self.default_view = self.view
 
         self.p_meta['clusterings'] = self.clusterings 
 
-        if args.tree:
-            entry_id = os.path.basename(args.tree).split('.')[0]
+        if self.tree:
+            entry_id = os.path.basename(self.tree).split('.')[0]
             run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
-            self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(args.tree)).read()}
+            self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(self.tree)).read()}
 
         # is summary being overwritten?
-        if args.summary_index:
-            run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
-            self.p_meta['profile_summary_index'] = os.path.abspath(args.summary_index)
+        if self.summary_index:
+            run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % self.summary_index)
+            self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
         self.splits_summary_index = dictio.read_serialized_object(self.P('SUMMARY.cp'))
 
         # set title
-        if args.title:
-            self.title = args.title + ' (%s)' % self.default_view
+        if self.title:
+            self.title = self.title + ' (%s)' % self.default_view
         else:
             self.title = self.p_meta['sample_id'] + ' (%s)' % self.default_view
 
 
     def check_names_consistency(self):
-        if self.args.skip_check_names:
+        if self.skip_check_names:
             return
 
-        splits_in_tree = sorted(self.split_names_ordered)
-        splits_in_metadata = sorted(self.views[self.default_view]['dict'].keys())
-        splits_in_database = sorted(self.split_sequences)
+        splits_in_tree = set(self.split_names_ordered)
+        splits_in_metadata = set(self.views[self.default_view]['dict'].keys())
+        splits_in_database = set(self.split_sequences)
 
-        try:
-            assert(splits_in_database == splits_in_tree == splits_in_metadata)
-        except:
-            S = lambda x, y: "agrees" if x == y else "does not agree"
-            raise ConfigError, "Entries found in the annotation database, the tree file and the\
-                                      metadata need to match perfectly. It seems it is not the\
-                                      case for the input you provided (the metadata %s with the tree,\
-                                      the tree %s with the database, the database %s with the metadata;\
-                                      HTH!)." % (S(splits_in_metadata, splits_in_tree),
-                                                 S(splits_in_database, splits_in_tree),
-                                                 S(splits_in_metadata, splits_in_database))
+        splits_in_tree_but_not_in_metadata = splits_in_tree - splits_in_metadata
+        splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database
+
+        if splits_in_tree_but_not_in_metadata:
+            raise ConfigError, 'Some split names found in your tree are missing in your metadata. Hard to\
+                                know what cuased this, but here is a couple of them that: %s'\
+                                    % ', '.join(splits_in_tree_but_not_in_metadata[0:5])
+
+        if splits_in_tree_but_not_in_database:
+            raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
+                                know why is this the case, but here is a couple of them: %s'\
+                                    % ', '.join(splits_in_tree_but_not_in_database[0:5])
 
         if self.additional_metadata_path:
             splits_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
@@ -250,15 +273,6 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
     def convert_metadata_into_json(self):
         '''This function's name must change to something more meaningful.'''
-
-        if self.annotation_db_path:
-            # FIXME: Gotta think about more carefully;
-            self.args.simplify_taxonomy = False
-            if self.args.simplify_taxonomy:
-                for split_name in self.genes_in_splits_summary_dict:
-                    s = self.genes_in_splits_summary_dict[split_name]
-                    if s['taxonomy']:
-                        s['taxonomy'] = s['taxonomy'].split()[0]
 
         additional_dict, additional_headers = None, []
         if self.additional_metadata_path:
