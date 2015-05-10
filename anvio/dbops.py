@@ -247,14 +247,18 @@ class ProfileSuperclass(object):
 
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
-        self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
         for key in ['merged', 'contigs_clustered', 'min_contig_length', 'total_length', 'num_splits', 'num_contigs']:
             self.p_meta[key] = int(self.p_meta[key])
 
-        self.progress.update('Reading clusterings dict')
-        self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
+        if self.p_meta['contigs_clustered']:
+            self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
+            self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
+        else:
+            self.p_meta['available_clusterings'] = None
+            self.p_meta['default_clustering'] = None
+            self.clusterings = None
 
         self.progress.end()
 
