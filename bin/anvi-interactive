@@ -76,7 +76,7 @@ parser.add_argument('-o', '--output-dir', metavar = 'DIRECTORY', default = None,
 parser.add_argument('-P', '--port-number', metavar = 'INT', default = 8080, type=int,
                     help = 'Port number to use for communication; the default\
                             (%(default)d) should be OK for almost everyone.')
-parser.add_argument('-I', '--ip-address', metavar = 'IO', default = '0.0.0.0', type=str,
+parser.add_argument('-I', '--ip-address', metavar = 'IP_ADDR', default = '0.0.0.0', type=str,
                     help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
                             work just fine for most.')
 parser.add_argument('-s', '--state', metavar = "FILE", default = None,
@@ -106,7 +106,7 @@ if not port:
 
 
 try:
-    d = interactive.InputHandler(parser.parse_args())
+    d = interactive.InputHandler(args)
 except ConfigError, e:
     print e
     sys.exit(-1)
