@@ -9,7 +9,7 @@ import textwrap
 
 from collections import Counter
 
-import anvio.tables as t
+import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -25,7 +25,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = t.profile_db_version
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -53,8 +53,8 @@ class Summarizer(DatabasesMetaclass):
         DatabasesMetaclass.__init__(self, args, self.run, self.progress)
 
         self.collections = ccollections.Collections()
-        self.collections.populate_sources_dict(self.annotation_db_path, t.annotation_db_version)
-        self.collections.populate_sources_dict(self.profile_db_path, t.profile_db_version)
+        self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         self.completeness = completeness.Completeness(self.annotation_db_path)
 

@@ -14,6 +14,7 @@ import operator
 from itertools import chain
 from collections import Counter
 
+import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.fastalib as u
@@ -22,7 +23,6 @@ import anvio.kmers as kmers
 import anvio.contig as contig
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.commandline import HMMSearch
@@ -34,7 +34,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -117,7 +117,7 @@ class AnnotationSuperclass(object):
         self.progress.end()
 
         annotation_db.disconnect()
-        run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, annotation_db.db.version))
+        run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, anvio.__annotation__version__))
 
 
     def init_split_sequences(self, min_contig_length = 0):
@@ -144,9 +144,6 @@ class AnnotationSuperclass(object):
         for split_name in split_names_to_discard:
             self.splits_basic_info.pop(split_name)
 
-        # FIXME: THIS VARIABLE SHOULD BE REMOVED ONCE WE TAG version 1.0
-        db_has_num_splits = 'num_splits' in self.contigs_basic_info.keys()
-
         self.progress.update('Generating split sequences dict')
         for split_name in self.splits_basic_info:
             split = self.splits_basic_info[split_name]
@@ -155,7 +152,7 @@ class AnnotationSuperclass(object):
                 contigs_shorter_than_M.remove(split['parent'])
                 continue
 
-            if db_has_num_splits and self.contigs_basic_info[split['parent']]['num_splits'] == 1:
+            if self.contigs_basic_info[split['parent']]['num_splits'] == 1:
                 self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence']
             else:
                 self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence'][split['start']:split['end']]
@@ -250,6 +247,7 @@ class ProfileSuperclass(object):
 
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
+        self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
         for key in ['merged', 'contigs_clustered', 'min_contig_length', 'total_length', 'num_splits', 'num_contigs']:
@@ -355,7 +353,7 @@ class ProfileDatabase:
     def init(self):
         if os.path.exists(self.db_path):
             is_profile_db(self.db_path)
-            self.db = db.DB(self.db_path, t.profile_db_version)
+            self.db = db.DB(self.db_path, anvio.__profile__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
@@ -376,7 +374,7 @@ class ProfileDatabase:
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
-        self.db = db.DB(self.db_path, t.profile_db_version, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__profile__version__, new_database = True)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -419,7 +417,7 @@ class AnnotationDatabase:
     def init(self):
         if os.path.exists(self.db_path):
             is_annotation_db(self.db_path)
-            self.db = db.DB(self.db_path, t.annotation_db_version)
+            self.db = db.DB(self.db_path, anvio.__annotation__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
@@ -464,7 +462,7 @@ class AnnotationDatabase:
             raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!)."
 
-        self.db = db.DB(self.db_path, t.annotation_db_version, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__annotation__version__, new_database = True)
 
         # know thyself
         self.db.set_meta_value('db_type', 'annotation')
@@ -722,7 +720,7 @@ class TablesForSearches(Table):
 
         self.debug = False
 
-        Table.__init__(self, self.db_path, t.annotation_db_version, run, progress)
+        Table.__init__(self, self.db_path, anvio.__annotation__version__, run, progress)
 
         self.set_next_available_id(t.hmm_hits_contigs_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
@@ -927,7 +925,7 @@ class TablesForGenes(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, t.annotation_db_version, run, progress)
+        Table.__init__(self, self.db_path, anvio.__annotation__version__, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the annotation database

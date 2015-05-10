@@ -4,7 +4,7 @@
 import os
 import shutil
 
-import anvio.tables as t
+import anvio
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -33,7 +33,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = t.profile_db_version
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"

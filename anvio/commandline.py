@@ -15,8 +15,10 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+
 run = terminal.Run()
 progress = terminal.Progress()
+
 
 class HMMSearch:
     def __init__(self, progress = progress, run = run):

@@ -4,7 +4,9 @@
 import os
 import ConfigParser
 
+import anvio
 import anvio.db as db
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.utils import check_sample_id
@@ -13,12 +15,14 @@ from anvio.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 from anvio.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 from anvio.errors import ConfigError
 
+run = terminal.Run()
+progress = terminal.Progress()
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -58,8 +62,11 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory = None, db_paths = {}, row_ids_of_interest = []):
-        self.input_directory = input_directory or os.getcwd()
+    def __init__(self, config_file_path, input_directory = None, db_paths = {}, row_ids_of_interest = [], r = run, p = progress):
+        self.run = r
+        self.progress = p
+
+        self.input_directory = input_directory or os.path.abspath(os.getcwd())
         self.config_file_path = config_file_path
 
         # `row_ids_of_interest` gives opportunity to filter out irrelevant entries quickly

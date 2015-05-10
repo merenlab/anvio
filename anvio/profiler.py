@@ -6,6 +6,7 @@ import sys
 import pysam
 import shutil
 
+import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
@@ -25,7 +26,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = t.profile_db_version
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -150,7 +151,8 @@ class BAMProfiler:
         if self.annotation_db_path:
             self.populate_genes_in_contigs_dict()
 
-        self.run.info('profiler_version', t.profile_db_version)
+        self.run.info('anvio', anvio.__version__)
+        self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('annotation_db', True if self.annotation_db_path else False)
@@ -185,7 +187,7 @@ class BAMProfiler:
 
         # the only view for the single PROFILE database is ready, and already
         # set as the default view. store the info in the db:
-        views_table = dbops.TableForViews(self.profile_db_path, t.profile_db_version)
+        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__)
         views_table.append('single', 'metadata_splits')
         views_table.store()
 
@@ -219,7 +221,7 @@ class BAMProfiler:
 
 
     def generate_variabile_positions_table(self):
-        variable_positions_table = dbops.TableForVariability(self.profile_db_path, t.profile_db_version, progress = self.progress)
+        variable_positions_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         self.progress.new('Storing variability information')
         for contig in self.contigs.values():
@@ -234,7 +236,7 @@ class BAMProfiler:
 
 
     def generate_gene_coverages_table(self):
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, t.profile_db_version, progress = self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         self.progress.new('Profiling genes')
         num_contigs = len(self.contigs)
@@ -376,11 +378,6 @@ class BAMProfiler:
         except ValueError:
             raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
 
-        # store num reads mapped for later use.
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
-        profile_db.disconnect()
-
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
         self.run.info('input_bam', self.input_file_path)
@@ -446,6 +443,7 @@ class BAMProfiler:
         profile_db.db.set_meta_value('num_splits', self.num_splits)
         profile_db.db.set_meta_value('num_contigs', self.num_contigs)
         profile_db.db.set_meta_value('total_length', self.total_length)
+        profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
         profile_db.disconnect()
 
 
@@ -577,6 +575,11 @@ class BAMProfiler:
 
         self.run.info('default_clustering', constants.single_default)
         self.run.info('available_clusterings', clusterings)
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('default_clustering', constants.single_default)
+        profile_db.db.set_meta_value('available_clusterings', ','.join(clusterings))
+        profile_db.disconnect()
 
 
     def check_args(self):

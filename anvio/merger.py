@@ -6,6 +6,7 @@ The default client of this library is under bin/anvi-merge"""
 
 import os
 
+import anvio
 import anvio.contig
 import anvio.utils as utils
 import anvio.dbops as dbops
@@ -19,14 +20,13 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.profiler import __version__
 
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = __version__
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -93,7 +93,7 @@ class MultipleRuns:
                 if not os.path.exists(P(runinfo, runinfo['profile_db'])):
                     missing_path.append(p)
 
-            if not runinfo.has_key('profiler_version') or runinfo['profiler_version'] != anvio.profiler.__version__:
+            if not runinfo.has_key('profiler_version') or runinfo['profiler_version'] != anvio.__profile__version__:
                 bad_profiler_version.append(p)
 
         if improper:
@@ -229,7 +229,7 @@ class MultipleRuns:
     def merge_variable_positions_tables(self):
         self.is_all_samples_have_it('variable_positions_table')
 
-        variable_positions_table = dbops.TableForVariability(self.profile_db_path, __version__, progress = self.progress)
+        variable_positions_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         for runinfo in self.merged_sample_runinfos.values():
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
@@ -249,7 +249,7 @@ class MultipleRuns:
         self.is_all_samples_have_it('gene_coverages_table')
 
         # create an instance from genes
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, __version__, progress = self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         # fill "genes" instance from all samples
         for runinfo in self.merged_sample_runinfos.values():
@@ -272,7 +272,7 @@ class MultipleRuns:
         num_reads_mapped_per_sample = {}
         for runinfo in self.merged_sample_runinfos.values():
             sample_profile_db_path = P(runinfo, runinfo['profile_db'])
-            sample_profile_db = anvio.db.DB(sample_profile_db_path, __version__)
+            sample_profile_db = anvio.db.DB(sample_profile_db_path, anvio.__profile__version__)
             num_reads_mapped_per_sample[runinfo['sample_id']] = int(sample_profile_db.get_meta_value('total_reads_mapped'))
             sample_profile_db.disconnect()
 
@@ -302,14 +302,17 @@ class MultipleRuns:
         self.min_contig_length = self.merged_sample_runinfos.values()[0]['min_contig_length']
         self.num_contigs = self.merged_sample_runinfos.values()[0]['num_contigs']
         self.num_splits = self.merged_sample_runinfos.values()[0]['num_splits']
+        self.min_coverage_for_variability = self.merged_sample_runinfos.values()[0]['min_coverage_for_variability']
         self.total_length = self.merged_sample_runinfos.values()[0]['total_length']
         meta_values = {'db_type': 'profile',
+                       'anvio': __version__,
                        'sample_id': self.sample_id,
                        'samples': ','.join(self.merged_sample_ids),
                        'merged': True,
                        'contigs_clustered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
+                       'min_coverage_for_variability': self.min_coverage_for_variability,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -320,7 +323,7 @@ class MultipleRuns:
         self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
         self.split_parents = self.get_split_parents()
 
-        self.run.info('profiler_version', __version__)
+        self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('output_dir', self.output_directory)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
@@ -393,7 +396,7 @@ class MultipleRuns:
         essential_fields = [f for f in self.metadata_fields if constants.IS_ESSENTIAL_FIELD(f)]
         auxiliary_fields = [f for f in self.metadata_fields if constants.IS_AUXILIARY_FIELD(f)]
 
-        views_table = dbops.TableForViews(self.profile_db_path, __version__, progress = self.progress)
+        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         # setting standard metadata table structure and types
         merged_mtable_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
@@ -491,6 +494,11 @@ class MultipleRuns:
         self.run.info('available_clusterings', clusterings)
         self.run.info('default_clustering', constants.merged_default)
 
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('default_clustering', constants.single_default)
+        profile_db.db.set_meta_value('available_clusterings', ','.join(clusterings))
+        profile_db.disconnect()
+
 
     def merge_split_summaries(self):
         merged_summary_index = {}
@@ -544,7 +552,7 @@ class MultipleRuns:
             target_table = 'metadata_%s' % target
 
             for r in self.merged_sample_runinfos.values():
-                db = anvio.db.DB(os.path.join(r['output_dir'], r['profile_db']), __version__)
+                db = anvio.db.DB(os.path.join(r['output_dir'], r['profile_db']), anvio.__profile__version__)
                 metadata_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
 
         metadata_fields = db.get_table_structure('metadata_splits')

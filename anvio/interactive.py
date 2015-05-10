@@ -4,7 +4,7 @@
 import os
 import sys
 
-import anvio.tables as t
+import anvio
 import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
@@ -23,7 +23,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -38,50 +38,48 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
     def __init__(self, args):
         self.args = args
         self.views = {}
-        self.runinfo = {}
+        self.p_meta = {}
         self.title = 'Unknown Project'
 
-        self.collections = ccollections.Collections()
-
-        AnnotationSuperclass.__init__(self, self.args)
-        if self.annotation_db_path:
-            self.completeness = completeness.Completeness(self.annotation_db_path)
-            self.collections.populate_sources_dict(self.annotation_db_path, t.annotation_db_version)
-        else:
-            self.completeness = None
-
         self.profile_db_path = None
-
         self.split_names_ordered = None
         self.splits_summary_index = {}
         self.additional_metadata_path = None
 
-        self.P = lambda x: os.path.join(self.runinfo['output_dir'], x)
+        self.collections = ccollections.Collections()
+
+        AnnotationSuperclass.__init__(self, self.args)
+
+        if self.annotation_db_path:
+            self.completeness = completeness.Completeness(self.annotation_db_path)
+            self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
+        else:
+            self.completeness = None
+
+        self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
         self.state = args.state
 
         # here is where the big deal stuff takes place:
-        if args.runinfo:
+        if args.profile_db:
             if not self.annotation_db_path:
-                raise ConfigError, "anvio needs the annotation database to make sense of this run."
+                raise ConfigError, "Anvi'o needs the annotation database to make sense of this run."
 
-            self.runinfo = self.read_runinfo_dict(args)
+            ProfileSuperclass.__init__(self, args)
 
             # this is a weird place to do it, but we are going to ask AnnotationSuperclass function to load
             # all the split sequences since only now we know the mun_contig_length that was used to profile
             # this stuff
-            self.init_split_sequences(self.runinfo['min_contig_length'])
+            self.init_split_sequences(self.p_meta['min_contig_length'])
 
-            args.profile_db = self.P(self.runinfo['profile_db'])
-            ProfileSuperclass.__init__(self, args)
-            self.collections.populate_sources_dict(self.profile_db_path, t.profile_db_version)
+            self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
-            self.load_from_runinfo_dict(args)
+            self.load_from_profile_database(args)
         else:
             self.load_from_files(args)
 
-        tree = Tree(self.runinfo['clusterings'][self.runinfo['default_clustering']]['newick'])
+        tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
         self.split_names_ordered = [n.name for n in tree.get_leaves()]
 
         # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
@@ -111,19 +109,19 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             raise ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
         metadata_path = os.path.abspath(args.metadata)
-        self.runinfo['splits_fasta'] = os.path.abspath(args.fasta_file)
-        self.runinfo['output_dir'] = os.path.abspath(args.output_dir)
-        self.runinfo['views'] = {}
-        self.runinfo['default_view'] = 'single'
-        self.runinfo['default_clustering'] = 'default'
-        self.runinfo['available_clusterings'] = ['default']
-        self.runinfo['clusterings'] = {'default': {'newick': open(os.path.abspath(args.tree)).read()}}
+        self.p_meta['splits_fasta'] = os.path.abspath(args.fasta_file)
+        self.p_meta['output_dir'] = os.path.abspath(args.output_dir)
+        self.p_meta['views'] = {}
+        self.p_meta['default_view'] = 'single'
+        self.p_meta['default_clustering'] = 'default'
+        self.p_meta['available_clusterings'] = ['default']
+        self.p_meta['clusterings'] = {'default': {'newick': open(os.path.abspath(args.tree)).read()}}
 
-        self.default_view = self.runinfo['default_view']
+        self.default_view = self.p_meta['default_view']
 
         if args.summary_index:
-            self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
-            self.splits_summary_index = dictio.read_serialized_object(self.runinfo['profile_summary_index'])
+            self.p_meta['profile_summary_index'] = os.path.abspath(args.summary_index)
+            self.splits_summary_index = dictio.read_serialized_object(self.p_meta['profile_summary_index'])
 
         # sanity of the metadata
         filesnpaths.is_file_tab_delimited(metadata_path)
@@ -139,8 +137,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                          'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
         self.split_names_ordered = self.views[self.default_view]['dict'].keys()
 
-        filesnpaths.is_file_fasta_formatted(self.runinfo['splits_fasta'])
-        self.split_sequences = utils.get_FASTA_file_as_dictionary(self.runinfo['splits_fasta'])
+        filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
+        self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
 
         # setup a mock splits_basic_info dict
         self.splits_basic_info = {}
@@ -149,39 +147,22 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                                 'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
         # reminder: this is being stored in the output dir provided as a commandline parameter:
-        self.runinfo['self_path'] = os.path.join(self.runinfo['output_dir'], 'RUNINFO.cp')
+        self.p_meta['self_path'] = os.path.join(self.p_meta['output_dir'], 'RUNINFO.cp')
 
         if args.title:
             self.title = args.title
 
-        filesnpaths.gen_output_directory(self.runinfo['output_dir'])
+        filesnpaths.gen_output_directory(self.p_meta['output_dir'])
 
 
-    def read_runinfo_dict(self, args):
-        if args.fasta_file or args.metadata:
-            raise ConfigError, "You declared a RUNINFO dict with '-r'. You are not allowed to\
-                                      declare any of '-f', '-m', or '-t' parameters if you have a\
-                                      RUNINFO dict. Please refer to the documentation."
- 
-        if not os.path.exists(args.runinfo):
-            raise ConfigError, "'%s'? No such file." % (args.runinfo)
+    def load_from_profile_database(self, args):
+        if self.p_meta['version'] != anvio.__profile__version__:
+            raise ConfigError, "The profile database has a version number that differs from the version that is valid\
+                                for this codebase (the profile database is at '%s', and the codebase is at '%s'). Very\
+                                unfortunately, you need to re-profile and re-merge this project using the current anvi'o :("
 
-        r = dictio.read_serialized_object(args.runinfo)
-
-        if not r.has_key('runinfo'):
-            raise ConfigError, "'%s' does not seem to be a anvio RUNINFO.cp." % (args.runinfo)
-
-        r['self_path'] = args.runinfo
-        r['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(args.runinfo))
-
-        return r
-
-
-    def load_from_runinfo_dict(self, args):
-        if not self.runinfo.has_key('profiler_version') or self.runinfo['profiler_version'] != t.profile_db_version:
-            raise ConfigError, "RUNINFO.cp seems to be generated from an older version of anvio\
-                                           profiler that is not compatible with the current interactive interface\
-                                           anymore. You need to re-run anvio profiler on these projects."
+        self.p_meta['self_path'] = args.profile_db
+        self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(args.profile_db))
 
         # load views from the profile database
         self.load_views()
@@ -198,33 +179,32 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             print
             sys.exit()
 
-
         # if the user specifies a view, set it as default:
         if args.view:
             if not args.view in self.views:
                 raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
                                           available views by running this program with --show-views flag." % args.view
 
-            self.p_meta = args.view
+            self.default_view = args.view
 
-        # set clusterig
-        self.runinfo['clusterings'] = self.clusterings 
+        self.p_meta['clusterings'] = self.clusterings 
+
         if args.tree:
             entry_id = os.path.basename(args.tree).split('.')[0]
             run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
-            self.runinfo['clusterings'][entry_id] = {'newick': open(os.path.abspath(args.tree)).read()}
+            self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(args.tree)).read()}
 
         # is summary being overwritten?
         if args.summary_index:
             run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % args.summary_index)
-            self.runinfo['profile_summary_index'] = os.path.abspath(args.summary_index)
-        self.splits_summary_index = dictio.read_serialized_object(self.P(self.runinfo['profile_summary_index']))
+            self.p_meta['profile_summary_index'] = os.path.abspath(args.summary_index)
+        self.splits_summary_index = dictio.read_serialized_object(self.P('SUMMARY.cp'))
 
         # set title
         if args.title:
             self.title = args.title + ' (%s)' % self.default_view
         else:
-            self.title = self.runinfo['sample_id'] + ' (%s)' % self.default_view
+            self.title = self.p_meta['sample_id'] + ' (%s)' % self.default_view
 
 
     def check_names_consistency(self):
@@ -266,11 +246,6 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                             wrong. Here is a random contig name that was only in the\
                             metadata file: '%s'. And there were %d of them in total. You\
                             are warned!" % (one_example, num_all))
-
-
-    def update_runinfo_on_disk(self):
-        path = self.runinfo.pop('self_path')
-        dictio.write_serialized_object(self.runinfo, path)
 
 
     def convert_metadata_into_json(self):

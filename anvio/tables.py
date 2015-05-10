@@ -1,18 +1,17 @@
 # -*- coding: utf-8
-
 """ Table schemas for databases."""
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-annotation_db_version = "1.0.0"
-profile_db_version = "1.1.0"
+annotation_db_version = "2"
+profile_db_version = "4"
 
 
 ####################################################################################################

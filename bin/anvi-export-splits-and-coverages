@@ -12,11 +12,11 @@ import os
 import sys
 import argparse
 
+import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.fastalib as fastalib
-import anvio.profiler as profiler
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -27,7 +27,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = profiler.__version__
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -36,8 +36,8 @@ __status__ = "Development"
 run = terminal.Run()
 
 def main(args):
-    merged_profile_db = db.DB(args.merged_profile_db, profiler.__version__)
-    annotation_db = db.DB(args.annotation_db, t.annotation_db_version)
+    merged_profile_db = db.DB(args.merged_profile_db, anvio.__profile__version__)
+    annotation_db = db.DB(args.annotation_db, anvio.__annotation__version__)
 
     if(merged_profile_db.get_meta_value('merged') != True):
         raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.merged_profile_db

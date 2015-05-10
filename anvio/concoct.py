@@ -24,13 +24,13 @@ import numpy as np
 
 from sklearn.decomposition import PCA
 
+import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
-from anvio.profiler import __version__
 from anvio.errors import ConfigError
 
 
@@ -38,6 +38,7 @@ __author__ = "Christopher Quince"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
@@ -119,7 +120,7 @@ class CONCOCT:
                 data[group_id] = set([split_name])
                 colors[group_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
 
-        collections = dbops.TablesForCollections(self.profile_db_path, __version__)
+        collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
         collections.append(source, data, colors)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only = True)

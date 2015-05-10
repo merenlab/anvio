@@ -3,6 +3,7 @@
 
 import anvio.tables as t
 
+import anvio
 from anvio.terminal import Progress
 from anvio.terminal import pretty_print as pp
 
@@ -11,7 +12,7 @@ __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = "1.0.0"
+__version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"

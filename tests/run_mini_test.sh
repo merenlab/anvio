@@ -84,4 +84,4 @@ anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/AN
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-anvi-interactive -r test-output/204-MERGED/RUNINFO.mcp -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
+anvi-interactive -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
