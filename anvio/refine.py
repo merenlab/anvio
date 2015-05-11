@@ -5,6 +5,7 @@ The default client of this library is bin/anvi-refine-bin."""
 
 
 import os
+import textwrap
 
 import anvio
 import anvio.dbops as dbops
@@ -109,7 +110,16 @@ class RefineBins(dbops.DatabasesMetaclass):
 
         clusterings = self.cluster_splits_of_interest()
 
-        return interactive.InputHandler(self.args, external_clustering = {'clusterings': clusterings, 'default_clustering': 'tnf-cov'})
+        d = interactive.InputHandler(self.args, external_clustering = {'clusterings': clusterings, 'default_clustering': 'tnf-cov'})
+
+        # set a more appropriate title
+        bins = sorted(list(self.bins))
+        title = 'Refining %s%s from "%s"' % (', '.join(bins[0:3]),
+                                              ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
+                                              self.collection_id)
+        d.title = textwrap.fill(title)
+
+        return d
 
 
     def cluster_splits_of_interest(self):
