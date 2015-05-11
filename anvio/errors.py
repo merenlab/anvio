@@ -40,11 +40,21 @@ class AnvioError(Exception, object):
 
         return '\n\n' + '\n'.join(error_message) + '\n\n'
 
+    def clear_text(self):
+        return '%s: %s' % (self.error_type, self.e)
+
 
 class ConfigError(AnvioError):
     def __init__(self, e = None):
         self.e = remove_spaces(e)
         self.error_type = 'Config Error'
+        AnvioError.__init__(self)
+
+
+class RefineError(AnvioError):
+    def __init__(self, e = None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Refine Error'
         AnvioError.__init__(self)
 
 
