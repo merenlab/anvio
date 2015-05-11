@@ -1,0 +1,265 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Further analyze one or more bins in a collection.
+
+   This is especially useful when there are one or more highly contaminated
+   bins in a merged profile.
+"""
+
+import os
+import sys
+import json
+import argparse
+import webbrowser
+import datetime
+
+from multiprocessing import Process
+from bottle import route, static_file, redirect, request, BaseRequest, response
+from bottle import run as run_server
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.refine as refine
+import anvio.dictio as dictio
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+
+from anvio.errors import ConfigError, FilesNPathsError, RefineError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+# get the absolute path for static directory under anvio
+static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
+
+
+parser = argparse.ArgumentParser(description="A script to call CONCOCT clustering on a merged anvi'o profile")
+parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
+                    help = 'Profile database.')
+parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
+                    help = 'Annotation database.')
+parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', required = True,
+                    help = 'Collection id to look for bins.')
+parser.add_argument('-b', '--bins', required = True, metavar = 'BINS FILE',
+                    help = 'Text file for bins (each line should be a bin id).')
+parser.add_argument('-I', '--ip-address', metavar = 'IP_ADDR', default = '0.0.0.0', type=str,
+                    help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
+                            work just fine for most.')
+parser.add_argument('-P', '--port-number', metavar = 'INT', default = 8080, type=int,
+                    help = 'Port number to use for communication; the default\
+                            (%(default)d) should be OK for almost everyone.')
+parser.add_argument('--dry-run', action = 'store_true', default = False,
+                        help = 'Do not start the server, do not fire up the browser.')
+parser.add_argument('--debug', action = 'store_true', default = False,
+                        help = 'Extra outputs for debugging. I would not use it if I were you.')
+
+args = parser.parse_args()
+
+port = args.port_number
+ip = args.ip_address
+
+port = utils.get_available_port_num(start = port, ip=ip)
+
+if not port:
+    run.info_single('anvio failed to find a port number that is available :(', mc='red')
+    sys.exit(-1)
+
+
+try:
+    r = refine.RefineBins(args)
+    d = r.refine()
+except ConfigError, e:
+    print e
+    sys.exit(-1)
+except FilesNPathsError, e:
+    print e
+    sys.exit(-1)
+
+
+#######################################################################################################################
+# bottle callbacks start
+#######################################################################################################################
+
+def set_default_headers(response):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+@route('/')
+def redirect_to_app():
+    redirect('/app/refine.html')
+
+@route('/app/:filename#.*#')
+def send_static(filename):
+    set_default_headers(response)
+    return static_file(filename, root=static_dir)
+
+@route('/data/<name>')
+def send_data(name):
+    set_default_headers(response)
+    if name == "clusterings":
+        return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
+    elif name == "views":
+        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        return json.dumps((d.default_view, available_views), )
+    elif name == "default_view":
+        return json.dumps(d.views[d.default_view])
+    elif name == "state":
+        if d.state:
+            return static_file(os.path.abspath(d.state), root='/')
+        return "{}"
+    elif name == "contig_lengths":
+        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
+        return json.dumps(split_lengths)
+    elif name == "title":
+        return json.dumps(d.title)
+
+@route('/data/view/<view_id>')
+def get_view_data(view_id):
+    return json.dumps(d.views[view_id])
+
+@route('/tree/<tree_id>')
+def send_tree(tree_id):
+    set_default_headers(response)
+
+    if tree_id in d.p_meta['clusterings']:
+        run.info_single("Clustering of '%s' has been requested" % (tree_id))
+        return json.dumps(d.p_meta['clusterings'][tree_id]['newick'])
+
+@route('/data/charts/<split_name>')
+def charts(split_name):
+    data = {'layers': [],
+             'index': None,
+             'total': None,
+             'coverage': [],
+             'variability': [],
+             'competing_nucleotides': [],
+             'previous_contig_name': None,
+             'next_contig_name': None,
+             'genes': []}
+
+    if not d.splits_summary_index.has_key(split_name):
+        return data
+
+    index_of_split = d.split_names_ordered.index(split_name)
+    if index_of_split:
+        data['previous_contig_name'] = d.split_names_ordered[index_of_split - 1]
+    if (index_of_split + 1) < len(d.split_names_ordered):
+        data['next_contig_name'] = d.split_names_ordered[index_of_split + 1]
+
+    data['index'] = index_of_split + 1
+    data['total'] = len(d.split_names_ordered)
+
+    splits = dictio.read_serialized_object(d.P(d.splits_summary_index[split_name]))
+    layers = sorted(splits.keys())
+
+    for layer in layers:
+        data['layers'].append(layer)
+        data['coverage'].append(splits[layer]['coverage'])
+        data['variability'].append(splits[layer]['variability'])
+        data['competing_nucleotides'].append(splits[layer]['competing_nucleotides'])
+
+    levels_occupied = {1: []}
+    if d.split_to_genes_in_splits_ids.has_key(split_name):
+        for entry_id in d.split_to_genes_in_splits_ids[split_name]:
+            prot_id = d.genes_in_splits[entry_id]['prot']
+            p = d.genes_in_splits[entry_id]
+            # p looks like this at this point:
+            #
+            # {'percentage_in_split': 100,
+            #  'start_in_split'     : 16049,
+            #  'stop_in_split'      : 16633}
+            #  'prot'               : u'prot2_03215',
+            #  'split'              : u'D23-1contig18_split_00036'}
+            #
+            # we will add two more attributes:
+            p['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
+            p['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
+
+            for level in levels_occupied:
+                level_ok = True
+                for gene_tuple in levels_occupied[level]:
+                    if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100):
+                        level_ok = False
+                        break
+                if level_ok:
+                    levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
+                    p['level'] = level
+                    break
+            if not level_ok:
+                levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
+                p['level'] = level + 1
+
+            data['genes'].append(p)
+
+    return json.dumps(data)
+
+@route('/data/contig/<split_name>')
+def split_info(split_name):
+    return d.split_sequences[split_name]
+
+@route('/store_refined_bins', method='POST')
+def store_refined_bins():
+    data = json.loads(request.forms.get('data'))
+    colors = json.loads(request.forms.get('colors'))
+
+    try:
+        r.store_refined_bins(data, colors)
+    except RefineError, e:
+        print e.clear_text()
+        return json.dumps(e.clear_text())
+
+    return json.dumps('Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_id))
+
+@route('/data/completeness', method='POST')
+def completeness():
+    completeness_stats = {}
+    if not d.completeness:
+        return json.dumps(completeness_stats)
+
+    split_names = json.loads(request.forms.get('split_names'))
+    group_name = json.loads(request.forms.get('group_name'))
+
+    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), group_name))
+
+    completeness_stats = d.completeness.get_info_for_splits(set(split_names))
+
+    return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
+
+
+#######################################################################################################################
+# bottle callbacks end
+#######################################################################################################################
+
+# increase maximum size of form data to 100 MB
+BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
+
+if args.dry_run:
+    run.info_single('Dry run, eh? Bye!', 'red', nl_before = 1, nl_after=1)
+    sys.exit()
+
+try:
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
+    server_process.start()
+    webbrowser.open_new("http://%s:%d" % (ip, port))
+    run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
+    server_process.join()
+except KeyboardInterrupt:
+    run.warning('The server is being terminated.', header='Please wait...')
+    server_process.terminate()
+    sys.exit(1)

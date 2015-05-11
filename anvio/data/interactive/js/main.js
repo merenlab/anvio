@@ -1317,6 +1317,38 @@ function showStoreCollectionWindow() {
     });
 }
 
+
+function storeRefinedBins() {
+    data = {};
+    colors = {};
+
+    $('#tbody_groups tr').each(
+        function(index, group) {
+            var gid = $(group).attr('group-id');
+            var gname = $('#group_name_' + gid).val();
+
+            colors[gname] = $('#group_color_' + gid).attr('color');
+            data[gname] = new Array();
+
+            for (var i=0; i < SELECTED[gid].length; i++)
+            {
+                if (label_to_node_map[SELECTED[gid][i]].IsLeaf())
+                {
+                    data[gname].push(SELECTED[gid][i]);
+                }
+            }
+        }
+    );
+
+    $.post("/store_refined_bins", {
+        data: JSON.stringify(data, null, 4),
+        colors: JSON.stringify(colors, null, 4),
+    },
+    function(server_response, status){
+          alert("Server: " + server_response + "\n\n(status: " + status + ")");
+    });
+}
+
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
