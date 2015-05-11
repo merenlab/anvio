@@ -42,14 +42,13 @@ class RefineBins(dbops.DatabasesMetaclass):
 
         self.bins = set([])
 
-        try:
-            self.bins_file_path = args.bins
-            self.collection_id = args.collection_id
-            self.annotation_db_path = args.annotation_db
-            self.profile_db_path = args.profile_db
-            self.debug = args.debug
-        except:
-            raise ConfigError, "RefineBins :: missing argument..."
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.bin_ids_file_path = A('bin_ids_file')
+        self.bin_id = A('bin_id')
+        self.collection_id = A('collection_id')
+        self.annotation_db_path = A('annotation_db')
+        self.profile_db_path = A('profile_db')
+        self.debug = A('debug')
 
         self.clustering_configs = constants.clustering_configs['merged']
         self.database_paths = {'ANNOTATION.db': self.annotation_db_path,
@@ -58,13 +57,22 @@ class RefineBins(dbops.DatabasesMetaclass):
 
 
     def init(self):
-        if not self.bins_file_path and not len(self.bins):
-            raise ConfigError, 'You did not provide a file for bin ids, but then self.bins is empty, too :/'
+        if self.bin_ids_file_path and self.bin_id:
+            raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
+                                you would like to focus. Not both :/'
+        if (not self.bin_ids_file_path) and (not self.bin_id) and (not len(self.bins)):
+            raise ConfigError, 'You must either use a file to list all the bin ids (-B) you would like to\
+                                further analyze, or declare a single bin id (-b). You have not really given\
+                                us anything to work with.'
 
-        if self.bins_file_path and not len(self.bins):
-            filesnpaths.is_file_exists(self.bins_file_path)
-            self.bins = set([b.strip() for b in open(self.bins_file_path).readlines()])
+        if self.bin_ids_file_path:
+            filesnpaths.is_file_exists(self.bin_ids_file_path)
+            self.bins = set([b.strip() for b in open(self.bin_ids_file_path).readlines()])
+        if self.bin_id:
+            self.bins = set([self.bin_id])
 
+        if not len(self.bins):
+            raise ConfigError, 'There is no bin to work with :/'
 
         # if the user updates the refinement of a single bin or bins, there shouldn't be multiple copies
         # of that stored in the database. so everytime 'store_refined_bins' function is called,

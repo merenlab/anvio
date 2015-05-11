@@ -11,19 +11,16 @@ import sys
 import json
 import argparse
 import webbrowser
-import datetime
 
 from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
 from bottle import run as run_server
 
 import anvio
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.refine as refine
 import anvio.dictio as dictio
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 
 from anvio.errors import ConfigError, FilesNPathsError, RefineError
 
@@ -53,7 +50,10 @@ parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTAT
                     help = 'Annotation database.')
 parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', required = True,
                     help = 'Collection id to look for bins.')
-parser.add_argument('-b', '--bins', required = True, metavar = 'BINS FILE',
+parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
+                    help = 'One bin to analayze (you either use this, or use a file to list\
+                            each bin id you prefer to analyze).')
+parser.add_argument('-B', '--bin-ids-file', required = False, metavar = 'BINS FILE', default = None,
                     help = 'Text file for bins (each line should be a bin id).')
 parser.add_argument('-I', '--ip-address', metavar = 'IP_ADDR', default = '0.0.0.0', type=str,
                     help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
