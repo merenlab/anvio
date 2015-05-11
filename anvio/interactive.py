@@ -104,6 +104,11 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # need to match these names:
         self.split_names_ordered = [n.name for n in tree.get_leaves()]
 
+        # now we knot what splits we are interested in (self.split_names_ordered), we can get rid of all the
+        # unnecessary splits stored in views dicts.
+        self.prune_view_dicts()
+
+
         # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
         # Annotation DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
@@ -269,6 +274,20 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                             wrong. Here is a random contig name that was only in the\
                             metadata file: '%s'. And there were %d of them in total. You\
                             are warned!" % (one_example, num_all))
+
+
+    def prune_view_dicts(self):
+        self.progress.new('Pruning view dicts')
+        self.progress.update('...')
+        splits_in_views = set(self.views.values()[0]['dict'].keys())
+        splits_to_remove = splits_in_views - set(self.split_names_ordered)
+
+        for view in self.views:
+            self.progress.update('processing view "%s"' % view)
+            for split_name in splits_to_remove:
+                self.views[view]['dict'].pop(split_name)
+
+        self.progress.end()
 
 
     def convert_metadata_into_json(self):
