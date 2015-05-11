@@ -301,7 +301,7 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
 
-    def load_views(self):
+    def load_views(self, splits_of_interest = None):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
@@ -310,7 +310,7 @@ class ProfileSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name)}
+                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest = splits_of_interest)}
 
         profile_db.disconnect()
 
