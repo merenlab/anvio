@@ -495,7 +495,7 @@ class MultipleRuns:
         self.run.info('default_clustering', constants.merged_default)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        profile_db.db.set_meta_value('default_clustering', constants.single_default)
+        profile_db.db.set_meta_value('default_clustering', constants.merged_default)
         profile_db.db.set_meta_value('available_clusterings', ','.join(clusterings))
         profile_db.disconnect()
 
