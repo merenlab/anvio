@@ -38,6 +38,7 @@ if __name__ == '__main__':
                         help = "The source identifier when results are stored in the profile database. The default id\
                                 is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
                                 with new results. Using this parameter you can avoid that.")
+    parser.add_argument('--debug', action='store_true', help = 'Print out debug info.')
     args = parser.parse_args()
 
 
@@ -71,5 +72,3 @@ if __name__ == '__main__':
     except FilesNPathsError, e:
         print e
         sys.exit(-2)
-
-    
