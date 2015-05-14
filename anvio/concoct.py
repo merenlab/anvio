@@ -16,7 +16,7 @@
    >>> print c.clusters
 
    The other class `CONCOCT_INTERFACE`, handles more low-level access
-   to the vbgmm module. 
+   to the vbgmm module.
 """
 
 import random
@@ -60,6 +60,8 @@ class CONCOCT:
         self.lengths = {}
         self.kmers = {}
         self.coverages = {}
+        
+        self.debug = args.debug
 
         self.progress.new('Init')
 
@@ -87,7 +89,7 @@ class CONCOCT:
 
 
     def cluster(self):
-        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths).cluster()
+        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug).cluster()
         return self.clusters
 
 
@@ -127,23 +129,24 @@ class CONCOCT:
 
 
 class CONCOCT_INTERFACE():
-    def __init__(self, kmers, coverages, lengths, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
+    def __init__(self, kmers, coverages, lengths, debug, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
         self.run = r
         self.progress = p
 
         self.progress.new('CONCOCT')
 
+        self.debug = debug
 
         self.progress.update('Checking the number of samples ...')
         first_cov = coverages.itervalues().next()
         sample_names = first_cov.keys()
         NS = len(sample_names)
-    
+
         self.progress.update('Checking the number of k-mers ...')
         first_kmer = kmers.itervalues().next()
         kmer_names = first_kmer.keys()
         NK = len(kmer_names)
-    
+
         self.progress.update('Checking the number of contigs to cluster ...')
         self.contig_names = coverages.keys()
         self.NC = len(coverages.keys())
@@ -157,12 +160,12 @@ class CONCOCT_INTERFACE():
             vk = kmers[k]
             valuesk = [vk[x] for x in kmer_names]
             kmer_array[p,:] = valuesk[:]
-    
+
             vc = coverages[k]
             valuesc = [vc[x] for x in sample_names]
             cov_array[p,:] = valuesc[:]
             p = p + 1
-    
+
         #this is not really valid since split contigs have inherited composition in Anvio
         contig_lengths = kmer_array.sum(axis=1) + kmer_length - 1
         kmer_array = kmer_array + np.ones((self.NC,NK))
@@ -170,26 +173,26 @@ class CONCOCT_INTERFACE():
         kmer_array = np.log(kmer_array / kmer_row_sums[:, np.newaxis])
 
         cov_array = cov_array + (read_length/contig_lengths)[:,np.newaxis]
-        
+
         #normalise by Sample maybe weight by contig length in future
         cov_col_sums = cov_array.sum(axis=0)
         cov_array = cov_array/cov_col_sums[np.newaxis,:]
-        
+
         if bNormaliseByContig:
             cov_row_sums = cov_array.sum(axis=1)
             cov_array = cov_array/cov_row_sums[:,np.newaxis]
             cov_row_sums=cov_row_sums.reshape((cov_array.shape[0],1))
             cov_array = np.append(cov_array,cov_row_sums,1)
-        
+
         cov_array = np.log(cov_array)
-            
+
         self.progress.update('Joining coverage and composition arrays ...')
         self.original_data = np.concatenate((kmer_array,cov_array),axis=1)
-        
+
         self.progress.update('Performing PCA ...')
         pca_object = PCA(n_components=nc).fit(self.original_data)
         self.transformed_data = pca_object.transform(self.original_data)
-    
+
         self.NClusters = NClusters
         self.assign = np.zeros((self.NC),dtype=np.int32)
 
@@ -197,10 +200,11 @@ class CONCOCT_INTERFACE():
         self.run.info('CONCOCT INIT', 'Complete for %d splits' % len(self.contig_names))
 
 
-    def cluster(self): 
+    def cluster(self):
         self.progress.new('VBGMM')
         self.progress.update('Clustering ...')
-        vbgmm.fit(self.transformed_data, self.assign, self.NClusters)
+
+        vbgmm.fit(self.transformed_data, self.assign, self.NClusters, self.debug)
 
         self.progress.end()
         self.run.info('CONCOCT VGBMM', 'Done with %d clusters' % (len(set(self.assign))))

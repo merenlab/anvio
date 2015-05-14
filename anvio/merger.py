@@ -59,6 +59,8 @@ class MultipleRuns:
 
         self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
 
+        self.debug = args.debug
+
 
     def read_runinfo_dict(self, path):
         runinfo = dictio.read_serialized_object(path)
@@ -279,7 +281,7 @@ class MultipleRuns:
         smallest_sample_size = min(num_reads_mapped_per_sample.values())
 
         for sample_id in num_reads_mapped_per_sample:
-            self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id] 
+            self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id]
 
         PRETTY = lambda x: ', '.join(['%s: %.2f' % (s, x[s]) for s in x])
         self.run.warning("anvio just set the normalization values for each sample based on\
@@ -335,9 +337,9 @@ class MultipleRuns:
         #self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
         #self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
- 
+
         self.set_normalization_multiplier()
- 
+
         self.progress.new('Merging gene coverages tables')
         self.merge_gene_coverages_tables()
         self.progress.end()
@@ -459,12 +461,13 @@ class MultipleRuns:
         args = Args()
         args.profile_db = self.profile_db_path
         args.annotation_db = self.annotation_db_path
+        args.debug = self.debug
 
         c = concoct.CONCOCT(args)
         c.cluster()
         c.store_clusters_in_db()
 
- 
+
     def cluster_contigs_anvio(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
@@ -505,7 +508,7 @@ class MultipleRuns:
         merged_summary_index_path = os.path.join(self.output_directory, 'SUMMARY.cp')
         summary_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'SUMMARY'), delete_if_exists = True)
 
-        
+
         # read all index files per run into a dict here, so the access is easier from within
         # the for loop below
         run_sum_indices = {}

@@ -1,3 +1,5 @@
+
+
 /* C functions for running vbgmm from Cython*/
 
 /*System includes*/
@@ -33,14 +35,14 @@
 /*User includes*/
 #include "c_vbgmm_fit.h"
 
-void c_vbgmm_fit (double* adX, int nN, int nD, int nK, int* anAssign)
+void c_vbgmm_fit (double* adX, int nN, int nD, int nK, int* anAssign, int debug)
 {
-    driver(adX, nN, nD, anAssign, nK, DEF_SEED, DEF_MAX_ITER, DEF_EPSILON,TRUE);
+    driver(adX, nN, nD, anAssign, nK, DEF_SEED, DEF_MAX_ITER, DEF_EPSILON, debug);
 
     return;
 }
 
-int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned long lSeed, int nMaxIter, double dEpsilon, int bCOut)
+int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned long lSeed, int nMaxIter, double dEpsilon, int debug)
 {
     t_Params           tParams;
     t_Data             tData;
@@ -49,15 +51,15 @@ int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned lon
     t_VBParams tVBParams;
     t_Cluster  *ptBestCluster = NULL;
     int i = 0;
-  
+
     /*initialise GSL RNG*/
     gsl_rng_env_setup();
 
     gsl_set_error_handler_off();
-  
+
     ptGSLRNGType = gsl_rng_default;
     ptGSLRNG     = gsl_rng_alloc(ptGSLRNGType);
-  
+
     /*set clusters params*/
     tParams.nKStart  = nKStart;
     tParams.nMaxIter = nMaxIter;
@@ -67,7 +69,7 @@ int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned lon
     generateInputData(adX, nN, nD, &tData);
 
     setVBParams(&tVBParams, &tData);
-  
+
     ptBestCluster = (t_Cluster *) malloc(sizeof(t_Cluster));
 
     ptBestCluster->nN = nN;
@@ -80,14 +82,14 @@ int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned lon
     ptBestCluster->dEpsilon = tParams.dEpsilon;
 
     ptBestCluster->szCOutFile = NULL;
-    
-    if(bCOut > 0){
-	    ptBestCluster->szCOutFile = DEF_FILE_STUB; 
-	}
+
+    if(debug>0){
+	    ptBestCluster->szCOutFile = DEF_FILE_STUB;
+	  }
     else{
 	    ptBestCluster->szCOutFile = NULL;
     }
-    
+
     runRThreads((void *) &ptBestCluster);
 
     compressCluster(ptBestCluster);
@@ -108,7 +110,7 @@ int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned lon
 
     gsl_rng_free(ptGSLRNG);
     gsl_matrix_free(tVBParams.ptInvW0);
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -122,7 +124,7 @@ void generateInputData(double *adX, int nN, int nD, t_Data *ptData)
     aadX = (double **) malloc(nN*sizeof(double*));
     if(!aadX)
         goto memoryError;
-    
+
     for(i = 0; i < nN; i++){
         aadX[i] = (double *) malloc(nD*sizeof(double));
         if(!aadX[i])
@@ -149,12 +151,12 @@ void destroyData(t_Data *ptData)
 {
     int nN = ptData->nN;
     int i = 0;
-    
+
     for(i = 0; i < nN; i++){
         free(ptData->aadX[i]);
     }
     free(ptData->aadX);
-    
+
     return;
 }
 
@@ -193,13 +195,13 @@ void setVBParams(t_VBParams *ptVBParams, t_Data *ptData)
     ptVBParams->dBeta0 = DEF_BETA0;
     ptVBParams->dNu0 = (double) nD;
     ptVBParams->ptInvW0 = gsl_matrix_alloc(nD,nD);
-    
+
     calcSampleVar(ptData,adVar, adMu);
     gsl_matrix_set_zero (ptVBParams->ptInvW0);
-    
+
     for(i = 0; i < nD; i++){
         double dRD = adVar[i]*((double) nD);
-    
+
         gsl_matrix_set(ptVBParams->ptInvW0,i,i,dRD);
     }
 
@@ -307,7 +309,7 @@ void allocateCluster(t_Cluster *ptCluster, int nN, int nK, int nD, t_Data *ptDat
     }
 
     return;
- 
+
     memoryError:
     fprintf(stderr, "Failed allocating memory in allocateCluster\n");
     fflush(stderr);
@@ -317,22 +319,22 @@ void allocateCluster(t_Cluster *ptCluster, int nN, int nK, int nD, t_Data *ptDat
 void destroyCluster(t_Cluster* ptCluster)
 {
   int i = 0, nN = ptCluster->nN, nKSize = ptCluster->nKSize;
-  
+
   if(ptCluster->szCOutFile != NULL){
 	  free(ptCluster->szCOutFile);
   }
 
   free(ptCluster->anMaxZ);
 
-  free(ptCluster->anW); 
+  free(ptCluster->anW);
 
   for(i = 0; i < nN; i++){
-    free(ptCluster->aadZ[i]); 
+    free(ptCluster->aadZ[i]);
   }
   free(ptCluster->aadZ);
 
-  free(ptCluster->adLDet); 
-  free(ptCluster->adPi);  
+  free(ptCluster->adLDet);
+  free(ptCluster->adPi);
   free(ptCluster->adBeta);
   free(ptCluster->adNu);
 
@@ -391,6 +393,7 @@ void* runRThreads(void *pvpDCluster)
     for(r = 0; r < N_RTHREADS; r++){
         if(ptDCluster->szCOutFile != NULL){
 	        szCOutFile = (char *) malloc(sizeof(char)*MAX_FILE_NAME_LENGTH);
+
 	        sprintf(szCOutFile,"%sr%d.csv",ptDCluster->szCOutFile,r);
         }
 
@@ -415,7 +418,7 @@ void* runRThreads(void *pvpDCluster)
             dBestVBL = aptCluster[r]->dVBL;
         }
     }
-  
+
     *pptDCluster = aptCluster[nBestR];
     for(r = 0; r < N_RTHREADS; r++){
         if(r != nBestR){
@@ -424,7 +427,7 @@ void* runRThreads(void *pvpDCluster)
         }
     }
     free(aptCluster);
-  
+
     return NULL;
  memoryError:
     fprintf(stderr, "Failed allocating memory in runRThreads\n");
@@ -443,7 +446,7 @@ void compressCluster(t_Cluster *ptCluster)
         }
     }
 
-    aadNewZ = (double **) malloc(nN*sizeof(double *)); 
+    aadNewZ = (double **) malloc(nN*sizeof(double *));
     if(!aadNewZ)
         goto memoryError;
 
@@ -541,27 +544,27 @@ void performMStep(t_Cluster *ptCluster, t_Data *ptData){
     double *adLDet = ptCluster->adLDet, *adPi = ptCluster->adPi;
     double **aadCovar = NULL, **aadInvWK = NULL;
     t_VBParams *ptVBParams = ptCluster->ptVBParams;
-  
+
     aadCovar = (double **) malloc(nD*sizeof(double*));
-    if(!aadCovar)        
+    if(!aadCovar)
         goto memoryError;
-  
+
     for(i = 0; i < nD; i++){
         aadCovar[i] = (double *) malloc(nD*sizeof(double));
         if(!aadCovar[i])
             goto memoryError;
     }
-  
+
     aadInvWK = (double **) malloc(nD*sizeof(double*));
     if(!aadInvWK)
         goto memoryError;
-  
+
     for(i = 0; i < nD; i++){
         aadInvWK[i] = (double *) malloc(nD*sizeof(double));
         if(!aadInvWK[i])
             goto memoryError;
     }
-  
+
     /*perform M step*/
     for(k = 0; k < nK; k++){ /*loop components*/
         double*     adMu          = ptCluster->aadMu[k];
@@ -612,7 +615,7 @@ void performMStep(t_Cluster *ptCluster, t_Data *ptData){
                 for(l = 0; l < nD; l++){
                     for(m = 0; m <=l ; m++){
                         aadCovar[l][m] += aadZ[i][k]*adDiff[l]*adDiff[m];
-                    }   
+                    }
                 }
             }
         }
@@ -725,9 +728,9 @@ void performMStep(t_Cluster *ptCluster, t_Data *ptData){
 
   free(aadCovar);
   free(aadInvWK);
-  
+
   return;
-  
+
     memoryError:
     fprintf(stderr, "Failed allocating memory in performMStep\n");
     fflush(stderr);
@@ -738,7 +741,7 @@ void initKMeans(gsl_rng *ptGSLRNG, t_Cluster *ptCluster, t_Data *ptData)
 {
     /*very simple initialisation assign each data point to random cluster*/
     int i = 0, k = 0, nN = ptData->nN, nK = ptCluster->nK, nD = ptData->nD;
-    double **aadMu = ptCluster->aadMu, **aadX = ptData->aadX; 
+    double **aadMu = ptCluster->aadMu, **aadX = ptData->aadX;
     int *anMaxZ = ptCluster->anMaxZ, *anW = ptCluster->anW, nChange = nN;
     int nIter = 0, nMaxIter = ptCluster->nMaxIter;
     for(i = 0; i < nN; i++){
@@ -746,9 +749,9 @@ void initKMeans(gsl_rng *ptGSLRNG, t_Cluster *ptCluster, t_Data *ptData)
         ptCluster->anMaxZ[i] = nIK;
         anW[nIK]++;
     }
-  
+
     updateMeans(ptCluster, ptData);
-  
+
     while(nChange > 0 && nIter < nMaxIter){
         nChange = 0;
         /*reassign vectors*/
@@ -850,13 +853,13 @@ double calcVBL(t_Cluster* ptCluster)
       for(l = 0; l < nD; l++){
 	    dT1 += gsl_matrix_get(ptRes,l,l);
       }
-    
+
       for(l = 0; l < nD; l++){
 	    gsl_vector_set(ptDiff,l,aadMu[k][l] - aadM[k][l]);
       }
 
       gsl_blas_dsymv (CblasLower, 1.0, ptCluster->aptSigma[k], ptDiff, 0.0, ptR);
-      
+
       gsl_blas_ddot (ptDiff, ptR, &dT2);
 
       dF = adLDet[k] - adNu[k]*(dT1 + dT2) - dD*(log(d2Pi) + (1.0/adBeta[k]));
@@ -881,7 +884,7 @@ double calcVBL(t_Cluster* ptCluster)
       }
 
       gsl_blas_dsymv (CblasLower, 1.0, ptCluster->aptSigma[k], ptDiff, 0.0, ptR);
-      
+
       gsl_blas_ddot (ptDiff, ptR, &dT2);
 
       dF = dD*log(dBeta0/d2Pi) + adLDet[k] - ((dD*dBeta0)/adBeta[k]) - dBeta0*adNu[k]*dT2 - adNu[k]*dT1;
@@ -905,13 +908,13 @@ double calcVBL(t_Cluster* ptCluster)
   for(k = 0; k < nK; k++){
     if(adNK[k] > 0.0){
       dBishop5 += 0.5*adLDet[k] + 0.5*dD*log(adBeta[k]/d2Pi) - 0.5*dD - dWishartExpectLogDet(ptCluster->aptSigma[k], adNu[k], nD);
-    }  
+    }
   }
 
   gsl_matrix_free(ptRes);
   gsl_vector_free(ptDiff);
   gsl_vector_free(ptR);
-  
+
   dRet = dBishop1 + dBishop2 + dBishop3 - dBishop4 - dBishop5;
 
   return dRet;
@@ -962,7 +965,7 @@ void calcZ(t_Cluster* ptCluster, t_Data *ptData){
             else{
                 aadZ[i][k] = 0.0;
             }
-        }   
+        }
 
         for(k = 0; k < nK; k++){
             double dF = aadZ[i][k] / dTotalZ;
@@ -1007,7 +1010,7 @@ void gmmTrainVB(t_Cluster *ptCluster, t_Data *ptData)
     ptCluster->dVBL = calcVBL(ptCluster);
 
     while(nIter < nMaxIter && dDelta > dEpsilon){
-   
+
         /*update parameter estimates*/
         performMStep(ptCluster, ptData);
 
@@ -1056,7 +1059,7 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
     double **aadZ = ptCluster->aadZ,**aadX = ptData->aadX;
     double *adPi = ptCluster->adPi, **aadCovar = NULL;
     double dN = (double) nN;
-    
+
     aadCovar = (double **) malloc(nD*sizeof(double*));
     if(!aadCovar)
         goto memoryError;
@@ -1068,7 +1071,7 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
     }
 
 
-    for(k = 0; k < nK; k++){ /*loop components*/    
+    for(k = 0; k < nK; k++){ /*loop components*/
         double*     adMu          = ptCluster->aadMu[k];
         gsl_matrix  *ptSigmaMatrix = ptCluster->aptSigma[k];
         /*recompute mixture weights and means*/
@@ -1093,11 +1096,11 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
     for(j = 0; j < nD; j++){
         adMu[j] /= adPi[k];
     }
-     
+
     /*calculate covariance matrices*/
     for(i = 0; i < nN; i++){
         double adDiff[nD];
-      
+
         for(j = 0; j < nD; j++){
 	        adDiff[j] = aadX[i][j] - adMu[j];
         }
@@ -1106,9 +1109,9 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
 	        for(m = 0; m <=l ; m++){
 	            aadCovar[l][m] += aadZ[i][k]*adDiff[l]*adDiff[m];
 	        }
-        } 
+        }
     }
-    
+
     for(l = 0; l < nD; l++){
         for(m = l + 1; m < nD; m++){
 	        aadCovar[l][m] = aadCovar[m][l];
@@ -1122,7 +1125,7 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
         }
     }
 
-    adPi[k] /= dN; /*normalise weights*/    
+    adPi[k] /= dN; /*normalise weights*/
   }
   /*free up memory*/
   for(i = 0; i < nD; i++){
@@ -1136,7 +1139,7 @@ void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData)
  memoryError:
   fprintf(stderr, "Failed allocating memory in performMStep\n");
   fflush(stderr);
-  exit(EXIT_FAILURE); 
+  exit(EXIT_FAILURE);
 }
 
 /*note assuming you are using inverse W matrix*/
@@ -1157,7 +1160,7 @@ double dLogWishartB(gsl_matrix *ptInvW, int nD, double dNu, int bInv)
   else{
     dRet = -0.5*dNu*dLogDet;
   }
-  
+
   dT = 0.5*dNu*dD*log(2.0);
 
   dT += 0.25*dD*(dD - 1.0)*log(M_PI);
@@ -1201,7 +1204,7 @@ void updateMeans(t_Cluster *ptCluster, t_Data *ptData)
   double **aadX = ptData->aadX, **aadMu = ptCluster->aadMu;
 
   for(k = 0; k < nK; k++){
-    
+
     for(j = 0; j < nD; j++){
       aadMu[k][j] = 0.0;
     }
@@ -1216,7 +1219,7 @@ void updateMeans(t_Cluster *ptCluster, t_Data *ptData)
   }
 
   for(k = 0; k < nK; k++){ /*loop components*/
-    
+
     /*normalise means*/
     if(anW[k] > 0){
       for(j = 0; j < nD; j++){
@@ -1237,13 +1240,11 @@ double calcDist(double* adX, double *adMu, int nD)
 {
   double dDist = 0.0;
   int i = 0;
-  
+
   for(i = 0; i < nD; i++){
     double dV = adX[i] - adMu[i];
     dDist += dV*dV;
   }
-  
+
   return sqrt(dDist);
 }
-
-

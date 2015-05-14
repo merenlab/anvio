@@ -27,7 +27,7 @@ typedef struct s_VBParams
 {
     /*scale for mean prior*/
     double dBeta0;
-  
+
     /*Wishart degrees of freedom*/
     double dNu0;
 
@@ -69,7 +69,7 @@ typedef struct s_Cluster
     /*Means*/
     double **aadMu;
     /*Scaled weight Bishop 10.60*/
-    double *adBeta;  
+    double *adBeta;
     /*Scaled means Bishop 10.61*/
     double **aadM;
     /*sample covariance matrix for each cluster storing this helps with lower bound calcn*/
@@ -118,7 +118,7 @@ typedef struct s_Cluster
 #define DEF_SEED         1l
 
 /*user defines*/
-int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned long lSeed, int nMaxIter, double dEpsilon, int bCOut);
+int driver(double *adX, int nN, int nD, int *anAssign, int nKStart, unsigned long lSeed, int nMaxIter, double dEpsilon, int debug);
 
 void generateInputData(double *adX, int nN, int nD, t_Data *ptData);
 
