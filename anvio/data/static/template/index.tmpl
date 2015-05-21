@@ -159,7 +159,13 @@
                                 <tr>
                                     <th data-defaultsort='disabled' class="text-center"></th>
                                     <th>Bin</th>
+
+                                    {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
                                     <th class="text-center">Taxonomy</th>
+                                    {% else %}
+                                    <th class="text-center" data-defaultsort='disabled'>Taxonomy</th>
+                                    {% endif %}
+
                                     <th class="text-center">Total Size</th>
                                     <th class="text-center">Num Contigs</th>
                                     <th class="text-center">N50</th>
@@ -173,7 +179,13 @@
                                 <tr>
                                     <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                     <td style="vertical-align: middle;">{{ bin }}</td>
+
+                                    {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
                                     <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
+                                    {% else %}
+                                    <td class="text-center">N/A</td>
+                                    {% endif %}
+
                                     <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
                                     <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
                                     <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>

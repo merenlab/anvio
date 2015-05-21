@@ -240,8 +240,9 @@ class Bin:
         self.progress.new('[Collection "%s"] Computing basic stats' % self.bin_id)
         self.compute_basic_stats()
 
-        self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.bin_id)
-        self.set_taxon_calls()
+        if self.summary.a_meta['genes_annotation_source']:
+            self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.bin_id)
+            self.set_taxon_calls()
 
         self.progress.new('[Collection "%s"] Storing profile data' % self.bin_id)
         self.store_profile_data()
