@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, AnnotationSuperclass
+from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, is_annotation_and_profile_dbs_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -71,6 +71,10 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
         else:
             self.completeness = None
+
+        if self.annotation_db_path and self.profile_db_path:
+            # make sure we are not dealing with apples and oranges here.
+            is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
