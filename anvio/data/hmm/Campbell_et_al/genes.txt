@@ -74,7 +74,7 @@ Ribosomal_L9_C	PF03948.9	unknown
 Ribosomal_L9_N	PF01281.14	unknown
 Ribosomal_S10	PF00338.17	unknown
 Ribosomal_S11	PF00411.14	unknown
-Ribosomal_S12	PF00164.20	unknown
+Ribosomal_S12_S23	PF00164.20	unknown
 Ribosomal_S13	PF00416.17	unknown
 Ribosomal_S15	PF00312.17	unknown
 Ribosomal_S16	PF00886.14	unknown
