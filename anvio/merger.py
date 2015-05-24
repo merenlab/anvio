@@ -59,6 +59,7 @@ class MultipleRuns:
 
         self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
 
+        self.overwrite_output_destinations = args.overwrite_output_destinations
         self.debug = args.debug
 
 
@@ -122,7 +123,7 @@ class MultipleRuns:
 
 
     def sanity_check(self):
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists = self.overwrite_output_destinations)
 
         if not len(self.merged_sample_runinfo_dict_paths) > 1:
             raise ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
@@ -293,7 +294,7 @@ class MultipleRuns:
         self.sanity_check()
         self.set_sample_id()
 
-        filesnpaths.gen_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = self.overwrite_output_destinations)
 
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')

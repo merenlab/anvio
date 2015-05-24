@@ -46,6 +46,8 @@ if __name__ == '__main__':
                                 can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
                                 etc). Use this flag if you would like to skip this step")
     parser.add_argument('--debug', action='store_true', help = 'Print out debug info.')
+    parser.add_argument('-O', '--overwrite-output-destinations', action='store_true', default = False,
+                        help = 'Overwrite if the output files and/or directories exist.')
 
     args = parser.parse_args()
 

@@ -42,6 +42,8 @@ if __name__ == '__main__':
                                 run cluster configurations for single runs on your sample.')
     groupM.add_argument('-o', '--output-directory', default = None,
                         help = 'The directory for output files to be stored.')
+    groupM.add_argument('-O', '--overwrite-output-destinations', action='store_true', default = False,
+                        help = 'Overwrite if the output files and/or directories exist.')
     groupM.add_argument('-s', '--sample-id', metavar = 'SAMPLE_ID', default = None,
                         help = 'It is important to set a sample name (using only ASCII letters and digits\
                                 and without spaces) that is unique to a particular profile. If you do not\

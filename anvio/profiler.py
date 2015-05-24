@@ -51,6 +51,7 @@ class BAMProfiler:
         self.contig_names_of_interest = None
         self.contigs_shall_be_clustered = False
         self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
+        self.overwrite_output_destinations = False
 
         if args:
             self.args = args
@@ -67,6 +68,7 @@ class BAMProfiler:
             self.no_trehading = True
             self.sample_id = args.sample_id
             self.report_variability_full = args.report_variability_full
+            self.overwrite_output_destinations = args.overwrite_output_destinations
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
@@ -101,12 +103,13 @@ class BAMProfiler:
                                       one using 'anvi-gen-annotation-database'. Not sure how? Please see the\
                                       user manual."
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE')
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
+                                                                   ok_if_exists = self.overwrite_output_destinations)
 
         self.progress.new('Initializing')
 
         self.progress.update('Creating the output directory ...')
-        filesnpaths.gen_output_directory(self.output_directory, self.progress)
+        filesnpaths.gen_output_directory(self.output_directory, self.progress, delete_if_exists = self.overwrite_output_destinations)
 
         self.progress.update('Initializing the annotation database ...')
         annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
