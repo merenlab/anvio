@@ -1,10 +1,14 @@
-# User Manual
+# README
 
-Anvi’o is an analysis and visualization platform from ‘omics data.
+Anvi'o is an analysis and visualization platform for 'omics data.
 
-Please see the project page for anvi'o for more information: http://merenlab.org/projects/anvio/
+![anvio logo](http://merenlab.org/images/anvio-logo-simple.png)
 
-Here are some posts you may be interested:
+Please see the project page for anvi'o for information: 
+
+* [http://merenlab.org/projects/anvio/](http://merenlab.org/projects/anvio/)
+
+Here are some articles you may be interested:
 
 * [Installing anvi'o](http://meren.github.io/2015/05/01/installation/)
 * [Anvi'o user manual (for the metagenomic workflow)](http://meren.github.io/2015/05/01/anvio-tutorial/)
