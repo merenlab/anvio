@@ -2,10 +2,11 @@
 
 Anvi’o is an analysis and visualization platform from ‘omics data.
 
-Please see the project page for anvi'o: http://merenlab.org/projects/anvio/
+Please see the project page for anvi'o for more information: http://merenlab.org/projects/anvio/
 
-Here are some specific items:
+Here are some posts you may be interested:
 
 * [Installation](http://meren.github.io/2015/05/01/installation/)
 * [Anvi'o User Manual](http://meren.github.io/2015/05/01/anvio-tutorial/)
-* [Going Deeeper with Anvi'o](http://meren.github.io/2015/05/02/other-examples/)
+* [Anvi'o for power users](http://meren.github.io/2015/05/02/other-examples/)
+* [Refining a genome bin with Anvi'o](http://merenlab.org/2015/05/11/anvi-refine/)
