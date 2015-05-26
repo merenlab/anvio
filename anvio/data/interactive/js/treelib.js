@@ -2315,10 +2315,10 @@ function draw_tree(settings) {
             });
     }
 
-    $('#draw_delta_time').html('drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
-
     var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
     var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
+
+    $('#draw_delta_time').html(leaf_count + ' splits and ' + total_object_count +' objects drawn in ' + tree_draw_timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 
     console.log('[info] Leaf count: ' + leaf_count);
     console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
