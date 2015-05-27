@@ -12,7 +12,8 @@ class HMMScan(Parser):
         files_structure = {'hits': 
                                 {'col_names': ['gene_name', 'gene_id', 'query_name', 'f', 'e_value', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f','f', 'f','f'],
                                  'col_mapping': [str, str, str, str, float, str, str, str, str, str, str, str, str, str, str, str, str, str],
-                                 'indexing_field': -1
+                                 'indexing_field': -1,
+                                 'no_header': True
                                  },
                            'proteins': 
                                 {'type': 'fasta'},}
