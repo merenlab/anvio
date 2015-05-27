@@ -46,8 +46,9 @@ states_dict = {'AA': 'a',
                'GT': 'k',
                'TG': 'k'}
 
-
 valid_chars = set(states_dict.values()) 
+reverse_states = dict([(states_dict[v], ''.join(set(v))) for v in set([''.join(sorted(k)) for k in states_dict.keys()])])
+
 
 def entropy(l):
     E_Cs = []
@@ -251,7 +252,7 @@ class VariabilityWrapper:
             values = []
             for unit in units:
                 values.append(self.samples_dict[layer_name][unit])
-            output.write('\t'.join([layer_name] + [str(v) for v in values]) + '\n')
+            output.write('\t'.join([layer_name] + [str(reverse_states[v]) for v in values]) + '\n')
         output.close()
 
 
