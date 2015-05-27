@@ -14,6 +14,7 @@ import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpath
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 
@@ -30,19 +31,22 @@ __status__ = "Development"
 
 pp = terminal.pretty_print
 progress = terminal.Progress()
-run = terminal.Run(width = 30)
+run = terminal.Run(width = 50)
 
 
 class VariablePositions:
     def __init__(self, args = None, p=progress, r=run):
         self.samples_of_interest = set([])
-        self.splits_of_interest = set([])
         self.min_ratio = 0
         self.min_occurrence = 1
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_file_path = None
         self.quince_mode = False
+
+        self.splits_of_interest = set([])
+        self.collection_id = None
+        self.group_name = None
 
         self.progress = p
         self.run = r
@@ -53,15 +57,16 @@ class VariablePositions:
         self.variable_positions_table = {} 
         self.unique_pos_identifier = 0
         self.split_name_position_dict = {}
+        self.unique_pos_id_to_entry_id = {}
         self.summaries = None
         self.contig_sequences = None
         self.input_file_path = None
 
 
     def process_cmd_line_args(self, args):
-        if args.splits_of_interest:
-            filesnpath.is_file_exists(args.splits_of_interest)
-            self.splits_of_interest = set([c.strip() for c in open(args.splits_of_interest).readlines()])
+        self.group_name = args.group_name
+        self.collection_id = args.collection_id
+        self.splits_of_interest_path = args.splits_of_interest
 
         if args.samples_of_interest:
             filesnpath.is_file_exists(args.samples_of_interest)
@@ -69,6 +74,7 @@ class VariablePositions:
 
         self.min_ratio = float(args.min_ratio)
         self.min_occurrence = int(args.min_occurrence)
+        self.min_scatter = int(args.min_scatter)
         self.profile_db_path = args.profile_db
         self.annotation_db_path = args.annotation_db
         self.quince_mode = args.quince_mode
@@ -79,6 +85,9 @@ class VariablePositions:
 
 
     def init(self):
+        self.progress.new('Init')
+
+        self.progress.update('Making sure our databases are here, and they are compatible ..')
         if not self.profile_db_path:
             raise ConfigError, 'You need to provide a profile database.'
 
@@ -89,13 +98,54 @@ class VariablePositions:
         filesnpath.is_file_exists(self.profile_db_path)
 
         dbops.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
-        self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
-        self.progress.new('Init')
+        self.progress.update('Attempting to get our splits of interest sorted ..')
+        if self.collection_id:
+            # the user wants to go with the collection id path. fine. we will get our split names from
+            # the profile database.
+            if not self.group_name:
+                self.progress.end()
+                raise ConfigError, 'When you declare a collection id, you must also declare a group name\
+                                    (from which the split names of interest will be acquired)'
+            if self.splits_of_interest:
+                self.progress.end()
+                raise ConfigError, 'You declared a collection id and group name so anvi\'o can find out\
+                                    splits of interest, but you also have specified a file for split names?\
+                                    This is confusing, and you should choose one way or another :/'
+
+            collections = ccollections.Collections()
+            collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
+
+            if self.collection_id not in collections.sources_dict:
+                self.progress.end()
+                raise ConfigError, "%s is not a valid collection id :/" % self.collection_id
+
+            collection_dict = collections.get_collection_dict(self.collection_id)
+
+            if self.group_name not in collection_dict:
+                self.progress.end()
+                raise ConfigError, "'%s' does not appear to be a valid group in collection %s :/" % (self.group_name, self.collection_id)
+
+            self.splits_of_interest = collection_dict[self.group_name]
+
+        else:
+            # OK. no collection id. we will go oldschool. we whope to find what we are looking for in
+            # self.splits_of_interst_path  at this point (which may have been filled through the command
+            # line client), or in self.splits_of_interest (which may have been filled in by another program)
+            if not self.splits_of_interest:
+                if not self.splits_of_interest_path:
+                    self.progress.end()
+                    raise ConfigError, 'You did not declare a source for split names. You either should give me\
+                                        a file with split names you are interested in, or a collection id and\
+                                        group name so I can learn split names from the profile database.'
+                filesnpath.is_file_exists(self.splits_of_interest_path)
+                self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
+
+        self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
         self.progress.update('Reading variable positions table ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.sample_ids_in_db = profile_db.samples
+        self.sample_ids = profile_db.samples # we set this now, but we will overwrite it with args.samples_of_interest if necessary
         self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
         profile_db.disconnect()
 
@@ -113,22 +163,30 @@ class VariablePositions:
         self.progress.end()
 
         self.run.info('Variable Positions', '%s positions in %s splits across %s samples'\
-                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids_in_db))))
+                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids))))
         self.run.info('Min n2/n1 ratio', args.min_ratio)
 
         self.filter_variable_positions_table()
 
         self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
 
+        self.filter_based_on_scattering_factor()
+
         if self.quince_mode: # will be very costly...
             self.recover_base_frequencies_for_all_samples() 
 
 
     def filter_variable_positions_table(self):
-        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids_in_db)))
+        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
 
         if self.samples_of_interest:
+            samples_missing_from_db = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
+            if len(samples_missing_from_db):
+                raise ConfigError, 'One or more samples you are interested in seem to be missing from\
+                                    the profile database: %s' % ', '.join(samples_missing_from_db)
+
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
+            self.sample_ids = self.samples_of_interest
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
@@ -208,6 +266,21 @@ class VariablePositions:
             return self.split_name_position_dict[unique_position_id]
 
 
+    def gen_unique_pos_identifier_to_entry_id_dict(self):
+        self.progress.new('Generating the `unique pos` -> `entry id` dict')
+        self.progress.update('...')
+
+        for entry_id in self.variable_positions_table:
+            v = self.variable_positions_table[entry_id]
+            u = v['unique_position_id']
+            if u in self.unique_pos_id_to_entry_id:
+                self.unique_pos_id_to_entry_id[u].add(entry_id)
+            else:
+                self.unique_pos_id_to_entry_id[u] = set([entry_id])
+
+        self.progress.end()
+
+
     def set_unique_pos_identification_numbers(self):
         self.progress.new('Further processing')
         self.progress.update('re-setting unique identifiers to track split/position pairs across samples')
@@ -220,13 +293,54 @@ class VariablePositions:
         self.progress.end()
 
 
+    def filter_based_on_scattering_factor(self):
+        """To remove any unique entry from the variable positions table that describes a variable position
+           and yet is not helpful to distinguish samples from eachother."""
+
+        if self.min_scatter == 0:
+            return
+
+        num_samples = len(self.sample_ids)
+        if self.min_scatter > num_samples / 2:
+            raise ConfigError, 'Minimum scatter (%d) can not be more than half of the number of samples\
+                                (%d) :/' % (self.min_scatter, num_samples)
+
+        self.run.info('Min scatter', self.min_scatter)
+
+        # we need the unique pos_id to entry id dict filled for this function:
+        self.gen_unique_pos_identifier_to_entry_id_dict()
+
+        self.progress.new('Examining scatter')
+        self.progress.update('...')
+
+        entry_ids_to_remove = set([])
+
+        for unique_pos_id in self.unique_pos_id_to_entry_id:
+            entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
+
+            # find how many samples it occurs:
+            num_occurrence = len(entry_ids)
+
+            # if the number of samples it occurs more 
+            scatter = num_occurrence if num_occurrence < num_samples - num_occurrence else num_samples - num_occurrence
+            if scatter < self.min_scatter:
+                entry_ids_to_remove.update(entry_ids)
+
+        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
+        for entry_id in entry_ids_to_remove:
+            self.variable_positions_table.pop(entry_id)
+
+        self.progress.end()
+        self.run.info('Num entries removed due to min scatter', pp(len(entry_ids_to_remove)))
+
+
     def recover_base_frequencies_for_all_samples(self):
         """this function populates variable_positions_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
 
         self.progress.new('Recovering base frequencies for all')
 
-        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids_in_db
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_info_table.keys())
         next_available_entry_id = max(self.variable_positions_table.keys()) + 1
 
@@ -292,36 +406,76 @@ class VariablePositions:
         self.run.info('Output File', args.output) 
 
 
-##############################################################################
 
-parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
-parser.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
-                    help = 'Annotation database.')
-parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,\
-                    help = 'Profile database.')
-parser.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
-                    help = 'List of splits to analyze.')
-parser.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
-                    help = 'List of samples to retain. If not declared, all samples are used.')
-parser.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
-                    help = 'Each split may have one or more variable positions. What is the maximum number of positons\
-                            to report from each split is described via this paramter.')
-parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
-                    help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
-parser.add_argument('-x', '--min-occurrence', type=float, default = 1, metavar = 'NUM_SAMPLES',
-                    help = 'Minimum number of samples for a nucleotide position to be variable. Default is %(default)d.')
-parser.add_argument('--quince-mode', action='store_true', default=False,
-                    help = 'The default behavior is to report base frequencies of nucleotide positions only if there\
-                            is variation. It means, if there are 10 samples, and a given position in a contig is variable\
-                            in only one of them, there is no information about the rest of the samples. When this flag is\
-                            used, we go back to each sample, and report the base frequency of each position even if they\
-                            do not vary. It probably will take forever, and increase the file size dramatically, but it is\
-                            inevitable for some statistical approaches.')
-parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupD.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
+                        help = 'Annotation database.')
+    groupD.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,\
+                        help = 'Profile database.')
 
+    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
+                                                  ways to do it. One, you can give a file path with split names,\
+                                                  or, as an alternative, you can provide a collection id with a\
+                                                  group name.')
+    groupS.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
+                         help = 'File path that contains the list of splits to analyze.')
+    groupS.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID',
+                        help = 'Collection ID to look for the group you are interested in.')
+    groupS.add_argument('-g', '--group-name', metavar = 'GROUP-NAME',
+                        help = 'Group name in the collection to recover split names of interest.')
 
-variable_positions = VariablePositions(args)
-variable_positions.init()
-variable_positions.report()
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
+    groupO.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the resulting matrix.')
+    groupO.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
+                        help = 'File that contains the list of samples to foucs. If not declared, all samples are used.')
+    groupO.add_argument('--quince-mode', action='store_true', default=False,
+                  help = 'The default behavior is to report base frequencies of nucleotide positions only if there\
+                          is any variation reported during profiling (which by default uses some heuristics to minimize\
+                          the impact of error-driven variation). So, if there are 10 samples, and a given position has been\
+                          reported as a varaible site during profiling in only one of those samples, there will be no\
+                          information will be stored in the database for the remaining 9. When this flag is\
+                          used, we go back to each sample, and report base frequencies for each sample at this position\
+                          even if they do not vary. It will take considerably longer to report when this flag is on, and the use\
+                          of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
+                          (as well as for some beautiful visualizations).')
 
+    groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
+                                                  If you declare nothing from this bunch, you will get "everything"\
+                                                  to play with, which is not necessarily a good thing...')
+    groupE.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
+                  help = 'Each split may have one or more variable positions. What is the maximum number of positons\
+                          to report from each split is described via this paramter. The default is %(default)d. Which\
+                          means from every split, a maximum of %(default)d eligable SNP is going to be reported.')
+    groupE.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
+                  help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
+    groupE.add_argument('-x', '--min-occurrence', type=float, default = 1, metavar = 'NUM_SAMPLES',
+                  help = 'Minimum number of samples a nucleotide position should be reported as variable. Default is %(default)d.\
+                          If you set it to 2, for instance, each eligable variable position will be expected to appear in at least\
+                          two samples, which will reduce the impact of stochastic, or unintelligeable varaible positions.')
+    groupE.add_argument('-m', '--min-scatter', type=int, default = 0,
+                  help = 'This one is tricky. If you have N samples in your dataset, a given variable position x in one\
+                          of your splits can split your N samples into `t` groups based on the identity of the\
+                          variation they harbor at position x. For instance, `t` would have been 1, if all samples had the same\
+                          type of variation at position x (which would not be very interesting, because in this case\
+                          position x would have zero contribution to a deeper understanding of how these samples differ\
+                          based on variability. When `t` > 1, it would mean that identities at position x across samples\
+                          do differ. But how much scattering occurs based on position x when t > 1? If t=2, how many\
+                          samples ended in each group? Obviously, even distribution of samples across groups may tell\
+                          us something different than uneven distribution of samples across groups. So, this parameter\
+                          filters out any x if "the number of samples in the second largest group" (=scatter) is less\
+                          than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
+                          of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
+                          position would not be reported in your output matrix. The default value for -m is\
+                          %(default)d, which means every x found in the database and survived previous filtering\
+                          criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
+                          Please refer to the user documentation if this is confusing.')
+    args = parser.parse_args()
+    
+    try:
+        variable_positions = VariablePositions(args)
+        variable_positions.init()
+        variable_positions.report()
+    except ConfigError, e:
+        print e
