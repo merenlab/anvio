@@ -1,0 +1,3 @@
+Both COG0552 and COG0541 from Alneberg's collection resolved to SRP54_N. We kept only COG0541 in the list.
+Both COG0016 and COG0072 from Alneberg's collection resolved to tRNA-synt_2d. We kept only COG0016 in the list.
+
