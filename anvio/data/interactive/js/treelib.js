@@ -1611,7 +1611,7 @@ function draw_tree(settings) {
                         total = total + parseFloat(metadata_dict[id][pindex][j]);
                     }
 
-                    var multiplier = parseFloat(layer['height']) / total;
+                    var multiplier = parseFloat(layers[pindex]['height']) / total;
 
                     for (var j=0; j < metadata_dict[id][pindex].length; j++)
                     {
@@ -1637,7 +1637,7 @@ function draw_tree(settings) {
                         if (bar_size == 0) {
                             metadata_dict[id][pindex] = 0;
                         } else {
-                            metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / (max - min);
+                            metadata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / (max - min);
                         }                        
                     }
                     else
@@ -1653,7 +1653,7 @@ function draw_tree(settings) {
                         if (bar_size == 0) {
                             metadata_dict[id][pindex] = 0;
                         } else {
-                            metadata_dict[id][pindex] = bar_size *  parseFloat(layer['height']) / param_max[pindex];
+                            metadata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / param_max[pindex];
                         }
 
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
@@ -1824,9 +1824,9 @@ function draw_tree(settings) {
             var pindex = settings['layer-order'][i];
             var layer = settings['views'][current_view][pindex];
 
-            var layer_margin = (parseFloat(layer['height'])==0) ? 0 : margin;
+            var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
             
-            layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layer['height']) ] );
+            layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
 
             createGroup('tree_group', 'layer_background_' + layer_index);
             createGroup('tree_group', 'layer_' + layer_index);
@@ -1835,7 +1835,7 @@ function draw_tree(settings) {
             // draw event catcher of the layer
             if (settings['tree-type']=='phylogram')
             {
-                var color = layer['color'];
+                var color = layers[pindex]['color'];
 
                 drawPhylogramRectangle('event_catcher_' + layer_index,
                     'event',
@@ -1849,7 +1849,7 @@ function draw_tree(settings) {
             }
             if (settings['tree-type']=='circlephylogram')
             {
-                var color = layer['color'];
+                var color = layers[pindex]['color'];
 
                 var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
                 var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
@@ -1868,7 +1868,7 @@ function draw_tree(settings) {
 
             if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
             {
-                var color = layer['color'];
+                var color = layers[pindex]['color'];
 
                 drawPhylogramRectangle('layer_background_' + layer_index,
                     'all',
@@ -1883,7 +1883,7 @@ function draw_tree(settings) {
             
             if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3)
             {
-                var color = layer['color'];
+                var color = layers[pindex]['color'];
 
                 var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
                 var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
@@ -1986,7 +1986,7 @@ function draw_tree(settings) {
                             else // numerical
                             {
                                 if (metadata_dict[q.label][pindex] > 0) {
-                                    var color = layer['color'];
+                                    var color = layers[pindex]['color'];
 
                                      drawPhylogramRectangle('layer_' + layer_index,
                                         q.id,
@@ -2058,7 +2058,7 @@ function draw_tree(settings) {
                             }
                             else // numerical
                             {
-                                var color = layer['color'];
+                                var color = layers[pindex]['color'];
 
                                 if (metadata_dict[q.label][pindex] > 0) {
                                     drawPie('layer_' + layer_index,
@@ -2211,7 +2211,7 @@ function draw_tree(settings) {
                 drawText('tree_group', {
                     'x': 10,
                     'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
-                }, layer_title , layer['height'] + 'px', 'left', layer['color']);
+                }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
             }
         }
 
