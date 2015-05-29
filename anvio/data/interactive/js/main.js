@@ -1,6 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+var VERSION = '0.1.0';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -56,6 +57,7 @@ var search_results = [];
 var highlight_backup = {};
 
 var views = {};
+var layers = {};
 var current_view = '';
 var layer_order;
 
@@ -124,6 +126,13 @@ $(document).ready(function() {
         {
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
+
+            if (hasState && ((state['version'] !== VERSION) || !state.hasOwnProperty('version')))
+            {
+                alert("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                hasState = false;
+            }
+
             document.title = titleResponse[0];
             contig_lengths = eval(contigLengthsResponse[0]);
 
@@ -147,6 +156,10 @@ $(document).ready(function() {
 
                 if (state.hasOwnProperty('views'))
                     views = state['views'];
+
+                if (state.hasOwnProperty('layers'))
+                    layers = state['layers'];
+
 
                 if (state.hasOwnProperty('categorical_data_colors'))
                     categorical_data_colors = state['categorical_data_colors'];
@@ -405,15 +418,16 @@ function syncViews() {
     $('#tbody_layers tr').each(
         function(index, layer) {
             var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
-
+            layers[layer_id] = {};
             layer_order.push(layer_id);
 
             views[current_view][layer_id] = {};
             views[current_view][layer_id]["normalization"] = $(layer).find('select').val();
-            views[current_view][layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
-            views[current_view][layer_id]["height"] = $(layer).find('.input-height').val();
             views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
             views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
+
+            layers[layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
+            layers[layer_id]["height"] = $(layer).find('.input-height').val();
         }
     );    
 }
@@ -460,10 +474,17 @@ function buildLayersTable(order, settings)
         var layer_name = metadata[0][layer_id];
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
-        var hasSettings = false;
+        var hasViewSettings = false;
         if (typeof settings !== 'undefined') {
-            var layer_settings = settings[layer_id];
-            var hasSettings = true;
+            var view_settings = settings[layer_id];
+            var hasViewSettings = true;
+        }
+
+        var hasLayerSettings = false;
+        if (typeof layers[layer_id] !== 'undefined')
+        {
+            var layer_settings = layers[layer_id];
+            hasLayerSettings = true;
         }
 
         //
@@ -473,7 +494,7 @@ function buildLayersTable(order, settings)
         {
            layer_types[layer_id] = 0;
 
-            if (hasSettings)
+            if (hasLayerSettings)
                 var height = layer_settings['height'];
             else
                 var height = '50';
@@ -501,14 +522,12 @@ function buildLayersTable(order, settings)
         {
             layer_types[layer_id] = 1;
 
-            if (hasSettings)
+            if (hasLayerSettings)
             {
-                var norm   = layer_settings['normalization'];
                 var height = layer_settings['height'];
             }
             else
             {
-                var norm   = 'log';
                 var height = '30';  
 
                 // pick random color for stack bar items
@@ -520,6 +539,15 @@ function buildLayersTable(order, settings)
                         stack_bar_colors[layer_id].push(randomColor());
                     } 
                 }             
+            }
+
+            if (hasViewSettings)
+            {
+                var norm = view_settings['normalization'];
+            }
+            else
+            {
+                var norm = 'log';
             }
 
             var template = '<tr>' +
@@ -555,7 +583,7 @@ function buildLayersTable(order, settings)
         { 
             layer_types[layer_id] = 2;
 
-            if (hasSettings)
+            if (hasLayerSettings)
             {
                 var height = layer_settings['height'];
             }
@@ -594,25 +622,32 @@ function buildLayersTable(order, settings)
         {
             layer_types[layer_id] = 3;
 
-            if (hasSettings)
+            if (hasViewSettings)
             {
-                var height = layer_settings['height'];
-                var norm   = layer_settings['normalization'];
-                var color  = layer_settings['color'];
-                var min    = layer_settings['min']['value'];
-                var max    = layer_settings['max']['value'];
-                var min_disabled = layer_settings['min']['disabled'];
-                var max_disabled = layer_settings['max']['disabled'];
+                var norm   = view_settings['normalization'];
+                var min    = view_settings['min']['value'];
+                var max    = view_settings['max']['value'];
+                var min_disabled = view_settings['min']['disabled'];
+                var max_disabled = view_settings['max']['disabled'];
             }
             else
             {
-                var height = getNamedLayerDefaults(layer_name, 'height', '180');
                 var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
-                var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                 var min    = 0;
                 var max    = 0;
                 var min_disabled = true;
                 var max_disabled = true;
+            }
+
+            if (hasLayerSettings)
+            {
+                var height = layer_settings['height'];
+                var color  = layer_settings['color'];
+            }
+            else
+            {
+                var height = getNamedLayerDefaults(layer_name, 'height', '180');
+                var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
             }
 
             /* Some ad-hoc manipulation of special hmmx_ layers */ 
@@ -676,7 +711,7 @@ function buildLayersTable(order, settings)
 
 function serializeSettings() {
     var state = {};
-
+    state['version'] = VERSION;
     state['group-counter'] = group_counter;
     state['tree-type'] = $('#tree_type').val();
     state['order-by'] = $('#trees_container').val();
@@ -689,13 +724,12 @@ function serializeSettings() {
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
 
-    state['SELECTED'] = SELECTED;
-
     // sync views object and layers table
     syncViews();
 
     state['views'] = views;
     state['layer-order'] = layer_order;
+    state['layers'] = layers;
 
     state['categorical_data_colors'] = categorical_data_colors;
     state['stack_bar_colors'] = stack_bar_colors;
