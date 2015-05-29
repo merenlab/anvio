@@ -1,6 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+var VERSION = '0.1.0';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -125,6 +126,13 @@ $(document).ready(function() {
         {
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
+
+            if (hasState && ((state['version'] !== VERSION) || !state.hasOwnProperty('version')))
+            {
+                alert("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                hasState = false;
+            }
+
             document.title = titleResponse[0];
             contig_lengths = eval(contigLengthsResponse[0]);
 
@@ -703,7 +711,7 @@ function buildLayersTable(order, settings)
 
 function serializeSettings() {
     var state = {};
-
+    state['version'] = VERSION;
     state['group-counter'] = group_counter;
     state['tree-type'] = $('#tree_type').val();
     state['order-by'] = $('#trees_container').val();
