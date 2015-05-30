@@ -27,7 +27,7 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate a new anvio annotation database.')
-    parser.add_argument('-f', '--contigs-fasta', metavar = 'FASTA', default = None,
+    parser.add_argument('-f', '--contigs-fasta', metavar = 'FASTA', required = True,
                         help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
                                 could be a reference genome, or contigs from your assembler. Contig names in this file\
                                 must match to those in other input files. If there is a problem, anvio will gracefully\
