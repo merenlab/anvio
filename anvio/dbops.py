@@ -538,7 +538,7 @@ class AnnotationDatabase:
 
         self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
         self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet = self.quiet)
-        self.run.info('Number of contigs', splits_info_table.total_splits, quiet = self.quiet)
+        self.run.info('Number of splits', splits_info_table.total_splits, quiet = self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
         self.run.info('Split length', split_length, quiet = self.quiet)
 
