@@ -95,7 +95,7 @@ class Completeness:
                 self.splits_unique_gene_id_occurs[entry['gene_unique_identifier']].append(entry['split'])
 
 
-    def get_info_for_splits(self, split_names, min_e_value = 1e-15):
+    def get_info_for_splits(self, split_names, min_e_value = 1e-5):
         hits = utils.get_filtered_dict(self.search_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
