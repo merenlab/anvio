@@ -44,7 +44,7 @@ progress = terminal.Progress()
 # get the absolute path for static directory under anvio
 static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
-parser = argparse.ArgumentParser(description='Start anvio binning interface')
+parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
 parser.add_argument('-p', '--profile-db', metavar = 'PROFILE_DB', default = None,
                     help = "Anvi'o profile database")
 parser.add_argument('-a', '--annotation-db', metavar = 'ANNOTATION_DB', default = None,
@@ -91,6 +91,10 @@ parser.add_argument('--split-hmm-layers', action = 'store_true', default = False
                         help = 'When declared, this flag tells the interface to split every gene found in HMM\
                                 searches that were performed against non-singlecopy gene HMM profiles into\
                                 their own layer. Please see the documentation for details.')
+parser.add_argument('--server-only', action = 'store_true', default = False,
+                        help = 'The default behavior is to start the local server, and fire up a browser that\
+                                connects to the server. If you have other plans, and want to start the server\
+                                without calling the browser, this is the flag you need.')
 
 
 args = parser.parse_args()
@@ -355,8 +359,11 @@ if args.dry_run:
 try:
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
     server_process.start()
-    webbrowser.open_new("http://%s:%d" % (ip, port))
-    run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
+
+    if not args.server_only:
+        webbrowser.open_new("http://%s:%d" % (ip, port))
+
+    run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % port, 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
     run.warning('The server is being terminated.', header='Please wait...')
