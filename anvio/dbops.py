@@ -177,6 +177,7 @@ class AnnotationSuperclass(object):
             for source in self.singlecopy_gene_hmm_sources:
                 non_singlecopy_gene_hmm_info_dict.pop(source)
         else:
+            self.progress.end()
             return 
 
         if split_names_of_interest:
