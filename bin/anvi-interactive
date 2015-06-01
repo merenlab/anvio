@@ -284,19 +284,29 @@ def gen_summary(collection_id):
     webbrowser.open_new("http://%s:%d/summary/%s/index.html" % (ip, port, collection_id))
 
 
-@route('/store_collections', method='POST')
+@route('/store_collection', method='POST')
 def store_collections_dict():
     source = request.forms.get('source')
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
 
-    run.info_single('A request to store %d groups under the collection id "%s" has been made.' % (len(data), source), cut_after = None)
+    if not len(source):
+        run.info_single('Lousy attempt from the user to store their collection under an empty source identifier name :/')
+        return json.dumps("Error: Collection name cannot be empty.")
+
+    num_splits = sum(len(l) for l in data.values())
+    if not num_splits:
+        run.info_single('The user to store 0 splits as a collection :/')
+        return json.dumps("Error: There are no selections to store (you haven't selected anything).")
 
     if source in d.collections.sources_dict:
         e = d.collections.sources_dict[source]
         if e['read_only']:
             run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
+
+    run.info_single('A request to store %d groups that describe %d splits under the collection id "%s"\
+                     has been made.' % (len(data), len(num_splits), source), cut_after = None)
 
     collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
     collections.append(source, data, colors)
