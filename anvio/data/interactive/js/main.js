@@ -1407,7 +1407,7 @@ function storeCollection() {
         }
     );
 
-    $.post("/store_collections", {
+    $.post("/store_collection", {
         source: collection_name,
         data: JSON.stringify(data, null, 4),
         colors: JSON.stringify(colors, null, 4),
