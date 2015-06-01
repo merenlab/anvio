@@ -834,6 +834,9 @@ class TablesForCollections(Table):
 
 
     def append(self, source, clusters_dict, cluster_colors = None):
+        if not len(source):
+            raise ConfigError, 'Source identifier cannot be empty.'
+
         # remove any pre-existing information for 'source'
         self.delete_entries_for_key('source', source, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_colors_table_name])
 
