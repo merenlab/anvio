@@ -10,10 +10,10 @@ import pkg_resources
 try:
     if sys.version_info < (2, 7, 5):
         v =  '.'.join([str(x) for x in sys.version_info[0:3]])
-        sys.stderr.write("Your active Python version is '%s'. Anything less than 2.7.5 will not do it for anvi'o :/\n" % v)
+        sys.stderr.write("Your active Python version is '%s'. Anything less than '2.7.5' will not do it for anvi'o :/\n" % v)
         sys.exit(-1)
-except:
-    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n")
+except Exception:
+    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
 import anvio.tables as t
