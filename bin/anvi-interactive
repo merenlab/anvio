@@ -310,7 +310,7 @@ def store_collections_dict():
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
     run.info_single('A request to store %d groups that describe %d splits under the collection id "%s"\
-                     has been made.' % (len(data), len(num_splits), source), cut_after = None)
+                     has been made.' % (len(data), num_splits, source), cut_after = None)
 
     collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
     collections.append(source, data, colors)
