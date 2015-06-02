@@ -41,7 +41,7 @@ def is_output_file_writable(file_path):
     return True
 
 
-def is_file_tab_delimited(file_path, separator = '\t'):
+def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields = None):
     is_file_exists(file_path)
     f = open(file_path)
 
@@ -57,8 +57,15 @@ def is_file_tab_delimited(file_path, separator = '\t'):
                             Did you export this file on MAC using EXCEL? :(" % file_path
 
     f.seek(0)
-    if len(set([len(line.split(separator)) for line in f.readlines()])) != 1:
+    num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
+    if len(num_fields_set) != 1:
         raise FilesNPathsError, "Not all lines in the file '%s' have equal number of fields..." % file_path
+
+    if expected_number_of_fields:
+        num_fields_in_file = list(num_fields_set)[0]
+        if num_fields_in_file != expected_number_of_fields:
+            raise FilesNPathsError, "The expected number of fileds for '%s' is %d. Yet, it has %d\
+                                     of them :/" % (file_path, expected_number_of_fields, num_fields_in_file)
 
     f.close()
     return True
