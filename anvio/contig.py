@@ -2,7 +2,6 @@
 """Classes for handling contigs and splits"""
 
 import anvio
-import hashlib
 
 from anvio.terminal import Run
 from anvio.variability import VariablityTestFactory
@@ -171,40 +170,3 @@ class Auxiliary:
                 self.rep_seq += 'N'
                 self.v.append(0)
 
-
-class LinkMerDatum:
-    def __init__(self, read_id):
-        self.read_id = read_id
-        self.read_hash = hashlib.sha224(read_id).hexdigest()
-        self.contig_name = None
-        self.pos_in_contig = None
-        self.pos_in_read = None
-        self.base = None
-
-
-    def __str__(self):
-        return 'Contig: %s, C_pos: %d, R_pos: %d, Base: %s, hash: %s' % (self.contig,
-                                                                         self.pos_in_contig,
-                                                                         self.pos_in_read,
-                                                                         self.base,
-                                                                         self.read_id)
-
-
-class LinkMers:
-    def __init__(self, bam):
-        self.bam = bam
-        self.data = []
-
-    def append(self, contig_name, positions):
-        for pileupcolumn in self.bam.pileup(contig_name):
-            if pileupcolumn.pos not in positions:
-                continue
-
-            for pileupread in pileupcolumn.pileups:
-                if not pileupread.is_del:
-                    L = LinkMerDatum(pileupread.alignment.qname)
-                    L.contig_name = contig_name
-                    L.pos_in_contig = pileupcolumn.pos
-                    L.pos_in_read = pileupread.qpos
-                    L.base = pileupread.alignment.seq[pileupread.qpos]
-                    self.data.append(L)
