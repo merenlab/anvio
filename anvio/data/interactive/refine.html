@@ -159,8 +159,35 @@
                 <div style="margin: 5px;">
                 <p align="center"><input id="btn_new_group" type="button" onClick="newGroup();" value="New group">
                 <hr />
+                <p align="center"><input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
+                <hr />
                 <p align="center"><input type="button" onclick="storeRefinedBins();" value="Store refined bins in the database">
                 </div>
+            </div>
+
+            <div id="searchBox" class="dialogs2">
+                Expression: 
+                <select id="searchLayerList"></select>
+                <select id="searchOperator">
+                    <option value="6">Contains</option>
+                    <option value="0">==</option>
+                    <option value="1">!=</option>
+                    <option value="2">&gt;</option>
+                    <option value="3">&lt;</option>
+                    <option value="4">&gt;=</option>
+                    <option value="5">&lt;=</option>
+                </select>
+                <input id="searchValue" value="">
+                <br />
+                <br />
+                <input type="button" onclick="searchContigs();" value="Search"> <input type="button" onclick="showSearchResult();" value="Show result">&nbsp;&nbsp;<span id="search_result_message">0 contigs found.</span>
+                <br />
+                <br />
+                <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
+                <input type="button" onclick="highlightResult();" value="Highlight on tree"> 
+                <input type="button" onclick="redrawGroups();" value="Clear">
+                <input type="button" onclick="appendResult();" value="Append to group">
+                <input type="button" onclick="removeResult();" value="Remove from group">
             </div>
 
             <div id="tooltip" class="dialogs">
