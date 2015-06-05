@@ -78,13 +78,13 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Export splits and the coverage table from database')
-    parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
-                        help = 'anvio annotation database')
-    parser.add_argument('merged_profile_db', metavar = 'PROFILE_DB',
-                        help = 'anvio profile database for a merged run')
+    parser.add_argument('-p', '---merged-profile-db', metavar = "MERGED PROFILE DB", required = True,
+                        help = 'Profile database.')
+    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION DB',
+                        help = 'anvio annotation database.')
     parser.add_argument('-o', '--output-directory', default = None, metavar = 'OUTPUT_DIR',
                         help = 'Output directory for files to be stored')
-    parser.add_argument('-p', '--output-file-prefix', default = None, metavar = 'FILENAME_PREFIX',
+    parser.add_argument('-O', '--output-file-prefix', default = None, metavar = 'FILENAME_PREFIX',
                         help = 'A prefix to name output files.')
 
     args = parser.parse_args()
