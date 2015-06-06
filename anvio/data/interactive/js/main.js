@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
-var VERSION = '0.1.0';
+var VERSION = '0.1.1';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -181,6 +181,11 @@ $(document).ready(function() {
                     $('#layer-margin').val(state['layer-margin']);
                 if (state.hasOwnProperty('outer-ring-height'))
                     $('#outer-ring-height').val(state['outer-ring-height']);
+                if (state.hasOwnProperty('edge-normalization'))
+                    $('#edge_length_normalization').prop('checked', state['edge-normalization']);
+                if (state.hasOwnProperty('custom-layer-margin')) {
+                    $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+                }
             }
             else {
                 layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
@@ -255,6 +260,15 @@ $(document).ready(function() {
                 $('.layer_selectors:checked').each(
                     function(){
                         $('#' + 'height' + getNumericPart(this.id)).attr('value', intend_value);
+                    }
+                );
+            });
+
+            $('#margin_multiple').on('change', function(){
+                var intend_value = $('#margin_multiple').val();
+                $('.layer_selectors:checked').each(
+                    function(){
+                        $('#' + 'margin' + getNumericPart(this.id)).attr('value', intend_value);
                     }
                 );
             });
@@ -428,6 +442,8 @@ function syncViews() {
 
             layers[layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
             layers[layer_id]["height"] = $(layer).find('.input-height').val();
+            layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
+
         }
     );    
 }
@@ -494,10 +510,16 @@ function buildLayersTable(order, settings)
         {
            layer_types[layer_id] = 0;
 
-            if (hasLayerSettings)
+            if (hasLayerSettings) 
+            {
                 var height = layer_settings['height'];
-            else
+                var margin = layer_settings['margin'];
+            }
+            else 
+            {
                 var height = '50';
+                var margin = '15';
+            }
 
             var template = '<tr>' +
                 '<td><img src="images/drag.gif" /></td>' +
@@ -505,13 +527,15 @@ function buildLayersTable(order, settings)
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                               .replace(new RegExp('{height}', 'g'), height);
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
             $('#tbody_layers').prepend(template);
         }
@@ -525,10 +549,12 @@ function buildLayersTable(order, settings)
             if (hasLayerSettings)
             {
                 var height = layer_settings['height'];
+                var margin = layer_settings['margin'];
             }
             else
             {
-                var height = '30';  
+                var height = '30';
+                var margin = '15';
 
                 // pick random color for stack bar items
                 if (!(layer_id in stack_bar_colors))
@@ -562,6 +588,7 @@ function buildLayersTable(order, settings)
                 '    </select>' +
                 '</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
@@ -572,7 +599,8 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{height}', 'g'), height);
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
             $('#tbody_layers').append(template);
         }
@@ -586,10 +614,12 @@ function buildLayersTable(order, settings)
             if (hasLayerSettings)
             {
                 var height = layer_settings['height'];
+                var margin = layer_settings['margin'];
             }
             else
             {
-                var height = 30;
+                var height = '30';
+                var margin = '15';
 
                 if (!(layer_id in categorical_data_colors))
                 {
@@ -603,6 +633,7 @@ function buildLayersTable(order, settings)
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
@@ -611,7 +642,8 @@ function buildLayersTable(order, settings)
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{name}', 'g'), layer_name)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
-                               .replace(new RegExp('{height}', 'g'), height);
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
             $('#tbody_layers').append(template);
         } 
@@ -643,11 +675,13 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var color  = layer_settings['color'];
+                var margin = layer_settings['margin'];
             }
             else
             {
                 var height = getNamedLayerDefaults(layer_name, 'height', '180');
                 var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                var margin = '15';
             }
 
             /* Some ad-hoc manipulation of special hmmx_ layers */ 
@@ -669,6 +703,7 @@ function buildLayersTable(order, settings)
                 '    </select>' +
                 '</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
                 '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
                 '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
@@ -684,9 +719,19 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '');
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
             $('#tbody_layers').append(template);
+        }
+
+        if($('#custom_layer_margin').is(':checked'))
+        {
+            $('.column-margin').show();
+        }
+        else
+        {
+            $('.column-margin').hide();
         }
 
         $('#picker'+ layer_id).colpick({
@@ -723,6 +768,8 @@ function serializeSettings() {
     state['layer-margin'] = $('#layer-margin').val();
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
+    state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
+
 
     // sync views object and layers table
     syncViews();

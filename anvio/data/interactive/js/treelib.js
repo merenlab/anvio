@@ -1824,7 +1824,14 @@ function draw_tree(settings) {
             var pindex = settings['layer-order'][i];
             var layer = settings['views'][current_view][pindex];
 
-            var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
+            if (settings['custom-layer-margin'])
+            {
+                var layer_margin = parseFloat(layers[pindex]['margin']);
+            }
+            else
+            {
+                var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
+            }
             
             layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
 
