@@ -1479,13 +1479,13 @@ function draw_tree(settings) {
     metadata_dict = new Array();
 
     empty_tooltip = '<table>';
-    empty_tooltip += '<tr><td>Name: </td><td>n/a</td></tr>';
-    empty_tooltip += '<tr><td>Parent: </td><td>n/a</td></tr>';
+    empty_tooltip += '<tr><td class="tk">split_name</td><td class="tv">n/a</td></tr>';
+    empty_tooltip += '<tr><td class="tk">parent</td><td class="tv">n/a</td></tr>';
 
     for (var i = 1; i < settings['layer-order'].length; i++)
     {
         var pindex = settings['layer-order'][i];
-        empty_tooltip += '<tr><td>' + metadata[0][pindex] + '</td><td>n/a</td></tr>';
+        empty_tooltip += '<tr><td class="tk">' + metadata[0][pindex] + '</td><td class="tv">n/a</td></tr>';
     }
     empty_tooltip += '</table>';
 
@@ -1498,7 +1498,7 @@ function draw_tree(settings) {
         metadata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        title.push('<td>Name: </td><td>' + metadata[index][0] + '</td>');
+        title.push('<td class="tk">split_name</td><td class="tv">' + metadata[index][0] + '</td>');
         for (var i = 0; i < settings['layer-order'].length; i++) 
         {
             var pindex = settings['layer-order'][i];
@@ -1507,17 +1507,17 @@ function draw_tree(settings) {
             {   
                 if (metadata[index][pindex] == '')
                 {
-                    title.push('<td>Parent: </td><td>n/a</td>');
+                    title.push('<td class="tk">parent</td><td class="tv">n/a</td>');
                 }
                 else
                 {
-                    title.push('<td>Parent: </td><td>' + metadata[index][pindex] + '</td>');
+                    title.push('<td class="tk">parent</td><td class="tv">' + metadata[index][pindex] + '</td>');
                 }
                 
             }
             else
             {
-                title.push('<td>' + metadata[0][pindex] + '</td><td>' + metadata[index][pindex] + '</td>');
+                title.push('<td class="tk">' + metadata[0][pindex] + '</td><td class="tv">' + metadata[index][pindex] + '</td>');
             }
         }
 
