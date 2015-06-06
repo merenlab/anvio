@@ -342,6 +342,11 @@ function menu_callback(action) {
             });
             break;
 
+        case 'blastn_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastn/nr/' + contig_name,}); break;
+        case 'blastx_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastx/nr/' + contig_name,}); break;
+        case 'blastn_refseq_genomic': $.ajax({type: 'GET', url: '/search/ncbi/blastn/refseq_genomic/' + contig_name,}); break;
+        case 'blastx_refseq_protein': $.ajax({type: 'GET', url: '/search/ncbi/blastx/refseq_protein/' + contig_name,}); break;
+
         case 'metadata':
             messagePopupShow(contig_name, '<table><tr>' + metadata_title[contig_name].join('</tr><tr>') + '</tr></table>');
             break;

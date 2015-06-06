@@ -280,9 +280,16 @@
             <ul>
                 <li id="select" onclick="menu_callback('select');">Select</li>
                 <li id="remove" onclick="menu_callback('remove');">Remove</li>
+                <hr />
                 <li onclick="menu_callback('metadata');">Show metadata</li>
-                <li onclick="menu_callback('content');">Show contig content</li>
-                <li onclick="menu_callback('inspect');">Inspect contig</li>
+                <hr />
+                <li onclick="menu_callback('content');">Show split sequence</li>
+                <li onclick="menu_callback('blastn_nr');"> - blastn @ nr</li>
+                <li onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</li>
+                <li onclick="menu_callback('blastx_nr');"> - blastx @ nr</li>
+                <li onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</li>
+                <hr />
+                <li onclick="menu_callback('inspect');">Inspect</li>
             </ul>
         </div>
     </body>

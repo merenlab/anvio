@@ -243,6 +243,17 @@ def charts(split_name):
 def split_info(split_name):
     return d.split_sequences[split_name]
 
+@route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
+def search_ncbi(ncbi_prog, ncbi_db, split_name):
+    search_url_tmpl = """https://blast.ncbi.nlm.nih.gov/Blast.cgi?\
+                            PROGRAM=%(ncbi_prog)s&BLAST_PROGRAMS=megaBlast&\
+                            PAGE_TYPE=BlastSearch&SHOW_DEFAULTS=on&\
+                            LINK_LOC=blasthome&DATABASE=%(db)s&\
+                            QUERY=>%(seq_id)s\n%(seq)s"""
+
+    webbrowser.open_new(search_url_tmpl.replace(' ', '') % {'ncbi_prog': ncbi_prog, 'db': ncbi_db, 'seq_id': split_name, 'seq': d.split_sequences[split_name]})
+
+
 @route('/data/collections')
 def collections():
     csd = d.collections.sources_dict
