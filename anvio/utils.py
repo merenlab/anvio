@@ -8,6 +8,7 @@ import time
 import json
 import copy
 import socket
+import webbrowser
 import subprocess
 import multiprocessing
 
@@ -639,3 +640,60 @@ def get_missing_programs_for_hmm_analysis():
         except ConfigError:
             missing_programs.append(p)
     return missing_programs
+
+
+def fire_up_ncbi_blast(sequence_id, sequence_content, program="blastn", database="nr"):
+    # post request through jQuery is derived from Scott Hillman's recipe:
+    # http://everydayscripting.blogspot.com/2009/09/python-jquery-open-browser-and-post.html
+    post_variables_dict = {
+        'PROGRAM': program,
+        'DATABASE': database,
+        'QUERY': '>%s\n%s' % (sequence_id, sequence_content),
+        'BLAST_PROGRAMS': 'megaBlast',
+        'PAGE_TYPE': 'BlastSearch',
+        'SHOW_DEFAULTS': 'on',
+        'SHOW_OVERVIEW': 'on',
+        'LINK_LOC': 'blasthome',
+        "FORMAT_NUM_ORG": "1",
+        "CONFIG_DESCR": "2,3,4,5,6,7,8",
+        "CLIENT": "web" ,
+        "SERVICE": "plain",
+        "CMD": "request",
+        "PAGE": "MegaBlast",
+        "MEGABLAST": "on" ,
+        "WWW_BLAST_TYPE": "newblast",
+        "DEFAULT_PROG": "megaBlast",
+        "SELECTED_PROG_TYPE": "megaBlast",
+        "SAVED_SEARCH": "true",
+        "NUM_DIFFS": "0",
+        "NUM_OPTS_DIFFS": "0",
+        "PAGE_TYPE": "BlastSearch",
+        "USER_DEFAULT_PROG_TYPE": "megaBlast",
+    }
+
+    jquery_path = os.path.join(os.path.dirname(anvio.__file__), 'data/interactive/lib/jquery/jquery.js')
+    input_field = '<input type="hidden" name="%s" value="%s" />'
+    temp_file_content = """
+    <html>
+    <head>
+    <script type="text/javascript" src="%s"></script>
+
+    <script>$(document).ready(function() {$("#form").submit(); });</script>
+    </head>
+
+    <body>
+      <form id='form' action='https://blast.ncbi.nlm.nih.gov/Blast.cgi' method='post' />
+        %s
+      </form>
+    </body>
+    </html>
+    """ % (jquery_path,
+           '\n'.join([input_field % (key, value) for key, value in post_variables_dict.items()]))
+
+    temp_file_path = filesnpaths.get_temp_file_path()
+    open(temp_file_path, "w").write(temp_file_content)
+    webbrowser.open_new_tab('file://' + temp_file_path)
+    time.sleep(3)
+    os.remove(temp_file_path)
+
+
