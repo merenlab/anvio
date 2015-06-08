@@ -5,6 +5,7 @@
 import os
 import sys
 import copy
+import random
 import argparse
 
 import anvio
@@ -31,7 +32,7 @@ __status__ = "Development"
 
 pp = terminal.pretty_print
 progress = terminal.Progress()
-run = terminal.Run(width = 50)
+run = terminal.Run(width = 60)
 
 
 class VariablePositions:
@@ -39,6 +40,7 @@ class VariablePositions:
         self.samples_of_interest = set([])
         self.min_ratio = 0
         self.min_occurrence = 1
+        self.num_positions_from_each_split = 2
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_file_path = None
@@ -74,6 +76,7 @@ class VariablePositions:
 
         self.min_ratio = float(args.min_ratio)
         self.min_occurrence = int(args.min_occurrence)
+        self.num_positions_from_each_split = int(args.num_positions_from_each_split)
         self.min_scatter = int(args.min_scatter)
         self.profile_db_path = args.profile_db
         self.annotation_db_path = args.annotation_db
@@ -162,62 +165,80 @@ class VariablePositions:
 
         self.progress.end()
 
-        self.run.info('Variable Positions', '%s positions in %s splits across %s samples'\
-                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids))))
-        self.run.info('Min n2/n1 ratio', args.min_ratio)
-
-        self.filter_variable_positions_table()
+        self.process_variable_positions_table()
 
         self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
 
         self.filter_based_on_scattering_factor()
 
+        self.filter_based_on_num_positions_from_each_split()
+
         if self.quince_mode: # will be very costly...
             self.recover_base_frequencies_for_all_samples() 
 
 
-    def filter_variable_positions_table(self):
-        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
+    def filter(self, filter_name, test_func):
+        self.progress.new('Filtering based on "%s"' % filter_name)
+        num_entries_before_filter = len(self.variable_positions_table)
 
+        entry_ids_to_remove, counter = set([]), 0
+
+        for entry_id in self.variable_positions_table:
+            if counter % 1000 == 0:
+                self.progress.update('identifying entries to remove :: %s' % pp(counter))
+
+            counter += 1
+
+            if test_func(self.variable_positions_table[entry_id]):
+                entry_ids_to_remove.add(entry_id)
+                continue
+
+        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
+        for entry_id in entry_ids_to_remove:
+            self.variable_positions_table.pop(entry_id)
+
+        num_entries_after_filter = len(self.variable_positions_table)
+
+        self.progress.end()
+
+        self.run.info('Remaining entries after "%s" filter' % filter_name,
+                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
+                                                          pp(num_entries_before_filter - num_entries_after_filter)),
+                      mc = 'green')
+
+        self.check_if_variable_table_is_empty()
+
+
+    def check_if_variable_table_is_empty(self):
+        if not len(self.variable_positions_table):
+            self.progress.end()
+            self.run.info_single('No variable positions left to work with. Quitting.', 'red', 1, 1)
+            sys.exit()
+
+
+    def process_variable_positions_table(self):
+        self.run.info('Variability table', '%s entries in %s splits across %s samples'\
+                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids))))
+
+        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
         if self.samples_of_interest:
             samples_missing_from_db = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
+
             if len(samples_missing_from_db):
                 raise ConfigError, 'One or more samples you are interested in seem to be missing from\
                                     the profile database: %s' % ', '.join(samples_missing_from_db)
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = self.samples_of_interest
+            self.filter('samples of interest', lambda x: x['sample_id'] not in self.samples_of_interest)
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
+            self.filter('splits of interest', lambda x: x['split_name'] not in self.splits_of_interest)
 
-        if self.min_occurrence > 1:
-            self.run.info('Min occurrence requested', self.min_occurrence)
-
-        self.progress.new('Filtering')
-        entry_ids_to_remove, counter = set([]), 0
-
-        if self.splits_of_interest or self.samples_of_interest or self.min_ratio:
-            for entry_id in self.variable_positions_table:
-                if counter % 1000 == 0:
-                    self.progress.update('identifying entries to remove :: %s' % pp(counter))
-
-                counter += 1
-
-                v = self.variable_positions_table[entry_id]
-                if self.splits_of_interest and v['split_name'] not in self.splits_of_interest:
-                    entry_ids_to_remove.add(entry_id)
-                    continue
-                if self.samples_of_interest and v['sample_id'] not in self.samples_of_interest:
-                    entry_ids_to_remove.add(entry_id)
-                    continue
-                if self.min_ratio and v['n2n1ratio'] < self.min_ratio:
-                    entry_ids_to_remove.add(entry_id)
-                    continue
-
-            self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
-            for entry_id in entry_ids_to_remove:
-                self.variable_positions_table.pop(entry_id)
+        if self.min_ratio:
+            self.run.info('Min n2/n1 ratio', self.min_ratio)
+            self.filter('n2/n1', lambda x: x['n2n1ratio'] < self.min_ratio)
 
         self.progress.update('setting unique identifiers to track split/position pairs across samples ...')
         for entry_id in self.variable_positions_table:
@@ -227,6 +248,9 @@ class VariablePositions:
         if self.min_occurrence == 1:
             self.progress.end()
             return
+
+        if self.min_occurrence > 1:
+            self.run.info('Min occurrence requested', self.min_occurrence)
 
         self.progress.update('counting occurrences of each position across samples ...')
         unique_position_id_occurrences = {}
@@ -244,17 +268,13 @@ class VariablePositions:
             if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
-        # just in case:
-        if len(entry_ids_to_remove) == len(self.variable_positions_table):
-            self.progress.end()
-            self.run.info_single('No variable positions left to work with. Quitting.', 'red', 1, 1)
-            sys.exit()
-
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
             self.variable_positions_table.pop(entry_id)
 
         self.progress.end()
+
+        self.check_if_variable_table_is_empty()
 
 
     def get_unique_pos_identification_number(self, unique_position_id):
@@ -307,6 +327,8 @@ class VariablePositions:
 
         self.run.info('Min scatter', self.min_scatter)
 
+        num_entries_before_filter = len(self.variable_positions_table)
+
         # we need the unique pos_id to entry id dict filled for this function:
         self.gen_unique_pos_identifier_to_entry_id_dict()
 
@@ -330,8 +352,63 @@ class VariablePositions:
         for entry_id in entry_ids_to_remove:
             self.variable_positions_table.pop(entry_id)
 
+        num_entries_after_filter = len(self.variable_positions_table)
+
         self.progress.end()
-        self.run.info('Num entries removed due to min scatter', pp(len(entry_ids_to_remove)))
+
+        self.run.info('Remaining entries after "minimum scatter" filter',
+                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
+                                                          pp(num_entries_before_filter - num_entries_after_filter)),
+                      mc = 'green')
+
+        self.check_if_variable_table_is_empty()
+
+
+    def filter_based_on_num_positions_from_each_split(self):
+        self.run.info('Num positions to keep from each split (-n)', self.num_positions_from_each_split)
+
+        num_entries_before_filter = len(self.variable_positions_table)
+
+        self.progress.new('Filtering based on -n')
+
+        self.progress.update('Generating splits and positions tuples ...')
+        splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in self.variable_positions_table.values()])
+        unique_positions_to_remove = set([])
+
+        self.progress.update('Generating positions in splits dictionary ...')
+        positions_in_splits = {}
+        for split_name, position in splits_and_positions:
+            if not positions_in_splits.has_key(split_name):
+                positions_in_splits[split_name] = set([])
+
+            positions_in_splits[split_name].add(position)
+
+        self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
+        for split_name in positions_in_splits:
+            if len(positions_in_splits[split_name]) > self.num_positions_from_each_split:
+                positions_to_keep = set(random.sample(positions_in_splits[split_name], self.num_positions_from_each_split))
+                for pos in (positions_in_splits[split_name] - positions_to_keep):
+                    unique_positions_to_remove.add(pos)
+
+        self.progress.update('Identifying entry ids to remove ...')
+        entry_ids_to_remove = set([entry_id for entry_id in self.variable_positions_table if self.variable_positions_table[entry_id]['unique_pos_identifier'] in unique_positions_to_remove])
+
+        self.progress.update('Removing %d positions ...' % len(unique_positions_to_remove))
+        for entry_id in entry_ids_to_remove:
+            self.variable_positions_table.pop(entry_id)
+
+        num_entries_after_filter = len(self.variable_positions_table)
+
+        self.progress.end()
+
+        self.run.info('Remaining entries after "-n" filter',
+                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
+                                                          pp(num_entries_before_filter - num_entries_after_filter)),
+                      mc = 'green')
+
+        self.check_if_variable_table_is_empty()
+
+
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -402,7 +479,8 @@ class VariablePositions:
         utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
         self.progress.end()
 
-        self.run.info('Num positions reported', pp(len(self.variable_positions_table)))
+        self.run.info('Num entries reported', pp(len(self.variable_positions_table)))
+        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
         self.run.info('Output File', args.output) 
 
 
