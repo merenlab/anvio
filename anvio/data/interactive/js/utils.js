@@ -301,7 +301,7 @@ function initializeDialogs() {
 function messagePopupShow(title, context)
 {
     $('<div> \
-        <textarea id="messagePopup_context" onclick="this.focus();this.select();" readonly="readonly" style="width: 400px; height: 300px">' + context + '</textarea> \
+        <div class="messagePopup_context" onclick="this.focus();this.select();" readonly="readonly">' + context + '</div> \
        </div>').dialog({
             resizable: false,
             collapseEnabled: false,

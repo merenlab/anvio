@@ -1,3 +1,28 @@
+.messagePopup_context {
+    word-wrap: break-word;
+    padding: 10px;
+    font-family: monospace;
+    width: 600px;
+    height: 400px;
+}
+
+td.tk {
+  padding: 3px 0px;
+  padding-right: 10px;
+  padding-left: 5px;
+}
+
+td.tv {
+  padding: 3px 0px;
+  padding-left: 10px;
+  border-left: 1px solid #EEE;
+}
+
+table{border-collapse:collapse;}
+
+div#tooltip_content tr:nth-child(even) {background: #DDD;}
+div#tooltip_content tr:nth-child(odd) {}
+
 .drag-icon {
     cursor:move;
 }
@@ -162,7 +187,7 @@ td select {
 #control_contextmenu {  
     border:1px solid #ccc;  
     background-color:#eee;  
-    width: 150px; 
+    width: 200px; 
 } 
  
 #control_contextmenu ul {  

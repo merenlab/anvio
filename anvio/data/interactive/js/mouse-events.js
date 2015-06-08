@@ -306,7 +306,7 @@ function mouseMoveHandler(event) {
     {
         if (i == layer_id)
         {
-            message += '<tr style="color:red;">' + tooltip_arr[i] + '</tr>';
+            message += '<tr style="background-color: rgb(232, 202, 207);">' + tooltip_arr[i] + '</tr>';
         }
         else
         {
@@ -330,7 +330,7 @@ function mouseMoveHandler(event) {
         }
     }
 
-    var tr_group = '<tr><td>Group</td><td><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + gcolor + '"></div>' + belongs + '</td></tr>'
+    var tr_group = '<tr><td class="tk">group</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + gcolor + '"></div>' + belongs + '</td></tr>'
 
     $('#tooltip_content').html('<table>' + message + tr_group + '</table>');
 }
@@ -357,13 +357,18 @@ function menu_callback(action) {
                 cache: false,
                 url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    messagePopupShow(contig_name, data);
+                    messagePopupShow(contig_name, '>' + contig_name + '\n' + data);
                 }
             });
             break;
 
+        case 'blastn_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastn/nr/' + contig_name,}); break;
+        case 'blastx_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastx/nr/' + contig_name,}); break;
+        case 'blastn_refseq_genomic': $.ajax({type: 'GET', url: '/search/ncbi/blastn/refseq_genomic/' + contig_name,}); break;
+        case 'blastx_refseq_protein': $.ajax({type: 'GET', url: '/search/ncbi/blastx/refseq_protein/' + contig_name,}); break;
+
         case 'metadata':
-            messagePopupShow(contig_name, strip(metadata_title[contig_name].join('\n')));
+            messagePopupShow(contig_name, '<table><tr>' + metadata_title[contig_name].join('</tr><tr>') + '</tr></table>');
             break;
         
         case 'inspect':
