@@ -12,7 +12,6 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
 import anvio.dictio as dictio
-import anvio.concoct as concoct
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -20,7 +19,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -35,11 +33,26 @@ __status__ = "Development"
 pp = terminal.pretty_print
 P = lambda x, y: os.path.join(x['output_dir'], y)
 
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+# Let's make sure we have CONCOCT available
+__CONCOCT_IS_AVAILABLE__ = False
+try:
+    import anvio.concoct as concoct
+    __CONCOCT_IS_AVAILABLE__ = True
+except ImportError, e:
+    run.warning("The CONCOCT module could not be imported :( Anvi'o will still be able to perform\
+                 the merging, however, the unsupervised binning results will not be available to\
+                 you in the resulting merged profile database. This is what the module was upset about:\
+                 '''%s''', in case you would like to fix this problem." % e)
+
 
 class MultipleRuns:
-    def __init__(self, args):
-        self.progress = terminal.Progress()
-        self.run = terminal.Run()
+    def __init__(self, args, run = run, progress = progress):
+        self.progress = progress
+        self.run = run 
 
         self.sample_id = args.sample_id
         self.merged_sample_ids = []
@@ -369,7 +382,7 @@ class MultipleRuns:
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
 
         # run CONCOCT, if otherwise is not requested:
-        if not self.skip_concoct_binning:
+        if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
             self.bin_contigs_concoct()
 
         self.run.quit()
@@ -456,6 +469,11 @@ class MultipleRuns:
 
 
     def bin_contigs_concoct(self):
+        if not __CONCOCT_IS_AVAILABLE__:
+            self.run.warning('The CONCOCT module is not available. Skipping the unsupervised binning\
+                              with CONCOCT.')
+            return
+
         class Args:
             pass
 
