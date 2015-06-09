@@ -66,7 +66,7 @@ INFO "Merging profiles ..."
 anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -a test-output/ANNOTATION.db
 
 INFO "Generating coverages and sequences files for splits (for external binning) ..."
-anvi-export-splits-and-coverages test-output/ANNOTATION.db test-output/204-MERGED/PROFILE.db
+anvi-export-splits-and-coverages -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db
 
 INFO "Cluster contigs in the newly generated coverages file ..."
 anvi-matrix-to-newick test-output/204-MERGED/s204_MERGED-COVs.txt
