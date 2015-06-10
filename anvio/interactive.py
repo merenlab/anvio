@@ -102,7 +102,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             self.p_meta['available_clusterings'] = self.clusterings.keys()
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
-        tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
+        tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'], format = 1)
 
         # self.split_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
