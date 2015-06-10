@@ -229,7 +229,16 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         if self.summary_index:
             run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % self.summary_index)
             self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
-        self.splits_summary_index = dictio.read_serialized_object(self.P('SUMMARY.cp'))
+
+        if os.path.exists(self.P('SUMMARY.cp')):
+            self.splits_summary_index = dictio.read_serialized_object(self.P('SUMMARY.cp'))
+        else:
+            self.splits_summary_index = None
+            run.warning("SUMMARY.cp is missing for your run. Anvi'o will continue working (well, at least\
+                         it will attempt to do it), but things may behave badly with the absence of\
+                         SUMMARY.cp (first and foremost, you will not be able to inspect individual\
+                         contigs through any of the interactive interfaces). Please investigate it\
+                         if you were not expecting this.")
 
         # set title
         if self.title:

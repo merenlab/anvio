@@ -64,6 +64,7 @@ class MultipleRuns:
         self.output_directory = args.output_dir
         self.skip_hierarchical_clustering = args.skip_hierarchical_clustering
         self.skip_concoct_binning = args.skip_concoct_binning
+        self.skip_merging_summaries = args.skip_merging_summaries
 
         self.annotation_db_path = args.annotation_db_path
         self.profile_db_path = None
@@ -362,11 +363,12 @@ class MultipleRuns:
         self.merge_variable_positions_tables()
         self.progress.end()
 
-        self.progress.new('Generating merged summary')
-        summary_dir, profile_summary_index = self.merge_split_summaries()
-        self.progress.end()
-        self.run.info('profile_summary_dir', summary_dir)
-        self.run.info('profile_summary_index', profile_summary_index)
+        if not self.skip_merging_summaries:
+            self.progress.new('Generating merged summary')
+            summary_dir, profile_summary_index = self.merge_split_summaries()
+            self.progress.end()
+            self.run.info('profile_summary_dir', summary_dir)
+            self.run.info('profile_summary_index', profile_summary_index)
 
         # critical part:
         self.merge_metadata_files()

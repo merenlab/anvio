@@ -45,6 +45,10 @@ if __name__ == '__main__':
                                 for merged runs. CONCOCT results are stored in the profile database, which then\
                                 can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
                                 etc). Use this flag if you would like to skip this step")
+    parser.add_argument('--skip-merging-summaries', action = 'store_true', default = False,
+                        help = "If this flag is used, merging will not attempt to merge summaries. Summary files\
+                                contain the coverage summary of each contig and generted during the profiling step.\
+                                Do not use this flag if you are not sure that it is absolutely necessary.")
     parser.add_argument('--debug', action='store_true', help = 'Print out debug info.')
     parser.add_argument('-O', '--overwrite-output-destinations', action='store_true', default = False,
                         help = 'Overwrite if the output files and/or directories exist.')

@@ -185,6 +185,10 @@ def charts(split_name):
              'next_contig_name': None,
              'genes': []}
 
+    if not d.splits_summary_index:
+        run.info_single("Contig details were requested, but no splits summary index is found.", mc = 'red')
+        return None
+
     if not d.splits_summary_index.has_key(split_name):
         return data
 
