@@ -3,7 +3,8 @@
 
 import gzip
 import cPickle
-import textwrap
+
+from anvio.errors import DictIOError
 
 
 __author__ = "A. Murat Eren"
@@ -13,20 +14,6 @@ __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
-
-
-class DictIOError(Exception):
-    def __init__(self, e = None):
-        Exception.__init__(self)
-        while 1:
-            if e.find("  ") > -1:
-                e = e.replace("  ", " ")
-            else:
-                break
-        self.e = e
-        return
-    def __str__(self):
-        return 'DictIO Error: %s' % textwrap.fill(self.e, 80)
 
 
 def write_serialized_object(obj, output_file_path):
