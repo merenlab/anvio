@@ -35,8 +35,7 @@ setup(
 
     author = "anvi'o Authors",
     author_email = "a.murat.eren@gmail.com",
-    description = "An interactive analysis and visualization platform for 'omics data",
-    longer_description="Please see https://meren.github.io/projects/anvio/ for more information.",
+    description = "An interactive analysis and visualization platform for 'omics data. See https://merenlab.org/projects/anvio for more information",
     license = "GPLv3+",
     keywords = "metagenomics microbiology shotgun genomics MBL pipeline sequencing bam",
     url = "https://meren.github.io/projects/anvio/",
