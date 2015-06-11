@@ -222,8 +222,14 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         if self.tree:
             entry_id = os.path.basename(self.tree).split('.')[0]
-            run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
-            self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+            if not self.p_meta['clusterings']:
+                self.p_meta['default_clustering'] = entry_id
+                self.p_meta['available_clusterings'] = [entry_id]
+                self.p_meta['clusterings'] = {entry_id: {'newick': open(os.path.abspath(self.tree)).read()}}
+                run.info('Additional Tree', "Splits will be organized based on '%s'." % entry_id)
+            else:
+                self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+                run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
 
         # is summary being overwritten?
         if self.summary_index:
