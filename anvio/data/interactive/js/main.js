@@ -855,7 +855,7 @@ function getContigNames(gid) {
 
 function showContigNames(gid) {
     names = getContigNames(gid)
-    messagePopupShow('Contig Names', names.join('\n'));
+    messagePopupShow('Contig Names', names.join('<br />'));
 }
 
 function newGroup(id, groupState) {
