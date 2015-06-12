@@ -654,6 +654,7 @@ def fire_up_ncbi_blast(sequence_id, sequence_content, program="blastn", database
         'SHOW_DEFAULTS': 'on',
         'SHOW_OVERVIEW': 'on',
         'LINK_LOC': 'blasthome',
+        'MAX_NUM_SEQ': '100',
         "FORMAT_NUM_ORG": "1",
         "CONFIG_DESCR": "2,3,4,5,6,7,8",
         "CLIENT": "web" ,
