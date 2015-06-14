@@ -224,6 +224,7 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
+        self.gene_coverages = {}
         self.clusterings = {}
         self.views = {}
 
@@ -260,6 +261,9 @@ class ProfileSuperclass(object):
             self.p_meta['available_clusterings'] = None
             self.p_meta['default_clustering'] = None
             self.clusterings = None
+
+        self.progress.update('Loading gene coverages ...')
+        self.gene_coverages = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
 
         self.progress.end()
 
