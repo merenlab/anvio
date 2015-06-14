@@ -277,7 +277,14 @@ class ProfileSuperclass(object):
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
+        # get coverage_table_data temporarily to learn split names. it sucks to do it this way, but before init_split_sequences()
+        # is called, there is no other way really. and calling init_split_sequences() before this is also not feasible. so, here
+        # we are.
+        coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column = True)
+        self.split_names_not_binned = set(coverage_table_data.keys())
+
         for bin_id in collection:
+            self.split_names_not_binned -= set(collection[bin_id])
             self.collection_profile[bin_id] = {}
 
         for table_name in table_names:
@@ -298,6 +305,21 @@ class ProfileSuperclass(object):
                     averages[sample_name] = numpy.mean(averages[sample_name])
 
                 self.collection_profile[bin_id][table_name] = averages
+
+
+        # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
+        self.bin_percent_recruitment_per_sample = {}
+        for sample in self.p_meta['samples']:
+            percents = {}
+            all_coverages_in_sample = sum([d[sample] for d in coverage_table_data.values()])
+
+            for bin_id in collection:
+                bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
+                percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
+
+            splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_not_binned])
+            percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
+            self.bin_percent_recruitment_per_sample[sample] = percents
 
         profile_db.disconnect()
 
