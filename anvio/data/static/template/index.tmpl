@@ -143,6 +143,45 @@
         </div>
     </section>
 
+    <!-- BINS PERCENT RECRUITMENT PANEL -->
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="bins_percent_recruitment_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Bins Percent Recruitment</a></h1>
+                </div>
+
+                <div id="collapse-bins-percent-recruitment" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <p style="color: #AAAAAA; padding: 0px 20px;">This panel shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
+                        <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
+                        <table class="table table-striped sortable" id="tblGrid_bin">
+                            <thead id="tblHead_bin">
+                                <tr>
+                                    <th>Sample</th>
+                                    {% for bin in bin_percent_abundance_items %}
+                                    <th class="text-center">{{ bin }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sample in meta|lookup:"profile"|lookup:"samples" %}
+                                <tr>
+                                    <td style="vertical-align: middle;">{{ sample }}</td>
+                                    {% for bin in bin_percent_abundance_items %}
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
 
     <!-- BINS PANEL -->
     <section>

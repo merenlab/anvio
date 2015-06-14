@@ -46,6 +46,7 @@ class Summarizer(DatabasesMetaclass):
         self.profile_db_path = None
         self.annotation_db_path = None
         self.output_directory = None
+        self.split_names_per_bin = None
 
         self.run = r
         self.progress = p
@@ -155,8 +156,16 @@ class Summarizer(DatabasesMetaclass):
                 d[bin_id] = self.collection_profile[bin_id][table_name]
 
             output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
-            utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + self.p_meta['samples'], file_obj = output_file_obj)
+            utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.p_meta['samples']), file_obj = output_file_obj)
 
+        # store percent abundance of each bin
+        self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
+        self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
+        output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
+        utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
+                                               None,
+                                               headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
+                                               file_obj = output_file_obj)
 
         # final additions
         self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
