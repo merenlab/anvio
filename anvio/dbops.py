@@ -114,6 +114,10 @@ class AnnotationSuperclass(object):
             else:
                 self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
 
+        for split_name in self.splits_basic_info:
+            if not self.split_to_genes_in_splits_ids.has_key(split_name):
+                self.split_to_genes_in_splits_ids[split_name] = set([])
+
         self.progress.end()
 
         annotation_db.disconnect()
@@ -224,7 +228,7 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
-        self.gene_coverages = {}
+        self.gene_coverages_dict = None
         self.clusterings = {}
         self.views = {}
 
@@ -262,8 +266,27 @@ class ProfileSuperclass(object):
             self.p_meta['default_clustering'] = None
             self.clusterings = None
 
-        self.progress.update('Loading gene coverages ...')
-        self.gene_coverages = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
+        self.progress.end()
+
+        profile_db.disconnect()
+
+
+    def init_gene_coverages_dict(self):
+        self.progress.new('Loading gene coverages')
+
+        profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
+
+        self.progress.update('Reading gene coverages table ...')
+        gene_coverages_table = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
+
+        self.gene_coverages_dict = {}
+        for gene_coverage_entry in gene_coverages_table.values():
+            prot_id = gene_coverage_entry['prot']
+
+            if not self.gene_coverages_dict.has_key(prot_id):
+                self.gene_coverages_dict[prot_id] = {}
+
+            self.gene_coverages_dict[prot_id][gene_coverage_entry['sample_id']] = gene_coverage_entry['mean_coverage']
 
         self.progress.end()
 
@@ -358,6 +381,7 @@ class DatabasesMetaclass(ProfileSuperclass, AnnotationSuperclass, object):
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
+        self.init_gene_coverages_dict()
 
 
 
