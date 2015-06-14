@@ -100,6 +100,7 @@ class Summarizer(DatabasesMetaclass):
                                 'collection_id': self.collection_id,
                                 'total_nts_in_collection': 0,
                                 'num_contigs_in_collection': 0,
+                                'anvio_version': __version__, 
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
                                 'percent_annotation_nts_described_by_collection': 0.0,
