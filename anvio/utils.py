@@ -207,7 +207,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
 
     f.write('%s\n' % '\t'.join(headers))
 
-    for k in d.keys():
+    for k in sorted(d.keys()):
         line = [str(k)]
         for header in headers[1:]:
             try:
