@@ -253,6 +253,8 @@ class Bin:
 
         self.store_profile_data()
 
+        self.store_gene_coverages_matrix()
+
         self.progress.end()
 
         return self.bin_info_dict
@@ -315,6 +317,38 @@ class Bin:
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
             utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers = ['bin'] + self.summary.p_meta['samples'], file_obj = output_file_obj)
+
+
+    def store_gene_coverages_matrix(self):
+        self.progress.update('Storing gene coverages ...')
+
+        info_dict = {}
+        genes_dict = {}
+
+        gene_entry_ids_in_bin = set([])
+        for split_name in self.split_ids:
+            gene_entry_ids_in_bin.update(self.summary.split_to_genes_in_splits_ids[split_name])
+
+        info_dict['num_genes_found'] = len(gene_entry_ids_in_bin)
+
+        headers = ['function', 'contig', 'start', 'stop', 'direction']
+        for gene_entry_id in gene_entry_ids_in_bin:
+            prot_id = self.summary.genes_in_splits[gene_entry_id]['prot']
+            genes_dict[prot_id] = {}
+
+            # first fill in sample independent information;
+            for header in headers:
+                genes_dict[prot_id][header] = self.summary.genes_in_contigs_dict[prot_id][header]
+
+            # then fill in distribution across samples:
+            for sample_name in self.summary.p_meta['samples']:
+                genes_dict[prot_id][sample_name] = self.summary.gene_coverages_dict[prot_id][sample_name]
+
+
+        output_file_obj = self.get_output_file_handle('functions.txt')
+        utils.store_dict_as_TAB_delimited_file(genes_dict, None, headers = ['prot'] + headers + self.summary.p_meta['samples'], file_obj = output_file_obj)
+
+        self.bin_info_dict['genes'] = info_dict
 
 
     def store_contigs_fasta(self):

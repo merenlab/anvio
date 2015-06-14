@@ -16,17 +16,9 @@
 
     <!-- Custom CSS -->
     <link href=".html/css/anvio.css" rel="stylesheet">
-
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-    <![endif]-->
 </head>
 
 <body>
-
     <!-- Navigation -->
     <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
         <div class="container">
@@ -148,7 +140,7 @@
         <div class="container">
             <div class="panel panel-info" id="bins_percent_recruitment_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Bins Percent Recruitment</a></h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
                 </div>
 
                 <div id="collapse-bins-percent-recruitment" class="panel-collapse collapse">
@@ -182,13 +174,12 @@
     </section>
 
 
-
     <!-- BINS PANEL -->
     <section>
         <div class="container">
             <div class="panel panel-info" id="bins_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Bins Summary ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins" class="panel-collapse collapse">
@@ -364,7 +355,7 @@
         <div class="container">
             <div class="panel panel-info" id="bins_across_samples_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Bins Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins-across-samples" class="panel-collapse collapse">
@@ -430,8 +421,49 @@
     </section>
 
 
-    <div style="margin-bottom:200px"></div>
+    {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
+    <!-- GENES PANEL -->
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="functions_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#functions_panel" href="#collapse-functions">Functions</a></h1>
+                </div>
 
+                <div id="collapse-functions" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <table class="table table-striped sortable" id="tblGrid_bin">
+                            <thead id="tblHead_bin">
+                                <tr>
+                                    <th data-defaultsort='disabled' class="text-center"></th>
+                                    <th>Bin</th>
+                                    <th class="text-center">Total Size</th>
+                                    <th class="text-center">Num Genes Identified</th>
+                                    <th data-defaultsort='disabled' class="text-center">Functions Table</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bin in meta|lookup:"bins" %}
+                                <tr>
+                                    <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                    <td style="vertical-align: middle;">{{ bin }}</td>
+                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}</td>
+                                    <td class="text-center" style="vertical-align: middle;"><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"functions" }}">🔗  Link</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    {% endif %}
+
+    <div style="margin-bottom:200px"></div>
 
     <!-- jQuery -->
     <script src=".html/js/jquery.js"></script>
