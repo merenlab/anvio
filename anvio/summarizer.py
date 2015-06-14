@@ -238,38 +238,34 @@ class Bin:
 
 
     def create(self):
-        self.progress.new('[Collection "%s"] Creating the output directory' % self.bin_id)
+        self.progress.new('[Processing "%s"]' % self.bin_id)
+
         self.create_bin_dir()
 
-        self.progress.new('[Collection "%s"] Creating the FASTA file' % self.bin_id)
         self.store_contigs_fasta()
 
-        self.progress.new('[Collection "%s"] Accessing completeness scores' % self.bin_id)
         self.access_completeness_scores()
 
-        self.progress.new('[Collection "%s"] Computing basic stats' % self.bin_id)
         self.compute_basic_stats()
 
         if self.summary.a_meta['genes_annotation_source']:
-            self.progress.new('[Collection "%s"] Filling in taxonomy info' % self.bin_id)
             self.set_taxon_calls()
 
-        self.progress.new('[Collection "%s"] Storing profile data' % self.bin_id)
         self.store_profile_data()
+
+        self.progress.end()
 
         return self.bin_info_dict
 
 
     def create_bin_dir(self):
-        self.progress.update('...')
+        self.progress.update('Creating the output directory ...')
 
         if not self.output_directory:
             self.progress.end()
-            raise ConfigError, 'You caled Bin.create before setting an output directory. Anvio says "nope, thanks".'
+            raise ConfigError, 'You caled Bin.create() before setting an output directory. Anvio says "nope, thanks".'
 
         filesnpaths.gen_output_directory(self.output_directory)
-
-        self.progress.end()
 
 
     def get_output_file_handle(self, prefix = 'output.txt', overwrite = False):
@@ -291,7 +287,7 @@ class Bin:
 
 
     def access_completeness_scores(self):
-        self.progress.update('...')
+        self.progress.update('Accessing completeness scores ...')
 
         completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
 
@@ -312,15 +308,13 @@ class Bin:
             self.bin_info_dict[k] /= num_sources
             self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
 
-        self.progress.end()
-
 
     def store_profile_data(self):
+        self.progress.update('Storing profile data ...')
+
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
             utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers = ['bin'] + self.summary.p_meta['samples'], file_obj = output_file_obj)
-
-        self.progress.end()
 
 
     def store_contigs_fasta(self):
@@ -337,6 +331,8 @@ class Bin:
            `_partial_X_Y` to the FASTA id, X and Y being the start and stop positions.
         """
 
+        self.progress.update('Creating the FASTA file ...')
+
         # store original split names:
         self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_ids))
 
@@ -350,7 +346,7 @@ class Bin:
         contigs_represented = {}
 
         # go through all splits in this bin, and populate `contigs_represented`
-        self.progress.update('Identifying contigs involved ...')
+        self.progress.update('Creating the FASTA file :: Identifying contigs involved ...')
         for split_id in self.split_ids:
             s = self.summary.splits_basic_info[split_id]
             if s['parent'] in contigs_represented:
@@ -366,11 +362,11 @@ class Bin:
             # this is critical: `sequential_blocks` is a list of one ore more lists,
             # each describes splits that follow each other to represent a coherent
             # chunk of the parent sequence:
-            self.progress.update('Identifying sequential blocks ...')
+            self.progress.update('Creating the FASTA file :: Identifying sequential blocks ...')
             sequential_blocks = SequentialBlocks(splits_order).process()
 
             for sequential_block in sequential_blocks:
-                self.progress.update('Identifying the portion of contig represented ...')
+                self.progress.update('Creating the FASTA file :: Identifying the portion of contig represented ...')
                 first_split = contigs_represented[contig_id][sequential_block[0]]
                 last_split = contigs_represented[contig_id][sequential_block[-1]]
 
@@ -390,13 +386,13 @@ class Bin:
                     appendix = '_partial_%d_%d' % (contig_sequence_start_in_splits, contig_sequence_end_in_splits)
 
                 sequence = ''
-                self.progress.update('Reconstructing contig sequence from splits ...')
+                self.progress.update('Creating the FASTA file :: Reconstructing contig sequence from splits ...')
                 for split_order in sequential_block:
                     sequence += self.summary.split_sequences[contigs_represented[contig_id][split_order]]
 
                 fasta_id = contig_id + appendix
 
-                self.progress.update('Writing contig sequence into file ...')
+                self.progress.update('Creating the FASTA file :: Writing contig sequence into file ...')
                 fasta_file.write('>%s\n' % fasta_id)
                 fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens = False))
 
@@ -411,11 +407,9 @@ class Bin:
         self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
         self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
 
-        self.progress.end()
-
 
     def set_taxon_calls(self):
-        self.progress.update('...')
+        self.progress.update('Filling in taxonomy info ...')
 
         taxon_calls_counter = Counter()
         for split_id in self.split_ids:
@@ -439,19 +433,15 @@ class Bin:
         for tc in taxon_calls:
             tc[1] = tc[1] * 100.0 / num_calls
 
-        self.progress.end()
-
 
     def compute_basic_stats(self):
-        self.progress.update('...')
+        self.progress.update('Computing basic stats ...')
 
         self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
         self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
 
         self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'])
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
-
-        self.progress.end()
 
 
 class SequentialBlocks:
