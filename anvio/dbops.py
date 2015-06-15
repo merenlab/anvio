@@ -167,7 +167,7 @@ class AnnotationSuperclass(object):
 
 
     def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
-        if not self.annotation_db_path:
+        if not self.annotation_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
         self.progress.new('Loading split sequences')
@@ -175,14 +175,10 @@ class AnnotationSuperclass(object):
 
         annotation_db = AnnotationDatabase(self.annotation_db_path)
 
-        if len(self.non_singlecopy_gene_hmm_sources):
-            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
-            non_singlecopy_gene_hmm_info_dict = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
-            for source in self.singlecopy_gene_hmm_sources:
-                non_singlecopy_gene_hmm_info_dict.pop(source)
-        else:
-            self.progress.end()
-            return 
+        non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        non_singlecopy_gene_hmm_info_dict = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        for source in self.singlecopy_gene_hmm_sources:
+            non_singlecopy_gene_hmm_info_dict.pop(source)
 
         if split_names_of_interest:
             non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
