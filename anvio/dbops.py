@@ -103,6 +103,9 @@ class AnnotationSuperclass(object):
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        for hmm_source in self.hmm_sources_info:
+            self.hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in self.hmm_sources_info[hmm_source]['genes'].split(',')])
+
         self.singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
         self.non_singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
 
@@ -190,7 +193,7 @@ class AnnotationSuperclass(object):
         if return_each_gene_as_a_layer:
             for source in self.non_singlecopy_gene_hmm_sources:
                 search_type = self.hmm_sources_info[source]['search_type']
-                for gene_name in [g.strip() for g in non_singlecopy_gene_hmm_info_dict[source]['genes'].split(',')]:
+                for gene_name in non_singlecopy_gene_hmm_info_dict[source]['genes']:
                     search_term = 'hmmx_%s_%s' % (search_type, gene_name)
                     sources_tmpl[search_term] = 0
                     self.hmm_searches_header.append((search_term, source),)
