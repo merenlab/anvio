@@ -366,9 +366,12 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                 # (5) adding additional data
                 json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
 
-                # (6) hmm stuff
+                # (6) adding hmm stuff
                 if self.hmm_searches_dict:
-                    json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in self.hmm_searches_header])
+                    if self.split_hmm_layers:
+                        json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in self.hmm_searches_header])
+                    else:
+                        json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if self.hmm_searches_dict.has_key(split_name) else 0 for header in self.hmm_searches_header])
 
                 # (7) send it along!
                 json_object.append(json_entry)

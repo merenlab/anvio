@@ -204,16 +204,16 @@ class AnnotationSuperclass(object):
                 self.hmm_searches_dict[e['split']][search_term] = 1
         else:
             for source in self.non_singlecopy_gene_hmm_sources:
-                search_type = self.hmm_sources_info[source]['search_type']
-                sources_tmpl[search_type] = {}
+                search_type = 'hmms_%s' % self.hmm_sources_info[source]['search_type']
+                sources_tmpl[search_type] = []
                 self.hmm_searches_header.append(search_type)
 
             for e in non_singlecopy_gene_hmm_results_dict.values():
                 if not e['split'] in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
-                search_type = self.hmm_sources_info[e['source']]['search_type']
-                self.hmm_searches_dict[e['split']][search_type] = e['gene_name']
+                search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
+                self.hmm_searches_dict[e['split']][search_type].append(e['gene_name'])
 
         self.progress.end()
 

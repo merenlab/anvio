@@ -704,10 +704,17 @@ function buildLayersTable(order, settings)
                 var margin = '15';
             }
 
-            /* Some ad-hoc manipulation of special hmmx_ layers */ 
+            /* Some ad-hoc manipulation of special hmmx_ split hmm layers */ 
             if (layer_name.substring(0, 5) == "hmmx_"){
                 var height = '30';
                 var norm   = 'none';
+                var color  = '#882222';
+            }
+
+            /* Some ad-hoc manipulation of special hmms_ single hmm layers */ 
+            if (layer_name.substring(0, 5) == "hmms_"){
+                var height = '150';
+                var norm   = 'sqrt';
                 var color  = '#882222';
             }
 
