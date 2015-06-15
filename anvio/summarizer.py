@@ -47,6 +47,7 @@ class Summarizer(DatabasesMetaclass):
         self.annotation_db_path = None
         self.output_directory = None
         self.split_names_per_bin = None
+        self.completeness_data_available = False
 
         self.run = r
         self.progress = p
@@ -58,6 +59,8 @@ class Summarizer(DatabasesMetaclass):
         self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         self.completeness = completeness.Completeness(self.annotation_db_path)
+        if len(self.completeness.sources):
+            self.completeness_data_available = True
 
         self.collection_id = None
 
@@ -103,6 +106,7 @@ class Summarizer(DatabasesMetaclass):
                                 'anvio_version': __version__, 
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
+                                'completeness_data_available': self.completeness_data_available,
                                 'percent_annotation_nts_described_by_collection': 0.0,
                                 'percent_profile_nts_described_by_collection': 0.0,
                                 'percent_annotation_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
@@ -173,15 +177,18 @@ class Summarizer(DatabasesMetaclass):
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
-        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
-
         if self.debug:
             import json
             print json.dumps(self.summary, sort_keys=True, indent=4)
 
+        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
+
 
     def get_bins_ordered_by_completeness_and_size(self):
-        return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
+        if self.completeness_data_available:
+            return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
+        else:
+            return sorted(self.summary['collection'].keys())
 
 
     def get_output_file_handle(self, sub_directory = None, prefix = 'output.txt', overwrite = False):
@@ -244,7 +251,8 @@ class Bin:
 
         self.store_contigs_fasta()
 
-        self.access_completeness_scores()
+        if self.summary.completeness_data_available:
+            self.access_completeness_scores()
 
         self.compute_basic_stats()
 
