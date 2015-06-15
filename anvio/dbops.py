@@ -193,7 +193,7 @@ class AnnotationSuperclass(object):
                 for gene_name in [g.strip() for g in non_singlecopy_gene_hmm_info_dict[source]['genes'].split(',')]:
                     search_term = 'hmmx_%s_%s' % (search_type, gene_name)
                     sources_tmpl[search_term] = 0
-                    self.hmm_searches_header.append(search_term)
+                    self.hmm_searches_header.append((search_term, source),)
 
             # fill all splits with 0s, so this is treated as a numeric column:
             for split_name in split_names_of_interest if split_names_of_interest else self.splits_basic_info:
@@ -206,7 +206,7 @@ class AnnotationSuperclass(object):
             for source in self.non_singlecopy_gene_hmm_sources:
                 search_type = 'hmms_%s' % self.hmm_sources_info[source]['search_type']
                 sources_tmpl[search_type] = []
-                self.hmm_searches_header.append(search_type)
+                self.hmm_searches_header.append((search_type, source),)
 
             for e in non_singlecopy_gene_hmm_results_dict.values():
                 if not e['split'] in self.hmm_searches_dict:
