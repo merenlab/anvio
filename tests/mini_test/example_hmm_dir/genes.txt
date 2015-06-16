@@ -1,0 +1,3 @@
+gene	accession	hmmsource
+ABC_tran	PF00005	http://pfam.xfam.org/family/PF00005
+MFS_1	PF07690.12	http://pfam.xfam.org/family/PF07690
