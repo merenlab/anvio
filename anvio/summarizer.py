@@ -48,6 +48,7 @@ class Summarizer(DatabasesMetaclass):
         self.output_directory = None
         self.split_names_per_bin = None
         self.completeness_data_available = False
+        self.non_single_copy_gene_hmm_data_available = False
 
         self.run = r
         self.progress = p
@@ -57,10 +58,6 @@ class Summarizer(DatabasesMetaclass):
         self.collections = ccollections.Collections()
         self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
         self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
-
-        self.completeness = completeness.Completeness(self.annotation_db_path)
-        if len(self.completeness.sources):
-            self.completeness_data_available = True
 
         self.collection_id = None
 
@@ -96,6 +93,16 @@ class Summarizer(DatabasesMetaclass):
         # init profile data for colletion.
         self.init_collection_profile(collection_dict)
 
+        # load completeness information if available
+        self.completeness = completeness.Completeness(self.annotation_db_path)
+        if len(self.completeness.sources):
+            self.completeness_data_available = True
+
+        # load HMM sources for non-single-copy genes if available
+        if self.non_singlecopy_gene_hmm_sources:
+            self.init_non_singlecopy_gene_hmm_sources()
+            self.non_single_copy_gene_hmm_data_available = True
+
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
                                 'collection': collection_dict.keys(),
@@ -107,6 +114,7 @@ class Summarizer(DatabasesMetaclass):
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
                                 'completeness_data_available': self.completeness_data_available,
+                                'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available, 
                                 'percent_annotation_nts_described_by_collection': 0.0,
                                 'percent_profile_nts_described_by_collection': 0.0,
                                 'percent_annotation_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
@@ -134,14 +142,19 @@ class Summarizer(DatabasesMetaclass):
                                                     ],
                                         }
 
-        self.summary['max_shown_samples'] = 15
-        self.summary['slice_samples_tmpl'] = '0:%d' % self.summary['max_shown_samples']
-        self.summary['num_not_shown_samples'] = len(self.p_meta['samples']) - self.summary['max_shown_samples']
+        self.summary['max_shown_header_items'] = 10
+        self.summary['slice_header_items_tmpl'] = '0:%d' % self.summary['max_shown_header_items']
+        self.summary['num_not_shown_samples'] = len(self.p_meta['samples']) - self.summary['max_shown_header_items']
+        self.summary['num_not_shown_hmm_items'] = dict([(hmm_search_type[5:], len(self.hmm_sources_info[hmm_search_source]['genes']) - self.summary['max_shown_header_items']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         self.summary['files'] = {}
         self.summary['collection'] = {}
-        self.summary['collection_profile'] = self.collection_profile
+        self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from ProfileSuperclass!
         self.summary['collection_profile_items'] = self.collection_profile.values()[0].keys()
+
+        # add hmm items for each seach type:
+        if self.non_single_copy_gene_hmm_data_available:
+            self.summary['meta']['hmm_items'] = dict([(hmm_search_type[5:], self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         # summarize bins:
         for bin_id in collection_dict: 
@@ -254,6 +267,9 @@ class Bin:
         if self.summary.completeness_data_available:
             self.access_completeness_scores()
 
+        if self.summary.non_single_copy_gene_hmm_data_available:
+            self.summarize_hmm_hits()
+
         self.compute_basic_stats()
 
         if self.summary.a_meta['genes_annotation_source']:
@@ -325,6 +341,45 @@ class Bin:
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
             utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers = ['bin'] + self.summary.p_meta['samples'], file_obj = output_file_obj)
+
+
+    def summarize_hmm_hits(self):
+        """Make sense of everything there is to make sense of regarding hmm hits.
+        
+           Unfortunately this is *VERY* complicated. Here we try to make sense of any
+           HMM collection with respect to nubmer of hits that happens to be in splits
+           associated with this bin, and split - hit associations. This function fills
+           all the information into self.bin_mm_profile_dict, and the process function
+           up above later makes sense of all to generate files and matrices, as well as
+           dictionaries to diplay part of this information in the interface.
+        """
+
+        info_dict = {}
+
+        # lets limit our interest space into splits that are in our bin and have hmm hits from the get go:
+        split_ids_with_hmm_hits = [split_id for split_id in self.split_ids if self.summary.hmm_searches_dict.has_key(split_id)]
+
+        for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header:
+            fixed_hmm_search_type = hmm_search_type[5:] # dbops adds hmmx_ or hmm_s for hmm types. it is a very long story
+                                                        # why this is the case, but yeah, essentially it is a by product of
+                                                        # a shitty design. thank you.
+            hmm_items = self.summary.hmm_sources_info[hmm_search_source]['genes']
+            info_dict[fixed_hmm_search_type] = dict([(hmm_item, 0) for hmm_item in hmm_items])
+
+            hits_in_splits = []
+
+            for split_id in split_ids_with_hmm_hits:
+                for hmm_item in self.summary.hmm_searches_dict[split_id][hmm_search_type]:
+                    info_dict[fixed_hmm_search_type][hmm_item] += 1
+                    hits_in_splits.append((split_id, hmm_item),)
+
+            output_file_obj = self.get_output_file_handle('%s-hmm-hits.txt' % fixed_hmm_search_type)
+            output_file_obj.write('contigs\thmm\n')
+            for item in hits_in_splits:
+                output_file_obj.write('%s\n' % '\t'.join(item))
+            output_file_obj.close()
+
+        self.bin_info_dict['hmms'] = info_dict
 
 
     def store_gene_coverages_matrix(self):
