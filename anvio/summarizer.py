@@ -47,12 +47,17 @@ class Summarizer(DatabasesMetaclass):
         self.output_directory = None
         self.split_names_per_bin = None
         self.completeness_data_available = False
+        self.gene_coverages_data_available = False
         self.non_single_copy_gene_hmm_data_available = False
 
         self.run = r
         self.progress = p
 
         DatabasesMetaclass.__init__(self, args, self.run, self.progress)
+
+        # databases initiated, let's make sure we have gene covereges data avaialable.
+        if self.gene_coverages_dict:
+            self.gene_coverages_data_available = True
 
         self.collections = ccollections.Collections()
         self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
@@ -112,6 +117,7 @@ class Summarizer(DatabasesMetaclass):
                                 'anvio_version': __version__, 
                                 'profile': self.p_meta,
                                 'annotation': self.a_meta,
+                                'gene_coverages_data_available': self.gene_coverages_data_available,
                                 'completeness_data_available': self.completeness_data_available,
                                 'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available, 
                                 'percent_annotation_nts_described_by_collection': 0.0,
@@ -306,9 +312,10 @@ class Bin:
         if self.summary.a_meta['genes_annotation_source']:
             self.set_taxon_calls()
 
-        self.store_profile_data()
+        if self.summary.gene_coverages_dict:
+            self.store_gene_coverages_matrix()
 
-        self.store_gene_coverages_matrix()
+        self.store_profile_data()
 
         self.progress.end()
 

@@ -271,12 +271,27 @@ class ProfileSuperclass(object):
 
 
     def init_gene_coverages_dict(self):
-        self.progress.new('Loading gene coverages')
+        if not self.a_meta['genes_annotation_source']:
+            # genes were not identified/annotated
+            return
 
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
         self.progress.update('Reading gene coverages table ...')
         gene_coverages_table = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
+        profile_db.disconnect()
+
+        if not len(gene_coverages_table):
+            self.progress.end()
+            self.run.warning('Something came up, please read this carefuly: your annotation database does\
+                              contain information for open reading frames in your contigs. however, the\
+                              gene coverages table in the profile database is empty. This happens when you\
+                              annotate your annotation database with gene/function calls *after* you have\
+                              profiled your samples. If you are OK with this situation, you can simply\
+                              ignore this message. If you need to access to this information, you must\
+                              re-profile your samples (and merge them) using your most update annotation\
+                              database :/ Sorry!')
+            return
 
         self.gene_coverages_dict = {}
         for gene_coverage_entry in gene_coverages_table.values():
@@ -289,7 +304,6 @@ class ProfileSuperclass(object):
 
         self.progress.end()
 
-        profile_db.disconnect()
 
 
     def init_collection_profile(self, collection):
