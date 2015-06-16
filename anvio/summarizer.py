@@ -445,9 +445,14 @@ class Bin:
             for sample_name in self.summary.p_meta['samples']:
                 genes_dict[prot_id][sample_name] = self.summary.gene_coverages_dict[prot_id][sample_name]
 
+            # finally add the sequence:
+            contig = self.summary.genes_in_contigs_dict[prot_id]['contig']
+            start = self.summary.genes_in_contigs_dict[prot_id]['start']
+            stop = self.summary.genes_in_contigs_dict[prot_id]['stop']
+            genes_dict[prot_id]['sequence'] = self.summary.contig_sequences[contig]['sequence'][start:stop]
 
         output_file_obj = self.get_output_file_handle('functions.txt')
-        utils.store_dict_as_TAB_delimited_file(genes_dict, None, headers = ['prot'] + headers + self.summary.p_meta['samples'], file_obj = output_file_obj)
+        utils.store_dict_as_TAB_delimited_file(genes_dict, None, headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence'], file_obj = output_file_obj)
 
         self.bin_info_dict['genes'] = info_dict
 

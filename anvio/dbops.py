@@ -57,6 +57,7 @@ class AnnotationSuperclass(object):
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.contigs_basic_info = {}
         self.split_sequences = {}
+        self.contig_sequences = {}
         self.hmm_sources_info = {}
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
@@ -127,20 +128,30 @@ class AnnotationSuperclass(object):
         run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, anvio.__annotation__version__))
 
 
-    def init_split_sequences(self, min_contig_length = 0):
-        self.progress.new('Loading split sequences')
-
-        annotation_db = AnnotationDatabase(self.annotation_db_path)
+    def init_contig_sequences(self, min_contig_length = 0):
+        self.progress.new('Loading contig sequences')
 
         self.progress.update('Identifying contigs shorter than M')
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
         self.progress.update('Reading contig sequences')
-        contigs_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        annotation_db = AnnotationDatabase(self.annotation_db_path)
+        self.contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        annotation_db.disconnect()
 
         self.progress.update('Filtering out shorter contigs')
         for contig_name in contigs_shorter_than_M:
-            contigs_sequences.pop(contig_name)
+            self.contig_sequences.pop(contig_name)
+
+        self.progress.end()
+
+        return contigs_shorter_than_M
+
+
+    def init_split_sequences(self, min_contig_length = 0):
+        contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
+
+        self.progress.new('Computing split sequences from contigs')
 
         self.progress.update('Discarding split names coming from short contigs')
         split_names_to_discard = set([])
@@ -160,13 +171,11 @@ class AnnotationSuperclass(object):
                 continue
 
             if self.contigs_basic_info[split['parent']]['num_splits'] == 1:
-                self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence']
+                self.split_sequences[split_name] = self.contig_sequences[split['parent']]['sequence']
             else:
-                self.split_sequences[split_name] = contigs_sequences[split['parent']]['sequence'][split['start']:split['end']]
+                self.split_sequences[split_name] = self.contig_sequences[split['parent']]['sequence'][split['start']:split['end']]
 
         self.progress.end()
-
-        annotation_db.disconnect()
 
 
     def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
