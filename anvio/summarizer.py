@@ -1,6 +1,5 @@
 # coding: utf-8
-"""Summarizes information stored in a profile database using an annotation database for
-   a given list of splits."""
+"""Summarizes information for a collection."""
 
 import os
 import sys
@@ -167,6 +166,11 @@ class Summarizer(DatabasesMetaclass):
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
 
+        # bins are computed, add some relevant meta info:
+        self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
+        self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
+        self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
+
         # save merged matrices for bins x samples
         for table_name in self.collection_profile.values()[0].keys():
             d = {}
@@ -175,6 +179,27 @@ class Summarizer(DatabasesMetaclass):
 
             output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
             utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.p_meta['samples']), file_obj = output_file_obj)
+
+        # merge and store matrices for hmm hits
+        if self.non_single_copy_gene_hmm_data_available:
+            for search_type in self.summary['meta']['hmm_items']:
+                # this is to keep numbers per hmm item:
+                d = {}
+
+                for bin_id in self.summary['meta']['bins']:
+                    d[bin_id] = self.summary['collection'][bin_id]['hmms'][search_type]
+
+                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % search_type, within='hmms')
+                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][search_type]), file_obj = output_file_obj)
+
+            # this is to keep number of hmm hits per bin:
+            n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
+            for search_type in self.summary['meta']['hmm_items']:
+                for bin_id in self.summary['meta']['bins']:
+                    n[bin_id][search_type] =  sum(self.summary['collection'][bin_id]['hmms'][search_type].values())
+
+            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'hmm_hit_totals.txt')
+            utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
 
         # store percent abundance of each bin
         self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
@@ -185,10 +210,6 @@ class Summarizer(DatabasesMetaclass):
                                                headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
                                                file_obj = output_file_obj)
 
-        # final additions
-        self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
-        self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
-        self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
         if self.debug:
             import json
@@ -204,7 +225,7 @@ class Summarizer(DatabasesMetaclass):
             return sorted(self.summary['collection'].keys())
 
 
-    def get_output_file_handle(self, sub_directory = None, prefix = 'output.txt', overwrite = False):
+    def get_output_file_handle(self, sub_directory = None, prefix = 'output.txt', overwrite = False, within = None):
         if sub_directory:
             output_directory = os.path.join(self.output_directory, sub_directory)
         else:
@@ -213,12 +234,22 @@ class Summarizer(DatabasesMetaclass):
         if not os.path.exists(output_directory):
             filesnpaths.gen_output_directory(output_directory)
 
-        file_path = os.path.join(output_directory, '%s' % (prefix))
+        if within:
+            file_path = os.path.join(output_directory, '%s_%s' % (within, prefix))
+        else:
+            file_path = os.path.join(output_directory, '%s' % (prefix))
+
         if os.path.exists(file_path) and not overwrite:
             raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
 
         key = prefix.split('.')[0].replace('-', '_')
-        self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
+
+        if within:
+            if not self.summary['files'].has_key(within):
+                self.summary['files'][within] = {}
+            self.summary['files'][within][key] = file_path[len(self.output_directory):].strip('/')
+        else:
+            self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
 
         return open(file_path, 'w')
 

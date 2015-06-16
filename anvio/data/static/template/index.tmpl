@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="Anvi'o">
+    <base target="_blank">
 
     <title>Anvi'o: {{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</title>
 
@@ -147,26 +148,32 @@
                     <div class="panel-body">
                         <p style="color: #AAAAAA; padding: 0px 20px;">This panel shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
                         <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
-                        <table class="table table-striped sortable" id="tblGrid_bin">
-                            <thead id="tblHead_bin">
-                                <tr>
-                                    <th>Sample</th>
-                                    {% for bin in bin_percent_abundance_items %}
-                                    <th class="text-center">{{ bin }}</th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for sample in meta|lookup:"profile"|lookup:"samples" %}
-                                <tr>
-                                    <td style="vertical-align: middle;">{{ sample }}</td>
-                                    {% for bin in bin_percent_abundance_items %}
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+
+
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                    <thead id="tblHead_bin">
+                                        <tr>
+                                            <th>Sample</th>
+                                            {% for bin in bin_percent_abundance_items %}
+                                            <th class="text-center">{{ bin }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sample in meta|lookup:"profile"|lookup:"samples" %}
+                                        <tr>
+                                            <td style="vertical-align: middle;">{{ sample }}</td>
+                                            {% for bin in bin_percent_abundance_items %}
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -184,53 +191,59 @@
 
                 <div id="collapse-bins" class="panel-collapse collapse">
                     <div class="panel-body">
-                        <table class="table table-striped sortable" id="tblGrid_bin">
-                            <thead id="tblHead_bin">
-                                <tr>
-                                    <th data-defaultsort='disabled' class="text-center"></th>
-                                    <th>Bin</th>
+                        <p style="color: #AAAAAA; padding: 20px;">Summary of general characteristics of each bin.</p>
 
-                                    {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
-                                    <th class="text-center">Taxonomy</th>
-                                    {% else %}
-                                    <th class="text-center" data-defaultsort='disabled'>Taxonomy</th>
-                                    {% endif %}
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                    <thead id="tblHead_bin">
+                                        <tr>
+                                            <th data-defaultsort='disabled' class="text-center"></th>
+                                            <th>Bin</th>
 
-                                    <th class="text-center">Total Size</th>
-                                    <th class="text-center">Num Contigs</th>
-                                    <th class="text-center">N50</th>
-                                    <th class="text-center">GC Content</th>
-                                    <th class="text-center">Compl.</th>
-                                    <th class="text-center">Contam.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for bin in meta|lookup:"bins" %}
-                                <tr>
-                                    <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
-                                    <td style="vertical-align: middle;">{{ bin }}</td>
+                                            {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
+                                            <th class="text-center">Taxonomy</th>
+                                            {% else %}
+                                            <th class="text-center" data-defaultsort='disabled'>Taxonomy</th>
+                                            {% endif %}
 
-                                    {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
-                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
-                                    {% else %}
-                                    <td class="text-center">N/A</td>
-                                    {% endif %}
+                                            <th class="text-center">Total Size</th>
+                                            <th class="text-center">Num Contigs</th>
+                                            <th class="text-center">N50</th>
+                                            <th class="text-center">GC Content</th>
+                                            <th class="text-center">Compl.</th>
+                                            <th class="text-center">Contam.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bin in meta|lookup:"bins" %}
+                                        <tr>
+                                            <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                            <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
-                                    {% if meta|lookup:"completeness_data_available" %}
-                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}%</td>
-                                    {% else %}
-                                    <td class="text-center" style="vertical-align: middle;">N\A</td>
-                                    <td class="text-center" style="vertical-align: middle;">N\A</td>
-                                    {% endif %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                            {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
+                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
+                                            {% else %}
+                                            <td class="text-center">N/A</td>
+                                            {% endif %}
+
+                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
+                                            {% if meta|lookup:"completeness_data_available" %}
+                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}%</td>
+                                            {% else %}
+                                            <td class="text-center" style="vertical-align: middle;">N\A</td>
+                                            <td class="text-center" style="vertical-align: middle;">N\A</td>
+                                            {% endif %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -360,112 +373,123 @@
 
     <!-- BINS ACROSS SAMPLES PANEL -->
     <section>
-        <div class="container">
-            <div class="panel panel-info" id="bins_across_samples_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1>
-                </div>
+    <div class="container">
+        <div class="panel panel-info" id="bins_across_samples_panel">
+            <div class="panel-heading">
+                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1>
+            </div>
 
-                <div id="collapse-bins-across-samples" class="panel-collapse collapse">
+            <div id="collapse-bins-across-samples" class="panel-collapse collapse">
 
-                    <div role="tabpanel" style="margin: 10px;">
-                         <!-- Nav tabs -->
-                         <ul class="nav nav-tabs" role="tablist">
-                         {% for item in collection_profile_items %}
-                           <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ item }}" aria-controls="{{ item }}" role="tab" data-toggle="tab">{{ item|humanize }}</a></li>
-                         {% endfor %}
-                         </ul>
-                    
-                         <!-- Tab panes -->
-                         <div class="tab-content">
-                         {% for item in collection_profile_items %}
-                           <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ item }}">
+                <div role="tabpanel" style="margin: 10px;">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                    {% for item in collection_profile_items %}
+                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ item }}" aria-controls="{{ item }}" role="tab" data-toggle="tab">{{ item|humanize }}</a></li>
+                    {% endfor %}
+                    </ul>
+                
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                    {% for item in collection_profile_items %}
+                        <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ item }}">
 
-                                <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
-                                <table class="table table-striped sortable" style="margin: 10px;">
-                                    <thead id="tblHead_bin">
-                                       <tr>
-                                           <th data-defaultsort='disabled' class="text-center"></th>
-                                           <th>Bin</th>
-                                            {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_header_items_tmpl %}
-                                            {% if sample|length > 5 %}
-                                            <th class="text-center">{{ sample|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ sample }}">...</a></th>
-                                            {% else %}
-                                            <th class="text-center">{{ sample }}</th>
-                                            {% endif %} 
-                                            {% endfor %}
+                            <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
 
-                                            {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_header_items %}
-                                            <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></th>
-                                            {% endif %} 
-                                       </tr>
-                                    </thead>
-                                    <tbody>
-                                       {% for bin in meta|lookup:"bins" %}
-                                       <tr>
-                                            <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
-                                            <td style="vertical-align: middle;">{{ bin }}</td>
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    <table class="table table-striped sortable" style="margin: 10px;">
+                                        <thead id="tblHead_bin">
+                                           <tr>
+                                               <th data-defaultsort='disabled' class="text-center"></th>
+                                               <th>Bin</th>
+                                                {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_header_items_tmpl %}
+                                                {% if sample|length > 5 %}
+                                                <th class="text-center">{{ sample|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ sample }}">...</a></th>
+                                                {% else %}
+                                                <th class="text-center">{{ sample }}</th>
+                                                {% endif %} 
+                                                {% endfor %}
 
-                                            {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_header_items_tmpl %}
-                                                <td class="text-center" data-value="{{ collection_profile|lookup:bin|lookup:item|lookup:sample }}">{{ collection_profile|lookup:bin|lookup:item|lookup:sample|humanize_n }}</td>
-                                            {% endfor %}
+                                                {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_header_items %}
+                                                <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></th>
+                                                {% endif %} 
+                                           </tr>
+                                        </thead>
+                                        <tbody>
+                                           {% for bin in meta|lookup:"bins" %}
+                                           <tr>
+                                                <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                                <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                            {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_header_items %}
-                                                <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></td>
-                                            {% endif %} 
-                                       </tr>
-                                       {% endfor %}
-                                    </tbody>
-                                </table>
+                                                {% for sample in meta|lookup:"profile"|lookup:"samples"|slice:slice_header_items_tmpl %}
+                                                    <td class="text-center" data-value="{{ collection_profile|lookup:bin|lookup:item|lookup:sample }}">{{ collection_profile|lookup:bin|lookup:item|lookup:sample|humanize_n }}</td>
+                                                {% endfor %}
 
-                           </div>
-                         {% endfor %}
-                         </div>
-                    
+                                                {% if meta|lookup:"profile"|lookup:"samples"|length > max_shown_header_items %}
+                                                    <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></td>
+                                                {% endif %} 
+                                           </tr>
+                                           {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </section>
 
 
     {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
     <!-- GENES PANEL -->
     <section>
-        <div class="container">
-            <div class="panel panel-info" id="functions_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#functions_panel" href="#collapse-functions">Functions</a></h1>
-                </div>
+    <div class="container">
+        <div class="panel panel-info" id="functions_panel">
+            <div class="panel-heading">
+                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#functions_panel" href="#collapse-functions">Functions</a></h1>
+            </div>
 
-                <div id="collapse-functions" class="panel-collapse collapse">
-                    <div class="panel-body">
-                        <table class="table table-striped sortable" id="tblGrid_bin">
-                            <thead id="tblHead_bin">
-                                <tr>
-                                    <th data-defaultsort='disabled' class="text-center"></th>
-                                    <th>Bin</th>
-                                    <th class="text-center">Total Size</th>
-                                    <th class="text-center">Num Genes Identified</th>
-                                    <th data-defaultsort='disabled' class="text-center">Functions Table</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for bin in meta|lookup:"bins" %}
-                                <tr>
-                                    <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
-                                    <td style="vertical-align: middle;">{{ bin }}</td>
-                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
-                                    <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
-                                    <td class="text-center" style="vertical-align: middle;"><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"functions" }}">🔗  Link</a></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+            <div id="collapse-functions" class="panel-collapse collapse">
+                <div class="panel-body">
+
+                    <p style="color: #AAAAAA; padding: 20px;">An overview of functions based on the information found in the annotation database.</a></p>
+
+                    <div class="panel panel-default">
+                        <div class="panel-body">
+                            <table class="table table-striped sortable" id="tblGrid_bin">
+                                <thead id="tblHead_bin">
+                                    <tr>
+                                        <th data-defaultsort='disabled' class="text-center"></th>
+                                        <th>Bin</th>
+                                        <th class="text-center">Total Size</th>
+                                        <th class="text-center">Num Genes Identified</th>
+                                        <th data-defaultsort='disabled' class="text-center">Functions Table</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for bin in meta|lookup:"bins" %}
+                                    <tr>
+                                        <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                        <td style="vertical-align: middle;">{{ bin }}</td>
+                                        <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                        <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
+                                        <td class="text-center" style="vertical-align: middle;"><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"functions" }}">🔗  Link</a></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+     </div>
     </section>
     {% else %}
     <section>
@@ -490,7 +514,7 @@
                 <div id="collapse-hmms" class="panel-collapse collapse">
 
                     <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 20px;">This panel shows you the result of non-single copy gene hits in your bins and contigs. Here is a table that shows the total number of HMM hits in each bin for each HMM search type:</p>
+                        <p style="color: #AAAAAA; padding: 20px;">This panel shows you the result of non-single copy gene hits in your bins and contigs. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
 
 
                         <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER SEARCH TYPE: -->
@@ -522,61 +546,64 @@
                             </div>
                         </div>
 
-                        <p style="color: #AAAAAA; padding: 20px;">The following section will contain a TABs For each search type, where the distribution of individual HMMs in your bins will be shown.</p>
+                        <p style="color: #AAAAAA; padding: 20px;">The distribution of each HMM item found in your HMM collections is shown below. Different search types will be presented in their cognate tabs.</p>
 
                         <div role="tabpanel" style="margin: 10px;">
-                             <!-- Nav tabs -->
-                             <ul class="nav nav-tabs" role="tablist">
-                             {% for search_type in meta|lookup:'hmm_items' %}
-                               <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ search_type }}" aria-controls="{{ search_type }}" role="tab" data-toggle="tab">{{ search_type|humanize }}</a></li>
-                             {% endfor %}
-                             </ul>
+                            <!-- Nav tabs -->
+                            <ul class="nav nav-tabs" role="tablist">
+                            {% for search_type in meta|lookup:'hmm_items' %}
+                              <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ search_type }}" aria-controls="{{ search_type }}" role="tab" data-toggle="tab">{{ search_type|humanize }}</a></li>
+                            {% endfor %}
+                            </ul>
                         
-                             <!-- TABS -->
-                             <div class="tab-content">
-                             {% for search_type in meta|lookup:'hmm_items' %}
-                               <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ search_type }}">
+                            <!-- TABS -->
+                            <div class="tab-content">
+                            {% for search_type in meta|lookup:'hmm_items' %}
+                            <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ search_type }}">
 
-                                    <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for HMM hits in contigs for {{ search_type }}: ... later ...</p>
+                                    <p style="color: #AAAAAA; padding: 20px;">HMM hits in bins for {{ search_type }} (<a href="{{ files|lookup:'hmms'|lookup:search_type }}">from {{ files|lookup:'hmms'|lookup:search_type }}</a>):</p>
 
                                     <!-- INDIVIDUAL TABLES PER HMM ITEM and SEARCH TYPE -->
-                                    <table class="table table-striped sortable" style="margin: 10px;">
-                                        <thead id="tblHead_bin">
-                                           <tr>
-                                               <th data-defaultsort='disabled' class="text-center"></th>
-                                               <th>Bin</th>
-                                                {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
-                                                {% if hmm_item|length > 5 %}
-                                                <th class="text-center">{{ hmm_item|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ hmm_item }}">...</a></th>
-                                                {% else %}
-                                                <th class="text-center">{{ hmm_item }}</th>
-                                                {% endif %} 
-                                                {% endfor %}
+                                    <div class="panel panel-default">
+                                        <div class="panel-body">
+                                        <table class="table table-striped sortable" style="margin: 10px;">
+                                            <thead id="tblHead_bin">
+                                               <tr>
+                                                   <th data-defaultsort='disabled' class="text-center"></th>
+                                                   <th>Bin</th>
+                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
+                                                    {% if hmm_item|length > 5 %}
+                                                    <th class="text-center">{{ hmm_item|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ hmm_item }}">...</a></th>
+                                                    {% else %}
+                                                    <th class="text-center">{{ hmm_item }}</th>
+                                                    {% endif %} 
+                                                    {% endfor %}
 
-                                                {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
-                                                <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></th>
-                                                {% endif %} 
-                                           </tr>
-                                        </thead>
-                                        <tbody>
-                                           {% for bin in meta|lookup:"bins" %}
-                                           <tr>
-                                                <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
-                                                <td style="vertical-align: middle;">{{ bin }}</td>
+                                                    {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
+                                                    <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></th>
+                                                    {% endif %} 
+                                               </tr>
+                                            </thead>
+                                            <tbody>
+                                               {% for bin in meta|lookup:"bins" %}
+                                               <tr>
+                                                    <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
+                                                    <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                                {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
-                                                    <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item|pretty }}</td>
-                                                {% endfor %}
+                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
+                                                        <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item|pretty }}</td>
+                                                    {% endfor %}
 
-                                                {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
-                                                    <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></td>
-                                                {% endif %} 
-                                           </tr>
-                                           {% endfor %}
-                                        </tbody>
-                                    </table>
-
-                               </div>
+                                                    {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
+                                                        <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></td>
+                                                    {% endif %} 
+                                               </tr>
+                                               {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                             {% endfor %}
                             </div>
                         </div>
