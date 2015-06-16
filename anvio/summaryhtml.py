@@ -92,6 +92,9 @@ def lookup(d, index):
 def humanize(s):
     return s.replace('_', ' ')
 
+@register.filter(name='sumvals')
+def sumvals(d):
+    return sum(d.values())
 
 @register.filter(name='humanize_n')
 def humanize_n(n):
