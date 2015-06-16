@@ -87,7 +87,6 @@ def lookup(d, index):
         return d[index]
     return ''
 
-
 @register.filter(name='humanize')
 def humanize(s):
     return s.replace('_', ' ')
