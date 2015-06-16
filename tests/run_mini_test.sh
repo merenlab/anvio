@@ -44,6 +44,9 @@ anvi-populate-genes-table test-output/ANNOTATION.db -p default_matrix -i test-ou
 INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
 anvi-populate-search-table test-output/ANNOTATION.db
 
+INFO "Populating search tables in the latest annotation database using a mock HMM collection from an external directory ..."
+anvi-populate-search-table test-output/ANNOTATION.db -H example_hmm_dir
+
 INFO "Populating collections tables using mock clustering results for CONCOCT ..."
 anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
 
@@ -94,4 +97,4 @@ anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MER
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-anvi-interactive -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt
+anvi-interactive -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt --split-hmm-layers
