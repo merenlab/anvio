@@ -12,19 +12,19 @@ var named_layers = {
         'pretty_name': 'Number of genes',
 	},
 	'avg_gene_length': {
-		'height': 80,
+		'height': 0,
 		'color': '#414141',
 		'norm': 'sqrt',
 		'pretty_name': 'Avg. gene length',
 	},
 	'ratio_coding': {
-		'height': 80,
+		'height': 0,
 		'color': '#414141',
 		'norm': 'none',
 		'pretty_name': 'Ratio coding region',
 	},
 	'ratio_hypothetical': {
-		'height': 80,
+		'height': 0,
 		'color': '#072c59',
 		'norm': 'none',
 		'pretty_name': 'Ratio hypothetical',
@@ -36,7 +36,7 @@ var named_layers = {
 		'pretty_name': 'Ratio w/ taxonomy',
 	},
 	'tax_accuracy': {
-		'height': 80,
+		'height': 0,
 		'color': '#40012e',
 		'norm': 'none',
 		'pretty_name': 'Accuracy of taxonomy',
@@ -55,32 +55,49 @@ var named_layers = {
 	},
 
 	'normalized_coverage': {
-		'height': 120,
+		'height': 0,
 		'color': '#414141',
 		'norm': 'log',
 		'pretty_name': 'Normalized coverage',
 	},
 	'std_coverage': {
-		'height': 60,
+		'height': 80,
 		'color': '#414141',
 		'norm': 'log',
 		'pretty_name': 'Coverage STD',
 	},
 	'portion_covered': {
-		'height': 60,
+		'height': 0,
 		'color': '#616161',
 		'norm': 'none',
 		'pretty_name': 'Percent covered',
 	},
 	'abundance': {
-		'height': 60,
+		'height': 0,
 		'color': '#818181',
 		'norm': 'none',
 		'pretty_name': 'Abundance',
 	},
-
-	'variability': {
-		'height': 90,
+	'mean_coverage': {
+		'height': 300,
+		'color': '#141414',
+		'norm': 'log',
+		'pretty_name': 'Mean coverage',
+	},
+	'max_normalized_ratio': {
+		'height': 0,
+		'color': '#141414',
+		'norm': 'log',
+		'pretty_name': 'Max-normalized ratio',
+	},
+    'relative_abundance': {
+		'height': 0,
+		'color': '#141414',
+		'norm': 'log',
+		'pretty_name': 'Relative abundance',
+	},
+    'variability': {
+		'height': 180,
 		'color': '#4a000f',
 		'norm': 'none',
 		'pretty_name': 'Variablity',
