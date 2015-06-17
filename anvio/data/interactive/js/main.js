@@ -21,7 +21,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
-var VERSION = '0.1.1';
+var VERSION = '0.2.0';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -169,23 +169,82 @@ $(document).ready(function() {
 
             if (hasState) {
                 if (state.hasOwnProperty('layer-order')) {
-                    layer_order = state['layer-order'];
+                    layer_order = [];
+                    for (var i = 0; i < state['layer-order'].length; i++)
+                    {
+                        // remove non-exists layers.
+                        var layer_id = getLayerId(state['layer-order'][i]);
+
+                        if (layer_id != -1)
+                        {
+                            layer_order.push(layer_id);
+                        }
+                    }
+
+                    // add layers that not exist in state and exist in metadata
+                    for (var i=1; i < parameter_count; i++)
+                    {
+                        if ($.inArray(i, layer_order) === -1)
+                        {
+                            layer_order.push(i);
+                        }
+                    }
+
                 } else {
                     layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
                 }
 
-                if (state.hasOwnProperty('views'))
-                    views = state['views'];
+                if (state.hasOwnProperty('views')) {
+                    views = {};
+                    for (var view_key in state['views'])
+                    {
+                        views[view_key] = {};
+                        for (var key in state['views'][view_key])
+                        {
+                            var layer_id = getLayerId(key);
+                            if (layer_id != -1)
+                            {
+                                views[view_key][layer_id] = state['views'][view_key][key];
+                            }
+                        }
+                    }
+                }
 
-                if (state.hasOwnProperty('layers'))
-                    layers = state['layers'];
+                if (state.hasOwnProperty('layers')) {
+                    layers = {};
+                    for (var key in state['layers'])
+                    {
+                        var layer_id = getLayerId(key);
+                        if (layer_id != -1)
+                        {
+                            layers[layer_id] = state['layers'][key];
+                        }
+                    }
+                }
 
+                if (state.hasOwnProperty('categorical_data_colors')) {
+                    categorical_data_colors = {};
+                    for (var key in state['categorical_data_colors'])
+                    {
+                        var layer_id = getLayerId(key);
+                        if (layer_id != -1)
+                        {
+                            categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
+                        }
+                    }
+                }
 
-                if (state.hasOwnProperty('categorical_data_colors'))
-                    categorical_data_colors = state['categorical_data_colors'];
-
-                if (state.hasOwnProperty('stack_bar_colors'))
-                    stack_bar_colors = state['stack_bar_colors'];
+                if (state.hasOwnProperty('stack_bar_colors')) {
+                    stack_bar_colors = {};
+                    for (var key in state['stack_bar_colors'])
+                    {
+                        var layer_id = getLayerId(key);
+                        if (layer_id != -1)
+                        {
+                            stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
+                        }
+                    }
+                }
 
                 if (state.hasOwnProperty('tree-type'))
                     $('#tree_type').val(state['tree-type']);
@@ -780,8 +839,26 @@ function buildLayersTable(order, settings)
 //---------------------------------------------------------
 //  ui callbacks
 //---------------------------------------------------------
+function getLayerName(layer_id)
+{
+    return metadata[0][layer_id];
+}
 
-function serializeSettings() {
+function getLayerId(layer_name) 
+{
+    for (var i=0; i < parameter_count; i++)
+    {
+        if (layer_name == metadata[0][i])
+            return i;
+    }
+    return -1;
+}
+
+function serializeSettings(use_layer_names) {
+
+    if (typeof use_layer_names === 'undefined')
+        use_layer_names = false;
+
     var state = {};
     state['version'] = VERSION;
     state['group-counter'] = group_counter;
@@ -801,19 +878,62 @@ function serializeSettings() {
     // sync views object and layers table
     syncViews();
 
-    state['views'] = views;
-    state['layer-order'] = layer_order;
-    state['layers'] = layers;
+    if (use_layer_names)
+    {
+        // save state file with layer name instead of id.
 
-    state['categorical_data_colors'] = categorical_data_colors;
-    state['stack_bar_colors'] = stack_bar_colors;
+        state['layer-order'] = [];
+        for (var i=0; i < layer_order.length; i++)
+        {
+            state['layer-order'].push(getLayerName(layer_order[i]));
+        }
+
+        state['categorical_data_colors'] = {};
+        for (var key in categorical_data_colors)
+        {
+            state['categorical_data_colors'][getLayerName(key)] = categorical_data_colors[key];
+        }
+
+        state['stack_bar_colors'] = {};
+        for (var key in stack_bar_colors)
+        {
+            state['stack_bar_colors'][getLayerName(key)] = stack_bar_colors[key];
+        }
+
+        state['layers'] = {};
+        for (var key in layers)
+        {
+            state['layers'][getLayerName(key)] = layers[key];
+        }
+
+        state['views'] = {};
+        for (var view_key in views)
+        {
+            state['views'][view_key] = {};
+            for (var key in views[view_key])
+            {
+                state['views'][view_key][getLayerName(key)] = views[view_key][key];
+            }
+        }
+
+
+    }
+    else
+    {
+        state['views'] = views;
+        state['layer-order'] = layer_order;
+        state['layers'] = layers;
+
+        state['categorical_data_colors'] = categorical_data_colors;
+        state['stack_bar_colors'] = stack_bar_colors;
+    }
 
     return state;
 }
 
 function saveCurrentState() {
     $.post("/save_state", {
-        state: JSON.stringify(serializeSettings(), null, 4),
+        state: JSON.stringify(serializeSettings(true), null, 4),
     });
 }
 
