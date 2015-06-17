@@ -157,7 +157,7 @@ class BAMProfiler:
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
-        self.run.info('profile_db', self.profile_db_path)
+        self.run.info('profile_db', self.profile_db_path, display_only = True)
         self.run.info('annotation_db', True if self.annotation_db_path else False)
         self.run.info('annotation_hash', self.annotation_hash)
         self.run.info('cmd_line', utils.get_cmd_line())
@@ -384,7 +384,7 @@ class BAMProfiler:
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
         self.run.info('input_bam', self.input_file_path)
-        self.run.info('output_dir', self.output_directory)
+        self.run.info('output_dir', self.output_directory, display_only = True)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
