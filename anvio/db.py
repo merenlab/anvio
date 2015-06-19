@@ -161,14 +161,15 @@ class DB:
 
         columns_to_return = range(0, len(table_structure))
 
+        if omit_parent_column:
+            if '__parent__' in table_structure:
+                columns_to_return.remove(table_structure.index('__parent__'))
+                table_structure.remove('__parent__')
+
         if columns_of_interest:
             for col in table_structure[1:]:
                 if col not in columns_of_interest:
                     columns_to_return.remove(table_structure.index(col))
-
-        if omit_parent_column:
-            if '__parent__' in table_structure:
-                columns_to_return.remove(table_structure.index('__parent__'))
 
         if len(columns_to_return) == 1:
             raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
