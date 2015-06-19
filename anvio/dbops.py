@@ -319,18 +319,21 @@ class ProfileSuperclass(object):
     def init_collection_profile(self, collection):
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
-        # table names we want to learn about depends on the profile type:
-        if self.p_meta['merged']:
-            table_names = [table_name for table_name in t.metadata_table_structure[1:-1]]
-        else:
-            table_names = ['metadata']
+        table_names = [table_name for table_name in t.metadata_table_structure[1:-1]]
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
+
+        # anonymous function to convert single profile table dicts compatible with merged ones (#155):
+        SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in d[s].values()])) for s in d])
 
         # get coverage_table_data temporarily to learn split names. it sucks to do it this way, but before init_split_sequences()
         # is called, there is no other way really. and calling init_split_sequences() before this is also not feasible. so, here
         # we are.
-        coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column = True)
+        if self.p_meta['merged']:
+            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column = True)
+        else:
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('metadata_splits', columns_of_interest = "mean_coverage", omit_parent_column = True))
+
         self.split_names_not_binned = set(coverage_table_data.keys())
 
         for bin_id in collection:
@@ -338,7 +341,10 @@ class ProfileSuperclass(object):
             self.collection_profile[bin_id] = {}
 
         for table_name in table_names:
-            table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column = True)
+            if self.p_meta['merged']:
+                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column = True)
+            else:
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('metadata_splits', columns_of_interest = table_name, omit_parent_column = True))
 
             for bin_id in collection:
                 # populate averages per bin
