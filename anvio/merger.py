@@ -267,6 +267,11 @@ class MultipleRuns:
 
         smallest_sample_size = min(num_reads_mapped_per_sample.values())
 
+        if smallest_sample_size == 0:
+            raise ConfigError, "It seems at least one of the samples you are trying to merge has zero hits. Here is a\
+                                list of all samples and number of mapped reads they have: %s." \
+                                    % ', '.join(['"%s": %s' % (s, pp(num_reads_mapped_per_sample[s])) for s in num_reads_mapped_per_sample])
+
         for sample_id in num_reads_mapped_per_sample:
             self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id]
 
