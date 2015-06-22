@@ -146,7 +146,7 @@ class Run:
             self.info_file_obj = open(info_file_path, 'w')
 
 
-    def info(self, key, value, quiet = False, display_only = False, lc = 'blue', mc = 'yellow'):
+    def info(self, key, value, quiet = False, display_only = False, lc = 'cyan', mc = 'yellow'):
         if not display_only:
             self.info_dict[key] = value
 
