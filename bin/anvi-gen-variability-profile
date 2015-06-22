@@ -8,6 +8,8 @@ import copy
 import random
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
@@ -236,21 +238,25 @@ class VariablePositions:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
             self.filter('splits of interest', lambda x: x['split_name'] not in self.splits_of_interest)
 
+        # let's report the number of positions reported in each sample before filtering any futrher:
+        num_positions_each_sample = Counter([v['sample_id'] for v in self.variable_positions_table.values()])
+        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
+
         if self.min_ratio:
             self.run.info('Min n2/n1 ratio', self.min_ratio)
             self.filter('n2/n1', lambda x: x['n2n1ratio'] < self.min_ratio)
 
-        self.progress.update('setting unique identifiers to track split/position pairs across samples ...')
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             v['unique_position_id'] = '_'.join([v['split_name'], str(v['pos'])])
 
         if self.min_occurrence == 1:
-            self.progress.end()
             return
 
         if self.min_occurrence > 1:
             self.run.info('Min occurrence requested', self.min_occurrence)
+
+        self.progress.new('Processing positions further')
 
         self.progress.update('counting occurrences of each position across samples ...')
         unique_position_id_occurrences = {}
@@ -385,7 +391,7 @@ class VariablePositions:
 
         self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
         for split_name in positions_in_splits:
-            if len(positions_in_splits[split_name]) > self.num_positions_from_each_split:
+            if self.num_positions_from_each_split and len(positions_in_splits[split_name]) > self.num_positions_from_each_split:
                 positions_to_keep = set(random.sample(positions_in_splits[split_name], self.num_positions_from_each_split))
                 for pos in (positions_in_splits[split_name] - positions_to_keep):
                     unique_positions_to_remove.add(pos)
@@ -407,8 +413,6 @@ class VariablePositions:
                       mc = 'green')
 
         self.check_if_variable_table_is_empty()
-
-
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -476,12 +480,17 @@ class VariablePositions:
         new_structure = [t.variable_positions_table_structure[0]] + ['unique_pos_identifier'] + t.variable_positions_table_structure[1:] + ['parent']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
+
+        # FIXME: THIS HAS TO GO INTO THE TABLE THIS WAY
+        for e in self.variable_positions_table:
+            self.variable_positions_table[e]['competing_nts'] = ''.join(sorted(self.variable_positions_table[e]['competing_nts']))
+
         utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(self.variable_positions_table)))
-        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
         self.run.info('Output File', args.output) 
+        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
 
 
 
