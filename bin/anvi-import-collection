@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to import collections (and their colors)"""
+
+import sys
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Import a collection into the profile database")
+    parser.add_argument('data', metavar = "TAB DELIMITED FILE",
+                        help = 'The input file that describes group ids for each split.')
+    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
+                        help = 'Profile database.')
+    parser.add_argument('-S', '--source-identifier', metavar = 'SOURCE', default = None,
+                        help = "The source identifier when results are stored in the profile database. The default id\
+                                is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
+                                with new results. Using this parameter you can avoid that.")
+    parser.add_argument('--colors', metavar = 'COLORS', default = None,
+                        help = "Optional TAB-delimited file for group colors.")
+    args = parser.parse_args()
+
+
+    try:
+        if not args.source_identifier:
+            raise ConfigError, "You must define a source name for this collection."
+        if not args.profile_db:
+            raise ConfigError, "Anvi'o needs a profile database to add this collection to..."
+
+        source = args.source_identifier
+        profile_db_path = args.profile_db
+
+        try:
+            utils.check_sample_id(source)
+        except:
+            raise ConfigError, '"%s" is not a proper source name. A proper one should be a single word and not contain\
+                                ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                                any space characters, and the source ID shoudl not start with a digit.' % source
+
+        data, colors = {}, {}
+
+        filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
+        input_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
+        split_names = [c[0] for c in input_file_content]
+
+        if len(split_names) != len(set(split_names)):
+            raise ConfigError, "Some split names occur twice in the input file. A split cannot belong in two groups (and\
+            neither there shold be the same group assignment for a given split appear more than once in a proper input\
+            file)."
+
+        for split_name, group_name in input_file_content:
+            if not data.has_key(group_name):
+                data[group_name] = set([])
+
+            data[group_name].add(split_name)
+
+        if args.colors:
+            filesnpaths.is_file_tab_delimited(args.colors, expected_number_of_fields = 2)
+            colors_file_content = [l.strip().split('\t') for l in open(args.colors).readlines() if not l.startswith('#')]
+            colors = dict(colors_file_content)
+
+            for group_name in data:
+                if group_name not in colors:
+                    colors[group_name] = '#000000'
+
+        collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+        collections.append(source, data, colors)
+
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
