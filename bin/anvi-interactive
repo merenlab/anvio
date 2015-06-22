@@ -66,8 +66,14 @@ parser.add_argument('--title', metavar = "TITLE", default = None,
                             anvio RUNINFO dictionary, a meaningful title will appear in the interface\
                             only if you define one using this parameter.")
 parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
-                    help = "A TAB-delimited file for additional metadata for contigs. The file should\
-                            contain all contigs that are present in other files.")
+                    help = "A TAB-delimited file for additional metadata for splits. The first column\
+                            should be split names, and the rest of each column should be a metadata filed.\
+                            The file does not need to contain all split names, or values for each split in\
+                            every column. Anvi'o will deal with missing data nicely.")
+parser.add_argument('-V', '--additional-view', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for an additional view to be used in the interface. This\
+                            file file should contain all split names, and values for each of them in all\
+                            samples.")
 parser.add_argument('-S', '--summary-index', metavar = "FILE", default = None,
                      help = "SUMMARY.cp, if there is one available, to inspect contigs from the interface. Will\
                              override the one found in RUNINFO file if it was also declared using -r parameter.")

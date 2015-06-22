@@ -45,6 +45,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.state = A('state')
         self.split_hmm_layers = A('split_hmm_layers')
         self.additional_metadata_path = A('additional_metadata')
+        self.additional_view_path = A('additional_view')
         self.profile_db_path = A('profile_db')
         self.annotation_db_path = A('annotation_db')
         self.view = A('view')
@@ -111,7 +112,6 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # now we knot what splits we are interested in (self.split_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
-
 
         # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -209,6 +209,21 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                          mc='green' if view == self.default_view else 'crimson')
             print
             sys.exit()
+
+        # if the user has an additional view data, load it up into the self.views dict.
+        if self.additional_view_path:
+            filesnpaths.is_file_tab_delimited(self.additional_view_path)
+            additional_view_columns = utils.get_columns_of_TAB_delim_file(self.additional_view_path)
+
+            if not additional_view_columns[-1] == '__parent__':
+                raise ConfigError, "The last column of the additional view must be '__parent__' with the proper\
+                                    parent information for each split."
+
+            column_mapping = [str] + [float] * (len(additional_view_columns) - 1) + [str]
+
+            self.views['user_view'] = {'table_name': 'NA',
+                                       'header': additional_view_columns,
+                                       'dict': utils.get_TAB_delimited_file_as_dictionary(self.additional_view_path, column_mapping = column_mapping)}
 
         # if the user specifies a view, set it as default:
         if self.view:
