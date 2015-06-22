@@ -82,6 +82,9 @@ INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
 anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
+INFO "Importing collections from external files into the profile database"
+anvi-import-collection example_external_collections/adhoc_collections.txt -S 'C_IMPORTED' -p test-output/204-MERGED/PROFILE.db --colors example_external_collections/adhoc_colors.txt
+
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt --source-identifier 'cmdline_concoct'
 
@@ -93,7 +96,6 @@ anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MER
 
 INFO "Generate a variabilty profile for Group_1 using split ids stored in a file (after summary)"
 anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Group_1/Group_1-original_split_names.txt -o test-output/variability_Group_1_ALT.txt
-
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
