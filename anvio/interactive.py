@@ -103,6 +103,20 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             self.p_meta['available_clusterings'] = self.clusterings.keys()
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
+        if not self.p_meta['clusterings']:
+            if self.p_meta['merged']:
+                raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
+                                    that is required by the interactive interface. It may have been generated\
+                                    by anvi-merge with `--skip-hierarchical-clustering` flag, or hierarchical\
+                                    clustering step may have been skipped automatically by the platform. Please\
+                                    read the help menu for anvi-merge, and/or refer to the tutorial: \
+                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging"
+            else:
+                raise ConfigError, "This single profile database does not seem to have any hierarchical clustering\
+                                    that is required by the interactive interface. You must use `--cluster-contigs`\
+                                    flag for single profiles to access to this functionality. Please read the help\
+                                    menu for anvi-profile, and/or refer to the tutorial."
+
         tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'], format = 1)
 
         # self.split_names_ordered is going to be the 'master' names list. everything else is going to
