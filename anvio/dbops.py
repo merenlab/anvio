@@ -515,8 +515,19 @@ class AnnotationDatabase:
 
 
     def create(self, contigs_fasta, split_length, kmer_size = 4):
+        # just take a quick look at the first defline to make sure this FASTA file complies with anvi'o's
+        # "simple defline" rule.
+        fasta = u.SequenceSource(contigs_fasta)
+        fasta.next()
+        defline = fasta.id
+        fasta.close()
+        if not utils.check_contig_names(defline, dont_raise = True):
+            raise ConfigError, "The FASTA file you provided does not comply with the 'simple deflines' requirement of\
+                                anvi'o. Please read this section in the tutorial to understand the reason behind this\
+                                requirement: %s (anvi'o is very upset for making you do this)." % ('http://goo.gl/Q9ChpS')
+
         if os.path.exists(self.db_path):
-            raise ConfigError, "anvio will not overwrite an existing annotation database. Please choose a different name\
+            raise ConfigError, "Anvi'o will not overwrite an existing annotation database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
 
         if not split_length:
