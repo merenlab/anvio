@@ -431,10 +431,13 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id
 
 
-def check_contig_names(contig_names):
+def check_contig_names(contig_names, dont_raise = False):
     all_characters_in_contig_names = set(''.join(contig_names))
     characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
     if len(characters_anvio_doesnt_like):
+        if dont_raise:
+            return False
+
         raise ConfigError, "The name of at least one contig in your BAM file %s anvio does not\
                             like (%s). Please go back to your original files and make sure that\
                             the characters in contig names are limited to to ASCII letters,\
@@ -444,6 +447,8 @@ def check_contig_names(contig_names):
                             it is critical for later steps in the analysis." \
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like]))
+
+    return True
 
 
 def get_FASTA_file_as_dictionary(file_path):
