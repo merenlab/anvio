@@ -80,6 +80,7 @@ class BAMProfiler:
         self.bam = None
         self.contigs = {}
         self.genes_in_contigs = {}
+        self.contig_names_in_annotation_db = None
 
         self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
 
@@ -115,6 +116,7 @@ class BAMProfiler:
         annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
         self.split_length = int(annotation_db.meta['split_length'])
         self.annotation_hash = annotation_db.meta['annotation_hash']
+        self.contig_names_in_annotation_db = set(annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
         annotation_db.disconnect()
 
         self.progress.update('Creating a new single profile database with annotation hash "%s" ...' % self.annotation_hash)
@@ -360,7 +362,6 @@ class BAMProfiler:
                 print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
 
-
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
@@ -394,7 +395,6 @@ class BAMProfiler:
             self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
 
-
         # it brings good karma to let the user know what the hell is wrong with their data:
         self.check_contigs_without_any_ORFs(self.contig_names)
 
@@ -411,6 +411,19 @@ class BAMProfiler:
             self.contig_lenghts = [self.contig_lenghts[i] for i in contigs_longer_than_M]
             self.num_contigs = len(self.contig_names)    # we will store these two
             self.total_length = sum(self.contig_lenghts) # into the db in a second.
+
+
+        # let's see whether the user screwed up to follow the simple instructions
+        # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
+        for contig_name in self.contig_names:
+            if contig_name not in self.contig_names_in_annotation_db:
+                raise ConfigError, "At least one contig name in your BAM file does not match contig names stored in the\
+                                    annotation database. For instance, this is one contig name found in your BAM file: '%s',\
+                                    and this is another one found in your annotation database: '%s'. You may be using an\
+                                    annotation database for profiling that has nothing to do with the BAM file you are\
+                                    trying to profile, or you may have failed to fix your contig names in your FASTA file\
+                                    prior to mapping, which is described here: %s"\
+                                        % (contig_name, self.contig_names_in_annotation_db.pop(), 'http://goo.gl/Q9ChpS')
 
         # finally, compute contig splits.
         annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
