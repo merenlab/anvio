@@ -166,11 +166,14 @@
                 <p align="center"><input id="btn_new_group" type="button" onClick="newGroup();" value="New group">
                 <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
                 <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
-                </p><hr /><p align="center">
+                </p><hr /><div class="full-mode"><p align="center">
                 <input type="button" onclick="showLoadCollectionWindow();" value="Load collection">
                 <input type="button" onclick="showStoreCollectionWindow();" value="Store collection">
                 <input type="button" onClick="showGenSummaryWindow();" value="Generate summary" id="generate-summary">
-                </p>
+                </p></div>
+                <div class="refine-mode" style="display: none"><p align="center">
+                    <input type="button" onclick="storeRefinedBins();" value="Store refined bins in the database">
+                </p></div>
                 </div>
             </div>
             <div id="zoomDialog" class="dialogs">

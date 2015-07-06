@@ -84,7 +84,9 @@ var layer_order;
 var completeness_dict = {};
 
 var sort_column;
-var sort_order; 
+var sort_order;
+
+var refineMode = false;
 
 //---------------------------------------------------------
 //  Init
@@ -140,10 +142,22 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/default_view?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/mode?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse) 
         {
+            if (modeResponse[0] == 'refine')
+            {
+                refineMode = true;
+                $('.full-mode').hide();
+                $('.refine-mode').show();
+            }
+
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
 

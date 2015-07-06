@@ -293,7 +293,10 @@ function initializeDialogs() {
     $('#summarizeCollectionWindow').dialog("option", "title", "Summarize collection");
     $('#summaryResultWindow').dialog("option", "title", "Summary results");
 
-
+    if (refineMode)
+    {
+        $(".ui-dialog-titlebar").css('background', 'red'); 
+    }
 }
 //---------------------------------------------------------
 //  message popup
