@@ -166,6 +166,10 @@ def send_data(name):
         return json.dumps(split_lengths)
     elif name == "title":
         return json.dumps(d.title)
+    elif name == "mode":
+        return json.dumps("full")
+    elif name == "group_prefix":
+        return json.dumps("Group_")
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):

@@ -11,6 +11,7 @@ import sys
 import json
 import argparse
 import webbrowser
+import datetime
 
 from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
@@ -66,6 +67,8 @@ parser.add_argument('-P', '--port-number', metavar = 'INT', default = 8080, type
                             (%(default)d) should be OK for almost everyone.')
 parser.add_argument('--dry-run', action = 'store_true', default = False,
                         help = 'Do not start the server, do not fire up the browser.')
+parser.add_argument('-s', '--state', metavar = "FILE", default = None,
+                    help = "State file for loading previous session.")
 parser.add_argument('--debug', action = 'store_true', default = False,
                         help = 'Extra outputs for debugging. I would not use it if I were you.')
 
@@ -104,7 +107,7 @@ def set_default_headers(response):
 
 @route('/')
 def redirect_to_app():
-    redirect('/app/refine.html')
+    redirect('/app/index.html')
 
 @route('/app/:filename#.*#')
 def send_static(filename):
@@ -130,6 +133,13 @@ def send_data(name):
         return json.dumps(split_lengths)
     elif name == "title":
         return json.dumps(d.title)
+    elif name == "mode":
+        return json.dumps("refine")
+    elif name == "group_prefix":
+        if len(r.bins) == 1:
+            return json.dumps(list(r.bins)[0] + "_")
+        else:
+            return json.dumps("Refined_")
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
@@ -242,6 +252,17 @@ def completeness():
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
 
     return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
+
+@route('/save_state', method='POST')
+def save_state():
+    state = request.forms.get('state')
+
+    now = datetime.datetime.now()
+    state_output_path = os.path.join(d.p_meta['output_dir'], now.strftime("state-refine-%Y-%m-%d-%H-%M-%S.json"))
+
+    state_output = open(state_output_path, 'w')
+    state_output.write(state)
+    state_output.close()
 
 
 #######################################################################################################################

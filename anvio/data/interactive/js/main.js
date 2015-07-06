@@ -87,6 +87,7 @@ var sort_column;
 var sort_order;
 
 var refineMode = false;
+var group_prefix;
 
 //---------------------------------------------------------
 //  Init
@@ -147,9 +148,14 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/mode?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/group_prefix?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse, prefixResponse) 
         {
             if (modeResponse[0] == 'refine')
             {
@@ -157,6 +163,8 @@ $(document).ready(function() {
                 $('.full-mode').hide();
                 $('.refine-mode').show();
             }
+
+            group_prefix = prefixResponse[0];
 
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
@@ -1008,7 +1016,7 @@ function newGroup(id, groupState) {
         group_counter++;
         var from_state = false;
         var id = group_counter;
-        var name = "Group_" + id;
+        var name = group_prefix + id;
         var color = '#000000';
         var contig_count = 0;
         var contig_length = 0;
