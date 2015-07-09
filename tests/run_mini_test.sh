@@ -99,4 +99,9 @@ anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MER
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-anvi-interactive -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -A additional_metadata.txt -t test-output/204-MERGED/experimental-tree.txt --split-hmm-layers
+anvi-interactive -p test-output/204-MERGED/PROFILE.db \
+                 -a test-output/ANNOTATION.db \
+                 -A additional_metadata.txt \
+                 -t test-output/204-MERGED/experimental-tree.txt \
+                 -V additional_view.txt \
+                 --split-hmm-layers
