@@ -342,7 +342,7 @@ $(document).ready(function() {
                     $(this).colpickSetColor(this.value);
             });
 
-            $('#picker_end_multiple').colpick({
+            $('#picker_start_multiple').colpick({
                 layout: 'hex',
                 submit: 0,
                 colorScheme: 'light',
@@ -353,8 +353,8 @@ $(document).ready(function() {
 
                     $('.layer_selectors:checked').each(
                         function(){
-                            $('#' + 'picker_end' + getNumericPart(this.id)).attr('color', '#' + hex);
-                            $('#' + 'picker_end' + getNumericPart(this.id)).css('background-color', '#' + hex);
+                            $('#' + 'picker_start' + getNumericPart(this.id)).attr('color', '#' + hex);
+                            $('#' + 'picker_start' + getNumericPart(this.id)).css('background-color', '#' + hex);
                         }
                     );
                 }
@@ -574,11 +574,11 @@ function syncViews() {
             views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
             views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
 
-            layers[layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
+            layers[layer_id]["color"] = $(layer).find('.colorpicker:last').attr('color');
             layers[layer_id]["height"] = $(layer).find('.input-height').val();
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
-            layers[layer_id]["color-end"] = $(layer).find('.picker_end').attr('color');
+            layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
 
 
         }
@@ -816,7 +816,7 @@ function buildLayersTable(order, settings)
                 var height = layer_settings['height'];
                 var color  = layer_settings['color'];
                 var margin = layer_settings['margin'];
-                var color_end = layer_settings['color-end'];
+                var color_start = layer_settings['color-start'];
                 var type = layer_settings['type'];
             }
             else
@@ -824,7 +824,7 @@ function buildLayersTable(order, settings)
                 var height = getNamedLayerDefaults(layer_name, 'height', '180');
                 var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                 var margin = '15';
-                var color_end = "#FFFFFF";
+                var color_start = "#FFFFFF";
                 var type = "bar";
             }
 
@@ -845,9 +845,9 @@ function buildLayersTable(order, settings)
             var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div><div id="picker_end{id}" class="colorpicker picker_end" color="{color-end}" style="background-color: {color-end}; {color-end-hide}"></div></td>' +
+                '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                 '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type" onChange="if(this.value==\'intensity\') {  $(\'#picker_end\' + getNumericPart(this.id)).show(); } else { $(\'#picker_end\' + getNumericPart(this.id)).hide(); }  ">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="if(this.value==\'intensity\') {  $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'visible\'); } else { $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'hidden\'); }  ">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                 '    </select>' +
@@ -874,15 +874,14 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{color}', 'g'), color)
-                               .replace(new RegExp('{color-end}', 'g'), color_end)
-                               .replace(new RegExp('{color-end-hide}', 'g'), (type!='intensity') ? '; display: none;' : '')
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin)
-                               .replace(new RegExp('{color-end}', 'g'), '#FFFFFF');
 
 
             $('#tbody_layers').append(template);
@@ -897,7 +896,7 @@ function buildLayersTable(order, settings)
             $('.column-margin').hide();
         }
 
-        $('#picker'+ layer_id + ', #picker_end' + layer_id).colpick({
+        $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
             submit: 0,
             colorScheme: 'dark',

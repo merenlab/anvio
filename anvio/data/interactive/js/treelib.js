@@ -2021,7 +2021,7 @@ function draw_tree(settings) {
                                         q.xy['y'],
                                         height_per_leaf,
                                         layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                        getGradientColor(color, layers[pindex]['color-end'],  metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                        getGradientColor(layers[pindex]['color-start'], color,  metadata_dict[q.label][pindex] / layers[pindex]['height']),
                                         1,
                                         false);
                                 }
@@ -2112,7 +2112,7 @@ function draw_tree(settings) {
                                             layer_boundaries[layer_index][0], 
                                             layer_boundaries[layer_index][1],
                                             0,
-                                            getGradientColor(color, layers[pindex]['color-end'],  metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                            getGradientColor(layers[pindex]['color-start'], color,   metadata_dict[q.label][pindex] / layers[pindex]['height']),
                                             1,
                                             false);
                                 }
