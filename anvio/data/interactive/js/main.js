@@ -278,8 +278,10 @@ $(document).ready(function() {
                     $('#tree_width').val(state['tree-width']);
                 if (state.hasOwnProperty('angle-max'))
                     $('#angle-max').val(state['angle-max']);
-                if (state.hasOwnProperty('tree-radius'))
+                if (state.hasOwnProperty('tree-radius')) {
+                    $('#tree-radius-container').show();
                     $('#tree-radius').val(state['tree-radius']);
+                }
                 if (state.hasOwnProperty('layer-margin'))
                     $('#layer-margin').val(state['layer-margin']);
                 if (state.hasOwnProperty('outer-ring-height'))
@@ -1040,6 +1042,11 @@ function drawTree() {
             $('#img_loading').hide();
             $('#btn_draw_tree').prop('disabled', false);
 
+            if (settings['tree-radius'] == 0)
+            {
+                $('#tree-radius-container').show();
+                $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
+            }
         }, 1); 
 }
 
