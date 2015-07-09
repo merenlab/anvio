@@ -311,7 +311,7 @@ function initializeDialogs() {
             my: "right-20px top",
             at: "right-20px top",
             of: window
-        }).dialog('option', 'minHeight', 0);
+        }).dialog('option', 'minHeight', 0).dialog('close');
 
     $("#tooltip").dialog("option", "title", "Split details").dialog("option", "position", {
             my: "left top",

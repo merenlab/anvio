@@ -1024,6 +1024,7 @@ function drawTree() {
     $('#img_loading').show();
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
+    $('#groups').dialog('open');
 
     setTimeout(function () 
         { 
