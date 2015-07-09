@@ -87,6 +87,7 @@
                                 <td></td>
                                 <td>Name</td>
                                 <td>Color</td>
+                                <td>Type</td>
                                 <td>Normalization</td>
                                 <td>Height</td>
                                 <td class="column-margin">Margin</td>
@@ -104,7 +105,13 @@
                             <tr>
                                 <td></td>
                                 <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
-                                <td><div id="picker_multiple" class="colorpicker"></div></td>
+                                <td><div id="picker_multiple" class="colorpicker"></div><div id="picker_end_multiple" class="colorpicker"></div></td>
+                                <td style="width: 50px;">
+                                    <select id="type_multiple" style="width: 50px;" class="type">
+                                        <option value="bar">Bar</option>
+                                        <option value="intensity">Intensity</option>
+                                    </select>
+                                </td>
                                 <td>
                                     <select id="normalization_multiple">
                                         <option value="none">none</option>

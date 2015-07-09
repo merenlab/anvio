@@ -338,6 +338,26 @@ $(document).ready(function() {
                     $(this).colpickSetColor(this.value);
             });
 
+            $('#picker_end_multiple').colpick({
+                layout: 'hex',
+                submit: 0,
+                colorScheme: 'light',
+                onChange: function(hsb, hex, rgb, el, bySetColor) {
+                    $(el).css('background-color', '#' + hex);
+                    $(el).attr('color', '#' + hex);
+                    if (!bySetColor) $(el).val(hex);
+
+                    $('.layer_selectors:checked').each(
+                        function(){
+                            $('#' + 'picker_end' + getNumericPart(this.id)).attr('color', '#' + hex);
+                            $('#' + 'picker_end' + getNumericPart(this.id)).css('background-color', '#' + hex);
+                        }
+                    );
+                }
+            }).keyup(function() {
+                    $(this).colpickSetColor(this.value);
+            });
+
             $('#min_multiple').on('change', function(){
                 var intend_value = $('#min_multiple').val();
                 $('.layer_selectors:checked').each(
@@ -370,6 +390,15 @@ $(document).ready(function() {
                 $('.layer_selectors:checked').each(
                     function(){
                         $('#' + 'margin' + getNumericPart(this.id)).attr('value', intend_value);
+                    }
+                );
+            });
+
+            $('#type_multiple').on('change', function(){
+                var intend_value = $('#type_multiple').val();
+                $('.layer_selectors:checked').each(
+                    function(){
+                        $('#' + 'type' + getNumericPart(this.id)).attr('value', intend_value).trigger('change');
                     }
                 );
             });
@@ -537,13 +566,16 @@ function syncViews() {
             layer_order.push(layer_id);
 
             views[current_view][layer_id] = {};
-            views[current_view][layer_id]["normalization"] = $(layer).find('select').val();
+            views[current_view][layer_id]["normalization"] = $(layer).find('.normalization').val();
             views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') }; 
             views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
 
             layers[layer_id]["color"] = $(layer).find('.colorpicker').attr('color');
             layers[layer_id]["height"] = $(layer).find('.input-height').val();
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
+            layers[layer_id]["type"] = $(layer).find('.type').val();
+            layers[layer_id]["color-end"] = $(layer).find('.picker_end').attr('color');
+
 
         }
     );    
@@ -627,6 +659,7 @@ function buildLayersTable(order, settings)
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
+                '<td>n/a</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
@@ -681,8 +714,9 @@ function buildLayersTable(order, settings)
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
+                '<td>n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>Square root</option>' +
                 '        <option value="log"{option-log}>Logarithm</option>' +
@@ -733,6 +767,7 @@ function buildLayersTable(order, settings)
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
+                '<td>n/a</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
@@ -777,12 +812,16 @@ function buildLayersTable(order, settings)
                 var height = layer_settings['height'];
                 var color  = layer_settings['color'];
                 var margin = layer_settings['margin'];
+                var color_end = layer_settings['color-end'];
+                var type = layer_settings['type'];
             }
             else
             {
                 var height = getNamedLayerDefaults(layer_name, 'height', '180');
                 var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                 var margin = '15';
+                var color_end = "#FFFFFF";
+                var type = "bar";
             }
 
             /* Some ad-hoc manipulation of special hmmx_ split hmm layers */ 
@@ -802,9 +841,15 @@ function buildLayersTable(order, settings)
             var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                '<td><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div><div id="picker_end{id}" class="colorpicker picker_end" color="{color-end}" style="background-color: {color-end}; {color-end-hide}"></div></td>' +
+                '<td style="width: 50px;">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="if(this.value==\'intensity\') {  $(\'#picker_end\' + getNumericPart(this.id)).show(); } else { $(\'#picker_end\' + getNumericPart(this.id)).hide(); }  ">' +
+                '        <option value="bar"{option-type-bar}>Bar</option>' +
+                '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '    </select>' +
+                '</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>Square root</option>' +
                 '        <option value="log"{option-log}>Logarithm</option>' +
@@ -822,13 +867,19 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-end}', 'g'), color_end)
+                               .replace(new RegExp('{color-end-hide}', 'g'), (type!='intensity') ? '; display: none;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{color-end}', 'g'), '#FFFFFF');
+
 
             $('#tbody_layers').append(template);
         }
@@ -842,7 +893,7 @@ function buildLayersTable(order, settings)
             $('.column-margin').hide();
         }
 
-        $('#picker'+ layer_id).colpick({
+        $('#picker'+ layer_id + ', #picker_end' + layer_id).colpick({
             layout: 'hex',
             submit: 0,
             colorScheme: 'dark',

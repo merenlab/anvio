@@ -401,6 +401,10 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
         start_angle = t;
     }
 
+/*
+    start_angle = start_angle - (angle_per_leaf / 40);
+    end_angle = end_angle + (angle_per_leaf / 40);
+*/
     // origin
     var ox = 0;
     var oy = 0;
@@ -429,9 +433,8 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
     pie.setAttribute('id', 'path_' + id);
     pie.setAttribute('class', 'path_' + id);
     pie.setAttribute('fill', color);
-    pie.setAttribute('stroke-width', '0');
     pie.setAttribute('shape-rendering', 'auto');
-    //pie.setAttribute('stroke', 'black');
+    pie.setAttribute('stroke-width', '0');
     pie.setAttribute('d', path.join(" "));
     pie.setAttribute('fill-opacity', fill_opacity);
 
@@ -444,7 +447,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 
 function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opacity, pointer_events) {
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-
+    //height = height + height_per_leaf / 20;
     rect.setAttribute('id', 'path_' + id);
     rect.setAttribute('class', 'path_' + id);
     rect.setAttribute('fill', color);
@@ -1903,7 +1906,7 @@ function draw_tree(settings) {
                     false);
             }
             
-            if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3)
+            if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
             {
                 var color = layers[pindex]['color'];
 
@@ -2007,18 +2010,35 @@ function draw_tree(settings) {
                             }
                             else // numerical
                             {
-                                if (metadata_dict[q.label][pindex] > 0) {
+                                if (layers[pindex]['type'] == 'intensity')
+                                {
                                     var color = layers[pindex]['color'];
 
                                      drawPhylogramRectangle('layer_' + layer_index,
                                         q.id,
-                                        layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
+                                        layer_boundaries[layer_index][0] ,
                                         q.xy['y'],
                                         height_per_leaf,
-                                        metadata_dict[q.label][pindex],
-                                        color,
+                                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                                        getGradientColor(color, layers[pindex]['color-end'],  metadata_dict[q.label][pindex] / layers[pindex]['height']),
                                         1,
                                         false);
+                                }
+                                else
+                                {
+                                    if (metadata_dict[q.label][pindex] > 0) {
+                                        var color = layers[pindex]['color'];
+
+                                         drawPhylogramRectangle('layer_' + layer_index,
+                                            q.id,
+                                            layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
+                                            q.xy['y'],
+                                            height_per_leaf,
+                                            metadata_dict[q.label][pindex],
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
                         }
@@ -2082,17 +2102,33 @@ function draw_tree(settings) {
                             {
                                 var color = layers[pindex]['color'];
 
-                                if (metadata_dict[q.label][pindex] > 0) {
-                                    drawPie('layer_' + layer_index,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[layer_index][0], 
-                                        layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
-                                        0,
-                                        color,
-                                        1,
-                                        false);
+                                if (layers[pindex]['type'] == 'intensity')
+                                {
+                                        drawPie('layer_' + layer_index,
+                                            q.id,
+                                            q.angle - angle_per_leaf / 2,
+                                            q.angle + angle_per_leaf / 2,
+                                            layer_boundaries[layer_index][0], 
+                                            layer_boundaries[layer_index][1],
+                                            0,
+                                            getGradientColor(color, layers[pindex]['color-end'],  metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                            1,
+                                            false);
+                                }
+                                else
+                                {
+                                    if (metadata_dict[q.label][pindex] > 0) {
+                                        drawPie('layer_' + layer_index,
+                                            q.id,
+                                            q.angle - angle_per_leaf / 2,
+                                            q.angle + angle_per_leaf / 2,
+                                            layer_boundaries[layer_index][0], 
+                                            layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
+                                            0,
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
 

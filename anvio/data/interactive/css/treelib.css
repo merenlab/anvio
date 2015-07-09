@@ -135,6 +135,8 @@ td select {
 }
 
 .colorpicker {
+    float: left;
+    display: inline-block;
     background-color: #FFF;
     border: 1px solid;
     border-color: #000;

@@ -59,6 +59,7 @@ function getUrlVars() {
 
 function loadAll() {
     contig_id = getUrlVars()["contig"];
+    document.title = contig_id + " detailed";
 
     $.ajax({
         type: 'GET',
