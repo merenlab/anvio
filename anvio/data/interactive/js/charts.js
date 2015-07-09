@@ -93,17 +93,29 @@ function loadAll() {
                 prev_str = '<small><a href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small>" + prev_str + position + next_str + "</small>";
-            createCharts();
+
+            $.ajax({
+              type: 'GET',
+              cache: false,
+              url: '/data/charts/get_state?timestamp=' + new Date().getTime(),
+              success: function(state) {
+                createCharts(state);
+              }
+            });
         }
     });
 
 }
 
 
-function createCharts(){
+function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
 
+    var layers_ordered = state['layer-order'];
+
+    layers_ordered = layers_ordered.filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+    console.log(layers_ordered);
     console.log(genes);
 
     geneParser = new GeneParser(genes);
@@ -148,18 +160,21 @@ function createCharts(){
 
 
     for(var i = 0; i < layersCount; i++){
+        var layer_index = layers.indexOf(layers_ordered[i]);
+
         charts.push(new Chart({
-                        name: layers[i],
-                        coverage: coverage[i],
-                        variability: variability[i],
-                        competing_nucleotides: competing_nucleotides[i],
+                        name: layers[layer_index],
+                        coverage: coverage[layer_index],
+                        variability: variability[layer_index],
+                        competing_nucleotides: competing_nucleotides[layer_index],
                         id: i,
                         width: width,
                         height: chartHeight,
                         maxVariability: maxVariability,
                         svg: svg,
                         margin: margin,
-                        showBottomAxis: (i == layers.length - 1)
+                        showBottomAxis: (i == layers.length - 1),
+                        color: state['layers'][layers[layer_index]]['color']
                 }));
         
     }
@@ -343,6 +358,7 @@ function Chart(options){
     this.name = options.name;
     this.margin = options.margin;
     this.showBottomAxis = options.showBottomAxis;
+    this.color = options.color;
     
     var localName = this.name;
     var num_data_points = this.variability.length;
@@ -392,18 +408,12 @@ function Chart(options){
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
-    /* get the color */
-    if(this.id + 1 > base_colors.length){
-        color = base_colors[this.id % base_colors.length];
-    } else {
-        color = base_colors[this.id];
-    }
-
     /* Add both into the page */
     this.chartContainer.append("path")
                               .data([this.coverage])
                               .attr("class", "chart")
-                              .style("fill", color)
+                              .style("fill", this.color)
+                              .style("fill-opacity", "0.5")
                               .attr("d", this.area);
                                     
     this.lineContainer.append("path")

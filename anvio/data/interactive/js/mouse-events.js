@@ -372,9 +372,16 @@ function menu_callback(action) {
             break;
         
         case 'inspect':
-            var layers = new Array();
-            metadata[0].forEach(function (e,i,a) {if(["contigs", "__parent__"].indexOf(e) < 0) layers.push(e);});
-            window.open('charts.html?contig=' + contig_name, '_blank');
+            $.ajax({
+                type: 'POST',
+                cache: false,
+                async: false,
+                url: "/data/charts/set_state?timestamp=" + new Date().getTime(), 
+                data: {state: JSON.stringify(serializeSettings(true), null, 4)},
+                success: function() {
+                    window.open('charts.html?contig=' + contig_name, '_blank');
+                }
+            });
             break;
     }
 }

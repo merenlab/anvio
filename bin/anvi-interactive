@@ -255,8 +255,21 @@ def charts(split_name):
 
     return json.dumps(data)
 
+state_for_charts = {}
+
+@route('/data/charts/set_state', method='POST')
+def set_state():
+    global state_for_charts
+    state_for_charts = request.forms.get('state')
+
+@route('/data/charts/get_state')
+def get_state():
+    set_default_headers(response)
+    return state_for_charts
+
 @route('/data/contig/<split_name>')
 def split_info(split_name):
+    set_default_headers(response)
     return d.split_sequences[split_name]
 
 @route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
