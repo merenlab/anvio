@@ -1713,6 +1713,7 @@ function draw_tree(settings) {
 
         var width = settings['tree-width'];
         var height = settings['tree-height'];
+        var radius = settings['tree-radius'];
 
         if (width == 0)
             width = VIEWER_WIDTH;
@@ -1746,8 +1747,8 @@ function draw_tree(settings) {
                 }
                 td.Init(t, {
                     svg_id: 'tree',
-                    width: VIEWER_WIDTH,
-                    height: VIEWER_HEIGHT,
+                    width: (radius == 0) ? VIEWER_WIDTH : radius,
+                    height: (radius == 0) ? VIEWER_HEIGHT : radius,
                     fontHeight: 10,
                     root_length: 0.1
                 });
@@ -2277,7 +2278,7 @@ function draw_tree(settings) {
 
         // Scale to fit window
         var bbox = svg.getBBox();
-        scale = Math.min(td.settings.width / bbox.width, td.settings.height / bbox.height) * 0.80;
+        scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
 
         zoom_reset();
 

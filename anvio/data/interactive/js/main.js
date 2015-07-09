@@ -278,6 +278,8 @@ $(document).ready(function() {
                     $('#tree_width').val(state['tree-width']);
                 if (state.hasOwnProperty('angle-max'))
                     $('#angle-max').val(state['angle-max']);
+                if (state.hasOwnProperty('tree-radius'))
+                    $('#tree-radius').val(state['tree-radius']);
                 if (state.hasOwnProperty('layer-margin'))
                     $('#layer-margin').val(state['layer-margin']);
                 if (state.hasOwnProperty('outer-ring-height'))
@@ -940,6 +942,7 @@ function serializeSettings(use_layer_names) {
     state['current-view'] = $('#views_container').val();
     state['angle-min'] = $('#angle-min').val();
     state['angle-max'] = $('#angle-max').val();
+    state['tree-radius'] = $('#tree-radius').val();
     state['tree-height'] = $('#tree_height').val();
     state['tree-width'] = $('#tree_width').val();
     state['layer-margin'] = $('#layer-margin').val();
