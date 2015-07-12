@@ -1549,17 +1549,17 @@ function appendResult() {
                 bins_to_update.push(bin_id);
         }
 
-        for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+        for (var bid = 1; bid <= bin_counter; bid++) {
             // don't remove nodes from current bin
-            if (bin_id == bin_id)
+            if (bid == bin_id)
                 continue;
 
-            var pos = SELECTED[bin_id].indexOf(_contig_name);
+            var pos = SELECTED[bid].indexOf(_contig_name);
             if (pos > -1) {
-                SELECTED[bin_id].splice(pos, 1);
+                SELECTED[bid].splice(pos, 1);
 
-                if (bins_to_update.indexOf(bin_id) == -1)
-                    bins_to_update.push(bin_id);
+                if (bins_to_update.indexOf(bid) == -1)
+                    bins_to_update.push(bid);
             }
         }
     }
