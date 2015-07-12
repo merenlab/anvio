@@ -110,17 +110,17 @@ class CONCOCT:
 
 
     def store_clusters_in_db(self, source = 'CONCOCT'):
-       # convert id -> group mapping dict into a group -> ids dict
+       # convert id -> bin mapping dict into a bin -> ids dict
         data = {}
         colors = {}
 
         for split_name in self.clusters:
-            group_id = self.clusters[split_name]
-            if data.has_key(group_id):
-                data[group_id].add(split_name)
+            bin_id = self.clusters[split_name]
+            if data.has_key(bin_id):
+                data[bin_id].add(split_name)
             else:
-                data[group_id] = set([split_name])
-                colors[group_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
+                data[bin_id] = set([split_name])
+                colors[bin_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
 
         collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
         collections.append(source, data, colors)
@@ -210,4 +210,4 @@ class CONCOCT_INTERFACE():
         self.run.info('CONCOCT VGBMM', 'Done with %d clusters' % (len(set(self.assign))))
 
         # construct and return a results dictionary:
-        return dict(zip(self.contig_names, ['Group_%d' % g for g in self.assign]))
+        return dict(zip(self.contig_names, ['Bin_%d' % g for g in self.assign]))

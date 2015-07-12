@@ -168,8 +168,8 @@ def send_data(name):
         return json.dumps(d.title)
     elif name == "mode":
         return json.dumps("full")
-    elif name == "group_prefix":
-        return json.dumps("Group_")
+    elif name == "bin_prefix":
+        return json.dumps("Bin_")
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
@@ -342,13 +342,13 @@ def store_collections_dict():
             run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
-    run.info_single('A request to store %d groups that describe %d splits under the collection id "%s"\
+    run.info_single('A request to store %d bins that describe %d splits under the collection id "%s"\
                      has been made.' % (len(data), num_splits, source), cut_after = None)
 
     collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
     collections.append(source, data, colors)
     d.collections.populate_sources_dict(d.profile_db_path, anvio.__profile__version__)
-    msg = "New collection '%s' with %d group%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
+    msg = "New collection '%s' with %d bin%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
     run.info_single(msg)
     return json.dumps(msg)
 
@@ -359,9 +359,9 @@ def completeness():
         return json.dumps(completeness_stats)
 
     split_names = json.loads(request.forms.get('split_names'))
-    group_name = json.loads(request.forms.get('group_name'))
+    bin_name = json.loads(request.forms.get('bin_name'))
 
-    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), group_name))
+    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), bin_name))
 
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
 

@@ -4,7 +4,7 @@
 masking the standard collections library).
 
 If the user have analyzed their metagenome using a metagenome binning software
-and identified draft genomes in their data (or by any other means grouped their
+and identified draft genomes in their data (or by any other means binned their
 contigs based on any criterion), this information can be stored in the
 annotation database's collections_* tables. The class implemented here collects
 this information from the database, and presents it as an intuitive data structure

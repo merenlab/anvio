@@ -56,8 +56,8 @@ var metadata;
 var contig_lengths;
 var parameter_count;
 
-var group_counter = 0; // for id
-var group_count = 0;
+var bin_counter = 0; // for id
+var bin_count = 0;
 
 var layer_types;
 
@@ -87,7 +87,7 @@ var sort_column;
 var sort_order;
 
 var refineMode = false;
-var group_prefix;
+var bin_prefix;
 
 //---------------------------------------------------------
 //  Init
@@ -152,7 +152,7 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/group_prefix?timestamp=' + timestamp,
+            url: '/data/bin_prefix?timestamp=' + timestamp,
         }))
     .then(
         function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse, prefixResponse) 
@@ -164,7 +164,7 @@ $(document).ready(function() {
                 $('.refine-mode').show();
             }
 
-            group_prefix = prefixResponse[0];
+            bin_prefix = prefixResponse[0];
 
             var state = eval(stateResponse[0]);
             var hasState = !$.isEmptyObject(state);
@@ -511,9 +511,9 @@ $(document).ready(function() {
 
 
             /*
-            //  Add groups
+            //  Add bins
             */
-            newGroup();
+            newBin();
 
             initializeDialogs();
 
@@ -937,7 +937,7 @@ function serializeSettings(use_layer_names) {
 
     var state = {};
     state['version'] = VERSION;
-    state['group-counter'] = group_counter;
+    state['bin-counter'] = bin_counter;
     state['tree-type'] = $('#tree_type').val();
     state['order-by'] = $('#trees_container').val();
     state['current-view'] = $('#views_container').val();
@@ -1025,7 +1025,7 @@ function drawTree() {
     $('#img_loading').show();
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
-    $('#groups').dialog('open');
+    $('#bins').dialog('open');
 
     setTimeout(function () 
         { 
@@ -1036,7 +1036,7 @@ function drawTree() {
             // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
             last_settings = serializeSettings();
 
-            redrawGroups();
+            redrawBins();
 
             $('#img_loading').hide();
             $('#btn_draw_tree').prop('disabled', false);
@@ -1050,12 +1050,12 @@ function drawTree() {
 }
 
 
-function getContigNames(gid) {
+function getContigNames(bin_id) {
     var names = new Array();
 
-    for (var j = 0; j < SELECTED[gid].length; j++) {
-        if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-            names.push(SELECTED[gid][j]);
+    for (var j = 0; j < SELECTED[bin_id].length; j++) {
+        if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
+            names.push(SELECTED[bin_id][j]);
         }
     }
 
@@ -1063,50 +1063,50 @@ function getContigNames(gid) {
 }
 
 
-function showContigNames(gid) {
-    names = getContigNames(gid)
+function showContigNames(bin_id) {
+    names = getContigNames(bin_id)
     messagePopupShow('Contig Names', names.join('<br />'));
 }
 
-function newGroup(id, groupState) {
+function newBin(id, binState) {
 
-    group_count++;
+    bin_count++;
 
     if (typeof id === 'undefined')
     {
-        group_counter++;
+        bin_counter++;
         var from_state = false;
-        var id = group_counter;
-        var name = group_prefix + id;
+        var id = bin_counter;
+        var name = bin_prefix + id;
         var color = '#000000';
         var contig_count = 0;
         var contig_length = 0;
         var completeness = '---';
         var contamination = '---';
 
-        SELECTED[group_counter] = [];
+        SELECTED[bin_counter] = [];
     }
     else
     {
-        // we are adding groups from collection
+        // we are adding bins from collection
         var from_state = true;
-        var name = groupState['name'];
-        var color = groupState['color'];
+        var name = binState['name'];
+        var color = binState['color'];
         var contig_count = 0;
         var contig_length = 0;
         var completeness = "---";
         var contamination = "---";
     }
 
-    var template = '<tr group-id="{id}" id="group_row_{id}">' +
-                   '    <td><input type="radio" name="active_group" value="{id}" checked></td>' +
-                   '    <td><div id="group_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td><input type="text" size="12" id="group_name_{id}" value="{name}"></td>' +
+    var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
+                   '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
+                   '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                   '    <td><input type="text" size="12" id="bin_name_{id}" value="{name}"></td>' +
                    '    <td><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
                    '    <td><span id="contig_length_{id}">{length}</span></td>' +
                    '    <td><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
                    '    <td><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
-                   '    <td><center><span class="delete-button ui-icon ui-icon-trash" alt="Delete this group" title="Delete this group" onClick="deleteGroup({id});"></span></center></td>' +
+                   '    <td><center><span class="delete-button ui-icon ui-icon-trash" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
                    '</tr>';
 
     template = template.replace(new RegExp('{id}', 'g'), id)
@@ -1118,14 +1118,14 @@ function newGroup(id, groupState) {
                        .replace(new RegExp('{length}', 'g'), contig_length);
 
 
-    $('#tbody_groups').append(template);
+    $('#tbody_bins').append(template);
 
     if(!from_state){
         $('#completeness_' + id).attr("disabled", true);
         $('#contamination_' + id).attr("disabled", true);
     }
 
-    $('#group_color_' + id).colpick({
+    $('#bin_color_' + id).colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'dark',
@@ -1136,19 +1136,19 @@ function newGroup(id, groupState) {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawGroups();
+            redrawBins();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
 }
 
-function deleteGroup(id) {
+function deleteBin(id) {
     if (confirm('Are you sure?')) {
 
-        $('#group_row_' + id).remove();
-        $('#tbody_groups input[type=radio]').last().prop('checked', true);
-        group_count--;
+        $('#bin_row_' + id).remove();
+        $('#tbody_bins input[type=radio]').last().prop('checked', true);
+        bin_count--;
 
         for (var i = 0; i < SELECTED[id].length; i++) {
             var node_id = label_to_node_map[SELECTED[id][i]].id;
@@ -1161,12 +1161,12 @@ function deleteGroup(id) {
         SELECTED[id] = [];
         delete completeness_dict[id];
 
-        if (group_count==0)
+        if (bin_count==0)
         {
-            newGroup();
+            newBin();
         }
 
-        redrawGroups();
+        redrawBins();
     }
 }
 
@@ -1198,57 +1198,57 @@ function showGenSummaryWindow() {
 }
 
 
-function updateGroupWindow(group_list) {
-    if (typeof group_list === 'undefined')
+function updateBinsWindow(bin_list) {
+    if (typeof bin_list === 'undefined')
     {
-        var group_list = [];
-        $('#tbody_groups tr').each(
-        function(index, group) {
-            group_list.push(parseInt($(group).attr('group-id')));
+        var bin_list = [];
+        $('#tbody_bins tr').each(
+        function(index, bin) {
+            bin_list.push(parseInt($(bin).attr('bin-id')));
         });
     }
 
-    for (var _i = 0; _i < group_list.length; _i++) {
-        var gid = group_list[_i];
+    for (var _i = 0; _i < bin_list.length; _i++) {
+        var bin_id = bin_list[_i];
         var contigs = 0;
         var length_sum = 0;
 
-        for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (label_to_node_map[SELECTED[gid][j]].IsLeaf())
+        for (var j = 0; j < SELECTED[bin_id].length; j++) {
+            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
             {
                 contigs++;
-                length_sum += parseInt(contig_lengths[SELECTED[gid][j]]);
+                length_sum += parseInt(contig_lengths[SELECTED[bin_id][j]]);
             }
         }
 
-        $('#contig_count_' + gid).val(contigs);
-        $('#contig_length_' + gid).html(readableNumber(length_sum));
+        $('#contig_count_' + bin_id).val(contigs);
+        $('#contig_length_' + bin_id).html(readableNumber(length_sum));
 
-        split_names = getContigNames(gid);
-        group_name = $('#group_name_' + gid).val();
+        split_names = getContigNames(bin_id);
+        bin_name = $('#bin_name_' + bin_id).val();
 
-        updateComplateness(gid);
+        updateComplateness(bin_id);
     }
 
-    sortGroups();
+    sortBins();
 }
 
-function updateComplateness(gid) {
+function updateComplateness(bin_id) {
     $.ajax({
         type: "POST",
         url: "/data/completeness",
         cache: false,
-        data: {split_names: JSON.stringify(split_names), group_name: JSON.stringify(group_name)},
+        data: {split_names: JSON.stringify(split_names), bin_name: JSON.stringify(bin_name)},
         success: function(data){
             completeness_info_dict = JSON.parse(data);
 
             stats = completeness_info_dict['stats'];
             refs = completeness_info_dict['refs'];
 
-            completeness_dict[gid] = completeness_info_dict;
+            completeness_dict[bin_id] = completeness_info_dict;
 
-            showCompleteness(gid, true);
-            showContaminants(gid, true);
+            showCompleteness(bin_id, true);
+            showContaminants(bin_id, true);
 
             // it is sad that one liner with a list comprehension takes this much code in JS:
             sum_completeness = 0.0;
@@ -1260,29 +1260,29 @@ function updateComplateness(gid) {
             average_completeness = sum_completeness / Object.keys(stats).length;
             average_contamination = sum_contamination / Object.keys(stats).length;
 
-            $('#completeness_' + gid).val(average_completeness.toFixed(1) + '%');
-            $('#contamination_' + gid).val(average_contamination.toFixed(1) + '%');
+            $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%');
+            $('#contamination_' + bin_id).val(average_contamination.toFixed(1) + '%');
 
-            $('#completeness_' + gid).attr("disabled", false);
-            $('#contamination_' + gid).attr("disabled", false);
+            $('#completeness_' + bin_id).attr("disabled", false);
+            $('#contamination_' + bin_id).attr("disabled", false);
         },
     });
 }
 
-function showCompleteness(gid, updateOnly) {
-    if (!completeness_dict.hasOwnProperty(gid))
+function showCompleteness(bin_id, updateOnly) {
+    if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    if ($('#completeness_content_' + gid).length)
+    if ($('#completeness_content_' + bin_id).length)
     {
-        $('#completeness_content_' + gid).html(buildCompletenessTable(completeness_dict[gid]));
+        $('#completeness_content_' + bin_id).html(buildCompletenessTable(completeness_dict[bin_id]));
         return;
     }
 
     if (!updateOnly)
     {
         $('<div> \
-           <div id="completeness_content_' + gid + '">' + buildCompletenessTable(completeness_dict[gid]) + '</div> \
+           <div id="completeness_content_' + bin_id + '">' + buildCompletenessTable(completeness_dict[bin_id]) + '</div> \
            </div>').dialog({
                 resizable: false,
                 collapseEnabled: false,
@@ -1299,20 +1299,20 @@ function showCompleteness(gid, updateOnly) {
     }
 }
 
-function showContaminants(gid, updateOnly) {
-    if (!completeness_dict.hasOwnProperty(gid))
+function showContaminants(bin_id, updateOnly) {
+    if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    if ($('#contaminants_content_' + gid).length)
+    if ($('#contaminants_content_' + bin_id).length)
     {
-        $('#contaminants_content_' + gid).html(buildContaminantsTable(completeness_dict[gid]));
+        $('#contaminants_content_' + bin_id).html(buildContaminantsTable(completeness_dict[bin_id]));
         return;
     }
 
     if (!updateOnly)
     {
         $('<div> \
-           <div id="contaminants_content_' + gid + '">' + buildContaminantsTable(completeness_dict[gid]) + '</div> \
+           <div id="contaminants_content_' + bin_id + '">' + buildContaminantsTable(completeness_dict[bin_id]) + '</div> \
            </div>').dialog({
                 resizable: false,
                 collapseEnabled: false,
@@ -1358,7 +1358,7 @@ function buildContaminantsTable(info_dict) {
 
             contaminants_html += '<span style="cursor:pointer;" \
                                     title="' + title + '" \
-                                    onclick="redrawGroups(' + order_array + ');"> \
+                                    onclick="redrawBins(' + order_array + ');"> \
                                     ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
                                   </span><br />';
         }
@@ -1410,18 +1410,18 @@ function exportSvg() {
     if ($.isEmptyObject(label_to_node_map)) 
         return;
 
-    // draw group and layer legend to output svg
+    // draw bin and layer legend to output svg
     var settings = serializeSettings();
 
-    var groups_to_draw = new Array();
-    $('#tbody_groups tr').each(
-        function(index, group) {
-            var gid = $(group).attr('group-id');
-            groups_to_draw.push({
-                'name': $('#group_name_' + gid).val(),
-                'color': $('#group_color_' + gid).attr('color'),
-                'contig-length': $('#contig_length_' + gid).html(),
-                'contig-count': $('#contig_count_' + gid).val(),
+    var bins_to_draw = new Array();
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            var bin_id = $(bin).attr('bin-id');
+            bins_to_draw.push({
+                'name': $('#bin_name_' + bin_id).val(),
+                'color': $('#bin_color_' + bin_id).attr('color'),
+                'contig-length': $('#contig_length_' + bin_id).html(),
+                'contig-count': $('#contig_count_' + bin_id).val(),
             });
         }
     );
@@ -1429,13 +1429,13 @@ function exportSvg() {
     var left = 0 - total_radius - 400; // draw on the left top
     var top = 20 - total_radius;
 
-    if (groups_to_draw.length > 0) {
-        drawGroupLegend(groups_to_draw, top, left);
-        top = top + 100 + (groups_to_draw.length + 2.5) * 20
+    if (bins_to_draw.length > 0) {
+        drawBinLegend(bins_to_draw, top, left);
+        top = top + 100 + (bins_to_draw.length + 2.5) * 20
     }
 
     // important,
-    // we used current settings because we want current group information.
+    // we used current settings because we want current bin information.
     // now we are going to use "last_settings" which updated by draw button.
     var settings = {};
     settings = last_settings; 
@@ -1444,7 +1444,7 @@ function exportSvg() {
 
     svgCrowbar();
 
-    $('#group_legend').remove();
+    $('#bin_legend').remove();
     $('#layer_legend').remove();
 }
 
@@ -1523,7 +1523,7 @@ function highlightResult() {
         order_list.push(_order);
     }
 
-    redrawGroups(order_list); 
+    redrawBins(order_list); 
 }
 
 function appendResult() {
@@ -1533,39 +1533,39 @@ function appendResult() {
         return;
     }
 
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
-    if (group_id === 'undefined')
+    if (bin_id === 'undefined')
         return;
 
-    var groups_to_update = [];
+    var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
         _contig_name = metadata[search_results[i]][0];
-        if (SELECTED[group_id].indexOf(_contig_name) == -1) {
-            SELECTED[group_id].push(_contig_name);
+        if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
+            SELECTED[bin_id].push(_contig_name);
 
-            if (groups_to_update.indexOf(group_id) == -1)
-                groups_to_update.push(group_id);
+            if (bins_to_update.indexOf(bin_id) == -1)
+                bins_to_update.push(bin_id);
         }
 
-        for (var gid = 1; gid <= group_counter; gid++) {
-            // don't remove nodes from current group
-            if (gid == group_id)
+        for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+            // don't remove nodes from current bin
+            if (bin_id == bin_id)
                 continue;
 
-            var pos = SELECTED[gid].indexOf(_contig_name);
+            var pos = SELECTED[bin_id].indexOf(_contig_name);
             if (pos > -1) {
-                SELECTED[gid].splice(pos, 1);
+                SELECTED[bin_id].splice(pos, 1);
 
-                if (groups_to_update.indexOf(gid) == -1)
-                    groups_to_update.push(gid);
+                if (bins_to_update.indexOf(bin_id) == -1)
+                    bins_to_update.push(bin_id);
             }
         }
     }
 
-    updateGroupWindow(groups_to_update);
-    redrawGroups();
+    updateBinsWindow(bins_to_update);
+    redrawBins();
 }
 
 function removeResult() {
@@ -1575,28 +1575,28 @@ function removeResult() {
         return;
     }
 
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
-    if (group_id === 'undefined')
+    if (bin_id === 'undefined')
         return;
 
-    var groups_to_update = [];
+    var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
         _contig_name = metadata[search_results[i]][0];
         var _id = label_to_node_map[_contig_name].id;
 
-        var pos = SELECTED[group_id].indexOf(_contig_name);
+        var pos = SELECTED[bin_id].indexOf(_contig_name);
         if (pos > -1) {
-            SELECTED[group_id].splice(pos, 1);
+            SELECTED[bin_id].splice(pos, 1);
             
-            if (groups_to_update.indexOf(group_id) == -1)
-                groups_to_update.push(group_id);
+            if (bins_to_update.indexOf(bin_id) == -1)
+                bins_to_update.push(bin_id);
         }
     }
 
-    updateGroupWindow(groups_to_update);
-    redrawGroups();
+    updateBinsWindow(bins_to_update);
+    redrawBins();
 }
 
 function showStoreCollectionWindow() {
@@ -1633,19 +1633,19 @@ function storeRefinedBins() {
     data = {};
     colors = {};
 
-    $('#tbody_groups tr').each(
-        function(index, group) {
-            var gid = $(group).attr('group-id');
-            var gname = $('#group_name_' + gid).val();
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            var bin_id = $(bin).attr('bin-id');
+            var bin_name = $('#bin_name_' + bin_id).val();
 
-            colors[gname] = $('#group_color_' + gid).attr('color');
-            data[gname] = new Array();
+            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
+            data[bin_name] = new Array();
 
-            for (var i=0; i < SELECTED[gid].length; i++)
+            for (var i=0; i < SELECTED[bin_id].length; i++)
             {
-                if (label_to_node_map[SELECTED[gid][i]].IsLeaf())
+                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
                 {
-                    data[gname].push(SELECTED[gid][i]);
+                    data[bin_name].push(SELECTED[bin_id][i]);
                 }
             }
         }
@@ -1666,19 +1666,19 @@ function storeCollection() {
     data = {};
     colors = {};
 
-    $('#tbody_groups tr').each(
-        function(index, group) {
-            var gid = $(group).attr('group-id');
-            var gname = $('#group_name_' + gid).val();
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            var bin_id = $(bin).attr('bin-id');
+            var bin_name = $('#bin_name_' + bin_id).val();
 
-            colors[gname] = $('#group_color_' + gid).attr('color');
-            data[gname] = new Array();
+            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
+            data[bin_name] = new Array();
 
-            for (var i=0; i < SELECTED[gid].length; i++)
+            for (var i=0; i < SELECTED[bin_id].length; i++)
             {
-                if (label_to_node_map[SELECTED[gid][i]].IsLeaf())
+                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
                 {
-                    data[gname].push(SELECTED[gid][i]);
+                    data[bin_name].push(SELECTED[bin_id][i]);
                 }
             }
         }
@@ -1780,7 +1780,7 @@ function loadCollection() {
         return;
     }
 
-    if (!confirm("You will lost current groups, please be sure you stored current groups. Do you want to continue?"))
+    if (!confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?"))
         return;
 
     $.ajax({
@@ -1788,59 +1788,59 @@ function loadCollection() {
         cache: false,
         url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            // empty group window
-            var groups_cleared = false;
+            // empty bin window
+            var bins_cleared = false;
             SELECTED = new Array();
-            group_count = 0;
-            group_counter = 0;
+            bin_count = 0;
+            bin_counter = 0;
 
             // calculate treshold.
             var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
 
-            // load new groups
-            var gid=0;
-            for (group in data['data'])
+            // load new bins
+            var bin_id=0;
+            for (bin in data['data'])
             {
                 // collection may be contain unknown splits/contigs, we should clear them.
                 var contigs = new Array();
                 var sum_contig_length = 0;
 
-                for (index in data['data'][group])
+                for (index in data['data'][bin])
                 {
-                    if (typeof contig_lengths[data['data'][group][index]] !== 'undefined') {
-                        contigs.push(data['data'][group][index]);
-                        sum_contig_length += contig_lengths[data['data'][group][index]];
+                    if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
+                        contigs.push(data['data'][bin][index]);
+                        sum_contig_length += contig_lengths[data['data'][bin][index]];
                     }
                     
                 }
 
                 if (sum_contig_length >= threshold)
                 {
-                    if (!groups_cleared)
+                    if (!bins_cleared)
                     {
-                        $('#tbody_groups').empty();
-                        groups_cleared = true;
+                        $('#tbody_bins').empty();
+                        bins_cleared = true;
                     }
-                    gid++;
-                    group_counter++;
-                    SELECTED[gid] = contigs;
+                    bin_id++;
+                    bin_counter++;
+                    SELECTED[bin_id] = contigs;
 
-                    var _color =  (data['colors'][group]) ? data['colors'][group] : randomColor();
+                    var _color =  (data['colors'][bin]) ? data['colors'][bin] : randomColor();
 
-                    newGroup(gid, {'name': group, 'color': _color});
+                    newBin(bin_id, {'name': bin, 'color': _color});
                 }
             }
 
             rebuildIntersections();
-            updateGroupWindow();
-            redrawGroups();
+            updateBinsWindow();
+            redrawBins();
             $('#loadCollectionWindow').dialog('close');
         }
     });
 }
 
 
-function sortGroups(column)
+function sortBins(column)
 {
     if (typeof column !== 'undefined')
     {
@@ -1877,13 +1877,13 @@ function sortGroups(column)
     if (sort_column)
     {
         var rows = [];
-        $('#tbody_groups tr').each(function() { rows.push($(this).attr('group-id')) } );
+        $('#tbody_bins tr').each(function() { rows.push($(this).attr('bin-id')) } );
         
         rows.sort(customSortFunction);
 
         for (var i=0; i < rows.length; i++)
         {
-            $('#tbody_groups').append($('#group_row_' + rows[i]).detach());
+            $('#tbody_bins').append($('#bin_row_' + rows[i]).detach());
         }
     }
 }
@@ -1902,7 +1902,7 @@ function customSortFunction(a,b)
     }
     else if (sort_column == 'name')
     {
-        if ($('#group_name_' + a).val() > $('#group_name_' + b).val())
+        if ($('#bin_name_' + a).val() > $('#bin_name_' + b).val())
             retval = 1;
         else
             retval = -1;

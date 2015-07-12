@@ -28,7 +28,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Import a collection into the profile database")
     parser.add_argument('data', metavar = "TAB DELIMITED FILE",
-                        help = 'The input file that describes group ids for each split.')
+                        help = 'The input file that describes bin ids for each split.')
     parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
                         help = 'Profile database.')
     parser.add_argument('-S', '--source-identifier', metavar = 'SOURCE', default = None,
@@ -36,7 +36,7 @@ if __name__ == '__main__':
                                 is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
                                 with new results. Using this parameter you can avoid that.")
     parser.add_argument('--colors', metavar = 'COLORS', default = None,
-                        help = "Optional TAB-delimited file for group colors.")
+                        help = "Optional TAB-delimited file for bin colors.")
     args = parser.parse_args()
 
 
@@ -63,24 +63,24 @@ if __name__ == '__main__':
         split_names = [c[0] for c in input_file_content]
 
         if len(split_names) != len(set(split_names)):
-            raise ConfigError, "Some split names occur twice in the input file. A split cannot belong in two groups (and\
-            neither there shold be the same group assignment for a given split appear more than once in a proper input\
+            raise ConfigError, "Some split names occur twice in the input file. A split cannot belong in two bins (and\
+            neither there shold be the same bin assignment for a given split appear more than once in a proper input\
             file)."
 
-        for split_name, group_name in input_file_content:
-            if not data.has_key(group_name):
-                data[group_name] = set([])
+        for split_name, bin_name in input_file_content:
+            if not data.has_key(bin_name):
+                data[bin_name] = set([])
 
-            data[group_name].add(split_name)
+            data[bin_name].add(split_name)
 
         if args.colors:
             filesnpaths.is_file_tab_delimited(args.colors, expected_number_of_fields = 2)
             colors_file_content = [l.strip().split('\t') for l in open(args.colors).readlines() if not l.startswith('#')]
             colors = dict(colors_file_content)
 
-            for group_name in data:
-                if group_name not in colors:
-                    colors[group_name] = '#000000'
+            for bin_name in data:
+                if bin_name not in colors:
+                    colors[bin_name] = '#000000'
 
         collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
         collections.append(source, data, colors)

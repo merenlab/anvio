@@ -20,10 +20,10 @@
 
 
 //--------------------------------------------------------------------------------------------------
-function createGroup(parent, group_id) {
+function createBin(parent, bin_id) {
     var svgObject = document.getElementById(parent);
     var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('id', group_id);
+    g.setAttribute('id', bin_id);
     svgObject.appendChild(g);
 }
 //--------------------------------------------------------------------------------------------------
@@ -48,15 +48,15 @@ function drawLegend(top, left) {
 
         names.sort();
 
-        var group_id = 'legend_' + legend_counter;
+        var bin_id = 'legend_' + legend_counter;
         legend_counter++;
 
-        createGroup('viewport', group_id);
+        createBin('viewport', bin_id);
 
         // draw border
-        drawRectangle(group_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
+        drawRectangle(bin_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
 
-        drawText(group_id, {
+        drawText(bin_id, {
             'x': left,
             'y': top
         }, categorical_data_title, '16px');
@@ -65,7 +65,7 @@ function drawLegend(top, left) {
             var name = names[j];
 
             top = top + 20;
-            var rect = drawRectangle(group_id, left, top, 16, 16, categorical_data_colors[pindex][name], 1, 'black',
+            var rect = drawRectangle(bin_id, left, top, 16, 16, categorical_data_colors[pindex][name], 1, 'black',
                 null,
                 function() {
                     // mouseenter
@@ -89,7 +89,7 @@ function drawLegend(top, left) {
                 }
             });
 
-            drawText(group_id, {
+            drawText(bin_id, {
                 'x': left + 30,
                 'y': top + 8
             }, names[j], '12px');
@@ -108,12 +108,12 @@ function drawLegend(top, left) {
 
         var names = stack_bar_title.split(";");
 
-        var group_id = 'legend_' + legend_counter;
+        var bin_id = 'legend_' + legend_counter;
         legend_counter++;
 
-        createGroup('viewport', group_id);
-        drawRectangle(group_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
-        drawText(group_id, {
+        createBin('viewport', bin_id);
+        drawRectangle(bin_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
+        drawText(bin_id, {
             'x': left,
             'y': top
         }, stack_bar_title, '16px');
@@ -122,7 +122,7 @@ function drawLegend(top, left) {
             var name = names[j];
 
             top = top + 20;
-            var rect = drawRectangle(group_id, left, top, 16, 16, stack_bar_colors[pindex][j], 1, 'black',
+            var rect = drawRectangle(bin_id, left, top, 16, 16, stack_bar_colors[pindex][j], 1, 'black',
                 null,
                 function() {
                     // mouseenter
@@ -146,7 +146,7 @@ function drawLegend(top, left) {
                 }
             });
 
-            drawText(group_id, {
+            drawText(bin_id, {
                 'x': left + 30,
                 'y': top + 8
             }, names[j], '12px');
@@ -157,36 +157,36 @@ function drawLegend(top, left) {
 
 }
 
-function drawGroupLegend(groups_to_draw, top, left) {
-    createGroup('viewport', 'group_legend');
+function drawBinLegend(bins_to_draw, top, left) {
+    createBin('viewport', 'bin_legend');
 
-    drawRectangle('group_legend', left - 10, top - 20,20 + (groups_to_draw.length + 2.5) * 20, 300, 'white', 1, 'black');
-    drawText('group_legend', {
+    drawRectangle('bin_legend', left - 10, top - 20,20 + (bins_to_draw.length + 2.5) * 20, 300, 'white', 1, 'black');
+    drawText('bin_legend', {
         'x': left,
         'y': top
-    }, "Groups", '16px');
+    }, "Bins", '16px');
 
     // table titles
     top = top + 28;
-    drawText('group_legend', {'x': left, 'y': top }, 'Color', '10px');
-    drawText('group_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
-    drawText('group_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
-    drawText('group_legend', {'x': left + 230, 'y': top}, 'Length', '10px');
+    drawText('bin_legend', {'x': left, 'y': top }, 'Color', '10px');
+    drawText('bin_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
+    drawText('bin_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
+    drawText('bin_legend', {'x': left + 230, 'y': top}, 'Length', '10px');
 
 
-    for (var gid=0; gid < groups_to_draw.length; gid++) {
-        var group = groups_to_draw[gid];
+    for (var bin_id=0; bin_id < bins_to_draw.length; bin_id++) {
+        var bin = bins_to_draw[bin_id];
         top = top + 20;
 
-        drawRectangle('group_legend', left, top-8, 16, 16, group['color'], 1, 'black');
-        drawText('group_legend', {'x': left + 30, 'y': top }, group['name'], '12px');
-        drawText('group_legend', {'x': left + 170, 'y': top}, group['contig-count'], '12px');
-        drawText('group_legend', {'x': left + 230, 'y': top}, group['contig-length'], '12px');
+        drawRectangle('bin_legend', left, top-8, 16, 16, bin['color'], 1, 'black');
+        drawText('bin_legend', {'x': left + 30, 'y': top }, bin['name'], '12px');
+        drawText('bin_legend', {'x': left + 170, 'y': top}, bin['contig-count'], '12px');
+        drawText('bin_legend', {'x': left + 230, 'y': top}, bin['contig-length'], '12px');
     }
 }
 
 function drawLayerLegend(layers, layer_order, top, left) {
-    createGroup('viewport', 'layer_legend');
+    createBin('viewport', 'layer_legend');
 
     // legend border
     drawRectangle('layer_legend', left - 10, top - 20,20 + (layer_order.length + 2.5) * 20, 300, 'white', 1, 'black');
@@ -1706,10 +1706,10 @@ function draw_tree(settings) {
             svg.removeChild(svg.lastChild);
         }
 
-        // create new group
-        createGroup('svg', 'viewport');
-        createGroup('viewport', 'tree_group');
-        createGroup('tree_group', 'tree');
+        // create new bin
+        createBin('svg', 'viewport');
+        createBin('viewport', 'tree_bin');
+        createBin('tree_bin', 'tree');
 
         var width = settings['tree-width'];
         var height = settings['tree-height'];
@@ -1735,7 +1735,7 @@ function draw_tree(settings) {
                     fontHeight: 10,
                     root_length: 0.1
                 });
-                $('#tree_group').attr('transform', 'rotate(90)'); // height and width swapped because of this.
+                $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
                 break;
 
             case 'circlephylogram':
@@ -1854,9 +1854,9 @@ function draw_tree(settings) {
             
             layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
 
-            createGroup('tree_group', 'layer_background_' + layer_index);
-            createGroup('tree_group', 'layer_' + layer_index);
-            createGroup('tree_group', 'event_catcher_' + layer_index);
+            createBin('tree_bin', 'layer_background_' + layer_index);
+            createBin('tree_bin', 'layer_' + layer_index);
+            createBin('tree_bin', 'event_catcher_' + layer_index);
 
             // draw event catcher of the layer
             if (settings['tree-type']=='phylogram')
@@ -1933,7 +1933,7 @@ function draw_tree(settings) {
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 
-        createGroup('tree_group', 'guide_lines');
+        createBin('tree_bin', 'guide_lines');
 
         // parent things
         var parent_odd = '#888888';
@@ -2226,8 +2226,8 @@ function draw_tree(settings) {
         }
 
         rebuildIntersections();
-        createGroup('tree_group', 'group');
-        // redrawGroups() call moved to draw_tree_callback because redrawGroups needs last_settings to be set.
+        createBin('tree_bin', 'bin');
+        // redrawBins() call moved to draw_tree_callback because redrawBins needs last_settings to be set.
 
         // observe for transform matrix change
         var observer = new MutationObserver(updateSingleBackgroundGlobals);
@@ -2269,7 +2269,7 @@ function draw_tree(settings) {
                     layer_title = layer_title.replace(/_/g, " ");
                 }
 
-                drawText('tree_group', {
+                drawText('tree_bin', {
                     'x': 10,
                     'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
                 }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
@@ -2285,13 +2285,13 @@ function draw_tree(settings) {
         // pan and mouse zoom
         $('svg').svgPan('viewport');
 
-        // tree group = tree + layers
+        // tree bin = tree + layers
         // bind events
-        var tree_group = document.getElementById('tree_group');
-        tree_group.addEventListener('click', lineClickHandler, false);
-        tree_group.addEventListener('contextmenu', lineContextMenuHandler, false);
-        tree_group.addEventListener('mouseover',lineMouseEnterHandler, false);
-        tree_group.addEventListener('mouseout', lineMouseLeaveHandler, false);
+        var tree_bin = document.getElementById('tree_bin');
+        tree_bin.addEventListener('click', lineClickHandler, false);
+        tree_bin.addEventListener('contextmenu', lineContextMenuHandler, false);
+        tree_bin.addEventListener('mouseover',lineMouseEnterHandler, false);
+        tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);
         document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
         document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
 
@@ -2387,7 +2387,7 @@ function draw_tree(settings) {
 
 }
 
-function redrawGroups(search_results)
+function redrawBins(search_results)
 {
     // check if tree parsed, if not there is nothing to redraw.
     if ($.isEmptyObject(label_to_node_map)) 
@@ -2395,52 +2395,52 @@ function redrawGroups(search_results)
 
     var leaf_list = Array.apply(null, new Array(order_counter+1)).map(Number.prototype.valueOf,0);
 
-    // put group numbers of selected leaves to leaf list
+    // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
-    for (var gid = 1; gid <= group_counter; gid++) {
-        for (var j = 0; j < SELECTED[gid].length; j++) {
-            if (label_to_node_map[SELECTED[gid][j]].IsLeaf()) {
-                leaf_list[label_to_node_map[SELECTED[gid][j]].order] = gid;
+    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+        for (var j = 0; j < SELECTED[bin_id].length; j++) {
+            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
+                leaf_list[label_to_node_map[SELECTED[bin_id][j]].order] = bin_id;
             }
         }
     }
 
-    // cluster groups and put them into groups_to_draw array with (start, end, gid);
+    // cluster bins and put them into bins_to_draw array with (start, end, bin_id);
     var prev_value = leaf_list[0];
     var prev_start = 0;
 
-    var groups_to_draw = new Array();
+    var bins_to_draw = new Array();
 
     for (var i=1; i < leaf_list.length; i++)
     {
         if (prev_value != leaf_list[i])
         {
             if (prev_value != 0)
-                groups_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, gid;
+                bins_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
 
             prev_start = i;
         }
         prev_value = leaf_list[i];
     }
 
-    // remove exist group drawings
-    var group = document.getElementById('group');
-    while (group.hasChildNodes()) {
-        group.removeChild(group.lastChild);
+    // remove exist bin drawings
+    var bin = document.getElementById('bin');
+    while (bin.hasChildNodes()) {
+        bin.removeChild(bin.lastChild);
     }
 
-    // draw new groups
-    for (var i=0; i < groups_to_draw.length; i++) {
-        var start = order_to_node_map[groups_to_draw[i][0]];
-        var end = order_to_node_map[groups_to_draw[i][1]];
+    // draw new bins
+    for (var i=0; i < bins_to_draw.length; i++) {
+        var start = order_to_node_map[bins_to_draw[i][0]];
+        var end = order_to_node_map[bins_to_draw[i][1]];
 
-        var color = document.getElementById('group_color_' + groups_to_draw[i][2]).getAttribute('color');
+        var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
         var outer_ring_size = parseInt(last_settings['outer-ring-height']);
 
         if (tree_type == 'circlephylogram')
         {
-            drawPie('group',
-                'group_background_' + i,
+            drawPie('bin',
+                'bin_background_' + i,
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 beginning_of_layers,
@@ -2450,8 +2450,8 @@ function redrawGroups(search_results)
                 0.1,
                 false);
 
-            drawPie('group',
-                'group_outer_' + 1,
+            drawPie('bin',
+                'bin_outer_' + 1,
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 total_radius + margin,
@@ -2464,8 +2464,8 @@ function redrawGroups(search_results)
         else
         {
 
-            drawPhylogramRectangle('group',
-                'group_background_' + i,
+            drawPhylogramRectangle('bin',
+                'bin_background_' + i,
                 beginning_of_layers,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
@@ -2474,8 +2474,8 @@ function redrawGroups(search_results)
                 0.1,
                 false);
 
-            drawPhylogramRectangle('group',
-                'group_outer_' + 1,
+            drawPhylogramRectangle('bin',
+                'bin_outer_' + 1,
                 total_radius + margin,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
@@ -2499,8 +2499,8 @@ function redrawGroups(search_results)
 
             if (tree_type == 'circlephylogram')
             {
-                drawPie('group',
-                    'group_outer_' + 1,
+                drawPie('bin',
+                    'bin_outer_' + 1,
                     start.angle - angle_per_leaf / 2,
                     end.angle + angle_per_leaf / 2,
                     total_radius + margin + outer_ring_size,
@@ -2512,8 +2512,8 @@ function redrawGroups(search_results)
             }
             else
             {
-                drawPhylogramRectangle('group',
-                    'group_outer_' + 1,
+                drawPhylogramRectangle('bin',
+                    'bin_outer_' + 1,
                     total_radius + margin + outer_ring_size,
                     (start.xy.y + end.xy.y) / 2,
                     end.xy.y - start.xy.y + height_per_leaf,
@@ -2529,27 +2529,27 @@ function redrawGroups(search_results)
 
 function rebuildIntersections()
 {
-    for (var gid = 1; gid <= group_counter; gid++) {
+    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
 
         // delete extra intersections
         var deleted;
         do {
             deleted = 0;
-            var cursor = SELECTED[gid].length;
+            var cursor = SELECTED[bin_id].length;
             while (cursor--)
             {
-                var node = label_to_node_map[SELECTED[gid][cursor]];
+                var node = label_to_node_map[SELECTED[bin_id][cursor]];
                 
                 if (node.IsLeaf())
                     continue;
 
-                if (node.child != null && SELECTED[gid].indexOf(node.child.label) > -1)
+                if (node.child != null && SELECTED[bin_id].indexOf(node.child.label) > -1)
                     continue;
 
-                if (node.sibling != null && SELECTED[gid].indexOf(node.sibling.label) > -1)
+                if (node.sibling != null && SELECTED[bin_id].indexOf(node.sibling.label) > -1)
                     continue;
 
-                SELECTED[gid].splice(cursor,1);
+                SELECTED[bin_id].splice(cursor,1);
                 deleted++;
             }
 
@@ -2559,10 +2559,10 @@ function rebuildIntersections()
         var inserted;
         do {
             inserted = 0;
-            var length = SELECTED[gid].length;
+            var length = SELECTED[bin_id].length;
             for (var cursor = 0; cursor < length; cursor++)
             {
-                var node = label_to_node_map[SELECTED[gid][cursor]];
+                var node = label_to_node_map[SELECTED[bin_id][cursor]];
                 var parent = node.ancestor;
 
                 if (parent.ancestor == null) 
@@ -2571,15 +2571,15 @@ function rebuildIntersections()
                     continue;
                 }
 
-                if (SELECTED[gid].indexOf(parent.label) > -1)
+                if (SELECTED[bin_id].indexOf(parent.label) > -1)
                 {
                     // parent already in selected list
                     continue;
                 }
 
-                if (node.sibling != null && SELECTED[gid].indexOf(node.sibling.label) > -1)
+                if (node.sibling != null && SELECTED[bin_id].indexOf(node.sibling.label) > -1)
                 {
-                    SELECTED[gid].push(parent.label);
+                    SELECTED[bin_id].push(parent.label);
                     
                     inserted++;
                 }

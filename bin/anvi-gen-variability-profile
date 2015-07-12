@@ -50,7 +50,7 @@ class VariablePositions:
 
         self.splits_of_interest = set([])
         self.collection_id = None
-        self.group_name = None
+        self.bin_name = None
 
         self.progress = p
         self.run = r
@@ -68,7 +68,7 @@ class VariablePositions:
 
 
     def process_cmd_line_args(self, args):
-        self.group_name = args.group_name
+        self.bin_name = args.bin_name
         self.collection_id = args.collection_id
         self.splits_of_interest_path = args.splits_of_interest
 
@@ -108,13 +108,13 @@ class VariablePositions:
         if self.collection_id:
             # the user wants to go with the collection id path. fine. we will get our split names from
             # the profile database.
-            if not self.group_name:
+            if not self.bin_name:
                 self.progress.end()
-                raise ConfigError, 'When you declare a collection id, you must also declare a group name\
+                raise ConfigError, 'When you declare a collection id, you must also declare a bin name\
                                     (from which the split names of interest will be acquired)'
             if self.splits_of_interest:
                 self.progress.end()
-                raise ConfigError, 'You declared a collection id and group name so anvi\'o can find out\
+                raise ConfigError, 'You declared a collection id and bin name so anvi\'o can find out\
                                     splits of interest, but you also have specified a file for split names?\
                                     This is confusing, and you should choose one way or another :/'
 
@@ -127,11 +127,11 @@ class VariablePositions:
 
             collection_dict = collections.get_collection_dict(self.collection_id)
 
-            if self.group_name not in collection_dict:
+            if self.bin_name not in collection_dict:
                 self.progress.end()
-                raise ConfigError, "'%s' does not appear to be a valid group in collection %s :/" % (self.group_name, self.collection_id)
+                raise ConfigError, "'%s' does not appear to be a valid bin in collection %s :/" % (self.bin_name, self.collection_id)
 
-            self.splits_of_interest = collection_dict[self.group_name]
+            self.splits_of_interest = collection_dict[self.bin_name]
 
         else:
             # OK. no collection id. we will go oldschool. we whope to find what we are looking for in
@@ -142,7 +142,7 @@ class VariablePositions:
                     self.progress.end()
                     raise ConfigError, 'You did not declare a source for split names. You either should give me\
                                         a file with split names you are interested in, or a collection id and\
-                                        group name so I can learn split names from the profile database.'
+                                        bin name so I can learn split names from the profile database.'
                 filesnpath.is_file_exists(self.splits_of_interest_path)
                 self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
 
@@ -505,13 +505,13 @@ if __name__ == '__main__':
     groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
                                                   ways to do it. One, you can give a file path with split names,\
                                                   or, as an alternative, you can provide a collection id with a\
-                                                  group name.')
+                                                  bin name.')
     groupS.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
                          help = 'File path that contains the list of splits to analyze.')
     groupS.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID',
-                        help = 'Collection ID to look for the group you are interested in.')
-    groupS.add_argument('-g', '--group-name', metavar = 'GROUP-NAME',
-                        help = 'Group name in the collection to recover split names of interest.')
+                        help = 'Collection ID to look for the bin you are interested in.')
+    groupS.add_argument('-b', '--bin-name', metavar = 'GROUP-NAME',
+                        help = 'Bin name in the collection to recover split names of interest.')
 
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
     groupO.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the resulting matrix.')

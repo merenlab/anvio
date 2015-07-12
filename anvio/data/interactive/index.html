@@ -62,7 +62,7 @@
                         <td><input type="text" value="0" size="4" id="tree_width"></td>
                     </tr>
                     <tr>
-                        <td>Group layer height:</td>
+                        <td>Bins layer height:</td>
                         <td><input type="text" value="60" size="4" id="outer-ring-height"></td>
                     </tr>
                     <tr>
@@ -135,45 +135,45 @@
 
                 <br /><input type="button" id="btn_draw_tree" onclick="drawTree();" value="Draw"><img id="img_loading" src="images/loading.gif" style="display: none; vertical-align:top; padding-left: 10px;"><span id="draw_delta_time" style="padding-left: 10px;"></span>
             </div>
-            <div id="groups" class="dialogs">
-                <table id="groups-table">
+            <div id="bins" class="dialogs">
+                <table id="bins-table">
                     <thead>
                         <tr>
                             <td>Select</td>
                             <td>Color</td>
                             <td>
-                                <a href="#" onclick="sortGroups('name');">
+                                <a href="#" onclick="sortBins('name');">
                                 Name<span class="sort-icon" id="sort-icon-name"></span>
                                 </a>
                             </td>
                             <td>
-                                <a href="#" onclick="sortGroups('contigs');">
+                                <a href="#" onclick="sortBins('contigs');">
                                 Contigs<span class="sort-icon" id="sort-icon-contigs"></span>
                                 </a>
                             </td>
                             <td>
-                                <a href="#" onclick="sortGroups('length');">
+                                <a href="#" onclick="sortBins('length');">
                                 Length<span class="sort-icon" id="sort-icon-length"></span>
                                 </a>
                             </td>
                             <td title="Completeness">
-                                <a href="#" onclick="sortGroups('comp');">
+                                <a href="#" onclick="sortBins('comp');">
                                 Comp.<span class="sort-icon" id="sort-icon-comp"></span>
                                 </a>
                             </td>
                             <td title="Contamination">
-                                <a href="#" onclick="sortGroups('cont');">
+                                <a href="#" onclick="sortBins('cont');">
                                 Cont.<span class="sort-icon" id="sort-icon-cont"></span>
                                 </a>
                             </td>
                             <td>Delete</td>
                         </tr>
                     </thead>
-                    <tbody id="tbody_groups">
+                    <tbody id="tbody_bins">
                     </tbody>
                 </table>
                 <div style="margin: 5px;">
-                <p align="center"><input id="btn_new_group" type="button" onClick="newGroup();" value="New group">
+                <p align="center"><input id="btn_new_bin" type="button" onClick="newBin();" value="New bin">
                 <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
                 <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
                 </p><hr /><div class="full-mode"><p align="center">
@@ -218,9 +218,9 @@
                 <br />
                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
                 <input type="button" onclick="highlightResult();" value="Highlight on tree"> 
-                <input type="button" onclick="redrawGroups();" value="Clear">
-                <input type="button" onclick="appendResult();" value="Append to group">
-                <input type="button" onclick="removeResult();" value="Remove from group">
+                <input type="button" onclick="redrawBins();" value="Clear">
+                <input type="button" onclick="appendResult();" value="Append to selected bin">
+                <input type="button" onclick="removeResult();" value="Remove from selected bin">
             </div>
 
             <div id="storeCollectionWindow" class="dialogs2">

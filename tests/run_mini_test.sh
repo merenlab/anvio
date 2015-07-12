@@ -91,11 +91,11 @@ anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/AN
 INFO "Summarizing CONCOCT results ..."
 anvi-summarize -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/204-MERGED-SUMMARY -c 'cmdline_concoct'
 
-INFO "Generate a variabilty profile for Group_1 using a collection id"
-anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -c cmdline_concoct -g Group_1 -o test-output/variability_Group_1.txt
+INFO "Generate a variabilty profile for Bin_1 using a collection id"
+anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -c cmdline_concoct -b Bin_1 -o test-output/variability_Bin_1.txt
 
-INFO "Generate a variabilty profile for Group_1 using split ids stored in a file (after summary)"
-anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Group_1/Group_1-original_split_names.txt -o test-output/variability_Group_1_ALT.txt
+INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
+anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt -o test-output/variability_Bin_1_ALT.txt
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.

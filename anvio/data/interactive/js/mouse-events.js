@@ -18,8 +18,8 @@
  */
 
 
-function getGroupId() {
-    var radios = document.getElementsByName('active_group');
+function getBinId() {
+    var radios = document.getElementsByName('active_bin');
     for(var i=0; i < radios.length; i++)
     {
         if (radios[i].checked)
@@ -37,48 +37,48 @@ function lineClickHandler(event) {
         return; // skip root
 
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
-        newGroup();
+        newBin();
 
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
-    if (group_id === 'undefined')
+    if (bin_id === 'undefined')
         return;
 
-    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
+    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
 
-    var groups_to_update = [];
+    var bins_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
-        var pos = SELECTED[group_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
+        var pos = SELECTED[bin_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
         if (pos == -1) {
-            SELECTED[group_id].push(id_to_node_map[p.child_nodes[i]].label);
+            SELECTED[bin_id].push(id_to_node_map[p.child_nodes[i]].label);
 
-            if (groups_to_update.indexOf(group_id) == -1)
-                groups_to_update.push(group_id);
+            if (bins_to_update.indexOf(bin_id) == -1)
+                bins_to_update.push(bin_id);
         }
 
-        // remove nodes from other groups
-        for (var gid = 1; gid <= group_counter; gid++) {
-            // don't remove nodes from current group
-            if (gid == group_id)
+        // remove nodes from other bins
+        for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+            // don't remove nodes from current bin
+            if (bin_id == bin_id)
                 continue;
 
-            var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
+            var pos = SELECTED[bin_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
-                SELECTED[gid].splice(pos, 1);
+                SELECTED[bin_id].splice(pos, 1);
 
-                if (groups_to_update.indexOf(gid) == -1)
-                    groups_to_update.push(gid);
+                if (bins_to_update.indexOf(bin_id) == -1)
+                    bins_to_update.push(bin_id);
             }
         }
     }
 
-    redrawGroups();
-    updateGroupWindow(groups_to_update);
+    redrawBins();
+    updateBinsWindow(bins_to_update);
 }
 
 function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
     if (event.target.id.indexOf('path_') > -1)
     {
@@ -86,9 +86,9 @@ function lineContextMenuHandler(event) {
 
         $('#control_contextmenu').show();
 
-        if (group_id > 0)
+        if (bin_id > 0)
         {
-            var pos = SELECTED[group_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
+            var pos = SELECTED[bin_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
 
             if (pos == -1) {
                 $('#control_contextmenu #select').show();
@@ -115,24 +115,24 @@ function lineContextMenuHandler(event) {
     if (p.id == 0)
         return; // skip root
 
-    if (group_id === 'undefined')
+    if (bin_id === 'undefined')
         return;
 
-    var groups_to_update = [];
+    var bins_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
-        // remove nodes from all groups
-        for (var gid = 1; gid <= group_counter; gid++) {
-            var pos = SELECTED[gid].indexOf(id_to_node_map[p.child_nodes[i]].label);
+        // remove nodes from all bins
+        for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+            var pos = SELECTED[bin_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
             if (pos > -1) {
-                SELECTED[gid].splice(pos, 1);
+                SELECTED[bin_id].splice(pos, 1);
 
-                if (groups_to_update.indexOf(gid) == -1)
-                    groups_to_update.push(gid);
+                if (bins_to_update.indexOf(bin_id) == -1)
+                    bins_to_update.push(bin_id);
             }
         }
     }
-    redrawGroups();
-    updateGroupWindow(groups_to_update);
+    redrawBins();
+    updateBinsWindow(bins_to_update);
     lineMouseLeaveHandler(event);
     return false;
 }
@@ -148,12 +148,12 @@ function lineMouseEnterHandler(event) {
     if (p.id == 0)
         return; // skip root
 
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
-    if (group_id === 'undefined')
+    if (bin_id === 'undefined')
         return;
 
-    var group_color = document.getElementById('group_color_' + group_id).getAttribute('color');
+    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
 
     var p1 = p;
     while (p1.child) {
@@ -168,7 +168,7 @@ function lineMouseEnterHandler(event) {
 
     if (tree_type == 'circlephylogram')
     {
-        drawPie('tree_group',
+        drawPie('tree_bin',
             'hover',
             p1.angle - angle_per_leaf / 2,
             p2.angle + angle_per_leaf / 2,
@@ -178,19 +178,19 @@ function lineMouseEnterHandler(event) {
             }),
             total_radius,
             (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-            group_color,
+            bin_color,
             0.3,
             false);
     }
     else
     {  
-        drawPhylogramRectangle('tree_group',
+        drawPhylogramRectangle('tree_bin',
             'hover',
             p.ancestor.xy.x,
             (p1.xy.y + p2.xy.y) / 2,
             p2.xy.y - p1.xy.y + height_per_leaf,
             total_radius - p.ancestor.xy.x,
-            group_color,
+            bin_color,
             0.3,
             false);
    }
@@ -199,13 +199,13 @@ function lineMouseEnterHandler(event) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
         if (_line) {
             _line.style['stroke-width'] = '3';
-            _line.style['stroke'] = group_color;       
+            _line.style['stroke'] = bin_color;       
         }
 
         var _arc = document.getElementById('arc' + p.child_nodes[index]);
         if (_arc) {
             _arc.style['stroke-width'] = '3';
-            _arc.style['stroke'] = group_color;
+            _arc.style['stroke'] = bin_color;
         }
     }
 }
@@ -218,9 +218,9 @@ function lineMouseLeaveHandler(event) {
 
     $('#path_hover').remove();
 
-    var group_id = getGroupId();
+    var bin_id = getBinId();
 
-    if (group_id === 'undefined') {
+    if (bin_id === 'undefined') {
         document.focus();
         return;
     }
@@ -241,27 +241,27 @@ function lineMouseLeaveHandler(event) {
     }
 
     var node_stack = [];
-    for (var gid = 1; gid <= group_counter; gid++) {
-        var color_picker = document.getElementById('group_color_' + gid);
+    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
+        var color_picker = document.getElementById('bin_color_' + bin_id);
 
         if (!color_picker)
             continue;
 
-        var group_color = color_picker.getAttribute('color');
+        var bin_color = color_picker.getAttribute('color');
 
-        for (var i = 0; i < SELECTED[gid].length; i++) {
-            node_stack.push(label_to_node_map[SELECTED[gid][i]].id);
+        for (var i = 0; i < SELECTED[bin_id].length; i++) {
+            node_stack.push(label_to_node_map[SELECTED[bin_id][i]].id);
 
-            var _line = document.getElementById('line' + label_to_node_map[SELECTED[gid][i]].id);
+            var _line = document.getElementById('line' + label_to_node_map[SELECTED[bin_id][i]].id);
             if (_line) {
                 _line.style['stroke-width'] = '2';
-                _line.style['stroke'] = group_color;       
+                _line.style['stroke'] = bin_color;       
             }
 
-            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[gid][i]].id);
+            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[bin_id][i]].id);
             if (_arc) {
                 _arc.style['stroke-width'] = '2';
-                _arc.style['stroke'] = group_color;
+                _arc.style['stroke'] = bin_color;
             }
         }
     }
@@ -316,23 +316,23 @@ function mouseMoveHandler(event) {
 
     var belongs = "n/a";
     var stop = false;
-    var gcolor = '#FFFFFF';
+    var bin_color = '#FFFFFF';
 
-    for (var gid = 1; !stop && gid <= group_counter; gid++) 
+    for (var bin_id = 1; !stop && bin_id <= bin_counter; bin_id++) 
     {
-        for (var i = 0; !stop && i < SELECTED[gid].length; i++) {
-            if (SELECTED[gid][i] == p.label) {
-                belongs = $('#group_name_' + gid).val();
-                gcolor = $('#group_color_'+ gid).attr('color');
+        for (var i = 0; !stop && i < SELECTED[bin_id].length; i++) {
+            if (SELECTED[bin_id][i] == p.label) {
+                belongs = $('#bin_name_' + bin_id).val();
+                bin_color = $('#bin_color_'+ bin_id).attr('color');
                 stop = true; // break nested loop
                 break;
             }
         }
     }
 
-    var tr_group = '<tr><td class="tk">group</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + gcolor + '"></div>' + belongs + '</td></tr>'
+    var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
-    $('#tooltip_content').html('<table>' + message + tr_group + '</table>');
+    $('#tooltip_content').html('<table>' + message + tr_bin + '</table>');
 }
 
 

@@ -135,7 +135,7 @@ def send_data(name):
         return json.dumps(d.title)
     elif name == "mode":
         return json.dumps("refine")
-    elif name == "group_prefix":
+    elif name == "bin_prefix":
         if len(r.bins) == 1:
             return json.dumps(list(r.bins)[0] + "_")
         else:
@@ -258,9 +258,9 @@ def completeness():
         return json.dumps(completeness_stats)
 
     split_names = json.loads(request.forms.get('split_names'))
-    group_name = json.loads(request.forms.get('group_name'))
+    bin_name = json.loads(request.forms.get('bin_name'))
 
-    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), group_name))
+    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), bin_name))
 
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
 

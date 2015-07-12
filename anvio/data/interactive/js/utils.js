@@ -307,7 +307,7 @@ function initializeDialogs() {
             of: window
         });
 
-    $("#groups").dialog("option", "title", "Groups").dialog("option", "position", {
+    $("#bins").dialog("option", "title", "Bins").dialog("option", "position", {
             my: "right-20px top",
             at: "right-20px top",
             of: window
