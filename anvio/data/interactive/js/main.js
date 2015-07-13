@@ -173,7 +173,7 @@ $(document).ready(function() {
             if (readOnlyResponse[0] == true)
             {
                 readOnly = true;
-                alert('This is read only');
+                alert('It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.');
 
                 $('#btn_save_current_state').prop('disabled', 'disabled');
                 $('#btn_store_collection').prop('disabled', 'disabled');
