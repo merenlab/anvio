@@ -173,7 +173,12 @@ $(document).ready(function() {
             if (readOnlyResponse[0] == true)
             {
                 readOnly = true;
-                alert('This is read only')
+                alert('This is read only');
+
+                $('#btn_save_current_state').prop('disabled', 'disabled');
+                $('#btn_store_collection').prop('disabled', 'disabled');
+                $('#btn_gen_summary').prop('disabled', 'disabled');
+                $('#btn_store_refined_bins').prop('disabled', 'disabled');
             }
 
             bin_prefix = prefixResponse[0];
