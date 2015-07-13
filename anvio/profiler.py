@@ -335,6 +335,9 @@ class BAMProfiler:
 
 
     def list_contigs(self):
+        import signal
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
         if self.input_file_path:
             self.progress.new('Init')
             self.progress.update('Reading BAM File')
