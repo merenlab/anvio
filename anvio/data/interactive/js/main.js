@@ -86,6 +86,7 @@ var completeness_dict = {};
 var sort_column;
 var sort_order;
 
+var readOnly = false;
 var refineMode = false;
 var bin_prefix;
 
@@ -152,16 +153,27 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
+            url: '/data/read_only?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
             url: '/data/bin_prefix?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse, prefixResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, stateResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse) 
         {
             if (modeResponse[0] == 'refine')
             {
                 refineMode = true;
                 $('.full-mode').hide();
                 $('.refine-mode').show();
+            }
+
+            if (readOnlyResponse[0] == true)
+            {
+                readOnly = true;
+                alert('This is read only')
             }
 
             bin_prefix = prefixResponse[0];
