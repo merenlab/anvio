@@ -177,7 +177,7 @@ $(document).ready(function() {
 
                 $('#btn_save_current_state').prop('disabled', 'disabled');
                 $('#btn_store_collection').prop('disabled', 'disabled');
-                $('#btn_gen_summary').prop('disabled', 'disabled');
+                $('#generate-summary').prop('disabled', 'disabled');
                 $('#btn_store_refined_bins').prop('disabled', 'disabled');
             }
 
