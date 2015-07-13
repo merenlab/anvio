@@ -101,6 +101,9 @@ parser.add_argument('--server-only', action = 'store_true', default = False,
                         help = 'The default behavior is to start the local server, and fire up a browser that\
                                 connects to the server. If you have other plans, and want to start the server\
                                 without calling the browser, this is the flag you need.')
+parser.add_argument('--read-only', action = 'store_true', default = False,
+                        help = 'When the interactive interface is started with this flag, all database "write"\
+                                operations will be disabled.')
 
 
 args = parser.parse_args()
@@ -168,6 +171,8 @@ def send_data(name):
         return json.dumps(d.title)
     elif name == "mode":
         return json.dumps("full")
+    elif name == "read_only":
+        return json.dumps(args.read_only)
     elif name == "bin_prefix":
         return json.dumps("Bin_")
 
@@ -297,22 +302,25 @@ def send_summary_static(collection_id, filename):
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
+    if args.read_only:
+        return json.dumps("Sorry! This is a read-only instance.")
+
     run.info_single('A summary of collection "%s" has been requested.' % collection_id)
     set_default_headers(response)
 
     class Args:
         pass
 
-    args = Args()
-    args.profile_db = d.profile_db_path
-    args.annotation_db = d.annotation_db_path
-    args.collection_id = collection_id
-    args.list_collections = None
-    args.debug = None
-    args.output_directory = os.path.join(os.path.dirname(args.profile_db), 'SUMMARY_%s' % collection_id)
+    summarizer_args = Args()
+    summarizer_args.profile_db = d.profile_db_path
+    summarizer_args.annotation_db = d.annotation_db_path
+    summarizer_args.collection_id = collection_id
+    summarizer_args.list_collections = None
+    summarizer_args.debug = None
+    summarizer_args.output_directory = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_id)
 
     try:
-        summary = summarizer.Summarizer(args, r = run, p = progress)
+        summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
         summary.process()
     except Exception as e:
         return json.dumps({'error'  : 'Something failed. This is what we know: %s' % e})
@@ -323,6 +331,9 @@ def gen_summary(collection_id):
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
+    if args.read_only:
+        return json.dumps("Sorry! This is a read-only instance.")
+
     source = request.forms.get('source')
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
@@ -369,6 +380,9 @@ def completeness():
 
 @route('/save_state', method='POST')
 def save_state():
+    if args.read_only:
+        return
+
     state = request.forms.get('state')
 
     now = datetime.datetime.now()
