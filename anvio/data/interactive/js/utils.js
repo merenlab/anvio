@@ -341,6 +341,13 @@ function initializeDialogs() {
     {
         $(".ui-dialog-titlebar").css('background', 'red'); 
     }
+
+
+    if (readOnly)
+    {
+        $('#bins').dialog("option", "title", "Bins [READ ONLY]");
+        //disable Store colection, generate summary, save current state buttons here.
+    }
 }
 //---------------------------------------------------------
 //  message popup
