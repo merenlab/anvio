@@ -142,6 +142,10 @@ class RefineBins(dbops.DatabasesMetaclass):
 
 
     def store_refined_bins(self, refined_bin_data, refined_bin_colors):
+        if 0 in [len(b) for b in refined_bin_data.values()]:
+            raise RefineError, 'One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
+                                this is not the right way to do it.'
+
         self.progress.new('Storing refined bins')
         self.progress.update('accessing to collection "%s" ...' % self.collection_id)
         collection_dict = self.collections.get_collection_dict(self.collection_id)
