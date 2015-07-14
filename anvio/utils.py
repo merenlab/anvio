@@ -151,7 +151,7 @@ def is_program_exists(program):
             return True
     else:
         for path in os.environ["PATH"].split(os.pathsep):
-            path = path.strip('"')
+            path = os.path.expanduser(path).strip('"')
             exe_file = os.path.join(path, program)
             if IsExe(exe_file):
                 return True
