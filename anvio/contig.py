@@ -34,13 +34,15 @@ def set_contigs_abundance(contigs):
        a Contigs wrapper .. maybe later."""
 
     # first calculate the mean coverage
-    overall_mean_coverage = sum([c.coverage.mean * c.length for c in contigs.values()]) / sum(c.length for c in contigs.values())
+    total_length_of_all_contigs = sum([c.length for c in contigs.values()])
+    total_coverage_values_for_all_contigs = sum([c.coverage.mean * c.length for c in contigs.values()])
+    overall_mean_coverage = total_coverage_values_for_all_contigs / total_length_of_all_contigs
 
     # set normalized abundance factor for each contig
     for contig in contigs:
-        contigs[contig].abundance = contigs[contig].coverage.mean / overall_mean_coverage
+        contigs[contig].abundance = contigs[contig].coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
         for split in contigs[contig].splits:
-            split.abundance = split.coverage.mean / overall_mean_coverage
+            split.abundance = split.coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
 
 
 def gen_split_name(parent_name, order):
