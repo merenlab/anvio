@@ -79,7 +79,11 @@
                     </tr>
                 </table>
                 
-                <br /><br />
+                <br />
+                <input type="button" id="btn_save_current_state" onClick="showSaveStateWindow();" value="Save state">
+                <input type="button" onClick="showLoadStateWindow();" value="Load state">
+                <span id="working_on"></span>
+                <br /><br /><br />
                 
                 <div id="table_layers_container">
                     <b>Layer Settings</b>
@@ -175,7 +179,6 @@
                 <div style="margin: 5px;">
                 <p align="center"><input id="btn_new_bin" type="button" onClick="newBin();" value="New bin">
                 <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
-                <input type="button" id="btn_save_current_state" onClick="saveCurrentState();" value="Save current state">
                 </p><hr /><div class="full-mode"><p align="center">
                 <input type="button" onclick="showLoadCollectionWindow();" value="Load collection">
                 <input type="button" id="btn_store_collection" onclick="showStoreCollectionWindow();" value="Store collection">
@@ -257,6 +260,18 @@
                 </select> bases.
                 <br /><br /><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();"></center></div>
             </div>
+
+            <div id="loadStateWindow" class="dialogs2">
+                <div style="margin: 10px; display: inline-block; float: left">
+                <select id="loadState_list" size="10" style="width: 200px;" ondblclick="loadState();" onchange="$('#loadState_last_modified').html('Last Modified: ' + $('#loadState_list option:selected').attr('lastmodified'));"></select></br></br>
+                <span id="loadState_last_modified">Last Modified: n/a</span><br /><br /><center><input type="button" id="loadState_load" value="Load" onClick="loadState();"></center></div>
+            </div>
+
+            <div id="saveStateWindow" class="dialogs2">
+                <div style="margin: 10px; width: 200px;">
+                <select id="saveState_list" size="10" style="width: 100%;" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select></br></br>
+                <label for="loadState_name">State name: </label><input id="saveState_name" size="22"/><br /><br /><center><input type="button" id="loadState_save" value="Save" onClick="saveState();"></center></div>
+            </div>            
 
             <div id="summarizeCollectionWindow" class="dialogs2">
                 <div style="margin: 10px; display: inline-block; float: left">
