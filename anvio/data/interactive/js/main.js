@@ -847,7 +847,7 @@ function serializeSettings(use_layer_names) {
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
-
+    state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
 
     // sync views object and layers table
     syncViews();
@@ -1931,6 +1931,9 @@ function loadState()
                 $('#edge_length_normalization').prop('checked', state['edge-normalization']);
             if (state.hasOwnProperty('custom-layer-margin')) {
                 $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+            }
+            if (state.hasOwnProperty('show-grid-for-bins')) {
+                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
             }
 
             // reload layers

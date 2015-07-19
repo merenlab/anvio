@@ -443,6 +443,8 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(pie);
+
+    return pie;
 }
 
 function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opacity, pointer_events) {
@@ -464,6 +466,8 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opa
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(rect);
+
+    return rect;
 }
 
 function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave) {
@@ -2430,6 +2434,8 @@ function redrawBins(search_results)
     }
 
     // draw new bins
+    var show_grid = $('#show_grid_for_bins')[0].checked;
+    
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = order_to_node_map[bins_to_draw[i][0]];
         var end = order_to_node_map[bins_to_draw[i][1]];
@@ -2439,16 +2445,6 @@ function redrawBins(search_results)
 
         if (tree_type == 'circlephylogram')
         {
-            drawPie('bin',
-                'bin_background_' + i,
-                start.angle - angle_per_leaf / 2,
-                end.angle + angle_per_leaf / 2,
-                beginning_of_layers,
-                total_radius,
-                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-                color,
-                0.1,
-                false);
 
             drawPie('bin',
                 'bin_outer_' + 1,
@@ -2459,20 +2455,28 @@ function redrawBins(search_results)
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 1,
-                false);     
+                false);
+
+            var pie = drawPie('bin',
+                'bin_background_' + i,
+                start.angle - angle_per_leaf / 2,
+                end.angle + angle_per_leaf / 2,
+                beginning_of_layers,
+                (show_grid) ? total_radius + margin + outer_ring_size : total_radius,
+                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                color,
+                (show_grid) ? 0 : 0.1,
+                false);
+
+            if (show_grid) {
+                pie.setAttribute('vector-effect', 'non-scaling-stroke');
+                pie.setAttribute('stroke-opacity', '1');
+                pie.setAttribute('stroke-width', '1');
+                pie.setAttribute('stroke', 'white');
+            }
         }
         else
         {
-
-            drawPhylogramRectangle('bin',
-                'bin_background_' + i,
-                beginning_of_layers,
-                (start.xy.y + end.xy.y) / 2,
-                end.xy.y - start.xy.y + height_per_leaf,
-                total_radius + margin - beginning_of_layers,
-                color,
-                0.1,
-                false);
 
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
@@ -2483,6 +2487,23 @@ function redrawBins(search_results)
                 color,
                 1,
                 false);
+
+            var rect = drawPhylogramRectangle('bin',
+                'bin_background_' + i,
+                beginning_of_layers,
+                (start.xy.y + end.xy.y) / 2,
+                end.xy.y - start.xy.y + height_per_leaf,
+                (show_grid) ? total_radius + margin + outer_ring_size - beginning_of_layers : total_radius + margin - beginning_of_layers,
+                color,
+                (show_grid) ? 0 : 0.1,
+                false);
+
+            if (show_grid) {
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+                rect.setAttribute('stroke-width', '1');
+                rect.setAttribute('stroke', 'white');
+            }
         }
     }
 
