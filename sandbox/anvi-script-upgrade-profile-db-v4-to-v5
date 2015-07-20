@@ -22,10 +22,16 @@ def update_profile_db_from_v4_to_v5(profile_db_path):
     if profile_db_path is None:
         raise ConfigError, "No profile database is given."
 
+    # make sure someone is not being funny
+    dbops.is_profile_db(profile_db_path)
+
+    # make sure the version is 4
+    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    if str(profile_db.get_version()) != '4':
+        raise ConfigError, "Version of this profile database is not 4 (hence, this script cannot really do anything)."
+
     progress.new("Trying to upgrade the profile database")
     progress.update('...')
-
-    profile_db = db.DB(profile_db_path, '4')
 
     if t.states_table_name in profile_db.get_table_names():
         progress.end()
@@ -78,8 +84,6 @@ if __name__ == '__main__':
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database')
     args = parser.parse_args()
 
-    update_profile_db_from_v4_to_v5(args.profile_db)
-    sys.exit()
     try:
         update_profile_db_from_v4_to_v5(args.profile_db)
     except ConfigError, e:
