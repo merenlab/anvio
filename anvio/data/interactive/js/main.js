@@ -1670,8 +1670,23 @@ function loadCollection() {
         alert('Please select a collection.');
         return;
     }
+    
+    var bin_list = [];
+    var total_selection = 0;
+    
+    $('#tbody_bins tr').each(
+    function(index, bin) {
+        bin_list.push(parseInt($(bin).attr('bin-id')));
+    });
+    for (var _i = 0; _i < bin_list.length; _i++) {
+        var bin_id = bin_list[_i];
+        for (var j = 0; j < SELECTED[bin_id].length; j++) {
+            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
+                total_selection++;
+        }
+    }
 
-    if (!confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?"))
+    if (total_selection > 0 && !confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?"))
         return;
 
     $.ajax({
