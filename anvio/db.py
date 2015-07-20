@@ -49,8 +49,9 @@ class DB:
             if str(self.version) != str(client_version) and not ignore_version:
                 raise ConfigError, "It seems the database '%s' was generated when your client was at version %s,\
                                     however, your client now is at version %s. Which means this database file\
-                                    cannot be used with this client anymore and needs to be re-created :/"\
-                                            % (self.db_path, self.version, client_version)
+                                    cannot be used with this client anymore and needs to be upgraded to the\
+                                    version %s :/"\
+                                            % (self.db_path, self.version, client_version, client_version)
 
 
     def get_version(self):
