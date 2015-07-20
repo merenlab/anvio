@@ -1810,7 +1810,7 @@ function saveState()
                 $('#saveStateWindow').dialog('close');
 
                 current_state_name = name;
-                $('#working_on').html('Working on: ' + current_state_name);
+                $('#current_state').html('(current state: ' + current_state_name + ')');
             }
         }
     });
@@ -1967,7 +1967,7 @@ function loadState()
             buildLayersTable(layer_order, views[current_view]);
 
             current_state_name = $('#loadState_list').val();
-            $('#working_on').html('Working on: ' + current_state_name);
+            $('#current_state').html('(current state: ' + current_state_name + ')');
             $('#loadStateWindow').dialog('close');
         }
     });
