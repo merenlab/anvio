@@ -1052,11 +1052,9 @@ class TablesForStates(Table):
 
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
 
-        profile_db = ProfileDatabase(self.db_path)
-
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, [(state_id, content, last_modified), ])
-        profile_db.db.commit()
-        self.states = profile_db.db.get_table_as_dict(t.states_table_name)
+        profile_db = db.DB(self.db_path, self.version)
+        profile_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
+        self.states = profile_db.get_table_as_dict(t.states_table_name)
 
         profile_db.disconnect()
 
