@@ -438,6 +438,23 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    $('#grid_color').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            redrawBins();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
     }, false);
@@ -848,6 +865,8 @@ function serializeSettings(use_layer_names) {
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
+    state['grid-color'] = $('#grid_color').attr('color');
+
 
     // sync views object and layers table
     syncViews();
@@ -1959,6 +1978,10 @@ function loadState()
             }
             if (state.hasOwnProperty('show-grid-for-bins')) {
                 $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+            }
+            if (state.hasOwnProperty('grid-color')) {
+                $('#grid_color').attr('color', state['grid-color']);
+                $('#grid_color').css('background-color', state['grid-color']);
             }
 
             // reload layers

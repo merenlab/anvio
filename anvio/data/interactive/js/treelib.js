@@ -2435,6 +2435,7 @@ function redrawBins(search_results)
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
+    var grid_color = document.getElementById('grid_color').getAttribute('color');
     
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = order_to_node_map[bins_to_draw[i][0]];
@@ -2472,7 +2473,7 @@ function redrawBins(search_results)
                 pie.setAttribute('vector-effect', 'non-scaling-stroke');
                 pie.setAttribute('stroke-opacity', '1');
                 pie.setAttribute('stroke-width', '1');
-                pie.setAttribute('stroke', 'white');
+                pie.setAttribute('stroke', grid_color);
             }
         }
         else
@@ -2502,7 +2503,7 @@ function redrawBins(search_results)
                 rect.setAttribute('vector-effect', 'non-scaling-stroke');
                 rect.setAttribute('stroke-opacity', '1');
                 rect.setAttribute('stroke-width', '1');
-                rect.setAttribute('stroke', 'white');
+                rect.setAttribute('stroke', grid_color);
             }
         }
     }
