@@ -1976,12 +1976,13 @@ function loadState()
             if (state.hasOwnProperty('custom-layer-margin')) {
                 $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
             }
-            if (state.hasOwnProperty('show-grid-for-bins')) {
-                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-            }
             if (state.hasOwnProperty('grid-color')) {
                 $('#grid_color').attr('color', state['grid-color']);
                 $('#grid_color').css('background-color', state['grid-color']);
+            }
+            if (state.hasOwnProperty('show-grid-for-bins')) {
+                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+                redrawBins();
             }
 
             // reload layers
