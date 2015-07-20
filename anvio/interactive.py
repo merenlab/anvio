@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, is_annotation_and_profile_dbs_compatible
+from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, TablesForStates, is_annotation_and_profile_dbs_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -38,6 +38,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
     def __init__(self, args, external_clustering = None):
         self.args = args
         self.views = {}
+        self.states_table = None
         self.p_meta = {}
         self.title = 'Unknown Project'
 
@@ -208,6 +209,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.p_meta['self_path'] = self.profile_db_path
         self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(self.profile_db_path))
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
 
         # load views from the profile database
         self.load_views()

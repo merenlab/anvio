@@ -1739,13 +1739,13 @@ function showSaveStateWindow()
         success: function(state_list) {
             $('#saveState_list').empty();
 
-            for (i in state_list) {
+            for (state_name in state_list) {
                 var _select = "";
-                if (state_list[i][0] == current_state_name)
+                if (state_name == current_state_name)
                 {
                     _select = ' selected="selected"'; 
                 }
-                $('#saveState_list').append('<option ' + _select + '>' + state_list[i][0] + '</option>');
+                $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
             }
 
             $('#saveStateWindow').dialog('open');
@@ -1754,21 +1754,15 @@ function showSaveStateWindow()
     });
 }
 
-function saveState(overwrite) 
+function saveState() 
 {
-    if (typeof overwrite === 'undefined')
-    {
-        var overwrite = false;
-    }
-
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/state/save?timestamp=' + new Date().getTime(),
         data: {
             'name': $('#saveState_name').val(),
-            'content': JSON.stringify(serializeSettings(true), null, 4),
-            'overwrite': overwrite
+            'content': JSON.stringify(serializeSettings(true), null, 4)
         },
         success: function(response) {
             if (response['status_code']==0)
@@ -1779,13 +1773,6 @@ function saveState(overwrite)
             {
                 // successfull
                 $('#saveStateWindow').dialog('close');
-            }
-            else if (response['status_code']==2)
-            {
-                if(confirm('"' + $('#saveState_name').val() + '" already exist in the database, do you want to overwrite it?'))
-                {
-                    saveState(true);
-                }
             }
         }
     });
@@ -1801,8 +1788,8 @@ function showLoadStateWindow()
         success: function(state_list) {
             $('#loadState_list').empty();
 
-            for (i in state_list) {
-                $('#loadState_list').append('<option lastmodified="' + state_list[i][1] + '">' + state_list[i][0] + '</option>');
+            for (state_name in state_list) {
+                $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
             }
 
             $('#loadStateWindow').dialog('open');

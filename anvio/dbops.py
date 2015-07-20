@@ -10,6 +10,7 @@ import copy
 import numpy
 import random
 import hashlib
+import datetime
 import operator
 from itertools import chain
 from collections import Counter
@@ -1021,11 +1022,12 @@ class TablesForCollections(Table):
 
 
 class TablesForStates(Table):
-    def __init__(self, db_path):
+    def __init__(self, db_path, version):
         self.db_path = db_path
+        self.version = version
         self.states = {}
 
-        Table.__init__(self, self.db_path, anvio.__profile__version__, run, progress)
+        Table.__init__(self, self.db_path, self.version, run, progress)
 
         self.init()
 
@@ -1033,9 +1035,9 @@ class TablesForStates(Table):
     def init(self):
         is_profile_db(self.db_path)
 
-        profile_db = db.DB(self.db_path, anvio.__profile__version__)
-        self.states = db.get_table_as_dict(t.states_table_name)
-        profile_db.close()
+        profile_db = db.DB(self.db_path, self.version)
+        self.states = profile_db.get_table_as_dict(t.states_table_name)
+        profile_db.disconnect()
 
 
     def get_state(self, state_id):
@@ -1045,12 +1047,22 @@ class TablesForStates(Table):
         return self.states[state_id]
 
 
-    def store_state(self, state_id, content):
-        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
+    def store_state(self, state_id, content, last_modified = None):
+        self.remove_state(state_id)
+
+        last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
+
+        profile_db = ProfileDatabase(self.db_path)
+
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, [(state_id, content, last_modified), ])
+        profile_db.db.commit()
+        self.states = profile_db.db.get_table_as_dict(t.states_table_name)
+
+        profile_db.disconnect()
 
 
     def remove_state(self, state_id):
-        pass
+        self.delete_entries_for_key('name', state_id, [t.states_table_name])
 
 
 class TablesForGenes(Table):

@@ -11,7 +11,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 annotation_db_version = "2"
-profile_db_version = "4"
+profile_db_version = "5"
 
 
 ####################################################################################################
