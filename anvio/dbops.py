@@ -474,6 +474,7 @@ class ProfileDatabase:
         self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
         self.disconnect()
 
@@ -1017,6 +1018,39 @@ class TablesForCollections(Table):
             db_entries_for_contigs.append(db_entry)
 
         return db_entries_for_contigs
+
+
+class TablesForStates(Table):
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.states = {}
+
+        Table.__init__(self, self.db_path, anvio.__profile__version__, run, progress)
+
+        self.init()
+
+
+    def init(self):
+        is_profile_db(self.db_path)
+
+        profile_db = db.DB(self.db_path, anvio.__profile__version__)
+        self.states = db.get_table_as_dict(t.states_table_name)
+        profile_db.close()
+
+
+    def get_state(self, state_id):
+        if state_id not in self.states:
+            return None
+
+        return self.states[state_id]
+
+
+    def store_state(self, state_id, content):
+        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
+
+
+    def remove_state(self, state_id):
+        pass
 
 
 class TablesForGenes(Table):

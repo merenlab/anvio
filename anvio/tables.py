@@ -73,6 +73,9 @@ collections_splits_table_name        = 'collections_of_splits'
 collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
 
+states_table_name                    = 'states'
+states_table_structure               = ['name', 'content', 'last_modified']
+states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 ####################################################################################################
 #
