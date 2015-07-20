@@ -384,9 +384,10 @@ def state_all():
 def get_state():
     set_default_headers(response)
 
-    state = d.states_table.states[request.forms.get('name')]
+    name = request.forms.get('name')
 
-    if state is not None:
+    if name in d.states_table.states:
+        state = d.states_table.states[name]
         return json.dumps(state['content'])
 
     return json.dumps("")

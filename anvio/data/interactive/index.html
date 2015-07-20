@@ -274,7 +274,7 @@
             <div id="saveStateWindow" class="dialogs2">
                 <div style="margin: 10px; width: 200px;">
                 <select id="saveState_list" size="10" style="width: 100%;" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select></br></br>
-                <label for="loadState_name">State name: </label><input id="saveState_name" size="22"/><br /><br /><center><input type="button" id="loadState_save" value="Save" onClick="saveState();"></center></div>
+                <label for="loadState_name">State name: </label><input id="saveState_name" size="22" onkeydown="if (event.keyCode == 13) saveState(); "/><br /><br /><center><input type="button" id="loadState_save" value="Save" onClick="saveState();"></center></div>
             </div>            
 
             <div id="summarizeCollectionWindow" class="dialogs2">

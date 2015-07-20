@@ -1756,15 +1756,35 @@ function showSaveStateWindow()
 
 function saveState() 
 {
+    var name = $('#saveState_name').val();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(state_list) {
+            for (state_name in state_list) {
+                if (state_name == name)
+                {
+                    if (!confirm('"' + name + '" already exist, do you want to overwrite it?'))
+                        return;
+                }
+            }
+
+        }
+    });
+
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/state/save?timestamp=' + new Date().getTime(),
         data: {
-            'name': $('#saveState_name').val(),
+            'name': name,
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
         success: function(response) {
+            response = JSON.parse(response);
+
             if (response['status_code']==0)
             {
                 alert("Failed, Interface running in read only mode.");
@@ -1773,6 +1793,9 @@ function saveState()
             {
                 // successfull
                 $('#saveStateWindow').dialog('close');
+
+                current_state_name = name;
+                $('#working_on').html('Working on: ' + current_state_name);
             }
         }
     });
