@@ -15,39 +15,6 @@ from anvio.errors import ConfigError
 run = terminal.Run()
 progress = terminal.Progress()
 
-def process_splits(self, search_results_dict):
-    hits_per_contig = {}
-    for hit in search_results_dict.values():
-        if hits_per_contig.has_key(hit['contig']):
-            hits_per_contig[hit['contig']].append(hit)
-        else:
-            hits_per_contig[hit['contig']] = [hit]
-
-    db_entries_for_splits = []
-
-    for contig in self.contigs_info:
-        if not hits_per_contig.has_key(contig):
-            # no hits for this contig. pity!
-            continue
-
-        for split_name in self.contig_name_to_splits[contig]:
-            start = self.splits_info[split_name]['start']
-            stop = self.splits_info[split_name]['end']
-
-            # FIXME: this really needs some explanation.
-            for hit in hits_per_contig[contig]:
-                if hit['stop'] > start and hit['start'] < stop:
-                    gene_length = hit['stop'] - hit['start']
-                    # if only a part of the gene is in the split:
-                    start_in_split = (start if hit['start'] < start else hit['start']) - start
-                    stop_in_split = (stop if hit['stop'] > stop else hit['stop']) - start
-                    percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
-                    
-                    db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['source'], hit['gene_unique_identifier'], hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
-                    db_entries_for_splits.append(db_entry)
-
-    return db_entries_for_splits
-
 
 def update_annotation_db_from_v2_to_v3(annotation_db_path):
     if annotation_db_path is None:
