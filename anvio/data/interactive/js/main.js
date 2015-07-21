@@ -866,6 +866,7 @@ function serializeSettings(use_layer_names) {
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['grid-color'] = $('#grid_color').attr('color');
+    state['grid-width'] = $('#grid_width').val();
 
 
     // sync views object and layers table
@@ -1979,6 +1980,9 @@ function loadState()
             if (state.hasOwnProperty('grid-color')) {
                 $('#grid_color').attr('color', state['grid-color']);
                 $('#grid_color').css('background-color', state['grid-color']);
+            }
+            if (state.hasOwnProperty('grid-width')) {
+                $('#grid_width').val(state['grid-width']);
             }
             if (state.hasOwnProperty('show-grid-for-bins')) {
                 $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
