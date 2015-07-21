@@ -12,7 +12,6 @@ import json
 import argparse
 import webbrowser
 import datetime
-import sqlite3
 
 from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
