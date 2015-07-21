@@ -10,7 +10,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-annotation_db_version = "2"
+annotation_db_version = "3"
 profile_db_version = "5"
 
 
@@ -50,8 +50,8 @@ hmm_hits_info_table_structure        = ['source', 'ref' , 'search_type', 'genes'
 hmm_hits_info_table_types            = [ 'text' , 'text',    'text'    , 'text' ]
 
 hmm_hits_contigs_table_name          = 'hmm_hits_in_contigs'
-hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
-hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
+hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'gene_unique_identifier', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
+hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,          'text'         ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
 
 hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']

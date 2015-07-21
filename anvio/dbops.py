@@ -860,6 +860,14 @@ class TablesForSearches(Table):
 
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
+        # we want to define unique identifiers for each gene first. this information will be used to track genes that will
+        # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
+        # into the dictionary, so it perfectly matches to the table structure
+        for entry_id in search_results_dict:
+            hit = search_results_dict[entry_id]
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([hit['contig'], hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
+            hit['source'] = source
+
         self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
 
         annotation_db = AnnotationDatabase(self.db_path)
@@ -867,17 +875,18 @@ class TablesForSearches(Table):
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
         annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
-        # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name), source] + [v[h] for h in t.hmm_hits_contigs_table_structure[2:]]) for v in search_results_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
 
-        db_entries = self.process_splits(source, search_results_dict)
+        # then populate serach_data table for each contig.
+        db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name)] + [v[h] for h in t.hmm_hits_contigs_table_structure[1:]]) for v in search_results_dict.values()]
+        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
+
+        db_entries = self.process_splits(search_results_dict)
         annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
 
         annotation_db.disconnect()
 
 
-    def process_splits(self, source, search_results_dict):
+    def process_splits(self, search_results_dict):
         hits_per_contig = {}
         for hit in search_results_dict.values():
             if hits_per_contig.has_key(hit['contig']):
@@ -905,8 +914,7 @@ class TablesForSearches(Table):
                         stop_in_split = (stop if hit['stop'] > stop else hit['stop']) - start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
-                        gene_unique_identifier = hashlib.sha224('_'.join([contig, hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
-                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), source, gene_unique_identifier, hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['source'], hit['gene_unique_identifier'], hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
