@@ -144,7 +144,7 @@ class GetSplitNamesInBins:
         if self.bin_ids_file_path and self.bin_id:
             raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
                                 you would like to focus. Not both :/'
-        if (not self.bin_ids_file_path) and (not self.bin_id) and (not len(self.bins)):
+        if (not self.bin_ids_file_path) and (not self.bin_id):
             raise ConfigError, 'You must either use a file to list all the bin ids (-B) you would like to\
                                 further analyze, or declare a single bin id (-b). You have not really given\
                                 us anything to work with.'
