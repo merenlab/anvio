@@ -1,20 +1,25 @@
 # -*- coding: utf-8
 """
-    A place for classes for binary calls.
+    Classes for HMM related operations.
 
-    At this point there is one class described which takes care of search using HMM profiles.
-    It simply takes genes.txt and genes.hmm.gz files as input and returns a dictionary back
-    with results. See anvio/data/hmm directory for examples.
+    * HMMSearch takes care of searches using HMM profiles. It simply takes genes.txt and
+    genes.hmm.gz files as input and returns a dictionary back with results. See anvio/data/hmm
+    directory for examples.
 """
 
 import os
 import gzip
 import shutil
+import textwrap
 
+import anvio
+import anvio.db as db
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -126,3 +131,111 @@ class HMMSearch:
     def clean_tmp_dirs(self):
         for tmp_dir in self.tmp_dirs:
             shutil.rmtree(tmp_dir)
+
+
+class SequencesForHMMHits:
+    def __init__(self, annotation_db_path, sources = set([]), run = run, progress = progress):
+        if type(sources) != type(set([])):
+            raise ConfigError, "'sources' variable has to be a set instance."
+
+        self.sources = set([s for s in sources if s])
+
+        # take care of annotation db related stuff and move on:
+        annotation_db = db.DB(annotation_db_path, anvio.__annotation__version__)
+        self.search_info_table = annotation_db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.search_table_splits = annotation_db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        self.search_table_contigs = annotation_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+        self.contig_sequences = annotation_db.get_table_as_dict(t.contig_sequences_table_name)
+        annotation_db.disconnect()
+
+        if len(self.sources):
+            self.search_table_splits = utils.get_filtered_dict(self.search_table_splits, 'source', self.sources)
+            self.search_table_contigs = utils.get_filtered_dict(self.search_table_contigs, 'source', self.sources)
+        else:
+            self.sources = self.search_info_table.keys()
+
+        # create a map of all unique gene ids to contigs table entry ids for fast access:
+        self.unique_id_to_contig_entry_id = {}
+        for entry_id in self.search_table_contigs:
+            unique_id = self.search_table_contigs[entry_id]['gene_unique_identifier']
+            self.unique_id_to_contig_entry_id[unique_id] = entry_id
+
+
+    def get_hmm_sequences_dict_for_splits(self, splits_dict):
+        """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
+           its struture goes like this:
+
+                {
+                    'bin_x': set['split_a, split_b, ...'],
+                    'bin_y': set['split_c, split_d, ...'],
+                    ...
+                }
+        """
+
+        split_names = set([])
+        for s in splits_dict.values():
+            split_names.update(s)
+
+        hits = utils.get_filtered_dict(self.search_table_splits, 'split', split_names)
+
+        split_name_to_bin_id = {}
+        for bin_id in splits_dict:
+            for split_name in splits_dict[bin_id]:
+                split_name_to_bin_id[split_name] = bin_id
+
+        if not hits:
+            return {}
+
+        hmm_sequences_dict_for_splits = {}
+
+        unique_ids_taken_care_of = set([])
+        for entry in hits.values():
+            split_name = entry['split']
+            source = entry['source']
+            gene_name = entry['gene_name']
+            e_value = entry['e_value']
+            gene_unique_id = entry['gene_unique_identifier']
+
+            if gene_unique_id in unique_ids_taken_care_of:
+                continue
+            else:
+                unique_ids_taken_care_of.add(gene_unique_id)
+
+            contig_entry = self.search_table_contigs[self.unique_id_to_contig_entry_id[gene_unique_id]]
+            contig_name = contig_entry['contig']
+            start, stop = contig_entry['start'], contig_entry['stop']
+            sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
+
+            hmm_sequences_dict_for_splits[gene_unique_id] = {'sequence': sequence,
+                                                             'source': source,
+                                                             'bin_id': split_name_to_bin_id[split_name],
+                                                             'gene_name': gene_name,
+                                                             'e_value': e_value,
+                                                             'contig': contig_entry['contig'],
+                                                             'start': start,
+                                                             'stop': stop,
+                                                             'length': stop - start}
+
+        return hmm_sequences_dict_for_splits
+
+
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap = 200):
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if type(wrap) != int:
+            raise ConfigError, '"wrap" has to be an integer instance'
+
+        f = open(output_file_path, 'w')
+
+        for gene_unique_id in hmm_sequences_dict_for_splits:
+            entry = hmm_sequences_dict_for_splits[gene_unique_id]
+            header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'start', 'stop', 'length']])
+            sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+
+            if wrap:
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens = False)
+
+            f.write('>%s\n' % header)
+            f.write('%s\n' % sequence)
+
+
