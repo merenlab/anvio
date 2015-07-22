@@ -26,7 +26,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.commandline import HMMSearch
+from anvio.hmmops import HMMSearch
 from anvio.parsers import parser_modules
 from anvio.tableops import Table
 
