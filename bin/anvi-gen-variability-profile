@@ -50,7 +50,7 @@ class VariablePositions:
 
         self.splits_of_interest = set([])
         self.collection_id = None
-        self.bin_name = None
+        self.bin_id = None
 
         self.progress = p
         self.run = r
@@ -68,7 +68,8 @@ class VariablePositions:
 
 
     def process_cmd_line_args(self, args):
-        self.bin_name = args.bin_name
+        self.args = args
+        self.bin_id = args.bin_id
         self.collection_id = args.collection_id
         self.splits_of_interest_path = args.splits_of_interest
 
@@ -108,7 +109,7 @@ class VariablePositions:
         if self.collection_id:
             # the user wants to go with the collection id path. fine. we will get our split names from
             # the profile database.
-            if not self.bin_name:
+            if not self.bin_id:
                 self.progress.end()
                 raise ConfigError, 'When you declare a collection id, you must also declare a bin name\
                                     (from which the split names of interest will be acquired)'
@@ -118,21 +119,7 @@ class VariablePositions:
                                     splits of interest, but you also have specified a file for split names?\
                                     This is confusing, and you should choose one way or another :/'
 
-            collections = ccollections.Collections()
-            collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
-
-            if self.collection_id not in collections.sources_dict:
-                self.progress.end()
-                raise ConfigError, "%s is not a valid collection id :/" % self.collection_id
-
-            collection_dict = collections.get_collection_dict(self.collection_id)
-
-            if self.bin_name not in collection_dict:
-                self.progress.end()
-                raise ConfigError, "'%s' does not appear to be a valid bin in collection %s :/" % (self.bin_name, self.collection_id)
-
-            self.splits_of_interest = collection_dict[self.bin_name]
-
+            self.bins, self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get()
         else:
             # OK. no collection id. we will go oldschool. we whope to find what we are looking for in
             # self.splits_of_interst_path  at this point (which may have been filled through the command
@@ -510,7 +497,7 @@ if __name__ == '__main__':
                          help = 'File path that contains the list of splits to analyze.')
     groupS.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID',
                         help = 'Collection ID to look for the bin you are interested in.')
-    groupS.add_argument('-b', '--bin-name', metavar = 'GROUP-NAME',
+    groupS.add_argument('-b', '--bin-id', metavar = 'BIN-NAME',
                         help = 'Bin name in the collection to recover split names of interest.')
 
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
