@@ -33,8 +33,6 @@ progress = terminal.Progress()
 
 
 def main(args):
-    splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-
     if args.list_available_sources:
         info_table = SequencesForHMMHits(args.annotation_db).search_info_table
         for source in info_table:
@@ -42,6 +40,7 @@ def main(args):
             run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
         sys.exit(0)
 
+    splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
     run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
 
     sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
@@ -56,11 +55,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get sequences for all HMM hits in a given bin")
-    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
+    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
                         help = 'Profile database.')
     parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
                         help = 'Annotation database.')
-    parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', required = True,
+    parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', default = None,
                         help = 'Collection id to look for bins.')
     parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
                         help = 'One bin to analayze (you either use this, or use a file to list\
