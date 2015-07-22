@@ -44,7 +44,8 @@ def main(args):
 
     run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
 
-    s = SequencesForHMMHits(args.annotation_db, sources = set([s.strip() for s in args.hmm_sources.split(',')]))
+    sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+    s = SequencesForHMMHits(args.annotation_db, sources = sources)
 
     hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits(splits_dict)
     run.info('Result', '%d genes for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
