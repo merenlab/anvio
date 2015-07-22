@@ -44,7 +44,7 @@ def main(args):
 
     run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
 
-    s = SequencesForHMMHits(args.annotation_db, sources = set([args.hmm_source]))
+    s = SequencesForHMMHits(args.annotation_db, sources = set([s.strip() for s in args.hmm_sources.split(',')]))
 
     hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits(splits_dict)
     run.info('Result', '%d genes for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
@@ -66,8 +66,12 @@ if __name__ == '__main__':
                                 each bin id you prefer to analyze).')
     parser.add_argument('-B', '--bin-ids-file', required = False, metavar = 'BINS FILE', default = None,
                         help = 'Text file for bins (each line should be a bin id).')
-    parser.add_argument('-s', '--hmm-source', metavar = 'HMM SOURCE', default = None,
-                        help = 'Get sequences for a specific HMM source.')
+    parser.add_argument('-s', '--hmm-sources', metavar = 'HMM SOURCE', default = None,
+                        help = 'Get sequences for a specific list of HMM sources. You can list one or more\
+                                sources by separating them from each other with a comma character (i.e., \
+                                "--hmm-sources source_1,source_2,source_3"). If you would like to see a list\
+                                of available sources in the annotation database, run this program with\
+                                "--list-available-sources" flag.')
     parser.add_argument('-o', '--output-file', metavar = 'FILE NAME', default = 'sequences_for_hmm_hits.fa',
                         help = 'Output file path. Default is %(default)s.')
     parser.add_argument('-l', '--list-available-sources', default = False, action = 'store_true',

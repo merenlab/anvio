@@ -148,6 +148,11 @@ class SequencesForHMMHits:
         self.contig_sequences = annotation_db.get_table_as_dict(t.contig_sequences_table_name)
         annotation_db.disconnect()
 
+        missing_sources = [s for s in self.sources if s not in self.search_info_table]
+        if len(missing_sources):
+            raise ConfigError, 'Some of the requested sources were not found in the annotation database :/\
+                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources)
+
         if len(self.sources):
             self.search_table_splits = utils.get_filtered_dict(self.search_table_splits, 'source', self.sources)
             self.search_table_contigs = utils.get_filtered_dict(self.search_table_contigs, 'source', self.sources)
