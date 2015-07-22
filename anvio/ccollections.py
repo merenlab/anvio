@@ -126,7 +126,6 @@ class Collections:
 
 
 class GetSplitNamesInBins:
-    """Returns a tuple: (bins, split_names)"""
     def __init__(self, args):
         # we will fill this in and return it
         self.split_names_of_interest = set([])
