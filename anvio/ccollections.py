@@ -17,6 +17,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -122,4 +123,70 @@ class Collections:
             c = self.sources_dict[collection_id]
             output = '%s (%d clusters, representing %d splits).' % (collection_id, c['num_clusters'], c['num_splits'])
             self.run.info_single(output)
+
+
+class GetSplitNamesInBins:
+    """Returns a tuple: (bins, split_names)"""
+    def __init__(self, args):
+        # we will fill this in and return it
+        self.split_names_of_interest = set([])
+
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.bin_ids_file_path = A('bin_ids_file')
+        self.bin_id = A('bin_id')
+        self.collection_id = A('collection_id')
+        self.annotation_db_path = A('annotation_db')
+        self.profile_db_path = A('profile_db')
+        self.debug = A('debug')
+
+
+    def get(self):
+        if self.bin_ids_file_path and self.bin_id:
+            raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
+                                you would like to focus. Not both :/'
+        if (not self.bin_ids_file_path) and (not self.bin_id) and (not len(self.bins)):
+            raise ConfigError, 'You must either use a file to list all the bin ids (-B) you would like to\
+                                further analyze, or declare a single bin id (-b). You have not really given\
+                                us anything to work with.'
+
+        if self.bin_ids_file_path:
+            filesnpaths.is_file_exists(self.bin_ids_file_path)
+            self.bins = set([b.strip() for b in open(self.bin_ids_file_path).readlines()])
+        if self.bin_id:
+            self.bins = set([self.bin_id])
+
+        if not len(self.bins):
+            raise ConfigError, 'There is no bin to work with :/'
+
+        self.collections = Collections()
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
+
+        if self.collection_id not in self.collections.sources_dict:
+            raise ConfigError, 'The collection id "%s" does not seem to be in the profile database. These are the\
+                                collections that are available through this profile database: %s.'\
+                                                    % (self.collection_id, ', '.join(self.collections.sources_dict))
+
+        collection_dict = self.collections.get_collection_dict(self.collection_id)
+
+        bins_in_collection = collection_dict.keys()
+
+        bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
+        if len(bins_that_does_not_exist_in_collection):
+            raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
+                                "%s". Here is a list of bins that are missing: %s'\
+                                        % (self.collection_id, ', '.join(bins_that_does_not_exist_in_collection))
+
+        split_names_of_interest = []
+        for bin_id in self.bins:
+            split_names_of_interest.extend(collection_dict[bin_id])
+
+        self.split_names_of_interest = set(split_names_of_interest)
+
+        if not len(self.split_names_of_interest):
+            raise ConfigError, 'Something went wrong :/ There are no split names associated in the profile database for\
+                                the combination of collection id and bin ids you requested. This should have never\
+                                happened...'
+
+        return (self.bins, self.split_names_of_interest)
+
 
