@@ -12,11 +12,10 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
-import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError, RefineError
+from anvio.errors import RefineError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
@@ -58,7 +57,10 @@ class RefineBins(dbops.DatabasesMetaclass):
 
     def init(self):
         # get split names
-        self.bins, self.split_names_of_interest = ccollections.GetSplitNamesInBins(self.args).get()
+        d = ccollections.GetSplitNamesInBins(self.args).get_dict()
+        self.bins = d.keys()
+        for split_names in d.values():
+            self.split_names_of_interest.update(split_names)
 
         # if the user updates the refinement of a single bin or bins, there shouldn't be multiple copies
         # of that stored in the database. so everytime 'store_refined_bins' function is called,

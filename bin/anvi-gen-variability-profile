@@ -119,7 +119,7 @@ class VariablePositions:
                                     splits of interest, but you also have specified a file for split names?\
                                     This is confusing, and you should choose one way or another :/'
 
-            self.bins, self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get()
+            self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
         else:
             # OK. no collection id. we will go oldschool. we whope to find what we are looking for in
             # self.splits_of_interst_path  at this point (which may have been filled through the command

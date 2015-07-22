@@ -139,8 +139,6 @@ class GetSplitNamesInBins:
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 
-
-    def get(self):
         if self.bin_ids_file_path and self.bin_id:
             raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
                                 you would like to focus. Not both :/'
@@ -166,9 +164,9 @@ class GetSplitNamesInBins:
                                 collections that are available through this profile database: %s.'\
                                                     % (self.collection_id, ', '.join(self.collections.sources_dict))
 
-        collection_dict = self.collections.get_collection_dict(self.collection_id)
+        self.collection_dict = self.collections.get_collection_dict(self.collection_id)
 
-        bins_in_collection = collection_dict.keys()
+        bins_in_collection = self.collection_dict.keys()
 
         bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
         if len(bins_that_does_not_exist_in_collection):
@@ -176,17 +174,24 @@ class GetSplitNamesInBins:
                                 "%s". Here is a list of bins that are missing: %s'\
                                         % (self.collection_id, ', '.join(bins_that_does_not_exist_in_collection))
 
+
+
+    def get_split_names_only(self):
         split_names_of_interest = []
         for bin_id in self.bins:
-            split_names_of_interest.extend(collection_dict[bin_id])
+            split_names_of_interest.extend(self.collection_dict[bin_id])
 
         self.split_names_of_interest = set(split_names_of_interest)
 
-        if not len(self.split_names_of_interest):
-            raise ConfigError, 'Something went wrong :/ There are no split names associated in the profile database for\
-                                the combination of collection id and bin ids you requested. This should have never\
-                                happened...'
+        return self.split_names_of_interest
 
-        return (self.bins, self.split_names_of_interest)
+
+    def get_dict(self):
+        d = {}
+
+        for bin_id in self.bins:
+            d[bin_id] = set(self.collection_dict[bin_id])
+
+        return d
 
 
