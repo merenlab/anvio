@@ -1778,7 +1778,7 @@ function showSaveStateWindow()
                 $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
             }
 
-            $('#saveStateWindow').dialog('open');
+            $('#modSaveState').modal('show');
             $('#saveState_list').trigger('change');
         }
     });
@@ -1822,7 +1822,7 @@ function saveState()
             else if (response['status_code']==1)
             {
                 // successfull
-                $('#saveStateWindow').dialog('close');
+                $('#modSaveState').modal('hide');
 
                 current_state_name = name;
                 $('#current_state').html('(current state: ' + current_state_name + ')');
@@ -1991,7 +1991,7 @@ function loadState()
 
             current_state_name = $('#loadState_list').val();
             $('#current_state').html('(current state: ' + current_state_name + ')');
-            $('#loadStateWindow').dialog('close');
+            $('#modLoadState').modal('hide');
         }
     });
 }
