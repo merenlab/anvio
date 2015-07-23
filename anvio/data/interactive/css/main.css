@@ -102,3 +102,6 @@ td > input[type='checkbox'] {
     border: 1px solid;
     border-color: #555;
 }
+
+div#tooltip_content tr:nth-child(even) {background: rgba(100,100,100,0.1);}
+div#tooltip_content tr:nth-child(odd) {  background: rgba(220,220,220,0.1);}
