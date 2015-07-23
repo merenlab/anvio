@@ -153,6 +153,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   font-size: 14px;
 }
 
+#current_state {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: medium;
+  color: green;
+}
+
 #search_result_message {
   padding-left: 100px;
   height: 30px;

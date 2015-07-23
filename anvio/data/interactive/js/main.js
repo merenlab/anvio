@@ -1835,7 +1835,7 @@ function saveState()
                 $('#modSaveState').modal('hide');
 
                 current_state_name = name;
-                $('#current_state').html('(current state: ' + current_state_name + ')');
+                $('#current_state').html('[current state: ' + current_state_name + ']');
             }
         }
     });
@@ -2000,7 +2000,7 @@ function loadState()
             buildLayersTable(layer_order, views[current_view]);
 
             current_state_name = $('#loadState_list').val();
-            $('#current_state').html('(current state: ' + current_state_name + ')');
+            $('#current_state').html('[current state: ' + current_state_name + ']');
             $('#modLoadState').modal('hide');
         }
     });
