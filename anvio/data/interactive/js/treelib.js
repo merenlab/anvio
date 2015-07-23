@@ -2361,8 +2361,8 @@ function draw_tree(settings) {
                     
                     if (inner_rect.width > 2 && inner_rect.height > 2)
                     {
-                        var _dx = (VIEWER_WIDTH / 2) - (inner_rect.left + inner_rect.width / 2);
-                        var _dy = (VIEWER_HEIGHT / 2) - (inner_rect.top + inner_rect.height / 2);
+                        var _dx = (parseInt("0" + $('#svg').css('left')) + (VIEWER_WIDTH / 2)) - (inner_rect.left + inner_rect.width / 2);
+                        var _dy = (parseInt("0" + $('#svg').css('top'))  + (VIEWER_HEIGHT / 2)) - (inner_rect.top + inner_rect.height / 2);
                         pan(_dx,_dy);
                         zoom(VIEWER_WIDTH / inner_rect.width);
                     }
