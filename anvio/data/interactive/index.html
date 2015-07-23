@@ -197,64 +197,44 @@
 
                 <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
                     <div id="bin-settings" class="form-horizontal">
-                        <table id="bins-table">
-                            <thead>
-                                <tr>
-                                    <td>Select</td>
-                                    <td>Color</td>
-                                    <td>
-                                        <a href="#" onclick="sortBins('name');">
-                                        Name<span class="sort-icon" id="sort-icon-name"></span>
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <a href="#" onclick="sortBins('contigs');">
-                                        Contigs<span class="sort-icon" id="sort-icon-contigs"></span>
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <a href="#" onclick="sortBins('length');">
-                                        Length<span class="sort-icon" id="sort-icon-length"></span>
-                                        </a>
-                                    </td>
-                                    <td title="Completeness">
-                                        <a href="#" onclick="sortBins('comp');">
-                                        Comp.<span class="sort-icon" id="sort-icon-comp"></span>
-                                        </a>
-                                    </td>
-                                    <td title="Contamination">
-                                        <a href="#" onclick="sortBins('cont');">
-                                        Cont.<span class="sort-icon" id="sort-icon-cont"></span>
-                                        </a>
-                                    </td>
-                                    <td>Delete</td>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody_bins">
-                            
-                            </tbody>
-                        </table>
-                        <div style="margin: 5px;">
-                            <p style="text-align: center"><input id="btn_new_bin" onclick=
-                            "newBin();" type="button" value="New bin"> <input id="open_search_box"
-                            onclick="$('#searchBox').dialog('open');" type="button" value=
-                            "Search Dialog"></p>
-                            <hr>
+                        <div class="panel-body">
+                            <table class="table table-striped sortable" id="bins-table">
+                                <thead id="thead_bins">
+                                    <tr>
+                                        <th>Sel</th>
+                                        <th class="text-center">Col</th>
+                                        <th>Name</th>
+                                        <th>Contigs</th>
+                                        <th>Len</th>
+                                        <th>Comp.</th>
+                                        <th>Cont.</th>
+                                        <th>Del</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_bins">
+                                    <!-- JS FILLS HERE -->
+                                </tbody>
+                            </table>
+                        </div>
 
-                            <div class="full-mode">
-                                <p style="text-align: center"><input onclick=
-                                "showLoadCollectionWindow();" type="button" value=
-                                "Load collection"> <input id="btn_store_collection" onclick=
-                                "showStoreCollectionWindow();" type="button" value=
-                                "Store collection"> <input id="generate-summary" onclick=
-                                "showGenSummaryWindow();" type="button" value=
-                                "Generate summary"></p>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> New bin</button>
+                        </div>
+
+
+                        <div class="full-mode">
+                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Load collection</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection</button>
                             </div>
+                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Generate summary</button>
+                            </div>
+                        </div>
 
-                            <div class="refine-mode" style="display: none">
-                                <p style="text-align: center"><input id="btn_store_refined_bins"
-                                onclick="storeRefinedBins();" type="button" value=
-                                "Store refined bins in the database"></p>
+                        <div class="refine-mode" style="display: none">
+                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
                             </div>
                         </div>
                     </div>

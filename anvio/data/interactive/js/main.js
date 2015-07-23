@@ -1012,7 +1012,7 @@ function newBin(id, binState) {
                    '    <td><span id="contig_length_{id}">{length}</span></td>' +
                    '    <td><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
                    '    <td><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
-                   '    <td><center><span class="delete-button ui-icon ui-icon-trash" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
+                   '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
                    '</tr>';
 
     template = template.replace(new RegExp('{id}', 'g'), id)
