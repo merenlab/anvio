@@ -275,16 +275,16 @@
                             <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>&nbsp;&nbsp;<span id="search_result_message">0 spits found.</span>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="showSearchResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Show matching contig names down below</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Show matching contig names down below</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="highlightResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Highlight on the tree</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight on the tree</button>
                             <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
-                            <button type="button" class="btn btn-default btn-sm" onclick="redrawBins();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Clear</button>
+                            <button type="button" class="btn btn-default btn-sm" onclick="redrawBins();"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="appendResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Append to selected bin</button>
-                            <button type="button" class="btn btn-default btn-sm" onclick="removeResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Remove from selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append to selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove from selected bin</button>
                         </div>
                         <div class="search-results-display"></div>
                     </div>
