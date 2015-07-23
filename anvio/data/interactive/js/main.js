@@ -1403,14 +1403,14 @@ function searchContigs()
 }
 
 function showSearchResult() {
-    var msg = "Line\t\tContig Name\t\t" + metadata[0][search_column] + "\n";
+    var msg = "<h4>Search results:</h4> Split Name  " + metadata[0][search_column] + "<br>";
 
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        msg = msg + search_results[i] + "\t\t" + metadata[search_results[i]][0] + "\t\t" + metadata[search_results[i]][search_column] + "\n";
+        msg = msg + metadata[search_results[i]][0] + "  " + metadata[search_results[i]][search_column] + "<br>";
     }
-    messagePopupShow('Search Results ('+_len+" items)", msg);
+    $(".search-results-display").html(msg);
 }
 
 function highlightResult() {

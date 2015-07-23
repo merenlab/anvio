@@ -132,6 +132,11 @@
                                 </div>
                         </div> 
 
+                        <div class="sidebar-state-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modLoadState"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modSaveState"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+                        </div>
+ 
                         <h4>Layer Settings</h4>
 
                         <div id="table_layers_container">
@@ -251,20 +256,23 @@
                 </div>
 
                 <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
+                    <p style="color: #AAAAAA; padding: 10px;">This tab is currently under construction.
                     <div id="sample-settings" class="form-horizontal">
-                        Sample stuff
+                        <!-- Sample stuff here -->
                     </div>
                 </div>
 
                 <div role="tabpanel" class="tab-pane fade in" id="mouse_hover">
+                    <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.
                     <div id="mouse_hover" class="form-horizontal">
                         <div id="tooltip_content"></div>
                     </div>
                 </div>
 
                 <div role="tabpanel" class="tab-pane fade in" id="search_tab">
+                    <p style="color: #AAAAAA; padding: 10px;">Search splits based on various attributes.
                     <div id="search_tab" class="form-horizontal">
-                        Expression: 
+                        <h4>Expression:</h4> 
                         <select id="searchLayerList"></select>
                         <select id="searchOperator">
                             <option value="6">Contains</option>
@@ -278,14 +286,22 @@
                         <input id="searchValue" value="">
                         <br />
                         <br />
-                        <input type="button" onclick="searchContigs();" value="Search"> <input type="button" onclick="showSearchResult();" value="Show result">&nbsp;&nbsp;<span id="search_result_message">0 contigs found.</span>
-                        <br />
-                        <br />
-                        <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
-                        <input type="button" onclick="highlightResult();" value="Highlight on tree"> 
-                        <input type="button" onclick="redrawBins();" value="Clear">
-                        <input type="button" onclick="appendResult();" value="Append to selected bin">
-                        <input type="button" onclick="removeResult();" value="Remove from selected bin">
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Search</button>&nbsp;&nbsp;<span id="search_result_message">0 spits found.</span>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="showSearchResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Show matching contig names down below</button>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="highlightResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Highlight on the tree</button>
+                            <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
+                            <button type="button" class="btn btn-default btn-sm" onclick="redrawBins();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Clear</button>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="appendResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Append to selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" onclick="removeResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Remove from selected bin</button>
+                        </div>
+                        <div class="search-results-display"></div>
                     </div>
                 </div>
 
@@ -308,11 +324,53 @@
             </div>
         </div>
         
-
         <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>
         </svg>
     </div>
+
+
+    <!-- DIALOGS SECTION -->
+
+    <!-- LOAD STATE -->
+    <div class="modal fade" id="modLoadState" role="dialog" aria-labelledby="modState" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Load State</h4>
+          </div>
+          <div class="modal-body">
+            <p class="section-paragraph"></p>
+            <p style="color: #AAAAAA; padding: 10px;">Lorem ipsum dolor sit amet
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVE STATE -->
+    <div class="modal fade" id="modSaveState" role="dialog" aria-labelledby="modState" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Save State</h4>
+          </div>
+          <div class="modal-body">
+            <p class="section-paragraph"></p>
+            <p style="color: #AAAAAA; padding: 10px;">Lorem ipsum dolor sit amet
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
 
     <!-- Activate tooltips... -->
     <script type="text/javascript">

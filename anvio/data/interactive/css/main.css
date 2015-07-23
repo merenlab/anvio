@@ -29,7 +29,7 @@ html, body, #wrapper {
 	height: 100%;
 	padding: 10px;
 	overflow: scroll;
-	padding-bottom: 75px;
+	padding-bottom: 100px;
 }
 
 .input-xs {
@@ -45,11 +45,8 @@ html, body, #wrapper {
 }
 
 .sidebar-footer {
-	background-color: #DDD;
+    background-color: rgba(255, 255, 255, 0.8);
     border: 1px solid #BBB;
-    opacity: 0.70;
-    filter:alpha(opacity=70);
-    -moz-border-radius: 15px;
     height: 82px;
     width: 490px;
     position: fixed;
@@ -87,6 +84,26 @@ td > input[type='checkbox'] {
 	width: 25%;
 }
 
+.sidebar-state-buttons > .btn {
+	width: 25%;
+}
+
+.sidebar-state-buttons {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-top: 1px rgb(187, 187, 187) solid;
+  border-bottom: 1px rgb(187, 187, 187) solid;
+  padding: 3px 0px;
+  margin: 6px 0px;
+}
+
+.btn-group {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-top: 1px rgb(187, 187, 187) solid;
+  border-bottom: 1px rgb(187, 187, 187) solid;
+  padding: 3px 0px;
+  margin: 6px 0px;
+}
+
 .colorpicker {
     float: left;
     display: inline-block;
@@ -96,6 +113,12 @@ td > input[type='checkbox'] {
     width: 16px;
     height: 16px;
     margin: auto;
+}
+
+.btn-group > .colorpicker {
+    margin-top: 7px;
+    margin-right: 3px;
+    margin-left: 3px;
 }
 
 .colorpicker:hover {
