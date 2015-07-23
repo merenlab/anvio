@@ -3,6 +3,10 @@
    line-height: 1.428;
 }
 
+h4 {
+  margin-top: 5px;
+}
+
 ::-webkit-scrollbar { 
     display: none; 
 }
@@ -28,12 +32,13 @@ html, body, #wrapper {
 #sidebar {
     position: fixed;
 	background: url('../images/fractal.jpg') center center scroll;
-	border-right: 1px solid #555;
+    border-right: 1px solid #D3D3D3;
 	width: 490px;
 	height: 100%;
 	padding: 10px;
 	overflow: scroll;
-	padding-bottom: 100px;
+	padding-bottom: 150px;
+    margin-top: 43px;
 }
 
 .input-xs {
@@ -49,14 +54,13 @@ html, body, #wrapper {
 }
 
 .sidebar-footer {
-    background-color: rgba(255, 255, 255, 0.8);
-    border: 1px solid #BBB;
+    background-color: white;
     height: 82px;
     width: 490px;
     position: fixed;
     bottom: -0px;
-    border-top: 1px solid #555;
-    border-right: 1px solid #555;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
 }
 
 td, tr {
@@ -72,13 +76,16 @@ td > input[type='checkbox'] {
 	width: 25%;
 }
 
+.tab-content {
+}
+
 .sidebar-footer-draw {
 	height: 40px;
 	padding: 5px 10px;
-	border-bottom: 1px solid #555;
+	border-bottom: 1px solid #D3D3D3;
 }
 
-.sidebar-footer-controls {
+#sidebar-footer-controls {
 	width: 100%;
 	height: 40px;
 	padding: 5px 10px;
@@ -102,8 +109,7 @@ td > input[type='checkbox'] {
 
 .btn-group {
   background-color: rgba(255, 255, 255, 0.5);
-  padding: 3px 0px;
-  margin: 6px 0px;
+  margin: 1px 0px;
 }
 
 .colorpicker {
@@ -205,4 +211,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     top: 50%;
     left: 50%;
     transform:translate(-50%,-50%);
+}
+
+#fixed-navbar-div {
+  position: fixed;
+  left: 9px;
+  z-index: 500;
+  width: 481px;
+  padding-top: 4px;
+  border-right: 1px solid #D3D3D3;
 }
