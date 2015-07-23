@@ -167,3 +167,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   max-width: 100%;
   overflow: scroll;
 }
+
+
+#tooltips-table > tbody > tr > td { padding: 5px; }
+#tooltips-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+#tooltips-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+#search-results-table > tbody > tr > td { padding: 5px; }
+#search-results-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+#search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
