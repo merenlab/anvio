@@ -19,3 +19,6 @@
 [submodule "anvio/data/interactive/lib/jquery-ui"]
 	path = anvio/data/interactive/lib/jquery-ui
 	url = https://github.com/jquery/jquery-ui
+[submodule "anvio/data/interactive/lib/randomColor"]
+	path = anvio/data/interactive/lib/randomColor
+	url = https://github.com/davidmerfield/randomColor
