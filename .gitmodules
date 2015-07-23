@@ -4,3 +4,6 @@
 [submodule "anvio/data/static/content/bootstrap-sortable"]
 	path = anvio/data/static/content/bootstrap-sortable
 	url = https://github.com/drvic10k/bootstrap-sortable
+[submodule "anvio/data/interactive/external/bootstrap-sortable"]
+	path = anvio/data/interactive/external/bootstrap-sortable
+	url = https://github.com/drvic10k/bootstrap-sortable
