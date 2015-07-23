@@ -1007,11 +1007,11 @@ function newBin(id, binState) {
     var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
                    '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
                    '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td><input type="text" size="12" id="bin_name_{id}" value="{name}"></td>' +
-                   '    <td><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td><span id="contig_length_{id}">{length}</span></td>' +
-                   '    <td><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
-                   '    <td><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
+                   '    <td data-value="{name}"><input type="text" size="12" id="bin_name_{id}" value="{name}"></td>' +
+                   '    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
+                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>' +
+                   '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
+                   '    <td data-value="{contamination}"><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
                    '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
                    '</tr>';
 
@@ -1022,7 +1022,6 @@ function newBin(id, binState) {
                        .replace(new RegExp('{completeness}', 'g'), completeness)
                        .replace(new RegExp('{contamination}', 'g'), contamination)
                        .replace(new RegExp('{length}', 'g'), contig_length);
-
 
     $('#tbody_bins').append(template);
 
