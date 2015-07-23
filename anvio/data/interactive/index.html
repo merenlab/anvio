@@ -315,10 +315,10 @@
                 <span id="draw_delta_time" style="padding-left: 10px;"></span>
             </div>
             <div class="sidebar-footer-controls btn-group" role="group">
-                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom in"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></button>                
-                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom out "><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></button>
-                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Return to natural view"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
-                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Save display as SVG"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>                                
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></button>                
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></button>
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Return to natural view" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Save display as SVG" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>                                
             </div>
         </div>
         
