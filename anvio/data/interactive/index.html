@@ -106,32 +106,33 @@
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="layer-margin">Margin between layers:</label>  
+                                <label class="col-md-4 control-label" for="layer-margin">Layer margins:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
                                 </div>
                         </div> 
-                       <table>
-                            <tr>
-                                <td><label for="custom_layer_margin">Custom layer margins:</label></td>
-                                <td><input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); "></td>
-                            </tr>
-                            <tr>
-                                <td><label for="edge_length_normalization">Edge length norm.:</label></td>
-                                <td><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value"></td>
-                            </tr>
-                            <tr>
-                                <td><label for="show_grid_for_bins">Show grid for bins:</label></td>
-                                <td>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="layer-margin">Custom layer margins:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="layer-margin">Edge length norm.:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="layer-margin">Show grids for bins:</label>  
+                                <div class="col-md-8">
                                     <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                                    <div id="grid_color" style="display: none !important;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                    <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
                                     <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
-                                </td>
-                            </tr>
-                        </table>
+                                </div>
+                        </div> 
 
                         <h4>Layer Settings</h4>
-
 
                         <div id="table_layers_container">
                             <table id="table_layers">
