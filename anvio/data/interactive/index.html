@@ -1,332 +1,236 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Viewer</title>
-        <meta charset="utf-8" />
-        <meta http-equiv="cache-control" content="max-age=0" />
-        <meta http-equiv="cache-control" content="no-cache" />
-        <meta http-equiv="expires" content="0" />
-        <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
-        <meta http-equiv="pragma" content="no-cache" />
-        <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-        <link rel="stylesheet" href="lib/jquery-ui/jquery-ui.css" />
-        <link rel="stylesheet" href="lib/jquery-ui-dialog-collapse/jquery.ui.dialog-collapse.css" />
-        <script type="text/javascript" src="lib/jquery/jquery.js"></script>
-        <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
-        <script type="text/javascript" src="lib/colpick/colpick.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/jquery-ui.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui-dialog-collapse/jquery.ui.dialog-collapse.js"></script>
-        <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
-        <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
 
-        <script type="text/javascript" src="js/utils.js"></script>
-        <script type="text/javascript" src="js/main.js"></script>
-        <script type="text/javascript" src="js/treelib.js"></script>
-        <script type="text/javascript" src="js/mouse-events.js"></script>
-        <script type="text/javascript" src="js/constants.js"></script>
-        
-        <link rel="stylesheet" href="css/treelib.css" type="text/css" />
-    </head>
-    <body>
-        <div id="treeContainer">
-            <div id="treeControls" class="dialogs">
-                <table>
-                    <tr>
-                        <td>Drawing Type:</td>
-                        <td><select id="tree_type">
-                            <option value="phylogram">Phylogram</option>
-                            <option value="circlephylogram" selected>Circle Phylogram</option>
-                        </select></td>
-                    </tr>
-                    <tr>
-                        <td><label for="tree_selection">Order by:</label></td>
-                        <td><select id="trees_container"></select></td>
-                    </tr>
-                    <tr>
-                        <td><label for="view_selection">View:</label></td>
-                        <td><select id="views_container"></select></td>
-                    </tr>
-                    <tr class="circlephylogram_settings">
-                        <td>Draw Angle:</td>
-                        <td><input type="text" value="0" size="4" id="angle-min"> to <input type="text" value="270" size="4" id="angle-max"></td>
-                    </tr>
-                    <tr id="tree-radius-container" class="circlephylogram_settings" style="display: none">
-                        <td>Tree radius: </td><td><input type="text" value="0" size="4" id="tree-radius"></td>
-                    </tr>
-                    <tr class="phylogram_settings" style="display: none;">
-                        <td>Tree height:</td>
-                        <td><input type="text" value="0" size="4" id="tree_height"></td>
-                    </tr>
-                    <tr class="phylogram_settings" style="display: none;">
-                        <td>Tree width:</td>
-                        <td><input type="text" value="0" size="4" id="tree_width"></td>
-                    </tr>
-                    <tr>
-                        <td>Bins layer height:</td>
-                        <td><input type="text" value="60" size="4" id="outer-ring-height"></td>
-                    </tr>
-                    <tr>
-                        <td>Margin between layers:</td>
-                        <td><input type="text" value="15" size="4" id="layer-margin"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="custom_layer_margin">Custom layer margins:</label></td>
-                        <td><input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); "></td>
-                    </tr>
-                    <tr>
-                        <td><label for="edge_length_normalization">Edge length normalization:</label></td>
-                        <td><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="show_grid_for_bins">Show grid for bins:</label></td>
-                        <td>
-                            <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                            <div id="grid_color" style="display: none !important;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                            <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
-                        </td>
-                    </tr>
-                </table>
-                
-                <br />
-                <input type="button" id="btn_save_current_state" onClick="showSaveStateWindow();" value="Save state">
-                <input type="button" onClick="showLoadStateWindow();" value="Load state">
-                <span id="current_state"></span>
-                <br /><br /><br />
-                
-                <div id="table_layers_container">
-                    <b>Layer Settings</b>
-                    <br /><br />
-                    <table id="table_layers">
-                        <thead>
-                            <tr>
-                                <td></td>
-                                <td>Name</td>
-                                <td>Color</td>
-                                <td>Type</td>
-                                <td>Normalization</td>
-                                <td>Height</td>
-                                <td class="column-margin">Margin</td>
-                                <td>Min</td>
-                                <td>Max</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody_layers"></tbody>
-                        <tbody id="tbody_bottom">
-                            <tr style="height: 30px">
-                                <td colspan="9">
-                                    <hr size="1" width="%100">Edit attributes for multiple layers</hr>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td></td>
-                                <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
-                                <td><div id="picker_start_multiple" class="colorpicker"></div><div id="picker_multiple" class="colorpicker"></div></td>
-                                <td style="width: 50px;">
-                                    <select id="type_multiple" style="width: 50px;" class="type">
-                                        <option value="bar">Bar</option>
-                                        <option value="intensity">Intensity</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <select id="normalization_multiple">
-                                        <option value="none">none</option>
-                                        <option value="sqrt">Square root</option>
-                                        <option value="log">Logarithm</option>
-                                    </select>
-                                </td>
-                                <td><input id="height_multiple" class="input-height" size="3"></input></td>
-                                <td class="column-margin"><input id="margin_multiple" class="input-margin" size="3"></input></td>
-                                <td><input id="min_multiple" class="input-min" size="4"></input></td>
-                                <td><input id="max_multiple" class="input-max" size="4"></input></td>
-                                <td><input type="checkbox" id="select_all"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-               
+<head>
+    <title>Viewer</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
 
-                <br /><input type="button" id="btn_draw_tree" onclick="drawTree();" value="Draw"><img id="img_loading" src="images/loading.gif" style="display: none; vertical-align:top; padding-left: 10px;"><span id="draw_delta_time" style="padding-left: 10px;"></span>
-            </div>
-            <div id="bins" class="dialogs">
-                <table id="bins-table">
-                    <thead>
-                        <tr>
-                            <td>Select</td>
-                            <td>Color</td>
-                            <td>
-                                <a href="#" onclick="sortBins('name');">
-                                Name<span class="sort-icon" id="sort-icon-name"></span>
-                                </a>
-                            </td>
-                            <td>
-                                <a href="#" onclick="sortBins('contigs');">
-                                Contigs<span class="sort-icon" id="sort-icon-contigs"></span>
-                                </a>
-                            </td>
-                            <td>
-                                <a href="#" onclick="sortBins('length');">
-                                Length<span class="sort-icon" id="sort-icon-length"></span>
-                                </a>
-                            </td>
-                            <td title="Completeness">
-                                <a href="#" onclick="sortBins('comp');">
-                                Comp.<span class="sort-icon" id="sort-icon-comp"></span>
-                                </a>
-                            </td>
-                            <td title="Contamination">
-                                <a href="#" onclick="sortBins('cont');">
-                                Cont.<span class="sort-icon" id="sort-icon-cont"></span>
-                                </a>
-                            </td>
-                            <td>Delete</td>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody_bins">
-                    </tbody>
-                </table>
-                <div style="margin: 5px;">
-                <p align="center"><input id="btn_new_bin" type="button" onClick="newBin();" value="New bin">
-                <input type="button" id="open_search_box" onclick="$('#searchBox').dialog('open');" value="Search Dialog">
-                </p><hr /><div class="full-mode"><p align="center">
-                <input type="button" onclick="showLoadCollectionWindow();" value="Load collection">
-                <input type="button" id="btn_store_collection" onclick="showStoreCollectionWindow();" value="Store collection">
-                <input type="button" id="generate-summary" onClick="showGenSummaryWindow();" value="Generate summary">
-                </p></div>
-                <div class="refine-mode" style="display: none"><p align="center">
-                    <input type="button" id="btn_store_refined_bins" onclick="storeRefinedBins();" value="Store refined bins in the database">
-                </p></div>
-                </div>
-            </div>
-            <div id="zoomDialog" class="dialogs">
-                <ul id="zoomControls">
-                    <li class="zoom-in" onmousedown="zoom(1.10);"></li>
-                    <li class="zoom-out" onmousedown="zoom(0.90);"></li>
-                    <li class="zoom-reset" onmousedown="zoom_reset();"></li>
-                    <li class="pan-up" onmousedown="pan(0, 25);"></li>
-                    <li class="pan-left" onmousedown="pan(25, 0);"></li>
-                    <li class="pan-right" onmousedown="pan(-25, 0);"></li>
-                    <li class="pan-down" onmousedown="pan(0, -25);"></li>
-                    <li class="save-svg" onmousedown="exportSvg();"></li>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="_css/main.css" type="text/css" />
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script type="text/javascript" src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
+    <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
+    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
+
+    <script type="text/javascript" src="_js/utils.js"></script>
+    <script type="text/javascript" src="_js/main.js"></script>
+    <script type="text/javascript" src="_js/treelib.js"></script>
+    <script type="text/javascript" src="_js/mouse-events.js"></script>
+    <script type="text/javascript" src="_js/constants.js"></script>
+</head>
+
+<body>
+    <div id="wrapper">
+        <div id="sidebar">
+            <div role="tabpanel" style="margin: 0px;">
+                <ul class="nav nav-tabs" role="tablist">
+                  <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true"></span> Layers</a></li>
+                  <li role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true"></span> Bins</a></li>
+                  <li role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
+                  <li role="presentation"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> Mouse</a></li>
+                  <li role="presentation" class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+                      <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span> Help
+                    </a>
+                    <ul class="dropdown-menu">
+                      Action Item 1
+                    </ul>
+                  </li>
                 </ul>
             </div>
-            <div id="searchBox" class="dialogs2">
-                Expression: 
-                <select id="searchLayerList"></select>
-                <select id="searchOperator">
-                    <option value="6">Contains</option>
-                    <option value="0">==</option>
-                    <option value="1">!=</option>
-                    <option value="2">&gt;</option>
-                    <option value="3">&lt;</option>
-                    <option value="4">&gt;=</option>
-                    <option value="5">&lt;=</option>
-                </select>
-                <input id="searchValue" value="">
-                <br />
-                <br />
-                <input type="button" onclick="searchContigs();" value="Search"> <input type="button" onclick="showSearchResult();" value="Show result">&nbsp;&nbsp;<span id="search_result_message">0 contigs found.</span>
-                <br />
-                <br />
-                <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
-                <input type="button" onclick="highlightResult();" value="Highlight on tree"> 
-                <input type="button" onclick="redrawBins();" value="Clear">
-                <input type="button" onclick="appendResult();" value="Append to selected bin">
-                <input type="button" onclick="removeResult();" value="Remove from selected bin">
-            </div>
 
-            <div id="storeCollectionWindow" class="dialogs2">
-                <div style="margin: 10px; ">
-                <select id="storeCollection_list" size="10" style="width: 100%;" onChange="$('#storeCollection_name').val($(this).val());"></select></br></br>
-                Collection Name: <input type="text" id="storeCollection_name" value="" size="30">
-                <input type="button" id="storeCollection_store" value="Store" onClick="storeCollection(); ">
+            <div class="tab-content">
+                <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
+                    <div id="tree-settings" class="form-horizontal">
+                        <h4>Tree Settings</h4>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="tree_type">Drawing Type:</label>  
+                                <div class="col-md-8">
+                                    <select id="tree_type" class="form-control input-xs">
+                                        <option value="phylogram">Phylogram</option>
+                                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                                    </select>
+                                </div>
+                        </div>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label size-sm" for="trees_container">Order by:</label>  
+                                <div class="col-md-8">
+                                    <select id="trees_container" class="form-control input-xs"></select>
+                                </div>
+                        </div>               
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="views_container">View:</label>  
+                                <div class="col-md-8">
+                                    <select id="views_container" class="form-control input-xs"></select>
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="angle-min">Draw Angle:</label>  
+                                <div class="col-md-8 form-inline">
+                                    <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to 
+                                    <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
+                                </div>
+                        </div>
+                        <div class="form-group form-margin circlephylogram_settings">
+                                <label class="col-md-4 control-label" for="tree-radius">Tree radius:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin phylogram_settings" style="display: none;">
+                                <label class="col-md-4 control-label" for="tree_height">Tree height:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin phylogram_settings" style="display: none;">
+                                <label class="col-md-4 control-label" for="tree_width">Tree width:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="outer-ring-height">Bins layer height:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 control-label" for="layer-margin">Margin between layers:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
+                                </div>
+                        </div> 
+                       <table>
+                            <tr>
+                                <td><label for="custom_layer_margin">Custom layer margins:</label></td>
+                                <td><input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); "></td>
+                            </tr>
+                            <tr>
+                                <td><label for="edge_length_normalization">Edge length norm.:</label></td>
+                                <td><input type="checkbox" id="edge_length_normalization" name="checkbox" value="value"></td>
+                            </tr>
+                            <tr>
+                                <td><label for="show_grid_for_bins">Show grid for bins:</label></td>
+                                <td>
+                                    <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                    <div id="grid_color" style="display: none !important;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                    <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h4>Layer Settings</h4>
+
+
+                        <div id="table_layers_container">
+                            <table id="table_layers">
+                                <thead>
+                                    <tr>
+                                        <td></td>
+                                        <td>Name</td>
+                                        <td>Color</td>
+                                        <td>Type</td>
+                                        <td>Normalization</td>
+                                        <td>Height</td>
+                                        <td class="column-margin">Margin</td>
+                                        <td>Min</td>
+                                        <td>Max</td>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_layers"></tbody>
+                                <tbody id="tbody_bottom">
+                                    <tr style="height: 30px">
+                                        <td colspan="9">
+                                            <hr size="1" width="%100">Edit attributes for multiple layers</hr>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div id="picker_start_multiple" class="colorpicker"></div><div id="picker_multiple" class="colorpicker"></div></td>
+                                        <td style="width: 50px;">
+                                            <select id="type_multiple" style="width: 50px;" class="type">
+                                                <option value="bar">Bar</option>
+                                                <option value="intensity">Intensity</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select id="normalization_multiple">
+                                                <option value="none">none</option>
+                                                <option value="sqrt">Square root</option>
+                                                <option value="log">Logarithm</option>
+                                            </select>
+                                        </td>
+                                        <td><input id="height_multiple" class="input-height" size="3"></input></td>
+                                        <td class="column-margin"><input id="margin_multiple" class="input-margin" size="3"></input></td>
+                                        <td><input id="min_multiple" class="input-min" size="4"></input></td>
+                                        <td><input id="max_multiple" class="input-max" size="4"></input></td>
+                                        <td><input type="checkbox" id="select_all"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div id="summaryResultWindow" class="dialogs2">
-                Summary: <span id="summaryDestination"></span>.
-            </div>
-
-            <div id="loadCollectionWindow" class="dialogs2">
-                <div style="margin: 10px; display: inline-block; float: left">
-                <select id="loadCollection_list" size="10" style="width: 100%;" ondblclick="loadCollection();" onChange="showCollectionDetails('load');"></select></br></br>
+                <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
+                    <div id="bin-settings" class="form-horizontal">
+                        BINS
+                    </div>
                 </div>
-                <div style="margin: 10px; display: inline-block; float: left" id="loadCollection_details">
-                    <table>
-                    <tr><td>Read Only: </td><td>n/a</td></tr>
-                    <tr><td colspan="2"><hr></td></tr>
-                    <tr><td>Number of Splits: </td><td>n/a</td></tr>
-                    <tr><td>Number of Clusters: </td><td>n/a</td></tr>
-                    </table>
+
+                <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
+                    <div id="sample-settings" class="form-horizontal">
+                        Sample stuff
+                    </div>
                 </div>
-                <br />
-                <div style="clear: both; "><center>Minimum bin size: 
-                <input type="text" id="loadCollection_threshold" value="1" size="3">
-                <select id="loadCollection_threshold_base">
-                    <option value="1000">K</option>
-                    <option value="1000000">M</option>
-                    <option value="1000000000">G</option>
-                </select> bases.
-                <br /><br /><input type="button" id="loadCollection_load" value="Load" onClick="loadCollection();"></center></div>
-            </div>
 
-            <div id="loadStateWindow" class="dialogs2">
-                <div style="margin: 10px; display: inline-block; float: left">
-                <select id="loadState_list" size="10" style="width: 200px;" ondblclick="loadState();" onchange="$('#loadState_last_modified').html('Last Modified: ' + $('#loadState_list option:selected').attr('lastmodified'));"></select></br></br>
-                <span id="loadState_last_modified">Last Modified: n/a</span><br /><br /><center><input type="button" id="loadState_load" value="Load" onClick="loadState();"></center></div>
-            </div>
-
-            <div id="saveStateWindow" class="dialogs2">
-                <div style="margin: 10px; width: 200px;">
-                <select id="saveState_list" size="10" style="width: 100%;" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select></br></br>
-                <label for="loadState_name">State name: </label><input id="saveState_name" size="22" onkeydown="if (event.keyCode == 13) saveState(); "/><br /><br /><center><input type="button" id="loadState_save" value="Save" onClick="saveState();"></center></div>
-            </div>            
-
-            <div id="summarizeCollectionWindow" class="dialogs2">
-                <div style="margin: 10px; display: inline-block; float: left">
-                <select id="summaryCollection_list" size="10" style="width: 100%;" ondblclick="loadCollection();" onChange="showCollectionDetails('summary');"></select></br></br>
+                <div role="tabpanel" class="tab-pane fade in" id="mouse_hover">
+                    <div id="mouse_hover" class="form-horizontal">
+                        Mouse stuff
+                    </div>
                 </div>
-                <div style="margin: 10px; display: inline-block; float: left" id="summaryCollection_details">
-                    <table>
-                    <tr><td>Read Only: </td><td>n/a</td></tr>
-                    <tr><td colspan="2"><hr></td></tr>
-                    <tr><td>Number of Splits: </td><td>n/a</td></tr>
-                    <tr><td>Number of Clusters: </td><td>n/a</td></tr>
-                    </table>
-                </div>
-                <br />
-                <div style="clear: both; "><center><input type="button" id="summarizeCollection" value="Generate summary" onClick="generateSummary();"></center></div>
-            </div>
-
-            <div id="legendsWindow" class="dialogs3">
 
             </div>
+        </div>
 
-            <div id="tooltip" class="dialogs">
-            <div id="tooltip_content">
+
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-draw">
+                <button type="button" class="btn btn-default btn-sm" id="btn_draw_tree" onclick="drawTree();">
+                    <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> Draw
+                </button>
+                <span id="draw_delta_time" style="padding-left: 10px;"></span>
             </div>
+            <div class="sidebar-footer-controls btn-group" role="group">
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom in"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></button>                
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Zoom out "><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></button>
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Return to natural view"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
+                <button type="button" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="top" title="Save display as SVG"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>                                
             </div>
-            <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
+        </div>
+        
+
+                    <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="viewport"></g>
             </svg>
-            <div id="divzoom"><div id="divzoom_inner"></div></div>
-        </div>
     </div>
-    <div>
-        <div id="control_contextmenu" style="display: none;">
-            <ul>
-                <li id="select" onclick="menu_callback('select');">Select</li>
-                <li id="remove" onclick="menu_callback('remove');">Remove</li>
-                <hr />
-                <li onclick="menu_callback('inspect');">Inspect</li>
-                <hr />
-                <li onclick="menu_callback('metadata');">Show metadata</li>
-                <hr />
-                <li onclick="menu_callback('content');">Show split sequence</li>
-                <li onclick="menu_callback('blastn_nr');"> - blastn @ nr</li>
-                <li onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</li>
-                <li onclick="menu_callback('blastx_nr');"> - blastx @ nr</li>
-                <li onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</li>
-            </ul>
-        </div>
-    </body>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+    $(document).ready(function() {
+        $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+    });
+    </script>
+</body>
 </html>

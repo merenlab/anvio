@@ -97,9 +97,6 @@ var current_state_name = "";
 
 $(document).ready(function() {
 
-    $('.dialogs').hide();
-    $('.dialogs2').hide();
-
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram') 
         {
@@ -413,7 +410,6 @@ $(document).ready(function() {
             */
             newBin();
 
-            initializeDialogs();
 
             // add metadata columns to search window
             for (var i=0; i < metadata[0].length; i++)
@@ -936,7 +932,6 @@ function drawTree() {
     $('#img_loading').show();
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
-    $('#bins').dialog('open');
 
     setTimeout(function () 
         { 

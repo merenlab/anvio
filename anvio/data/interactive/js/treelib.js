@@ -1512,7 +1512,6 @@ function draw_tree(settings) {
     empty_tooltip += '</table>';
 
     $('#tooltip_content').html(empty_tooltip);
-    $('#tooltip').dialog('open');
 
     for (var index = 1; index < metadata.length; index++) 
     {

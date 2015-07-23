@@ -1,0 +1,98 @@
+* {
+   font-size: 12px;
+   line-height: 1.428;
+}
+
+
+html, body, #wrapper {
+	width: 100%;
+	height: 100%;
+	font-family: Trebuchet MS,Tahoma,Verdana,Arial,sans-serif;
+}
+
+#sidebar {
+	background: url('../images/fractal.jpg') center center scroll;
+	border-right: 1px solid #555;
+	position: fixed;
+	width: 480px;
+	height: 100%;
+	padding: 10px;
+	overflow: scroll;
+	padding-bottom: 75px;
+}
+
+.input-xs {
+    height: 22px;
+    padding: 5px 5px;
+    font-size: 12px;
+    line-height: 1.5;
+    border-radius: 3px;
+}
+
+.form-margin {
+	margin-bottom: 0px;
+}
+
+svg {
+    width:100%;
+    height:100%;
+}
+
+.sidebar-footer {
+	background-color: #DDD;
+    border: 1px solid #BBB;
+    opacity: 0.70;
+    filter:alpha(opacity=70);
+    -moz-border-radius: 15px;
+    height: 82px;
+    width: 480px;
+    position: fixed;
+    bottom: -0px;
+    border-top: 1px solid #555;
+    border-right: 1px solid #555;
+}
+
+td, tr {
+	margin: 0px;
+	padding: 0px 2px;
+}
+
+td > input[type='checkbox'] {
+	margin-left: 5px;
+}
+
+#btn_draw_tree {
+	width: 25%;
+}
+
+.sidebar-footer-draw {
+	height: 40px;
+	padding: 5px 10px;
+	border-bottom: 1px solid #555;
+}
+
+.sidebar-footer-controls {
+	width: 100%;
+	height: 40px;
+	padding: 5px 10px;
+}
+
+.sidebar-footer-controls > .btn {
+	width: 25%;
+}
+
+.colorpicker {
+    float: left;
+    display: inline-block;
+    background-color: #FFF;
+    border: 1px solid;
+    border-color: #000;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+}
+
+.colorpicker:hover {
+    border: 1px solid;
+    border-color: #555;
+}
