@@ -9,8 +9,8 @@
 
 #svg {
   position: fixed;
-  left: 480px;   
-  width: calc(100% - 480px);
+  left: 490px;   
+  width: calc(100% - 490px);
   height: 100%;
 }
 
@@ -25,7 +25,7 @@ html, body, #wrapper {
     position: fixed;
 	background: url('../images/fractal.jpg') center center scroll;
 	border-right: 1px solid #555;
-	width: 480px;
+	width: 490px;
 	height: 100%;
 	padding: 10px;
 	overflow: scroll;
@@ -51,7 +51,7 @@ html, body, #wrapper {
     filter:alpha(opacity=70);
     -moz-border-radius: 15px;
     height: 82px;
-    width: 480px;
+    width: 490px;
     position: fixed;
     bottom: -0px;
     border-top: 1px solid #555;
