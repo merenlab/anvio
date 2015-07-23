@@ -1572,6 +1572,11 @@ function storeRefinedBins() {
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
+    if (collection_name.length==0) {
+        $('#storeCollection_name').focus();
+        return;
+    }
+         
     data = {};
     colors = {};
 
@@ -1657,22 +1662,19 @@ function showLoadCollectionWindow() {
     });
 }
 
-function showCollectionDetails(target_id) {
-    var cname = $('#' + target_id + 'Collection_list>option:selected').val();
+function showCollectionDetails() {
+    var cname = $('#loadCollection_list').val();
     
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/collections?timestamp=' + new Date().getTime(),
         success: function(data) {
-            var tbl = "<table>" +
-                "<tr><td>Read Only: </td><td>" + data[cname]['read_only'] + "</td></tr>" + 
-                "<tr><td colspan='2'><hr></td></tr>" +
-                "<tr><td>Number of Splits: </td><td>" + data[cname]['num_splits'] + "</td></tr>" +
-                "<tr><td>Number of Clusters: </td><td>" + data[cname]['num_clusters'] + "</td></tr>" +
-                "</table>";
+            var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
+                '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
+                '<div class="col-md-8">Number of Clusters:</div><div class="col-md-4"><b>' + data[cname]['num_clusters'] + '</b></div>';
 
-            $('#' + target_id + 'Collection_details').html(tbl);
+            $('#collection-details').html(tbl);
         }
     });
 }
@@ -1790,6 +1792,11 @@ function showSaveStateWindow()
 function saveState() 
 {
     var name = $('#saveState_name').val();
+
+    if (name.length==0) {
+        $('#saveState_name').focus();
+        return;
+    }
 
     $.ajax({
         type: 'GET',
