@@ -59,7 +59,7 @@
                     <div id="tree-settings" class="form-horizontal">
                         <h4>Tree Settings</h4>
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="tree_type">Drawing Type:</label>  
+                                <label class="col-md-4 settings-label" for="tree_type">Drawing Type:</label>  
                                 <div class="col-md-8">
                                     <select id="tree_type" class="form-control input-xs">
                                         <option value="phylogram">Phylogram</option>
@@ -68,68 +68,68 @@
                                 </div>
                         </div>
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label size-sm" for="trees_container">Order by:</label>  
+                                <label class="col-md-4 settings-label size-sm" for="trees_container">Order by:</label>  
                                 <div class="col-md-8">
                                     <select id="trees_container" class="form-control input-xs"></select>
                                 </div>
                         </div>               
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="views_container">View:</label>  
+                                <label class="col-md-4 settings-label" for="views_container">View:</label>  
                                 <div class="col-md-8">
                                     <select id="views_container" class="form-control input-xs"></select>
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="angle-min">Draw Angle:</label>  
+                                <label class="col-md-4 settings-label" for="angle-min">Draw Angle:</label>  
                                 <div class="col-md-8 form-inline">
                                     <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to 
                                     <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
                                 </div>
                         </div>
                         <div class="form-group form-margin circlephylogram_settings">
-                                <label class="col-md-4 control-label" for="tree-radius">Tree radius:</label>  
+                                <label class="col-md-4 settings-label" for="tree-radius">Tree radius:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
                                 </div>
                         </div> 
                         <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                <label class="col-md-4 control-label" for="tree_height">Tree height:</label>  
+                                <label class="col-md-4 settings-label" for="tree_height">Tree height:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
                                 </div>
                         </div> 
                         <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                <label class="col-md-4 control-label" for="tree_width">Tree width:</label>  
+                                <label class="col-md-4 settings-label" for="tree_width">Tree width:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="outer-ring-height">Bins layer height:</label>  
+                                <label class="col-md-4 settings-label" for="outer-ring-height">Bins layer height:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="layer-margin">Layer margins:</label>  
+                                <label class="col-md-4 settings-label" for="layer-margin">Layer margins:</label>  
                                 <div class="col-md-8">
                                     <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="layer-margin">Custom layer margins:</label>  
+                                <label class="col-md-4 settings-label" for="layer-margin">Custom layer margins:</label>  
                                 <div class="col-md-8">
                                     <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="layer-margin">Edge length norm.:</label>  
+                                <label class="col-md-4 settings-label" for="layer-margin">Edge length norm.:</label>  
                                 <div class="col-md-8">
                                     <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                 </div>
                         </div> 
                         <div class="form-group form-margin">
-                                <label class="col-md-4 control-label" for="layer-margin">Show grids for bins:</label>  
+                                <label class="col-md-4 settings-label" for="layer-margin">Show grids for bins:</label>  
                                 <div class="col-md-8">
                                     <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                     <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
@@ -353,7 +353,7 @@
                         <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
                     </div>
                     <div class="form-group">
-                            <label class="col-md-4 control-label" for="saveState_name">Name: </label>  
+                            <label class="col-md-4 settings-label" for="saveState_name">Name: </label>  
                             <div class="col-md-8">
                                 <input type="text" id="saveState_name" class="form-control" />
                             </div>
