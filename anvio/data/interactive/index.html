@@ -272,26 +272,27 @@
                         <br />
                         <br />
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>&nbsp;&nbsp;<span id="search_result_message">0 splits found.</span>
+                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>
+                            <div id="search_result_message"><span></span></div>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Show matching contig names down below</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight on the tree</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
                             <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
-                            <button type="button" class="btn btn-default btn-sm" onclick="redrawBins();"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear</button>
+                            <button type="button" class="btn btn-default btn-sm" onclick="redrawBins();"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append to selected bin</button>
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove from selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
                         </div>
 
                         <span id="search-results-table-header"></span>
                         <table class="table table-striped sortable" id="search-results-table">
                             <thead id="thead_search_results">
                                 <tr>
-                                    <th>Split Name</th>
+                                    <th id="search-results-table-search-name"></th>
                                     <th id="search-results-table-search-item"></th>
                                 </tr>
                             </thead>

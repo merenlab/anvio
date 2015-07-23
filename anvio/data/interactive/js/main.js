@@ -1404,6 +1404,7 @@ function searchContigs()
 
 function showSearchResult() {
     $("#search-results-table-header").html('<h4>Search results:</h4>');
+    $("#search-results-table-search-name").html('Split name');
     $("#search-results-table-search-item").html(metadata[0][search_column]);
 
     var rows = "";
