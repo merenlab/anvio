@@ -1845,7 +1845,7 @@ function showLoadStateWindow()
                 $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
             }
 
-            $('#loadStateWindow').dialog('open');
+            $('#modLoadState').modal('show');
         }
     });
 }
