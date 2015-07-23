@@ -1127,8 +1127,6 @@ function updateBinsWindow(bin_list) {
 
         updateComplateness(bin_id);
     }
-
-    sortBins();
 }
 
 function updateComplateness(bin_id) {
@@ -1707,7 +1705,9 @@ function loadCollection() {
         cache: false,
         url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            // empty bin window
+            $('#modLoadCollection').modal('hide');
+            
+            // clear bins tab
             var bins_cleared = false;
             SELECTED = new Array();
             bin_count = 0;
@@ -1753,7 +1753,6 @@ function loadCollection() {
             rebuildIntersections();
             updateBinsWindow();
             redrawBins();
-            $('#modLoadCollection').modal('hide');
         }
     });
 }
