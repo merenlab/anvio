@@ -923,8 +923,8 @@ function serializeSettings(use_layer_names) {
 
 function drawTree() {
     // get current client size
-    VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-    VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
+    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
 
     var settings = serializeSettings();
     tree_type = settings['tree-type'];

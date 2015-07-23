@@ -3,6 +3,13 @@
    line-height: 1.428;
 }
 
+#svg {
+  position: fixed;
+  left: 480px;   
+  width: calc(100% - 480px);
+  height: 100%;
+}
+
 
 html, body, #wrapper {
 	width: 100%;
@@ -11,9 +18,9 @@ html, body, #wrapper {
 }
 
 #sidebar {
+    position: fixed;
 	background: url('../images/fractal.jpg') center center scroll;
 	border-right: 1px solid #555;
-	position: fixed;
 	width: 480px;
 	height: 100%;
 	padding: 10px;
@@ -31,11 +38,6 @@ html, body, #wrapper {
 
 .form-margin {
 	margin-bottom: 0px;
-}
-
-svg {
-    width:100%;
-    height:100%;
 }
 
 .sidebar-footer {
