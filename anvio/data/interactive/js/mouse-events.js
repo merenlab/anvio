@@ -332,7 +332,7 @@ function mouseMoveHandler(event) {
 
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
-    $('#tooltip_content').html('<table>' + message + tr_bin + '</table>');
+    $('#tooltip_content').html(message + tr_bin);
 }
 
 

@@ -250,7 +250,17 @@
                 <div role="tabpanel" class="tab-pane fade in" id="mouse_hover">
                     <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.
                     <div id="mouse_hover" class="form-horizontal">
-                        <div id="tooltip_content"></div>
+                        <table class="table table-striped sortable" id="tooltips-table">
+                            <thead id="thead_search_results">
+                                <tr>
+                                    <th width="30%">Key</th>
+                                    <th width="70%">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tooltip_content" class="search-results-display">
+                                <!-- JS FILLS HERE -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

@@ -153,4 +153,9 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   font-family: fantasy;
 }
 
-
+#tooltips-table {
+  width: 480px;
+  display: block;
+  max-width: 100%;
+  overflow: scroll;
+}
