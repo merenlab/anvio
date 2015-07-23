@@ -3,6 +3,10 @@
    line-height: 1.428;
 }
 
+::-webkit-scrollbar { 
+    display: none; 
+}
+
 #svg {
   position: fixed;
   left: 480px;   
