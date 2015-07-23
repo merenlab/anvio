@@ -26,7 +26,6 @@ var VERSION = '0.2.0';
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 var dragging = false;
-var windowsMinimized = false;
 
 var zoomBox = {};
 var drawing_zoom = false;
@@ -455,20 +454,13 @@ $(document).ready(function() {
         $('#control_contextmenu').hide();
     }, false);
 
-    $(window).keyup(function(evt) {
-        if (evt.altKey && (evt.which == 84)) // alt+t for toggle windows
-        {
-            if (windowsMinimized)
-            {
-                $("button[title='collapse']").trigger('click');
-            }
-            else
-            {
-                $("button[title='restore']").trigger('click');
-            }
-            windowsMinimized = !windowsMinimized;
-        }
+    $("li[role='presentation']").click(function (e) {
+        if ($(this).hasClass('disabled')) {
+            e.preventDefault();
+            return false;
+        }  
     });
+
 }); // document ready
 
 function syncViews() {
@@ -932,6 +924,7 @@ function drawTree() {
     $('#img_loading').show();
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
+    $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
 
     setTimeout(function () 
         { 
