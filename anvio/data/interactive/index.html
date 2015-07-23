@@ -139,7 +139,8 @@
 
                         <div class="sidebar-state-buttons btn-group col-md-12" role="group">
                             <button type="button" class="btn btn-default btn-sm" onclick="showLoadStateWindow();"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modSaveState"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+                            <button type="button" class="btn btn-default btn-sm" onclick="showSaveStateWindow();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+                            <div id="current_state"></div>
                         </div>
  
                         <h4>Layer Settings</h4>
@@ -326,34 +327,45 @@
                 </div>
 
                 <div class="modal-body">
-                    <select class="form-control" size="5" id="loadState_list"></select>
+                    <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();" onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+                    <div id="loadState_lastmodified">Last modified: n/a</div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal" type=
-                    "button">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- SAVE STATE -->
-    <div class="modal fade" id="modSaveState" role="dialog" aria-labelledby="modState" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            <h4 class="modal-title">Save State</h4>
-          </div>
-          <div class="modal-body">
-            <p class="section-paragraph"></p>
-            <p style="color: #AAAAAA; padding: 10px;">Lorem ipsum dolor sit amet
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          </div>
+    <div class="modal fade" id="modSaveState">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Save State</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
+                    </div>
+                    <div class="form-group">
+                            <label class="col-md-4 control-label" for="saveState_name">Name: </label>  
+                            <div class="col-md-8">
+                                <input type="text" id="saveState_name" class="form-control" />
+                            </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
 
