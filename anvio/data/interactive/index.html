@@ -286,7 +286,19 @@
                             <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append to selected bin</button>
                             <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove from selected bin</button>
                         </div>
-                        <div class="search-results-display"></div>
+
+                        <span id="search-results-table-header"></span>
+                        <table class="table table-striped sortable" id="search-results-table">
+                            <thead id="thead_search_results">
+                                <tr>
+                                    <th>Split Name</th>
+                                    <th id="search-results-table-search-item"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_search_body" class="search-results-display">
+                                <!-- JS FILLS HERE -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

@@ -1403,14 +1403,16 @@ function searchContigs()
 }
 
 function showSearchResult() {
-    var msg = "<h4>Search results:</h4> Split Name  " + metadata[0][search_column] + "<br>";
+    $("#search-results-table-header").html('<h4>Search results:</h4>');
+    $("#search-results-table-search-item").html(metadata[0][search_column]);
 
+    var rows = "";
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        msg = msg + metadata[search_results[i]][0] + "  " + metadata[search_results[i]][search_column] + "<br>";
+        rows = rows + "<tr><td>" + metadata[search_results[i]][0] + "</td><td>" + metadata[search_results[i]][search_column] + "</td></tr>";
     }
-    $(".search-results-display").html(msg);
+    $(".search-results-display").html(rows);
 }
 
 function highlightResult() {
