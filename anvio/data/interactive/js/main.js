@@ -1119,8 +1119,8 @@ function updateBinsWindow(bin_list) {
             }
         }
 
-        $('#contig_count_' + bin_id).val(contigs);
-        $('#contig_length_' + bin_id).html(readableNumber(length_sum));
+        $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
+        $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
         split_names = getContigNames(bin_id);
         bin_name = $('#bin_name_' + bin_id).val();
@@ -1158,8 +1158,8 @@ function updateComplateness(bin_id) {
             average_completeness = sum_completeness / Object.keys(stats).length;
             average_contamination = sum_contamination / Object.keys(stats).length;
 
-            $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%');
-            $('#contamination_' + bin_id).val(average_contamination.toFixed(1) + '%');
+            $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
+            $('#contamination_' + bin_id).val(average_contamination.toFixed(1) + '%').parent().attr('data-value', average_contamination);
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#contamination_' + bin_id).attr("disabled", false);
@@ -1996,123 +1996,4 @@ function loadState()
             $('#modLoadState').modal('hide');
         }
     });
-}
-
-
-function sortBins(column)
-{
-    if (typeof column !== 'undefined')
-    {
-        // clear exist sort icons.
-        $('.sort-icon').attr('class', 'sort-icon');
-
-        if (sort_column != column)
-        {
-            sort_column = column;
-            sort_order = 'asc';
-        }
-        else
-        {
-            if (sort_order != 'desc')
-            {
-                sort_order = 'desc';
-            }
-            else
-            {
-                sort_order = 'asc';
-            }
-        }
-
-        var sort_icon_str;
-        if (sort_order == 'asc')
-            sort_icon_str = 'n'; // north
-        else
-            sort_icon_str = 's'; // south
-
-
-        $('#sort-icon-' + column).attr('class', 'sort-icon ui-icon ui-icon-carat-1-' + sort_icon_str);  
-    }
-
-    if (sort_column)
-    {
-        var rows = [];
-        $('#tbody_bins tr').each(function() { rows.push($(this).attr('bin-id')) } );
-        
-        rows.sort(customSortFunction);
-
-        for (var i=0; i < rows.length; i++)
-        {
-            $('#tbody_bins').append($('#bin_row_' + rows[i]).detach());
-        }
-    }
-}
-
-var bases = {'K': 1000, 'M': 1000000, 'G': 1000000000};
-function customSortFunction(a,b)
-{
-    var retval = 0;
-
-    if (sort_column == 'contigs')
-    {
-        if (parseInt($('#contig_count_' + a).val()) > parseInt($('#contig_count_' + b).val()))
-            retval = 1;
-        else
-            retval = -1;
-    }
-    else if (sort_column == 'name')
-    {
-        if ($('#bin_name_' + a).val() > $('#bin_name_' + b).val())
-            retval = 1;
-        else
-            retval = -1;
-    }
-    else if (sort_column == 'length')
-    {
-        var vala = $('#contig_length_' + a).html();
-        var valb = $('#contig_length_' + b).html();
-
-        var basea = vala.replace(/[0-9\.]/g, "");
-        if (basea == '')
-            basea = 1;
-        else
-            basea = bases[basea];
-
-        var baseb = valb.replace(/[0-9\.]/g, "");
-        if (baseb == '')
-            baseb = 1;
-        else
-            baseb = bases[baseb];
-
-        vala = parseFloat('0' + vala) * basea;
-        valb = parseFloat('0' + valb) * baseb;
-        console.log(vala,valb);
-        if (vala > valb)
-            retval = 1;
-        else
-            retval = -1;
-    }
-    else
-    {
-        // comp/cont
-        var obj_id;
-        if (sort_column == 'cont')
-        {
-            obj_id = '#contamination_';
-        }
-        else
-        {
-            obj_id = '#completeness_'
-        }
-
-        if (parseFloat('0' + $(obj_id + a).val()) > parseFloat('0' + $(obj_id + b).val()))
-            retval = 1;
-        else
-            retval = -1;
-    }
-
-    if (sort_order == 'desc')
-    {
-        retval = retval * -1;
-    }
-    return retval;
 }
