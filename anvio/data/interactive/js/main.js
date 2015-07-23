@@ -953,13 +953,18 @@ function getContigNames(bin_id) {
         }
     }
 
-    return names
+    return names;
 }
 
 
 function showContigNames(bin_id) {
-    names = getContigNames(bin_id)
-    messagePopupShow('Contig Names', names.join('<br />'));
+    var msg = '<h4>Splits in "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4><table class="table table-striped">';
+    var names = getContigNames(bin_id);
+
+    for (var i in names)
+        msg += '<tr><td>' + names[i] + '</td></tr>';
+
+    $('#bins-bottom').html(msg + '</table>');
 }
 
 function newBin(id, binState) {
@@ -1390,7 +1395,8 @@ function searchContigs()
 }
 
 function showSearchResult() {
-    $("#search-results-table-header").html('<h4>Search results:</h4>');
+    var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
+    $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
     $("#search-results-table-search-name").html('Split name');
     $("#search-results-table-search-item").html(metadata[0][search_column]);
 
