@@ -187,7 +187,66 @@
 
                 <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
                     <div id="bin-settings" class="form-horizontal">
-                        BINS
+                        <table id="bins-table">
+                            <thead>
+                                <tr>
+                                    <td>Select</td>
+                                    <td>Color</td>
+                                    <td>
+                                        <a href="#" onclick="sortBins('name');">
+                                        Name<span class="sort-icon" id="sort-icon-name"></span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="#" onclick="sortBins('contigs');">
+                                        Contigs<span class="sort-icon" id="sort-icon-contigs"></span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="#" onclick="sortBins('length');">
+                                        Length<span class="sort-icon" id="sort-icon-length"></span>
+                                        </a>
+                                    </td>
+                                    <td title="Completeness">
+                                        <a href="#" onclick="sortBins('comp');">
+                                        Comp.<span class="sort-icon" id="sort-icon-comp"></span>
+                                        </a>
+                                    </td>
+                                    <td title="Contamination">
+                                        <a href="#" onclick="sortBins('cont');">
+                                        Cont.<span class="sort-icon" id="sort-icon-cont"></span>
+                                        </a>
+                                    </td>
+                                    <td>Delete</td>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_bins">
+                            
+                            </tbody>
+                        </table>
+                        <div style="margin: 5px;">
+                            <p style="text-align: center"><input id="btn_new_bin" onclick=
+                            "newBin();" type="button" value="New bin"> <input id="open_search_box"
+                            onclick="$('#searchBox').dialog('open');" type="button" value=
+                            "Search Dialog"></p>
+                            <hr>
+
+                            <div class="full-mode">
+                                <p style="text-align: center"><input onclick=
+                                "showLoadCollectionWindow();" type="button" value=
+                                "Load collection"> <input id="btn_store_collection" onclick=
+                                "showStoreCollectionWindow();" type="button" value=
+                                "Store collection"> <input id="generate-summary" onclick=
+                                "showGenSummaryWindow();" type="button" value=
+                                "Generate summary"></p>
+                            </div>
+
+                            <div class="refine-mode" style="display: none">
+                                <p style="text-align: center"><input id="btn_store_refined_bins"
+                                onclick="storeRefinedBins();" type="button" value=
+                                "Store refined bins in the database"></p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
