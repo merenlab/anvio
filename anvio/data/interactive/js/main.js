@@ -198,18 +198,14 @@ $(document).ready(function() {
                 var layer_name = $('#select_layer').val();
 
                 // clean prior selections
-                $('.layer_selectors').each(
-                        function() {
-                            this.checked = false;
-                        }
-                    );
+                $('.layer_selectors').prop('checked', false);
 
                 if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
                     $('.titles').each(
                         function(){
                             if (this.title.indexOf(layer_name) > -1)
                             {
-                                $('#' + 'select_this_' + getNumericPart(this.id)).attr('checked','checked');
+                                $('#select_this_' + getNumericPart(this.id)).prop('checked','checked');
                             }
                         }
                     );
@@ -296,18 +292,17 @@ $(document).ready(function() {
                 var intend_value = $('#type_multiple').val();
                 $('.layer_selectors:checked').each(
                     function(){
-                        $('#' + 'type' + getNumericPart(this.id)).attr('value', intend_value).trigger('change');
+                        $('#type' + getNumericPart(this.id)).val(intend_value).trigger('change');
                     }
                 );
             });
 
             $('#normalization_multiple').on('change', function(){
                 var intend_value = $('#normalization_multiple option:selected').val();
+
                 $('.layer_selectors:checked').each(
                     function(){
-                        var picker = $('#' + 'normalization' + getNumericPart(this.id));
-                        $(picker).attr('value', intend_value);
-                        clearMinMax(picker);
+                        $('#normalization' + getNumericPart(this.id)).val(intend_value).trigger('change');
                     }
                 );
             });
@@ -958,13 +953,18 @@ function getContigNames(bin_id) {
         }
     }
 
-    return names
+    return names;
 }
 
 
 function showContigNames(bin_id) {
-    names = getContigNames(bin_id)
-    messagePopupShow('Contig Names', names.join('<br />'));
+    var msg = '<h4>Splits in "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4><table class="table table-striped">';
+    var names = getContigNames(bin_id);
+
+    for (var i in names)
+        msg += '<tr><td>' + names[i] + '</td></tr>';
+
+    $('#bins-bottom').html(msg + '</table>');
 }
 
 function newBin(id, binState) {
@@ -1127,8 +1127,6 @@ function updateBinsWindow(bin_list) {
 
         updateComplateness(bin_id);
     }
-
-    sortBins();
 }
 
 function updateComplateness(bin_id) {
@@ -1395,7 +1393,8 @@ function searchContigs()
 }
 
 function showSearchResult() {
-    $("#search-results-table-header").html('<h4>Search results:</h4>');
+    var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
+    $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
     $("#search-results-table-search-name").html('Split name');
     $("#search-results-table-search-item").html(metadata[0][search_column]);
 
@@ -1706,7 +1705,9 @@ function loadCollection() {
         cache: false,
         url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            // empty bin window
+            $('#modLoadCollection').modal('hide');
+            
+            // clear bins tab
             var bins_cleared = false;
             SELECTED = new Array();
             bin_count = 0;
@@ -1752,7 +1753,6 @@ function loadCollection() {
             rebuildIntersections();
             updateBinsWindow();
             redrawBins();
-            $('#modLoadCollection').modal('hide');
         }
     });
 }
