@@ -98,8 +98,6 @@ td > input[type='checkbox'] {
 
 .btn-group {
   background-color: rgba(255, 255, 255, 0.5);
-  border-top: 1px rgb(187, 187, 187) solid;
-  border-bottom: 1px rgb(187, 187, 187) solid;
   padding: 3px 0px;
   margin: 6px 0px;
 }

@@ -217,23 +217,22 @@
                             </table>
                         </div>
 
-                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> New bin</button>
+                        <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
                         </div>
 
-
                         <div class="full-mode">
-                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Load collection</button>
-                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection</button>
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                             </div>
-                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Generate summary</button>
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
                             </div>
                         </div>
 
                         <div class="refine-mode" style="display: none">
-                            <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
                             </div>
                         </div>
@@ -272,7 +271,7 @@
                         <br />
                         <br />
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Search</button>&nbsp;&nbsp;<span id="search_result_message">0 spits found.</span>
+                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>&nbsp;&nbsp;<span id="search_result_message">0 spits found.</span>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                             <button type="button" class="btn btn-default btn-sm" onclick="showSearchResult();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Show matching contig names down below</button>
