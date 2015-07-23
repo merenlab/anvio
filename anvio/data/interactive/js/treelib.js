@@ -283,10 +283,9 @@ function drawText(svg_id, p, string, font_size, align, color) {
     if (typeof color !== 'undefined')
         text.setAttribute('fill', color);
 
-    text.setAttribute('style', 'alignment-baseline:middle;');
+    text.setAttribute('style', 'alignment-baseline:middle; font-size:' + font_size);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
-    text.setAttribute('font-size', font_size);
     text.setAttribute('pointer-events', 'none');
 
     switch (align) {
