@@ -22,7 +22,7 @@
 html, body, #wrapper {
 	width: 100%;
 	height: 100%;
-	font-family: Trebuchet MS,Tahoma,Verdana,Arial,sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 #sidebar {
@@ -57,6 +57,10 @@ html, body, #wrapper {
     bottom: -0px;
     border-top: 1px solid #555;
     border-right: 1px solid #555;
+}
+
+.nav>li>a {
+   padding: 10px 14px;
 }
 
 td, tr {
