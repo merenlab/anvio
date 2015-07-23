@@ -182,3 +182,27 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 #search-results-table > tbody > tr > td { padding: 5px; }
 #search-results-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 #search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+
+#divzoom {
+    position: absolute; 
+    width:0px; 
+    height:0px;
+    pointer-events: none; 
+    background-color: rgba(0,0,255,0.4); 
+    border-style: dashed;
+    border-width: 1px;
+    border-color: rgb(0,0,255);
+    display: none;
+    vertical-align: middle;
+    text-align: center;
+}
+
+#divzoom_inner { 
+    pointer-events: none;
+    margin: auto 0px;
+    background-color: rgba(0,0,0,0.2); 
+    position:relative; 
+    top: 50%;
+    left: 50%;
+    transform:translate(-50%,-50%);
+}
