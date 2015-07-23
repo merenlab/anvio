@@ -1399,7 +1399,7 @@ function searchContigs()
             _counter++;
         }
     }
-    $('#search_result_message').html(_counter + " contigs found.");
+    $('#search_result_message').html(_counter + " splits found.");
 }
 
 function showSearchResult() {
@@ -1531,7 +1531,7 @@ function showStoreCollectionWindow() {
                 $('#storeCollection_list').append('<option value="' + source + '"' + _disabled + '>' + _name + '</option>');
             }
 
-            $('#storeCollectionWindow').dialog('open');
+            $('#modStoreCollection').modal('show');
         }
     });
 }
@@ -1601,7 +1601,7 @@ function storeCollection() {
           alert("Server: " + server_response + "\n\n(status: " + status + ")");
     });
 
-    $('#storeCollectionWindow').dialog('close');    
+    $('#modStoreCollection').modal('hide');    
 }
 
 function generateSummary() {
@@ -1651,7 +1651,7 @@ function showLoadCollectionWindow() {
                 $('#loadCollection_list').append('<option value="' + source + '">' + _name + '</option>');
             }
 
-            $('#loadCollectionWindow').dialog('open');
+            $('#modLoadCollection').modal('show');
         }
     });
 }
@@ -1757,7 +1757,7 @@ function loadCollection() {
             rebuildIntersections();
             updateBinsWindow();
             redrawBins();
-            $('#loadCollectionWindow').dialog('close');
+            $('#modLoadCollection').modal('hide');
         }
     });
 }
