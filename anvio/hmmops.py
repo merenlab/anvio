@@ -62,6 +62,13 @@ class HMMSearch:
                                                                                log_file_path))
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
         utils.run_command(cmd_line)
+
+        if not os.path.exists(self.proteins_in_contigs):
+            raise ConfigError, "Something went wrong with prodigal, and it failed to generate the\
+                                expected output :/ Fortunately, this log file should tell you what\
+                                might be the problem: '%s'. Please do not forget to include this\
+                                file if you were to ask for help." % log_file_path
+
         self.progress.end()
 
         return self.proteins_in_contigs
@@ -111,10 +118,17 @@ class HMMSearch:
                                                                               log_file_path))
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
         utils.run_command(cmd_line)
+
+        if not os.path.exists(self.hmm_scan_hits_shitty):
+            raise ConfigError, "Something went wrong with hmmscan, and it failed to generate the\
+                                expected output :/ Fortunately, this log file should tell you what\
+                                might be the problem: '%s'. Please do not forget to include this\
+                                file if you were to ask for help." % log_file_path
+
         self.progress.end()
 
-        # this shit is here because hmmscan does not courteous enough to generate a TAB-delimited
-        # file......
+        # thank you, hmmscan, for not generating a simple TAB-delimited, because we programmers
+        # love to write little hacks like this into our code:
         parseable_output = open(self.hmm_scan_hits, 'w')
         for line in open(self.hmm_scan_hits_shitty).readlines():
             if line.startswith('#'):
