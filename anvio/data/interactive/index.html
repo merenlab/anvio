@@ -56,11 +56,12 @@
                       <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span>
                     </a>
                     <ul class="dropdown-menu multi-level" role="menu">
-                      <li><a href="#">User Tutorial</a></li>
-                      <li><a href="#">Another action</a></li>
-                      <li><a href="#">Something else here</a></li>
+                      <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
+                      <li><a href="http://merenlab.org/2015/05/01/anvio-tutorial/">Anvi'o user manual</a></li>
+                      <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
+                      <li><a href="http://merenlab.org/people/">Contact us</a></li>
                       <li role="separator" class="divider"></li>
-                      <li><p>Show help tooltips: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></li>
+                      <li><p>Show help tooltips for the interactive interface: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></li>
                     </ul>
                   </li>
                 </ul>
@@ -518,6 +519,8 @@
         $("body").tooltip({ selector: '[data-toggle=tooltip], [data-help]', title: titleSetter, container: 'body' });
     });
 
+    // open all links in a new tab
+    $("body a[href^='http']").attr("target","_blank");
     </script>
 </body>
 </html>
