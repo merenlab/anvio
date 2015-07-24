@@ -236,3 +236,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   padding-top: 4px;
   border-right: 1px solid #D3D3D3;
 }
+
+.dropdown-menu>li>p {
+    display: block;
+    padding: 3px 20px;
+    clear: both;
+    font-weight: 400;
+    line-height: 1.42857143;
+    color: #333;
+    white-space: nowrap;
+}
