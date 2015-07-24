@@ -1182,19 +1182,22 @@ function showContaminants(bin_id, updateOnly) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    $('#bins-bottom').html(completeness_dict[bin_id]);
+    $('#bins-bottom').html(buildContaminantsTable(completeness_dict[bin_id], bin_id));
 
 }
 
-function buildContaminantsTable(info_dict) {
+function buildContaminantsTable(info_dict, bin_id) {
     var stats = info_dict['stats'];
 
-    var output = '<div style="max-height: 400px; width: 480px; margin; 5px; overflow: auto;"><table style="width: 100%;">';
-    var header = '<tr>';
-    var body = '<tr>';
+    var output = '<h4>Comntaminants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
+
+    output += '<div class="col-md-12">'
+    var oddeven=0;
 
     for(var source in stats) {
-        header += '<td><b>' + source + ' (' + Object.keys(stats[source]['contaminants']).length + ')</br></td>';
+        oddeven++;
+        var tabletext = '<div class="table-responsive col-md-6"><table style="margin-bottom: 10px;"><tr><td>';
+        tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['contaminants']).length + ')</h5></td></tr>';
 
         var contaminants_html = '';
 
@@ -1207,23 +1210,30 @@ function buildContaminantsTable(info_dict) {
 
                 for (var j = 0; j < contig.length; j++) {
                     // splits
-                    title += contig[j] + '&#xA;'; // it's a hack for using newline in tooltips
+                    title += contig[j] + '\n';
                     order_array += label_to_node_map[contig[j]].order + ', ';
                 }
             }
             order_array += ']';
 
             contaminants_html += '<span style="cursor:pointer;" \
-                                    title="' + title + '" \
+                                    data-toggle="tooltip" data-placement="top" title="' + title + '" \
                                     onclick="redrawBins(' + order_array + ');"> \
                                     ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
                                   </span><br />';
         }
 
-        body += '<td valign="top">' + contaminants_html + '</td>';
+        tabletext += '<tr><td valign="top">' + contaminants_html + '</tr></td></table></div>';
+        output += tabletext;
+
+        if (oddeven%2==0)
+        {
+            output += '</div><div class="col-md-12">'
+        }
     }
 
-    output += header + '</tr><tr><td colspan="' + Object.keys(stats).length + '"><hr /></td>' + body + '</tr></table></div>';
+    output += '</div>';
+
     return output;
 }
 
