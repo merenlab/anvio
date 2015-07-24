@@ -11,6 +11,11 @@ h4 {
     display: none; 
 }
 
+.no-link {
+  text-decoration: none;
+  color: #333;
+}
+
 .glyphicon {
   top: 4px;
   font-size: 15px;

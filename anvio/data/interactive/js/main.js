@@ -73,7 +73,6 @@ var last_settings;
 
 var search_column;
 var search_results = [];
-var highlight_backup = {};
 
 var views = {};
 var layers = {};
@@ -962,7 +961,7 @@ function showContigNames(bin_id) {
     var names = getContigNames(bin_id);
 
     for (var i in names)
-        msg += '<tr><td>' + names[i] + '</td></tr>';
+        msg += "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + names[i] + "\");'>" + names[i] + "</a></td></tr>";
 
     $('#bins-bottom').html(msg + '</table>');
 }
@@ -1402,7 +1401,7 @@ function showSearchResult() {
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        rows = rows + "<tr><td>" + metadata[search_results[i]][0] + "</td><td>" + metadata[search_results[i]][search_column] + "</td></tr>";
+        rows = rows + "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + metadata[search_results[i]][0] + "\");'>" + metadata[search_results[i]][0] + "</a></td><td>" + metadata[search_results[i]][search_column] + "</td></tr>";
     }
     $(".search-results-display").html(rows);
 }
@@ -1423,7 +1422,25 @@ function highlightResult() {
         order_list.push(_order);
     }
 
-    redrawBins(order_list); 
+    search_results = order_list;
+    redrawBins(); 
+}
+
+function highlightSplit(name) {
+    // check if tree exists
+    if ($.isEmptyObject(label_to_node_map)) {
+        alert('Draw tree first.');
+        return;
+    }
+
+    for (var i=0; i < order_counter; i++) {
+        if (name == order_to_node_map[i].label)
+        {
+            search_results = [i];
+            redrawBins();
+            return;
+        }
+    }
 }
 
 function appendResult() {

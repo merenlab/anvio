@@ -2387,7 +2387,7 @@ function draw_tree(settings) {
 
 }
 
-function redrawBins(search_results)
+function redrawBins()
 {
     // check if tree parsed, if not there is nothing to redraw.
     if ($.isEmptyObject(label_to_node_map)) 
