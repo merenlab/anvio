@@ -1592,6 +1592,7 @@ function showLoadCollectionWindow() {
                 $('#loadCollection_list').append('<option value="' + source + '">' + _name + '</option>');
             }
 
+            $('#loadCollection_list, #btn-load-collection').prop('disabled', false);
             $('#modLoadCollection').modal('show');
         }
     });
@@ -1599,7 +1600,7 @@ function showLoadCollectionWindow() {
 
 function showCollectionDetails() {
     var cname = $('#loadCollection_list').val();
-    
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -1625,6 +1626,8 @@ function loadCollection() {
         alert('Please select a collection.');
         return;
     }
+
+    $('#loadCollection_list, #btn-load-collection').prop('disabled', true);
     
     var bin_list = [];
     var total_selection = 0;
@@ -1641,8 +1644,10 @@ function loadCollection() {
         }
     }
 
-    if (total_selection > 0 && !confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?"))
+    if (total_selection > 0 && !confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?")) {
+        showLoadCollectionWindow();
         return;
+    }
 
     $.ajax({
         type: 'GET',
