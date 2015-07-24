@@ -88,6 +88,7 @@ td > input[type='checkbox'] {
 
 #btn_draw_tree {
 	width: 25%;
+    font-weight: bolder;
 }
 
 .tab-content {
