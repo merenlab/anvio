@@ -11,6 +11,11 @@ h4 {
     display: none; 
 }
 
+.glyphicon {
+  top: 4px;
+  font-size: 15px;
+}
+
 .modal .modal-body {
   overflow-y: auto;
 }
