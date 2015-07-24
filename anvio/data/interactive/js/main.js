@@ -919,6 +919,9 @@ function drawTree() {
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
+    $('#sample_settings_tab').removeClass("disabled"); // enable bins tab
+    $('#mouse_tooltips_tab').removeClass("disabled"); // enable bins tab
+    $('#search_panel_tab').removeClass("disabled"); // enable bins tab
 
     setTimeout(function () 
         { 
