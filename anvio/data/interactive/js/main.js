@@ -1170,7 +1170,7 @@ function showCompleteness(bin_id) {
 
     var msg = '<h4>Completeness of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>' +
         '<table class="table table-striped sortable">' +
-        '<thead><tr><th>Source</th><th>Percent complenetess</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">Percent complenetess</th></tr></thead><tbody>';
 
     for (var source in stats)
         msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
