@@ -1121,9 +1121,6 @@ function updateBinsWindow(bin_list) {
         $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
         $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
-        split_names = getContigNames(bin_id);
-        bin_name = $('#bin_name_' + bin_id).val();
-
         updateComplateness(bin_id);
     }
 }
@@ -1133,7 +1130,7 @@ function updateComplateness(bin_id) {
         type: "POST",
         url: "/data/completeness",
         cache: false,
-        data: {split_names: JSON.stringify(split_names), bin_name: JSON.stringify(bin_name)},
+        data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
             completeness_info_dict = JSON.parse(data);
 
@@ -1141,9 +1138,6 @@ function updateComplateness(bin_id) {
             refs = completeness_info_dict['refs'];
 
             completeness_dict[bin_id] = completeness_info_dict;
-
-            showCompleteness(bin_id, true);
-            showContaminants(bin_id, true);
 
             // it is sad that one liner with a list comprehension takes this much code in JS:
             sum_completeness = 0.0;
@@ -1164,64 +1158,29 @@ function updateComplateness(bin_id) {
     });
 }
 
-function showCompleteness(bin_id, updateOnly) {
+function showCompleteness(bin_id) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    if ($('#completeness_content_' + bin_id).length)
-    {
-        $('#completeness_content_' + bin_id).html(buildCompletenessTable(completeness_dict[bin_id]));
-        return;
-    }
+    var refs = completeness_dict[bin_id]['refs'];
+    var stats = completeness_dict[bin_id]['stats'];
 
-    if (!updateOnly)
-    {
-        $('<div> \
-           <div id="completeness_content_' + bin_id + '">' + buildCompletenessTable(completeness_dict[bin_id]) + '</div> \
-           </div>').dialog({
-                resizable: false,
-                collapseEnabled: false,
-                width: 'auto',
-                title: 'Completeness Info',
-                position: {
-                    my: "center",
-                    at: "center",
-                    of: window
-                },
-                close: function(ev, ui) {
-                    $(this).remove();
-                }});
-    }
+    var msg = '<h4>Completeness of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>' +
+        '<table class="table table-striped sortable">' +
+        '<thead><tr><th>Source</th><th>Percent complenetess</th></tr></thead><tbody>';
+
+    for (var source in stats)
+        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+
+    $('#bins-bottom').html(msg + '</tbody></table>');
 }
 
 function showContaminants(bin_id, updateOnly) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    if ($('#contaminants_content_' + bin_id).length)
-    {
-        $('#contaminants_content_' + bin_id).html(buildContaminantsTable(completeness_dict[bin_id]));
-        return;
-    }
+    $('#bins-bottom').html(completeness_dict[bin_id]);
 
-    if (!updateOnly)
-    {
-        $('<div> \
-           <div id="contaminants_content_' + bin_id + '">' + buildContaminantsTable(completeness_dict[bin_id]) + '</div> \
-           </div>').dialog({
-                resizable: false,
-                collapseEnabled: false,
-                width: 'auto',
-                title: 'Contaminants Info',
-                position: {
-                    my: "center",
-                    at: "center",
-                    of: window
-                },
-                close: function(ev, ui) {
-                    $(this).remove();
-                }});
-    }
 }
 
 function buildContaminantsTable(info_dict) {
@@ -1262,41 +1221,6 @@ function buildContaminantsTable(info_dict) {
     }
 
     output += header + '</tr><tr><td colspan="' + Object.keys(stats).length + '"><hr /></td>' + body + '</tr></table></div>';
-    return output;
-}
-
-function buildCompletenessTable(info_dict) {
-    var stats = info_dict['stats'];
-    var refs = info_dict['refs'];
-
-    var output = '<table style="margin: 5px;">';
-
-    header_template = '<td style="font-variant: small-caps; font-size: 125%; padding: 0px 10px;">{TXT}</td>';
-    percentages_template = '<td style="text-align: center; font-weight: bold;">{VAL}%</td>';
-    source_template = '<td style="text-align: left;"><a href="{REF}" target="_blank" style="text-decoration:none; outline: 0;">{VAL}</a></td>';
-
-    headers = ['source', 'completeness', 'contamination'];
-    entry_keys = ['percent_complete', 'percent_contamination'];
-
-    // header line:
-    output += '<tr>';
-    headers.forEach(function(header) {
-        output += header_template.replace('{TXT}', header);
-    });
-    output += '</tr><tr><td colspan="' + headers.length + '"><hr /></td>';
-
-    for (var source in stats) {
-        output += '<tr>';
-
-        output += source_template.replace('{VAL}', source).replace('{REF}', refs[source]);
-
-        entry_keys.forEach(function(key) {
-            output += percentages_template.replace('{VAL}', stats[source][key].toFixed(1));
-        })
-        output += '</tr>';
-    }
-
-    output += '</tr><tr><td colspan="' + headers.length + '"><hr /></td></table>';
     return output;
 }
 
