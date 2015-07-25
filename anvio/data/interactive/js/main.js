@@ -73,6 +73,7 @@ var last_settings;
 
 var search_column;
 var search_results = [];
+var highlighted_splits = [];
 
 var views = {};
 var layers = {};
@@ -1189,7 +1190,7 @@ function showContaminants(bin_id, updateOnly) {
 function buildContaminantsTable(info_dict, bin_id) {
     var stats = info_dict['stats'];
 
-    var output = '<h4>Comntaminants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
+    var output = '<h4>Contaminants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
 
     output += '<div class="col-md-12">'
     var oddeven=0;
@@ -1203,7 +1204,7 @@ function buildContaminantsTable(info_dict, bin_id) {
 
         for (var contaminant in stats[source]['contaminants']) {
             var title = '';
-            var order_array = '[';
+            var split_array = '';
             for (var i = 0; i < stats[source]['contaminants'][contaminant].length; i++)
             {
                 var contig = stats[source]['contaminants'][contaminant][i];
@@ -1211,14 +1212,13 @@ function buildContaminantsTable(info_dict, bin_id) {
                 for (var j = 0; j < contig.length; j++) {
                     // splits
                     title += contig[j] + '\n';
-                    order_array += label_to_node_map[contig[j]].order + ', ';
+                    split_array += '\'' + contig[j] + '\', ';
                 }
             }
-            order_array += ']';
 
             contaminants_html += '<span style="cursor:pointer;" \
                                     data-toggle="tooltip" data-placement="top" title="' + title + '" \
-                                    onclick="redrawBins(' + order_array + ');"> \
+                                    onclick="highlighted_splits = [' + split_array + ']; redrawBins();"> \
                                     ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
                                   </span><br />';
         }
@@ -1350,16 +1350,14 @@ function highlightResult() {
         return;
     }
 
-    var order_list = new Array();
+    highlighted_splits = [];
 
     for (var i=0; i < search_results.length; i++) {
         var _contig_name = metadata[search_results[i]][0];
-        var _order = label_to_node_map[_contig_name].order;
-
-        order_list.push(_order);
+        
+        highlighted_splits.push(_contig_name);
     }
 
-    search_results = order_list;
     redrawBins(); 
 }
 
@@ -1370,14 +1368,8 @@ function highlightSplit(name) {
         return;
     }
 
-    for (var i=0; i < order_counter; i++) {
-        if (name == order_to_node_map[i].label)
-        {
-            search_results = [i];
-            redrawBins();
-            return;
-        }
-    }
+    highlighted_splits = [name];
+    redrawBins();
 }
 
 function appendResult() {
