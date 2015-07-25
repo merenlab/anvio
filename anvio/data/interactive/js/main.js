@@ -167,10 +167,7 @@ $(document).ready(function() {
                 readOnly = true;
                 alert('It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.');
 
-                $('#btn_save_current_state').prop('disabled', 'disabled');
-                $('#btn_store_collection').prop('disabled', 'disabled');
-                $('#generate-summary').prop('disabled', 'disabled');
-                $('#btn_store_refined_bins').prop('disabled', 'disabled');
+                $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
             bin_prefix = prefixResponse[0];

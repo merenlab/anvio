@@ -154,7 +154,7 @@
 
                         <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
                             <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
                         </div>
 
 
@@ -240,16 +240,16 @@
                         <div class="full-mode">
                             <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                             </div>
                             <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
                             </div>
                         </div>
 
                         <div class="refine-mode" style="display: none">
                             <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
                             </div>
                         </div>
                     </div>
