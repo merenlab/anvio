@@ -506,8 +506,8 @@
         if (!$("#show-help-tooltips").is(':checked'))
             return "";
 
-        if (this.hasAttribute('data-help') && help_content.hasOwnProperty(this.getAttribute('data-help')))
-            return help_content[this.getAttribute('data-help')];
+        if (this.hasAttribute('data-help') && help_contents.hasOwnProperty(this.getAttribute('data-help')))
+            return help_contents[this.getAttribute('data-help')];
 
         if (this.hasAttribute('title'))
             return this.getAttribute('title');
@@ -515,8 +515,21 @@
         return "";
     }
 
+    function placementSetter(tooltip, source)
+    {
+        if (source.hasAttribute('data-help') && tooltip_placements.hasOwnProperty(source.getAttribute('data-help')))
+            return tooltip_placements[source.getAttribute('data-help')]; 
+
+        return 'top';      
+    }
+
     $(document).ready(function() {
-        $("body").tooltip({ selector: '[data-toggle=tooltip], [data-help]', title: titleSetter, container: 'body' });
+        $("body").tooltip({ 
+            selector: '[data-toggle=tooltip], [data-help]',
+            title: titleSetter,
+            placement: placementSetter, 
+            container: 'body'
+        });
     });
 
     // open all links in a new tab
