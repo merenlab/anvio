@@ -406,7 +406,10 @@ $(document).ready(function() {
                 $('#searchLayerList').append(new Option(metadata[0][i],i));
             }
         } // response callback
-    ); // promise
+    ).fail(function() {
+        alert('One or more ajax request has failed, See console logs for details.');
+        console.log(arguments);
+    }); // promise
 
     // initialize colorpicker for search result highlight color.
     $('#picker_highlight').colpick({
