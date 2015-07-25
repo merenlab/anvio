@@ -85,8 +85,6 @@ var completeness_dict = {};
 var sort_column;
 var sort_order;
 
-var readOnly = false;
-var refineMode = false;
 var bin_prefix;
 
 var current_state_name = "";
@@ -157,14 +155,14 @@ $(document).ready(function() {
         {
             if (modeResponse[0] == 'refine')
             {
-                refineMode = true;
                 $('.full-mode').hide();
                 $('.refine-mode').show();
+
+                $('#fixed-navbar-div').css('background-color', '#F3A2AD');
             }
 
             if (readOnlyResponse[0] == true)
             {
-                readOnly = true;
                 alert('It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.');
 
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
