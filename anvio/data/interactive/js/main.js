@@ -1351,7 +1351,7 @@ function showSearchResult() {
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        rows = rows + "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + metadata[search_results[i]][0] + "\");'>" + metadata[search_results[i]][0] + "</a></td><td>" + metadata[search_results[i]][search_column] + "</td></tr>";
+        rows = rows + "<tr><td data-value=" + metadata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + metadata[search_results[i]][0] + "\");'>" + metadata[search_results[i]][0] + "</a></td><td data-value=" + metadata[search_results[i]][search_column] + ">" + metadata[search_results[i]][search_column] + "</td></tr>";
     }
     $(".search-results-display").html(rows);
 }
