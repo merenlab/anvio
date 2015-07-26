@@ -93,7 +93,7 @@ var current_state_name = "";
 //---------------------------------------------------------
 
 $(document).ready(function() {
-    waitingDialog.show('Loading...', {dialogSize: 'sm'});
+    waitingDialog.show('Loading the interface ...', {dialogSize: 'sm'});
 
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram') 
@@ -327,6 +327,7 @@ $(document).ready(function() {
             var default_tree = clusteringsResponse[0][0];
             var available_trees = clusteringsResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
+            var first_run = true;
 
             $('#trees_container').append(available_trees_combo);
 
@@ -334,6 +335,8 @@ $(document).ready(function() {
 
                 $('#trees_container').prop('disabled', true);
                 $('#btn_draw_tree').prop('disabled', true);
+
+                waitingDialog.show('Requesting the tree data ...', {dialogSize: 'sm'});
 
                 $.ajax({
                     type: 'GET',
@@ -343,6 +346,11 @@ $(document).ready(function() {
                         newick = data;
                         $('#trees_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false); 
+
+                        if (!first_run){
+                            waitingDialog.hide();
+                        }
+                        first_run = false;
                     }
                 });
             });
@@ -362,6 +370,8 @@ $(document).ready(function() {
 
                 $('#views_container').prop('disabled', false);
                 $('#btn_draw_tree').prop('disabled', true);
+
+                waitingDialog.show('Requesting view data from the server ...', {dialogSize: 'sm'});
 
                 $.ajax({
                     type: 'GET',
@@ -918,13 +928,14 @@ function drawTree() {
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
-    $('#img_loading').show();
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
     $('#sample_settings_tab').removeClass("disabled"); // enable bins tab
     $('#mouse_tooltips_tab').removeClass("disabled"); // enable bins tab
     $('#search_panel_tab').removeClass("disabled"); // enable bins tab
+
+    waitingDialog.show('Drawing ...', {dialogSize: 'sm'});
 
     setTimeout(function () 
         { 
@@ -937,7 +948,7 @@ function drawTree() {
 
             redrawBins();
 
-            $('#img_loading').hide();
+            waitingDialog.hide();
             $('#btn_draw_tree').prop('disabled', false);
 
             if (settings['tree-radius'] == 0)
@@ -945,7 +956,7 @@ function drawTree() {
                 $('#tree-radius-container').show();
                 $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
             }
-        }, 1); 
+        }, 500); 
 }
 
 
