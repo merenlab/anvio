@@ -1,4 +1,4 @@
-var help_content = {
+var help_contents = {
 	'load-state-button': 'Load a previously stored visual state from the profile database',
     'save-state-button': 'Save a snapshot of all user settings for layers into the profile database',
     'layers-tab': 'Access to all visualization options',
@@ -31,4 +31,13 @@ var help_content = {
     "zoom-out": "Zoom out",
     "return-to-natural": "Retun to the natural (1:1) view", 
     "save-svg": "Download the display as an SVG file",
+}
+
+// default tooltip placement is 'top', add new entry below if you want to manually set the placement.
+
+var tooltip_placements = {
+    'layers-tab': 'bottom',
+    'bins-tab': 'bottom',
+    'tooltips-tab': 'bottom',
+    'search-tab': 'bottom',
 }

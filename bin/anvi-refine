@@ -71,6 +71,9 @@ parser.add_argument('-s', '--state', metavar = "FILE", default = None,
                     help = "State file for loading previous session.")
 parser.add_argument('--debug', action = 'store_true', default = False,
                         help = 'Extra outputs for debugging. I would not use it if I were you.')
+parser.add_argument('--read-only', action = 'store_true', default = False,
+                        help = 'When the interactive interface is started with this flag, all database "write"\
+                                operations will be disabled.')
 
 args = parser.parse_args()
 
@@ -131,6 +134,8 @@ def send_data(name):
         return json.dumps(d.title)
     elif name == "mode":
         return json.dumps("refine")
+    elif name == "read_only":
+        return json.dumps(args.read_only)
     elif name == "bin_prefix":
         if len(r.bins) == 1:
             return json.dumps(list(r.bins)[0] + "_")
@@ -148,6 +153,8 @@ def send_tree(tree_id):
     if tree_id in d.p_meta['clusterings']:
         run.info_single("Clustering of '%s' has been requested" % (tree_id))
         return json.dumps(d.p_meta['clusterings'][tree_id]['newick'])
+
+    return json.dumps("")
 
 @route('/data/charts/<split_name>')
 def charts(split_name):

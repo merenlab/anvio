@@ -2506,41 +2506,39 @@ function redrawBins()
     }
 
 
-    // draw search results
-    if (typeof search_results !== 'undefined')
-    {
-        for (var i=0; i < search_results.length; i++) {
-            var start = order_to_node_map[search_results[i]];
-            var end = start;
+    // draw higlighted splits
+    for (var i=0; i < highlighted_splits.length; i++) {
+        // TO DO: more performance
+        var start = label_to_node_map[highlighted_splits[i]];
+        var end = start;
 
-            var color = document.getElementById('picker_highlight').getAttribute('color');
-            var outer_ring_size = parseInt(last_settings['outer-ring-height']);
+        var color = document.getElementById('picker_highlight').getAttribute('color');
+        var outer_ring_size = parseInt(last_settings['outer-ring-height']);
 
-            if (tree_type == 'circlephylogram')
-            {
-                drawPie('bin',
-                    'bin_outer_' + 1,
-                    start.angle - angle_per_leaf / 2,
-                    end.angle + angle_per_leaf / 2,
-                    total_radius + margin + outer_ring_size,
-                    total_radius + margin + outer_ring_size * 2,
-                    (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-                    color,
-                    1,
-                    false);     
-            }
-            else
-            {
-                drawPhylogramRectangle('bin',
-                    'bin_outer_' + 1,
-                    total_radius + margin + outer_ring_size,
-                    (start.xy.y + end.xy.y) / 2,
-                    end.xy.y - start.xy.y + height_per_leaf,
-                    outer_ring_size,
-                    color,
-                    1,
-                    false);
-            }
+        if (tree_type == 'circlephylogram')
+        {
+            drawPie('bin',
+                'bin_outer_' + 1,
+                start.angle - angle_per_leaf / 2,
+                end.angle + angle_per_leaf / 2,
+                total_radius + margin + outer_ring_size,
+                total_radius + margin + outer_ring_size * 2,
+                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                color,
+                1,
+                false);     
+        }
+        else
+        {
+            drawPhylogramRectangle('bin',
+                'bin_outer_' + 1,
+                total_radius + margin + outer_ring_size,
+                (start.xy.y + end.xy.y) / 2,
+                end.xy.y - start.xy.y + height_per_leaf,
+                outer_ring_size,
+                color,
+                1,
+                false);
         }
     }
 }
