@@ -93,6 +93,7 @@ var current_state_name = "";
 //---------------------------------------------------------
 
 $(document).ready(function() {
+    waitingDialog.show('Loading...', {dialogSize: 'sm'});
 
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram') 
@@ -806,6 +807,9 @@ function buildLayersTable(order, settings)
             $(this).colpickSetColor(this.value);
         });
     }
+
+
+    waitingDialog.hide();
 }
 
 //---------------------------------------------------------
