@@ -288,9 +288,9 @@
                 <div role="tabpanel" class="tab-pane fade in" id="search_tab">
                     <p style="color: #AAAAAA; padding: 10px;">Search splits based on various attributes.
                     <div id="search_tab" class="form-horizontal">
-                        <h4>Expression:</h4> 
-                        <select id="searchLayerList"></select>
-                        <select id="searchOperator">
+                        <h4 data-help='search-expression'>Expression:</h4> 
+                        <select id="searchLayerList" data-help="search-layer"></select>
+                        <select id="searchOperator" data-help="search-operator">
                             <option value="6">Contains</option>
                             <option value="0">==</option>
                             <option value="1">!=</option>
@@ -299,24 +299,24 @@
                             <option value="4">&gt;=</option>
                             <option value="5">&lt;=</option>
                         </select>
-                        <input id="searchValue" value="">
+                        <input id="searchValue" value="" data-help="search-value">
                         <br />
                         <br />
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>
+                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>
                             <div id="search_result_message"><span></span></div>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
-                            <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000"></div>
-                            <button type="button" class="btn btn-default btn-sm" onclick="highlighted_splits = []; redrawBins();"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                            <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000" data-help="search-color"></div>
+                            <button type="button" class="btn btn-default btn-sm" onclick="highlighted_splits = []; redrawBins();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
                         </div>
                         <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
                         </div>
 
                         <span id="search-results-table-header" class="col-md-12"></span>

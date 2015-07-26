@@ -31,6 +31,19 @@ var help_contents = {
     "zoom-out": "Zoom out",
     "return-to-natural": "Retun to the natural (1:1) view", 
     "save-svg": "Download the display as an SVG file",
+    'search-expression': "Build your search expression by selecting proper items from combo boxes and typing in the search term",
+    'search-layer': "In which layer your search term should be searched for?",
+    'search-value': "Search term. It is case sensitive.",
+    'search-operator': "The search operator to specify matching criterion",
+    'search-button': "Perform search",
+    'search-show-results': "Click to show matchin splits and values down below in text format",
+    'search-highlight': "Highlight search results on the tree",
+    'search-color': "Highlight color for search results",
+    'search-clear': "Clear search highlights from the tree",
+    'search-append': "Append matching splits the to the active bin (see which bin is active from the Bins tab)",
+    'search-remove': "Remove matching splits from the acrive bin",
+    '': "",
+    '': "",
 }
 
 // default tooltip placement is 'top', add new entry below if you want to manually set the placement.
@@ -40,4 +53,5 @@ var tooltip_placements = {
     'bins-tab': 'bottom',
     'tooltips-tab': 'bottom',
     'search-tab': 'bottom',
+    'search-expression': 'right',
 }
