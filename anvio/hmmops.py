@@ -238,6 +238,13 @@ class SequencesForHMMHits:
         return hmm_sequences_dict_for_splits
 
 
+    def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
+        entry = hmm_sequences_dict_for_splits[gene_unique_id]
+        header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'start', 'stop', 'length']])
+        sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+        return (header, sequence)
+
+
     def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap = 200):
         filesnpaths.is_output_file_writable(output_file_path)
 
@@ -247,9 +254,7 @@ class SequencesForHMMHits:
         f = open(output_file_path, 'w')
 
         for gene_unique_id in hmm_sequences_dict_for_splits:
-            entry = hmm_sequences_dict_for_splits[gene_unique_id]
-            header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'start', 'stop', 'length']])
-            sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
 
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens = False)
