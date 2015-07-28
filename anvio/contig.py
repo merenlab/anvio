@@ -26,7 +26,8 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-variability_test_class = VariablityTestFactory()
+variability_test_class_default = VariablityTestFactory(params = {'b': 2, 'm': 1.45, 'c': 0.05})
+variability_test_class_null = VariablityTestFactory(params = None) # get everything for every coverage level
 
 
 def set_contigs_abundance(contigs):
@@ -93,7 +94,7 @@ class Contig:
                                  % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
 
             split.auxiliary = Auxiliary(split, bam, min_coverage = self.min_coverage_for_variability,
-                                        report_full = self.report_variability_full)
+                                        report_variability_full = self.report_variability_full)
 
 
 class Split:
@@ -123,10 +124,10 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, min_coverage = 10, report_full = False):
+    def __init__(self, split, bam, min_coverage = 10, report_variability_full = False):
         self.rep_seq = ''
         self.min_coverage = min_coverage
-        self.report_full = report_full
+        self.report_variability_full = report_variability_full 
         self.split = split
         self.column_profile = self.split.column_profiles
         self.variability_score = 0.0
@@ -147,13 +148,13 @@ class Auxiliary:
             if coverage < self.min_coverage:
                 continue
 
-            column = ''.join([pileupread.alignment.seq[pileupread.qpos] for pileupread in pileupcolumn.pileups])
+            column = ''.join([pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip])
 
             cp = ColumnProfile(column,
                                coverage = coverage,
                                split_name = self.split.name,
                                pos = pileupcolumn.pos - self.split.start,
-                               test_class = None if self.report_full else variability_test_class).profile
+                               test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
             if cp['n2n1ratio']:
                 ratios.append((cp['n2n1ratio'], cp['coverage']), )
