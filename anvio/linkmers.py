@@ -60,8 +60,8 @@ class LinkMersData:
                     L = LinkMerDatum(pileupread.alignment.qname)
                     L.contig_name = contig_name
                     L.pos_in_contig = pileupcolumn.pos
-                    L.pos_in_read = pileupread.qpos
-                    L.base = pileupread.alignment.seq[pileupread.qpos]
+                    L.pos_in_read = pileupread.query_position
+                    L.base = pileupread.alignment.seq[pileupread.query_position]
                     self.data.append(L)
 
 
