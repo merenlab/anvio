@@ -28,7 +28,10 @@ class VariablityTestFactory:
         self.coverage_upper_limit = 500
 
         # for fast access
-        self.cov_var_map_dict = dict([(c, self.curve(c)) for c in range(0, self.coverage_upper_limit + 1)])
+        if params:
+            self.cov_var_map_dict = dict([(c, self.curve(c)) for c in range(0, self.coverage_upper_limit + 1)])
+        else:
+            self.cov_var_map_dict = dict([(c, 0) for c in range(0, self.coverage_upper_limit + 1)])
 
 
     def min_acceptable_ratio_given_coverage(self, coverage):
@@ -38,9 +41,10 @@ class VariablityTestFactory:
         return self.cov_var_map_dict[coverage]
 
 
-    def curve(self, coverage, b=3, m=1.45, c=0.05):
+    def curve(self, coverage):
         # https://www.desmos.com/calculator/qwocua4zi5
         # and/or https://i.imgur.com/zd04pui.png
+        b, m, c = self.params['b'], self.params['m'], self.params['c']
         y = ((1 / b) ** ((coverage ** (1/b)) - m)) + c
         return y
 
