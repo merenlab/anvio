@@ -94,6 +94,9 @@ anvi-summarize -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db
 INFO "Generate a variabilty profile for Bin_1 using a collection id"
 anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -c cmdline_concoct -b Bin_1 -o test-output/variability_Bin_1.txt
 
+INFO "Get sequences for HMM hits for a bin in a collection ..."
+anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
+
 INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
 anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt -o test-output/variability_Bin_1_ALT.txt
 
