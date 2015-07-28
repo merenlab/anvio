@@ -321,7 +321,10 @@ def gen_summary(collection_id):
         return json.dumps({'error'  : 'Something failed. This is what we know: %s' % e})
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
-    webbrowser.open_new("http://%s:%d/summary/%s/index.html" % (ip, port, collection_id))
+    
+    url = "http://%s:%d/summary/%s/index.html" % (ip, port, collection_id)    
+    webbrowser.open_new(url)
+    return json.dumps({'success': url})  
 
 
 @route('/store_collection', method='POST')

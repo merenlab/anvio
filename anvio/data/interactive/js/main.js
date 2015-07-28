@@ -1106,7 +1106,8 @@ function showGenSummaryWindow() {
                 $('#summaryCollection_list').append('<option value="' + source + '">' + _name + '</option>');
             }
 
-            $('#summarizeCollectionWindow').dialog('open');
+            showCollectionDetails('');
+            $('#modGenerateSummary').modal('show');
         }
     });
 }
@@ -1566,19 +1567,19 @@ function generateSummary() {
     if (collection === null)
         return;
 
-    alert('This may take a while. Please click OK and wait while anvio generates the summary page..');
+    waitingDialog.show('Generating summary...', {dialogSize: 'sm'});
 
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            $('#summarizeCollectionWindow').dialog('close');
             if ('error' in data){
                 alert(data['error']);
             } else {
-                $('#summaryResultWindow').dialog('open');
-                $('#summaryDestination').html('<a href="file://' + data['success'] + '">here</a>.');
+                $('#modGenerateSummary').modal('hide');
+                waitingDialog.hide();
+                // data['url']
             }
         }
     });
@@ -1608,13 +1609,27 @@ function showLoadCollectionWindow() {
             }
 
             $('#loadCollection_list, #btn-load-collection').prop('disabled', false);
+            showCollectionDetails('');
             $('#modLoadCollection').modal('show');
         }
     });
 }
 
-function showCollectionDetails() {
-    var cname = $('#loadCollection_list').val();
+function showCollectionDetails(list) {
+
+    var cname = $(list).val();
+
+    if (cname=='' || typeof cname === 'undefined')
+    {
+        // clear details
+        var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
+            '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>n/a</b></div>' +
+            '<div class="col-md-8">Number of Clusters:</div><div class="col-md-4"><b>n/a</b></div>';
+
+        $('.collection-details').html(tbl);
+
+        return;
+    }
 
     $.ajax({
         type: 'GET',
@@ -1625,7 +1640,7 @@ function showCollectionDetails() {
                 '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
                 '<div class="col-md-8">Number of Clusters:</div><div class="col-md-4"><b>' + data[cname]['num_clusters'] + '</b></div>';
 
-            $('#collection-details').html(tbl);
+            $('.collection-details').html(tbl);
         }
     });
 }
