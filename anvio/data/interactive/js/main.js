@@ -1580,6 +1580,9 @@ function generateSummary() {
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
                 // data['url']
+
+                $('#summary_link').html("Summary link: <a href='" + data['url'] + "' target='_blank'>" + data['url'] + "</a>");
+                $('#modSummaryResult').modal('show');
             }
         }
     });
