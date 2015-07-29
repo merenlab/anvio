@@ -270,7 +270,7 @@ def get_parent_state():
 @route('/data/contig/<split_name>')
 def split_info(split_name):
     set_default_headers(response)
-    return d.split_sequences[split_name]
+    return json.dumps(d.split_sequences[split_name])
 
 @route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
 def search_ncbi(ncbi_prog, ncbi_db, split_name):

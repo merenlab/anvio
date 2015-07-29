@@ -239,7 +239,7 @@ def get_parent_state():
 @route('/data/contig/<split_name>')
 def split_info(split_name):
     set_default_headers(response)
-    return d.split_sequences[split_name]
+    return json.dumps(d.split_sequences[split_name])
 
 @route('/store_refined_bins', method='POST')
 def store_refined_bins():

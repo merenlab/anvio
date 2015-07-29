@@ -511,6 +511,28 @@
         </div>
     </div>
 
+    <!-- SPLIT SEQUENCE -->
+    <div class="modal fade" id="modSplitSequence">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Split Sequence</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <textarea class="form-control" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- RIGHT CLICK MENU -->
     <ul id="control_contextmenu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Select</a></li>
