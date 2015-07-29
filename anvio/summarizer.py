@@ -405,14 +405,21 @@ class Bin:
             info_dict[fixed_hmm_search_type] = dict([(hmm_item, 0) for hmm_item in hmm_items])
 
             hits_in_splits = []
+            # keep track of unique identifiers of hmm hits to not count a single hit that spans across multiple splits:
+            unique_identifiers_seen = set([])
 
             for split_id in split_ids_with_hmm_hits:
-                for hmm_item in self.summary.hmm_searches_dict[split_id][hmm_search_type]:
+                for hmm_item, unique_identifier in self.summary.hmm_searches_dict[split_id][hmm_search_type]:
+                    hits_in_splits.append((split_id, hmm_item, unique_identifier),)
+
+                    if (unique_identifier in unique_identifiers_seen):
+                        continue
+
+                    unique_identifiers_seen.add(unique_identifier)
                     info_dict[fixed_hmm_search_type][hmm_item] += 1
-                    hits_in_splits.append((split_id, hmm_item),)
 
             output_file_obj = self.get_output_file_handle('%s-hmm-hits.txt' % fixed_hmm_search_type)
-            output_file_obj.write('contigs\thmm\n')
+            output_file_obj.write('contigs\thmm_profile\tunique_identifier\n')
             for item in hits_in_splits:
                 output_file_obj.write('%s\n' % '\t'.join(item))
             output_file_obj.close()
