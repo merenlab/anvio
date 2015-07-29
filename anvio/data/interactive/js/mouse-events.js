@@ -357,7 +357,8 @@ function menu_callback(action) {
                 cache: false,
                 url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    messagePopupShow(contig_name, '>' + contig_name + '\n' + data);
+                    $('#splitSequence').val('>' + contig_name + '\n' + data);
+                    $('#modSplitSequence').modal('show');
                 }
             });
             break;
@@ -448,7 +449,7 @@ function getNodeFromEvent(event)
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min'])) / angle_per_leaf);
+            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min']) - (angle_per_leaf / 2)) / angle_per_leaf);
             
             if (order < 1 || order > leaf_count)
                 order = 0;

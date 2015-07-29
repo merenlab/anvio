@@ -424,9 +424,9 @@
 
                 <div class="modal-body">
                     <div class="col-md-7">
-                        <select class="form-control" size="10" id="loadCollection_list" ondblclick="loadCollection();" onchange="showCollectionDetails();"></select>
+                        <select class="form-control" size="10" id="loadCollection_list" ondblclick="loadCollection();" onchange="showCollectionDetails(this);"></select>
                     </div>
-                    <div class="col-md-5" id="collection-details">
+                    <div class="col-md-5 collection-details">
                             <div class="col-md-12">Collection Details</div>
                             <hr>
                             <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
@@ -476,6 +476,79 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="storeCollection();">Store</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERATE SUMMARY -->
+    <div class="modal fade" id="modGenerateSummary">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Generate Summary</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-7">
+                        <select class="form-control" size="10" id="summaryCollection_list" ondblclick="generateSummary();" onchange="showCollectionDetails(this);"></select>
+                    </div>
+                    <div class="col-md-5 collection-details">
+                            <div class="col-md-12">Collection Details</div>
+                            <hr>
+                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
+                            <div class="col-md-8">Number of Clusters:</div><div class="col-md-4">n/a</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="generateSummary();">Generate</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY RESULT -->
+    <div class="modal fade" id="modSummaryResult">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Summary is ready</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div id="summary_link" class="col-md-12">
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPLIT SEQUENCE -->
+    <div class="modal fade" id="modSplitSequence">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Split Sequence</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <textarea class="form-control" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
+                    </div>
+                </div>
+
+                <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>

@@ -270,7 +270,7 @@ def get_parent_state():
 @route('/data/contig/<split_name>')
 def split_info(split_name):
     set_default_headers(response)
-    return d.split_sequences[split_name]
+    return json.dumps(d.split_sequences[split_name])
 
 @route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
 def search_ncbi(ncbi_prog, ncbi_db, split_name):
@@ -318,10 +318,12 @@ def gen_summary(collection_id):
         summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
         summary.process()
     except Exception as e:
-        return json.dumps({'error'  : 'Something failed. This is what we know: %s' % e})
+        return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
-    webbrowser.open_new("http://%s:%d/summary/%s/index.html" % (ip, port, collection_id))
+    
+    url = "http://%s:%d/summary/%s/index.html" % (ip, port, collection_id)
+    return json.dumps({'url': url})  
 
 
 @route('/store_collection', method='POST')
