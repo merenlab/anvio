@@ -219,7 +219,7 @@ class AnnotationSuperclass(object):
         else:
             for source in self.non_singlecopy_gene_hmm_sources:
                 search_type = 'hmms_%s' % self.hmm_sources_info[source]['search_type']
-                sources_tmpl[search_type] = []
+                sources_tmpl[source] = []
                 self.hmm_searches_header.append((search_type, source),)
 
             for e in non_singlecopy_gene_hmm_results_dict.values():
@@ -229,9 +229,10 @@ class AnnotationSuperclass(object):
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
 
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
-                self.hmm_searches_dict[e['split']][search_type].append((e['gene_name'], e['gene_unique_identifier']),)
+                self.hmm_searches_dict[e['split']][source].append((e['gene_name'], e['gene_unique_identifier']),)
 
         self.progress.end()
+
 
 class ProfileSuperclass(object):
     def __init__(self, args, r = run, p = progress):
