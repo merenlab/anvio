@@ -1,1 +1,1 @@
-testhmmcollection
+external_hmm_genes
