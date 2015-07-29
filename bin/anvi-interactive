@@ -11,7 +11,7 @@ import json
 import argparse
 import webbrowser
 import datetime
-import sqlite3
+import random
 
 from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
@@ -116,6 +116,7 @@ if not port:
     run.info_single('anvio failed to find a port number that is available :(', mc='red')
     sys.exit(-1)
 
+unique_session_id = random.randint(0,9999999999)
 
 try:
     d = interactive.InputHandler(args)
@@ -170,6 +171,8 @@ def send_data(name):
         return json.dumps(args.read_only)
     elif name == "bin_prefix":
         return json.dumps("Bin_")
+    elif name == "session_id":
+        return json.dumps(unique_session_id)
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
@@ -271,10 +274,6 @@ def get_parent_state():
 def split_info(split_name):
     set_default_headers(response)
     return json.dumps(d.split_sequences[split_name])
-
-@route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
-def search_ncbi(ncbi_prog, ncbi_db, split_name):
-    utils.fire_up_ncbi_blast(split_name, d.split_sequences[split_name], ncbi_prog, ncbi_db)
 
 @route('/data/collections')
 def collections():

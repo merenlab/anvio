@@ -88,6 +88,9 @@ var sort_order;
 var bin_prefix;
 
 var current_state_name = "";
+
+var unique_session_id;
+var ping_timer;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -150,10 +153,18 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/bin_prefix?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/session_id?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse) 
         {
+            unique_session_id = sessionIdResponse[0];
+            ping_timer = setInterval(checkBackgroundProcess, 5000);
+
             if (modeResponse[0] == 'refine')
             {
                 $('.full-mode').hide();
