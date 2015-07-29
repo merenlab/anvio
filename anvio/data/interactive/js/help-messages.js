@@ -2,7 +2,7 @@ var help_contents = {
 	'load-state-button': 'Load a previously stored visual state from the profile database',
     'save-state-button': 'Save a snapshot of all user settings for layers into the profile database',
     'layers-tab': 'Access to all visualization options',
-    'bins-tab': 'Create, load, and save collection of splits. Access completion and contamination estimates.',
+    'bins-tab': 'Create, load, and save collection of splits. Access completion and redundancy estimates.',
     'tooltips-tab': 'Information on splits under the mouse pointer while browsing the display',
     'search-tab': 'Search splits, highlight them on the display, manipulate matching splits',
     'drawing-type': "Choose one of the two displays anvi'o supports: circular, and perpendicular tree",

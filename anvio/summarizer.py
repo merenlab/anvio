@@ -364,16 +364,16 @@ class Bin:
 
         num_sources = len(completeness)
 
-        # set up for the average completeness / contamination scores:
-        for k in ['percent_contamination', 'percent_complete']:
+        # set up for the average completeness / redundancy scores:
+        for k in ['percent_redundancy', 'percent_complete']:
             self.bin_info_dict[k] = 0.0
 
         # go through all single-copy gene reporting sources
         for c in completeness.values():
-            for k in ['percent_contamination', 'percent_complete']:
+            for k in ['percent_redundancy', 'percent_complete']:
                 self.bin_info_dict[k] += c[k]
 
-        for k in ['percent_contamination', 'percent_complete']:
+        for k in ['percent_redundancy', 'percent_complete']:
             self.bin_info_dict[k] /= num_sources
             self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
 

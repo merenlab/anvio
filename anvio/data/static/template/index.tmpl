@@ -168,7 +168,7 @@
                                             <th class="text-center">N50</th>
                                             <th class="text-center">GC Content</th>
                                             <th class="text-center">Compl.</th>
-                                            <th class="text-center">Contam.</th>
+                                            <th class="text-center">Red.</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -189,7 +189,7 @@
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
                                             <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_contamination"|humanize_n }}%</td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}%</td>
                                             {% else %}
                                             <td class="text-center" style="vertical-align: middle;">N\A</td>
                                             <td class="text-center" style="vertical-align: middle;">N\A</td>
@@ -300,7 +300,7 @@
                   <tr>
                     <th>Source</th>
                     <th class="text-center">Percent completeness</th>
-                    <th class="text-center">Percent contamination</th>
+                    <th class="text-center">Percent redundancy</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -308,7 +308,7 @@
                   <tr>
                     <td><a href="{{ collection|lookup:bin|lookup:'files'|lookup:source }}">{{ source|humanize }}</a></td>
                     <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
-                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_contamination"|humanize_n }}%</td>
+                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_redundancy"|humanize_n }}%</td>
                   </tr>
                   {% endfor %}
                 </tbody>

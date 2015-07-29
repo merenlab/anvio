@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
     run.warning('', header = 'Completeness for %d splits (p < %g)' % (len(splits_in_users_list), args.min_e_value))
     for source in completeness.sources:
-        run.info(source, '%.2f%% complete, %.2f%% contamination' % (results[source]['percent_complete'], results[source]['percent_contamination']))
+        run.info(source, '%.2f%% complete, %.2f%% redundant' % (results[source]['percent_complete'], results[source]['percent_redundancy']))
 
     print
 

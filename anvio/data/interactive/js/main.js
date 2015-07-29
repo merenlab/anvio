@@ -1008,7 +1008,7 @@ function newBin(id, binState) {
         var contig_count = 0;
         var contig_length = 0;
         var completeness = '---';
-        var contamination = '---';
+        var redundancy = '---';
 
         SELECTED[bin_counter] = [];
     }
@@ -1021,7 +1021,7 @@ function newBin(id, binState) {
         var contig_count = 0;
         var contig_length = 0;
         var completeness = "---";
-        var contamination = "---";
+        var redundancy = "---";
     }
 
     var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
@@ -1031,7 +1031,7 @@ function newBin(id, binState) {
                    '    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
                    '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>' +
                    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
-                   '    <td data-value="{contamination}"><input id="contamination_{id}" type="button" value="{contamination}" title="Click for contaminants" onClick="showContaminants({id});"></td> ' +
+                   '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
                    '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
                    '</tr>';
 
@@ -1040,14 +1040,14 @@ function newBin(id, binState) {
                        .replace(new RegExp('{color}', 'g'), color)
                        .replace(new RegExp('{count}', 'g'), contig_count)
                        .replace(new RegExp('{completeness}', 'g'), completeness)
-                       .replace(new RegExp('{contamination}', 'g'), contamination)
+                       .replace(new RegExp('{redundancy}', 'g'), redundancy)
                        .replace(new RegExp('{length}', 'g'), contig_length);
 
     $('#tbody_bins').append(template);
 
     if(!from_state){
         $('#completeness_' + id).attr("disabled", true);
-        $('#contamination_' + id).attr("disabled", true);
+        $('#redundancy_' + id).attr("disabled", true);
     }
 
     $('#bin_color_' + id).colpick({
@@ -1172,19 +1172,19 @@ function updateComplateness(bin_id) {
 
             // it is sad that one liner with a list comprehension takes this much code in JS:
             sum_completeness = 0.0;
-            sum_contamination = 0.0;
+            sum_redundancy = 0.0;
             for(source in stats){
                 sum_completeness += stats[source]['percent_complete'];
-                sum_contamination += stats[source]['percent_contamination'];
+                sum_redundancy += stats[source]['percent_redundancy'];
             }
             average_completeness = sum_completeness / Object.keys(stats).length;
-            average_contamination = sum_contamination / Object.keys(stats).length;
+            average_redundancy = sum_redundancy / Object.keys(stats).length;
 
             $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
-            $('#contamination_' + bin_id).val(average_contamination.toFixed(1) + '%').parent().attr('data-value', average_contamination);
+            $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
 
             $('#completeness_' + bin_id).attr("disabled", false);
-            $('#contamination_' + bin_id).attr("disabled", false);
+            $('#redundancy_' + bin_id).attr("disabled", false);
         },
     });
 }
@@ -1206,18 +1206,18 @@ function showCompleteness(bin_id) {
     $('#bins-bottom').html(msg + '</tbody></table>');
 }
 
-function showContaminants(bin_id, updateOnly) {
+function showRedundants(bin_id, updateOnly) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    $('#bins-bottom').html(buildContaminantsTable(completeness_dict[bin_id], bin_id));
+    $('#bins-bottom').html(buildRedundantsTable(completeness_dict[bin_id], bin_id));
 
 }
 
-function buildContaminantsTable(info_dict, bin_id) {
+function buildRedundantsTable(info_dict, bin_id) {
     var stats = info_dict['stats'];
 
-    var output = '<h4>Contaminants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
+    var output = '<h4>Redundants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
 
     output += '<div class="col-md-12">'
     var oddeven=0;
@@ -1225,16 +1225,16 @@ function buildContaminantsTable(info_dict, bin_id) {
     for(var source in stats) {
         oddeven++;
         var tabletext = '<div class="table-responsive col-md-6"><table style="margin-bottom: 10px;"><tr><td>';
-        tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['contaminants']).length + ')</h5></td></tr>';
+        tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['redundants']).length + ')</h5></td></tr>';
 
-        var contaminants_html = '';
+        var redundants_html = '';
 
-        for (var contaminant in stats[source]['contaminants']) {
+        for (var redundant in stats[source]['redundants']) {
             var title = '';
             var split_array = '';
-            for (var i = 0; i < stats[source]['contaminants'][contaminant].length; i++)
+            for (var i = 0; i < stats[source]['redundants'][redundant].length; i++)
             {
-                var contig = stats[source]['contaminants'][contaminant][i];
+                var contig = stats[source]['redundants'][redundant][i];
 
                 for (var j = 0; j < contig.length; j++) {
                     // splits
@@ -1243,14 +1243,14 @@ function buildContaminantsTable(info_dict, bin_id) {
                 }
             }
 
-            contaminants_html += '<span style="cursor:pointer;" \
+            redundants_html += '<span style="cursor:pointer;" \
                                     data-toggle="tooltip" data-placement="top" title="' + title + '" \
                                     onclick="highlighted_splits = [' + split_array + ']; redrawBins();"> \
-                                    ' + contaminant + ' (' + stats[source]['contaminants'][contaminant].length + ') \
+                                    ' + redundant + ' (' + stats[source]['redundants'][redundant].length + ') \
                                   </span><br />';
         }
 
-        tabletext += '<tr><td valign="top">' + contaminants_html + '</tr></td></table></div>';
+        tabletext += '<tr><td valign="top">' + redundants_html + '</tr></td></table></div>';
         output += tabletext;
 
         if (oddeven%2==0)

@@ -136,14 +136,14 @@ class Completeness:
             # report results
             results_dict[source]['percent_complete'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
 
-            # report contamination:
+            # report redundancy:
             genes_that_occur_multiple_times = [g for g in genes_count if genes_count[g] > 1]
-            results_dict[source]['percent_contamination'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
+            results_dict[source]['percent_redundancy'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
 
             # identify splits that contribute the same single_copy_gene
-            contaminants = {}
+            redundants = {}
             for gene_name in genes_that_occur_multiple_times:
-                contaminants[gene_name] = [self.splits_unique_gene_id_occurs[unique_gene_id] for unique_gene_id in gene_name_to_unique_id[source][gene_name]]
-            results_dict[source]['contaminants'] = contaminants
+                redundants[gene_name] = [self.splits_unique_gene_id_occurs[unique_gene_id] for unique_gene_id in gene_name_to_unique_id[source][gene_name]]
+            results_dict[source]['redundants'] = redundants
 
         return results_dict
