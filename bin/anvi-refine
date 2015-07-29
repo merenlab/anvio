@@ -12,6 +12,7 @@ import json
 import argparse
 import webbrowser
 import datetime
+import random
 
 from multiprocessing import Process
 from bottle import route, static_file, redirect, request, BaseRequest, response
@@ -86,6 +87,7 @@ if not port:
     run.info_single('anvio failed to find a port number that is available :(', mc='red')
     sys.exit(-1)
 
+unique_session_id = random.randint(0,9999999999)
 
 try:
     r = refine.RefineBins(args)
@@ -141,6 +143,8 @@ def send_data(name):
             return json.dumps(list(r.bins)[0] + "_")
         else:
             return json.dumps("Refined_")
+    elif name == "session_id":
+        return json.dumps(unique_session_id)
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):

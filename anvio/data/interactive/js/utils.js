@@ -130,6 +130,30 @@ function fire_up_ncbi_blast(contig_name, program, database)
 }
 
 //--------------------------------------------------------------------------------------------------
+
+function checkBackgroundProcess()
+{
+    var message = "It seems background process is down or changed, you may lose your work.";
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/session_id?timestamp=' + new Date().getTime(),
+        success: function (data) {
+            if (data != unique_session_id)
+            {
+                alert(message);
+                clearTimeout(ping_timer);
+            }
+        },
+        error: function(data) {
+            alert(message);
+            clearTimeout(ping_timer);
+        }
+    });
+}
+
+//--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/1303646/check-whether-variable-is-number-or-string-in-javascript
 function isNumber (o) {
   return ! isNaN (o-0);
