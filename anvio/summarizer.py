@@ -17,6 +17,7 @@ import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass
+from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 
 
@@ -150,7 +151,7 @@ class Summarizer(DatabasesMetaclass):
         self.summary['max_shown_header_items'] = 10
         self.summary['slice_header_items_tmpl'] = '0:%d' % self.summary['max_shown_header_items']
         self.summary['num_not_shown_samples'] = len(self.p_meta['samples']) - self.summary['max_shown_header_items']
-        self.summary['num_not_shown_hmm_items'] = dict([(hmm_search_type[5:], len(self.hmm_sources_info[hmm_search_source]['genes']) - self.summary['max_shown_header_items']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
+        self.summary['num_not_shown_hmm_items'] = dict([(hmm_search_source, len(self.hmm_sources_info[hmm_search_source]['genes']) - self.summary['max_shown_header_items']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         self.summary['files'] = {}
         self.summary['collection'] = {}
@@ -159,7 +160,7 @@ class Summarizer(DatabasesMetaclass):
 
         # add hmm items for each seach type:
         if self.non_single_copy_gene_hmm_data_available:
-            self.summary['meta']['hmm_items'] = dict([(hmm_search_type[5:], self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
+            self.summary['meta']['hmm_items'] = dict([(hmm_search_source, self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         # summarize bins:
         for bin_id in collection_dict: 
@@ -188,21 +189,21 @@ class Summarizer(DatabasesMetaclass):
 
         # merge and store matrices for hmm hits
         if self.non_single_copy_gene_hmm_data_available:
-            for search_type in self.summary['meta']['hmm_items']:
+            for hmm_search_source in self.summary['meta']['hmm_items']:
                 # this is to keep numbers per hmm item:
                 d = {}
 
                 for bin_id in self.summary['meta']['bins']:
-                    d[bin_id] = self.summary['collection'][bin_id]['hmms'][search_type]
+                    d[bin_id] = self.summary['collection'][bin_id]['hmms'][hmm_search_source]
 
-                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % search_type, within='hmms')
-                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][search_type]), file_obj = output_file_obj)
+                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % hmm_search_source, within='hmms')
+                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj = output_file_obj)
 
             # this is to keep number of hmm hits per bin:
             n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
-            for search_type in self.summary['meta']['hmm_items']:
+            for hmm_search_source in self.summary['meta']['hmm_items']:
                 for bin_id in self.summary['meta']['bins']:
-                    n[bin_id][search_type] =  sum(self.summary['collection'][bin_id]['hmms'][search_type].values())
+                    n[bin_id][hmm_search_source] =  sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
 
             output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'hmm_hit_totals.txt')
             utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
@@ -299,6 +300,8 @@ class Bin:
 
         self.create_bin_dir()
 
+        self.store_sequences_for_hmm_hits()
+
         self.store_contigs_fasta()
 
         if self.summary.completeness_data_available:
@@ -332,13 +335,15 @@ class Bin:
         filesnpaths.gen_output_directory(self.output_directory)
 
 
-    def get_output_file_handle(self, prefix = 'output.txt', overwrite = False):
+    def get_output_file_handle(self, prefix = 'output.txt', overwrite = False, key = None):
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
         if os.path.exists(file_path) and not overwrite:
             raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
 
 
-        key = prefix.split('.')[0].replace('-', '_')
+        if not key:
+            key = prefix.split('.')[0].replace('-', '_')
+
         self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
 
         return open(file_path, 'w')
@@ -398,27 +403,24 @@ class Bin:
         split_ids_with_hmm_hits = [split_id for split_id in self.split_ids if self.summary.hmm_searches_dict.has_key(split_id)]
 
         for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header:
-            fixed_hmm_search_type = hmm_search_type[5:] # dbops adds hmmx_ or hmm_s for hmm types. it is a very long story
-                                                        # why this is the case, but yeah, essentially it is a by product of
-                                                        # a shitty design. thank you.
             hmm_items = self.summary.hmm_sources_info[hmm_search_source]['genes']
-            info_dict[fixed_hmm_search_type] = dict([(hmm_item, 0) for hmm_item in hmm_items])
+            info_dict[hmm_search_source] = dict([(hmm_item, 0) for hmm_item in hmm_items])
 
             hits_in_splits = []
             # keep track of unique identifiers of hmm hits to not count a single hit that spans across multiple splits:
             unique_identifiers_seen = set([])
 
             for split_id in split_ids_with_hmm_hits:
-                for hmm_item, unique_identifier in self.summary.hmm_searches_dict[split_id][hmm_search_type]:
+                for hmm_item, unique_identifier in self.summary.hmm_searches_dict[split_id][hmm_search_source]:
                     hits_in_splits.append((split_id, hmm_item, unique_identifier),)
 
                     if (unique_identifier in unique_identifiers_seen):
                         continue
 
                     unique_identifiers_seen.add(unique_identifier)
-                    info_dict[fixed_hmm_search_type][hmm_item] += 1
+                    info_dict[hmm_search_source][hmm_item] += 1
 
-            output_file_obj = self.get_output_file_handle('%s-hmm-hits.txt' % fixed_hmm_search_type)
+            output_file_obj = self.get_output_file_handle('%s-hmm-hits.txt' % hmm_search_source)
             output_file_obj.write('contigs\thmm_profile\tunique_identifier\n')
             for item in hits_in_splits:
                 output_file_obj.write('%s\n' % '\t'.join(item))
@@ -462,6 +464,23 @@ class Bin:
         utils.store_dict_as_TAB_delimited_file(genes_dict, None, headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence'], file_obj = output_file_obj)
 
         self.bin_info_dict['genes'] = info_dict
+
+
+    def store_sequences_for_hmm_hits(self):
+        s = SequencesForHMMHits(self.summary.annotation_db_path)
+        hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits({self.bin_id: self.split_ids})
+
+        single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]
+        non_single_copy_gene_hmm_sources = self.summary.completeness.sources
+
+        for hmm_search_source in single_copy_gene_hmm_sources + non_single_copy_gene_hmm_sources:
+            filtered_hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'source', set([hmm_search_source]))
+
+            output_file_obj = self.get_output_file_handle('%s-hmm-sequences.txt' % hmm_search_source, key = hmm_search_source)
+
+            for gene_unique_id in filtered_hmm_sequences_dict:
+                header, sequence = s.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict, gene_unique_id)
+                output_file_obj.write('>%s\n%s\n' % (header, sequence))
 
 
     def store_contigs_fasta(self):

@@ -136,50 +136,6 @@
         </div>
     </section>
 
-    <!-- BINS PERCENT RECRUITMENT PANEL -->
-    <section>
-        <div class="container">
-            <div class="panel panel-info" id="bins_percent_recruitment_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
-                </div>
-
-                <div id="collapse-bins-percent-recruitment" class="panel-collapse collapse">
-                    <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 0px 20px;">This panel shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
-                        <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
-
-
-                        <div class="panel panel-default">
-                            <div class="panel-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
-                                    <thead id="tblHead_bin">
-                                        <tr>
-                                            <th>Sample</th>
-                                            {% for bin in bin_percent_abundance_items %}
-                                            <th class="text-center">{{ bin }}</th>
-                                            {% endfor %}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for sample in meta|lookup:"profile"|lookup:"samples" %}
-                                        <tr>
-                                            <td style="vertical-align: middle;">{{ sample }}</td>
-                                            {% for bin in bin_percent_abundance_items %}
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
-                                            {% endfor %}
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
 
     <!-- BINS PANEL -->
     <section>
@@ -290,7 +246,7 @@
 
     <!-- FILES FOR GROUP -->
     <div class="modal fade" id="modFiles_{{bin}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
-      <div class="modal-dialog">
+      <div class="modal-dialog" style="width: 900px;">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -350,7 +306,7 @@
                 <tbody>
                   {% for source in collection|lookup:bin|lookup:"completeness" %}
                   <tr>
-                    <td>{{ source|humanize }}</td>
+                    <td><a href="{{ collection|lookup:bin|lookup:'files'|lookup:source }}">{{ source|humanize }}</a></td>
                     <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
                     <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_contamination"|humanize_n }}%</td>
                   </tr>
@@ -446,8 +402,53 @@
     </section>
 
 
+    <!-- BINS PERCENT RECRUITMENT PANEL -->
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="bins_percent_recruitment_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
+                </div>
+
+                <div id="collapse-bins-percent-recruitment" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <p style="color: #AAAAAA; padding: 0px 20px;">This panel shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
+                        <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
+
+
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                    <thead id="tblHead_bin">
+                                        <tr>
+                                            <th>Sample</th>
+                                            {% for bin in bin_percent_abundance_items %}
+                                            <th class="text-center">{{ bin }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sample in meta|lookup:"profile"|lookup:"samples" %}
+                                        <tr>
+                                            <td style="vertical-align: middle;">{{ sample }}</td>
+                                            {% for bin in bin_percent_abundance_items %}
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
     {% if meta|lookup:"gene_coverages_data_available" %}
-    <!-- GENES PANEL -->
+    <!-- FUNCTIONS PANEL -->
     <section>
     <div class="container">
         <div class="panel panel-info" id="functions_panel">
@@ -514,10 +515,10 @@
                 <div id="collapse-hmms" class="panel-collapse collapse">
 
                     <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 20px;">This panel shows you the result of non-single copy gene hits in your bins and contigs. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
+                        <p style="color: #AAAAAA; padding: 20px;">This panel shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
 
 
-                        <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER SEARCH TYPE: -->
+                        <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER HMM PROFILE: -->
                         <div class="panel panel-default">
                             <div class="panel-body">
                                 <table class="table table-striped sortable" id="tblGrid_bin">
@@ -525,8 +526,8 @@
                                        <tr>
                                            <th data-defaultsort='disabled' class="text-center"></th>
                                            <th>Bin</th>
-                                            {% for search_type in meta|lookup:"hmm_items" %}
-                                            <th class="text-center">{{ search_type }}</th>
+                                            {% for hmm_profile in meta|lookup:"hmm_items" %}
+                                            <th class="text-center">{{ hmm_profile }}</th>
                                             {% endfor %}
                                        </tr>
                                     </thead>
@@ -536,8 +537,10 @@
                                             <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                             <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                            {% for search_type in meta|lookup:"hmm_items" %}
-                                                <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|sumvals|pretty }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|sumvals|pretty }}</td>
+                                            {% for hmm_profile in meta|lookup:"hmm_items" %}
+                                                <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:hmm_profile|sumvals|pretty }}">
+                                                    <a href="{{ collection|lookup:bin|lookup:'files'|lookup:hmm_profile }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:hmm_profile|sumvals|pretty }}</a>
+                                                </td>
                                             {% endfor %}
                                        </tr>
                                        {% endfor %}
@@ -551,19 +554,19 @@
                         <div role="tabpanel" style="margin: 10px;">
                             <!-- Nav tabs -->
                             <ul class="nav nav-tabs" role="tablist">
-                            {% for search_type in meta|lookup:'hmm_items' %}
-                              <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ search_type }}" aria-controls="{{ search_type }}" role="tab" data-toggle="tab">{{ search_type|humanize }}</a></li>
+                            {% for hmm_profile in meta|lookup:'hmm_items' %}
+                              <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ hmm_profile }}" aria-controls="{{ hmm_profile }}" role="tab" data-toggle="tab">{{ hmm_profile|humanize }}</a></li>
                             {% endfor %}
                             </ul>
                         
                             <!-- TABS -->
                             <div class="tab-content">
-                            {% for search_type in meta|lookup:'hmm_items' %}
-                            <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ search_type }}">
+                            {% for hmm_profile in meta|lookup:'hmm_items' %}
+                            <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ hmm_profile }}">
 
-                                    <p style="color: #AAAAAA; padding: 20px;">HMM hits in bins for {{ search_type }} (<a href="{{ files|lookup:'hmms'|lookup:search_type }}">from {{ files|lookup:'hmms'|lookup:search_type }}</a>):</p>
+                                    <p style="color: #AAAAAA; padding: 20px;">HMM hits in bins for {{ hmm_profile }} (<a href="{{ files|lookup:'hmms'|lookup:hmm_profile }}">from {{ files|lookup:'hmms'|lookup:hmm_profile }}</a>):</p>
 
-                                    <!-- INDIVIDUAL TABLES PER HMM ITEM and SEARCH TYPE -->
+                                    <!-- INDIVIDUAL TABLES PER HMM ITEM and HMM PROFILE -->
                                     <div class="panel panel-default">
                                         <div class="panel-body">
                                         <table class="table table-striped sortable" style="margin: 10px;">
@@ -571,7 +574,7 @@
                                                <tr>
                                                    <th data-defaultsort='disabled' class="text-center"></th>
                                                    <th>Bin</th>
-                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
+                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:hmm_profile|slice:slice_header_items_tmpl %}
                                                     {% if hmm_item|length > 5 %}
                                                     <th class="text-center">{{ hmm_item|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ hmm_item }}">...</a></th>
                                                     {% else %}
@@ -579,8 +582,8 @@
                                                     {% endif %} 
                                                     {% endfor %}
 
-                                                    {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
-                                                    <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></th>
+                                                    {% if meta|lookup:"hmm_items"|lookup:hmm_profile|length > max_shown_header_items %}
+                                                    <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:hmm_profile }} more">...</span></th>
                                                     {% endif %} 
                                                </tr>
                                             </thead>
@@ -590,12 +593,12 @@
                                                     <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                                     <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:search_type|slice:slice_header_items_tmpl %}
-                                                        <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:search_type|lookup:hmm_item|pretty }}</td>
+                                                    {% for hmm_item in meta|lookup:"hmm_items"|lookup:hmm_profile|slice:slice_header_items_tmpl %}
+                                                        <td class="text-center" data-value="{{ collection|lookup:bin|lookup:'hmms'|lookup:hmm_profile|lookup:hmm_item }}">{{ collection|lookup:bin|lookup:'hmms'|lookup:hmm_profile|lookup:hmm_item|pretty }}</td>
                                                     {% endfor %}
 
-                                                    {% if meta|lookup:"hmm_items"|lookup:search_type|length > max_shown_header_items %}
-                                                        <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:search_type }} more">...</span></td>
+                                                    {% if meta|lookup:"hmm_items"|lookup:hmm_profile|length > max_shown_header_items %}
+                                                        <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_hmm_items|lookup:hmm_profile }} more">...</span></td>
                                                     {% endif %} 
                                                </tr>
                                                {% endfor %}
