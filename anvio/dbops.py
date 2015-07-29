@@ -227,10 +227,11 @@ class AnnotationSuperclass(object):
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
-                self.hmm_searches_dict[e['split']][search_type].append(e['gene_name'])
+
+                # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
+                self.hmm_searches_dict[e['split']][search_type].append((e['gene_name'], e['gene_unique_identifier']),)
 
         self.progress.end()
-
 
 class ProfileSuperclass(object):
     def __init__(self, args, r = run, p = progress):
