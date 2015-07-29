@@ -363,10 +363,10 @@ function menu_callback(action) {
             });
             break;
 
-        case 'blastn_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastn/nr/' + contig_name,}); break;
-        case 'blastx_nr': $.ajax({type: 'GET', url: '/search/ncbi/blastx/nr/' + contig_name,}); break;
-        case 'blastn_refseq_genomic': $.ajax({type: 'GET', url: '/search/ncbi/blastn/refseq_genomic/' + contig_name,}); break;
-        case 'blastx_refseq_protein': $.ajax({type: 'GET', url: '/search/ncbi/blastx/refseq_protein/' + contig_name,}); break;
+        case 'blastn_nr': fire_up_ncbi_blast(contig_name, 'blastn', 'nr'); break;
+        case 'blastx_nr': fire_up_ncbi_blast(contig_name, 'blastx', 'nr'); break;
+        case 'blastn_refseq_genomic': fire_up_ncbi_blast(contig_name, 'blastn', 'refseq_genomic'); break;
+        case 'blastx_refseq_protein': fire_up_ncbi_blast(contig_name, 'blastx', 'refseq_genomic'); break;
         
         case 'inspect':
             $.ajax({

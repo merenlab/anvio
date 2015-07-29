@@ -272,10 +272,6 @@ def split_info(split_name):
     set_default_headers(response)
     return json.dumps(d.split_sequences[split_name])
 
-@route('/search/ncbi/<ncbi_prog>/<ncbi_db>/<split_name>')
-def search_ncbi(ncbi_prog, ncbi_db, split_name):
-    utils.fire_up_ncbi_blast(split_name, d.split_sequences[split_name], ncbi_prog, ncbi_db)
-
 @route('/data/collections')
 def collections():
     csd = d.collections.sources_dict

@@ -68,6 +68,67 @@ function getGradientColor(start_color, end_color, percent) {
 
    return '#' + diff_red + diff_green + diff_blue;
  };
+
+function fire_up_ncbi_blast(contig_name, program, database)
+{
+    var blast_window = window.open('about:blank', '_blank');
+
+    var post_variables = {
+        'PROGRAM': 'blastn',
+        'DATABASE': 'nr',
+        'QUERY': '',
+        'BLAST_PROGRAMS': 'megaBlast',
+        'PAGE_TYPE': 'BlastSearch',
+        'SHOW_DEFAULTS': 'on',
+        'SHOW_OVERVIEW': 'on',
+        'LINK_LOC': 'blasthome',
+        'MAX_NUM_SEQ': '100',
+        "FORMAT_NUM_ORG": "1",
+        "CONFIG_DESCR": "2,3,4,5,6,7,8",
+        "CLIENT": "web" ,
+        "SERVICE": "plain",
+        "CMD": "request",
+        "PAGE": "MegaBlast",
+        "MEGABLAST": "on" ,
+        "WWW_BLAST_TYPE": "newblast",
+        "DEFAULT_PROG": "megaBlast",
+        "SELECTED_PROG_TYPE": "megaBlast",
+        "SAVED_SEARCH": "true",
+        "NUM_DIFFS": "0",
+        "NUM_OPTS_DIFFS": "0",
+        "PAGE_TYPE": "BlastSearch",
+        "USER_DEFAULT_PROG_TYPE": "megaBlast"
+    }
+
+    if (typeof program !== 'undefined')
+        post_variables['PROGRAM'] = program;
+    
+    if (typeof database !== 'undefined')
+        post_variables['DATABASE'] = database;
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            post_variables['QUERY'] = '>' + contig_name + '\n' + data;
+            
+            var form = document.createElement('form');
+            
+            form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
+            form.method = 'POST';
+
+            for (name in post_variables)
+            {
+                $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+            }
+
+            blast_window.document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/1303646/check-whether-variable-is-number-or-string-in-javascript
 function isNumber (o) {
