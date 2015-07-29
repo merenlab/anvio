@@ -246,3 +246,15 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     color: #333;
     white-space: nowrap;
 }
+
+.modal-dialog.modal-sm h3::before {
+    display: block;
+    width: 100px;
+    height: 100px;
+    margin-right: auto;
+    margin-left: auto;
+    margin-bottom: 25px;
+    content: "";
+    background: url("../images/logo.png") no-repeat 0 0;
+    background-size: 100%;
+}
