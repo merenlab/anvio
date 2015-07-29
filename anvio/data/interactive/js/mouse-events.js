@@ -449,7 +449,7 @@ function getNodeFromEvent(event)
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min'])) / angle_per_leaf);
+            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min']) - (angle_per_leaf / 2)) / angle_per_leaf);
             
             if (order < 1 || order > leaf_count)
                 order = 0;

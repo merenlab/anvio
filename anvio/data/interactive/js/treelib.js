@@ -1242,7 +1242,7 @@ CircleTreeDrawer.prototype.CalcLeafRadius = function(p) {
 //--------------------------------------------------------------------------------------------------
 CircleTreeDrawer.prototype.CalcLeaf = function(p) {
     var angle_min = Math.toRadians(parseFloat($('#angle-min').val()));
-    p.angle = angle_min + this.leaf_angle * this.leaf_count;
+    p.angle = (angle_per_leaf / 2) + angle_min + this.leaf_angle * this.leaf_count;
     this.leaf_count++;
 
     this.CalcLeafRadius(p);
@@ -1697,7 +1697,6 @@ function draw_tree(settings) {
         alert('Error parsing tree');
     } else {
         t.ComputeWeights(t.root);
-
         var td = null;
 
         // clear existing diagram, if any
@@ -1752,6 +1751,11 @@ function draw_tree(settings) {
                     fontHeight: 10,
                     root_length: 0.1
                 });
+
+                // calculate angle per leaf
+                var angle_min = parseFloat(settings['angle-min']);
+                var angle_max = parseFloat(settings['angle-max']);
+                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
                 break;
         }
 
@@ -1826,11 +1830,6 @@ function draw_tree(settings) {
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_radius] );
-
-                // calculate angle per leaf
-                var angle_min = parseFloat(settings['angle-min']);
-                var angle_max = parseFloat(settings['angle-max']);
-                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
                 break;
         }
         leaf_count = Object.keys(order_to_node_map).length;
@@ -1877,8 +1876,8 @@ function draw_tree(settings) {
             {
                 var color = layers[pindex]['color'];
 
-                var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
-                var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
+                var _min = Math.toRadians(settings['angle-min']);
+                var _max = Math.toRadians(settings['angle-max']);
 
                 drawPie('event_catcher_' + layer_index,
                     'event',
@@ -1911,8 +1910,8 @@ function draw_tree(settings) {
             {
                 var color = layers[pindex]['color'];
 
-                var _min = Math.toRadians(settings['angle-min']) - (angle_per_leaf / 2);
-                var _max = Math.toRadians(settings['angle-max']) - (angle_per_leaf / 2);
+                var _min = Math.toRadians(settings['angle-min']);
+                var _max = Math.toRadians(settings['angle-max']);
 
                 drawPie('layer_background_' + layer_index,
                     'all',
