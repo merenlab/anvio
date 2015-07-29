@@ -1152,6 +1152,8 @@ function updateBinsWindow(bin_list) {
 
         updateComplateness(bin_id);
     }
+
+    $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
 }
 
 function updateComplateness(bin_id) {
