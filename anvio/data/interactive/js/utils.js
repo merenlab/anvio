@@ -24,6 +24,27 @@ function log10(val) {
   return Math.log(val) / Math.LN10;
 }
 
+//--------------------------------------------------------------------------------------------------
+// https://stackoverflow.com/questions/10894377/dynamically-adding-a-svg-gradient
+function createGradient(svg,id,stops){
+  var svgNS = svg.namespaceURI;
+  var grad  = document.createElementNS(svgNS,'linearGradient');
+  grad.setAttribute('id',id);
+  for (var i=0;i<stops.length;i++){
+    var attrs = stops[i];
+    var stop = document.createElementNS(svgNS,'stop');
+    for (var attr in attrs){
+      if (attrs.hasOwnProperty(attr)) stop.setAttribute(attr,attrs[attr]);
+    }
+    grad.appendChild(stop);
+  }
+
+  var defs = svg.querySelector('defs') ||
+      svg.insertBefore( document.createElementNS(svgNS,'defs'), svg.firstChild);
+  return defs.appendChild(grad);
+}
+
+
 function getGradientColor(start_color, end_color, percent) {
    // strip the leading # if it's there
    start_color = start_color.replace(/^\s*#|\s*$/g, '');

@@ -2273,7 +2273,34 @@ function draw_tree(settings) {
                     'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
                 }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
             }
+
+            // draw gradient over labels
+            createGradient(document.getElementById('svg'),'gradient1',[
+                {offset:'0%', style:'stop-color:rgb(255,255,255);stop-opacity:0'},
+                {offset:'100%', style:'stop-color:rgb(255,255,255);stop-opacity:1'},
+            ]);
+
+            var grect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            grect.setAttribute('id', 'label_gradient1');
+            grect.setAttribute('fill', 'url(#gradient1)');
+            grect.setAttribute('x', tree_radius - 400);
+            grect.setAttribute('y', 0 - total_radius);
+            grect.setAttribute('width', 410);
+            grect.setAttribute('height', total_radius);
+            grect.setAttribute('stroke-width', '0px');
+            document.getElementById('viewport').appendChild(grect);
+
+            var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('id', 'label_gradient2');
+            rect.setAttribute('fill', '#ffffff');
+            rect.setAttribute('x', tree_radius);
+            rect.setAttribute('y', 0 - total_radius);
+            rect.setAttribute('width', total_radius - tree_radius);
+            rect.setAttribute('height', total_radius);
+            rect.setAttribute('stroke-width', '0px');
+            document.getElementById('viewport').appendChild(rect);
         }
+
 
         // Scale to fit window
         var bbox = svg.getBBox();
