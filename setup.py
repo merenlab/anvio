@@ -48,10 +48,10 @@ setup(
     author_email = "a.murat.eren@gmail.com",
     description = "An interactive analysis and visualization platform for 'omics data. See https://merenlab.org/projects/anvio for more information",
     license = "GPLv3+",
-    keywords = "metagenomics microbiology shotgun genomics MBL pipeline sequencing bam",
+    keywords = "metagenomics metatranscriptomics microbiology shotgun genomics MBL pipeline sequencing bam visualization SNP",
     url = "https://meren.github.io/projects/anvio/",
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Environment :: Web Environment',
         'Intended Audience :: Science/Research',
@@ -59,8 +59,9 @@ setup(
         'Natural Language :: English',
         'Operating System :: MacOS',
         'Operating System :: POSIX',
-        'Programming Language :: JavaScript',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: JavaScript',
+        'Programming Language :: C',
         'Topic :: Scientific/Engineering',
     ],
 )
