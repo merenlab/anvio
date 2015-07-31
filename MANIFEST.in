@@ -1,5 +1,5 @@
 include *.txt *.md VERSION
 recursive-include anvio/data *
 recursive-include anvio/extensions *.h *.c *.pyx *.py
-recursive-include tests *.bam *.txt *.fa *.tbl *.sh 
+recursive-include tests *.bam *.txt *.fa *.tbl *.sh *.gz
 global-exclude test-output *.pyc
