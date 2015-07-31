@@ -64,13 +64,13 @@ if __name__ == '__main__':
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
                                         reasonable for your sample.')
-    groupQ.add_argument('-M', '--min-contig-length', metavar = "LENGTH", default = 10000, type=int,
+    groupQ.add_argument('-M', '--min-contig-length', metavar = "LENGTH", default = 5000, type=int,
                         help = 'Minimum length of contigs in a BAM file to analyze. The\
                                 minimum length should be long enough for tetra-nucleotide\
                                 frequency analysis to be meaningful. There is no way to define a golden\
                                 number of minumum length that would be applicable to genomes found in all\
                                 environments, but we chose the default to be %(default)d, and have been happy\
-                                with it. You are welcome to experiment, but we advise to never go below 5,000.\
+                                with it. You are welcome to experiment, but we advise to never go below 1,000.\
                                 You also should remember that the lower you go, the more time it will take to\
                                 analyze all contigs. You can use --list-contigs parameter to have an idea how\
                                 many contigs would be discarded for a given M.')
