@@ -640,8 +640,8 @@ function buildLayersTable(order, settings)
                 '<td>' +
                 '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
-                '        <option value="sqrt"{option-sqrt}>Square root</option>' +
-                '        <option value="log"{option-log}>Logarithm</option>' +
+                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
@@ -773,8 +773,8 @@ function buildLayersTable(order, settings)
                 '<td>' +
                 '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
-                '        <option value="sqrt"{option-sqrt}>Square root</option>' +
-                '        <option value="log"{option-log}>Logarithm</option>' +
+                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
