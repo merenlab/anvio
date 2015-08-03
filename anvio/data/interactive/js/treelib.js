@@ -584,7 +584,6 @@ Tree.prototype.NewNode = function(label) {
     var node = new Node(label);
     node.id = this.num_nodes++;
     this.nodes[node.id] = node;
-    id_to_node_map[node.id] = node;
     return node;
 }
 
@@ -1491,10 +1490,23 @@ function draw_tree(settings) {
     newick = newick.trim(newick);
     t.Parse(newick);
 
-    for (var index = 1; index < id_to_node_map.length; index++)
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    order_counter = 0;
+    while (q != null)
     {
-        label_to_node_map[id_to_node_map[index].label] = id_to_node_map[index];
+        label_to_node_map[q.label] = q;
+        id_to_node_map[q.id] = q;
+        
+        if (q.IsLeaf()) {
+            q.order = order_counter++;
+            order_to_node_map[q.order] = q;
+        }
+
+        q=n.Next();
     }
+    leaf_count = t.num_leaves;
 
     // generate tooltip text before normalization
     metadata_dict = new Array();
@@ -1735,6 +1747,9 @@ function draw_tree(settings) {
                     root_length: 0.1
                 });
                 $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
+
+                // calculate height per leaf
+                height_per_leaf = width / (t.num_leaves - 1);
                 break;
 
             case 'circlephylogram':
@@ -1771,7 +1786,6 @@ function draw_tree(settings) {
         var n = new NodeIterator(t.root);
         var q = n.Begin();
 
-        order_counter = 0;
         switch (settings['tree-type']) {
             case 'phylogram':
                 while (q != null)
@@ -1791,18 +1805,10 @@ function draw_tree(settings) {
                         _q = _n.Next();
                     }
                     // end of childs
-                    if (q.IsLeaf()) {
-                        q.order = order_counter++;
-                        order_to_node_map[q.order] = q;
-                    }
-
                     q = n.Next();
 
                 }
                 layer_boundaries.push( [0, tree_max_x] );
-                
-                // calculate height per leaf
-                height_per_leaf = width / (t.num_leaves - 1);
 
                 break;
 
@@ -1822,18 +1828,12 @@ function draw_tree(settings) {
                         _q = _n.Next();
                     }
                     // end of childs
-                    if (q.IsLeaf()) {
-                        q.order = order_counter++;
-                        order_to_node_map[q.order] = q;
-                    }
-
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_radius] );
                 break;
         }
-        leaf_count = Object.keys(order_to_node_map).length;
-                
+
         margin = parseFloat(settings['layer-margin']);
 
         // calculate layer boundries
