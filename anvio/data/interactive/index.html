@@ -36,6 +36,8 @@
     <script type="text/javascript" src="js/help-messages.js"></script>
     <script type="text/javascript" src="js/multiple.js"></script>
     <script type="text/javascript" src="js/search.js"></script>
+    <script type="text/javascript" src="js/sample.js"></script>
+
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -263,9 +265,16 @@
                 </div>
 
                 <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
-                    <p style="color: #AAAAAA; padding: 10px;">This tab is currently under construction.
                     <div id="sample-settings" class="form-horizontal">
-                        <!-- Sample stuff here -->
+                       <h4>Sample Settings</h4>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="sample_organization">Sample organization:</label>
+                                <div class="col-md-8">
+                                    <select id="sample_organization" class="form-control input-xs">
+                                        <!-- JS FILLS HERE -->
+                                    </select>
+                                </div>
+                        </div>
                     </div>
                 </div>
 

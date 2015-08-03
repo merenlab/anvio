@@ -185,21 +185,6 @@ $(document).ready(function() {
             document.title = titleResponse[0];
             contig_lengths = eval(contigLengthsResponse[0]);
 
-            /*
-                Get metadata and create layers table
-            */
-
-            metadata = eval(defaultViewResponse[0]);
-            parameter_count = metadata[0].length;
-
-            // since we are painting parent layers odd-even, 
-            // we should remove single parents (single means no parent)
-            removeSingleParents(); // in utils.js
-
-            layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-            layer_types = {};
-
-
             /* 
             //  Clusterings
             */
@@ -259,7 +244,23 @@ $(document).ready(function() {
                     success: function(data) {
                         metadata = eval(data);
                         removeSingleParents(); // in utils.js
-                        
+
+                        parameter_count = metadata[0].length;
+
+                        // since we are painting parent layers odd-even, 
+                        // we should remove single parents (single means no parent)
+                        removeSingleParents(); // in utils.js
+
+                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                        layer_types = {};
+
+                        // add metadata columns to search window
+                        $('#searchLayerList').empty();
+                        for (var i=0; i < metadata[0].length; i++)
+                        {
+                            $('#searchLayerList').append(new Option(metadata[0][i],i));
+                        }
+
                         $('#views_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false);
 
@@ -281,6 +282,12 @@ $(document).ready(function() {
                 });
             });
 
+            $('#sample_organization').append(new Option('none'));
+            for (organization in sampleOrganizationResponse[0])
+            {
+                $('#sample_organization').append(new Option(organization));
+            }
+
             $('#views_container').trigger('change'); // load default view
 
 
@@ -288,13 +295,6 @@ $(document).ready(function() {
             //  Add bins
             */
             newBin();
-
-
-            // add metadata columns to search window
-            for (var i=0; i < metadata[0].length; i++)
-            {
-                $('#searchLayerList').append(new Option(metadata[0][i],i));
-            }
         } // response callback
     ).fail(function() {
         alert('One or more ajax request has failed, See console logs for details.');

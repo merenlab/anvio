@@ -2419,7 +2419,7 @@ function redrawBins()
     if ($.isEmptyObject(label_to_node_map)) 
         return;
 
-    var leaf_list = Array.apply(null, new Array(order_counter+1)).map(Number.prototype.valueOf,0);
+    var leaf_list = Array.apply(null, new Array(leaf_count+1)).map(Number.prototype.valueOf,0);
 
     // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
@@ -2441,8 +2441,9 @@ function redrawBins()
     {
         if (prev_value != leaf_list[i])
         {
-            if (prev_value != 0)
+            if (prev_value != 0) {
                 bins_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
+            }
 
             prev_start = i;
         }
