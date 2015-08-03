@@ -384,30 +384,30 @@ PreorderIterator.prototype.Next = function()
 }
 
 //---------------------------------------------------------
-// Metadata operations
+// layerdata operations
 //---------------------------------------------------------
 
 function removeSingleParents()
 {
-    // metadata and parameter count is global
+    // layerdata and parameter count is global
 
     for (var i = 1; i < parameter_count; i++) 
     {
-        if (metadata[0][i] == '__parent__') 
+        if (layerdata[0][i] == '__parent__') 
         {
             var parent_count_dict = {};
-            for (var j=1; j < metadata.length; j++)
+            for (var j=1; j < layerdata.length; j++)
             {
-                if (metadata[j][i]=='')
+                if (layerdata[j][i]=='')
                     continue;
 
-                if (typeof parent_count_dict[metadata[j][i]] === 'undefined')
+                if (typeof parent_count_dict[layerdata[j][i]] === 'undefined')
                 {
-                    parent_count_dict[metadata[j][i]] = 1;
+                    parent_count_dict[layerdata[j][i]] = 1;
                 }
                 else
                 {
-                    parent_count_dict[metadata[j][i]]++;
+                    parent_count_dict[layerdata[j][i]]++;
                 }
             }
 
@@ -415,11 +415,11 @@ function removeSingleParents()
             {
                 if (count==1)
                 {
-                    for (var j=1; j < metadata.length; j++)
+                    for (var j=1; j < layerdata.length; j++)
                     {
-                        if (metadata[j][i]==parent_name)
+                        if (layerdata[j][i]==parent_name)
                         {
-                            metadata[j][i]='';
+                            layerdata[j][i]='';
                         }
                     }
                 }

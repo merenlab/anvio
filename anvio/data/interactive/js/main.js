@@ -51,7 +51,7 @@ var layer_boundaries;
 var SELECTED = new Array();
 var newick;
 
-var metadata;
+var layerdata;
 var contig_lengths;
 var parameter_count;
 
@@ -65,8 +65,8 @@ var stack_bar_colors = {};
 
 var context_menu_target_id = 0;
 
-var metadata_title = {};
-var metadata_dict;
+var layerdata_title = {};
+var layerdata_dict;
 var empty_tooltip = "";
 
 var last_settings;
@@ -242,10 +242,10 @@ $(document).ready(function() {
                     cache: false,
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        metadata = eval(data);
+                        layerdata = eval(data);
                         removeSingleParents(); // in utils.js
 
-                        parameter_count = metadata[0].length;
+                        parameter_count = layerdata[0].length;
 
                         // since we are painting parent layers odd-even, 
                         // we should remove single parents (single means no parent)
@@ -254,11 +254,11 @@ $(document).ready(function() {
                         layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
                         layer_types = {};
 
-                        // add metadata columns to search window
+                        // add layerdata columns to search window
                         $('#searchLayerList').empty();
-                        for (var i=0; i < metadata[0].length; i++)
+                        for (var i=0; i < layerdata[0].length; i++)
                         {
-                            $('#searchLayerList').append(new Option(metadata[0][i],i));
+                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
                         }
 
                         $('#views_container').attr('disabled', false);
@@ -402,7 +402,7 @@ function buildLayersTable(order, settings)
     {
         // common layer variables
         var layer_id = order[i];
-        var layer_name = metadata[0][layer_id];
+        var layer_name = layerdata[0][layer_id];
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
         var hasViewSettings = false;
@@ -524,7 +524,7 @@ function buildLayersTable(order, settings)
         //
         // categorical layer
         //
-        else if (metadata[1][layer_id] === null || !isNumber(metadata[1][layer_id]))
+        else if (layerdata[1][layer_id] === null || !isNumber(layerdata[1][layer_id]))
         { 
             layer_types[layer_id] = 2;
 
@@ -695,14 +695,14 @@ function buildLayersTable(order, settings)
 
 function getLayerName(layer_id)
 {
-    return metadata[0][layer_id];
+    return layerdata[0][layer_id];
 }
 
 function getLayerId(layer_name) 
 {
     for (var i=0; i < parameter_count; i++)
     {
-        if (layer_name == metadata[0][i])
+        if (layer_name == layerdata[0][i])
             return i;
     }
     return -1;
@@ -1576,7 +1576,7 @@ function loadState()
                     }
                 }
 
-                // add layers that not exist in state and exist in metadata
+                // add layers that not exist in state and exist in layerdata
                 for (var i=1; i < parameter_count; i++)
                 {
                     if ($.inArray(i, layer_order) === -1)

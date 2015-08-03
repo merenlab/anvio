@@ -38,7 +38,7 @@ function drawLegend(top, left) {
 
         // collect categorical
         var pindex = i;
-        var categorical_data_title = metadata[0][pindex];
+        var categorical_data_title = layerdata[0][pindex];
 
         var names = new Array();
 
@@ -104,7 +104,7 @@ function drawLegend(top, left) {
             return; //not stack bar, return equal to continue in native loop
 
         var pindex = i;
-        var stack_bar_title = metadata[0][pindex];
+        var stack_bar_title = layerdata[0][pindex];
 
         var names = stack_bar_title.split(";");
 
@@ -211,7 +211,7 @@ function drawLayerLegend(layers, layer_order, top, left) {
     {
         var pindex = layer_order[i];
         var layer = layers[pindex];
-        var layer_name = metadata[0][pindex];
+        var layer_name = layerdata[0][pindex];
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
         top = top + 20;
@@ -1514,7 +1514,7 @@ function draw_tree(settings) {
     leaf_count = t.num_leaves;
 
     // generate tooltip text before normalization
-    metadata_dict = new Array();
+    layerdata_dict = new Array();
 
     empty_tooltip = '<tr><td>split_name</td><td>n/a</td></tr>';
     empty_tooltip += '<tr><td>parent</td><td>n/a</td></tr>';
@@ -1522,41 +1522,41 @@ function draw_tree(settings) {
     for (var i = 1; i < settings['layer-order'].length; i++)
     {
         var pindex = settings['layer-order'][i];
-        empty_tooltip += '<tr><td>' + metadata[0][pindex] + '</td><td>n/a</td></tr>';
+        empty_tooltip += '<tr><td>' + layerdata[0][pindex] + '</td><td>n/a</td></tr>';
     }
 
     $('#tooltip_content').html(empty_tooltip);
 
-    for (var index = 1; index < metadata.length; index++) 
+    for (var index = 1; index < layerdata.length; index++) 
     {
-        var params = metadata[index];
-        metadata_dict[params[0]] = params.slice(0);
+        var params = layerdata[index];
+        layerdata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        title.push('<td>split_name</td><td>' + metadata[index][0] + '</td>');
+        title.push('<td>split_name</td><td>' + layerdata[index][0] + '</td>');
         for (var i = 0; i < settings['layer-order'].length; i++) 
         {
             var pindex = settings['layer-order'][i];
 
             if (layer_types[pindex] == 0) // check if parent
             {   
-                if (metadata[index][pindex] == '')
+                if (layerdata[index][pindex] == '')
                 {
                     title.push('<td>parent</td><td>n/a</td>');
                 }
                 else
                 {
-                    title.push('<td>parent</td><td>' + metadata[index][pindex] + '</td>');
+                    title.push('<td>parent</td><td>' + layerdata[index][pindex] + '</td>');
                 }
                 
             }
             else
             {
-                title.push('<td>' + metadata[0][pindex] + '</td><td>' + metadata[index][pindex] + '</td>');
+                title.push('<td>' + layerdata[0][pindex] + '</td><td>' + layerdata[index][pindex] + '</td>');
             }
         }
 
-        metadata_title[params[0]] = title;
+        layerdata_title[params[0]] = title;
     }
 
     $('#draw_delta_time').html('tooltips ready (took <b>' + tree_draw_timer.getDeltaSeconds('tooltips')['deltaSecondsPrev'] + '</b> seconds).');
@@ -1564,7 +1564,7 @@ function draw_tree(settings) {
     // normalization
     var param_max = new Array();
 
-    for (var id in metadata_dict) 
+    for (var id in layerdata_dict) 
     {
         for (var pindex = 1; pindex < parameter_count; pindex++) 
         {
@@ -1578,7 +1578,7 @@ function draw_tree(settings) {
             if (layer_types[pindex] == 1) // stack bar
             {
                 // convert ";" string to array after normalization
-                var stack_bar_items = metadata_dict[id][pindex].split(";");
+                var stack_bar_items = layerdata_dict[id][pindex].split(";");
 
                 if (layer['normalization'] == 'sqrt') {
                     for (var j=0; j < stack_bar_items.length; j++)
@@ -1593,22 +1593,22 @@ function draw_tree(settings) {
                     }
                 }
 
-                metadata_dict[id][pindex] = stack_bar_items.slice(0);
+                layerdata_dict[id][pindex] = stack_bar_items.slice(0);
                 continue;
             }
 
             // numerical data
             if (layer['normalization'] == 'sqrt') 
             {
-                metadata_dict[id][pindex] = Math.sqrt(parseFloat(metadata_dict[id][pindex]));
+                layerdata_dict[id][pindex] = Math.sqrt(parseFloat(layerdata_dict[id][pindex]));
             }
             if (layer['normalization'] == 'log') 
             {
-                metadata_dict[id][pindex] = log10(parseFloat(metadata_dict[id][pindex]) + 1);
+                layerdata_dict[id][pindex] = log10(parseFloat(layerdata_dict[id][pindex]) + 1);
             }
-            if (typeof param_max[pindex] === 'undefined' || parseFloat(metadata_dict[id][pindex]) > parseFloat(param_max[pindex])) 
+            if (typeof param_max[pindex] === 'undefined' || parseFloat(layerdata_dict[id][pindex]) > parseFloat(param_max[pindex])) 
             {
-                param_max[pindex] = parseFloat(metadata_dict[id][pindex]);
+                param_max[pindex] = parseFloat(layerdata_dict[id][pindex]);
             }
         }
     }
@@ -1635,27 +1635,27 @@ function draw_tree(settings) {
             var min_new = null;
             var max_new = null;
 
-            for (var id in metadata_dict)
+            for (var id in layerdata_dict)
             {
                 if (layer_types[pindex] == 1) // stack bar
                 {
                     var total = 0;
 
-                    for (var j=0; j < metadata_dict[id][pindex].length; j++)
+                    for (var j=0; j < layerdata_dict[id][pindex].length; j++)
                     {
-                        total = total + parseFloat(metadata_dict[id][pindex][j]);
+                        total = total + parseFloat(layerdata_dict[id][pindex][j]);
                     }
 
                     var multiplier = parseFloat(layers[pindex]['height']) / total;
 
-                    for (var j=0; j < metadata_dict[id][pindex].length; j++)
+                    for (var j=0; j < layerdata_dict[id][pindex].length; j++)
                     {
-                        metadata_dict[id][pindex][j] = metadata_dict[id][pindex][j] * multiplier;
+                        layerdata_dict[id][pindex][j] = layerdata_dict[id][pindex][j] * multiplier;
                     }
                 }
                 else // numerical data
                 {
-                    var bar_size = parseFloat(metadata_dict[id][pindex]);
+                    var bar_size = parseFloat(layerdata_dict[id][pindex]);
                                         
                     if (!min_max_disabled)
                     {
@@ -1670,9 +1670,9 @@ function draw_tree(settings) {
                         }
 
                         if (bar_size == 0) {
-                            metadata_dict[id][pindex] = 0;
+                            layerdata_dict[id][pindex] = 0;
                         } else {
-                            metadata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / (max - min);
+                            layerdata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / (max - min);
                         }                        
                     }
                     else
@@ -1686,9 +1686,9 @@ function draw_tree(settings) {
                         }
 
                         if (bar_size == 0) {
-                            metadata_dict[id][pindex] = 0;
+                            layerdata_dict[id][pindex] = 0;
                         } else {
-                            metadata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / param_max[pindex];
+                            layerdata_dict[id][pindex] = bar_size *  parseFloat(layers[pindex]['height']) / param_max[pindex];
                         }
 
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
@@ -1974,35 +1974,35 @@ function draw_tree(settings) {
                         if(isStackBar)
                         {
                             var offset = 0;
-                            for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
+                            for (var j=0; j < layerdata_dict[q.label][pindex].length; j++)
                             {
                                 drawPhylogramRectangle('layer_' + layer_index,
                                     q.id,
-                                    layer_boundaries[layer_index][1] - offset - metadata_dict[q.label][pindex][j],
+                                    layer_boundaries[layer_index][1] - offset - layerdata_dict[q.label][pindex][j],
                                     q.xy['y'],
                                     height_per_leaf,
-                                    metadata_dict[q.label][pindex][j],
+                                    layerdata_dict[q.label][pindex][j],
                                     stack_bar_colors[pindex][j],
                                     1,
                                     false);
-                                offset += metadata_dict[q.label][pindex][j];
+                                offset += layerdata_dict[q.label][pindex][j];
                             } 
                     
                         }
                         else if(isCategorical)
                         {
-                            if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
-                                if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
+                                if (typeof(layerdata_dict[q.label][pindex]) == typeof(null))
+                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
                         }
                         else if (isParent)
                         {
-                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
                         }
                         else // numerical
                         {
@@ -2016,21 +2016,21 @@ function draw_tree(settings) {
                                     q.xy['y'],
                                     height_per_leaf,
                                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                    getGradientColor(layers[pindex]['color-start'], color,  metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                    getGradientColor(layers[pindex]['color-start'], color,  layerdata_dict[q.label][pindex] / layers[pindex]['height']),
                                     1,
                                     false);
                             }
                             else
                             {
-                                if (metadata_dict[q.label][pindex] > 0) {
+                                if (layerdata_dict[q.label][pindex] > 0) {
                                     var color = layers[pindex]['color'];
 
                                      drawPhylogramRectangle('layer_' + layer_index,
                                         q.id,
-                                        layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
+                                        layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex],
                                         q.xy['y'],
                                         height_per_leaf,
-                                        metadata_dict[q.label][pindex],
+                                        layerdata_dict[q.label][pindex],
                                         color,
                                         1,
                                         false);
@@ -2063,36 +2063,36 @@ function draw_tree(settings) {
                         if(isStackBar)
                         {
                             var offset = 0;
-                            for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
+                            for (var j=0; j < layerdata_dict[q.label][pindex].length; j++)
                             {
                                 drawPie('layer_' + layer_index,
                                     q.id,
                                     q.angle - angle_per_leaf / 2,
                                     q.angle + angle_per_leaf / 2,
                                     layer_boundaries[layer_index][0] + offset,
-                                    layer_boundaries[layer_index][0] + offset + metadata_dict[q.label][pindex][j],
+                                    layer_boundaries[layer_index][0] + offset + layerdata_dict[q.label][pindex][j],
                                     0,
                                     stack_bar_colors[pindex][j],
                                     1,
                                     false);
-                                offset += metadata_dict[q.label][pindex][j];
+                                offset += layerdata_dict[q.label][pindex][j];
                             } 
                     
                         }
                         else if(isCategorical)
                         {
-                            if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
-                                if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
+                                if (typeof(layerdata_dict[q.label][pindex]) == typeof(null))
+                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
-                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
                         }
                         else if (isParent)
                         {
-                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
                         }
                         else // numerical
                         {
@@ -2107,19 +2107,19 @@ function draw_tree(settings) {
                                         layer_boundaries[layer_index][0], 
                                         layer_boundaries[layer_index][1],
                                         0,
-                                        getGradientColor(layers[pindex]['color-start'], color,   metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                        getGradientColor(layers[pindex]['color-start'], color,   layerdata_dict[q.label][pindex] / layers[pindex]['height']),
                                         1,
                                         false);
                             }
                             else
                             {
-                                if (metadata_dict[q.label][pindex] > 0) {
+                                if (layerdata_dict[q.label][pindex] > 0) {
                                     drawPie('layer_' + layer_index,
                                         q.id,
                                         q.angle - angle_per_leaf / 2,
                                         q.angle + angle_per_leaf / 2,
                                         layer_boundaries[layer_index][0], 
-                                        layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
+                                        layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex],
                                         0,
                                         color,
                                         1,
@@ -2252,7 +2252,7 @@ function draw_tree(settings) {
             var pindex = settings['layer-order'][i];
             var layer = settings['views'][current_view][pindex];
 
-            var layer_title = metadata[0][pindex];
+            var layer_title = layerdata[0][pindex];
 
             if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
                 layer_title = named_layers[layer_title]['pretty_name'];

@@ -299,7 +299,7 @@ function mouseMoveHandler(event) {
         return;
     var layer_id = layer_id_exp[0];
 
-    var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
+    var tooltip_arr = layerdata_title[id_to_node_map[p.id].label].slice(0);
     
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)

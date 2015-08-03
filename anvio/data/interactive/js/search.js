@@ -17,18 +17,18 @@ function searchContigs()
         var operator_text = $('#searchOperator option:selected').text();
 
         // logical operator
-        var _pre = "metadata[";
+        var _pre = "layerdata[";
         var _post = "][" + column + "] " + operator_text + " \"" + svalue.trim() + "\"";
 
     }
     else if (operator == 6)
     {
         // contains
-        var _pre = "metadata[";
+        var _pre = "layerdata[";
         var _post = "][" + column + "].toString().indexOf(\"" + svalue + "\") != -1";
     }
 
-    var _len = metadata.length;
+    var _len = layerdata.length;
     var _counter = 0;
     search_results = [];
 
@@ -36,7 +36,7 @@ function searchContigs()
 
     for (var row=1; row < _len; row++)
     {
-        if (metadata[row][column]==null)
+        if (layerdata[row][column]==null)
             continue;
 
         if (eval(_pre + row + _post)){
@@ -51,13 +51,13 @@ function showSearchResult() {
     var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
     $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
     $("#search-results-table-search-name").html('Split name');
-    $("#search-results-table-search-item").html(metadata[0][search_column]);
+    $("#search-results-table-search-item").html(layerdata[0][search_column]);
 
     var rows = "";
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        rows = rows + "<tr><td data-value=" + metadata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + metadata[search_results[i]][0] + "\");'>" + metadata[search_results[i]][0] + "</a></td><td data-value=" + metadata[search_results[i]][search_column] + ">" + metadata[search_results[i]][search_column] + "</td></tr>";
+        rows = rows + "<tr><td data-value=" + layerdata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + layerdata[search_results[i]][0] + "\");'>" + layerdata[search_results[i]][0] + "</a></td><td data-value=" + layerdata[search_results[i]][search_column] + ">" + layerdata[search_results[i]][search_column] + "</td></tr>";
     }
     $(".search-results-display").html(rows);
 }
@@ -72,7 +72,7 @@ function highlightResult() {
     highlighted_splits = [];
 
     for (var i=0; i < search_results.length; i++) {
-        var _contig_name = metadata[search_results[i]][0];
+        var _contig_name = layerdata[search_results[i]][0];
         
         highlighted_splits.push(_contig_name);
     }
@@ -106,7 +106,7 @@ function appendResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = metadata[search_results[i]][0];
+        _contig_name = layerdata[search_results[i]][0];
         if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
             SELECTED[bin_id].push(_contig_name);
 
@@ -148,7 +148,7 @@ function removeResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = metadata[search_results[i]][0];
+        _contig_name = layerdata[search_results[i]][0];
         var _id = label_to_node_map[_contig_name].id;
 
         var pos = SELECTED[bin_id].indexOf(_contig_name);
