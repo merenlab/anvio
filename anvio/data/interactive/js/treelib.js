@@ -1711,12 +1711,6 @@ function draw_tree(settings) {
         t.ComputeWeights(t.root);
         var td = null;
 
-        // clear existing diagram, if any
-        var svg = document.getElementById('svg');
-        while (svg.hasChildNodes()) {
-            svg.removeChild(svg.lastChild);
-        }
-
         // create new bin
         createBin('svg', 'viewport');
         createBin('viewport', 'tree_bin');

@@ -805,6 +805,9 @@ function drawTree() {
 
     waitingDialog.show('Drawing ...', {dialogSize: 'sm'});
 
+    // clear existing diagram, if any
+    document.getElementById('svg').innerHTML = "";
+
     setTimeout(function () 
         { 
             draw_tree(settings); // call treelib.js where the magic happens
