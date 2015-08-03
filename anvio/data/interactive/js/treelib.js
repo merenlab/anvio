@@ -1490,6 +1490,11 @@ function draw_tree(settings) {
     newick = newick.trim(newick);
     t.Parse(newick);
 
+    if (t.error != 0) {
+        alert('Error parsing tree');
+        return;
+    }
+
     var n = new NodeIterator(t.root);
     var q = n.Begin();
 
@@ -1705,696 +1710,692 @@ function draw_tree(settings) {
 
     $('#draw_delta_time').html('barsizes done (took <b>' + tree_draw_timer.getDeltaSeconds('barsizes')['deltaSecondsPrev'] + '</b> seconds).');
 
-    if (t.error != 0) {
-        alert('Error parsing tree');
-    } else {
-        t.ComputeWeights(t.root);
-        var td = null;
+    t.ComputeWeights(t.root);
+    var td = null;
 
-        // create new bin
-        createBin('svg', 'viewport');
-        createBin('viewport', 'tree_bin');
-        createBin('tree_bin', 'tree');
+    // create new bin
+    createBin('svg', 'viewport');
+    createBin('viewport', 'tree_bin');
+    createBin('tree_bin', 'tree');
 
-        var width = settings['tree-width'];
-        var height = settings['tree-height'];
-        var radius = settings['tree-radius'];
+    var width = settings['tree-width'];
+    var height = settings['tree-height'];
+    var radius = settings['tree-radius'];
 
-        if (width == 0)
-            width = VIEWER_WIDTH;
-        if (height == 0)
-            height = VIEWER_HEIGHT;
+    if (width == 0)
+        width = VIEWER_WIDTH;
+    if (height == 0)
+        height = VIEWER_HEIGHT;
 
-        switch (settings['tree-type']) {
-            case 'phylogram':
-                if (t.has_edge_lengths) {
-                    td = new PhylogramTreeDrawer();
-                } else {
-                    td = new RectangleTreeDrawer();
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            if (t.has_edge_lengths) {
+                td = new PhylogramTreeDrawer();
+            } else {
+                td = new RectangleTreeDrawer();
+            }
+
+            td.Init(t, {
+                svg_id: 'tree',
+                width: height,
+                height: width,
+                fontHeight: 10,
+                root_length: 0.1
+            });
+            $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
+
+            // calculate height per leaf
+            height_per_leaf = width / (t.num_leaves - 1);
+            break;
+
+        case 'circlephylogram':
+            if (t.has_edge_lengths) {
+                td = new CirclePhylogramDrawer();
+            } else {
+
+                td = new CircleTreeDrawer();
+            }
+            td.Init(t, {
+                svg_id: 'tree',
+                width: (radius == 0) ? VIEWER_WIDTH : radius,
+                height: (radius == 0) ? VIEWER_HEIGHT : radius,
+                fontHeight: 10,
+                root_length: 0.1
+            });
+
+            // calculate angle per leaf
+            var angle_min = parseFloat(settings['angle-min']);
+            var angle_max = parseFloat(settings['angle-max']);
+            angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
+            break;
+    }
+
+    td.CalcCoordinates();
+    td.Draw();
+
+    // calculate max radius of tree
+    layer_boundaries = new Array();
+    var tree_radius = 0;
+    var tree_max_x = 0;
+    var tree_max_y = 0;
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            while (q != null)
+            {
+                if (q.xy.x > tree_max_x)
+                    tree_max_x = q.xy.x;
+                if (q.xy.y > tree_max_y)
+                    tree_max_y = q.xy.y;
+
+                // childs
+                var _n = new NodeIterator(q);
+                var _q = _n.Begin();
+
+                q.child_nodes = [];
+                while (_q != null) {
+                    q.child_nodes.push(_q.id);
+                    _q = _n.Next();
                 }
+                // end of childs
+                q = n.Next();
 
-                td.Init(t, {
-                    svg_id: 'tree',
-                    width: height,
-                    height: width,
-                    fontHeight: 10,
-                    root_length: 0.1
-                });
-                $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
+            }
+            layer_boundaries.push( [0, tree_max_x] );
 
-                // calculate height per leaf
-                height_per_leaf = width / (t.num_leaves - 1);
-                break;
+            break;
 
-            case 'circlephylogram':
-                if (t.has_edge_lengths) {
-                    td = new CirclePhylogramDrawer();
-                } else {
+        case 'circlephylogram':
+            while (q != null) 
+            {
+                if (q.radius > tree_radius)
+                    tree_radius = q.radius;
 
-                    td = new CircleTreeDrawer();
+                // childs
+                var _n = new NodeIterator(q);
+                var _q = _n.Begin();
+
+                q.child_nodes = [];
+                while (_q != null) {
+                    q.child_nodes.push(_q.id);
+                    _q = _n.Next();
                 }
-                td.Init(t, {
-                    svg_id: 'tree',
-                    width: (radius == 0) ? VIEWER_WIDTH : radius,
-                    height: (radius == 0) ? VIEWER_HEIGHT : radius,
-                    fontHeight: 10,
-                    root_length: 0.1
-                });
+                // end of childs
+                q = n.Next();
+            }
+            layer_boundaries.push( [0, tree_radius] );
+            break;
+    }
 
-                // calculate angle per leaf
-                var angle_min = parseFloat(settings['angle-min']);
-                var angle_max = parseFloat(settings['angle-max']);
-                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
-                break;
+    margin = parseFloat(settings['layer-margin']);
+
+    // calculate layer boundries
+    for (var i = 0; i < settings['layer-order'].length; i++) {
+        var layer_index = i+1;
+        var pindex = settings['layer-order'][i];
+        var layer = settings['views'][current_view][pindex];
+
+        if (settings['custom-layer-margin'])
+        {
+            var layer_margin = parseFloat(layers[pindex]['margin']);
+        }
+        else
+        {
+            var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
+        }
+        
+        layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
+
+        createBin('tree_bin', 'layer_background_' + layer_index);
+        createBin('tree_bin', 'layer_' + layer_index);
+        createBin('tree_bin', 'event_catcher_' + layer_index);
+
+        // draw event catcher of the layer
+        if (settings['tree-type']=='phylogram')
+        {
+            var color = layers[pindex]['color'];
+
+            drawPhylogramRectangle('event_catcher_' + layer_index,
+                'event',
+                layer_boundaries[layer_index][0],
+                tree_max_y / 2,
+                tree_max_y + height_per_leaf,
+                layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                '#ffffff',
+                0,
+                true);  
+        }
+        if (settings['tree-type']=='circlephylogram')
+        {
+            var color = layers[pindex]['color'];
+
+            var _min = Math.toRadians(settings['angle-min']);
+            var _max = Math.toRadians(settings['angle-max']);
+
+            drawPie('event_catcher_' + layer_index,
+                'event',
+                _min,
+                _max,
+                layer_boundaries[layer_index][0],
+                layer_boundaries[layer_index][1],
+                (_max - _min > Math.PI) ? 1:0, // large arc flag
+                '#ffffff',
+                0,
+                true);
         }
 
-        td.CalcCoordinates();
-        td.Draw();
+        if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
+        {
+            var color = layers[pindex]['color'];
 
-        // calculate max radius of tree
-        layer_boundaries = new Array();
-        var tree_radius = 0;
-        var tree_max_x = 0;
-        var tree_max_y = 0;
-
-        var n = new NodeIterator(t.root);
-        var q = n.Begin();
-
-        switch (settings['tree-type']) {
-            case 'phylogram':
-                while (q != null)
-                {
-                    if (q.xy.x > tree_max_x)
-                        tree_max_x = q.xy.x;
-                    if (q.xy.y > tree_max_y)
-                        tree_max_y = q.xy.y;
-
-                    // childs
-                    var _n = new NodeIterator(q);
-                    var _q = _n.Begin();
-
-                    q.child_nodes = [];
-                    while (_q != null) {
-                        q.child_nodes.push(_q.id);
-                        _q = _n.Next();
-                    }
-                    // end of childs
-                    q = n.Next();
-
-                }
-                layer_boundaries.push( [0, tree_max_x] );
-
-                break;
-
-            case 'circlephylogram':
-                while (q != null) 
-                {
-                    if (q.radius > tree_radius)
-                        tree_radius = q.radius;
-
-                    // childs
-                    var _n = new NodeIterator(q);
-                    var _q = _n.Begin();
-
-                    q.child_nodes = [];
-                    while (_q != null) {
-                        q.child_nodes.push(_q.id);
-                        _q = _n.Next();
-                    }
-                    // end of childs
-                    q = n.Next();
-                }
-                layer_boundaries.push( [0, tree_radius] );
-                break;
+            drawPhylogramRectangle('layer_background_' + layer_index,
+                'all',
+                layer_boundaries[layer_index][0],
+                tree_max_y / 2,
+                tree_max_y + height_per_leaf,
+                layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                color,
+                0.3,
+                false);
         }
+        
+        if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
+        {
+            var color = layers[pindex]['color'];
 
-        margin = parseFloat(settings['layer-margin']);
+            var _min = Math.toRadians(settings['angle-min']);
+            var _max = Math.toRadians(settings['angle-max']);
 
-        // calculate layer boundries
+            drawPie('layer_background_' + layer_index,
+                'all',
+                _min,
+                _max,
+                layer_boundaries[layer_index][0],
+                layer_boundaries[layer_index][1],
+                (_max - _min > Math.PI) ? 1:0, // large arc flag
+                color,
+                0.3,
+                false);
+        }
+    }
+
+    total_radius = layer_boundaries[layer_boundaries.length - 1][1];
+    beginning_of_layers = layer_boundaries[0][1];
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    createBin('tree_bin', 'guide_lines');
+
+    // parent things
+    var parent_odd = '#888888';
+    var parent_even = '#666666';
+    var parent_residual = '#AAAAAA';
+    var prev_parent_color = parent_odd;
+    var prev_parent_name = '';
+    var prev_parent_items = new Array();
+    var parent_count = 0;
+
+    odd_even_flag = -1
+
+    var categorical_layers_ordered = {};
+
+    for (var i = 0; i < settings['layer-order'].length; i++) {
+        var layer_index = i+1;
+        var pindex = settings['layer-order'][i];
+
+        if (layer_types[pindex] == 2 || layer_types[pindex] == 0) // categorical or parent
+        {
+            categorical_layers_ordered[layer_index] = new Array();
+        }
+    }
+
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            while (q != null) {
+                if (q.IsLeaf()) {
+                    odd_even_flag = odd_even_flag * -1;
+
+                    if (odd_even_flag > 0)
+                        drawStraightGuideLine('guide_lines', q.id, q.xy, tree_max_x);
+
+                    for (var i = 0; i < settings['layer-order'].length; i++) {
+                        var layer_index = i+1;
+                        var pindex = settings['layer-order'][i];
+                        var layer = settings['views'][current_view][pindex];
+
+                        var isParent      = (layer_types[pindex] == 0) ? true : false;
+                        var isStackBar    = (layer_types[pindex] == 1) ? true : false;
+                        var isCategorical = (layer_types[pindex] == 2) ? true : false;
+
+                        if(isStackBar)
+                        {
+                            var offset = 0;
+                            for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
+                            {
+                                drawPhylogramRectangle('layer_' + layer_index,
+                                    q.id,
+                                    layer_boundaries[layer_index][1] - offset - metadata_dict[q.label][pindex][j],
+                                    q.xy['y'],
+                                    height_per_leaf,
+                                    metadata_dict[q.label][pindex][j],
+                                    stack_bar_colors[pindex][j],
+                                    1,
+                                    false);
+                                offset += metadata_dict[q.label][pindex][j];
+                            } 
+                    
+                        }
+                        else if(isCategorical)
+                        {
+                            if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
+                                if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                                else
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                            }
+
+                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                        }
+                        else if (isParent)
+                        {
+                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                        }
+                        else // numerical
+                        {
+                            if (layers[pindex]['type'] == 'intensity')
+                            {
+                                var color = layers[pindex]['color'];
+
+                                 drawPhylogramRectangle('layer_' + layer_index,
+                                    q.id,
+                                    layer_boundaries[layer_index][0] ,
+                                    q.xy['y'],
+                                    height_per_leaf,
+                                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                                    getGradientColor(layers[pindex]['color-start'], color,  metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                    1,
+                                    false);
+                            }
+                            else
+                            {
+                                if (metadata_dict[q.label][pindex] > 0) {
+                                    var color = layers[pindex]['color'];
+
+                                     drawPhylogramRectangle('layer_' + layer_index,
+                                        q.id,
+                                        layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
+                                        q.xy['y'],
+                                        height_per_leaf,
+                                        metadata_dict[q.label][pindex],
+                                        color,
+                                        1,
+                                        false);
+                                }
+                            }
+                        }
+                    }
+                }
+                q = n.Next();
+            }
+            break;
+        case 'circlephylogram':
+            while (q != null) {
+                if (q.IsLeaf()) {
+                    odd_even_flag = odd_even_flag * -1;
+
+                    // draw guidelines for every other leaf.
+                    if (odd_even_flag > 0)
+                        drawGuideLine('guide_lines', q.id, q.angle, q.radius, beginning_of_layers);
+
+                    for (var i = 0; i < settings['layer-order'].length; i++) {
+                        var layer_index = i+1;
+                        var pindex = settings['layer-order'][i];
+                        var layer = settings['views'][current_view][pindex];
+
+                        var isParent      = (layer_types[pindex] == 0) ? true : false;
+                        var isStackBar    = (layer_types[pindex] == 1) ? true : false;
+                        var isCategorical = (layer_types[pindex] == 2) ? true : false;
+
+                        if(isStackBar)
+                        {
+                            var offset = 0;
+                            for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
+                            {
+                                drawPie('layer_' + layer_index,
+                                    q.id,
+                                    q.angle - angle_per_leaf / 2,
+                                    q.angle + angle_per_leaf / 2,
+                                    layer_boundaries[layer_index][0] + offset,
+                                    layer_boundaries[layer_index][0] + offset + metadata_dict[q.label][pindex][j],
+                                    0,
+                                    stack_bar_colors[pindex][j],
+                                    1,
+                                    false);
+                                offset += metadata_dict[q.label][pindex][j];
+                            } 
+                    
+                        }
+                        else if(isCategorical)
+                        {
+                            if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
+                                if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
+                                else
+                                    categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
+                            }
+
+                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                        }
+                        else if (isParent)
+                        {
+                            categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
+                        }
+                        else // numerical
+                        {
+                            var color = layers[pindex]['color'];
+
+                            if (layers[pindex]['type'] == 'intensity')
+                            {
+                                    drawPie('layer_' + layer_index,
+                                        q.id,
+                                        q.angle - angle_per_leaf / 2,
+                                        q.angle + angle_per_leaf / 2,
+                                        layer_boundaries[layer_index][0], 
+                                        layer_boundaries[layer_index][1],
+                                        0,
+                                        getGradientColor(layers[pindex]['color-start'], color,   metadata_dict[q.label][pindex] / layers[pindex]['height']),
+                                        1,
+                                        false);
+                            }
+                            else
+                            {
+                                if (metadata_dict[q.label][pindex] > 0) {
+                                    drawPie('layer_' + layer_index,
+                                        q.id,
+                                        q.angle - angle_per_leaf / 2,
+                                        q.angle + angle_per_leaf / 2,
+                                        layer_boundaries[layer_index][0], 
+                                        layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
+                                        0,
+                                        color,
+                                        1,
+                                        false);
+                                }
+                            }
+                        }
+
+                    }
+                }
+                q = n.Next();
+            }
+            break;
+    }
+
+    // cluster categorical items and draw them
+    
+    for (var i = 0; i < settings['layer-order'].length; i++) {
+        var layer_index = i+1;
+        var pindex = settings['layer-order'][i];
+
+        var isParent      = (layer_types[pindex] == 0) ? true : false;
+        var isCategorical = (layer_types[pindex] == 2) ? true : false;
+
+        if (isParent || isCategorical)
+        {
+            var layer_items = categorical_layers_ordered[layer_index];
+            layer_items.push(null);
+
+            var prev_value = layer_items[0];
+            var prev_start = 0;
+
+            var items_to_draw = new Array();
+
+            for (var j=1; j < layer_items.length; j++)
+            {
+                if (prev_value != layer_items[j])
+                {
+                    if (prev_value != null && prev_value != '')
+                        items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
+
+                    prev_start = j;
+                }
+                prev_value = layer_items[j];
+            }
+
+            for (var j=0; j < items_to_draw.length; j++)
+            {
+                var categorical_item = items_to_draw[j];
+
+                var color;
+
+                if (isCategorical)
+                {
+                    color = categorical_data_colors[pindex][categorical_item[2]];
+                } 
+                else // parent
+                {
+                    if (j % 2 == 1 && j == items_to_draw.length - 1)
+                        color = '#AAAAAA';
+                    else if (j % 2 == 1)
+                        color = '#888888';
+                    else
+                        color = '#666666';
+                }
+
+                var start = order_to_node_map[categorical_item[0]];
+                var end = order_to_node_map[categorical_item[1]];
+
+                if (tree_type == 'circlephylogram')
+                {
+                    drawPie('layer_' + layer_index,
+                        'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
+                        start.angle - angle_per_leaf / 2,
+                        end.angle + angle_per_leaf / 2,
+                        layer_boundaries[layer_index][0], 
+                        layer_boundaries[layer_index][1],
+                        (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                        color,
+                        1,
+                        false);
+                }
+                else
+                {
+                    var height = end.xy['y'] - start.xy['y'];
+
+                    drawPhylogramRectangle('layer_' + layer_index,
+                        'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
+                        layer_boundaries[layer_index][0],
+                        start.xy['y'] + height / 2,
+                        height + height_per_leaf,
+                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                        color,
+                        1,
+                        false);
+                }
+            }
+        }
+    }
+
+    rebuildIntersections();
+    createBin('tree_bin', 'bin');
+    // redrawBins() call moved to draw_tree_callback because redrawBins needs last_settings to be set.
+
+    // observe for transform matrix change
+    var observer = new MutationObserver(updateSingleBackgroundGlobals);
+
+    observer.observe(document.getElementById('viewport'), {
+        attributes:    true,
+        attributeFilter: ["transform"]
+    });
+
+    // draw title
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            drawLegend(0, 100);
+            drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
+            break;
+        case 'circlephylogram':
+            drawLegend(20 - total_radius, total_radius + 100);
+            drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
+            break;
+    }
+
+    // draw layer names (in circlephylogram with 0-270)
+    if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] == 270)
+    {
         for (var i = 0; i < settings['layer-order'].length; i++) {
             var layer_index = i+1;
             var pindex = settings['layer-order'][i];
             var layer = settings['views'][current_view][pindex];
 
-            if (settings['custom-layer-margin'])
-            {
-                var layer_margin = parseFloat(layers[pindex]['margin']);
-            }
-            else
-            {
-                var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
-            }
-            
-            layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
+            var layer_title = metadata[0][pindex];
 
-            createBin('tree_bin', 'layer_background_' + layer_index);
-            createBin('tree_bin', 'layer_' + layer_index);
-            createBin('tree_bin', 'event_catcher_' + layer_index);
-
-            // draw event catcher of the layer
-            if (settings['tree-type']=='phylogram')
-            {
-                var color = layers[pindex]['color'];
-
-                drawPhylogramRectangle('event_catcher_' + layer_index,
-                    'event',
-                    layer_boundaries[layer_index][0],
-                    tree_max_y / 2,
-                    tree_max_y + height_per_leaf,
-                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                    '#ffffff',
-                    0,
-                    true);  
-            }
-            if (settings['tree-type']=='circlephylogram')
-            {
-                var color = layers[pindex]['color'];
-
-                var _min = Math.toRadians(settings['angle-min']);
-                var _max = Math.toRadians(settings['angle-max']);
-
-                drawPie('event_catcher_' + layer_index,
-                    'event',
-                    _min,
-                    _max,
-                    layer_boundaries[layer_index][0],
-                    layer_boundaries[layer_index][1],
-                    (_max - _min > Math.PI) ? 1:0, // large arc flag
-                    '#ffffff',
-                    0,
-                    true);
+            if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
+                layer_title = named_layers[layer_title]['pretty_name'];
+            } else if(layer_title.substring(0, 5) == "hmmx_") {
+                layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
+            } else if(layer_title.substring(0, 5) == "hmms_") {
+                layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
+            } else {
+                layer_title = layer_title.replace(/_/g, " ");
             }
 
-            if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
-            {
-                var color = layers[pindex]['color'];
-
-                drawPhylogramRectangle('layer_background_' + layer_index,
-                    'all',
-                    layer_boundaries[layer_index][0],
-                    tree_max_y / 2,
-                    tree_max_y + height_per_leaf,
-                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                    color,
-                    0.3,
-                    false);
-            }
-            
-            if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
-            {
-                var color = layers[pindex]['color'];
-
-                var _min = Math.toRadians(settings['angle-min']);
-                var _max = Math.toRadians(settings['angle-max']);
-
-                drawPie('layer_background_' + layer_index,
-                    'all',
-                    _min,
-                    _max,
-                    layer_boundaries[layer_index][0],
-                    layer_boundaries[layer_index][1],
-                    (_max - _min > Math.PI) ? 1:0, // large arc flag
-                    color,
-                    0.3,
-                    false);
-            }
+            drawText('tree_bin', {
+                'x': 10,
+                'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
+            }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
         }
 
-        total_radius = layer_boundaries[layer_boundaries.length - 1][1];
-        beginning_of_layers = layer_boundaries[0][1];
+        // draw gradient over labels
+        createGradient(document.getElementById('svg'),'gradient1',[
+            {offset:'0%', style:'stop-color:rgb(255,255,255);stop-opacity:0'},
+            {offset:'100%', style:'stop-color:rgb(255,255,255);stop-opacity:1'},
+        ]);
 
-        var n = new NodeIterator(t.root);
-        var q = n.Begin();
+        var grect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        grect.setAttribute('id', 'label_gradient1');
+        grect.setAttribute('fill', 'url(#gradient1)');
+        grect.setAttribute('x', tree_radius - 400);
+        grect.setAttribute('y', 0 - total_radius);
+        grect.setAttribute('width', 410);
+        grect.setAttribute('height', total_radius);
+        grect.setAttribute('stroke-width', '0px');
+        document.getElementById('viewport').appendChild(grect);
 
-        createBin('tree_bin', 'guide_lines');
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('id', 'label_gradient2');
+        rect.setAttribute('fill', '#ffffff');
+        rect.setAttribute('x', tree_radius);
+        rect.setAttribute('y', 0 - total_radius);
+        rect.setAttribute('width', total_radius - tree_radius);
+        rect.setAttribute('height', total_radius);
+        rect.setAttribute('stroke-width', '0px');
+        document.getElementById('viewport').appendChild(rect);
+    }
 
-        // parent things
-        var parent_odd = '#888888';
-        var parent_even = '#666666';
-        var parent_residual = '#AAAAAA';
-        var prev_parent_color = parent_odd;
-        var prev_parent_name = '';
-        var prev_parent_items = new Array();
-        var parent_count = 0;
 
-        odd_even_flag = -1
+    // Scale to fit window
+    var bbox = svg.getBBox();
+    scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
 
-        var categorical_layers_ordered = {};
+    zoom_reset();
 
-        for (var i = 0; i < settings['layer-order'].length; i++) {
-            var layer_index = i+1;
-            var pindex = settings['layer-order'][i];
+    // pan and mouse zoom
+    $('svg').svgPan('viewport');
 
-            if (layer_types[pindex] == 2 || layer_types[pindex] == 0) // categorical or parent
+    // tree bin = tree + layers
+    // bind events
+    var tree_bin = document.getElementById('tree_bin');
+    tree_bin.addEventListener('click', lineClickHandler, false);
+    tree_bin.addEventListener('contextmenu', lineContextMenuHandler, false);
+    tree_bin.addEventListener('mouseover',lineMouseEnterHandler, false);
+    tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);
+    document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
+    document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
+
+    // code below required to stop clicking on contings while panning.
+    var viewport = document.getElementById('svg');
+    viewport.addEventListener('mousedown', 
+        function(event) { 
+            dragging = false; 
+
+            if (event.shiftKey)
             {
-                categorical_layers_ordered[layer_index] = new Array();
+                drawing_zoom = true;
+
+                zoomBox['start_x'] = event.clientX;
+                zoomBox['start_y'] = event.clientY;
+
+                $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0 });
+                $('#divzoom_inner').css({"width": 0, "height": 0 });
+                $('#divzoom').show();
             }
-        }
+        });
+    viewport.addEventListener('mousemove', 
+        function(event) { 
+            dragging = true; 
 
-        switch (settings['tree-type']) {
-            case 'phylogram':
-                while (q != null) {
-                    if (q.IsLeaf()) {
-                        odd_even_flag = odd_even_flag * -1;
-
-                        if (odd_even_flag > 0)
-                            drawStraightGuideLine('guide_lines', q.id, q.xy, tree_max_x);
-
-                        for (var i = 0; i < settings['layer-order'].length; i++) {
-                            var layer_index = i+1;
-                            var pindex = settings['layer-order'][i];
-                            var layer = settings['views'][current_view][pindex];
-
-                            var isParent      = (layer_types[pindex] == 0) ? true : false;
-                            var isStackBar    = (layer_types[pindex] == 1) ? true : false;
-                            var isCategorical = (layer_types[pindex] == 2) ? true : false;
-
-                            if(isStackBar)
-                            {
-                                var offset = 0;
-                                for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
-                                {
-                                    drawPhylogramRectangle('layer_' + layer_index,
-                                        q.id,
-                                        layer_boundaries[layer_index][1] - offset - metadata_dict[q.label][pindex][j],
-                                        q.xy['y'],
-                                        height_per_leaf,
-                                        metadata_dict[q.label][pindex][j],
-                                        stack_bar_colors[pindex][j],
-                                        1,
-                                        false);
-                                    offset += metadata_dict[q.label][pindex][j];
-                                } 
-                        
-                            }
-                            else if(isCategorical)
-                            {
-                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
-                                    if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
-                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
-                                    else
-                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
-                                }
-
-                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
-                            }
-                            else if (isParent)
-                            {
-                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
-                            }
-                            else // numerical
-                            {
-                                if (layers[pindex]['type'] == 'intensity')
-                                {
-                                    var color = layers[pindex]['color'];
-
-                                     drawPhylogramRectangle('layer_' + layer_index,
-                                        q.id,
-                                        layer_boundaries[layer_index][0] ,
-                                        q.xy['y'],
-                                        height_per_leaf,
-                                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                                        getGradientColor(layers[pindex]['color-start'], color,  metadata_dict[q.label][pindex] / layers[pindex]['height']),
-                                        1,
-                                        false);
-                                }
-                                else
-                                {
-                                    if (metadata_dict[q.label][pindex] > 0) {
-                                        var color = layers[pindex]['color'];
-
-                                         drawPhylogramRectangle('layer_' + layer_index,
-                                            q.id,
-                                            layer_boundaries[layer_index][1] - metadata_dict[q.label][pindex],
-                                            q.xy['y'],
-                                            height_per_leaf,
-                                            metadata_dict[q.label][pindex],
-                                            color,
-                                            1,
-                                            false);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    q = n.Next();
-                }
-                break;
-            case 'circlephylogram':
-                while (q != null) {
-                    if (q.IsLeaf()) {
-                        odd_even_flag = odd_even_flag * -1;
-
-                        // draw guidelines for every other leaf.
-                        if (odd_even_flag > 0)
-                            drawGuideLine('guide_lines', q.id, q.angle, q.radius, beginning_of_layers);
-
-                        for (var i = 0; i < settings['layer-order'].length; i++) {
-                            var layer_index = i+1;
-                            var pindex = settings['layer-order'][i];
-                            var layer = settings['views'][current_view][pindex];
-
-                            var isParent      = (layer_types[pindex] == 0) ? true : false;
-                            var isStackBar    = (layer_types[pindex] == 1) ? true : false;
-                            var isCategorical = (layer_types[pindex] == 2) ? true : false;
-
-                            if(isStackBar)
-                            {
-                                var offset = 0;
-                                for (var j=0; j < metadata_dict[q.label][pindex].length; j++)
-                                {
-                                    drawPie('layer_' + layer_index,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[layer_index][0] + offset,
-                                        layer_boundaries[layer_index][0] + offset + metadata_dict[q.label][pindex][j],
-                                        0,
-                                        stack_bar_colors[pindex][j],
-                                        1,
-                                        false);
-                                    offset += metadata_dict[q.label][pindex][j];
-                                } 
-                        
-                            }
-                            else if(isCategorical)
-                            {
-                                if (typeof categorical_data_colors[pindex][metadata_dict[q.label][pindex]] === 'undefined'){
-                                    if (typeof(metadata_dict[q.label][pindex]) == typeof(null))
-                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = '#ffffff';
-                                    else
-                                        categorical_data_colors[pindex][metadata_dict[q.label][pindex]] = randomColor();
-                                }
-
-                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
-                            }
-                            else if (isParent)
-                            {
-                                categorical_layers_ordered[layer_index].push(metadata_dict[q.label][pindex]);
-                            }
-                            else // numerical
-                            {
-                                var color = layers[pindex]['color'];
-
-                                if (layers[pindex]['type'] == 'intensity')
-                                {
-                                        drawPie('layer_' + layer_index,
-                                            q.id,
-                                            q.angle - angle_per_leaf / 2,
-                                            q.angle + angle_per_leaf / 2,
-                                            layer_boundaries[layer_index][0], 
-                                            layer_boundaries[layer_index][1],
-                                            0,
-                                            getGradientColor(layers[pindex]['color-start'], color,   metadata_dict[q.label][pindex] / layers[pindex]['height']),
-                                            1,
-                                            false);
-                                }
-                                else
-                                {
-                                    if (metadata_dict[q.label][pindex] > 0) {
-                                        drawPie('layer_' + layer_index,
-                                            q.id,
-                                            q.angle - angle_per_leaf / 2,
-                                            q.angle + angle_per_leaf / 2,
-                                            layer_boundaries[layer_index][0], 
-                                            layer_boundaries[layer_index][0] + metadata_dict[q.label][pindex],
-                                            0,
-                                            color,
-                                            1,
-                                            false);
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-                    q = n.Next();
-                }
-                break;
-        }
-
-        // cluster categorical items and draw them
-        
-        for (var i = 0; i < settings['layer-order'].length; i++) {
-            var layer_index = i+1;
-            var pindex = settings['layer-order'][i];
-
-            var isParent      = (layer_types[pindex] == 0) ? true : false;
-            var isCategorical = (layer_types[pindex] == 2) ? true : false;
-
-            if (isParent || isCategorical)
+            if (event.shiftKey && drawing_zoom)
             {
-                var layer_items = categorical_layers_ordered[layer_index];
-                layer_items.push(null);
+                var _top = zoomBox['start_y'] > event.clientY ? event.clientY : zoomBox['start_y'];
+                var _left = zoomBox['start_x'] > event.clientX ? event.clientX : zoomBox['start_x'];
+                var _height = Math.abs(zoomBox['start_y'] - event.clientY);
+                var _width = Math.abs(zoomBox['start_x'] - event.clientX);
 
-                var prev_value = layer_items[0];
-                var prev_start = 0;
+                var divzoom = document.getElementById('divzoom');
+                var divzoom_inner = document.getElementById('divzoom_inner');
 
-                var items_to_draw = new Array();
+                divzoom.style.top = _top + "px";
+                divzoom.style.left = _left + "px";
+                divzoom.style.width = _width + "px";
+                divzoom.style.height = _height + "px";
 
-                for (var j=1; j < layer_items.length; j++)
+                var w_ratio = _width / VIEWER_WIDTH;
+                var h_ratio = _height / VIEWER_HEIGHT;
+
+                if (w_ratio > h_ratio)
                 {
-                    if (prev_value != layer_items[j])
-                    {
-                        if (prev_value != null && prev_value != '')
-                            items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
-
-                        prev_start = j;
-                    }
-                    prev_value = layer_items[j];
+                    divzoom_inner.style.width = h_ratio * VIEWER_WIDTH + "px";
+                    divzoom_inner.style.height = _height + "px";
                 }
-
-                for (var j=0; j < items_to_draw.length; j++)
+                else
                 {
-                    var categorical_item = items_to_draw[j];
-
-                    var color;
-
-                    if (isCategorical)
-                    {
-                        color = categorical_data_colors[pindex][categorical_item[2]];
-                    } 
-                    else // parent
-                    {
-                        if (j % 2 == 1 && j == items_to_draw.length - 1)
-                            color = '#AAAAAA';
-                        else if (j % 2 == 1)
-                            color = '#888888';
-                        else
-                            color = '#666666';
-                    }
-
-                    var start = order_to_node_map[categorical_item[0]];
-                    var end = order_to_node_map[categorical_item[1]];
-
-                    if (tree_type == 'circlephylogram')
-                    {
-                        drawPie('layer_' + layer_index,
-                            'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
-                            start.angle - angle_per_leaf / 2,
-                            end.angle + angle_per_leaf / 2,
-                            layer_boundaries[layer_index][0], 
-                            layer_boundaries[layer_index][1],
-                            (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
-                            color,
-                            1,
-                            false);
-                    }
-                    else
-                    {
-                        var height = end.xy['y'] - start.xy['y'];
-
-                        drawPhylogramRectangle('layer_' + layer_index,
-                            'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
-                            layer_boundaries[layer_index][0],
-                            start.xy['y'] + height / 2,
-                            height + height_per_leaf,
-                            layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                            color,
-                            1,
-                            false);
-                    }
+                    divzoom_inner.style.width = _width + "px";
+                    divzoom_inner.style.height = w_ratio * VIEWER_HEIGHT + "px";
                 }
+
+                // when you drawing rectangle, if you drag over text on the screen browser selects that text
+                // with this hack you can continue drawing.
+                clearTextSelection(); // in utils.js
+
             }
-        }
-
-        rebuildIntersections();
-        createBin('tree_bin', 'bin');
-        // redrawBins() call moved to draw_tree_callback because redrawBins needs last_settings to be set.
-
-        // observe for transform matrix change
-        var observer = new MutationObserver(updateSingleBackgroundGlobals);
-    
-        observer.observe(document.getElementById('viewport'), {
-            attributes:    true,
-            attributeFilter: ["transform"]
         });
 
-        // draw title
-        switch (settings['tree-type']) {
-            case 'phylogram':
-                drawLegend(0, 100);
-                drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
-                break;
-            case 'circlephylogram':
-                drawLegend(20 - total_radius, total_radius + 100);
-                drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
-                break;
-        }
-
-        // draw layer names (in circlephylogram with 0-270)
-        if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] == 270)
-        {
-            for (var i = 0; i < settings['layer-order'].length; i++) {
-                var layer_index = i+1;
-                var pindex = settings['layer-order'][i];
-                var layer = settings['views'][current_view][pindex];
-
-                var layer_title = metadata[0][pindex];
-
-                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
-                    layer_title = named_layers[layer_title]['pretty_name'];
-                } else if(layer_title.substring(0, 5) == "hmmx_") {
-                    layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
-                } else if(layer_title.substring(0, 5) == "hmms_") {
-                    layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
-                } else {
-                    layer_title = layer_title.replace(/_/g, " ");
+    viewport.addEventListener('mouseup', 
+        function() {
+            if (drawing_zoom)
+            {
+                var inner_rect = document.getElementById('divzoom_inner').getBoundingClientRect();
+                
+                if (inner_rect.width > 2 && inner_rect.height > 2)
+                {
+                    var _dx = (parseInt("0" + $('#svg').css('left')) + (VIEWER_WIDTH / 2)) - (inner_rect.left + inner_rect.width / 2);
+                    var _dy = (parseInt("0" + $('#svg').css('top'))  + (VIEWER_HEIGHT / 2)) - (inner_rect.top + inner_rect.height / 2);
+                    pan(_dx,_dy);
+                    zoom(VIEWER_WIDTH / inner_rect.width);
                 }
-
-                drawText('tree_bin', {
-                    'x': 10,
-                    'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
-                }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
             }
 
-            // draw gradient over labels
-            createGradient(document.getElementById('svg'),'gradient1',[
-                {offset:'0%', style:'stop-color:rgb(255,255,255);stop-opacity:0'},
-                {offset:'100%', style:'stop-color:rgb(255,255,255);stop-opacity:1'},
-            ]);
+            clearTextSelection();
+            drawing_zoom=false; 
+            zoomBox = {}; 
+            $('#divzoom').hide(); 
 
-            var grect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            grect.setAttribute('id', 'label_gradient1');
-            grect.setAttribute('fill', 'url(#gradient1)');
-            grect.setAttribute('x', tree_radius - 400);
-            grect.setAttribute('y', 0 - total_radius);
-            grect.setAttribute('width', 410);
-            grect.setAttribute('height', total_radius);
-            grect.setAttribute('stroke-width', '0px');
-            document.getElementById('viewport').appendChild(grect);
-
-            var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('id', 'label_gradient2');
-            rect.setAttribute('fill', '#ffffff');
-            rect.setAttribute('x', tree_radius);
-            rect.setAttribute('y', 0 - total_radius);
-            rect.setAttribute('width', total_radius - tree_radius);
-            rect.setAttribute('height', total_radius);
-            rect.setAttribute('stroke-width', '0px');
-            document.getElementById('viewport').appendChild(rect);
-        }
-
-
-        // Scale to fit window
-        var bbox = svg.getBBox();
-        scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
-
-        zoom_reset();
-
-        // pan and mouse zoom
-        $('svg').svgPan('viewport');
-
-        // tree bin = tree + layers
-        // bind events
-        var tree_bin = document.getElementById('tree_bin');
-        tree_bin.addEventListener('click', lineClickHandler, false);
-        tree_bin.addEventListener('contextmenu', lineContextMenuHandler, false);
-        tree_bin.addEventListener('mouseover',lineMouseEnterHandler, false);
-        tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);
-        document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
-        document.body.addEventListener('click', function() { $('#control_contextmenu').hide(); }, false);
-
-        // code below required to stop clicking on contings while panning.
-        var viewport = document.getElementById('svg');
-        viewport.addEventListener('mousedown', 
-            function(event) { 
-                dragging = false; 
-
-                if (event.shiftKey)
-                {
-                    drawing_zoom = true;
-
-                    zoomBox['start_x'] = event.clientX;
-                    zoomBox['start_y'] = event.clientY;
-
-                    $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0 });
-                    $('#divzoom_inner').css({"width": 0, "height": 0 });
-                    $('#divzoom').show();
-                }
-            });
-        viewport.addEventListener('mousemove', 
-            function(event) { 
-                dragging = true; 
-
-                if (event.shiftKey && drawing_zoom)
-                {
-                    var _top = zoomBox['start_y'] > event.clientY ? event.clientY : zoomBox['start_y'];
-                    var _left = zoomBox['start_x'] > event.clientX ? event.clientX : zoomBox['start_x'];
-                    var _height = Math.abs(zoomBox['start_y'] - event.clientY);
-                    var _width = Math.abs(zoomBox['start_x'] - event.clientX);
-
-                    var divzoom = document.getElementById('divzoom');
-                    var divzoom_inner = document.getElementById('divzoom_inner');
-
-                    divzoom.style.top = _top + "px";
-                    divzoom.style.left = _left + "px";
-                    divzoom.style.width = _width + "px";
-                    divzoom.style.height = _height + "px";
-
-                    var w_ratio = _width / VIEWER_WIDTH;
-                    var h_ratio = _height / VIEWER_HEIGHT;
-
-                    if (w_ratio > h_ratio)
-                    {
-                        divzoom_inner.style.width = h_ratio * VIEWER_WIDTH + "px";
-                        divzoom_inner.style.height = _height + "px";
-                    }
-                    else
-                    {
-                        divzoom_inner.style.width = _width + "px";
-                        divzoom_inner.style.height = w_ratio * VIEWER_HEIGHT + "px";
-                    }
-
-                    // when you drawing rectangle, if you drag over text on the screen browser selects that text
-                    // with this hack you can continue drawing.
-                    clearTextSelection(); // in utils.js
-
-                }
-            });
-
-        viewport.addEventListener('mouseup', 
-            function() {
-                if (drawing_zoom)
-                {
-                    var inner_rect = document.getElementById('divzoom_inner').getBoundingClientRect();
-                    
-                    if (inner_rect.width > 2 && inner_rect.height > 2)
-                    {
-                        var _dx = (parseInt("0" + $('#svg').css('left')) + (VIEWER_WIDTH / 2)) - (inner_rect.left + inner_rect.width / 2);
-                        var _dy = (parseInt("0" + $('#svg').css('top'))  + (VIEWER_HEIGHT / 2)) - (inner_rect.top + inner_rect.height / 2);
-                        pan(_dx,_dy);
-                        zoom(VIEWER_WIDTH / inner_rect.width);
-                    }
-                }
-
-                clearTextSelection();
-                drawing_zoom=false; 
-                zoomBox = {}; 
-                $('#divzoom').hide(); 
-
-            });
-    }
+        });
 
     var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
     var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
