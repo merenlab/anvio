@@ -287,6 +287,7 @@ $(document).ready(function() {
             {
                 $('#sample_organization').append(new Option(organization));
             }
+            buildMetadataTable();
 
             $('#views_container').trigger('change'); // load default view
 
@@ -365,8 +366,6 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
-
-
         }
     );    
 }
@@ -625,7 +624,7 @@ function buildLayersTable(order, settings)
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                 '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type" onChange="if(this.value==\'intensity\') {  $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'visible\'); } else { $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'hidden\'); }  ">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="showHidePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                 '    </select>' +
@@ -659,7 +658,7 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
 
             $('#tbody_layers').append(template);
@@ -772,8 +771,6 @@ function serializeSettings(use_layer_names) {
                 state['views'][view_key][getLayerName(key)] = views[view_key][key];
             }
         }
-
-
     }
     else
     {
@@ -784,6 +781,23 @@ function serializeSettings(use_layer_names) {
         state['categorical_data_colors'] = categorical_data_colors;
         state['stack_bar_colors'] = stack_bar_colors;
     }
+
+    state['metadata-layer-order'] = [];
+    state['metadata-layers'] = {};
+    $('#tbody_metadata tr').each(
+        function(index, tr) {
+            var metadata_layer_name = $(tr).attr('metadata-layer-name');
+            state['metadata-layer-order'].push(metadata_layer_name);
+            state['metadata-layers'][metadata_layer_name] = {
+                'height': $(tr).find('.input-height').val(),
+                'margin': $(tr).find('.input-margin').val(),
+                'normalization': $(tr).find('.normalization').val(),
+                'color': $(tr).find('.colorpicker').attr('color'),
+            };
+        }
+    );
+
+
 
     return state;
 }

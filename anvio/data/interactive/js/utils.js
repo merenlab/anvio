@@ -211,10 +211,24 @@ function strip(html)
 //--------------------------------------------------------------------------------------------------
 function clearMinMax(selectbox) 
 {
-    var id = $(selectbox).attr('id').replace('normalization', '');
+    var tr = $(selectbox).parent().parent();
 
-    $('#min' + id).val('0').prop('disabled', true);
-    $('#max' + id).val('0').prop('disabled', true);     
+    $(tr).find('.input-min').val('0').prop('disabled', true);
+    $(tr).find('.input-max').val('0').prop('disabled', true);     
+}
+
+function togglePickerStart(selectbox)
+{
+    var tr = $(selectbox).parent().parent();
+
+    console.log(tr);
+    console.log($(tr).find('.picker_start'));
+
+    if(selectbox.value=='intensity') {  
+        $(tr).find('.picker_start').css('visibility', 'visible'); 
+    } else { 
+        $(tr).find('.picker_start').css('visibility', 'hidden');
+    }  
 }
 
 /* Poor man's timer.

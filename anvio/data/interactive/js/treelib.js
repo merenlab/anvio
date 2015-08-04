@@ -588,7 +588,7 @@ Tree.prototype.NewNode = function(label) {
 }
 
 //--------------------------------------------------------------------------------------------------
-Tree.prototype.Parse = function(str) {
+Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace('"', "");
 
     // Strip NEXUS-style comments
@@ -613,8 +613,6 @@ Tree.prototype.Parse = function(str) {
     var stack = [];
     var i = 0;
     var q = null;
-
-    var edge_length_norm = $('#edge_length_normalization')[0].checked;
 
     this.error = 0;
 
@@ -1488,7 +1486,7 @@ function draw_tree(settings) {
     var t = new Tree();
 
     newick = newick.trim(newick);
-    t.Parse(newick);
+    t.Parse(newick, settings['edge-normalization']);
 
     if (t.error != 0) {
         alert('Error parsing tree');
