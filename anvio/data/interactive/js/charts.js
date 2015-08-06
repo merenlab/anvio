@@ -115,15 +115,22 @@ function createCharts(state){
     var layers_ordered = state['layer-order'];
 
     layers_ordered = layers_ordered.filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
-    console.log(layers_ordered);
-    console.log(genes);
+
+    var visible_layers = 0;
+    for (i in layers_ordered)
+    {
+      var layer_id = layers_ordered[i];
+
+      if (parseFloat(state['layers'][layer_id]['height']) > 0)
+        visible_layers++;
+    }
 
     geneParser = new GeneParser(genes);
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
-    var height = (chartHeight * (layers.length) + 400);
+    var height = (chartHeight * visible_layers + 400);
     var contextHeight = 50;
     var contextWidth = width;
 
@@ -158,22 +165,25 @@ function createCharts(state){
         }
     });
 
-
+    var j=0;
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
+
+        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0)
+          continue;
 
         charts.push(new Chart({
                         name: layers[layer_index],
                         coverage: coverage[layer_index],
                         variability: variability[layer_index],
                         competing_nucleotides: competing_nucleotides[layer_index],
-                        id: i,
+                        id: j++,
                         width: width,
                         height: chartHeight,
                         maxVariability: maxVariability,
                         svg: svg,
                         margin: margin,
-                        showBottomAxis: (i == layers.length - 1),
+                        showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
                 }));
         
