@@ -1,5 +1,7 @@
 sampleOrganizationResponse = [JSON.parse('{"num_reads":{"order":"","newick":"((DAY_19:3.8927e-12,(DAY_15A:1.17876e-12,DAY_17A:1.17876e-12)Int16:3.8927e-12)Int18:1.58727e-11,((DAY_15B:1.14795e-12,(DAY_17B:4.17546e-14,DAY_23:4.17546e-14)Int12:1.14795e-12)Int15:5.55138e-12,(DAY_22B:1.20141e-12,((DAY_18:3.08426e-14,DAY_22A:3.08426e-14)Int11:7.76164e-13,(DAY_16:3.99589e-13,DAY_24:3.99589e-13)Int13:7.76164e-13)Int14:1.20141e-12)Int17:5.55138e-12)Int19:1.58727e-11);"},"even_odd":{"order":"","newick":"((DAY_22B:0.000332086,((DAY_18:8.54156e-06,DAY_22A:8.54156e-06)Int11:0.00021462,(DAY_16:0.000110463,DAY_24:0.000110463)Int13:0.00021462)Int14:0.000332086)Int15:0.0376259,((DAY_15B:0.000506205,(DAY_17B:1.8431e-05,DAY_23:1.8431e-05)Int12:0.000506205)Int16:0.00441781,(DAY_19:0.00170499,(DAY_15A:0.00051519,DAY_17A:0.00051519)Int17:0.00170499)Int18:0.00441781)Int19:0.0376259);"},"basic":{"order":"DAY_15A,DAY_15B,DAY_16,DAY_17A,DAY_17B,DAY_18,DAY_19,DAY_22A,DAY_22B,DAY_23,DAY_24","newick":""}, "mini_test": {"order":"s204_6M,s204_7M,s204_9M", "newick":""}}')];
-sampleMetadataResponse = [JSON.parse('{"DAY_17A":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_17B":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_18":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_19":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_15B":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_22A":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_16":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_15A":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_23":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_22B":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"},"DAY_24":{"days_after_birth":"17","num_reads":"17","percent_mapped_reads":"17","days":"17","bar3":"17","sections":"17"}}')];
+sampleMetadataResponse = [JSON.parse('{"DAY_17A":{"days_after_birth":"17","num_reads":"2409083","percent_mapped_reads":"84.4","days":"even","sections":"A"},"DAY_17B":{"days_after_birth":"17","num_reads":"14467205","percent_mapped_reads":"92.96","days":"even","sections":"A"},"DAY_18":{"days_after_birth":"18","num_reads":"11157806","percent_mapped_reads":"96.65","days":"odd","sections":"A"},"DAY_19":{"days_after_birth":"19","num_reads":"12605189","percent_mapped_reads":"88.5","days":"even","sections":"A"},"DAY_15B":{"days_after_birth":"15","num_reads":"8924116","percent_mapped_reads":"91.76","days":"even","sections":"A"},"DAY_22A":{"days_after_birth":"22","num_reads":"12585100","percent_mapped_reads":"96.69","days":"odd","sections":"B"},"DAY_16":{"days_after_birth":"16","num_reads":"10505839","percent_mapped_reads":"95.71","days":"odd","sections":"A"},"DAY_15A":{"days_after_birth":"15","num_reads":"5639445","percent_mapped_reads":"85.58","days":"even","sections":"A"},"DAY_23":{"days_after_birth":"23","num_reads":"6318127","percent_mapped_reads":"92.91","days":"even","sections":"B"},"DAY_22B":{"days_after_birth":"22","num_reads":"7386372","percent_mapped_reads":"95.11","days":"odd","sections":"B"},"DAY_24":{"days_after_birth":"24","num_reads":"10756936","percent_mapped_reads":"96.22","days":"odd","sections":"B"}}')];
+var metadata = sampleMetadataResponse[0];
+var metadata_categorical_colors = {};
 
 function get_newick_leaf_order(newick)
 {
@@ -52,26 +54,36 @@ $(document).ready(function() {
 });
 
 function buildMetadataTable() {
-    var layers = sampleMetadataResponse[0][Object.keys(sampleMetadataResponse[0])[0]];
-    
+    var first_sample = Object.keys(metadata)[0];
+    var layers = metadata[first_sample]; // get layers from first sample's metadata
+    $('#tbody_metadata').empty();
+
     for (layer in layers)
     {
         var layer_name = layer;
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
+        if (isNumber(metadata[first_sample][layer]))
+        {
+            var data_type = "numeric";
+        }
+        else
+        {
+            var data_type = "categorical";
+        }
 
         var norm = "none";
         var min    = 0;
         var max    = 0;
         var min_disabled = true;
         var max_disabled = true;
-        var height = 180;
+        var height = 300;
         var color  = '#000000';
-        var margin = '15';
+        var margin = 15;
         var color_start = "#FFFFFF";
         var type = "bar";
 
-        var template = '<tr metadata-layer-name="{name}">' +
+        var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
             '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
             '<td title="{name}" class="titles">{short-name}</td>' +
             '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
@@ -88,14 +100,15 @@ function buildMetadataTable() {
             '        <option value="log"{option-log}>Logarithm</option>' +
             '    </select>' +
             '</td>' +
-            '<td><input class="input-height" type="text" size="3" value="50"></input></td>' +
-            '<td><input class="input-margin" type="text" size="3" value="15"></input></td>' +
+            '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+            '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
             '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
             '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
             '<td><input type="checkbox" class="layer_selectors"></input></td>' +
             '</tr>';
 
         template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                           .replace(new RegExp('{data-type}', 'g'), data_type)
                            .replace(new RegExp('{short-name}', 'g'), short_name)
                            .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                            .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
@@ -130,6 +143,121 @@ function buildMetadataTable() {
     });    
 }
 
-function drawMetadataLayers() {
+function drawMetadataLayers(settings) {
+    // calculate maximum in layer, and define categorical colors
+    var metadata_param_max = {};
+    for (sample in metadata)
+    {
+        for (layer in metadata[sample])
+        {
+            if (settings['metadata-layers'][layer]['data-type'] == 'numeric') 
+            {
+                if (typeof metadata_param_max[layer] === 'undefined' || parseFloat(metadata[sample][layer]) > metadata_param_max[layer])
+                {
+                    metadata_param_max[layer] = parseFloat(metadata[sample][layer]);
+                }
+            }
+            else
+            {
+                //categorical
+                if (typeof metadata_categorical_colors[layer] === 'undefined')
+                    metadata_categorical_colors[layer] = {};
+            }
+        }
+    }
 
+    // calculate metadata layer boundaries
+    var metadata_layer_boundaries = [];
+
+    for (var i=0; i < settings['metadata-layer-order'].length; i++)
+    {
+        var metadata_layer_name     = settings['metadata-layer-order'][i];
+        var metadata_layer_settings = settings['metadata-layers'][metadata_layer_name];
+        
+        var start = parseFloat(metadata_layer_settings['margin']);
+        var end   = start + parseFloat(metadata_layer_settings['height']);
+        
+        if (i > 0)
+        {
+            start += metadata_layer_boundaries[i-1][1];
+            end   += metadata_layer_boundaries[i-1][1];
+        }
+
+        metadata_layer_boundaries.push([start,end]);
+    }
+
+    var backgrounds_done = false;
+
+    for (var j = 0; j < settings['layer-order'].length; j++) {
+        var layer_index = j+1;
+        var pindex = settings['layer-order'][j];
+        var layer_name = getLayerName(pindex);
+
+        if (!(layer_name in metadata)) // skip if not sample
+            continue;
+
+        for (var i=0; i < settings['metadata-layer-order'].length; i++)
+        {
+            var metadata_layer_name     = settings['metadata-layer-order'][i];
+            var metadata_layer_settings = settings['metadata-layers'][metadata_layer_name];
+
+            if (metadata_layer_settings['data-type'] == 'numeric') 
+            {
+                var size = (metadata[layer_name][metadata_layer_name] / metadata_param_max[metadata_layer_name]) * metadata_layer_settings['height'];
+
+                if (!backgrounds_done)
+                {
+
+                    var start = metadata_layer_boundaries[i][0];
+                    var end   = metadata_layer_boundaries[i][1];
+
+                    drawPhylogramRectangle('metadata',
+                        'all',
+                        layer_boundaries[layer_index][0],
+                        0 - end + (end - start) / 2,
+                        end - start,
+                        total_radius - layer_boundaries[layer_index][0],
+                        metadata_layer_settings['color'],
+                        0.2,
+                        false);
+                }
+
+                drawPhylogramRectangle('metadata',
+                    'all',
+                    layer_boundaries[layer_index][0],
+                    0 - metadata_layer_boundaries[i][0] - (size / 2),
+                    size,
+                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    metadata_layer_settings['color'],
+                    1,
+                    false);
+            }
+            else
+            {
+                // categorical
+                var value = metadata[layer_name][metadata_layer_name];
+
+                if (typeof metadata_categorical_colors[layer][value] === 'undefined')
+                {
+                    metadata_categorical_colors[layer][value] = randomColor();
+                }
+
+                var color = metadata_categorical_colors[layer][value];
+                var size  = metadata_layer_boundaries[i][1] - metadata_layer_boundaries[i][0];
+
+                drawPhylogramRectangle('metadata',
+                    'all',
+                    layer_boundaries[layer_index][0],
+                    0 - metadata_layer_boundaries[i][0] - (size / 2),
+                    size,
+                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    color,
+                    1,
+                    false);
+
+            }
+        }
+
+        backgrounds_done = true;
+    }    
 }

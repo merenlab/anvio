@@ -272,15 +272,14 @@ $(document).ready(function() {
 
                         $("#tbody_layers").empty();
 
-                        buildLayersTable(layer_order, views[current_view]);
-
-                        // make layers table sortable
-                        $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
-
-                        
+                        buildLayersTable(layer_order, views[current_view]);                    
                     }
                 });
             });
+
+            // make layers and metadata table sortable
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
+            $("#tbody_metadata").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
             $('#sample_organization').append(new Option('none'));
             for (organization in sampleOrganizationResponse[0])
@@ -789,10 +788,11 @@ function serializeSettings(use_layer_names) {
             var metadata_layer_name = $(tr).attr('metadata-layer-name');
             state['metadata-layer-order'].push(metadata_layer_name);
             state['metadata-layers'][metadata_layer_name] = {
+                'data-type': $(tr).attr('data-type'),
                 'height': $(tr).find('.input-height').val(),
                 'margin': $(tr).find('.input-margin').val(),
                 'normalization': $(tr).find('.normalization').val(),
-                'color': $(tr).find('.colorpicker').attr('color'),
+                'color': $(tr).find('.colorpicker:last').attr('color'),
             };
         }
     );

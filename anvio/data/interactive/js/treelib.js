@@ -2293,6 +2293,11 @@ function draw_tree(settings) {
         rect.setAttribute('height', total_radius);
         rect.setAttribute('stroke-width', '0px');
         document.getElementById('viewport').appendChild(rect);
+        createBin('viewport', 'metadata');
+
+        //draw metadata layers
+        drawMetadataLayers(settings);
+
     }
 
 
