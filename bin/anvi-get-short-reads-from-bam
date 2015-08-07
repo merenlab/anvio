@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""The client for LinkMers class.
+
+   See https://github.com/meren/anvio/issues/144 for details."""
+
+import sys
+
+import anvio
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.bamops import GetReadsFromBAM
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Get short reads back from a BAM file.')
+    parser.add_argument('input_bams', metavar = 'BAM FILE[S]', nargs='+',
+                        help = 'BAM file(s) to access to recover short reads')
+    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
+                        help = 'Profile database.')
+    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
+                        help = 'Annotation database.')
+    parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', required = True,
+                        help = 'Collection id to look for bins.')
+    parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
+                        help = 'A bin to analayze (you either use this, or use a file to list\
+                                each bin id you prefer to analyze).')
+    parser.add_argument('-B', '--bin-ids-file', required = False, metavar = 'BINS FILE', default = None,
+                        help = 'Text file for bins (each line should be a bin id).')
+    parser.add_argument('-o', '--output-file-name', help = 'Output directory')
+    parser.add_argument('--debug', action = 'store_true', default = False,
+                        help = 'Extra outputs for debugging. I would not use it if I were you.')
+
+    args = parser.parse_args()
+
+    try:
+        r = GetReadsFromBAM(args)
+        r.init()
+        r.store_short_reads_for_splits()
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
+  
