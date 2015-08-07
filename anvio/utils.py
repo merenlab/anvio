@@ -8,7 +8,7 @@ import time
 import json
 import copy
 import socket
-import webbrowser
+import textwrap
 import subprocess
 import multiprocessing
 
@@ -418,6 +418,46 @@ def get_split_start_stops(contig_length, split_length):
     return chunks
 
 
+def get_contigs_splits_dict(split_ids, splits_basic_info):
+    """
+    For a given list of split ids, create a dictionary of contig names
+    that represents all parents as keys, and ordered splits as items.
+
+    split_ids is a set of split IDs, splits_basic_info comes from the annotation database:
+ 
+     >>> annotation_db = dbops.AnnotationDatabase(annotation_db_path)
+     >>> splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+     >>> znnotation_db.disconnect()
+     >>> x = get_contigs_splits_dict(set([contig_A_split_00001, contig_A_split_00002, contig_A_split_00004,
+                                         contig_C_split_00003, contig_C_split_00004, contig_C_split_00005]),
+                                    splits_basic_info)
+     >>> print x
+         {
+             'contig_A': {
+                             0: 'contig_A_split_00001',
+                             1: 'contig_A_split_00002',
+                             4: 'contig_A_split_00004'
+                         },
+             'contig_C': {
+                             3: 'contig_C_split_00003',
+                             4: 'contig_C_split_00004',
+                             5: 'contig_C_split_00005'
+                         }
+         }
+    """
+
+    contigs_splits_dict = {}
+
+    for split_id in split_ids:
+        s = splits_basic_info[split_id]
+        if s['parent'] in contigs_splits_dict:
+            contigs_splits_dict[s['parent']][s['order_in_parent']] = split_id
+        else:
+            contigs_splits_dict[s['parent']] = {s['order_in_parent']: split_id}
+
+    return contigs_splits_dict
+
+
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in digits:
@@ -462,6 +502,18 @@ def get_FASTA_file_as_dictionary(file_path):
         d[fasta.id] = fasta.seq
 
     return d
+
+
+def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
+    filesnpaths.is_output_file_writable(output_file_path)
+    output = open(output_file_path, 'w')
+
+    for key in d:
+        output.write('>%s\n' % key)
+        output.write('%s\n' % textwrap.fill(d[key], wrap_from, break_on_hyphens = False))
+
+    output.close()
+    return True
 
 
 def is_ascii_only(text):
