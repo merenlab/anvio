@@ -97,6 +97,9 @@ anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MER
 INFO "Get sequences for HMM hits for a bin in a collection ..."
 anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
 
+INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file ..."
+anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_2 -o short_reads_for_Bin_2.fasta test-output/*bam
+
 INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
 anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt -o test-output/variability_Bin_1_ALT.txt
 
