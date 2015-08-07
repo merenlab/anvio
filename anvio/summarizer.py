@@ -508,28 +508,20 @@ class Bin:
         self.bin_info_dict['total_length'] = 0
         self.bin_info_dict['num_contigs'] = 0
 
-        # this dict will keep all the contig ids found in this bin:
-        contigs_represented = {}
-
-        # go through all splits in this bin, and populate `contigs_represented`
-        self.progress.update('Creating the FASTA file :: Identifying contigs involved ...')
-        for split_id in self.split_ids:
-            s = self.summary.splits_basic_info[split_id]
-            if s['parent'] in contigs_represented:
-                contigs_represented[s['parent']][s['order_in_parent']] = split_id
-            else:
-                contigs_represented[s['parent']] = {s['order_in_parent']: split_id}
+        # this dict will keep all the contig ids found in this bin with split names ordered:
+        contigs_represented = utils.get_contigs_splits_dict(self.split_ids, self.summary.splits_basic_info) 
 
         # now it is time to go through each contig found in contigs_represented to
-        # figure out how much of the contig is in fact in this bin
+        # figure out what fraction of the contig is in fact in this bin
         for contig_id in contigs_represented:
             splits_order = contigs_represented[contig_id].keys()
 
-            # this is critical: `sequential_blocks` is a list of one ore more lists,
-            # each describes splits that follow each other to represent a coherent
-            # chunk of the parent sequence:
             self.progress.update('Creating the FASTA file :: Identifying sequential blocks ...')
-            sequential_blocks = SequentialBlocks(splits_order).process()
+            # this is critical: sequential_blocks is a list of one ore more lists, where each item of this list
+            # describes a range of splits that follow each other to represent a coherent
+            # chunk of the parent sequence (if all splits from a contig is selected into this bin,
+            # then there would be one list item that spans across the entire contig):
+            sequential_blocks = ccollections.GetSequentialBlocksOfSplits(splits_order).process()
 
             for sequential_block in sequential_blocks:
                 self.progress.update('Creating the FASTA file :: Identifying the portion of contig represented ...')
@@ -610,34 +602,4 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-class SequentialBlocks:
-    """Gets a list that goes like this: [1, 2, 3, 5, 6, 9], and returns another list
-       that goes like this: [[1, 2, 3], [5, 6], [9]]"""
-    def __init__(self, l):
-        self.l = sorted(list(set(l)))
-        self.blocks = []
-        self.current_block = []
-
-
-    def finalize_block(self):
-        self.blocks.append(self.current_block)
-        self.current_block = []
-
-
-    def process(self):
-        while 1:
-            if not self.l:
-                break
-
-            current = self.l.pop(0)
-
-            if not len(self.current_block) or current == self.current_block[-1] + 1:
-                self.current_block.append(current)
-            else:
-                self.finalize_block()
-                self.current_block.append(current)
-
-        self.finalize_block()
-
-        return self.blocks
 
