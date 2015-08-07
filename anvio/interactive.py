@@ -404,7 +404,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                     if self.split_hmm_layers:
                         json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
-                        json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if self.hmm_searches_dict.has_key(split_name) else 0 for header in [tpl[0] for tpl in self.hmm_searches_header]])
+                        json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if self.hmm_searches_dict.has_key(split_name) else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
 
                 # (7) send it along!
                 json_object.append(json_entry)
