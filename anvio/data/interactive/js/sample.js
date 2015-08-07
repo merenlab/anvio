@@ -53,7 +53,7 @@ $(document).ready(function() {
     });
 });
 
-function buildMetadataTable() {
+function buildMetadataTable(state) {
     var first_sample = Object.keys(metadata)[0];
     var layers = metadata[first_sample]; // get layers from first sample's metadata
     $('#tbody_metadata').empty();
@@ -66,64 +66,94 @@ function buildMetadataTable() {
         if (isNumber(metadata[first_sample][layer]))
         {
             var data_type = "numeric";
+            var norm = "none";
+            var min    = 0;
+            var max    = 0;
+            var min_disabled = true;
+            var max_disabled = true;
+            var height = 500;
+            var color  = '#000000';
+            var margin = 15;
+            var color_start = "#FFFFFF";
+            var type = "bar";
+
+            var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
+                '<td style="width: 50px;">' +
+                '    <select style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                '        <option value="bar"{option-type-bar}>Bar</option>' +
+                '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <select onChange="clearMinMax(this);" class="normalization">' +
+                '        <option value="none"{option-none}>none</option>' +
+                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                '        <option value="log"{option-log}>log</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
+                '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
+                '<td><input type="checkbox" class="metadata_layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{data-type}', 'g'), data_type)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{min}', 'g'), min)
+                               .replace(new RegExp('{max}', 'g'), max)
+                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{margin}', 'g'), margin);
         }
         else
         {
             var data_type = "categorical";
+            var height = 80;
+            var margin = 15;
+
+            var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td>n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</input></td>' +
+                '<td><input type="checkbox" class="metadata_layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{data-type}', 'g'), data_type)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{min}', 'g'), min)
+                               .replace(new RegExp('{max}', 'g'), max)
+                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{margin}', 'g'), margin);
         }
-
-        var norm = "none";
-        var min    = 0;
-        var max    = 0;
-        var min_disabled = true;
-        var max_disabled = true;
-        var height = 300;
-        var color  = '#000000';
-        var margin = 15;
-        var color_start = "#FFFFFF";
-        var type = "bar";
-
-        var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
-            '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-            '<td title="{name}" class="titles">{short-name}</td>' +
-            '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
-            '<td style="width: 50px;">' +
-            '    <select style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
-            '        <option value="bar"{option-type-bar}>Bar</option>' +
-            '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
-            '    </select>' +
-            '</td>' +
-            '<td>' +
-            '    <select onChange="clearMinMax(this);" class="normalization">' +
-            '        <option value="none"{option-none}>none</option>' +
-            '        <option value="sqrt"{option-sqrt}>Square root</option>' +
-            '        <option value="log"{option-log}>Logarithm</option>' +
-            '    </select>' +
-            '</td>' +
-            '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
-            '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
-            '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
-            '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
-            '<td><input type="checkbox" class="layer_selectors"></input></td>' +
-            '</tr>';
-
-        template = template.replace(new RegExp('{name}', 'g'), layer_name)
-                           .replace(new RegExp('{data-type}', 'g'), data_type)
-                           .replace(new RegExp('{short-name}', 'g'), short_name)
-                           .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
-                           .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                           .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
-                           .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
-                           .replace(new RegExp('{color}', 'g'), color)
-                           .replace(new RegExp('{color-start}', 'g'), color_start)
-                           .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
-                           .replace(new RegExp('{height}', 'g'), height)
-                           .replace(new RegExp('{min}', 'g'), min)
-                           .replace(new RegExp('{max}', 'g'), max)
-                           .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                           .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                           .replace(new RegExp('{margin}', 'g'), margin);
-
 
         $('#tbody_metadata').prepend(template);   
     }
@@ -144,17 +174,31 @@ function buildMetadataTable() {
 }
 
 function drawMetadataLayers(settings) {
-    // calculate maximum in layer, and define categorical colors
-    var metadata_param_max = {};
+    var metadata_layer_max = {};
+    var metadata_layer_min = {};
+
+    var _metadata = metadata; // keep original
+
     for (sample in metadata)
     {
-        for (layer in metadata[sample])
+        for (layer in _metadata[sample])
         {
             if (settings['metadata-layers'][layer]['data-type'] == 'numeric') 
             {
-                if (typeof metadata_param_max[layer] === 'undefined' || parseFloat(metadata[sample][layer]) > metadata_param_max[layer])
+                var norm = settings['metadata-layers'][layer]['normalization'];
+
+                if (norm == 'sqrt')
                 {
-                    metadata_param_max[layer] = parseFloat(metadata[sample][layer]);
+                    _metadata[sample][layer] = Math.sqrt(parseFloat(_metadata[sample][layer]));
+                }
+                else if (norm == 'log')
+                {
+                    _metadata[sample][layer] = log10(parseFloat(_metadata[sample][layer]) + 1);
+                }
+
+                if (typeof metadata_layer_max[layer] === 'undefined' || parseFloat(_metadata[sample][layer]) > metadata_layer_max[layer])
+                {
+                    metadata_layer_max[layer] = parseFloat(_metadata[sample][layer]);
                 }
             }
             else
@@ -174,8 +218,20 @@ function drawMetadataLayers(settings) {
         var metadata_layer_name     = settings['metadata-layer-order'][i];
         var metadata_layer_settings = settings['metadata-layers'][metadata_layer_name];
         
-        var start = parseFloat(metadata_layer_settings['margin']);
-        var end   = start + parseFloat(metadata_layer_settings['height']);
+        if (metadata_layer_settings['min']['disabled'])
+        {
+            $('#tbody_metadata [metadata-layer-name=' + metadata_layer_name + '] .input-min').prop('disabled', false);
+            $('#tbody_metadata [metadata-layer-name=' + metadata_layer_name + '] .input-max').prop('disabled', false).val(metadata_layer_max[metadata_layer_name])
+            metadata_layer_min[metadata_layer_name] = 0;
+        }
+        else
+        {
+            metadata_layer_max[metadata_layer_name] = metadata_layer_settings['max']['value'];
+            metadata_layer_min[metadata_layer_name] = metadata_layer_settings['min']['value'];
+        }
+
+        var start = metadata_layer_settings['margin'];
+        var end   = start + metadata_layer_settings['height'];
         
         if (i > 0)
         {
@@ -187,14 +243,21 @@ function drawMetadataLayers(settings) {
     }
 
     var backgrounds_done = false;
+    var gradient_done = false;
 
     for (var j = 0; j < settings['layer-order'].length; j++) {
         var layer_index = j+1;
         var pindex = settings['layer-order'][j];
-        var layer_name = getLayerName(pindex);
+        var sample_name = getLayerName(pindex);
 
-        if (!(layer_name in metadata)) // skip if not sample
+        if (!(sample_name in metadata)) // skip if not sample
             continue;
+
+        if(!gradient_done)
+        {
+            drawGradientBackground(layer_boundaries[layer_index][0]);
+            gradient_done = true;
+        }
 
         for (var i=0; i < settings['metadata-layer-order'].length; i++)
         {
@@ -203,39 +266,65 @@ function drawMetadataLayers(settings) {
 
             if (metadata_layer_settings['data-type'] == 'numeric') 
             {
-                var size = (metadata[layer_name][metadata_layer_name] / metadata_param_max[metadata_layer_name]) * metadata_layer_settings['height'];
-
-                if (!backgrounds_done)
-                {
-
-                    var start = metadata_layer_boundaries[i][0];
-                    var end   = metadata_layer_boundaries[i][1];
-
-                    drawPhylogramRectangle('metadata',
-                        'all',
-                        layer_boundaries[layer_index][0],
-                        0 - end + (end - start) / 2,
-                        end - start,
-                        total_radius - layer_boundaries[layer_index][0],
-                        metadata_layer_settings['color'],
-                        0.2,
-                        false);
+                var value = _metadata[sample_name][metadata_layer_name];
+                var min = metadata_layer_min[metadata_layer_name];
+                var max = metadata_layer_max[metadata_layer_name];
+                
+                var ratio;
+                if (value > max) {
+                    ratio = 1;
+                }
+                else if (value < min) {
+                    ratio = 0;
+                }
+                else {
+                    ratio = (value - min) / (max - min);
                 }
 
+                var size;
+                var color;
+                if (metadata_layer_settings['type'] == 'intensity')
+                {
+                    var size = metadata_layer_settings['height'];
+                    var color = getGradientColor(metadata_layer_settings['color-start'], metadata_layer_settings['color'],  ratio);
+                }
+                else
+                {
+                    // bar
+                    var size = ratio * metadata_layer_settings['height'];
+                    var color = metadata_layer_settings['color'];
+
+                    if (!backgrounds_done)
+                    {
+                        var start = metadata_layer_boundaries[i][0];
+                        var end   = metadata_layer_boundaries[i][1];
+
+                        drawPhylogramRectangle('metadata',
+                            'all',
+                            layer_boundaries[layer_index][0],
+                            0 - end + (end - start) / 2,
+                            end - start,
+                            total_radius - layer_boundaries[layer_index][0],
+                            metadata_layer_settings['color'],
+                            0.2,
+                            false);
+                    }
+                }
+                
                 drawPhylogramRectangle('metadata',
-                    'all',
+                    'metadata',
                     layer_boundaries[layer_index][0],
                     0 - metadata_layer_boundaries[i][0] - (size / 2),
                     size,
                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                    metadata_layer_settings['color'],
+                    color,
                     1,
                     false);
             }
             else
             {
                 // categorical
-                var value = metadata[layer_name][metadata_layer_name];
+                var value = _metadata[sample_name][metadata_layer_name];
 
                 if (typeof metadata_categorical_colors[layer][value] === 'undefined')
                 {
@@ -260,4 +349,33 @@ function drawMetadataLayers(settings) {
 
         backgrounds_done = true;
     }    
+}
+
+function drawGradientBackground(start)
+{
+    // draw gradient over labels
+    createGradient(document.getElementById('svg'),'gradient1',[
+        {offset:'0%', style:'stop-color:rgb(255,255,255);stop-opacity:0'},
+        {offset:'100%', style:'stop-color:rgb(255,255,255);stop-opacity:1'},
+    ]);
+
+    var grect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    grect.setAttribute('id', 'label_gradient1');
+    grect.setAttribute('fill', 'url(#gradient1)');
+    grect.setAttribute('x', start - 400);
+    grect.setAttribute('y', 0 - total_radius);
+    grect.setAttribute('width', 410);
+    grect.setAttribute('height', total_radius);
+    grect.setAttribute('stroke-width', '0px');
+    document.getElementById('metadata').appendChild(grect);
+
+    var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('id', 'label_gradient2');
+    rect.setAttribute('fill', '#ffffff');
+    rect.setAttribute('x', start);
+    rect.setAttribute('y', 0 - total_radius);
+    rect.setAttribute('width', total_radius - start);
+    rect.setAttribute('height', total_radius);
+    rect.setAttribute('stroke-width', '0px');
+    document.getElementById('metadata').appendChild(rect);
 }
