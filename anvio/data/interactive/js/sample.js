@@ -300,7 +300,7 @@ function drawMetadataLayers(settings) {
                         var end   = metadata_layer_boundaries[i][1];
 
                         drawPhylogramRectangle('metadata',
-                            'all',
+                            'metadata_background',
                             layer_boundaries[layer_index][0],
                             0 - end + (end - start) / 2,
                             end - start,
@@ -311,7 +311,7 @@ function drawMetadataLayers(settings) {
                     }
                 }
                 
-                drawPhylogramRectangle('metadata',
+                var rect = drawPhylogramRectangle('metadata',
                     'metadata',
                     layer_boundaries[layer_index][0],
                     0 - metadata_layer_boundaries[i][0] - (size / 2),
@@ -319,7 +319,11 @@ function drawMetadataLayers(settings) {
                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                     color,
                     1,
-                    false);
+                    true);
+
+                rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('layer-name', metadata_layer_name);
+
             }
             else
             {
@@ -334,15 +338,18 @@ function drawMetadataLayers(settings) {
                 var color = metadata_categorical_colors[layer][value];
                 var size  = metadata_layer_boundaries[i][1] - metadata_layer_boundaries[i][0];
 
-                drawPhylogramRectangle('metadata',
-                    'all',
+                var rect = drawPhylogramRectangle('metadata',
+                    'metadata',
                     layer_boundaries[layer_index][0],
                     0 - metadata_layer_boundaries[i][0] - (size / 2),
                     size,
                     layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                     color,
                     1,
-                    false);
+                    true);
+
+                rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('layer-name', metadata_layer_name);
 
             }
         }
