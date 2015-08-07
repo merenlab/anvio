@@ -221,9 +221,6 @@ function togglePickerStart(selectbox)
 {
     var tr = $(selectbox).parent().parent();
 
-    console.log(tr);
-    console.log($(tr).find('.picker_start'));
-
     if(selectbox.value=='intensity') {  
         $(tr).find('.picker_start').css('visibility', 'visible'); 
     } else { 
