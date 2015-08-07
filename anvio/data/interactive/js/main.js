@@ -788,16 +788,18 @@ function serializeSettings(use_layer_names) {
             var metadata_layer_name = $(tr).attr('metadata-layer-name');
             state['metadata-layer-order'].push(metadata_layer_name);
             state['metadata-layers'][metadata_layer_name] = {
-                'data-type': $(tr).attr('data-type'),
-                'height': $(tr).find('.input-height').val(),
-                'margin': $(tr).find('.input-margin').val(),
-                'normalization': $(tr).find('.normalization').val(),
-                'color': $(tr).find('.colorpicker:last').attr('color'),
+                'data-type'     : $(tr).attr('data-type'),
+                'height'        : parseFloat($(tr).find('.input-height').val()),
+                'margin'        : parseFloat($(tr).find('.input-margin').val()),
+                'normalization' : $(tr).find('.normalization').val(),
+                'color'         : $(tr).find('.colorpicker:last').attr('color'),
+                'min'           : {'value': parseFloat($(tr).find('.input-min').val()), 'disabled': $(tr).find('.input-min').is(':disabled') },
+                'max'           : {'value': parseFloat($(tr).find('.input-max').val()), 'disabled': $(tr).find('.input-max').is(':disabled') },
+                'type'          : $(tr).find('.type').val(),
+                'color-start'   : $(tr).find('.colorpicker:first').attr('color'),
             };
         }
     );
-
-
 
     return state;
 }
