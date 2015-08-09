@@ -300,12 +300,12 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         if splits_in_tree_but_not_in_metadata:
             raise ConfigError, 'Some split names found in your tree are missing in your metadata. Hard to\
                                 know what cuased this, but here is a couple of them that: %s'\
-                                    % ', '.join(splits_in_tree_but_not_in_metadata[0:5])
+                                    % ', '.join(list(splits_in_tree_but_not_in_metadata)[0:5])
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
                                 know why is this the case, but here is a couple of them: %s'\
-                                    % ', '.join(splits_in_tree_but_not_in_database[0:5])
+                                    % ', '.join(list(splits_in_tree_but_not_in_database)[0:5])
 
         if self.additional_metadata_path:
             splits_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
