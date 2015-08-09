@@ -98,10 +98,13 @@ INFO "Get sequences for HMM hits for a bin in a collection ..."
 anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
 
 INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file ..."
-anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_2 -o short_reads_for_Bin_2.fasta test-output/*bam
+anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -c CONCOCT -b Bin_2 -o test-output/short_reads_for_Bin_2.fasta test-output/*bam
 
 INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
 anvi-gen-variability-profile -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt -o test-output/variability_Bin_1_ALT.txt
+
+INFO "Get linkmers from 204-6M.bam for contig 1720, position 600 and 661"
+anvi-report-linkmers -C contigs_and_positions_for_linkmers.txt -i test-output/204-6M.bam -o test-output/linkmers_for_contig_1720_pos_600_and_661.txt
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
