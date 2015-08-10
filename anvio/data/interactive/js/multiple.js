@@ -1,12 +1,5 @@
 //  Edit Attributes For Multiple Layers
 
-// get numeric part from id
-function getNumericPart(id){
-    var $num = id.replace(/[^\d]+/, '');
-
-    return $num;
-}
-
 $(document).ready(function() {
     $('.select_layer').on('change', function() {
         var table = $(this).closest('table');
