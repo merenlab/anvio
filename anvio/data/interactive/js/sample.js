@@ -98,7 +98,7 @@ function buildMetadataTable(state) {
                 '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
                 '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
                 '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
-                '<td><input type="checkbox" class="metadata_layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
@@ -134,7 +134,7 @@ function buildMetadataTable(state) {
                 '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</input></td>' +
-                '<td><input type="checkbox" class="metadata_layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
@@ -179,7 +179,7 @@ function drawMetadataLayers(settings) {
 
     var _metadata = metadata; // keep original
 
-    for (sample in metadata)
+    for (sample in _metadata)
     {
         for (layer in _metadata[sample])
         {

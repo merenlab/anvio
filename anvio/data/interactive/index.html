@@ -52,8 +52,8 @@
             <div role="tabpanel" style="margin: 0px;">
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
+                  <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
                   <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" onclick="this.style['color'] = '#337ab7';"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                  <li id="sample_settings_tab" role="presentation" class="disabled"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
                   <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
                   <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                   <li role="presentation" class="dropdown-submenu pull-right">
@@ -189,26 +189,26 @@
                                     </tr>
                                     <tr>
                                         <td></td>
-                                        <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
-                                        <td><div id="picker_start_multiple" class="colorpicker"></div><div id="picker_multiple" class="colorpicker"></div></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
                                         <td style="width: 50px;">
-                                            <select id="type_multiple" style="width: 50px;" class="type">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
                                                 <option value="bar">Bar</option>
                                                 <option value="intensity">Intensity</option>
                                             </select>
                                         </td>
                                         <td>
-                                            <select id="normalization_multiple">
+                                            <select class="normalization_multiple">
                                                 <option value="none">none</option>
-                                                <option value="sqrt">Square root</option>
-                                                <option value="log">Logarithm</option>
+                                                <option value="sqrt">sqrt</option>
+                                                <option value="log">log</option>
                                             </select>
                                         </td>
-                                        <td><input id="height_multiple" class="input-height" size="3"></input></td>
-                                        <td class="column-margin"><input id="margin_multiple" class="input-margin" size="3"></input></td>
-                                        <td><input id="min_multiple" class="input-min" size="4"></input></td>
-                                        <td><input id="max_multiple" class="input-max" size="4"></input></td>
-                                        <td><input type="checkbox" id="select_all"></td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -294,6 +294,36 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tbody_metadata"></tbody>
+                                <tbody id="tbody_metadata_bottom">
+                                    <tr style="height: 30px">
+                                        <td colspan="9">
+                                            <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
+                                        <td style="width: 50px;">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
+                                                <option value="bar">Bar</option>
+                                                <option value="intensity">Intensity</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="normalization_multiple">
+                                                <option value="none">none</option>
+                                                <option value="sqrt">sqrt</option>
+                                                <option value="log">log</option>
+                                            </select>
+                                        </td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>

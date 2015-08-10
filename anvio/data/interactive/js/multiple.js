@@ -8,25 +8,25 @@ function getNumericPart(id){
 }
 
 $(document).ready(function() {
-    $('#select_layer').on('change', function() {
-        var layer_name = $('#select_layer').val();
-
+    $('.select_layer').on('change', function() {
+        var table = $(this).closest('table');
+        var layer_name = this.value;
         // clean prior selections
-        $('.layer_selectors').prop('checked', false);
+        $(table).find('.layer_selectors').prop('checked', false);
 
         if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
-            $('.titles').each(
+            $(table).find('.titles').each(
                 function(){
-                    if (this.title.indexOf(layer_name) > -1)
+                    if (this.title.toLowerCase().indexOf(layer_name.toLowerCase()) > -1)
                     {
-                        $('#select_this_' + getNumericPart(this.id)).prop('checked','checked');
+                        $(this).parent().find('.layer_selectors').prop('checked','checked');
                     }
                 }
             );
         }
     });
 
-    $('#picker_multiple').colpick({
+    $('.picker_multiple, .picker_start_multiple').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
@@ -35,10 +35,23 @@ $(document).ready(function() {
             $(el).attr('color', '#' + hex);
             if (!bySetColor) $(el).val(hex);
 
-            $('.layer_selectors:checked').each(
+            var table = $(el).closest('table');
+            $(table).find('.layer_selectors:checked').each(
                 function(){
-                    $('#' + 'picker' + getNumericPart(this.id)).attr('color', '#' + hex);
-                    $('#' + 'picker' + getNumericPart(this.id)).css('background-color', '#' + hex);
+                    var selector = '.colorpicker';
+
+                    if ($(el).hasClass("picker_start_multiple"))
+                    {
+                        selector += ':first';
+                    }
+                    else
+                    {
+                        selector += ':last';
+                    }
+                    var picker = $(this).parent().parent().find(selector);
+
+                    $(picker).attr('color', '#' + hex);
+                    $(picker).css('background-color', '#' + hex);
                 }
             );
         }
@@ -46,95 +59,41 @@ $(document).ready(function() {
             $(this).colpickSetColor(this.value);
     });
 
-    $('#picker_start_multiple').colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
-            if (!bySetColor) $(el).val(hex);
 
-            $('.layer_selectors:checked').each(
-                function(){
-                    $('#' + 'picker_start' + getNumericPart(this.id)).attr('color', '#' + hex);
-                    $('#' + 'picker_start' + getNumericPart(this.id)).css('background-color', '#' + hex);
-                }
-            );
-        }
-    }).keyup(function() {
-            $(this).colpickSetColor(this.value);
-    });
+    $('.input-height-multiple, .input-margin-multiple, .input-min-multiple, .input-max-multiple').on('change', function() {
+        var new_val = this.value;
+        var target_selector = '.' + this.getAttribute('class').replace('-multiple', '') + ':enabled';
+        var table = $(this).closest('table');
 
-    $('#min_multiple').on('change', function(){
-        var intend_value = $('#min_multiple').val();
-        $('.layer_selectors:checked').each(
+        $(table).find('.layer_selectors:checked').each(
             function(){
-                $('#' + 'min' + getNumericPart(this.id)).attr('value', intend_value);
+                var row = $(this).parent().parent();
+                $(row).find(target_selector).val(new_val);
             }
         );
     });
 
-    $('#max_multiple').on('change', function(){
-        var intend_value = $('#max_multiple').val();
-        $('.layer_selectors:checked').each(
+    $('.normalization_multiple, .type_multiple').on('change', function() {
+        var new_val = this.value;
+        var target_selector = '.' + this.getAttribute('class').replace('_multiple', '');
+        var table = $(this).closest('table');
+
+        $(table).find('.layer_selectors:checked').each(
             function(){
-                $('#' + 'max' + getNumericPart(this.id)).attr('value', intend_value);
+                var row = $(this).parent().parent();
+                $(row).find(target_selector).val(new_val).trigger('change');
             }
         );
     });
 
-    $('#height_multiple').on('change', function(){
-        var intend_value = $('#height_multiple').val();
-        $('.layer_selectors:checked').each(
-            function(){
-                $('#' + 'height' + getNumericPart(this.id)).attr('value', intend_value);
+    $('.select_all').on('click', function() {
+        var new_val = this.checked;
+        var table = $(this).closest('table');
+
+        $(table).find('.layer_selectors').each(
+            function() {
+                this.checked = new_val;
             }
         );
-    });
-
-    $('#margin_multiple').on('change', function(){
-        var intend_value = $('#margin_multiple').val();
-        $('.layer_selectors:checked').each(
-            function(){
-                $('#' + 'margin' + getNumericPart(this.id)).attr('value', intend_value);
-            }
-        );
-    });
-
-    $('#type_multiple').on('change', function(){
-        var intend_value = $('#type_multiple').val();
-        $('.layer_selectors:checked').each(
-            function(){
-                $('#type' + getNumericPart(this.id)).val(intend_value).trigger('change');
-            }
-        );
-    });
-
-    $('#normalization_multiple').on('change', function(){
-        var intend_value = $('#normalization_multiple option:selected').val();
-
-        $('.layer_selectors:checked').each(
-            function(){
-                $('#normalization' + getNumericPart(this.id)).val(intend_value).trigger('change');
-            }
-        );
-    });
-
-    $('#select_all').on('click', function() {
-        if(this.checked) {
-            $('.layer_selectors').each(
-                function() {
-                    this.checked = true;
-                }
-            );
-
-        }else{
-            $('.layer_selectors').each(
-                function() {
-                    this.checked = false;
-                }
-            );
-        }
     });
 });
