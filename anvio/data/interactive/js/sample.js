@@ -1,5 +1,6 @@
 sampleOrganizationResponse = [JSON.parse('{"num_reads":{"order":"","newick":"((DAY_19:3.8927e-12,(DAY_15A:1.17876e-12,DAY_17A:1.17876e-12)Int16:3.8927e-12)Int18:1.58727e-11,((DAY_15B:1.14795e-12,(DAY_17B:4.17546e-14,DAY_23:4.17546e-14)Int12:1.14795e-12)Int15:5.55138e-12,(DAY_22B:1.20141e-12,((DAY_18:3.08426e-14,DAY_22A:3.08426e-14)Int11:7.76164e-13,(DAY_16:3.99589e-13,DAY_24:3.99589e-13)Int13:7.76164e-13)Int14:1.20141e-12)Int17:5.55138e-12)Int19:1.58727e-11);"},"even_odd":{"order":"","newick":"((DAY_22B:0.000332086,((DAY_18:8.54156e-06,DAY_22A:8.54156e-06)Int11:0.00021462,(DAY_16:0.000110463,DAY_24:0.000110463)Int13:0.00021462)Int14:0.000332086)Int15:0.0376259,((DAY_15B:0.000506205,(DAY_17B:1.8431e-05,DAY_23:1.8431e-05)Int12:0.000506205)Int16:0.00441781,(DAY_19:0.00170499,(DAY_15A:0.00051519,DAY_17A:0.00051519)Int17:0.00170499)Int18:0.00441781)Int19:0.0376259);"},"basic":{"order":"DAY_15A,DAY_15B,DAY_16,DAY_17A,DAY_17B,DAY_18,DAY_19,DAY_22A,DAY_22B,DAY_23,DAY_24","newick":""}, "mini_test": {"order":"s204_6M,s204_7M,s204_9M", "newick":""}}')];
 sampleMetadataResponse = [JSON.parse('{"DAY_17A":{"days_after_birth":"17","num_reads":"2409083","percent_mapped_reads":"84.4","days":"even","sections":"A"},"DAY_17B":{"days_after_birth":"17","num_reads":"14467205","percent_mapped_reads":"92.96","days":"even","sections":"A"},"DAY_18":{"days_after_birth":"18","num_reads":"11157806","percent_mapped_reads":"96.65","days":"odd","sections":"A"},"DAY_19":{"days_after_birth":"19","num_reads":"12605189","percent_mapped_reads":"88.5","days":"even","sections":"A"},"DAY_15B":{"days_after_birth":"15","num_reads":"8924116","percent_mapped_reads":"91.76","days":"even","sections":"A"},"DAY_22A":{"days_after_birth":"22","num_reads":"12585100","percent_mapped_reads":"96.69","days":"odd","sections":"B"},"DAY_16":{"days_after_birth":"16","num_reads":"10505839","percent_mapped_reads":"95.71","days":"odd","sections":"A"},"DAY_15A":{"days_after_birth":"15","num_reads":"5639445","percent_mapped_reads":"85.58","days":"even","sections":"A"},"DAY_23":{"days_after_birth":"23","num_reads":"6318127","percent_mapped_reads":"92.91","days":"even","sections":"B"},"DAY_22B":{"days_after_birth":"22","num_reads":"7386372","percent_mapped_reads":"95.11","days":"odd","sections":"B"},"DAY_24":{"days_after_birth":"24","num_reads":"10756936","percent_mapped_reads":"96.22","days":"odd","sections":"B"}}')];
+var organizations = sampleOrganizationResponse[0];
 var metadata = sampleMetadataResponse[0];
 var metadata_categorical_colors = {};
 
@@ -27,10 +28,10 @@ function get_newick_leaf_order(newick)
 
 $(document).ready(function() {
     $('#sample_organization').change(function() {
-        if (this.value == 'none') 
+        if (this.value == 'custom') 
             return;
 
-        var organization = sampleOrganizationResponse[0][this.value];
+        var organization = organizations[this.value];
         var sample_order;
 
         // get new sample order
@@ -245,6 +246,8 @@ function drawMetadataLayers(settings) {
     var backgrounds_done = false;
     var gradient_done = false;
 
+    var sample_xy = {};
+
     for (var j = 0; j < settings['layer-order'].length; j++) {
         var layer_index = j+1;
         var pindex = settings['layer-order'][j];
@@ -257,6 +260,11 @@ function drawMetadataLayers(settings) {
         {
             drawGradientBackground(layer_boundaries[layer_index][0]);
             gradient_done = true;
+        }
+
+        sample_xy[sample_name] = {
+            'x': layer_boundaries[layer_index][0] + (layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0]) / 2,
+            'y': 0 - metadata_layer_boundaries[metadata_layer_boundaries.length-1][1],
         }
 
         for (var i=0; i < settings['metadata-layer-order'].length; i++)
@@ -355,7 +363,98 @@ function drawMetadataLayers(settings) {
         }
 
         backgrounds_done = true;
-    }    
+    }
+
+    drawMetadataTree(settings, sample_xy);    
+}
+
+function drawMetadataTree(settings, sample_xy)
+{
+    console.log(sample_xy);
+    createBin('metadata', 'metadata_tree');
+    var organization_name = settings['organization-name'];
+
+    if (!organizations.hasOwnProperty(organization_name) || organizations[organization_name]['newick'] == '')
+        return;
+
+    var newick = organizations[organization_name]['newick'];
+    var t = new Tree();
+    t.Parse(newick, false);
+    t.ComputeDepths();
+    t.ComputeWeights();
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    var sample_y = -1;
+
+    while (q != null)
+    {
+        if (q.IsLeaf())
+        {
+            q.xy = sample_xy[q.label];
+
+            if (sample_y == -1)
+            {
+                sample_y = q.xy['y'];
+            }
+        }
+        else
+        {
+            var pl = q.child.xy;
+            var pr = q.child.GetRightMostSibling().xy;
+
+            q.xy['x'] = pl['x'] + (pr['x'] - pl['x']) / 2;
+            q.xy['y'] = sample_y - (q.depth * 100);
+        }
+        q=n.Next();
+    }
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    while (q != null)
+    {
+        if (q.IsLeaf())
+        {
+            var p0 = q.xy
+            var p1 = [];
+            var anc = q.ancestor;
+            if (anc) {
+                p1['y'] = anc.xy['y'];
+                p1['x'] = p0['x'];
+
+                drawLine('metadata_tree', q, p0, p1);
+            }
+        }
+        else
+        {
+            var p0 = [];
+            var p1 = [];
+
+            p0['y'] = q.xy['y'];
+            p0['x'] = q.xy['x'];
+
+            var anc = q.ancestor;
+            if (anc) {
+                p1['y'] = anc.xy['y'];
+                p1['x'] = p0['x'];
+                drawLine('metadata_tree', q, p0, p1);
+            }
+
+            // vertical line
+            var pl = q.child.xy;
+            var pr = q.child.GetRightMostSibling().xy;
+
+            p0['y'] = p0['y'];
+            p0['x'] = pl['x'];
+            p1['y'] = p0['y'];
+            p1['x'] = pr['x'];
+
+            drawLine('metadata_tree', q, p0, p1);
+        }
+        q=n.Next();
+    }
 }
 
 function drawGradientBackground(start)

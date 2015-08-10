@@ -281,7 +281,7 @@ $(document).ready(function() {
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
             $("#tbody_metadata").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
-            $('#sample_organization').append(new Option('none'));
+            $('#sample_organization').append(new Option('custom'));
             for (organization in sampleOrganizationResponse[0])
             {
                 $('#sample_organization').append(new Option(organization));
@@ -728,6 +728,7 @@ function serializeSettings(use_layer_names) {
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
+    state['organization-name'] = $('#sample_organization').val();
 
 
     // sync views object and layers table
