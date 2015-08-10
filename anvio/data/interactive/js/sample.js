@@ -319,6 +319,25 @@ function drawMetadataLayers(settings) {
                     }
                 }
                 
+                if (!backgrounds_done)
+                {
+                    drawText('metadata', {
+                        'x': total_radius + 20,
+                        'y': 0 - (metadata_layer_boundaries[i][0] + metadata_layer_boundaries[i][1]) / 2
+                    }, metadata_layer_name , metadata_layer_settings['height'] / 3 + 'px', 'left', metadata_layer_settings['color']);
+                    
+                    drawText('metadata', {
+                        'x': total_radius + 10,
+                        'y': 0 - metadata_layer_boundaries[i][1]
+                    }, max , metadata_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-before-edge');
+
+                    drawText('metadata', {
+                        'x': total_radius + 10,
+                        'y': 0 - metadata_layer_boundaries[i][0]
+                    }, min , metadata_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-after-edge');
+
+                }
+
                 var rect = drawPhylogramRectangle('metadata',
                     'metadata',
                     layer_boundaries[layer_index][0],
@@ -331,10 +350,10 @@ function drawMetadataLayers(settings) {
 
                 rect.setAttribute('sample-name', sample_name);
                 rect.setAttribute('layer-name', metadata_layer_name);
-
             }
             else
             {
+
                 // categorical
                 var value = _metadata[sample_name][metadata_layer_name];
 
@@ -358,19 +377,25 @@ function drawMetadataLayers(settings) {
 
                 rect.setAttribute('sample-name', sample_name);
                 rect.setAttribute('layer-name', metadata_layer_name);
-
+                
+                if (!backgrounds_done)
+                {
+                    drawText('metadata', {
+                        'x': total_radius + 20,
+                        'y': 0 - (metadata_layer_boundaries[i][0] + metadata_layer_boundaries[i][1]) / 2
+                    }, metadata_layer_name , metadata_layer_settings['height'] + 'px', 'left', metadata_layer_settings['color']);
+                }
             }
         }
 
         backgrounds_done = true;
     }
 
-    drawMetadataTree(settings, sample_xy);    
+    drawMetadataTree(settings, sample_xy);
 }
 
 function drawMetadataTree(settings, sample_xy)
 {
-    console.log(sample_xy);
     createBin('metadata', 'metadata_tree');
     var organization_name = settings['organization-name'];
 

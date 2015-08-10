@@ -275,7 +275,7 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string, font_size, align, color) {
+function drawText(svg_id, p, string, font_size, align, color, baseline) {
 
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
@@ -283,10 +283,15 @@ function drawText(svg_id, p, string, font_size, align, color) {
     if (typeof color !== 'undefined')
         text.setAttribute('fill', color);
 
-    text.setAttribute('style', 'alignment-baseline:middle; font-size:' + font_size);
+    if (typeof baseline === 'undefined')
+        baseline = 'middle';
+
+
+    text.setAttribute('style', 'alignment-baseline:' + baseline + '; font-size:' + font_size);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
+    text.setAttribute('text-rendering', 'optimizeLegibility');
 
     switch (align) {
         case 'left':
