@@ -60,9 +60,43 @@ function drawLegend(top, left, line_end) {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            //'stats': categorical_stats
+            'stats': categorical_stats
         });
     });
+
+    $.each(layer_types, function (i, _) {
+        if (layer_types[i] != 1)
+            return; // skip if not categorical
+
+        var pindex = i;
+        var names = getLayerName(pindex).split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+
+        legends.push({
+            'name': getLayerName(pindex),
+            'source': 'stack_bar_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': keys,
+        });
+    });
+
+    for (sample in metadata_categorical_colors)
+    {
+        console.log(sample);
+        var names = Object.keys(metadata_categorical_colors[sample]);
+
+        legends.push({
+            'name': sample,
+            'source': 'metadata_categorical_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': names,
+            //'stats': TO DO
+        });
+    }
+
+    console.log(legends);
 
     for (var i=0; i < legends.length; i++)
     {
@@ -126,65 +160,6 @@ function drawLegend(top, left, line_end) {
         top = _top;
         _left = left;
     }
-return;
-    //draw stack bar
-    $.each(layer_types, function (i, _) {
-
-        if (layer_types[i] != 1)
-            return; //not stack bar, return equal to continue in native loop
-
-        var pindex = i;
-        var stack_bar_title = layerdata[0][pindex];
-
-        var names = stack_bar_title.split(";");
-
-        var bin_id = 'legend_' + legend_counter;
-        legend_counter++;
-
-        createBin('viewport', bin_id);
-        drawRectangle(bin_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
-        drawText(bin_id, {
-            'x': left,
-            'y': top
-        }, stack_bar_title, '16px');
-
-        for (var j = 0; j < names.length; j++) {
-            var name = names[j];
-
-            top = top + 20;
-            var rect = drawRectangle(bin_id, left, top, 16, 16, stack_bar_colors[pindex][j], 1, 'black',
-                null,
-                function() {
-                    // mouseenter
-                    $(this).css('stroke-width', '2');
-                },
-                function() {
-                    // mouseleave
-                    $(this).css('stroke-width', '1');
-                });
-
-            rect.setAttribute('callback_pindex', pindex);
-            rect.setAttribute('callback_id', j);
-
-            $(rect).colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'dark',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('fill', '#' + hex);
-                    stack_bar_colors[$(el).attr('callback_pindex')][parseInt($(el).attr('callback_id'))] = '#' + hex;
-                }
-            });
-
-            drawText(bin_id, {
-                'x': left + 30,
-                'y': top + 8
-            }, names[j], '12px');
-        }
-        top = top + 70;
-
-    });
-
 }
 
 function drawBinLegend(bins_to_draw, top, left) {
@@ -2266,18 +2241,6 @@ function draw_tree(settings) {
         attributeFilter: ["transform"]
     });
 
-    // draw title
-    switch (settings['tree-type']) {
-        case 'phylogram':
-            drawLegend(total_radius, 0 - td.settings.height, 0);
-            drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
-            break;
-        case 'circlephylogram':
-            drawLegend(total_radius, 0 - total_radius, total_radius - 40);
-            drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
-            break;
-    }
-
     // draw layer names (in circlephylogram with 0-270)
     if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] == 270)
     {
@@ -2308,9 +2271,19 @@ function draw_tree(settings) {
 
         //draw metadata layers
         drawMetadataLayers(settings);
-
     }
 
+    // draw title
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            drawLegend(total_radius, 0 - td.settings.height, 0);
+            drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
+            break;
+        case 'circlephylogram':
+            drawLegend(total_radius, 0 - total_radius, total_radius - 40);
+            drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
+            break;
+    }
 
     // Scale to fit window
     var bbox = svg.getBBox();

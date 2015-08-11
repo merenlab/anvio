@@ -355,12 +355,12 @@ function drawMetadataLayers(settings) {
                 // categorical
                 var value = _metadata[sample_name][metadata_layer_name];
 
-                if (typeof metadata_categorical_colors[layer][value] === 'undefined')
+                if (typeof metadata_categorical_colors[metadata_layer_name][value] === 'undefined')
                 {
-                    metadata_categorical_colors[layer][value] = randomColor();
+                    metadata_categorical_colors[metadata_layer_name][value] = randomColor();
                 }
 
-                var color = metadata_categorical_colors[layer][value];
+                var color = metadata_categorical_colors[metadata_layer_name][value];
                 var size  = metadata_layer_boundaries[i][1] - metadata_layer_boundaries[i][0];
 
                 var rect = drawPhylogramRectangle('metadata',
