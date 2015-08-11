@@ -467,7 +467,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var height = '30';
+                var height = '300';
                 var margin = '15';
 
                 // pick random color for stack bar items
