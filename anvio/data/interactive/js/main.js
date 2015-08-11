@@ -158,9 +158,19 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/session_id?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/sample_organization?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/sample_metadata?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, sampleOrganizationResponse, sampleMetadataResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -281,8 +291,10 @@ $(document).ready(function() {
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
             $("#tbody_metadata").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
+            organizations = JSON.parse(sampleOrganizationResponse[0]);
+            metadata = JSON.parse(sampleMetadataResponse[0]);
             $('#sample_organization').append(new Option('custom'));
-            for (organization in sampleOrganizationResponse[0])
+            for (organization in organizations)
             {
                 $('#sample_organization').append(new Option(organization));
             }

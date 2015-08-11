@@ -28,44 +28,55 @@ function createBin(parent, bin_id) {
 }
 //--------------------------------------------------------------------------------------------------
 
-function drawLegend(top, left) {
-    var legend_counter=0;
+function drawLegend(top, left, line_end) {
+    var _left = left;
+    var line_height = (line_end - _left) / 80;
+    var gap = line_height / 2;
 
+    var top = top + line_height * 3;
+    var _top = top;
+
+    var legends = [];
+   
     $.each(layer_types, function (i, _) {
-
         if (layer_types[i] != 2)
-            return; //not categorical, return equal to continue in native loop
+            return; // skip if not categorical
 
-        // collect categorical
         var pindex = i;
-        var categorical_data_title = layerdata[0][pindex];
-
-        var names = new Array();
+        var categorical_stats = {};
 
         for (var name in categorical_data_colors[pindex]) {
-            names.push(name);
+            categorical_stats[name] = 0;
         }
+        for (var index = 1; index < layerdata.length; index++)
+        {
+            categorical_stats[layerdata[index][pindex]] += 1;
+        }
+        var names = Object.keys(categorical_stats).sort(function(a,b){return categorical_stats[b]-categorical_stats[a]});
 
-        names.sort();
+        legends.push({
+            'name': getLayerName(pindex),
+            'source': 'categorical_data_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': names,
+            //'stats': categorical_stats
+        });
+    });
 
-        var bin_id = 'legend_' + legend_counter;
-        legend_counter++;
-
+    for (var i=0; i < legends.length; i++)
+    {
+        var bin_id = 'legend_' + i;
         createBin('viewport', bin_id);
+        var legend = legends[i];
 
-        // draw border
-        drawRectangle(bin_id, left - 10, top - 20, (names.length + 2.5) * 20, 200, 'white', 1, 'black');
-
-        drawText(bin_id, {
-            'x': left,
-            'y': top
-        }, categorical_data_title, '16px');
-
-        for (var j = 0; j < names.length; j++) {
-            var name = names[j];
-
-            top = top + 20;
-            var rect = drawRectangle(bin_id, left, top, 16, 16, categorical_data_colors[pindex][name], 1, 'black',
+        for (var j = 0; j < legend['item_names'].length; j++) {
+            if (_left > line_end)
+            {
+                _left = left;
+                _top = _top + line_height + gap;
+            }
+            var rect = drawRectangle(bin_id, _left, _top, line_height, line_height, window[legend['source']][legend['key']][legend['item_keys'][j]], 1, 'black',
                 null,
                 function() {
                     // mouseenter
@@ -76,8 +87,9 @@ function drawLegend(top, left) {
                     $(this).css('stroke-width', '1');
                 });
 
-            rect.setAttribute('callback_pindex', pindex);
-            rect.setAttribute('callback_name', name);
+            rect.setAttribute('callback_source', legend['source']);
+            rect.setAttribute('callback_pindex', legend['key']);
+            rect.setAttribute('callback_name', legend['item_keys'][j]);
 
             $(rect).colpick({
                 layout: 'hex',
@@ -85,18 +97,36 @@ function drawLegend(top, left) {
                 colorScheme: 'dark',
                 onChange: function(hsb, hex, rgb, el, bySetColor) {
                     $(el).css('fill', '#' + hex);
-                    categorical_data_colors[$(el).attr('callback_pindex')][$(el).attr('callback_name')] = '#' + hex;
+                    window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
                 }
             });
 
-            drawText(bin_id, {
-                'x': left + 30,
-                'y': top + 8
-            }, names[j], '12px');
-        }
-        top = top + 70;
-    });
+            _left += line_height + gap;
 
+            var _name = legend['item_names'][j];
+
+            if (legend.hasOwnProperty('stats'))
+            {
+                _name = _name + ' (' + legend['stats'][_name] + ')';
+            }
+
+            var text = drawText(bin_id, {
+                'x': _left,
+                'y': _top + line_height / 2
+            }, _name, line_height + 'px');
+
+            _left += text.getBBox().width + gap;
+        }
+        drawText(bin_id, {
+            'x': left - line_height,
+            'y': (_top + top + line_height) / 2 
+        }, legend['name'], 2*line_height + 'px', 'right');
+
+        _top = _top + 3 * line_height + gap;
+        top = _top;
+        _left = left;
+    }
+return;
     //draw stack bar
     $.each(layer_types, function (i, _) {
 
@@ -314,6 +344,8 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
+
+    return text;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2168,7 +2200,6 @@ function draw_tree(settings) {
                 }
                 prev_value = layer_items[j];
             }
-
             for (var j=0; j < items_to_draw.length; j++)
             {
                 var categorical_item = items_to_draw[j];
@@ -2238,11 +2269,11 @@ function draw_tree(settings) {
     // draw title
     switch (settings['tree-type']) {
         case 'phylogram':
-            drawLegend(0, 100);
+            drawLegend(total_radius, 0 - td.settings.height, 0);
             drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
             break;
         case 'circlephylogram':
-            drawLegend(20 - total_radius, total_radius + 100);
+            drawLegend(total_radius, 0 - total_radius, total_radius - 40);
             drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
             break;
     }
