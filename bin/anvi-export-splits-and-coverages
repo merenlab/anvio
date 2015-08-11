@@ -51,7 +51,7 @@ def main(args):
         args.output_file_prefix = merged_profile_db.get_meta_value('sample_id')
 
     samples = merged_profile_db.get_meta_value('samples').split(',')
-    contig_sequences_dict = annotation_db.get_table_as_dict(t.contig_sequences_table_name)
+    contig_sequences_dict = annotation_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
     splits_dict = annotation_db.get_table_as_dict(t.splits_info_table_name)
     coverages = merged_profile_db.get_table_as_dict('mean_coverage_contigs')
 
