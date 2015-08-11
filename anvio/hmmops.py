@@ -159,7 +159,7 @@ class SequencesForHMMHits:
         self.search_info_table = annotation_db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.search_table_splits = annotation_db.get_table_as_dict(t.hmm_hits_splits_table_name)
         self.search_table_contigs = annotation_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
-        self.contig_sequences = annotation_db.get_table_as_dict(t.contig_sequences_table_name)
+        self.contig_sequences = annotation_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
         annotation_db.disconnect()
 
         missing_sources = [s for s in self.sources if s not in self.search_info_table]
