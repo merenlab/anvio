@@ -54,6 +54,9 @@ function drawLegend(top, left, line_end) {
         }
         var names = Object.keys(categorical_stats).sort(function(a,b){return categorical_stats[b]-categorical_stats[a]});
 
+        names.push(names.splice(names.indexOf('null'), 1)[0]); // move null and empty categorical items to end
+        names.push(names.splice(names.indexOf(''), 1)[0]);
+
         legends.push({
             'name': getLayerName(pindex),
             'source': 'categorical_data_colors',
@@ -66,7 +69,7 @@ function drawLegend(top, left, line_end) {
 
     $.each(layer_types, function (i, _) {
         if (layer_types[i] != 1)
-            return; // skip if not categorical
+            return; // skip if not stack bar
 
         var pindex = i;
         var names = getLayerName(pindex).split(';');
@@ -141,7 +144,7 @@ function drawLegend(top, left, line_end) {
 
             if (legend.hasOwnProperty('stats'))
             {
-                _name = _name + ' (' + legend['stats'][_name] + ')';
+                _name = ((_name == 'null' || _name == '') ? 'None' : _name) + ' (' + legend['stats'][_name] + ')';
             }
 
             var text = drawText(bin_id, {
