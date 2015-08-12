@@ -29,6 +29,8 @@ $(document).ready(function() {
         if (this.value == 'custom') 
             return;
 
+        $('#btn_redraw_metadata').prop('disabled', true);
+
         var organization = organizations[this.value];
         var sample_order;
 
@@ -176,7 +178,7 @@ function drawMetadataLayers(settings) {
     var metadata_layer_max = {};
     var metadata_layer_min = {};
 
-    var _metadata = metadata; // keep original
+    var _metadata = jQuery.extend(true, {}, metadata); // keep original
 
     for (sample in _metadata)
     {

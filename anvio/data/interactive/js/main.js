@@ -850,6 +850,7 @@ function drawTree() {
 
             waitingDialog.hide();
             $('#btn_draw_tree').prop('disabled', false);
+            $('#btn_redraw_metadata').prop('disabled', false);
 
             if (settings['tree-radius'] == 0)
             {

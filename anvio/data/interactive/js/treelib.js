@@ -2002,7 +2002,7 @@ function draw_tree(settings) {
                         else if(isCategorical)
                         {
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if (typeof(layerdata_dict[q.label][pindex]) == typeof(null))
+                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
@@ -2092,7 +2092,7 @@ function draw_tree(settings) {
                         else if(isCategorical)
                         {
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if (typeof(layerdata_dict[q.label][pindex]) == typeof(null))
+                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
@@ -2168,9 +2168,7 @@ function draw_tree(settings) {
             {
                 if (prev_value != layer_items[j])
                 {
-                    if (prev_value != null && prev_value != '')
-                        items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
-
+                    items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
                     prev_start = j;
                 }
                 prev_value = layer_items[j];
