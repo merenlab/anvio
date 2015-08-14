@@ -78,6 +78,9 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.run.info('Number of bins', len(self.bins))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
+        self.collections = ccollections.Collections()
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
+
 
     def refine(self):
         self.init()

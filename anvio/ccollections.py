@@ -68,7 +68,7 @@ class Collections:
         if source not in self.sources_dict:
             raise ConfigError, 'There is no "%s" I know of. Maybe the populate_sources_dict was not called\
                                 for whatever database you are trying to get collections from? (anvio asks this\
-                                rhetorical question to the programmer).'
+                                rhetorical question to the programmer).' % source
 
 
     def get_collection_dict(self, source):
