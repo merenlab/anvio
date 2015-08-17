@@ -21,7 +21,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
-var VERSION = '0.2.0';
+var VERSION = '0.2.1';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -794,6 +794,7 @@ function serializeSettings(use_layer_names) {
         state['stack_bar_colors'] = stack_bar_colors;
     }
 
+    state['metadata-categorical-colors'] = metadata_categorical_colors;
     state['metadata-layer-order'] = [];
     state['metadata-layers'] = {};
     $('#tbody_metadata tr').each(
@@ -1709,7 +1710,12 @@ function loadState()
             // reload layers
             var current_view = $('#views_container').val();
             $("#tbody_layers").empty();
+
+            if (state.hasOwnProperty('metadata-categorical-colors'))
+                metadata_categorical_colors = state['metadata-categorical-colors']; 
+
             buildLayersTable(layer_order, views[current_view]);
+            buildMetadataTable(state['metadata-layer-order'], state['metadata-layers']);
 
             current_state_name = $('#loadState_list').val();
             $('#current_state').html('[current state: ' + current_state_name + ']');

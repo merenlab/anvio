@@ -86,7 +86,6 @@ function drawLegend(top, left, line_end) {
 
     for (sample in metadata_categorical_colors)
     {
-        console.log(sample);
         var names = Object.keys(metadata_categorical_colors[sample]);
 
         legends.push({
@@ -98,8 +97,6 @@ function drawLegend(top, left, line_end) {
             //'stats': TO DO
         });
     }
-
-    console.log(legends);
 
     for (var i=0; i < legends.length; i++)
     {

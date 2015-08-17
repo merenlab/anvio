@@ -54,29 +54,56 @@ $(document).ready(function() {
     });
 });
 
-function buildMetadataTable(state) {
+function buildMetadataTable(metadata_layer_order, metadata_layers) {
     var first_sample = Object.keys(metadata)[0];
-    var layers = metadata[first_sample]; // get layers from first sample's metadata
+    
+    if (typeof(metadata_layer_order) === 'undefined') {
+        metadata_layer_order = Object.keys(metadata[first_sample]); // get layer order from first sample's metadata
+    }
+    
     $('#tbody_metadata').empty();
 
-    for (layer in layers)
+    for (var i=0; i < metadata_layer_order.length; i++)
     {
-        var layer_name = layer;
+        var layer_name = metadata_layer_order[i];
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
-        if (isNumber(metadata[first_sample][layer]))
+        var hasSettings = false;
+        if (typeof(metadata_layers) !== 'undefined' && typeof(metadata_layers[layer_name]) !== 'undefined') {
+            hasSettings = true;
+            layer_settings = metadata_layers[layer_name];
+        }
+
+        if (isNumber(metadata[first_sample][layer_name]))
         {
             var data_type = "numeric";
-            var norm = "none";
-            var min    = 0;
-            var max    = 0;
-            var min_disabled = true;
-            var max_disabled = true;
-            var height = 500;
-            var color  = '#000000';
-            var margin = 15;
-            var color_start = "#FFFFFF";
-            var type = "bar";
+            
+            if (hasSettings) 
+            {
+                var norm         = layer_settings['normalization'];
+                var min          = layer_settings['min']['value'];
+                var max          = layer_settings['max']['value'];
+                var min_disabled = layer_settings['min']['disabled'];
+                var max_disabled = layer_settings['max']['disabled'];
+                var height       = layer_settings['height'];
+                var color        = layer_settings['color'];
+                var margin       = layer_settings['margin'];
+                var color_start  = layer_settings['color-start'];
+                var type         = layer_settings['type'];
+            }
+            else
+            {
+                var norm = "none";
+                var min    = 0;
+                var max    = 0;
+                var min_disabled = true;
+                var max_disabled = true;
+                var height = 500;
+                var color  = '#919191';
+                var margin = 15;
+                var color_start = "#FFFFFF";
+                var type = "bar";
+            }
 
             var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
@@ -122,8 +149,17 @@ function buildMetadataTable(state) {
         else
         {
             var data_type = "categorical";
-            var height = 80;
-            var margin = 15;
+            
+            if (hasSettings)
+            {
+                var height = layer_settings['height'];
+                var margin = layer_settings['margin'];
+            }
+            else
+            {
+                var height = 80;
+                var margin = 15;
+            }
 
             var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
@@ -156,7 +192,7 @@ function buildMetadataTable(state) {
                                .replace(new RegExp('{margin}', 'g'), margin);
         }
 
-        $('#tbody_metadata').prepend(template);   
+        $('#tbody_metadata').append(template);   
     }
 
     $('.colorpicker').colpick({
@@ -359,7 +395,7 @@ function drawMetadataLayers(settings) {
 
                 if (typeof metadata_categorical_colors[metadata_layer_name][value] === 'undefined')
                 {
-                    metadata_categorical_colors[metadata_layer_name][value] = randomColor();
+                    metadata_categorical_colors[metadata_layer_name][value] = randomColor({luminosity: 'dark'});
                 }
 
                 var color = metadata_categorical_colors[metadata_layer_name][value];
