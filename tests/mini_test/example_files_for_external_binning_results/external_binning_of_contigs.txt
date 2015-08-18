@@ -1,4 +1,4 @@
-204_10M_MERGED.PERFECT.gz.keep_contig_NA	1
-204_10M_MERGED.PERFECT.gz.keep_contig_878	2
-204_10M_MERGED.PERFECT.gz.keep_contig_6515	3
-204_10M_MERGED.PERFECT.gz.keep_contig_1720	4
+204_10M_MERGED.PERFECT.gz.keep_contig_NA	Bin_1
+204_10M_MERGED.PERFECT.gz.keep_contig_878	Bin_2
+204_10M_MERGED.PERFECT.gz.keep_contig_6515	Bin_3
+204_10M_MERGED.PERFECT.gz.keep_contig_1720	Bin_4
