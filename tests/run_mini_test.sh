@@ -79,8 +79,20 @@ INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
 anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
-INFO "Importing collections from external files into the profile database"
-anvi-import-collection example_external_collections/adhoc_collections.txt -S 'C_IMPORTED' -p test-output/204-MERGED/PROFILE.db --colors example_external_collections/adhoc_colors.txt
+INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
+anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
+                       -p test-output/204-MERGED/PROFILE.db \
+                       -a test-output/ANNOTATION.db \
+                       -S 'SPLITS_IMPORTED' \
+                       --colors example_files_for_external_binning_results/example_colors_file.txt
+
+INFO "Importing external binning results for splits into the profile database as 'CONTIGS_IMPORTED'"
+anvi-import-collection example_files_for_external_binning_results/external_binning_of_contigs.txt \
+                       -a test-output/ANNOTATION.db \
+                       -p test-output/204-MERGED/PROFILE.db \
+                       -S 'CONTIGS_IMPORTED' \
+                       --colors example_files_for_external_binning_results/example_colors_file.txt \
+                       --contigs
 
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/anvio_concoct_clusters.txt --source-identifier 'cmdline_concoct'
