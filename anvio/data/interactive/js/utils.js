@@ -163,12 +163,12 @@ function checkBackgroundProcess()
         success: function (data) {
             if (data != unique_session_id)
             {
-                alert(message);
+                toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 clearTimeout(ping_timer);
             }
         },
         error: function(data) {
-            alert(message);
+            toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             clearTimeout(ping_timer);
         }
     });

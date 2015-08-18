@@ -96,6 +96,24 @@ var ping_timer;
 //---------------------------------------------------------
 
 $(document).ready(function() {
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": true,
+        "progressBar": false,
+        "positionClass": "toast-top-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "500",
+        "hideDuration": "2000",
+        "timeOut": "6000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut",
+    }
+
     waitingDialog.show('Loading the interface ...', {dialogSize: 'sm'});
 
     $('#tree_type').change(function() {
@@ -185,8 +203,7 @@ $(document).ready(function() {
 
             if (readOnlyResponse[0] == true)
             {
-                alert('It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.');
-
+                toastr.info("It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
@@ -309,7 +326,7 @@ $(document).ready(function() {
             newBin();
         } // response callback
     ).fail(function() {
-        alert('One or more ajax request has failed, See console logs for details.');
+        toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
         console.log(arguments);
     }); // promise
 
@@ -1259,7 +1276,8 @@ function storeRefinedBins() {
         colors: JSON.stringify(colors, null, 4),
     },
     function(server_response, status){
-          alert("Server: " + server_response + "\n\n(status: " + status + ")");
+
+        toastr.info(server_response, "Server");
     });
 }
 
@@ -1298,7 +1316,7 @@ function storeCollection() {
         colors: JSON.stringify(colors, null, 4),
     },
     function(server_response, status){
-          alert("Server: " + server_response + "\n\n(status: " + status + ")");
+        toastr.info(server_response, "Server");
     });
 
     $('#modStoreCollection').modal('hide');    
@@ -1318,7 +1336,7 @@ function generateSummary() {
         url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             if ('error' in data){
-                alert(data['error']);
+                toastr.error(data['error']);
             } else {
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
@@ -1393,13 +1411,13 @@ function showCollectionDetails(list) {
 
 function loadCollection() {
     if ($.isEmptyObject(label_to_node_map)) {
-        alert('You should draw tree before load collection.');
+        toastr.warning('You should draw tree before load collection.');
         return;
     }
 
     var collection = $('#loadCollection_list').val();
     if (collection === null) {
-        alert('Please select a collection.');
+        toastr.warning('Please select a collection.');
         return;
     }
 
@@ -1544,7 +1562,7 @@ function saveState()
 
             if (response['status_code']==0)
             {
-                alert("Failed, Interface running in read only mode.");
+                toastr.error("Failed, Interface running in read only mode.");
             }
             else if (response['status_code']==1)
             {
@@ -1588,13 +1606,13 @@ function loadState()
             try{
                 var state = JSON.parse(response);
             }catch(e){
-                alert('Failed to parse state data, ' + e);
+                toastr.error('Failed to parse state data, ' + e);
                 return;
             }
 
             if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
             {
-                alert("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
                 return;
             }
 

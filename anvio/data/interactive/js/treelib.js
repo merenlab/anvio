@@ -1501,7 +1501,7 @@ function draw_tree(settings) {
     t.Parse(newick, settings['edge-normalization']);
 
     if (t.error != 0) {
-        alert('Error parsing tree');
+        toastr.error('Error while parsing tree data.');
         return;
     }
 
