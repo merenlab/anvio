@@ -26,10 +26,10 @@ function get_newick_leaf_order(newick)
 
 $(document).ready(function() {
     $('#sample_organization').change(function() {
+        $('#btn_redraw_metadata').prop('disabled', true);
+
         if (this.value == 'custom') 
             return;
-
-        $('#btn_redraw_metadata').prop('disabled', true);
 
         var organization = organizations[this.value];
         var sample_order;

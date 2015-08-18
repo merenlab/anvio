@@ -697,6 +697,10 @@ function buildLayersTable(order, settings)
         }).keyup(function() {
             $(this).colpickSetColor(this.value);
         });
+
+        $('#table_layers .drag-icon').on('mousedown', function() {
+            $('#sample_organization').val('custom').trigger('change');
+        });
     }
 
 
