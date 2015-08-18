@@ -940,6 +940,12 @@ class TablesForCollections(Table):
         if not len(source):
             raise ConfigError, 'Source identifier cannot be empty.'
 
+        if cluster_colors:
+            if set(clusters_dict.keys()) - set(cluster_colors.keys()):
+                raise ConfigError, 'Entries in the cluster dict do not match to entries in the colors dict.\
+                                    They do not have to be identical, but for each cluster id, there must be a color\
+                                    in the colors dict).'
+
         # remove any pre-existing information for 'source'
         self.delete_entries_for_key('source', source, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_colors_table_name])
 
@@ -959,9 +965,10 @@ class TablesForCollections(Table):
         db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids)])
         database._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_info_table_name, db_entries)
 
-        # populate colors table.
         if not cluster_colors:
             cluster_colors = utils.get_random_colors_dict(cluster_ids)
+
+        # populate colors table.
         db_entries = [(self.next_id(t.collections_colors_table_name), source, cid, cluster_colors[cid]) for cid in cluster_ids]
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_colors_table_name, db_entries)
 
