@@ -3,8 +3,10 @@
 """A script to import collections (and their colors)"""
 
 import sys
+from collections import Counter
 
 import anvio
+import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -24,67 +26,126 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 
+def main(args):
+    sanity_check(args)
+
+    I = lambda: 'contigs' if args.contigs else 'splits'
+
+    # read the input file with split/contig - bin ID associations
+    input_data_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
+
+    # populate colors dict with colors file if there is any
+    colors_dict = dict([l.strip().split('\t') for l in open(args.colors).readlines() if not l.startswith('#')]) if args.colors else {}
+
+    annotation_db = dbops.AnnotationDatabase(args.annotation_db)
+    splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+    contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
+    contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(splits_basic_info, contigs_basic_info)
+    annotation_db.disconnect()
+
+    run.info('Num contigs in the database', len(contigs_basic_info))
+    run.info('Num splits in the database', len(splits_basic_info))
+    run.info('Num %s in the input file' % I(), len(input_data_file_content))
+    run.info('Num bins the input file describes', len(set([i[1] for i in input_data_file_content])))
+
+    # lets make sure names in the input file are relevant to names in the database (whether it is contigs, or splits):
+    input_names = set([i[0] for i in input_data_file_content])
+    db_names = set(contigs_basic_info.keys() if args.contigs else splits_basic_info.keys())
+
+    entry_names_overlap_between_input_and_db = set.intersection(*[db_names, input_names])
+
+    if not len(entry_names_overlap_between_input_and_db):
+        raise ConfigError, "There is no overlap between the %(item)s names found in your input file\
+                            and %(item)s names found in the database. This is odd! For instance one\
+                            of the names from your file looks like this: '%(from_file)s', and this is\
+                            an example name from the database: '%(from_db)s'. Please issue a report if\
+                            you are almost certain that this is anvi'o's fault." \
+                                % {'item': I(), 'from_file': input_names.pop(), 'from_db': db_names.pop()}
+
+    run.info('Num %s both input file and the db has' % I(), len(entry_names_overlap_between_input_and_db))
+
+    data = {}
+
+    # populate the data ditionary
+    for entry_name, bin_name in input_data_file_content:
+        if entry_name not in entry_names_overlap_between_input_and_db:
+            continue
+
+        if not data.has_key(bin_name):
+            data[bin_name] = set([])
+
+        if args.contigs:
+            for split_name in contig_name_to_splits_dict[entry_name]:
+                data[bin_name].add(split_name)
+        else:
+            data[bin_name].add(entry_name)
+
+    if args.contigs:
+        run.info_single('%d of %d contig names in the input file that matched to contig names in the database\
+                         resolved into %d split names that described in %d bins.' % (len(entry_names_overlap_between_input_and_db),
+                                                                                     len(input_data_file_content),
+                                                                                     sum([len(v) for v in data.values()]),
+                                                                                     len(data)), nl_before = 1)
+
+
+    collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+    collections.append(args.source_identifier, data, colors_dict)
+
+
+def sanity_check(args):
+    if not args.source_identifier:
+        raise ConfigError, "You must define a source name for this collection."
+
+    if not args.profile_db:
+        raise ConfigError, "Anvi'o needs a profile database to add this collection to..."
+
+    try:
+        utils.check_sample_id(args.source_identifier)
+    except:
+        raise ConfigError, '"%s" is not a proper source name. A proper one should be a single word and not contain\
+                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                            any space characters, and the source ID shoudl not start with a digit.' % args.source_identifier
+
+    dbops.is_profile_db(args.profile_db)
+    if args.annotation_db:
+        dbops.is_annotation_db(args.annotation_db)
+
+    filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
+    if args.colors:
+        filesnpaths.is_file_tab_delimited(args.colors, expected_number_of_fields = 2)
+
+    num_occurences_of_entries = Counter([l.split('\t')[0] for l in open(args.data).readlines()])
+    if max(num_occurences_of_entries.values()) != 1:
+        raise ConfigError, "Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two\
+                            bins, and neither there should be the same bin assignment for a given %(item)s. Long story\
+                            short, each name should appear only once in your input file, and it is not the case :/" \
+                                                                        % {'item': 'contig' if args.contigs else 'split'}
+
+
+
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Import a collection into the profile database")
+    parser = argparse.ArgumentParser(description="Import an external binning result into anvi'o")
     parser.add_argument('data', metavar = "TAB DELIMITED FILE",
-                        help = 'The input file that describes bin ids for each split.')
-    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
+                        help = 'The input file that describes bin IDs for each split or contig.')
+    parser.add_argument('-p', '--profile-db', required = True, metavar = "PROFILE_DB",
                         help = 'Profile database.')
-    parser.add_argument('-S', '--source-identifier', metavar = 'SOURCE', default = None,
+    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
+                        help = 'Annotation database.')
+    parser.add_argument('-S', '--source-identifier', metavar = 'SOURCE', required = True,
                         help = "The source identifier when results are stored in the profile database. The default id\
                                 is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
                                 with new results. Using this parameter you can avoid that.")
     parser.add_argument('--colors', metavar = 'COLORS', default = None,
                         help = "Optional TAB-delimited file for bin colors.")
+    parser.add_argument('--contigs', action = 'store_true', default = False,
+                        help = 'Use this flag if your binning was done on contigs instead of splits. Please refer\
+                                to the documentation for help.')
     args = parser.parse_args()
 
 
     try:
-        if not args.source_identifier:
-            raise ConfigError, "You must define a source name for this collection."
-        if not args.profile_db:
-            raise ConfigError, "Anvi'o needs a profile database to add this collection to..."
-
-        source = args.source_identifier
-        profile_db_path = args.profile_db
-
-        try:
-            utils.check_sample_id(source)
-        except:
-            raise ConfigError, '"%s" is not a proper source name. A proper one should be a single word and not contain\
-                                ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                                any space characters, and the source ID shoudl not start with a digit.' % source
-
-        data, colors = {}, {}
-
-        filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
-        input_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
-        split_names = [c[0] for c in input_file_content]
-
-        if len(split_names) != len(set(split_names)):
-            raise ConfigError, "Some split names occur twice in the input file. A split cannot belong in two bins (and\
-            neither there shold be the same bin assignment for a given split appear more than once in a proper input\
-            file)."
-
-        for split_name, bin_name in input_file_content:
-            if not data.has_key(bin_name):
-                data[bin_name] = set([])
-
-            data[bin_name].add(split_name)
-
-        if args.colors:
-            filesnpaths.is_file_tab_delimited(args.colors, expected_number_of_fields = 2)
-            colors_file_content = [l.strip().split('\t') for l in open(args.colors).readlines() if not l.startswith('#')]
-            colors = dict(colors_file_content)
-
-            for bin_name in data:
-                if bin_name not in colors:
-                    colors[bin_name] = '#000000'
-
-        collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
-        collections.append(source, data, colors)
-
+        main(args)
     except ConfigError, e:
         print e
         sys.exit(-1)
