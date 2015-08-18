@@ -1,0 +1,5 @@
+Bin_0	#ABCDEF
+Bin_1	#FF2244
+Bin_2	#2244FF
+Bin_3	#22FF44
+Bin_4	#44FFFF
