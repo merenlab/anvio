@@ -8,6 +8,7 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.fastalib as u
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -64,14 +65,7 @@ class Table(object):
             self.split_length = database.get_meta_value('split_length')
             self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
             self.splits_info  = database.get_table_as_dict(t.splits_info_table_name)
-
-            self.contig_name_to_splits = {}
-            for split_name in self.splits_info:
-                parent = self.splits_info[split_name]['parent']
-                if self.contig_name_to_splits.has_key(parent):
-                    self.contig_name_to_splits[parent].append(split_name)
-                else:
-                    self.contig_name_to_splits[parent] = [split_name]
+            self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.splits_info, self.contigs_info)
 
         database.disconnect()
 

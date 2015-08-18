@@ -457,6 +457,26 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
 
     return contigs_splits_dict
 
+def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
+    """
+    Returns a dict for contig name to split name conversion.
+
+    Here are the proper source of the input params:
+
+        contigs_basic_info_dict = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
+        splits_basic_info_dict  = database.get_table_as_dict(t.splits_info_table_name)
+    """
+    contig_name_to_splits_dict = {}
+
+    for split_name in splits_basic_info_dict:
+        parent = splits_basic_info_dict[split_name]['parent']
+        if contig_name_to_splits_dict.has_key(parent):
+            contig_name_to_splits_dict[parent].append(split_name)
+        else:
+            contig_name_to_splits_dict[parent] = [split_name]
+
+    return contig_name_to_splits_dict
+
 
 def check_sample_id(sample_id):
     if sample_id:
