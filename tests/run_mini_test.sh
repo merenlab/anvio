@@ -47,9 +47,6 @@ anvi-populate-search-table test-output/ANNOTATION.db
 INFO "Populating search tables in the latest annotation database using a mock HMM collection from an external directory ..."
 anvi-populate-search-table test-output/ANNOTATION.db -H external_hmm_profile
 
-INFO "Populating collections tables using mock clustering results for CONCOCT ..."
-anvi-populate-collections-table test-output/ANNOTATION.db --parser concoct -i concoct.txt
-
 INFO "Annotation DB is ready; here are the tables in it:"
 sqlite3 test-output/ANNOTATION.db '.tables'
 
