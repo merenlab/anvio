@@ -65,8 +65,9 @@ function buildMetadataTable(metadata_layer_order, metadata_layers) {
 
     for (var i=0; i < metadata_layer_order.length; i++)
     {
-        var layer_name = metadata_layer_order[i];
-        var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
+        var layer_name  = metadata_layer_order[i];
+        var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
+        var short_name  = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
 
         var hasSettings = false;
         if (typeof(metadata_layers) !== 'undefined' && typeof(metadata_layers[layer_name]) !== 'undefined') {
@@ -93,16 +94,16 @@ function buildMetadataTable(metadata_layer_order, metadata_layers) {
             }
             else
             {
-                var norm = "none";
-                var min    = 0;
-                var max    = 0;
+                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none');
+                var min          = 0;
+                var max          = 0;
                 var min_disabled = true;
                 var max_disabled = true;
-                var height = 500;
-                var color  = '#919191';
-                var margin = 15;
-                var color_start = "#FFFFFF";
-                var type = "bar";
+                var height       = getNamedLayerDefaults(layer_name, 'height', 500);
+                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191');
+                var margin       = 15;
+                var color_start  = "#FFFFFF";
+                var type         = "bar";
             }
 
             var template = '<tr metadata-layer-name="{name}" data-type="{data-type}">' +
@@ -145,6 +146,8 @@ function buildMetadataTable(metadata_layer_order, metadata_layers) {
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin);
+            
+            $('#tbody_metadata').append(template); 
         }
         else
         {
@@ -157,7 +160,7 @@ function buildMetadataTable(metadata_layer_order, metadata_layers) {
             }
             else
             {
-                var height = 80;
+                var height = getNamedLayerDefaults(layer_name, 'height', 80);
                 var margin = 15;
             }
 
@@ -190,9 +193,9 @@ function buildMetadataTable(metadata_layer_order, metadata_layers) {
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin);
-        }
-
-        $('#tbody_metadata').append(template);   
+        
+            $('#tbody_metadata').prepend(template);
+        }  
     }
 
     $('.colorpicker').colpick({
@@ -360,7 +363,7 @@ function drawMetadataLayers(settings) {
                     drawText('metadata', {
                         'x': total_radius + 20,
                         'y': 0 - (metadata_layer_boundaries[i][0] + metadata_layer_boundaries[i][1]) / 2
-                    }, metadata_layer_name , metadata_layer_settings['height'] / 3 + 'px', 'left', metadata_layer_settings['color']);
+                    }, getNamedLayerDefaults(metadata_layer_name, 'pretty_name', metadata_layer_name) , metadata_layer_settings['height'] / 3 + 'px', 'left', metadata_layer_settings['color']);
                     
                     drawText('metadata', {
                         'x': total_radius + 10,
@@ -374,12 +377,15 @@ function drawMetadataLayers(settings) {
 
                 }
 
+                var start = layer_boundaries[layer_index][0];
+                var width = layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0];
+
                 var rect = drawPhylogramRectangle('metadata',
                     'metadata',
-                    layer_boundaries[layer_index][0],
+                    start,
                     0 - metadata_layer_boundaries[i][0] - (size / 2),
                     size,
-                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    width,
                     color,
                     1,
                     true);
