@@ -1309,11 +1309,13 @@ class GenesInSplits:
 
 
 def is_annotation_db(db_path):
+    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'annotation':
         raise ConfigError, '"%s" is not a anvio annotation database.' % db_path
 
 
 def is_profile_db(db_path):
+    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'profile':
         raise ConfigError, '"%s" is not a anvio profile database.' % db_path
 
