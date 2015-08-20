@@ -491,6 +491,18 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id
 
 
+def is_this_name_OK_for_database(variable_name, content, allowed_chars = allowed_chars.replace('.', '')):
+    if content[0] in digits:
+        raise ConfigError, "Sorry, '%s' can't start with a digit. Long story. Please specify a sample name\
+                            that starts with an ASCII letter." % variable_name
+
+    if len([c for c in content if c not in allowed_chars]):
+        raise ConfigError, "Well, '%s' parameter contains characters that anvi'o does not like. Please\
+                            limit the characters to ASCII letters, digits, the underscore and dash\
+                            characters ('_', '-')." % variable_name
+
+
+
 def check_contig_names(contig_names, dont_raise = False):
     all_characters_in_contig_names = set(''.join(contig_names))
     characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
