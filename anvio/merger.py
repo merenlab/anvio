@@ -470,8 +470,6 @@ class MultipleRuns:
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
         # every metadata file that may be required.
-        clusterings = []
-
         if not self.skip_hierarchical_clustering:
             for config_name in self.clustering_configs:
                 config_path = self.clustering_configs[config_name]
@@ -485,20 +483,7 @@ class MultipleRuns:
                     self.progress.end()
                     continue
 
-                clusterings.append(config_name)
-                db_entries = tuple([config_name, newick])
-
-                profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
-                profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % tables.clusterings_table_name, db_entries)
-                profile_db.disconnect()
-
-        self.run.info('available_clusterings', clusterings)
-        self.run.info('default_clustering', constants.merged_default)
-
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        profile_db.db.set_meta_value('default_clustering', constants.merged_default)
-        profile_db.db.set_meta_value('available_clusterings', ','.join(clusterings))
-        profile_db.disconnect()
+                dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == constants.merged_default, run = self.run)
 
 
     def merge_split_summaries(self):
