@@ -35,7 +35,7 @@ RUN pip install anvio==$ANVIO_VERSION
  
 COPY tests /anvio-tests
  
-RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>\[\e[m\] \[\e[0m\]\"" >>> /etc/profile.d/prompt
+RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /etc/profile.d/prompt
 .sh
  
 CMD /bin/bash -l
