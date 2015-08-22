@@ -22,21 +22,19 @@ RUN mkdir -p /tmp/build && \
     cp prodigal /usr/bin/ && \
     cd - && \
     rm -rf /tmp/build
- 
+
+RUN pip install cython=0.23
+
 RUN pip install bottle==0.12.8 \
     hcluster==0.2.0 \
     ete2==2.3.6 \
     scikit-learn==0.16.1 \
     django==1.8.4 \
-    pysam==0.8.3 \
-    cython==0.23
+    pysam==0.8.3
  
 RUN pip install anvio==$ANVIO_VERSION
  
 COPY tests /anvio-tests
-
-RUN apt-get remove -y gcc gcc-4.8
-RUN apt-get autoremove -y
 
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /etc/profile.d/prompt.sh
 
