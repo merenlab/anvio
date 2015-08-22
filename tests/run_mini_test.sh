@@ -77,7 +77,7 @@ anvi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
 INFO "Use anvi-experimental-organization to generate another tree"
 # this is meaningless here, but it is an example to show how one could generate new trees
-anvi-experimental-organization ../../anvio/data/clusterconfigs/merged/tnf-cov -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
+anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -o test-output/204-MERGED/experimental-tree.txt -a test-output/ANNOTATION.db
 
 INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
