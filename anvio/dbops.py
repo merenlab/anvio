@@ -1360,3 +1360,44 @@ def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path
                                 % 'anvi-merge' if merged else 'anvi-profile'
 
     return True
+
+
+def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering_newick, make_default = False, run = run):
+    is_profile_db(profile_db_path)
+    utils.is_this_name_OK_for_database('clustering_id', clustering_id)
+
+    profile_db = ProfileDatabase(profile_db_path)
+
+    try:
+        available_clusterings = profile_db.db.get_meta_value('available_clusterings').split(',')
+    except:
+        available_clusterings = []
+
+    if clustering_id in available_clusterings:
+        run.warning('Clustering for the ID "%s" is already in the database. Its content will be replaced with\
+                     the new result.' % clustering_id)
+
+        profile_db.db._exec('''DELETE FROM %s where clustering = "%s"''' % (t.clusterings_table_name, clustering_id))
+    else:
+        available_clusterings.append(clustering_id)
+
+    profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, tuple([clustering_id, clustering_newick]))
+
+    try:
+        profile_db.db.remove_meta_key_value_pair('available_clusterings')
+    except:
+        pass
+    profile_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
+
+
+    if make_default:
+        try:
+            profile_db.db.remove_meta_key_value_pair('default_clustering')
+        except:
+            pass
+        profile_db.db.set_meta_value('default_clustering', clustering_id)
+
+    profile_db.disconnect()
+
+    run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_id)
+
