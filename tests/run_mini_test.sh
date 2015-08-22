@@ -76,10 +76,10 @@ INFO "Generating network descriptions for samples based on ORFs and functions ..
 anvi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/ANNOTATION.db
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
-anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -o test-output/204-MERGED/EXP-ORG-FILE.txt -a test-output/ANNOTATION.db --skip-store-in-db
+anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -a test-output/ANNOTATION.db -o test-output/204-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
 
 INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, and add the resulting tree into the database as 'EXP-ORG-DB'"
-anvi-experimental-organization -i test-output/204-MERGED -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db example_clustering_configuration.ini --name EXP-ORG-DB
+anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -a test-output/ANNOTATION.db -p test-output/204-MERGED/PROFILE.db --name EXP-ORG-DB
 
 INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
