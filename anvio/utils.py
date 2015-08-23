@@ -261,10 +261,6 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path).readline().strip('\n').split('\t')[1:]
 
 
-def get_json_obj_from_TAB_delim_metadata(input_file):
-    return json.dumps([line.strip('\n').split('\t') for line in open(input_file).readlines()])
-
-
 def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = []):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
