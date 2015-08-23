@@ -54,7 +54,7 @@ parser.add_argument('-a', '--annotation-db', metavar = 'ANNOTATION_DB', default 
 parser.add_argument('-v', '--view', metavar = 'VIEW', default = None,
                     help = 'What view to show on the interface. To see a list of available views, use --show-views flag.')
 parser.add_argument('-f', '--fasta-file', metavar = 'FASTA', default = None,
-                    help = 'FASTA file for contigs.')
+                    help = 'FASTA file for each item appear in view data.')
 parser.add_argument('-d', '--view-data', metavar = 'TXT', default = None,
                     help = 'TAB-delimited view data file.')
 parser.add_argument('-t', '--tree', metavar = 'NEWICK', default = None,
@@ -66,15 +66,29 @@ parser.add_argument('--title', metavar = "TITLE", default = None,
                             you can override that value using this parameter. If you are not using a\
                             anvio RUNINFO dictionary, a meaningful title will appear in the interface\
                             only if you define one using this parameter.")
-parser.add_argument('-A', '--additional-view-data', metavar = "FILE", default = None,
-                    help = "A TAB-delimited file for additional data for splits. The first column of this file\
-                            must be split names, and the rest of each column should be a data filed.\
-                            The file does not need to contain all split names, or values for each split in\
-                            every column. Anvi'o will try to deal with missing data nicely.")
 parser.add_argument('-V', '--additional-view', metavar = "FILE", default = None,
                     help = "A TAB-delimited file for an additional view to be used in the interface. This\
                             file file should contain all split names, and values for each of them in all\
-                            samples.")
+                            samples. Each column in this file must correspond to a sample name. Content\
+                            of this file will be called 'user_vuew', which will be available as a new item\
+                            in the 'views' combo box in the interface.")
+parser.add_argument('-A', '--additional-view-data', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for additional data for splits. The first column of this file\
+                            must be split names, and the rest of each column should be a unique attribute.\
+                            The file does not need to contain all split names, or values for each split in\
+                            every column. Anvi'o will try to deal with missing data nicely. Each column in this\
+                            file will be visualized as a new layer in the tree.")
+parser.add_argument('-D', '--layer-data', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file with information about layers. Each row in this file must\
+                            correspond to a sample name (of views). Each column must contain a unique attribute.\
+                            Search for 'layer data and layer organization for anvio' on Google to read the online\
+                            documentation for the structure and purpose of this file.")
+parser.add_argument('-R', '--layer-organization', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file with three columns: 'attribute', 'order', 'newick'. For each attribute,\
+                            either 'newick' or 'order' data must be prsent. While anvi'o will look for a comma-separated\
+                            list of sample names in 'order', 'newick' should describe the organization of sample names as\
+                            a tree structure. Don't hesitate to try it until you get it working as there are stringent\
+                            checks on this file.")
 parser.add_argument('-S', '--summary-index', metavar = "FILE", default = None,
                      help = "SUMMARY.cp, if there is one available, to inspect contigs from the interface. Will\
                              override the one found in RUNINFO file if it was also declared using -r parameter.")
