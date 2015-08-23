@@ -11,7 +11,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 annotation_db_version = "3"
-profile_db_version = "5"
+profile_db_version = "6"
 
 
 ####################################################################################################
@@ -83,12 +83,12 @@ states_table_types                   = ['text',  'text'  ,      'text'    ]
 #
 ####################################################################################################
 
-# notice that metadata table is the only table that doesn't have a name. because it is a bit tricky.
-# for single profiles, metadata_table is stored as "metadata", however, for merged profiles,
-# each metadata item in the metadata_table_structure becomes its own table, where the values of splits
-# for a given table name class is stored accross samples.
-metadata_table_structure             = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
-metadata_table_types                 = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
+# notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
+# for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
+# each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
+# become sample names. 
+atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
+atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 clusterings_table_name               = 'clusterings'
 clusterings_table_structure          = ['clustering', 'newick' ]
