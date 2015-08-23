@@ -72,9 +72,9 @@ parser.add_argument('-V', '--additional-view', metavar = "FILE", default = None,
                             samples. Each column in this file must correspond to a sample name. Content\
                             of this file will be called 'user_vuew', which will be available as a new item\
                             in the 'views' combo box in the interface.")
-parser.add_argument('-A', '--additional-view-data', metavar = "FILE", default = None,
-                    help = "A TAB-delimited file for additional data for splits. The first column of this file\
-                            must be split names, and the rest of each column should be a unique attribute.\
+parser.add_argument('-A', '--additional-layers', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for additional layers for splits. The first column of this file\
+                            must be split names, and the remaining columns should be unique attributes.\
                             The file does not need to contain all split names, or values for each split in\
                             every column. Anvi'o will try to deal with missing data nicely. Each column in this\
                             file will be visualized as a new layer in the tree.")

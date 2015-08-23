@@ -45,13 +45,15 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.state = A('state')
         self.split_hmm_layers = A('split_hmm_layers')
-        self.additional_view_data_path = A('additional_view_data')
+        self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
         self.profile_db_path = A('profile_db')
         self.annotation_db_path = A('annotation_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
+        self.layer_data_path = A('layer_data')
+        self.layer_organization_path = A('layer_organization')
         self.tree = A('tree')
         self.title = A('title')
         self.summary_index = A('summary_index')
@@ -61,7 +63,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.split_names_ordered = None
         self.splits_summary_index = {}
-        self.additional_view_data = None
+        self.additional_layers = None
         self.external_clustering = external_clustering
 
         self.collections = ccollections.Collections()
@@ -134,9 +136,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # search tables:
         self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
 
-        if self.additional_view_data_path:
-            filesnpaths.is_file_tab_delimited(self.additional_view_data_path)
-            self.additional_view_data = self.additional_view_data_path
+        if self.additional_layers_path:
+            filesnpaths.is_file_tab_delimited(self.additional_layers_path)
+            self.additional_layers = self.additional_layers_path
 
         self.check_names_consistency()
         self.convert_view_data_into_json()
@@ -307,15 +309,15 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                                 know why is this the case, but here is a couple of them: %s'\
                                     % ', '.join(splits_in_tree_but_not_in_database[0:5])
 
-        if self.additional_view_data_path:
-            splits_in_additional_view_data = set(sorted([l.split('\t')[0] for l in open(self.additional_view_data_path).readlines()[1:]]))
-            splits_only_in_additional_view_data = []
-            for split_name in splits_in_additional_view_data:
+        if self.additional_layers_path:
+            splits_in_additional_layers = set(sorted([l.split('\t')[0] for l in open(self.additional_layers_path).readlines()[1:]]))
+            splits_only_in_additional_layers = []
+            for split_name in splits_in_additional_layers:
                 if split_name not in splits_in_tree:
-                    splits_only_in_additional_view_data.append(split_name)
-            if len(splits_only_in_additional_view_data):
-                one_example = splits_only_in_additional_view_data[-1]
-                num_all = len(splits_only_in_additional_view_data)
+                    splits_only_in_additional_layers.append(split_name)
+            if len(splits_only_in_additional_layers):
+                one_example = splits_only_in_additional_layers[-1]
+                num_all = len(splits_only_in_additional_layers)
                 run.warning("Some of the contigs in your addtional view data file does not\
                             appear to be in anywhere else. Additional view data file is not\
                             required to list all contigs (which means, there may be contigs\
@@ -345,10 +347,10 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
     def convert_view_data_into_json(self):
         '''This function's name must change to something more meaningful.'''
 
-        additional_dict, additional_headers = None, []
-        if self.additional_view_data_path:
-            additional_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_view_data_path)
-            additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_view_data_path)
+        additional_layers_dict, additional_layer_headers = None, []
+        if self.additional_layers_path:
+            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path)
+            additional_layer_headers = utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -372,8 +374,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             json_header.extend(view_headers)
 
             # (5) then add 'additional' headers as the outer ring:
-            if additional_headers:
-                json_header.extend(additional_headers)
+            if additional_layer_headers:
+                json_header.extend(additional_layer_headers)
 
             # (6) finally add hmm search results
             if self.hmm_searches_header:
@@ -396,8 +398,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                 # (4) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (5) adding additional data
-                json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
+                # (5) adding additional layers
+                json_entry.extend([additional_layers_dict[split_name][header] if additional_layers_dict.has_key(split_name) else None for header in additional_layer_headers])
 
                 # (6) adding hmm stuff
                 if self.hmm_searches_dict:
