@@ -55,8 +55,8 @@ parser.add_argument('-v', '--view', metavar = 'VIEW', default = None,
                     help = 'What view to show on the interface. To see a list of available views, use --show-views flag.')
 parser.add_argument('-f', '--fasta-file', metavar = 'FASTA', default = None,
                     help = 'FASTA file for contigs.')
-parser.add_argument('-m', '--metadata', metavar = 'TXT', default = None,
-                    help = 'TAB-delimited metadata file')
+parser.add_argument('-d', '--view-data', metavar = 'TXT', default = None,
+                    help = 'TAB-delimited view data file.')
 parser.add_argument('-t', '--tree', metavar = 'NEWICK', default = None,
                     help = 'Newick tree of contigs. Declaring a tree file using this parameter will override\
                             the tree file in RUNINFO.')
@@ -66,11 +66,11 @@ parser.add_argument('--title', metavar = "TITLE", default = None,
                             you can override that value using this parameter. If you are not using a\
                             anvio RUNINFO dictionary, a meaningful title will appear in the interface\
                             only if you define one using this parameter.")
-parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
-                    help = "A TAB-delimited file for additional metadata for splits. The first column\
-                            should be split names, and the rest of each column should be a metadata filed.\
+parser.add_argument('-A', '--additional-view-data', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for additional data for splits. The first column of this file\
+                            must be split names, and the rest of each column should be a data filed.\
                             The file does not need to contain all split names, or values for each split in\
-                            every column. Anvi'o will deal with missing data nicely.")
+                            every column. Anvi'o will try to deal with missing data nicely.")
 parser.add_argument('-V', '--additional-view', metavar = "FILE", default = None,
                     help = "A TAB-delimited file for an additional view to be used in the interface. This\
                             file file should contain all split names, and values for each of them in all\
