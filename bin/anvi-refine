@@ -57,8 +57,8 @@ parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', defa
                             each bin id you prefer to analyze).')
 parser.add_argument('-B', '--bin-ids-file', required = False, metavar = 'BINS FILE', default = None,
                     help = 'Text file for bins (each line should be a bin id).')
-parser.add_argument('-A', '--additional-metadata', metavar = "FILE", default = None,
-                    help = "A TAB-delimited file for additional metadata for contigs. The file should\
+parser.add_argument('-A', '--additional-view-data', metavar = "FILE", default = None,
+                    help = "A TAB-delimited file for additional view data for contigs. The file should\
                             contain all contigs that are present in other files.")
 parser.add_argument('-I', '--ip-address', metavar = 'IP_ADDR', default = '0.0.0.0', type=str,
                     help = 'IP address for the HTTP server. The default ip address (%(default)s) should\

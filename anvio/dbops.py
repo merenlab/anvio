@@ -21,8 +21,8 @@ import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.kmers as kmers
-import anvio.contig as contig
 import anvio.terminal as terminal
+import anvio.contigops as contigops
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -80,7 +80,7 @@ class AnnotationSuperclass(object):
         self.progress.new('Loading the annotation DB')
         annotation_db = AnnotationDatabase(self.annotation_db_path)
 
-        self.progress.update('Setting annotation metadata dict')
+        self.progress.update('Setting annotation self data dict')
         self.a_meta = annotation_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
@@ -260,7 +260,7 @@ class ProfileSuperclass(object):
         self.progress.new('Loading the annotation DB')
         profile_db = ProfileDatabase(self.profile_db_path)
 
-        self.progress.update('Setting profile metadata dict')
+        self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
@@ -322,7 +322,7 @@ class ProfileSuperclass(object):
     def init_collection_profile(self, collection):
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
-        table_names = [table_name for table_name in t.metadata_table_structure[1:-1]]
+        table_names = [table_name for table_name in t.atomic_data_table_structure[1:-1]]
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
@@ -335,7 +335,7 @@ class ProfileSuperclass(object):
         if self.p_meta['merged']:
             coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column = True)
         else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('metadata_splits', columns_of_interest = "mean_coverage", omit_parent_column = True))
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest = "mean_coverage", omit_parent_column = True))
 
         self.split_names_not_binned = set(coverage_table_data.keys())
 
@@ -347,7 +347,7 @@ class ProfileSuperclass(object):
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column = True)
             else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('metadata_splits', columns_of_interest = table_name, omit_parent_column = True))
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest = table_name, omit_parent_column = True))
 
             for bin_id in collection:
                 # populate averages per bin
@@ -589,7 +589,7 @@ class AnnotationDatabase:
 
             for order in range(0, len(split_start_stops)):
                 start, end = split_start_stops[order]
-                split_name = contig.gen_split_name(fasta.id, order)
+                split_name = contigops.gen_split_name(fasta.id, order)
 
                 # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
                 # holds kmer values for splits only. in one table, each split has a kmer value of their

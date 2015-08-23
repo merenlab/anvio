@@ -7,7 +7,6 @@ The default client of this library is under bin/anvi-merge"""
 import os
 
 import anvio
-import anvio.contig
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
@@ -313,8 +312,8 @@ class MultipleRuns:
                        'annotation_hash': self.annotation_hash}
         profile_db.create(meta_values)
 
-        # get metadata information for both contigs and splits:
-        self.metadata_fields, self.metadata_for_each_run = self.read_metadata_tables()
+        # get view data information for both contigs and splits:
+        self.atomic_data_fields, self.atomic_data_for_each_run = self.read_atomic_data_tables()
         self.split_parents = self.get_split_parents()
 
         self.run.info('profiler_version', anvio.__profile__version__)
@@ -348,7 +347,7 @@ class MultipleRuns:
             self.run.info('profile_summary_index', profile_summary_index)
 
         # critical part:
-        self.merge_metadata_files()
+        self.gen_view_data_tables_from_atomic_data()
 
         # We cluster? Note: the check is being done in the function!
         self.cluster_contigs_anvio()
@@ -368,7 +367,7 @@ class MultipleRuns:
 
 
     def get_normalized_coverage_of_split(self, target, sample_id, split_name):
-        return self.metadata_for_each_run[target][sample_id][split_name]['normalized_coverage'] * self.normalization_multiplier[sample_id]
+        return self.atomic_data_for_each_run[target][sample_id][split_name]['normalized_coverage'] * self.normalization_multiplier[sample_id]
 
 
     def get_max_normalized_ratio_of_split(self, target, split_name):
@@ -386,15 +385,15 @@ class MultipleRuns:
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
 
 
-    def merge_metadata_files(self):
-        essential_fields = [f for f in self.metadata_fields if constants.IS_ESSENTIAL_FIELD(f)]
-        auxiliary_fields = [f for f in self.metadata_fields if constants.IS_AUXILIARY_FIELD(f)]
+    def gen_view_data_tables_from_atomic_data(self):
+        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
+        auxiliary_fields = [f for f in self.atomic_data_fields if constants.IS_AUXILIARY_FIELD(f)]
 
         views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
-        # setting standard metadata table structure and types
-        merged_mtable_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
-        merged_mtable_types = ['text'] + ['numeric'] * len(self.merged_sample_ids) + ['text']
+        # setting standard view table structure and types
+        view_table_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
+        view_table_types = ['text'] + ['numeric'] * len(self.merged_sample_ids) + ['text']
 
         # generate a dictionary for normalized coverage of each contig across samples per target
         self.normalized_coverages = {'contigs': {}, 'splits': {}}
@@ -410,7 +409,7 @@ class MultipleRuns:
             for split_name in self.split_names:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
-        self.progress.new('Generating metadata tables')
+        self.progress.new('Generating view data tables')
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
@@ -430,12 +429,12 @@ class MultipleRuns:
                         elif essential_field == 'relative_abundance':
                             m[split_name][sample_id] = self.get_relative_abundance_of_split(target, sample_id, split_name)
                         else:
-                            m[split_name][sample_id] = self.metadata_for_each_run[target][sample_id][split_name][essential_field]
+                            m[split_name][sample_id] = self.atomic_data_for_each_run[target][sample_id][split_name][essential_field]
 
                 # variable 'm' for the essential field is now ready to be its own table:
-                profile_db.db.create_table(target_table, merged_mtable_structure, merged_mtable_types)
-                db_entries = [tuple([split_name] + [m[split_name][h] for h in merged_mtable_structure[1:]]) for split_name in self.split_names]
-                profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(merged_mtable_structure))), db_entries)
+                profile_db.db.create_table(target_table, view_table_structure, view_table_types)
+                db_entries = [tuple([split_name] + [m[split_name][h] for h in view_table_structure[1:]]) for split_name in self.split_names]
+                profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(view_table_structure))), db_entries)
 
                 if target == 'splits':
                     views_table.append(essential_field, target_table)
@@ -469,7 +468,7 @@ class MultipleRuns:
     def cluster_contigs_anvio(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
-        # every metadata file that may be required.
+        # every data file that may be required.
         clusterings = []
 
         if not self.skip_hierarchical_clustering:
@@ -535,34 +534,34 @@ class MultipleRuns:
 
     def get_split_parents(self):
         parents = {}
-        m = self.metadata_for_each_run['splits'].values()[0]
+        m = self.atomic_data_for_each_run['splits'].values()[0]
         for split in m:
             parents[split] = m[split]["__parent__"]
         return parents
 
 
-    def read_metadata_tables(self):
-        """reads metadata files of contigs and splits into a dict"""
-        metadata_for_each_run = {}
+    def read_atomic_data_tables(self):
+        """reads atomic data for contigs and splits from the database into a dict"""
+        atomic_data_table_for_each_run = {}
 
         for target in ['contigs', 'splits']:
-            metadata_for_each_run[target] = {}
+            atomic_data_table_for_each_run[target] = {}
 
-            target_table = 'metadata_%s' % target
+            target_table = 'atomic_data_%s' % target
 
             for r in self.input_runinfo_dicts.values():
                 db = anvio.db.DB(r['profile_db'], anvio.__profile__version__)
-                metadata_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
+                atomic_data_table_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
 
-        metadata_fields = db.get_table_structure('metadata_splits')
+        atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
         db.disconnect()
 
-        return metadata_fields, metadata_for_each_run
+        return atomic_data_table_fields, atomic_data_table_for_each_run
 
 
     def get_split_names(self, profile_db_path):
         profile_db = dbops.ProfileDatabase(profile_db_path)
-        split_names = profile_db.db.get_single_column_from_table('metadata_splits', 'contig')
+        split_names = profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig')
         profile_db.disconnect()
 
         return split_names
