@@ -104,7 +104,7 @@ INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p test-output/204-MERGED/PROFILE.db \
                  -a test-output/ANNOTATION.db \
-                 -A additional_metadata.txt \
+                 -A additional_view_data.txt \
                  -t test-output/204-MERGED/experimental-tree.txt \
                  -V additional_view.txt \
                  --split-hmm-layers
