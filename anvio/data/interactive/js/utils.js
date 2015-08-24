@@ -152,6 +152,38 @@ function fire_up_ncbi_blast(contig_name, program, database)
 
 //--------------------------------------------------------------------------------------------------
 
+function showDraggableDialog(title, content)
+{
+
+    var randomID = Math.floor((Math.random() * 100000) + 1);
+
+    var template = '<div class="modal" id="modal' + randomID + '" data-backdrop="false" style="pointer-events: none;"> \
+        <div class="modal-dialog" style="pointer-events: all;"> \
+            <div class="modal-content no-shadow"> \
+                <div class="modal-header"> \
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button> \
+                     <h4 class="modal-title">' + title + '</h4> \
+                </div> \
+                <div class="modal-body"> \
+                    ' + content + ' \
+                </div> \
+                <div class="modal-footer"> \
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button> \
+                </div> \
+            </div> \
+        </div> \
+    </div>';
+
+    $('body').append(template);
+    $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+}
+
+
+//--------------------------------------------------------------------------------------------------
+
 function checkBackgroundProcess()
 {
     var message = "It seems background process is down or changed, you may lose your work.";

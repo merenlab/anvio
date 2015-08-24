@@ -897,13 +897,16 @@ function getContigNames(bin_id) {
 
 
 function showContigNames(bin_id) {
-    var msg = '<h4>Splits in "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4><table class="table table-striped">';
+    var title = 'Splits in "' + $('#bin_name_' + bin_id).val() + '"';
+    var msg = '<table class="table table-striped">';
     var names = getContigNames(bin_id);
 
     for (var i in names)
         msg += "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + names[i] + "\");'>" + names[i] + "</a></td></tr>";
 
-    $('#bins-bottom').html(msg + '</table>');
+    msg = msg + '</table>';
+
+    showDraggableDialog(title, msg);
 }
 
 function newBin(id, binState) {
@@ -1108,30 +1111,27 @@ function showCompleteness(bin_id) {
     var refs = completeness_dict[bin_id]['refs'];
     var stats = completeness_dict[bin_id]['stats'];
 
-    var msg = '<h4>Completeness of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>' +
-        '<table class="table table-striped sortable">' +
+    var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
+
+    var msg = '<table class="table table-striped sortable">' +
         '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">Percent complenetess</th></tr></thead><tbody>';
 
     for (var source in stats)
         msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
 
-    $('#bins-bottom').html(msg + '</tbody></table>');
+    msg = msg + '</tbody></table>';
+
+    showDraggableDialog(title, msg);
 }
 
-function showRedundants(bin_id, updateOnly) {
+function showRedundants(bin_id) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    $('#bins-bottom').html(buildRedundantsTable(completeness_dict[bin_id], bin_id));
+    var stats = completeness_dict[bin_id]['stats'];
 
-}
-
-function buildRedundantsTable(info_dict, bin_id) {
-    var stats = info_dict['stats'];
-
-    var output = '<h4>Redundants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
-
-    output += '<div class="col-md-12">'
+    var title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
+    var output = '<div class="col-md-12">'
     var oddeven=0;
 
     for(var source in stats) {
@@ -1173,7 +1173,7 @@ function buildRedundantsTable(info_dict, bin_id) {
 
     output += '</div>';
 
-    return output;
+    showDraggableDialog(title, output);
 }
 
 function exportSvg() {
