@@ -1130,7 +1130,7 @@ function showRedundants(bin_id) {
 
     var stats = completeness_dict[bin_id]['stats'];
 
-    var title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
+    var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
     var output = '<div class="col-md-12">'
     var oddeven=0;
 
@@ -1173,7 +1173,7 @@ function showRedundants(bin_id) {
 
     output += '</div>';
 
-    showDraggableDialog(title, output);
+    showDraggableDialog(output_title, output);
 }
 
 function exportSvg() {
