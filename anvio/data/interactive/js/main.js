@@ -180,15 +180,15 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/sample_organization?timestamp=' + timestamp,
+            url: '/data/samples_order?timestamp=' + timestamp,
         }),
         $.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/sample_metadata?timestamp=' + timestamp,
+            url: '/data/samples_information?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, sampleOrganizationResponse, sampleMetadataResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -308,12 +308,12 @@ $(document).ready(function() {
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
             $("#tbody_metadata").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
-            organizations = JSON.parse(sampleOrganizationResponse[0]);
-            metadata = JSON.parse(sampleMetadataResponse[0]);
-            $('#sample_organization').append(new Option('custom'));
-            for (organization in organizations)
+            samples_order_dict = samplesOrderResponse[0];
+            samples_information_dict = sampleInformationResponse[0];
+            $('#samples_order').append(new Option('custom'));
+            for (order in samples_order_dict)
             {
-                $('#sample_organization').append(new Option(organization));
+                $('#samples_order').append(new Option(order));
             }
             buildMetadataTable();
 
@@ -716,7 +716,7 @@ function buildLayersTable(order, settings)
         });
 
         $('#table_layers .drag-icon').on('mousedown', function() {
-            $('#sample_organization').val('custom').trigger('change');
+            $('#samples_order').val('custom').trigger('change');
         });
     }
 
@@ -761,7 +761,7 @@ function serializeSettings(use_layer_names) {
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
-    state['organization-name'] = $('#sample_organization').val();
+    state['organization-name'] = $('#samples_order').val();
 
 
     // sync views object and layers table
