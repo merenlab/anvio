@@ -25,7 +25,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.interactive as interactive
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
 
 
 __author__ = "Özcan Esen"
@@ -81,17 +81,18 @@ groupC.add_argument('-A', '--additional-layers', metavar = "FILE", default = Non
                       The file does not need to contain all split names, or values for each split in\
                       every column. Anvi'o will try to deal with missing data nicely. Each column in this\
                       file will be visualized as a new layer in the tree.")
-groupC.add_argument('-D', '--layer-data', metavar = "FILE", default = None,
-              help = "A TAB-delimited file with information about layers. Each row in this file must\
-                      correspond to a sample name (of views). Each column must contain a unique attribute.\
-                      Search for 'layer data and layer organization for anvio' on Google to read the online\
-                      documentation for the structure and purpose of this file.")
-groupC.add_argument('-R', '--layer-organization', metavar = "FILE", default = None,
-              help = "A TAB-delimited file with three columns: 'attribute', 'order', 'newick'. For each attribute,\
-                      either 'newick' or 'order' data must be prsent. While anvi'o will look for a comma-separated\
-                      list of sample names in 'order', 'newick' should describe the organization of sample names as\
-                      a tree structure. Don't hesitate to try it until you get it working as there are stringent\
-                      checks on this file.")
+groupC.add_argument('-D', '--samples-information', metavar = "FILE", default = None,
+              help = "A TAB-delimited file with information about samples in your dataset (which also correspond)\
+                      to 'view layers'. Each row in this file must correspond to a sample name. Each column must\
+                      contain a unique attribute. Please refer to the documentation to learn more about the \
+                      structure and purpose of this file.")
+groupC.add_argument('-R', '--samples-order', metavar = "FILE", default = None,
+              help = "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
+                      the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
+                      tree structurei that describes the organization of each sample. Anvi'o will look for a\
+                      comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
+                      for more info. Also you shouldn't hesitate to try to find the right file format until you get\
+                      it working. There are stringent checks on this file, and you will not break anything while trying!.")
 
 groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                        the interface.")
@@ -163,6 +164,9 @@ except FilesNPathsError, e:
 except DictIOError, e:
     print e
     sys.exit(-3)
+except SamplesError, e:
+    print e
+    sys.exit(-4)
 
 
 #######################################################################################################################
@@ -207,10 +211,10 @@ def send_data(name):
         return json.dumps("Bin_")
     elif name == "session_id":
         return json.dumps(unique_session_id)
-    elif name == "sample_organization":
-        return json.dumps('{"num_reads":{"order":"","newick":"((DAY_19:3.8927e-12,(DAY_15A:1.17876e-12,DAY_17A:1.17876e-12)Int16:3.8927e-12)Int18:1.58727e-11,((DAY_15B:1.14795e-12,(DAY_17B:4.17546e-14,DAY_23:4.17546e-14)Int12:1.14795e-12)Int15:5.55138e-12,(DAY_22B:1.20141e-12,((DAY_18:3.08426e-14,DAY_22A:3.08426e-14)Int11:7.76164e-13,(DAY_16:3.99589e-13,DAY_24:3.99589e-13)Int13:7.76164e-13)Int14:1.20141e-12)Int17:5.55138e-12)Int19:1.58727e-11);"},"even_odd":{"order":"","newick":"((DAY_22B:0.000332086,((DAY_18:8.54156e-06,DAY_22A:8.54156e-06)Int11:0.00021462,(DAY_16:0.000110463,DAY_24:0.000110463)Int13:0.00021462)Int14:0.000332086)Int15:0.0376259,((DAY_15B:0.000506205,(DAY_17B:1.8431e-05,DAY_23:1.8431e-05)Int12:0.000506205)Int16:0.00441781,(DAY_19:0.00170499,(DAY_15A:0.00051519,DAY_17A:0.00051519)Int17:0.00170499)Int18:0.00441781)Int19:0.0376259);"},"basic":{"order":"DAY_15A,DAY_15B,DAY_16,DAY_17A,DAY_17B,DAY_18,DAY_19,DAY_22A,DAY_22B,DAY_23,DAY_24","newick":""}, "mini_test": {"order":"s204_6M,s204_7M,s204_9M", "newick":""}}')
-    elif name == "sample_metadata":
-        return json.dumps('{"DAY_17A":{"days_after_birth":"17","num_reads":"2409083","percent_mapped_reads":"84.4","days":"even","sections":"A"},"DAY_17B":{"days_after_birth":"17","num_reads":"14467205","percent_mapped_reads":"92.96","days":"even","sections":"A"},"DAY_18":{"days_after_birth":"18","num_reads":"11157806","percent_mapped_reads":"96.65","days":"odd","sections":"A"},"DAY_19":{"days_after_birth":"19","num_reads":"12605189","percent_mapped_reads":"88.5","days":"even","sections":"A"},"DAY_15B":{"days_after_birth":"15","num_reads":"8924116","percent_mapped_reads":"91.76","days":"even","sections":"A"},"DAY_22A":{"days_after_birth":"22","num_reads":"12585100","percent_mapped_reads":"96.69","days":"odd","sections":"B"},"DAY_16":{"days_after_birth":"16","num_reads":"10505839","percent_mapped_reads":"95.71","days":"odd","sections":"A"},"DAY_15A":{"days_after_birth":"15","num_reads":"5639445","percent_mapped_reads":"85.58","days":"even","sections":"A"},"DAY_23":{"days_after_birth":"23","num_reads":"6318127","percent_mapped_reads":"92.91","days":"even","sections":"B"},"DAY_22B":{"days_after_birth":"22","num_reads":"7386372","percent_mapped_reads":"95.11","days":"odd","sections":"B"},"DAY_24":{"days_after_birth":"24","num_reads":"10756936","percent_mapped_reads":"96.22","days":"odd","sections":"B"}}')
+    elif name == "samples_order":
+        return json.dumps(d.samples.samples_order_dict)
+    elif name == "samples_information":
+        return json.dumps(d.samples.samples_information_dict)
 
 
 @route('/data/view/<view_id>')
