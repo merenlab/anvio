@@ -1389,8 +1389,19 @@ def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering
         pass
     profile_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
 
+    try:
+        profile_db.db.remove_meta_key_value_pair('contigs_clustered')
+    except:
+        pass
+    profile_db.db.set_meta_value('contigs_clustered', True)
 
-    if make_default:
+    try:
+        profile_db.db.get_meta_value('default_clustering')
+        default_clustering_is_set = True
+    except:
+        default_clustering_is_set = False
+
+    if make_default or not default_clustering_is_set:
         try:
             profile_db.db.remove_meta_key_value_pair('default_clustering')
         except:
