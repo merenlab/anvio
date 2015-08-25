@@ -7,6 +7,7 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.dictio as dictio
+import anvio.samples as samples
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -52,8 +53,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
-        self.layer_data_path = A('layer_data')
-        self.layer_organization_path = A('layer_organization')
+        self.samples_information_path = A('samples_information')
+        self.samples_order_path = A('samples_order')
         self.tree = A('tree')
         self.title = A('title')
         self.summary_index = A('summary_index')
@@ -69,6 +70,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.collections = ccollections.Collections()
 
         AnnotationSuperclass.__init__(self, self.args)
+
+        self.samples = samples.Samples()
+        self.samples.populate_from_input_files(self.samples_information_path, self.samples_order_path)
 
         if self.annotation_db_path:
             self.completeness = completeness.Completeness(self.annotation_db_path)
