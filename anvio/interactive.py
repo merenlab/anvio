@@ -7,13 +7,12 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.dictio as dictio
-import anvio.samples as samples
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, TablesForStates, is_annotation_and_profile_dbs_compatible
+from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, SamplesInformationDatabase, TablesForStates, is_annotation_and_profile_dbs_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -50,11 +49,10 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.additional_view_path = A('additional_view')
         self.profile_db_path = A('profile_db')
         self.annotation_db_path = A('annotation_db')
+        self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
-        self.samples_information_path = A('samples_information')
-        self.samples_order_path = A('samples_order')
         self.tree = A('tree')
         self.title = A('title')
         self.summary_index = A('summary_index')
@@ -71,8 +69,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         AnnotationSuperclass.__init__(self, self.args)
 
-        self.samples = samples.Samples()
-        self.samples.populate_from_input_files(self.samples_information_path, self.samples_order_path)
+        samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
+        self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
 
         if self.annotation_db_path:
             self.completeness = completeness.Completeness(self.annotation_db_path)
