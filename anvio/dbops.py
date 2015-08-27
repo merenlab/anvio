@@ -21,6 +21,7 @@ import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.kmers as kmers
+import anvio.samplesops as samplesops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
 import anvio.filesnpaths as filesnpaths
@@ -640,6 +641,107 @@ class AnnotationDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+
+
+class SamplesInformationDatabase:
+    """To create an empty samples information database and/or access one.
+    
+       The purpose of this database is to deal with sample-specific information. Such as
+       how should samples be organized in the interactive interface, or what environmental
+       data available about them?
+    """
+    def __init__(self, db_path, run=run, progress=progress, quiet = True):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.meta = {}
+        self.init()
+
+
+    def init(self):
+        if not self.db_path:
+            raise ConfigError, "When SamplesInformationDatabase is called, the db_path parameter cannot be\
+                                'None' type :/"
+
+        if os.path.exists(self.db_path):
+            is_samples_information_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__samples__version__)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
+        else:
+            self.db = None
+
+
+    def get_samples_information_and_order_dicts(self):
+        if not self.db:
+            raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
+
+        samples = samplesops.SamplesInformation()
+
+        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name), self.db.get_table_as_dict(t.samples_attribute_aliases_table_name))
+        samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
+
+        return samples_information_dict, samples_order_dict
+
+
+    def create(self, samples_information_path = None, samples_order_path = None):
+        if os.path.exists(self.db_path):
+            raise ConfigError, "Anvi'o will not overwrite an existing samples information database. Please choose a\
+                                different name or remove the existing database ('%s') first." % (self.db_path)
+
+        samples = samplesops.SamplesInformation()
+        samples.populate_from_input_files(samples_information_path, samples_order_path)
+
+        if not self.db_path.lower().endswith('.db'):
+            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
+                                for imposing their views on how local databases should be named, and are humbled by your\
+                                cooperation."
+
+        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database = True)
+
+        # know thyself
+        self.db.set_meta_value('db_type', 'samples_information')
+
+        # set some useful meta values:
+        self.db.set_meta_value('creation_date', time.time())
+
+        # first create the easy one: the samples_order table.
+        available_orders = samples.samples_order_dict.keys()
+        db_entries = [(attribute, samples.samples_order_dict[attribute]['basic'], samples.samples_order_dict[attribute]['newick']) for attribute in samples.samples_order_dict]
+        self.db.create_table(t.samples_order_table_name, t.samples_order_table_structure, t.samples_order_table_types)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.samples_order_table_name, db_entries)
+        self.db.set_meta_value('available_orders', ','.join(available_orders))
+
+        # then create the table that holds aliases for sample attributes:
+        self.db.create_table(t.samples_attribute_aliases_table_name, t.samples_attribute_aliases_table_structure, t.samples_attribute_aliases_table_types)
+        db_entries = sorted([(alias, samples.aliases_to_attributes_dict[alias]) for alias in samples.aliases_to_attributes_dict])
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.samples_attribute_aliases_table_name, db_entries)
+
+        # then, create the harder one: the samples_information table.
+        aliases = sorted(samples.aliases_to_attributes_dict.keys())
+        samples_information_table_structure = ['samples'] + sorted(aliases)
+        samples_information_table_types = ['str'] + ['str'] * len(aliases)
+        self.db.create_table(t.samples_information_table_name, samples_information_table_structure, samples_information_table_types)
+        db_entries = [tuple([sample] + [samples.samples_information_dict[sample][h] for h in samples_information_table_structure[1:]]) for sample in samples.samples_information_dict]
+        self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
+
+        self.disconnect()
+
+        self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+        self.run.info('Number of samples', len(samples.samples_information_dict), quiet = self.quiet)
+        self.run.info('Number of organizations', len(available_orders), quiet = self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 
 
 ####################################################################################################
@@ -1300,15 +1402,18 @@ class GenesInSplits:
 #
 ####################################################################################################
 
+def is_samples_information_db(db_path):
+    if get_db_type(db_path) != 'samples_information':
+        raise ConfigError, "'%s' is not an anvi'o samples information database." % db_path
 
 def is_annotation_db(db_path):
     if get_db_type(db_path) != 'annotation':
-        raise ConfigError, '"%s" is not a anvio annotation database.' % db_path
+        raise ConfigError, "'%s' is not an anvi'o annotation database." % db_path
 
 
 def is_profile_db(db_path):
     if get_db_type(db_path) != 'profile':
-        raise ConfigError, '"%s" is not a anvio profile database.' % db_path
+        raise ConfigError, "'%s' is not an anvi'o profile database." % db_path
 
 
 def get_db_type(db_path):
