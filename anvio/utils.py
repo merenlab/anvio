@@ -418,7 +418,9 @@ def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in digits:
             raise ConfigError, "Sample names can't start with digits. Long story. Please specify a sample name\
-                                that starts with an ASCII letter (you can use '-s' parameter for that)."
+                                that starts with an ASCII letter (you may want to check '-s' parameter to set\
+                                a sample name if your client permits (otherwise you are going to have to edit\
+                                your input files))."
 
         allowed_chars_for_samples = allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
