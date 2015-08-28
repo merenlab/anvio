@@ -290,9 +290,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         # set title
         if self.title:
-            self.title = self.title + ' (%s)' % self.default_view
+            self.title = self.title
         else:
-            self.title = self.p_meta['sample_id'] + ' (%s)' % self.default_view
+            self.title = self.p_meta['sample_id']
 
 
     def check_names_consistency(self):
