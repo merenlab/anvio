@@ -84,13 +84,13 @@ function drawLegend(top, left, line_end) {
         });
     });
 
-    for (sample in metadata_categorical_colors)
+    for (sample in samples_categorical_colors)
     {
-        var names = Object.keys(metadata_categorical_colors[sample]);
+        var names = Object.keys(samples_categorical_colors[sample]);
 
         legends.push({
             'name': sample,
-            'source': 'metadata_categorical_colors',
+            'source': 'samples_categorical_colors',
             'key': sample,
             'item_names': names,
             'item_keys': names,
@@ -2265,10 +2265,10 @@ function draw_tree(settings) {
             }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
         }
 
-        createBin('viewport', 'metadata');
+        createBin('viewport', 'samples');
 
-        //draw metadata layers
-        drawMetadataLayers(settings);
+        //draw samples layers
+        drawSamplesLayers(settings);
     }
 
     // draw title

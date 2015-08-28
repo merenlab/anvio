@@ -304,9 +304,9 @@ $(document).ready(function() {
                 });
             });
 
-            // make layers and metadata table sortable
+            // make layers and samples table sortable
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
-            $("#tbody_metadata").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
+            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
             samples_order_dict = samplesOrderResponse[0];
             samples_information_dict = sampleInformationResponse[0];
@@ -315,7 +315,7 @@ $(document).ready(function() {
             {
                 $('#samples_order').append(new Option(order));
             }
-            buildMetadataTable();
+            buildSamplesTable();
 
             $('#views_container').trigger('change'); // load default view
 
@@ -761,7 +761,7 @@ function serializeSettings(use_layer_names) {
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
-    state['organization-name'] = $('#samples_order').val();
+    state['samples-order'] = $('#samples_order').val();
 
 
     // sync views object and layers table
@@ -815,14 +815,14 @@ function serializeSettings(use_layer_names) {
         state['stack_bar_colors'] = stack_bar_colors;
     }
 
-    state['metadata-categorical-colors'] = metadata_categorical_colors;
-    state['metadata-layer-order'] = [];
-    state['metadata-layers'] = {};
-    $('#tbody_metadata tr').each(
+    state['samples-categorical-colors'] = samples_categorical_colors;
+    state['samples-layer-order'] = [];
+    state['samples-layers'] = {};
+    $('#tbody_samples tr').each(
         function(index, tr) {
-            var metadata_layer_name = $(tr).attr('metadata-layer-name');
-            state['metadata-layer-order'].push(metadata_layer_name);
-            state['metadata-layers'][metadata_layer_name] = {
+            var samples_layer_name = $(tr).attr('samples-layer-name');
+            state['samples-layer-order'].push(samples_layer_name);
+            state['samples-layers'][samples_layer_name] = {
                 'data-type'     : $(tr).attr('data-type'),
                 'height'        : parseFloat($(tr).find('.input-height').val()),
                 'margin'        : parseFloat($(tr).find('.input-margin').val()),
@@ -872,7 +872,7 @@ function drawTree() {
 
             waitingDialog.hide();
             $('#btn_draw_tree').prop('disabled', false);
-            $('#btn_redraw_metadata').prop('disabled', false);
+            $('#btn_redraw_samples').prop('disabled', false);
 
             if (settings['tree-radius'] == 0)
             {
@@ -1733,11 +1733,11 @@ function loadState()
             var current_view = $('#views_container').val();
             $("#tbody_layers").empty();
 
-            if (state.hasOwnProperty('metadata-categorical-colors'))
-                metadata_categorical_colors = state['metadata-categorical-colors']; 
+            if (state.hasOwnProperty('samples-categorical-colors'))
+                samples_categorical_colors = state['samples-categorical-colors']; 
 
             buildLayersTable(layer_order, views[current_view]);
-            buildMetadataTable(state['metadata-layer-order'], state['metadata-layers']);
+            buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
 
             current_state_name = $('#loadState_list').val();
             $('#current_state').html('[current state: ' + current_state_name + ']');

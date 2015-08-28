@@ -269,20 +269,20 @@
 
                 <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
                     <div id="sample-settings" class="form-horizontal">
-                       <h4>Sample Settings</h4>
+                       <h4>Sample Order</h4>
                         <div class="form-group form-margin">
-                                <label class="col-md-4 settings-label" for="tree_type" data-help="sample_organization">Sample organization:</label>
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Sample order:</label>
                                 <div class="col-md-8">
-                                    <select id="sample_organization" class="form-control input-xs">
+                                    <select id="samples_order" class="form-control input-xs">
                                         <!-- JS FILLS HERE -->
                                     </select>
                                 </div>
                         </div>
 
-                        <h4>Metadata Settings</h4>
+                        <h4>Sample Layers</h4>
 
-                        <div id="table_metadata_container">
-                            <table id="table_metadata">
+                        <div id="table_samples_container">
+                            <table id="table_samples">
                                 <thead>
                                     <tr>
                                         <td></td>
@@ -296,8 +296,8 @@
                                         <td data-help="layer-max">Max</td>
                                     </tr>
                                 </thead>
-                                <tbody id="tbody_metadata"></tbody>
-                                <tbody id="tbody_metadata_bottom">
+                                <tbody id="tbody_samples"></tbody>
+                                <tbody id="tbody_samples_bottom">
                                     <tr style="height: 30px">
                                         <td colspan="9">
                                             <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
@@ -331,7 +331,7 @@
                         </div>
                         <br />
                         <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                            <button id="btn_redraw_metadata" type="button" class="btn btn-default btn-sm" onClick="$('#metadata').empty(); drawMetadataLayers(serializeSettings());" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span>Redraw metadata</button>
+                            <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="$('#samples').empty(); drawSamplesLayers(serializeSettings());" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span>Redraw sample layers</button>
                         </div>
                     </div>
                 </div>

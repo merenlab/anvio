@@ -286,24 +286,24 @@ function mouseMoveHandler(event) {
     if (drawing_zoom)
         return;
     
-    if (event.target.id == 'path_metadata')
+    if (event.target.id == 'path_samples')
     {   
-        // metadata tooltip
+        // samples tooltip
         var sample_name = event.target.getAttribute('sample-name');
         var layer_name_hover = event.target.getAttribute('layer-name');
 
         var message = "";
-        for (var i=0; i < last_settings['metadata-layer-order'].length; i++)
+        for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
-            var layer_name = last_settings['metadata-layer-order'][i];
+            var layer_name = last_settings['samples-layer-order'][i];
 
             if (layer_name == layer_name_hover)
             {
-                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + layer_name + '</td><td>' + metadata[sample_name][layer_name] + '</td></tr>';
+                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
             }
             else
             {
-                message += '<tr><td>' + layer_name + '</td><td>' + metadata[sample_name][layer_name] + '</td></tr>';
+                message += '<tr><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
             }
         }
 
