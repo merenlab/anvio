@@ -63,14 +63,19 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.split_names_ordered = None
         self.splits_summary_index = {}
         self.additional_layers = None
+
+        self.samples_information_dict = {}
+        self.samples_order_dict = {}
+
         self.external_clustering = external_clustering
 
         self.collections = ccollections.Collections()
 
         AnnotationSuperclass.__init__(self, self.args)
 
-        samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
-        self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
+        if self.samples_information_db_path:
+            samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
+            self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
 
         if self.annotation_db_path:
             self.completeness = completeness.Completeness(self.annotation_db_path)
