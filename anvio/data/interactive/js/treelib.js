@@ -2168,7 +2168,9 @@ function draw_tree(settings) {
             {
                 if (prev_value != layer_items[j])
                 {
-                    items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
+                    if (isCategorical || prev_value != '')
+                        items_to_draw.push(new Array(prev_start, j - 1, prev_value)); // start, end, item;
+
                     prev_start = j;
                 }
                 prev_value = layer_items[j];
