@@ -684,7 +684,8 @@ class SamplesInformationDatabase:
 
         samples = samplesops.SamplesInformation()
 
-        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name), self.db.get_table_as_dict(t.samples_attribute_aliases_table_name))
+        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data = False),
+                                                                            self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data = False))
         samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
 
         return samples_information_dict, samples_order_dict
