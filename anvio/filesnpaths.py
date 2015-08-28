@@ -138,7 +138,7 @@ def is_proper_samples_order_file(file_path):
                              order should contain the same sample names. Sorry about the cryptic error message,\
                              but your file is not properly formatted :/"
 
-    return unique_list_of_samples
+    return unique_list_of_samples[0]
 
 
 def is_file_exists(file_path):
