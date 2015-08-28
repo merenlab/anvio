@@ -29,7 +29,11 @@ class SamplesInformation:
         self.aliases_to_attributes_dict = {}
 
         self.available_orders = set([])
-        self.available_samples = set([])
+
+        self.sample_names_in_samples_order_file = None
+        self.sample_names_in_samples_information_file = None
+
+        self.sample_names = None
 
         self.run = run
         self.prgress = progress
@@ -39,12 +43,10 @@ class SamplesInformation:
         if not samples_information_path:
             return
 
-        filesnpaths.is_proper_samples_information_file(samples_information_path)
+        self.sample_names_in_samples_information_file = filesnpaths.is_proper_samples_information_file(samples_information_path)
 
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
  
-        self.available_samples = set(self.samples_information_dict.keys())
-
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict))
 
 
@@ -92,7 +94,7 @@ class SamplesInformation:
         if not samples_order_path:
             return
 
-        filesnpaths.is_proper_samples_order_file(samples_order_path)
+        self.sample_names_in_samples_order_file = filesnpaths.is_proper_samples_order_file(samples_order_path)
 
         self.samples_order_dict = utils.get_TAB_delimited_file_as_dictionary(samples_order_path)
 
@@ -104,10 +106,18 @@ class SamplesInformation:
     def populate_from_input_files(self, samples_information_path = None, samples_order_path = None):
         self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
+
         self.sanity_check()
 
+        self.sample_names = self.sample_names_in_samples_information_file or self.sample_names_in_samples_order_file
 
     def sanity_check(self):
-        # FIXME: there must be a bunch of checks here. do orders describe all samples? do each column in
-        # the information dict have multiple unique values?
-        pass
+        if self.samples_information_dict and self.samples_order_dict:
+            if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
+                raise SamplesError, 'OK. Samples described in the information file and order file are not identical :/\
+                                     Here are the %d sample names in the information file: "%s", versus the %d sample\
+                                     names in the orders file: "%s".' % (len(self.sample_names_in_samples_information_file),
+                                                                         self.sample_names_in_samples_information_file,
+                                                                         len(self.sample_names_in_samples_order_file),
+                                                                         self.sample_names_in_samples_order_file)
+
