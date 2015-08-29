@@ -118,3 +118,6 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
                  -t test-output/204-MERGED/experimental-tree.txt \
                  -V additional_view.txt \
                  --split-hmm-layers
+
+INFO "Firing up the interactive interface to refine a bin ..."
+anvi-refine -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -s test-output/SAMPLES.db -c CONCOCT -b Bin_1
