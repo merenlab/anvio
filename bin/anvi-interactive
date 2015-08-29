@@ -116,14 +116,14 @@ groupE.add_argument('--dry-run', action = 'store_true', default = False,
 
 groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 groupF.add_argument('-I', '--ip-address', metavar = 'IP_ADDR', default = '0.0.0.0', type=str,
-        help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
-                work just fine for most.')
+              help = 'IP address for the HTTP server. The default ip address (%(default)s) should\
+                      work just fine for most.')
 groupF.add_argument('-P', '--port-number', metavar = 'INT', default = 8080, type=int,
-        help = 'Port number to use for communication; the default\
-                (%(default)d) should be OK for almost everyone.')
+              help = 'Port number to use for communication; the default\
+                      (%(default)d) should be OK for almost everyone.')
 groupF.add_argument('--read-only', action = 'store_true', default = False,
-        help = 'When the interactive interface is started with this flag, all database "write"\
-                operations will be disabled.')
+              help = 'When the interactive interface is started with this flag, all database "write"\
+                      operations will be disabled.')
 groupF.add_argument('--server-only', action = 'store_true', default = False,
               help = 'The default behavior is to start the local server, and fire up a browser that\
                       connects to the server. If you have other plans, and want to start the server\
