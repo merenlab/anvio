@@ -4,7 +4,7 @@ set -e
 
 INFO "Creating the output directory ..."
 # change directory and clean the old mess if it exists
-cd manual_interactive
+cd sandbox/files_for_manual_interactive
 rm -rf test-output
 mkdir test-output
 
