@@ -4,7 +4,7 @@ set -e
 
 INFO "Creating the output directory ..."
 # change directory and clean the old mess if it exists
-cd mini_test
+cd sandbox
 rm -rf test-output
 mkdir test-output
 
