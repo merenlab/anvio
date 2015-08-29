@@ -271,7 +271,7 @@ $(document).ready(function() {
                     success: function(data) {
                         layerdata = eval(data);
                         parameter_count = layerdata[0].length;
-                        
+
                         // since we are painting parent layers odd-even, 
                         // we should remove single parents (single means no parent)
                         removeSingleParents(); // in utils.js
@@ -311,7 +311,11 @@ $(document).ready(function() {
             $('#samples_order').append(new Option('custom'));
             for (order in samples_order_dict)
             {
-                $('#samples_order').append(new Option(order));
+                var order_name = order;
+                if (samples_order_dict[order]['newick'] != '')
+                    order_name += " (tree)";
+
+                $('#samples_order').append(new Option(order_name, order));
             }
             buildSamplesTable();
 
