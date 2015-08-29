@@ -270,10 +270,8 @@ $(document).ready(function() {
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
                         layerdata = eval(data);
-                        removeSingleParents(); // in utils.js
-
                         parameter_count = layerdata[0].length;
-
+                        
                         // since we are painting parent layers odd-even, 
                         // we should remove single parents (single means no parent)
                         removeSingleParents(); // in utils.js

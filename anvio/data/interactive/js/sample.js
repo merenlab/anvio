@@ -297,6 +297,11 @@ function drawSamplesLayers(settings) {
         var pindex = settings['layer-order'][j];
         var sample_name = getLayerName(pindex);
 
+        sample_xy[sample_name] = {
+            'x': layer_boundaries[layer_index][0] + (layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0]) / 2,
+            'y': (samples_layer_boundaries.length > 0) ? 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1] : 0,
+        }
+
         if (!(sample_name in samples_information_dict)) // skip if not sample
             continue;
 
@@ -304,11 +309,6 @@ function drawSamplesLayers(settings) {
         {
             drawGradientBackground(layer_boundaries[layer_index][0]);
             gradient_done = true;
-        }
-
-        sample_xy[sample_name] = {
-            'x': layer_boundaries[layer_index][0] + (layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0]) / 2,
-            'y': 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1],
         }
 
         for (var i=0; i < settings['samples-layer-order'].length; i++)
@@ -459,7 +459,6 @@ function drawSamplesTree(settings, sample_xy)
     var q = n.Begin();
 
     var sample_y = -1;
-
     while (q != null)
     {
         if (q.IsLeaf())
@@ -475,7 +474,7 @@ function drawSamplesTree(settings, sample_xy)
         {
             var pl = q.child.xy;
             var pr = q.child.GetRightMostSibling().xy;
-
+            
             q.xy['x'] = pl['x'] + (pr['x'] - pl['x']) / 2;
             q.xy['y'] = sample_y - (q.depth * 100);
         }
