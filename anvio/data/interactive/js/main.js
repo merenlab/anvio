@@ -270,8 +270,6 @@ $(document).ready(function() {
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
                         layerdata = eval(data);
-                        removeSingleParents(); // in utils.js
-
                         parameter_count = layerdata[0].length;
 
                         // since we are painting parent layers odd-even, 
@@ -313,7 +311,11 @@ $(document).ready(function() {
             $('#samples_order').append(new Option('custom'));
             for (order in samples_order_dict)
             {
-                $('#samples_order').append(new Option(order));
+                var order_name = order;
+                if (samples_order_dict[order]['newick'] != '')
+                    order_name += " (tree)";
+
+                $('#samples_order').append(new Option(order_name, order));
             }
             buildSamplesTable();
 
