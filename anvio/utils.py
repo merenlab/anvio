@@ -164,8 +164,11 @@ def is_program_exists(program):
 
 def run_command(cmdline):
     try:
-        if subprocess.call(cmdline, shell = True) < 0:
+        ret_val = subprocess.call(cmdline, shell = True)
+        if ret_val < 0:
             raise ConfigError, "command was terminated"
+        else:
+            return ret_val
     except OSError, e:
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
