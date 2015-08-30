@@ -158,7 +158,7 @@ class RefineBins(dbops.DatabasesMetaclass):
     def cluster_splits_of_interest(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
-        # every metadata file that may be required.
+        # any data that may be required.
         clusterings = {}
 
         for config_name in self.clustering_configs:

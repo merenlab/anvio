@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
 import time
 
 from anvio.columnprofile import ColumnProfile as ColumnProfile_in_C

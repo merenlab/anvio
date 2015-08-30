@@ -21,7 +21,7 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
-var VERSION = '0.2.0';
+var VERSION = '0.2.1';
 
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
@@ -51,7 +51,7 @@ var layer_boundaries;
 var SELECTED = new Array();
 var newick;
 
-var metadata;
+var layerdata;
 var contig_lengths;
 var parameter_count;
 
@@ -65,8 +65,8 @@ var stack_bar_colors = {};
 
 var context_menu_target_id = 0;
 
-var metadata_title = {};
-var metadata_dict;
+var layerdata_title = {};
+var layerdata_dict;
 var empty_tooltip = "";
 
 var last_settings;
@@ -96,6 +96,24 @@ var ping_timer;
 //---------------------------------------------------------
 
 $(document).ready(function() {
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": true,
+        "progressBar": false,
+        "positionClass": "toast-top-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "500",
+        "hideDuration": "2000",
+        "timeOut": "6000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut",
+    }
+
     waitingDialog.show('Loading the interface ...', {dialogSize: 'sm'});
 
     $('#tree_type').change(function() {
@@ -158,9 +176,19 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/session_id?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/samples_order?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/samples_information?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -175,8 +203,7 @@ $(document).ready(function() {
 
             if (readOnlyResponse[0] == true)
             {
-                alert('It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.');
-
+                toastr.info("It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
@@ -184,153 +211,6 @@ $(document).ready(function() {
 
             document.title = titleResponse[0];
             contig_lengths = eval(contigLengthsResponse[0]);
-
-            /*
-                Get metadata and create layers table
-            */
-
-            metadata = eval(defaultViewResponse[0]);
-            parameter_count = metadata[0].length;
-
-            // since we are painting parent layers odd-even, 
-            // we should remove single parents (single means no parent)
-            removeSingleParents(); // in utils.js
-
-            layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-            layer_types = {};
-
-            //  Edit Attributes For Multiple Layers
-
-            $('#select_layer').on('change', function() {
-                var layer_name = $('#select_layer').val();
-
-                // clean prior selections
-                $('.layer_selectors').prop('checked', false);
-
-                if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
-                    $('.titles').each(
-                        function(){
-                            if (this.title.indexOf(layer_name) > -1)
-                            {
-                                $('#select_this_' + getNumericPart(this.id)).prop('checked','checked');
-                            }
-                        }
-                    );
-                }
-            });
-
-            $('#picker_multiple').colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'light',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('background-color', '#' + hex);
-                    $(el).attr('color', '#' + hex);
-                    if (!bySetColor) $(el).val(hex);
-
-                    $('.layer_selectors:checked').each(
-                        function(){
-                            $('#' + 'picker' + getNumericPart(this.id)).attr('color', '#' + hex);
-                            $('#' + 'picker' + getNumericPart(this.id)).css('background-color', '#' + hex);
-                        }
-                    );
-                }
-            }).keyup(function() {
-                    $(this).colpickSetColor(this.value);
-            });
-
-            $('#picker_start_multiple').colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'light',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('background-color', '#' + hex);
-                    $(el).attr('color', '#' + hex);
-                    if (!bySetColor) $(el).val(hex);
-
-                    $('.layer_selectors:checked').each(
-                        function(){
-                            $('#' + 'picker_start' + getNumericPart(this.id)).attr('color', '#' + hex);
-                            $('#' + 'picker_start' + getNumericPart(this.id)).css('background-color', '#' + hex);
-                        }
-                    );
-                }
-            }).keyup(function() {
-                    $(this).colpickSetColor(this.value);
-            });
-
-            $('#min_multiple').on('change', function(){
-                var intend_value = $('#min_multiple').val();
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#' + 'min' + getNumericPart(this.id)).attr('value', intend_value);
-                    }
-                );
-            });
-
-            $('#max_multiple').on('change', function(){
-                var intend_value = $('#max_multiple').val();
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#' + 'max' + getNumericPart(this.id)).attr('value', intend_value);
-                    }
-                );
-            });
-
-            $('#height_multiple').on('change', function(){
-                var intend_value = $('#height_multiple').val();
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#' + 'height' + getNumericPart(this.id)).attr('value', intend_value);
-                    }
-                );
-            });
-
-            $('#margin_multiple').on('change', function(){
-                var intend_value = $('#margin_multiple').val();
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#' + 'margin' + getNumericPart(this.id)).attr('value', intend_value);
-                    }
-                );
-            });
-
-            $('#type_multiple').on('change', function(){
-                var intend_value = $('#type_multiple').val();
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#type' + getNumericPart(this.id)).val(intend_value).trigger('change');
-                    }
-                );
-            });
-
-            $('#normalization_multiple').on('change', function(){
-                var intend_value = $('#normalization_multiple option:selected').val();
-
-                $('.layer_selectors:checked').each(
-                    function(){
-                        $('#normalization' + getNumericPart(this.id)).val(intend_value).trigger('change');
-                    }
-                );
-            });
-
-            $('#select_all').on('click', function() {
-                if(this.checked) {
-                    $('.layer_selectors').each(
-                        function() {
-                            this.checked = true;
-                        }
-                    );
-
-                }else{
-                    $('.layer_selectors').each(
-                        function() {
-                            this.checked = false;
-                        }
-                    );
-                }
-            });
-
 
             /* 
             //  Clusterings
@@ -389,9 +269,23 @@ $(document).ready(function() {
                     cache: false,
                     url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        metadata = eval(data);
+                        layerdata = eval(data);
+                        parameter_count = layerdata[0].length;
+
+                        // since we are painting parent layers odd-even, 
+                        // we should remove single parents (single means no parent)
                         removeSingleParents(); // in utils.js
-                        
+
+                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                        layer_types = {};
+
+                        // add layerdata columns to search window
+                        $('#searchLayerList').empty();
+                        for (var i=0; i < layerdata[0].length; i++)
+                        {
+                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
+                        }
+
                         $('#views_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false);
 
@@ -403,15 +297,27 @@ $(document).ready(function() {
 
                         $("#tbody_layers").empty();
 
-                        buildLayersTable(layer_order, views[current_view]);
-
-                        // make layers table sortable
-                        $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
-
-                        
+                        buildLayersTable(layer_order, views[current_view]);                    
                     }
                 });
             });
+
+            // make layers and samples table sortable
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
+            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
+
+            samples_order_dict = samplesOrderResponse[0];
+            samples_information_dict = sampleInformationResponse[0];
+            $('#samples_order').append(new Option('custom'));
+            for (order in samples_order_dict)
+            {
+                var order_name = order;
+                if (samples_order_dict[order]['newick'] != '')
+                    order_name += " (tree)";
+
+                $('#samples_order').append(new Option(order_name, order));
+            }
+            buildSamplesTable();
 
             $('#views_container').trigger('change'); // load default view
 
@@ -420,16 +326,9 @@ $(document).ready(function() {
             //  Add bins
             */
             newBin();
-
-
-            // add metadata columns to search window
-            for (var i=0; i < metadata[0].length; i++)
-            {
-                $('#searchLayerList').append(new Option(metadata[0][i],i));
-            }
         } // response callback
     ).fail(function() {
-        alert('One or more ajax request has failed, See console logs for details.');
+        toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
         console.log(arguments);
     }); // promise
 
@@ -497,8 +396,6 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
-
-
         }
     );    
 }
@@ -528,21 +425,13 @@ function getComboBoxContent(default_item, available_items){
     return combo;
 }
 
-
-// get numeric part from id
-function getNumericPart(id){
-    var $num = id.replace(/[^\d]+/, '');
-
-    return $num;
-}
-
 function buildLayersTable(order, settings)
 {
     for (var i = 0; i < order.length; i++) 
     {
         // common layer variables
         var layer_id = order[i];
-        var layer_name = metadata[0][layer_id];
+        var layer_name = layerdata[0][layer_id];
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
         var hasViewSettings = false;
@@ -586,7 +475,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -609,7 +498,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var height = '30';
+                var height = '300';
                 var margin = '15';
 
                 // pick random color for stack bar items
@@ -648,7 +537,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -664,7 +553,7 @@ function buildLayersTable(order, settings)
         //
         // categorical layer
         //
-        else if (metadata[1][layer_id] === null || !isNumber(metadata[1][layer_id]))
+        else if (layerdata[1][layer_id] === null || !isNumber(layerdata[1][layer_id]))
         { 
             layer_types[layer_id] = 2;
 
@@ -694,7 +583,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -765,7 +654,7 @@ function buildLayersTable(order, settings)
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                 '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type" onChange="if(this.value==\'intensity\') {  $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'visible\'); } else { $(\'#picker_start\' + getNumericPart(this.id)).css(\'visibility\', \'hidden\'); }  ">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                 '    </select>' +
@@ -781,7 +670,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
                 '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
-                '<td><input type="checkbox" id="select_this_{id}" class="layer_selectors"></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
@@ -799,7 +688,7 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{margin}', 'g'), margin);
 
 
             $('#tbody_layers').append(template);
@@ -827,25 +716,26 @@ function buildLayersTable(order, settings)
         }).keyup(function() {
             $(this).colpickSetColor(this.value);
         });
+
+        $('#table_layers .drag-icon').on('mousedown', function() {
+            $('#samples_order').val('custom').trigger('change');
+        });
     }
 
 
     waitingDialog.hide();
 }
 
-//---------------------------------------------------------
-//  ui callbacks
-//---------------------------------------------------------
 function getLayerName(layer_id)
 {
-    return metadata[0][layer_id];
+    return layerdata[0][layer_id];
 }
 
 function getLayerId(layer_name) 
 {
     for (var i=0; i < parameter_count; i++)
     {
-        if (layer_name == metadata[0][i])
+        if (layer_name == layerdata[0][i])
             return i;
     }
     return -1;
@@ -873,6 +763,7 @@ function serializeSettings(use_layer_names) {
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
+    state['samples-order'] = $('#samples_order').val();
 
 
     // sync views object and layers table
@@ -915,8 +806,6 @@ function serializeSettings(use_layer_names) {
                 state['views'][view_key][getLayerName(key)] = views[view_key][key];
             }
         }
-
-
     }
     else
     {
@@ -927,6 +816,27 @@ function serializeSettings(use_layer_names) {
         state['categorical_data_colors'] = categorical_data_colors;
         state['stack_bar_colors'] = stack_bar_colors;
     }
+
+    state['samples-categorical-colors'] = samples_categorical_colors;
+    state['samples-layer-order'] = [];
+    state['samples-layers'] = {};
+    $('#tbody_samples tr').each(
+        function(index, tr) {
+            var samples_layer_name = $(tr).attr('samples-layer-name');
+            state['samples-layer-order'].push(samples_layer_name);
+            state['samples-layers'][samples_layer_name] = {
+                'data-type'     : $(tr).attr('data-type'),
+                'height'        : parseFloat($(tr).find('.input-height').val()),
+                'margin'        : parseFloat($(tr).find('.input-margin').val()),
+                'normalization' : $(tr).find('.normalization').val(),
+                'color'         : $(tr).find('.colorpicker:last').attr('color'),
+                'min'           : {'value': parseFloat($(tr).find('.input-min').val()), 'disabled': $(tr).find('.input-min').is(':disabled') },
+                'max'           : {'value': parseFloat($(tr).find('.input-max').val()), 'disabled': $(tr).find('.input-max').is(':disabled') },
+                'type'          : $(tr).find('.type').val(),
+                'color-start'   : $(tr).find('.colorpicker:first').attr('color'),
+            };
+        }
+    );
 
     return state;
 }
@@ -948,6 +858,9 @@ function drawTree() {
 
     waitingDialog.show('Drawing ...', {dialogSize: 'sm'});
 
+    // clear existing diagram, if any
+    document.getElementById('svg').innerHTML = "";
+
     setTimeout(function () 
         { 
             draw_tree(settings); // call treelib.js where the magic happens
@@ -961,6 +874,7 @@ function drawTree() {
 
             waitingDialog.hide();
             $('#btn_draw_tree').prop('disabled', false);
+            $('#btn_redraw_samples').prop('disabled', false);
 
             if (settings['tree-radius'] == 0)
             {
@@ -985,13 +899,16 @@ function getContigNames(bin_id) {
 
 
 function showContigNames(bin_id) {
-    var msg = '<h4>Splits in "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4><table class="table table-striped">';
+    var title = 'Splits in "' + $('#bin_name_' + bin_id).val() + '"';
+    var msg = '<table class="table table-striped">';
     var names = getContigNames(bin_id);
 
     for (var i in names)
         msg += "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + names[i] + "\");'>" + names[i] + "</a></td></tr>";
 
-    $('#bins-bottom').html(msg + '</table>');
+    msg = msg + '</table>';
+
+    showDraggableDialog(title, msg);
 }
 
 function newBin(id, binState) {
@@ -1196,30 +1113,27 @@ function showCompleteness(bin_id) {
     var refs = completeness_dict[bin_id]['refs'];
     var stats = completeness_dict[bin_id]['stats'];
 
-    var msg = '<h4>Completeness of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>' +
-        '<table class="table table-striped sortable">' +
+    var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
+
+    var msg = '<table class="table table-striped sortable">' +
         '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">Percent complenetess</th></tr></thead><tbody>';
 
     for (var source in stats)
         msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
 
-    $('#bins-bottom').html(msg + '</tbody></table>');
+    msg = msg + '</tbody></table>';
+
+    showDraggableDialog(title, msg);
 }
 
-function showRedundants(bin_id, updateOnly) {
+function showRedundants(bin_id) {
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
-    $('#bins-bottom').html(buildRedundantsTable(completeness_dict[bin_id], bin_id));
+    var stats = completeness_dict[bin_id]['stats'];
 
-}
-
-function buildRedundantsTable(info_dict, bin_id) {
-    var stats = info_dict['stats'];
-
-    var output = '<h4>Redundants of "' + $('#bin_name_' + bin_id).val() + '" <a href="#" onclick="$(\'#bins-bottom\').html(\'\');">(hide)</a></h4>';
-
-    output += '<div class="col-md-12">'
+    var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
+    var output = '<div class="col-md-12">'
     var oddeven=0;
 
     for(var source in stats) {
@@ -1261,7 +1175,7 @@ function buildRedundantsTable(info_dict, bin_id) {
 
     output += '</div>';
 
-    return output;
+    showDraggableDialog(output_title, output);
 }
 
 function exportSvg() {
@@ -1305,171 +1219,6 @@ function exportSvg() {
 
     $('#bin_legend').remove();
     $('#layer_legend').remove();
-}
-
-function searchContigs() 
-{
-    var svalue = $('#searchValue').val();
-
-    if (svalue == "")
-    {
-        alert("Search value shouldn't be empty.");
-        return;
-    }
-    var column = $('#searchLayerList').val();
-    search_column = column;
-    var operator = $('#searchOperator').val();
-    
-    if (operator < 6)
-    {
-        var operator_text = $('#searchOperator option:selected').text();
-
-        // logical operator
-        var _pre = "metadata[";
-        var _post = "][" + column + "] " + operator_text + " \"" + svalue.trim() + "\"";
-
-    }
-    else if (operator == 6)
-    {
-        // contains
-        var _pre = "metadata[";
-        var _post = "][" + column + "].toString().indexOf(\"" + svalue + "\") != -1";
-    }
-
-    var _len = metadata.length;
-    var _counter = 0;
-    search_results = [];
-
-    $('#search_result_message').html("Searching...");
-
-    for (var row=1; row < _len; row++)
-    {
-        if (metadata[row][column]==null)
-            continue;
-
-        if (eval(_pre + row + _post)){
-            search_results.push(row);
-            _counter++;
-        }
-    }
-    $('#search_result_message').html(_counter + " splits found.");
-}
-
-function showSearchResult() {
-    var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
-    $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
-    $("#search-results-table-search-name").html('Split name');
-    $("#search-results-table-search-item").html(metadata[0][search_column]);
-
-    var rows = "";
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++)
-    {
-        rows = rows + "<tr><td data-value=" + metadata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + metadata[search_results[i]][0] + "\");'>" + metadata[search_results[i]][0] + "</a></td><td data-value=" + metadata[search_results[i]][search_column] + ">" + metadata[search_results[i]][search_column] + "</td></tr>";
-    }
-    $(".search-results-display").html(rows);
-}
-
-function highlightResult() {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
-    }
-
-    highlighted_splits = [];
-
-    for (var i=0; i < search_results.length; i++) {
-        var _contig_name = metadata[search_results[i]][0];
-        
-        highlighted_splits.push(_contig_name);
-    }
-
-    redrawBins(); 
-}
-
-function highlightSplit(name) {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
-    }
-
-    highlighted_splits = [name];
-    redrawBins();
-}
-
-function appendResult() {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
-    }
-
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        _contig_name = metadata[search_results[i]][0];
-        if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
-            SELECTED[bin_id].push(_contig_name);
-
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-
-        for (var bid = 1; bid <= bin_counter; bid++) {
-            // don't remove nodes from current bin
-            if (bid == bin_id)
-                continue;
-
-            var pos = SELECTED[bid].indexOf(_contig_name);
-            if (pos > -1) {
-                SELECTED[bid].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bid) == -1)
-                    bins_to_update.push(bid);
-            }
-        }
-    }
-
-    updateBinsWindow(bins_to_update);
-    redrawBins();
-}
-
-function removeResult() {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
-    }
-
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        _contig_name = metadata[search_results[i]][0];
-        var _id = label_to_node_map[_contig_name].id;
-
-        var pos = SELECTED[bin_id].indexOf(_contig_name);
-        if (pos > -1) {
-            SELECTED[bin_id].splice(pos, 1);
-            
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-    }
-
-    updateBinsWindow(bins_to_update);
-    redrawBins();
 }
 
 function showStoreCollectionWindow() {
@@ -1529,7 +1278,8 @@ function storeRefinedBins() {
         colors: JSON.stringify(colors, null, 4),
     },
     function(server_response, status){
-          alert("Server: " + server_response + "\n\n(status: " + status + ")");
+
+        toastr.info(server_response, "Server");
     });
 }
 
@@ -1568,7 +1318,7 @@ function storeCollection() {
         colors: JSON.stringify(colors, null, 4),
     },
     function(server_response, status){
-          alert("Server: " + server_response + "\n\n(status: " + status + ")");
+        toastr.info(server_response, "Server");
     });
 
     $('#modStoreCollection').modal('hide');    
@@ -1588,7 +1338,7 @@ function generateSummary() {
         url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             if ('error' in data){
-                alert(data['error']);
+                toastr.error(data['error']);
             } else {
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
@@ -1663,13 +1413,13 @@ function showCollectionDetails(list) {
 
 function loadCollection() {
     if ($.isEmptyObject(label_to_node_map)) {
-        alert('You should draw tree before load collection.');
+        toastr.warning('You should draw tree before load collection.');
         return;
     }
 
     var collection = $('#loadCollection_list').val();
     if (collection === null) {
-        alert('Please select a collection.');
+        toastr.warning('Please select a collection.');
         return;
     }
 
@@ -1814,7 +1564,7 @@ function saveState()
 
             if (response['status_code']==0)
             {
-                alert("Failed, Interface running in read only mode.");
+                toastr.error("Failed, Interface running in read only mode.");
             }
             else if (response['status_code']==1)
             {
@@ -1858,13 +1608,13 @@ function loadState()
             try{
                 var state = JSON.parse(response);
             }catch(e){
-                alert('Failed to parse state data, ' + e);
+                toastr.error('Failed to parse state data, ' + e);
                 return;
             }
 
             if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
             {
-                alert("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
                 return;
             }
 
@@ -1881,7 +1631,7 @@ function loadState()
                     }
                 }
 
-                // add layers that not exist in state and exist in metadata
+                // add layers that not exist in state and exist in layerdata
                 for (var i=1; i < parameter_count; i++)
                 {
                     if ($.inArray(i, layer_order) === -1)
@@ -1984,7 +1734,12 @@ function loadState()
             // reload layers
             var current_view = $('#views_container').val();
             $("#tbody_layers").empty();
+
+            if (state.hasOwnProperty('samples-categorical-colors'))
+                samples_categorical_colors = state['samples-categorical-colors']; 
+
             buildLayersTable(layer_order, views[current_view]);
+            buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
 
             current_state_name = $('#loadState_list').val();
             $('#current_state').html('[current state: ' + current_state_name + ']');

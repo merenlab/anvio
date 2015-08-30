@@ -1,0 +1,3 @@
+attributes	basic	newick
+test_order_01		(s204_6M:0.139971,(s204_7M:9.6205e-10,s204_9M:9.6205e-10)Int3:0.139971);
+test_order_02	s204_9M,s204_7M,s204_6M	

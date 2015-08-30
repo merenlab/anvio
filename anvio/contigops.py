@@ -1,13 +1,18 @@
 # -*- coding: utf-8
-"""Classes for handling contigs and splits"""
+"""Classes and functions for handling, storing, and retrieving atomic data from contigs and splits"""
 
 import anvio
 
-from anvio.terminal import Run
-from anvio.variability import VariablityTestFactory
 from anvio.sequence import Coverage
+from anvio.terminal import Run, Progress
+from anvio.terminal import pretty_print as pp
+from anvio.variability import VariablityTestFactory
+
+import anvio.tables as t
 
 run = Run()
+progress = Progress()
+progress.verbose = False
 
 try:
     from anvio.columnprofile import ColumnProfile
@@ -63,7 +68,7 @@ class Contig:
         self.report_variability_full = False
 
 
-    def get_metadata_dict(self):
+    def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
@@ -109,7 +114,7 @@ class Split:
         self.abundance = 0.0
         self.column_profiles = {}
 
-    def get_metadata_dict(self):
+    def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'normalized_coverage': self.coverage.normalized,
@@ -173,3 +178,54 @@ class Auxiliary:
                 self.rep_seq += 'N'
                 self.v.append(0)
 
+
+class AtomicContigSplitData:
+    def __init__(self, p=progress):
+        self.atomic_data_contigs = {}
+        self.atomic_data_splits = {}
+        self.progress = p
+
+
+    def store_atomic_data_for_contigs_and_splits(self, sample_id, contigs, db):
+        self.progress.new('Storing atomic_data')
+
+        num_contigs = pp(len(contigs))
+        cur_contig = 1
+
+        # this loop will get atomic_data information from Contig instanes and store them into the db
+        # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
+        # although it looks crappy:
+        for contig_name in contigs:
+            self.progress.update("Processing contig %s of %s" % (pp(cur_contig), num_contigs))
+            contig = contigs[contig_name]
+            contig_atomic_data = contig.get_atomic_data_dict()
+
+            self.atomic_data_contigs[contig.name] = {'contig': contig.name}
+            for atomic_data_field in t.atomic_data_table_structure[1:]:
+                self.atomic_data_contigs[contig.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
+
+            # contig is done, deal with splits in it:
+            for split in contig.splits:
+                split_atomic_data = split.get_atomic_data_dict()
+                self.atomic_data_splits[split.name] = {'contig': split.name}
+                for atomic_data_field in t.atomic_data_table_structure[1:]:
+                    self.atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
+
+
+        self.progress.update("Generating tables ...")
+        gen_atomic_data_tables_for_contigs_and_splits(self.atomic_data_splits, self.atomic_data_contigs, db)
+        self.progress.end()
+
+
+
+def gen_atomic_data_tables_for_contigs_and_splits(atomic_data_splits, atomic_data_contigs, db):
+    # all objects are ready, creating tables next.
+    db.create_table('atomic_data_splits', t.atomic_data_table_structure, t.atomic_data_table_types)
+    db_entries = [tuple([split] + [atomic_data_splits[split][h] for h in t.atomic_data_table_structure[1:]]) for split in atomic_data_splits]
+    db._exec_many('''INSERT INTO atomic_data_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
+
+    db.create_table('atomic_data_contigs', t.atomic_data_table_structure, t.atomic_data_table_types)
+    db_entries = [tuple([split] + [atomic_data_contigs[atomic_data_splits[split]['__parent__']][h] for h in t.atomic_data_table_structure[1:]]) for split in atomic_data_splits]
+    db._exec_many('''INSERT INTO atomic_data_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
+
+    db.commit()

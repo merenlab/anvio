@@ -156,7 +156,7 @@ class DB:
         return self.get_all_rows_from_table(table)
 
 
-    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None, omit_parent_column = False):
+    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None, omit_parent_column = False, error_if_no_data = True):
         if not table_structure:
             table_structure = self.get_table_structure(table)
 
@@ -173,8 +173,11 @@ class DB:
                     columns_to_return.remove(table_structure.index(col))
 
         if len(columns_to_return) == 1:
-            raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
-                                of interest by the client, nothing was left to return..."
+            if error_if_no_data:
+                raise ConfigError, "get_table_as_dict :: after removing an column that was not mentioned in the columns\
+                                    of interest by the client, nothing was left to return..."
+            else:
+                return {}
 
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)

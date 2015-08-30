@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, TablesForStates, is_annotation_and_profile_dbs_compatible
+from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, SamplesInformationDatabase, TablesForStates, is_annotation_and_profile_dbs_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -45,13 +45,14 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.state = A('state')
         self.split_hmm_layers = A('split_hmm_layers')
-        self.additional_metadata_path = A('additional_metadata')
+        self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
         self.profile_db_path = A('profile_db')
         self.annotation_db_path = A('annotation_db')
+        self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
-        self.metadata = A('metadata')
+        self.view_data_path = A('view_data')
         self.tree = A('tree')
         self.title = A('title')
         self.summary_index = A('summary_index')
@@ -61,12 +62,20 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.split_names_ordered = None
         self.splits_summary_index = {}
-        self.additional_metadata = None
+        self.additional_layers = None
+
+        self.samples_information_dict = {}
+        self.samples_order_dict = {}
+
         self.external_clustering = external_clustering
 
         self.collections = ccollections.Collections()
 
         AnnotationSuperclass.__init__(self, self.args)
+
+        if self.samples_information_db_path:
+            samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
+            self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
 
         if self.annotation_db_path:
             self.completeness = completeness.Completeness(self.annotation_db_path)
@@ -134,16 +143,16 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # search tables:
         self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
 
-        if self.additional_metadata_path:
-            filesnpaths.is_file_tab_delimited(self.additional_metadata_path)
-            self.additional_metadata = self.additional_metadata_path
+        if self.additional_layers_path:
+            filesnpaths.is_file_tab_delimited(self.additional_layers_path)
+            self.additional_layers = self.additional_layers_path
 
         self.check_names_consistency()
-        self.convert_metadata_into_json()
+        self.convert_view_data_into_json()
 
 
     def load_from_files(self, args):
-        if (not self.fasta_file) or (not self.metadata) or (not self.tree) or (not self.output_dir):
+        if (not self.fasta_file) or (not self.view_data_path) or (not self.tree) or (not self.output_dir):
             raise ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
                                            '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
                                            more detailed information on them."
@@ -154,7 +163,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         if self.show_views:
             raise ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
 
-        metadata_path = os.path.abspath(self.metadata)
+        view_data_path = os.path.abspath(self.view_data_path)
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
         self.p_meta['output_dir'] = os.path.abspath(self.output_dir)
         self.p_meta['views'] = {}
@@ -169,18 +178,18 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
             self.splits_summary_index = dictio.read_serialized_object(self.p_meta['profile_summary_index'])
 
-        # sanity of the metadata
-        filesnpaths.is_file_tab_delimited(metadata_path)
-        metadata_columns = utils.get_columns_of_TAB_delim_file(metadata_path, include_first_column=True)
-        if not metadata_columns[0] == "contig":
-            raise ConfigError, "The first row of the first column of the metadata file must\
-                                      say 'contig', which is not the case for your metadata file\
-                                      ('%s'). Please make sure this is a properly formatted metadata\
-                                      file." % (metadata_path)
+        # sanity of the view data
+        filesnpaths.is_file_tab_delimited(view_data_path)
+        view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
+        if not view_data_columns[0] == "contig":
+            raise ConfigError, "The first row of the first column of the view data file must\
+                                      say 'contig', which is not the case for your view data file\
+                                      ('%s'). Please make sure this is a properly formatted view data\
+                                      file." % (view_data_path)
 
-        # store metadata as view:
-        self.views[self.default_view] = {'header': metadata_columns[1:],
-                                         'dict': utils.get_TAB_delimited_file_as_dictionary(metadata_path)}
+        # store view data as view:
+        self.views[self.default_view] = {'header': view_data_columns[1:],
+                                         'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
         self.split_names_ordered = self.views[self.default_view]['dict'].keys()
 
         filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
@@ -281,9 +290,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         # set title
         if self.title:
-            self.title = self.title + ' (%s)' % self.default_view
+            self.title = self.title
         else:
-            self.title = self.p_meta['sample_id'] + ' (%s)' % self.default_view
+            self.title = self.p_meta['sample_id']
 
 
     def check_names_consistency(self):
@@ -291,40 +300,40 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             return
 
         splits_in_tree = set(self.split_names_ordered)
-        splits_in_metadata = set(self.views[self.default_view]['dict'].keys())
+        splits_in_view_data = set(self.views[self.default_view]['dict'].keys())
         splits_in_database = set(self.split_sequences)
 
-        splits_in_tree_but_not_in_metadata = splits_in_tree - splits_in_metadata
+        splits_in_tree_but_not_in_view_data = splits_in_tree - splits_in_view_data
         splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database
 
-        if splits_in_tree_but_not_in_metadata:
-            raise ConfigError, 'Some split names found in your tree are missing in your metadata. Hard to\
+        if splits_in_tree_but_not_in_view_data:
+            raise ConfigError, 'Some split names found in your tree are missing in your view data. Hard to\
                                 know what cuased this, but here is a couple of them that: %s'\
-                                    % ', '.join(list(splits_in_tree_but_not_in_metadata)[0:5])
+                                    % ', '.join(splits_in_tree_but_not_in_view_data[0:5])
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
                                 know why is this the case, but here is a couple of them: %s'\
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5])
 
-        if self.additional_metadata_path:
-            splits_in_additional_metadata = set(sorted([l.split('\t')[0] for l in open(self.additional_metadata_path).readlines()[1:]]))
-            splits_only_in_additional_metadata = []
-            for split_name in splits_in_additional_metadata:
+        if self.additional_layers_path:
+            splits_in_additional_layers = set(sorted([l.split('\t')[0] for l in open(self.additional_layers_path).readlines()[1:]]))
+            splits_only_in_additional_layers = []
+            for split_name in splits_in_additional_layers:
                 if split_name not in splits_in_tree:
-                    splits_only_in_additional_metadata.append(split_name)
-            if len(splits_only_in_additional_metadata):
-                one_example = splits_only_in_additional_metadata[-1]
-                num_all = len(splits_only_in_additional_metadata)
-                run.warning("Some of the contigs in your addtional metadata file does not\
-                            appear to be in anywhere else. Additional metadata file is not\
+                    splits_only_in_additional_layers.append(split_name)
+            if len(splits_only_in_additional_layers):
+                one_example = splits_only_in_additional_layers[-1]
+                num_all = len(splits_only_in_additional_layers)
+                run.warning("Some of the contigs in your addtional view data file does not\
+                            appear to be in anywhere else. Additional view data file is not\
                             required to list all contigs (which means, there may be contigs\
-                            in the database that are not in the additional metadata file),\
-                            however, finding contigs that are only in the additional metadata\
+                            in the database that are not in the additional view data file),\
+                            however, finding contigs that are only in the additional view data\
                             file usually means trouble. anvio will continue, but please\
                             go back and check your files if you think there may be something\
                             wrong. Here is a random contig name that was only in the\
-                            metadata file: '%s'. And there were %d of them in total. You\
+                            view data file: '%s'. And there were %d of them in total. You\
                             are warned!" % (one_example, num_all))
 
 
@@ -342,13 +351,13 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.progress.end()
 
 
-    def convert_metadata_into_json(self):
+    def convert_view_data_into_json(self):
         '''This function's name must change to something more meaningful.'''
 
-        additional_dict, additional_headers = None, []
-        if self.additional_metadata_path:
-            additional_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_metadata_path)
-            additional_headers = utils.get_columns_of_TAB_delim_file(self.additional_metadata_path)
+        additional_layers_dict, additional_layer_headers = None, []
+        if self.additional_layers_path:
+            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path)
+            additional_layer_headers = utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -372,8 +381,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             json_header.extend(view_headers)
 
             # (5) then add 'additional' headers as the outer ring:
-            if additional_headers:
-                json_header.extend(additional_headers)
+            if additional_layer_headers:
+                json_header.extend(additional_layer_headers)
 
             # (6) finally add hmm search results
             if self.hmm_searches_header:
@@ -396,8 +405,8 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
                 # (4) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (5) adding additional data
-                json_entry.extend([additional_dict[split_name][header] if additional_dict.has_key(split_name) else None for header in additional_headers])
+                # (5) adding additional layers
+                json_entry.extend([additional_layers_dict[split_name][header] if additional_layers_dict.has_key(split_name) else None for header in additional_layer_headers])
 
                 # (6) adding hmm stuff
                 if self.hmm_searches_dict:

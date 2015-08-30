@@ -12,13 +12,12 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal
+import anvio.contigops as contigops
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.metadata import Metadata
-from anvio.contig import Split, Contig, set_contigs_abundance
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
@@ -91,7 +90,7 @@ class BAMProfiler:
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
 
-        self.metadata = Metadata(self.progress)
+        self.atomic_contig_split_data = contigops.AtomicContigSplitData(self.progress)
 
         # following variable will be populated during the profiling, and its content will eventually
         # be stored in t.variable_positions_table_name
@@ -185,15 +184,15 @@ class BAMProfiler:
         self.generate_variabile_positions_table()
         self.generate_gene_coverages_table()
 
-        # here we store both metadata and TNF information into the database:
+        # here we store atomic data for contigs and splits into the database:
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        self.metadata.store_metadata_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
+        self.atomic_contig_split_data.store_atomic_data_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
         profile_db.disconnect()
 
         # the only view for the single PROFILE database is ready, and already
         # set as the default view. store the info in the db:
         views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__)
-        views_table.append('single', 'metadata_splits')
+        views_table.append('single', 'atomic_data_splits')
         views_table.store()
 
         if self.contigs_shall_be_clustered:
@@ -486,7 +485,7 @@ class BAMProfiler:
         
             contig_name = self.contig_names[i]
 
-            contig = Contig(contig_name)
+            contig = contigops.Contig(contig_name)
             contig.length = self.contig_lenghts[i]
             contig.split_length = self.split_length
             contig.min_coverage_for_variability = self.min_coverage_for_variability
@@ -500,7 +499,7 @@ class BAMProfiler:
             # populate contig with empty split objects and 
             for split_name in self.contig_name_to_splits[contig_name]:
                 s = self.splits_in_annotation_db[split_name]
-                split = Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
+                split = contigops.Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
             # analyze coverage for each split
@@ -526,7 +525,7 @@ class BAMProfiler:
             self.run.info('contigs_after_C', pp(len(self.contigs)))
 
         # set contig abundance
-        set_contigs_abundance(self.contigs)
+        contigops.set_contigs_abundance(self.contigs)
 
         self.check_contigs()
 

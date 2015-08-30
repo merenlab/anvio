@@ -12,8 +12,11 @@ import anvio
 
 from anvio.terminal import Run
 from anvio.terminal import Progress
-from anvio.errors import FilesNPathsError
+from anvio.terminal import SuppressAllOutput
+from anvio.errors import FilesNPathsError, SamplesError
 
+with SuppressAllOutput():
+    from ete2 import Tree
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -23,6 +26,119 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+def is_proper_newick(newick_data):
+    try:
+        return Tree(newick_data, format = 1)
+    except Exception, e:
+        raise FilesNPathsError, "Your tree doesn't seem to be properly formatted. Here is what ete2 had\
+                                 to say about this: '%s'. Pity :/" % e
+
+
+def is_proper_samples_information_file(file_path):
+    is_file_tab_delimited(file_path)
+
+    f = open(file_path)
+
+    # quick checks for the header
+    columns = f.readline().strip('\n').split('\t')
+
+    if columns[0] != 'samples':
+        raise  SamplesError, "The first column of the first row of an anvi'o samples information file\
+                              must say 'samples'."
+
+    if len(columns[1:]) != len(set(columns[1:])):
+        raise SamplesError, "Every column name in the anvi'o samples information file must be unique (obviously)."
+
+    # quick checks for the samples described
+    sample_names = [l.strip('\n').split('\t')[0] for l in f.readlines()]
+
+    if len(sample_names) != len(set(sample_names)):
+        raise SamplesError, "Every sample name in the anvi'o samples information file must be unique :/"
+
+    f.close()
+
+    return sample_names
+
+
+def is_proper_samples_order_file(file_path):
+    is_file_tab_delimited(file_path)
+
+    f = open(file_path)
+
+    columns = f.readline().strip().split('\t')
+
+    if len(columns) != 3:
+        raise SamplesError, "The number of columns in an anvi'o samples order file must be three.\
+                             Yours has %d. Please see the documentation if you are lost." % len(columns)
+
+    if columns[0] != 'attributes':
+        raise  SamplesError, "The first column of the first row of an anvi'o samples order file \
+                              must say 'attributes'. All these rules... Anvi'o promises that they \
+                              are for your own good."
+
+    if columns[1] != 'basic':
+        raise  SamplesError, "The second column of the first row of an anvi'o samples order file \
+                              must read 'basic'."
+
+    if columns[2] != 'newick':
+        raise  SamplesError, "The third column of the first row of an anvi'o samples order file \
+                              must read 'basic'."
+
+    num_samples_described_in_basic_organizations = []
+    num_samples_described_in_newick_organizations = []
+    sample_names_described_by_each_organization = []
+
+    for columns in [l.strip('\n').split('\t') for l in f.readlines()]:
+        if len(columns) != 3:
+            raise SamplesError, "Each line in the samples order file must contain three columns separated\
+                                 from each other by TAB characters. You have at least one with %d columns\
+                                 :/" % len(columns)
+
+        attribute, basic, newick = columns
+
+        if basic and newick:
+            raise SamplesError, 'For the attribute %s, there is both basic and newick form of organization\
+                                in the samples order file. For a given attribute, you can define only one\
+                                of them, and the other must be blank.' % attribute
+        if not basic and not newick:
+            raise SamplesError, 'For the attribute %s, there is no organization defined (neither newick, nor\
+                                 basic). Is this a test or something? :/' % attribute    
+
+        if newick:
+            try:
+                tree = is_proper_newick(newick)
+            except:
+                raise SamplesError, 'The newick entry for the attribute %s deos not seem to be a properly\
+                                     formatted newick :/' % attribute 
+            samples = [n.name for n in tree.get_leaves()]
+            num_samples_described_in_newick_organizations.append(len(samples))
+            sample_names_described_by_each_organization.append(samples)
+
+        if basic:
+            if not basic.count(','):
+                raise SamplesError, 'The basic samples organization for attribute %s does not seem to be a\
+                                     comma-separated list.'
+            samples = [s.strip() for s in basic.split(',')]
+            num_samples_described_in_basic_organizations.append(len(samples))
+            sample_names_described_by_each_organization.append(samples)
+
+    if len(set(num_samples_described_in_basic_organizations)) != 1:
+        raise SamplesError, 'The number of samples described by each comma-separated basic organization line\
+                             must be equal. But that does not seem to be the case with your input :/'
+
+    if len(set(num_samples_described_in_newick_organizations)) != 1:
+        raise SamplesError, 'The number of samples described by each newick-formatted organization \
+                             must be equal. But that does not seem to be the case with your input :/'
+
+    unique_list_of_samples = [list(x) for x in set(tuple(sorted(x)) for x in sample_names_described_by_each_organization)]
+    if len(unique_list_of_samples) != 1:
+        raise SamplesError, "At least one organization in the samples order file differs from the others. Each\
+                             order should contain the same sample names. Sorry about the cryptic error message,\
+                             but your file is not properly formatted :/"
+
+    return unique_list_of_samples[0]
 
 
 def is_file_exists(file_path):

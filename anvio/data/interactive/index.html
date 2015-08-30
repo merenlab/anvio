@@ -10,6 +10,7 @@
     <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
     <meta http-equiv="pragma" content="no-cache" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo.png">
 
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
@@ -23,11 +24,12 @@
     <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
     <script type="text/javascript" src="lib/colpick/colpick.js"></script>
     <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
     <script type="text/javascript" src="lib/bootstrap-waitingfor/bootstrap-waitingfor.js"></script>
-
+    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -35,6 +37,10 @@
     <script type="text/javascript" src="js/mouse-events.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/help-messages.js"></script>
+    <script type="text/javascript" src="js/multiple.js"></script>
+    <script type="text/javascript" src="js/search.js"></script>
+    <script type="text/javascript" src="js/sample.js"></script>
+
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -49,8 +55,8 @@
             <div role="tabpanel" style="margin: 0px;">
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
+                  <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
                   <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" onclick="this.style['color'] = '#337ab7';"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                  <li id="sample_settings_tab" role="presentation" class="disabled"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
                   <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
                   <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                   <li role="presentation" class="dropdown-submenu pull-right">
@@ -168,9 +174,9 @@
                                     <tr>
                                         <td></td>
                                         <td data-help="layer-name">Name</td>
-                                        <td data-help="layer-color">Color</td>
+                                        <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
                                         <td data-help="layer-type">Type</td>
-                                        <td data-help="layer-norm">Normalization</td>
+                                        <td data-help="layer-norm">Norm.</td>
                                         <td data-help="layer-height">Height</td>
                                         <td data-help="layer-margin" class="column-margin">Margin</td>
                                         <td data-help="layer-min">Min</td>
@@ -186,26 +192,26 @@
                                     </tr>
                                     <tr>
                                         <td></td>
-                                        <td><input id="select_layer" placeholder="Select Layer" size="12"></td>
-                                        <td><div id="picker_start_multiple" class="colorpicker"></div><div id="picker_multiple" class="colorpicker"></div></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
                                         <td style="width: 50px;">
-                                            <select id="type_multiple" style="width: 50px;" class="type">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
                                                 <option value="bar">Bar</option>
                                                 <option value="intensity">Intensity</option>
                                             </select>
                                         </td>
                                         <td>
-                                            <select id="normalization_multiple">
+                                            <select class="normalization_multiple">
                                                 <option value="none">none</option>
                                                 <option value="sqrt">sqrt</option>
                                                 <option value="log">log</option>
                                             </select>
                                         </td>
-                                        <td><input id="height_multiple" class="input-height" size="3"></input></td>
-                                        <td class="column-margin"><input id="margin_multiple" class="input-margin" size="3"></input></td>
-                                        <td><input id="min_multiple" class="input-min" size="4"></input></td>
-                                        <td><input id="max_multiple" class="input-max" size="4"></input></td>
-                                        <td><input type="checkbox" id="select_all"></td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -262,9 +268,71 @@
                 </div>
 
                 <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
-                    <p style="color: #AAAAAA; padding: 10px;">This tab is currently under construction.
                     <div id="sample-settings" class="form-horizontal">
-                        <!-- Sample stuff here -->
+                       <h4>Sample Order</h4>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Sample order:</label>
+                                <div class="col-md-8">
+                                    <select id="samples_order" class="form-control input-xs">
+                                        <!-- JS FILLS HERE -->
+                                    </select>
+                                </div>
+                        </div>
+
+                        <h4>Sample Layers</h4>
+
+                        <div id="table_samples_container">
+                            <table id="table_samples">
+                                <thead>
+                                    <tr>
+                                        <td></td>
+                                        <td data-help="layer-name">Name</td>
+                                        <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                        <td data-help="layer-type">Type</td>
+                                        <td data-help="layer-norm">Norm.</td>
+                                        <td data-help="layer-height">Height</td>
+                                        <td data-help="layer-margin">Margin</td>
+                                        <td data-help="layer-min">Min</td>
+                                        <td data-help="layer-max">Max</td>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_samples"></tbody>
+                                <tbody id="tbody_samples_bottom">
+                                    <tr style="height: 30px">
+                                        <td colspan="9">
+                                            <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
+                                        <td style="width: 50px;">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
+                                                <option value="bar">Bar</option>
+                                                <option value="intensity">Intensity</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="normalization_multiple">
+                                                <option value="none">none</option>
+                                                <option value="sqrt">sqrt</option>
+                                                <option value="log">log</option>
+                                            </select>
+                                        </td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <br />
+                        <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
+                            <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="$('#samples').empty(); drawSamplesLayers(serializeSettings());" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span>Redraw sample layers</button>
+                        </div>
                     </div>
                 </div>
 

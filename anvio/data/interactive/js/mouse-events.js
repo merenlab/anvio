@@ -286,6 +286,31 @@ function mouseMoveHandler(event) {
     if (drawing_zoom)
         return;
     
+    if (event.target.id == 'path_samples')
+    {   
+        // samples tooltip
+        var sample_name = event.target.getAttribute('sample-name');
+        var layer_name_hover = event.target.getAttribute('layer-name');
+
+        var message = "";
+        for (var i=0; i < last_settings['samples-layer-order'].length; i++)
+        {
+            var layer_name = last_settings['samples-layer-order'][i];
+
+            if (layer_name == layer_name_hover)
+            {
+                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
+            }
+            else
+            {
+                message += '<tr><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
+            }
+        }
+
+        $('#tooltip_content').html(message);
+        return;
+    }
+
     var p = getNodeFromEvent(event);
 
     if (event.target.id && event.target.id == 'path_event')
@@ -299,7 +324,7 @@ function mouseMoveHandler(event) {
         return;
     var layer_id = layer_id_exp[0];
 
-    var tooltip_arr = metadata_title[id_to_node_map[p.id].label].slice(0);
+    var tooltip_arr = layerdata_title[id_to_node_map[p.id].label].slice(0);
     
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)

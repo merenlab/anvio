@@ -24,6 +24,27 @@ function log10(val) {
   return Math.log(val) / Math.LN10;
 }
 
+//--------------------------------------------------------------------------------------------------
+// https://stackoverflow.com/questions/10894377/dynamically-adding-a-svg-gradient
+function createGradient(svg,id,stops){
+  var svgNS = svg.namespaceURI;
+  var grad  = document.createElementNS(svgNS,'linearGradient');
+  grad.setAttribute('id',id);
+  for (var i=0;i<stops.length;i++){
+    var attrs = stops[i];
+    var stop = document.createElementNS(svgNS,'stop');
+    for (var attr in attrs){
+      if (attrs.hasOwnProperty(attr)) stop.setAttribute(attr,attrs[attr]);
+    }
+    grad.appendChild(stop);
+  }
+
+  var defs = svg.querySelector('defs') ||
+      svg.insertBefore( document.createElementNS(svgNS,'defs'), svg.firstChild);
+  return defs.appendChild(grad);
+}
+
+
 function getGradientColor(start_color, end_color, percent) {
    // strip the leading # if it's there
    start_color = start_color.replace(/^\s*#|\s*$/g, '');
@@ -131,6 +152,38 @@ function fire_up_ncbi_blast(contig_name, program, database)
 
 //--------------------------------------------------------------------------------------------------
 
+function showDraggableDialog(title, content)
+{
+
+    var randomID = Math.floor((Math.random() * 100000) + 1);
+
+    var template = '<div class="modal" id="modal' + randomID + '" data-backdrop="false" style="pointer-events: none;"> \
+        <div class="modal-dialog" style="pointer-events: all;"> \
+            <div class="modal-content no-shadow"> \
+                <div class="modal-header"> \
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button> \
+                     <h4 class="modal-title">' + title + '</h4> \
+                </div> \
+                <div class="modal-body"> \
+                    ' + content + ' \
+                </div> \
+                <div class="modal-footer"> \
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button> \
+                </div> \
+            </div> \
+        </div> \
+    </div>';
+
+    $('body').append(template);
+    $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+}
+
+
+//--------------------------------------------------------------------------------------------------
+
 function checkBackgroundProcess()
 {
     var message = "It seems background process is down or changed, you may lose your work.";
@@ -142,12 +195,12 @@ function checkBackgroundProcess()
         success: function (data) {
             if (data != unique_session_id)
             {
-                alert(message);
+                toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 clearTimeout(ping_timer);
             }
         },
         error: function(data) {
-            alert(message);
+            toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             clearTimeout(ping_timer);
         }
     });
@@ -190,10 +243,21 @@ function strip(html)
 //--------------------------------------------------------------------------------------------------
 function clearMinMax(selectbox) 
 {
-    var id = $(selectbox).attr('id').replace('normalization', '');
+    var tr = $(selectbox).parent().parent();
 
-    $('#min' + id).val('0').prop('disabled', true);
-    $('#max' + id).val('0').prop('disabled', true);     
+    $(tr).find('.input-min').val('0').prop('disabled', true);
+    $(tr).find('.input-max').val('0').prop('disabled', true);     
+}
+
+function togglePickerStart(selectbox)
+{
+    var tr = $(selectbox).parent().parent();
+
+    if(selectbox.value=='intensity') {  
+        $(tr).find('.picker_start').css('visibility', 'visible'); 
+    } else { 
+        $(tr).find('.picker_start').css('visibility', 'hidden');
+    }  
 }
 
 /* Poor man's timer.
@@ -363,30 +427,30 @@ PreorderIterator.prototype.Next = function()
 }
 
 //---------------------------------------------------------
-// Metadata operations
+// layerdata operations
 //---------------------------------------------------------
 
 function removeSingleParents()
 {
-    // metadata and parameter count is global
+    // layerdata and parameter count is global
 
     for (var i = 1; i < parameter_count; i++) 
     {
-        if (metadata[0][i] == '__parent__') 
+        if (layerdata[0][i] == '__parent__') 
         {
             var parent_count_dict = {};
-            for (var j=1; j < metadata.length; j++)
+            for (var j=1; j < layerdata.length; j++)
             {
-                if (metadata[j][i]=='')
+                if (layerdata[j][i]=='')
                     continue;
 
-                if (typeof parent_count_dict[metadata[j][i]] === 'undefined')
+                if (typeof parent_count_dict[layerdata[j][i]] === 'undefined')
                 {
-                    parent_count_dict[metadata[j][i]] = 1;
+                    parent_count_dict[layerdata[j][i]] = 1;
                 }
                 else
                 {
-                    parent_count_dict[metadata[j][i]]++;
+                    parent_count_dict[layerdata[j][i]]++;
                 }
             }
 
@@ -394,11 +458,11 @@ function removeSingleParents()
             {
                 if (count==1)
                 {
-                    for (var j=1; j < metadata.length; j++)
+                    for (var j=1; j < layerdata.length; j++)
                     {
-                        if (metadata[j][i]==parent_name)
+                        if (layerdata[j][i]==parent_name)
                         {
-                            metadata[j][i]='';
+                            layerdata[j][i]='';
                         }
                     }
                 }

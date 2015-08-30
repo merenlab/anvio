@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio.db as db
+import anvio.dbops as dbops
+import anvio.terminal as terminal 
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def update_profile_db_from_v5_to_v6(profile_db_path):
+    if profile_db_path is None:
+        raise ConfigError, "No profile database is given."
+
+    # make sure someone is not being funny
+    dbops.is_profile_db(profile_db_path)
+
+    # make sure the version is 5
+    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    if str(profile_db.get_version()) != '5':
+        raise ConfigError, "Version of this profile database is not 5 (hence, this script cannot really do anything)."
+
+    is_merged = profile_db.get_meta_value('merged')
+
+    progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
+    progress.update('...')
+
+    # if it is a single database, we need to rename two tables
+    if not is_merged:
+        profile_db._exec('ALTER TABLE metadata_contigs RENAME TO atomic_data_contigs;')
+        profile_db._exec('ALTER TABLE metadata_splits RENAME TO atomic_data_splits;')
+
+        profile_db._exec('DELETE FROM views;')
+        profile_db._exec('''INSERT INTO views VALUES ("single","atomic_data_splits")''')
+
+    # set the version
+    profile_db.remove_meta_key_value_pair('version')
+    profile_db.set_version('6')
+
+    # bye
+    profile_db.disconnect()
+    progress.end()
+
+    run.info_single("Database successfully upgraded.")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to from version 5 version 6')
+    parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 5)')
+    args = parser.parse_args()
+
+    try:
+        update_profile_db_from_v5_to_v6(args.profile_db)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)

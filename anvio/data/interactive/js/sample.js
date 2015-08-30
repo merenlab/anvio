@@ -1,0 +1,558 @@
+var samples_categorical_colors = {};
+var samples_information_dict;
+var samples_order_dict;
+
+function get_newick_leaf_order(newick)
+{
+    var _order_list = [];
+
+    var t = new Tree();
+    t.Parse(newick, false);
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    order_counter = 0;
+    while (q != null)
+    {
+        if (q.IsLeaf()) {
+            _order_list.push(q.label);
+        }
+        q=n.Next();
+    }
+
+    return _order_list;
+}
+
+$(document).ready(function() {
+    $('#samples_order').change(function() {
+        $('#btn_redraw_samples').prop('disabled', true);
+
+        if (this.value == 'custom') 
+            return;
+
+        var organization = samples_order_dict[this.value];
+        var new_order;
+
+        // get new sample order
+        if (organization['basic'] != "")
+        {
+            new_order = organization['basic'].split(',');
+        }
+        else
+        {
+            new_order = get_newick_leaf_order(organization['newick']);
+        }
+        $.map(new_order, $.trim);
+
+        for(var i=0; i < new_order.length; i++)
+        {
+            var layer_id = getLayerId(new_order[i]);
+            var detached_row = $('#height' + layer_id).closest('tr').detach();
+            $('#tbody_layers').append(detached_row);
+        }
+    });
+});
+
+function buildSamplesTable(samples_layer_order, samples_layers) {
+    var first_sample = Object.keys(samples_information_dict)[0];
+
+    if (typeof first_sample === 'undefined')
+    {
+        return;
+    }
+    
+    if (typeof(samples_layer_order) === 'undefined') {
+        samples_layer_order = Object.keys(samples_information_dict[first_sample]); // get layer order from first sample's samples
+    }
+    
+    $('#tbody_samples').empty();
+
+    for (var i=0; i < samples_layer_order.length; i++)
+    {
+        var layer_name  = samples_layer_order[i];
+        var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
+        var short_name  = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
+
+        var hasSettings = false;
+        if (typeof(samples_layers) !== 'undefined' && typeof(samples_layers[layer_name]) !== 'undefined') {
+            hasSettings = true;
+            layer_settings = samples_layers[layer_name];
+        }
+
+        if (isNumber(samples_information_dict[first_sample][layer_name]))
+        {
+            var data_type = "numeric";
+            
+            if (hasSettings) 
+            {
+                var norm         = layer_settings['normalization'];
+                var min          = layer_settings['min']['value'];
+                var max          = layer_settings['max']['value'];
+                var min_disabled = layer_settings['min']['disabled'];
+                var max_disabled = layer_settings['max']['disabled'];
+                var height       = layer_settings['height'];
+                var color        = layer_settings['color'];
+                var margin       = layer_settings['margin'];
+                var color_start  = layer_settings['color-start'];
+                var type         = layer_settings['type'];
+            }
+            else
+            {
+                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none');
+                var min          = 0;
+                var max          = 0;
+                var min_disabled = true;
+                var max_disabled = true;
+                var height       = getNamedLayerDefaults(layer_name, 'height', 500);
+                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191');
+                var margin       = 15;
+                var color_start  = "#FFFFFF";
+                var type         = "bar";
+            }
+
+            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
+                '<td style="width: 50px;">' +
+                '    <select style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                '        <option value="bar"{option-type-bar}>Bar</option>' +
+                '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td>' +
+                '    <select onChange="clearMinMax(this);" class="normalization">' +
+                '        <option value="none"{option-none}>none</option>' +
+                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                '        <option value="log"{option-log}>log</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
+                '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{data-type}', 'g'), data_type)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{min}', 'g'), min)
+                               .replace(new RegExp('{max}', 'g'), max)
+                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{margin}', 'g'), margin);
+            
+            $('#tbody_samples').append(template); 
+        }
+        else
+        {
+            var data_type = "categorical";
+            
+            if (hasSettings)
+            {
+                var height = layer_settings['height'];
+                var margin = layer_settings['margin'];
+            }
+            else
+            {
+                var height = getNamedLayerDefaults(layer_name, 'height', 80);
+                var margin = 15;
+            }
+
+            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td>n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{data-type}', 'g'), data_type)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{min}', 'g'), min)
+                               .replace(new RegExp('{max}', 'g'), max)
+                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                               .replace(new RegExp('{margin}', 'g'), margin);
+        
+            $('#tbody_samples').prepend(template);
+        }  
+    }
+
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });    
+}
+
+function drawSamplesLayers(settings) {
+    var samples_layer_max = {};
+    var samples_layer_min = {};
+
+    var _samples_information_dict = jQuery.extend(true, {}, samples_information_dict); // keep original
+
+    for (sample in _samples_information_dict)
+    {
+        for (layer in _samples_information_dict[sample])
+        {
+            if (settings['samples-layers'][layer]['data-type'] == 'numeric') 
+            {
+                var norm = settings['samples-layers'][layer]['normalization'];
+
+                if (norm == 'sqrt')
+                {
+                    _samples_information_dict[sample][layer] = Math.sqrt(parseFloat(_samples_information_dict[sample][layer]));
+                }
+                else if (norm == 'log')
+                {
+                    _samples_information_dict[sample][layer] = log10(parseFloat(_samples_information_dict[sample][layer]) + 1);
+                }
+
+                if (typeof samples_layer_max[layer] === 'undefined' || parseFloat(_samples_information_dict[sample][layer]) > samples_layer_max[layer])
+                {
+                    samples_layer_max[layer] = parseFloat(_samples_information_dict[sample][layer]);
+                }
+            }
+            else
+            {
+                //categorical
+                if (typeof samples_categorical_colors[layer] === 'undefined')
+                    samples_categorical_colors[layer] = {};
+            }
+        }
+    }
+
+    // calculate sample information layer boundaries
+    var samples_layer_boundaries = [];
+
+    for (var i=0; i < settings['samples-layer-order'].length; i++)
+    {
+        var samples_layer_name     = settings['samples-layer-order'][i];
+        var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+        
+        if (samples_layer_settings['min']['disabled'])
+        {
+            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-min').prop('disabled', false);
+            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-max').prop('disabled', false).val(samples_layer_max[samples_layer_name])
+            samples_layer_min[samples_layer_name] = 0;
+        }
+        else
+        {
+            samples_layer_max[samples_layer_name] = samples_layer_settings['max']['value'];
+            samples_layer_min[samples_layer_name] = samples_layer_settings['min']['value'];
+        }
+
+        var start = samples_layer_settings['margin'];
+        var end   = start + samples_layer_settings['height'];
+        
+        if (i > 0)
+        {
+            start += samples_layer_boundaries[i-1][1];
+            end   += samples_layer_boundaries[i-1][1];
+        }
+
+        samples_layer_boundaries.push([start,end]);
+    }
+
+    var backgrounds_done = false;
+    var gradient_done = false;
+
+    var sample_xy = {};
+
+    for (var j = 0; j < settings['layer-order'].length; j++) {
+        var layer_index = j+1;
+        var pindex = settings['layer-order'][j];
+        var sample_name = getLayerName(pindex);
+
+        sample_xy[sample_name] = {
+            'x': layer_boundaries[layer_index][0] + (layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0]) / 2,
+            'y': (samples_layer_boundaries.length > 0) ? 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1] : 0,
+        }
+
+        if (!(sample_name in samples_information_dict)) // skip if not sample
+            continue;
+
+        if(!gradient_done)
+        {
+            drawGradientBackground(layer_boundaries[layer_index][0]);
+            gradient_done = true;
+        }
+
+        for (var i=0; i < settings['samples-layer-order'].length; i++)
+        {
+            var samples_layer_name     = settings['samples-layer-order'][i];
+            var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+
+            if (samples_layer_settings['data-type'] == 'numeric') 
+            {
+                var value = _samples_information_dict[sample_name][samples_layer_name];
+                var min = samples_layer_min[samples_layer_name];
+                var max = samples_layer_max[samples_layer_name];
+                
+                var ratio;
+                if (value > max) {
+                    ratio = 1;
+                }
+                else if (value < min) {
+                    ratio = 0;
+                }
+                else {
+                    ratio = (value - min) / (max - min);
+                }
+
+                var size;
+                var color;
+                if (samples_layer_settings['type'] == 'intensity')
+                {
+                    var size = samples_layer_settings['height'];
+                    var color = getGradientColor(samples_layer_settings['color-start'], samples_layer_settings['color'],  ratio);
+                }
+                else
+                {
+                    // bar
+                    var size = ratio * samples_layer_settings['height'];
+                    var color = samples_layer_settings['color'];
+
+                    if (!backgrounds_done)
+                    {
+                        var start = samples_layer_boundaries[i][0];
+                        var end   = samples_layer_boundaries[i][1];
+
+                        drawPhylogramRectangle('samples',
+                            'samples_background',
+                            layer_boundaries[layer_index][0],
+                            0 - end + (end - start) / 2,
+                            end - start,
+                            total_radius - layer_boundaries[layer_index][0],
+                            samples_layer_settings['color'],
+                            0.2,
+                            false);
+                    }
+                }
+                
+                if (!backgrounds_done)
+                {
+                    drawText('samples', {
+                        'x': total_radius + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+                    }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color']);
+                    
+                    drawText('samples', {
+                        'x': total_radius + 10,
+                        'y': 0 - samples_layer_boundaries[i][1]
+                    }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-before-edge');
+
+                    drawText('samples', {
+                        'x': total_radius + 10,
+                        'y': 0 - samples_layer_boundaries[i][0]
+                    }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-after-edge');
+
+                }
+
+                var start = layer_boundaries[layer_index][0];
+                var width = layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0];
+
+                var rect = drawPhylogramRectangle('samples',
+                    'samples',
+                    start,
+                    0 - samples_layer_boundaries[i][0] - (size / 2),
+                    size,
+                    width,
+                    color,
+                    1,
+                    true);
+
+                rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('layer-name', samples_layer_name);
+            }
+            else
+            {
+
+                // categorical
+                var value = _samples_information_dict[sample_name][samples_layer_name];
+
+                if (typeof samples_categorical_colors[samples_layer_name][value] === 'undefined')
+                {
+                    samples_categorical_colors[samples_layer_name][value] = randomColor({luminosity: 'dark'});
+                }
+
+                var color = samples_categorical_colors[samples_layer_name][value];
+                var size  = samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0];
+
+                var rect = drawPhylogramRectangle('samples',
+                    'samples',
+                    layer_boundaries[layer_index][0],
+                    0 - samples_layer_boundaries[i][0] - (size / 2),
+                    size,
+                    layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    color,
+                    1,
+                    true);
+
+                rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('layer-name', samples_layer_name);
+                
+                if (!backgrounds_done)
+                {
+                    drawText('samples', {
+                        'x': total_radius + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+                    }, samples_layer_name , samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color']);
+                }
+            }
+        }
+
+        backgrounds_done = true;
+    }
+
+    drawSamplesTree(settings, sample_xy);
+}
+
+function drawSamplesTree(settings, sample_xy)
+{
+    createBin('samples', 'samples_tree');
+    var samples_order = settings['samples-order'];
+
+    if (!samples_order_dict.hasOwnProperty(samples_order) || samples_order_dict[samples_order]['newick'] == '')
+        return;
+
+    var newick = samples_order_dict[samples_order]['newick'];
+    var t = new Tree();
+    t.Parse(newick, false);
+    t.ComputeDepths();
+    t.ComputeWeights();
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    var sample_y = -1;
+    while (q != null)
+    {
+        if (q.IsLeaf())
+        {
+            q.xy = sample_xy[q.label];
+
+            if (sample_y == -1)
+            {
+                sample_y = q.xy['y'];
+            }
+        }
+        else
+        {
+            var pl = q.child.xy;
+            var pr = q.child.GetRightMostSibling().xy;
+            
+            q.xy['x'] = pl['x'] + (pr['x'] - pl['x']) / 2;
+            q.xy['y'] = sample_y - (q.depth * 100);
+        }
+        q=n.Next();
+    }
+
+    var n = new NodeIterator(t.root);
+    var q = n.Begin();
+
+    while (q != null)
+    {
+        if (q.IsLeaf())
+        {
+            var p0 = q.xy
+            var p1 = [];
+            var anc = q.ancestor;
+            if (anc) {
+                p1['y'] = anc.xy['y'];
+                p1['x'] = p0['x'];
+
+                drawLine('samples_tree', q, p0, p1);
+            }
+        }
+        else
+        {
+            var p0 = [];
+            var p1 = [];
+
+            p0['y'] = q.xy['y'];
+            p0['x'] = q.xy['x'];
+
+            var anc = q.ancestor;
+            if (anc) {
+                p1['y'] = anc.xy['y'];
+                p1['x'] = p0['x'];
+                drawLine('samples_tree', q, p0, p1);
+            }
+
+            // vertical line
+            var pl = q.child.xy;
+            var pr = q.child.GetRightMostSibling().xy;
+
+            p0['y'] = p0['y'];
+            p0['x'] = pl['x'];
+            p1['y'] = p0['y'];
+            p1['x'] = pr['x'];
+
+            drawLine('samples_tree', q, p0, p1);
+        }
+        q=n.Next();
+    }
+}
+
+function drawGradientBackground(start)
+{
+    // draw gradient over labels
+    createGradient(document.getElementById('svg'),'gradient1',[
+        {offset:'0%', style:'stop-color:rgb(255,255,255);stop-opacity:0'},
+        {offset:'100%', style:'stop-color:rgb(255,255,255);stop-opacity:1'},
+    ]);
+
+    var grect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    grect.setAttribute('id', 'label_gradient1');
+    grect.setAttribute('fill', 'url(#gradient1)');
+    grect.setAttribute('x', start - 400);
+    grect.setAttribute('y', 0 - total_radius);
+    grect.setAttribute('width', 410);
+    grect.setAttribute('height', total_radius);
+    grect.setAttribute('stroke-width', '0px');
+    document.getElementById('samples').appendChild(grect);
+
+    var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('id', 'label_gradient2');
+    rect.setAttribute('fill', '#ffffff');
+    rect.setAttribute('x', start);
+    rect.setAttribute('y', 0 - total_radius);
+    rect.setAttribute('width', total_radius - start);
+    rect.setAttribute('height', total_radius);
+    rect.setAttribute('stroke-width', '0px');
+    document.getElementById('samples').appendChild(rect);
+}

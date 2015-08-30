@@ -105,7 +105,14 @@ class HMMSearch:
         self.progress.update('Compressing the pfam model')
         cmd_line = ('hmmpress "%s" >> "%s" 2>&1' % (hmm_file_path, log_file_path))
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
+        ret_val = utils.run_command(cmd_line)
+        if ret_val:
+            raise ConfigError, "The last call did not work quite well. Most probably the version of HMMER\
+                                you have installed is not up-to-date enough. Just to make sure what went\
+                                wrong please take a look at the log file ('%s'). Please visit %s to see what\
+                                is the latest version availalbe. You can learn which version of HMMER you have\
+                                on your system by typing 'hmmpress -h'"\
+                                        % (log_file_path, 'http://hmmer.janelia.org/download.html')
         self.progress.end()
 
         self.progress.new('Processing')
