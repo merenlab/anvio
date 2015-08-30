@@ -2,6 +2,6 @@
 
 [TNF !ANNOTATION.db::kmer_contigs]
 
-[Abundance PROFILE.db::metadata_contigs]
+[Abundance PROFILE.db::atomic_data_contigs]
 normalize=False
 columns_to_use = abundance,mean_coverage
