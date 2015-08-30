@@ -1,6 +1,6 @@
 [general]
 
-[TNF !ANNOTATION.db::kmer_contigs]
+[TNF !CONTIGS.db::kmer_contigs]
 
 [Abundance PROFILE.db::atomic_data_contigs]
 normalize=False

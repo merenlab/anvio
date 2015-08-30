@@ -64,12 +64,12 @@ class MultipleRuns:
         self.skip_concoct_binning = args.skip_concoct_binning
         self.skip_merging_summaries = args.skip_merging_summaries
 
-        self.annotation_db_path = args.annotation_db_path
+        self.contigs_db_path = args.contigs_db_path
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
 
-        self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
+        self.database_paths = {'CONTIGS.db': self.contigs_db_path}
 
         self.overwrite_output_destinations = args.overwrite_output_destinations
         self.debug = args.debug
@@ -126,10 +126,10 @@ class MultipleRuns:
             raise ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
                                            to be useful."
 
-        if not self.annotation_db_path:
-            raise ConfigError, "You must provide an annotation database for this operation."
-        if not os.path.exists(self.annotation_db_path):
-            raise ConfigError, "anvio couldn't find the annotation database where you said it would be :/"
+        if not self.contigs_db_path:
+            raise ConfigError, "You must provide a contigs database for this operation."
+        if not os.path.exists(self.contigs_db_path):
+            raise ConfigError, "anvio couldn't find the contigs database where you said it would be :/"
 
         missing = [p for p in self.input_runinfo_paths if not os.path.exists(p)]
         if missing:
@@ -161,30 +161,30 @@ class MultipleRuns:
         # get split names from one of the profile databases. split names must be identical across all 
         self.split_names = sorted(list(self.get_split_names(self.input_runinfo_dicts.values()[0]['profile_db'])))
 
-        # make sure all runs were profiled using the same annotation database (if one used):
+        # make sure all runs were profiled using the same contigs database (if one used):
         sample_runinfos = self.input_runinfo_dicts.values()
-        hashes_for_profile_dbs = set([r['annotation_hash'] for r in sample_runinfos])
+        hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in sample_runinfos])
         if len(hashes_for_profile_dbs) != 1:
             if None in hashes_for_profile_dbs:
                 raise ConfigError, "It seems there is at least one run in the mix that was profiled using an\
-                                          annotation database, and at least one other that was profiled without using\
-                                          one. This is not good. All runs must be profiled using the same annotation\
-                                          database, or all runs must be profiled without an annotation database :/"
+                                          contigs database, and at least one other that was profiled without using\
+                                          one. This is not good. All runs must be profiled using the same contigs\
+                                          database, or all runs must be profiled without a contigs database :/"
             else:
-                raise ConfigError, "It seems these runs were profiled using different annotation databases (or\
-                                          different versions of the same annotation database). All runs must be\
-                                          profiled using the same annotation database, or all runs must be profiled\
-                                          without an annotation database :/"
+                raise ConfigError, "It seems these runs were profiled using different contigs databases (or\
+                                          different versions of the same contigs database). All runs must be\
+                                          profiled using the same contigs database, or all runs must be profiled\
+                                          without a contigs database :/"
 
-        # make sure annotation hash that is common across runs is also identical to the annotation database
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path, quiet = True)
-        annotation_db_hash = annotation_db.meta['annotation_hash']
-        annotation_db.disconnect()
+        # make sure contigs hash that is common across runs is also identical to the contigs database
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet = True)
+        contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
 
-        if list(hashes_for_profile_dbs)[0] != annotation_db_hash:
-            raise ConfigError, "The annotation database you provided, which is identified with hash '%s', does\
+        if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
+            raise ConfigError, "The contigs database you provided, which is identified with hash '%s', does\
                                       not seem to match the run profiles you are trying to merge, which share the\
-                                      hash identifier of '%s'. What's up with that?" % (annotation_db_hash, hashes_for_profile_dbs[0])
+                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, hashes_for_profile_dbs[0])
 
 
     def set_sample_id(self):
@@ -291,7 +291,7 @@ class MultipleRuns:
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
-        self.annotation_hash = self.input_runinfo_dicts.values()[0]['annotation_hash']
+        self.contigs_db_hash = self.input_runinfo_dicts.values()[0]['contigs_db_hash']
         self.min_contig_length = self.input_runinfo_dicts.values()[0]['min_contig_length']
         self.num_contigs = self.input_runinfo_dicts.values()[0]['num_contigs']
         self.num_splits = self.input_runinfo_dicts.values()[0]['num_splits']
@@ -309,7 +309,7 @@ class MultipleRuns:
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
-                       'annotation_hash': self.annotation_hash}
+                       'contigs_db_hash': self.contigs_db_hash}
         profile_db.create(meta_values)
 
         # get view data information for both contigs and splits:
@@ -321,7 +321,7 @@ class MultipleRuns:
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path)
         self.run.info('merged', True)
-        self.run.info('annotation_hash', self.annotation_hash)
+        self.run.info('contigs_db_hash', self.contigs_db_hash)
         self.run.info('merged_sample_ids', self.merged_sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('num_runs_processed', len(self.merged_sample_ids))
@@ -457,7 +457,7 @@ class MultipleRuns:
 
         args = Args()
         args.profile_db = self.profile_db_path
-        args.annotation_db = self.annotation_db_path
+        args.contigs_db = self.contigs_db_path
         args.debug = self.debug
 
         c = concoct.CONCOCT(args)

@@ -2,7 +2,7 @@
 
 """
     Classes to compute completeness estimates based on the information stored in search tables in the
-    annotation database.
+    contigs database.
 """
 
 from collections import Counter
@@ -31,12 +31,12 @@ progress = terminal.Progress()
 
 
 class Completeness:
-    def __init__(self, annotation_db_path, source = None, run = run, progress = progress):
+    def __init__(self, contigs_db_path, source = None, run = run, progress = progress):
         # hi db
-        annotation_db = dbops.AnnotationDatabase(annotation_db_path)
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
         # read info table to get what is available in the db
-        info_table = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        info_table = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
 
         # identify and remove non-single-copy sources of hmm search results:
         non_singlecopy_sources = set([k for k in info_table.keys() if info_table[k]['search_type'] != 'singlecopy'])
@@ -45,7 +45,7 @@ class Completeness:
             info_table.pop(non_singlecopy_source)
 
         # read search table (which holds hmmscan hits for splits).
-        self.search_table = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
+        self.search_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
 
         # an example entry in self.search_table looks loke this:
         #
@@ -69,7 +69,7 @@ class Completeness:
 
 
         # we're done with the db
-        annotation_db.disconnect()
+        contigs_db.disconnect()
 
         self.sources = info_table.keys()
 

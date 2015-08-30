@@ -10,14 +10,14 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-annotation_db_version = "3"
+contigs_db_version = "3"
 profile_db_version = "6"
 samples_info_db_version = "1"
 
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE ANNOTATION DATABASE
+#     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
 #
 ####################################################################################################
 
@@ -80,7 +80,7 @@ states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE ANNOTATION DATABASE
+#     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
 #
 ####################################################################################################
 

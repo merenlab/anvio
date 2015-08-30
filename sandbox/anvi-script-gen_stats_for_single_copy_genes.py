@@ -25,8 +25,8 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='A simple script to generate info from search tables')
-parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
-                    help = 'Annotation database to read from.')
+parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
+                    help = 'Contigs database to read from.')
 parser.add_argument('--list-sources', action='store_true', default=False,
                     help = 'Show available single-copy gene search results and exit.')
 parser.add_argument('--source', default=None,
@@ -40,7 +40,7 @@ contig_lengths = {}
 contig_genes = {}
 genes = {}
 
-db = dbops.AnnotationDatabase(args.annotation_db, quiet=False)
+db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
 search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_contigs_table_name)
 search_info_dict = db.db.get_table_as_dict(t.hmm_hits_info_table_name)
 contig_lengths_table = db.db.get_table_as_dict(t.contigs_info_table_name)
@@ -62,13 +62,13 @@ if args.source:
     else:
         sources = {args.source: sources[source]}
 
-hits_output = open(args.annotation_db + '.hits', 'w')
+hits_output = open(args.contigs_db + '.hits', 'w')
 hits_output.write('source\tcontig\tgene\te_value\n')
 for entry in search_contigs_dict.values():
     hits_output.write('%s\t%s\t%s\t%.4g\n' % (entry['source'], entry['contig'], entry['gene_name'], entry['e_value'] ))
 hits_output.close()
 
-genes_output = open(args.annotation_db + '.genes', 'w')
+genes_output = open(args.contigs_db + '.genes', 'w')
 genes_output.write('source\tgene\n')
 for source in sources:
     for gene in sources[source]:

@@ -55,7 +55,7 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_annotation_nts_described_by_collection" }}%</b> of all nucleotides stored in the annotation database, and <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database.
+                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b> of all nucleotides stored in the contigs database, and <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database.
             </div>
         </div>
     </header>
@@ -73,9 +73,9 @@
                 <div class="well" style="margin: 10px;">The {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile database that was generated
                                                         with the minimum contig length of <b>{{ meta|lookup:"profile"|lookup:"min_contig_length"|pretty }}</b>
                                                         contained <b>{{ meta|lookup:"profile"|lookup:"num_contigs"|pretty }}</b> contigs, which correspond to
-                                                        <b>{{ meta|lookup:"percent_annotation_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
-                                                        <b>{{ meta|lookup:"percent_annotation_nts_described_by_profile"|pretty }}%</b> of all nucleotides found
-                                                        in the annotation database.
+                                                        <b>{{ meta|lookup:"percent_contigs_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
+                                                        <b>{{ meta|lookup:"percent_contigs_nts_described_by_profile"|pretty }}%</b> of all nucleotides found
+                                                        in the contigs database.
                                                         </div>
 
                 <div class="row">
@@ -108,18 +108,18 @@
                     <div class="col-lg-6 col-md-6 col-sm-6">
                         <div class="panel panel-default" style="margin-right:10px;">
                             <div class="panel-heading">
-                                Annotation DB
+                                Contigs DB
                             </div>
                             <div class="panel-body">
                                 <table class="table table-striped">
-                                    <thead id="tblHead_basics_annotation">
+                                    <thead id="tblHead_basics_contigs">
                                         <tr>
                                             <th>Key</th>
                                             <th>Value</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for entry in basics_pretty|lookup:"annotation" %}
+                                        {% for entry in basics_pretty|lookup:"contigs" %}
                                         <tr>
                                             <td>{{ entry.0 }}</td>
                                             <td>{{ entry.1 }}</td>
@@ -157,7 +157,7 @@
                                             <th data-defaultsort='disabled' class="text-center"></th>
                                             <th>Bin</th>
 
-                                            {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
+                                            {% if meta|lookup:"contigs"|lookup:"genes_contigs_source" %}
                                             <th class="text-center">Taxonomy</th>
                                             {% else %}
                                             <th class="text-center" data-defaultsort='disabled'>Taxonomy</th>
@@ -177,7 +177,7 @@
                                             <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                             <td style="vertical-align: middle;">{{ bin }}</td>
 
-                                            {% if meta|lookup:"annotation"|lookup:"genes_annotation_source" %}
+                                            {% if meta|lookup:"contigs"|lookup:"genes_contigs_source" %}
                                             <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
                                             {% else %}
                                             <td class="text-center">N/A</td>
@@ -459,7 +459,7 @@
             <div id="collapse-functions" class="panel-collapse collapse">
                 <div class="panel-body">
 
-                    <p style="color: #AAAAAA; padding: 20px;">An overview of functions based on the information found in the annotation database.</a></p>
+                    <p style="color: #AAAAAA; padding: 20px;">An overview of functions based on the information found in the contigs database.</a></p>
 
                     <div class="panel panel-default">
                         <div class="panel-body">

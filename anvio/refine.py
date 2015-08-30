@@ -45,12 +45,12 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_id = A('collection_id')
-        self.annotation_db_path = A('annotation_db')
+        self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 
         self.clustering_configs = constants.clustering_configs['merged']
-        self.database_paths = {'ANNOTATION.db': self.annotation_db_path,
+        self.database_paths = {'CONTIGS.db': self.contigs_db_path,
                                'PROFILE.db': self.profile_db_path}
         self.split_names_of_interest = set([])
 

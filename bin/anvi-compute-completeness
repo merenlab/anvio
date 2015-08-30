@@ -31,8 +31,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A script to generate completeness info for a given list of _splits_')
     parser.add_argument('splits_txt', metavar = 'SPLITS_TXT',
                         help = 'File with split names.')
-    parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database to read from.')
+    parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
+                        help = 'Contigs database to read from.')
     parser.add_argument('-e', '--min-e-value', default=1e-15, type=float, metavar = 'E-VALUE',
                         help = 'Minimum significance score of an HMM find to be considered as a valid hit.\
                                 Default is %(default)g.')
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    completeness = Completeness(args.annotation_db, args.source)
+    completeness = Completeness(args.contigs_db, args.source)
 
     if args.list_sources:
         run.info('Available singlecopy sources', ', '.join(completeness.sources))
@@ -52,9 +52,9 @@ if __name__ == '__main__':
 
     splits_in_users_list = set([s.strip() for s in open(args.splits_txt).readlines() if s.strip() and not s.startswith('#')])
 
-    annotation_db = dbops.AnnotationDatabase(args.annotation_db)
-    splits_in_db = set(annotation_db.db.get_table_as_dict(t.splits_info_table_name).keys())
-    annotation_db.disconnect()
+    contigs_db = dbops.ContigsDatabase(args.contigs_db)
+    splits_in_db = set(contigs_db.db.get_table_as_dict(t.splits_info_table_name).keys())
+    contigs_db.disconnect()
 
     common_splits = splits_in_db.intersection(splits_in_users_list)
 

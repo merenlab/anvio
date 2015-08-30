@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, AnnotationSuperclass, SamplesInformationDatabase, TablesForStates, is_annotation_and_profile_dbs_compatible
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, is_contigs_db_and_profile_db_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -33,7 +33,7 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-class InputHandler(ProfileSuperclass, AnnotationSuperclass):
+class InputHandler(ProfileSuperclass, ContigsSuperclass):
     """The class that loads everything for the interactive interface. Wow. Such glory."""
     def __init__(self, args, external_clustering = None):
         self.args = args
@@ -48,7 +48,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
         self.profile_db_path = A('profile_db')
-        self.annotation_db_path = A('annotation_db')
+        self.contigs_db_path = A('contigs_db')
         self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
@@ -71,33 +71,33 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
 
         self.collections = ccollections.Collections()
 
-        AnnotationSuperclass.__init__(self, self.args)
+        ContigsSuperclass.__init__(self, self.args)
 
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
             self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
 
-        if self.annotation_db_path:
-            self.completeness = completeness.Completeness(self.annotation_db_path)
-            self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
+        if self.contigs_db_path:
+            self.completeness = completeness.Completeness(self.contigs_db_path)
+            self.collections.populate_sources_dict(self.contigs_db_path, anvio.__contigs__version__)
         else:
             self.completeness = None
 
-        if self.annotation_db_path and self.profile_db_path:
+        if self.contigs_db_path and self.profile_db_path:
             # make sure we are not dealing with apples and oranges here.
-            is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
+            is_contigs_db_and_profile_db_compatible(self.contigs_db_path, self.profile_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
         # here is where the big deal stuff takes place:
         if self.profile_db_path:
-            if not self.annotation_db_path:
-                raise ConfigError, "Anvi'o needs the annotation database to make sense of this run."
+            if not self.contigs_db_path:
+                raise ConfigError, "Anvi'o needs the contigs database to make sense of this run."
 
             ProfileSuperclass.__init__(self, args)
 
-            # this is a weird place to do it, but we are going to ask AnnotationSuperclass function to load
+            # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
             # all the split sequences since only now we know the mun_contig_length that was used to profile
             # this stuff
             self.init_split_sequences(self.p_meta['min_contig_length'])
@@ -137,9 +137,9 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
 
-        # if there are any HMM search results in the annotation database other than 'singlecopy' sources,
+        # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
-        # Annotation DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
+        # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
         self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
 
@@ -369,7 +369,7 @@ class InputHandler(ProfileSuperclass, AnnotationSuperclass):
             # (1) set the header line with the first entry:
             json_header = ['contigs']
 
-            # (2) then add annotation db stuff, if exists
+            # (2) then add contigs db stuff, if exists
             if len(self.genes_in_splits_summary_dict):
                 json_header.extend(self.genes_in_splits_summary_headers[1:])
 

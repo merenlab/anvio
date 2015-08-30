@@ -422,10 +422,10 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
     For a given list of split ids, create a dictionary of contig names
     that represents all parents as keys, and ordered splits as items.
 
-    split_ids is a set of split IDs, splits_basic_info comes from the annotation database:
+    split_ids is a set of split IDs, splits_basic_info comes from the contigs database:
  
-     >>> annotation_db = dbops.AnnotationDatabase(annotation_db_path)
-     >>> splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+     >>> contigs_db = dbops.ContigsDatabase(contigs_db_path)
+     >>> splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
      >>> znnotation_db.disconnect()
      >>> x = get_contigs_splits_dict(set([contig_A_split_00001, contig_A_split_00002, contig_A_split_00004,
                                          contig_C_split_00003, contig_C_split_00004, contig_C_split_00005]),

@@ -20,37 +20,37 @@ do
 done
 
 
-INFO "Generating an EMPTY annotation database ..."
-anvi-gen-annotation-database -f contigs.fa -o test-output/ANNOTATION.db -L 1000
+INFO "Generating an EMPTY contigs database ..."
+anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
 INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-anvi-populate-genes-table test-output/ANNOTATION.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+anvi-populate-genes-table test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
-INFO "Populating search tables in the latest annotation database using default HMM profiles ..."
-anvi-populate-search-table test-output/ANNOTATION.db
+INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
+anvi-populate-search-table test-output/CONTIGS.db
 
-INFO "Populating search tables in the latest annotation database using a mock HMM collection from an external directory ..."
-anvi-populate-search-table test-output/ANNOTATION.db -H external_hmm_profile
+INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
+anvi-populate-search-table test-output/CONTIGS.db -H external_hmm_profile
 
-INFO "Annotation DB is ready; here are the tables in it:"
-sqlite3 test-output/ANNOTATION.db '.tables'
+INFO "Contigs DB is ready; here are the tables in it:"
+sqlite3 test-output/CONTIGS.db '.tables'
 
-# for each sample, run the profiling using the same split size used for the annotation database.
+# for each sample, run the profiling using the same split size used for the contigs database.
 # profiling generates individual directiorues uner test-output directory for each sample.
 for f in 6M 7M 9M
 do
     INFO "Profiling sample 204-$f ..."
-    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -a test-output/ANNOTATION.db
+    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -c test-output/CONTIGS.db
     echo
 done
 
 
 INFO "Merging profiles ..."
 # merge samples
-anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -a test-output/ANNOTATION.db
+anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db
 
 INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -a test-output/ANNOTATION.db -o test-output/204-MERGED-SUMMARY -c 'CONCOCT'
+anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'CONCOCT'
 
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
@@ -58,6 +58,6 @@ anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p test-output/204-MERGED/PROFILE.db \
-                 -a test-output/ANNOTATION.db \
+                 -c test-output/CONTIGS.db \
                  -s test-output/SAMPLES.db \
                  --split-hmm-layers

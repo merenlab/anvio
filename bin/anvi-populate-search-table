@@ -46,7 +46,7 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    search_tables = dbops.TablesForSearches(args.annotation_db_path)
+    search_tables = dbops.TablesForSearches(args.contigs_db_path)
     search_tables.debug = args.debug
     search_tables.populate_search_tables(sources)
 
@@ -54,9 +54,9 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='This program deals with populating tables that store HMM hits in an\
-                                                  annotation database. See the documentation for more information.')
-    parser.add_argument('annotation_db_path', metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database to update.')
+                                                  contigs database. See the documentation for more information.')
+    parser.add_argument('contigs_db_path', metavar = 'CONTIGS_DB',
+                        help = 'Contigs database to update.')
     parser.add_argument('-H', '--hmm-profile-dir', default = None,
                         help = 'If this is empty, anvio will perform the HMM search against the default collections that\
                                 are on the system. If it is not, this parameter should be used to point to a directory\

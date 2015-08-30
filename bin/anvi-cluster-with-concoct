@@ -27,8 +27,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A script to call CONCOCT clustering on a merged anvi'o profile")
     parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
                         help = 'Profile database.')
-    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
-                        help = 'anvio annotation database.')
+    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS_DB',
+                        help = 'anvio contigs database.')
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT.txt', default = None,
                         help = 'Store results as a TAB-delimited file')
     parser.add_argument('--skip-db', default = False, action = 'store_true',

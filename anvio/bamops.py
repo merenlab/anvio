@@ -197,7 +197,7 @@ class GetReadsFromBAM:
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.input_bam_files = A('input_bams')
         self.profile_db_path = A('profile_db')
-        self.annotation_db_path = A('annotation_db')
+        self.contigs_db_path = A('contigs_db')
         self.collection_id = A('collection_id')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
@@ -228,10 +228,10 @@ class GetReadsFromBAM:
         short_reads_for_splits_dict = {}
 
         self.progress.new('Accessing reads')
-        self.progress.update('Reading splits info from the annotation database ...')
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
-        annotation_db.disconnect()
+        self.progress.update('Reading splits info from the contigs database ...')
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+        contigs_db.disconnect()
 
         self.progress.update('Identifying contigs associated with splits ...')
         contigs_involved = utils.get_contigs_splits_dict(self.split_names_of_interest, splits_basic_info)

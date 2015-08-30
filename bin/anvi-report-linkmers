@@ -32,7 +32,7 @@ if __name__ == '__main__':
                         help = 'Sorted and indexed BAM file to analyze.')
     parser.add_argument('-o', '--output-file', required = True,
                         help = 'Output file name for the report.')
-    parser.add_argument('-C', '--contigs-and-positions', metavar = 'CONTIGS_AND_POSITIONS', required = True,
+    parser.add_argument('-P', '--contigs-and-positions', metavar = 'CONTIGS_AND_POSITIONS', required = True,
                         help = 'This is the file where you list the contigs, and nucleotide positions you\
                                 are interested in. This is supposed to be a TAB-delimited file with two columns.\
                                 In each line, the first column should be the contig name, and the second column\

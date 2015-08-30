@@ -10,7 +10,7 @@
           pass
    >>> args = Args()
    >>> args.profile_db = '/path/to/PROFILE.db'
-   >>> args.annotation_db = '/path/to/ANNOTATION.db'
+   >>> args.contigs_db = '/path/to/CONTIGS.db'
    >>> c = concoct.CONCOCT(args)
    >>> c.cluster()
    >>> print c.clusters
@@ -53,7 +53,7 @@ class CONCOCT:
         self.run = r
         self.progress = p
         self.profile_db_path = args.profile_db
-        self.annotation_db_path = args.annotation_db
+        self.contigs_db_path = args.contigs_db
 
         self.clusters = {}
 
@@ -76,10 +76,10 @@ class CONCOCT:
         profile_db.disconnect()
 
         self.progress.update('accessing the profile database ...')
-        annotation_db = dbops.AnnotationDatabase(args.annotation_db, quiet = True)
-        self.kmers = annotation_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
-        splits_basic_info = annotation_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
-        annotation_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(args.contigs_db, quiet = True)
+        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
+        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
+        contigs_db.disconnect()
 
         self.progress.update('computing split lenghts ...')
         for split_name in splits_basic_info:

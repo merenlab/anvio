@@ -14,9 +14,9 @@ import anvio.dbops as dbops
 
 progress = terminal.Progress()
 
-parser = argparse.ArgumentParser(description='A simple script to print out sequences for a given list of annotation database protein ids')
-parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
-                    help = 'Annotation database to read from.')
+parser = argparse.ArgumentParser(description='A simple script to print out sequences for a given list of contigs database protein ids')
+parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
+                    help = 'Contigs database to read from.')
 parser.add_argument('genes_list', metavar = 'PROT_IDs',
                     help = 'Protein IDs.')
 
@@ -26,7 +26,7 @@ gene_ids = set([p.strip() for p in open(args.genes_list).readlines()])
 
 # {'function': 'Cobalamin biosynthesis protein CbiG''direction': 'f', 't_phylum': '', 'figfam': '', 'stop': 5202, 't_order': '', 'start': 4162, 't_species': 'Ruminococcus sp.', 't_class': '', 'contig': '204_10M_MERGED.PERFECT.gz.keep_contig_6515', 't_family': ''}
 
-db = dbops.AnnotationDatabase(args.annotation_db, quiet=False)
+db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
 contig_sequences = db.db.get_table_as_dict(t.contig_sequences_table_name)
 genes_in_contigs = db.db.get_table_as_dict(t.genes_contigs_table_name)
 db.disconnect()

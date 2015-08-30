@@ -38,7 +38,7 @@ progress = terminal.Progress()
 
 
 class Table(object):
-    """Superclass for rudimentary needs and operations for annotation db tables"""
+    """Superclass for rudimentary needs and operations for contigs db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet = False):
         if not os.path.exists(db_path):
             raise ConfigError, "Database ('%s') does not exist. You must create one first." % db_path
@@ -59,9 +59,9 @@ class Table(object):
         database = db.DB(self.db_path, version)
         self.db_type = database.get_meta_value('db_type')
 
-        if self.db_type == 'annotation': 
+        if self.db_type == 'contigs': 
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
-            # and annotation db calls.
+            # and contigs db calls.
             self.split_length = database.get_meta_value('split_length')
             self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
             self.splits_info  = database.get_table_as_dict(t.splits_info_table_name)
@@ -90,7 +90,7 @@ class Table(object):
 
 
     def export_contigs_in_db_into_FASTA_file(self):
-        if self.db_type != 'annotation':
+        if self.db_type != 'contigs':
             return None
 
         database = db.DB(self.db_path, self.version)

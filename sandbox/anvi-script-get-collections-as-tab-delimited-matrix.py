@@ -3,21 +3,21 @@
 
 """
 Goes through the collections_* tables and creates a TAB delimited matrix based on
-all available collections in a given annotation database.
+all available collections in a given contigs database.
 """
 
 import argparse
 
 import anvio.terminal as terminal 
-import anvio.annotation as annotation
+import anvio.contigs as contigs
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='A simple script to generate info from search tables')
-parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB',
-                    help = 'Annotation database to read from.')
+parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
+                    help = 'Contigs database to read from.')
 parser.add_argument('-o', '--output', metavar = "OUTPUT_FILE.txt", default="COLLECTIONS.txt",
                     help = 'Output file name.')
 
@@ -26,10 +26,10 @@ args = parser.parse_args()
 contigs = set([])
 contig_lengths = {}
 
-db = annotation.AnnotationDatabase(args.annotation_db, quiet=False)
-collections_splits_table = db.db.get_table_as_dict(annotation.collections_splits_table_name)
-collections_info_table = db.db.get_table_as_dict(annotation.collections_info_table_name)
-contig_lengths_table = db.db.get_table_as_dict(annotation.contig_lengths_table_name)
+db = contigs.ContigsDatabase(args.contigs_db, quiet=False)
+collections_splits_table = db.db.get_table_as_dict(contigs.collections_splits_table_name)
+collections_info_table = db.db.get_table_as_dict(contigs.collections_info_table_name)
+contig_lengths_table = db.db.get_table_as_dict(contigs.contig_lengths_table_name)
 contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
 db.disconnect()
 

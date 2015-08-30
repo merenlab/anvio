@@ -1,6 +1,6 @@
 [general]
 
-[TNF !ANNOTATION.db::kmer_contigs]
+[TNF !CONTIGS.db::kmer_contigs]
 
 [Coverage PROFILE.db::mean_coverage_contigs]
 
@@ -8,6 +8,6 @@
 normalize = False
 log = True
 
-[GC_content !ANNOTATION.db::splits_basic_info]
+[GC_content !CONTIGS.db::splits_basic_info]
 columns_to_use = gc_content_parent,gc_content_parent,gc_content_parent
 normalize = False

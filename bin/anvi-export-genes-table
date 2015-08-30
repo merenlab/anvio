@@ -25,19 +25,19 @@ __status__ = "Development"
 run = terminal.Run()
 
 def main(args):
-    annotation_db = dbops.AnnotationDatabase(args.db_path)
-    genes_contigs_table = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
-    genes_contigs_table_headers = annotation_db.db.get_table_structure(t.genes_contigs_table_name)
+    contigs_db = dbops.ContigsDatabase(args.db_path)
+    genes_contigs_table = contigs_db.db.get_table_as_dict(t.genes_contigs_table_name)
+    genes_contigs_table_headers = contigs_db.db.get_table_structure(t.genes_contigs_table_name)
     utils.store_dict_as_TAB_delimited_file(genes_contigs_table, args.output, genes_contigs_table_headers)
     run.info('Recovered matrix', os.path.abspath(args.output))
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate a TAB-delimited matrix file from genes tables found in an\
-                                                  annotation database')
+                                                  contigs database')
     parser.add_argument('db_path', metavar = 'DB_PATH', default = None,
-                        help = 'Path to the annotation database.')
-    parser.add_argument('-o', '--output', default = "ANNOTATION.txt",
+                        help = 'Path to the contigs database.')
+    parser.add_argument('-o', '--output', default = "CONTIGS.txt",
                         help = 'Output file path. Default is %(default)s.')
 
     args = parser.parse_args()

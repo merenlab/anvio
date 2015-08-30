@@ -44,7 +44,7 @@ class VariablePositions:
         self.min_occurrence = 1
         self.num_positions_from_each_split = 2
         self.profile_db_path = None
-        self.annotation_db_path = None
+        self.contigs_db_path = None
         self.output_file_path = None
         self.quince_mode = False
 
@@ -82,7 +82,7 @@ class VariablePositions:
         self.num_positions_from_each_split = int(args.num_positions_from_each_split)
         self.min_scatter = int(args.min_scatter)
         self.profile_db_path = args.profile_db
-        self.annotation_db_path = args.annotation_db
+        self.contigs_db_path = args.contigs_db
         self.quince_mode = args.quince_mode
 
         if args.output:
@@ -97,13 +97,13 @@ class VariablePositions:
         if not self.profile_db_path:
             raise ConfigError, 'You need to provide a profile database.'
 
-        if not self.annotation_db_path:
-            raise ConfigError, 'You need to provide an annotation database.'
+        if not self.contigs_db_path:
+            raise ConfigError, 'You need to provide a contigs database.'
 
-        filesnpath.is_file_exists(self.annotation_db_path)
+        filesnpath.is_file_exists(self.contigs_db_path)
         filesnpath.is_file_exists(self.profile_db_path)
 
-        dbops.is_annotation_and_profile_dbs_compatible(self.annotation_db_path, self.profile_db_path)
+        dbops.is_contigs_db_and_profile_db_compatible(self.contigs_db_path, self.profile_db_path)
 
         self.progress.update('Attempting to get our splits of interest sorted ..')
         if self.collection_id:
@@ -142,15 +142,15 @@ class VariablePositions:
         profile_db.disconnect()
 
         self.progress.update('Reading splits info table ...')
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        self.splits_info_table = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.splits_info_table = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
         self.num_splits_in_db = len(self.splits_info_table)
         if self.quince_mode:
             self.progress.update('Reading summaries ...')
             self.summaries = dictio.read_serialized_object(os.path.join(self.input_file_path, 'SUMMARY.cp'))
             self.progress.update('Reading contig sequences table ...')
-            self.contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
-        annotation_db.disconnect()
+            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        contigs_db.disconnect()
 
         self.progress.end()
 
@@ -484,10 +484,10 @@ class VariablePositions:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupD.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
-                        help = 'Annotation database.')
     groupD.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,\
                         help = 'Profile database.')
+    groupD.add_argument('-c', '--contigs-db', metavar = "CONTIGS_DB", required = True,\
+                        help = 'Contigs database.')
 
     groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
                                                   ways to do it. One, you can give a file path with split names,\
@@ -495,7 +495,7 @@ if __name__ == '__main__':
                                                   bin name.')
     groupS.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
                          help = 'File path that contains the list of splits to analyze.')
-    groupS.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID',
+    groupS.add_argument('-C', '--collection-id', metavar = 'COLLECTION-ID',
                         help = 'Collection ID to look for the bin you are interested in.')
     groupS.add_argument('-b', '--bin-id', metavar = 'BIN-NAME',
                         help = 'Bin name in the collection to recover split names of interest.')

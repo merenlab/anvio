@@ -178,10 +178,10 @@ class VariabilityWrapper:
         num_splits = len(splits)
         run.info('Splits', '%d splits found' % (num_splits))
         
-        annotation_db = dbops.AnnotationDatabase(args.annotation_db)
-        splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
-        contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name)
-        annotation_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(args.contigs_db)
+        splits_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        contigs_db.disconnect()
 
 
         progress.new('Analyzing splits')
@@ -263,8 +263,8 @@ class VariabilityWrapper:
 parser = argparse.ArgumentParser(description='Generate Variability Matrix')
 parser.add_argument('summary_dict', metavar = 'SUMMARY_DICT', default = None,
                     help = 'Summary file')
-parser.add_argument('-a', '--annotation-db', metavar = "ANNOTATION_DB", required = True,\
-                    help = 'Annotation database.')
+parser.add_argument('-c', '--contigs-db', metavar = "CONTIGS_DB", required = True,\
+                    help = 'Contigs database.')
 parser.add_argument('-s', '--splits-of-interest', metavar = "SPLITS", required = True,\
                     help = 'List of splits to analyze.')
 parser.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\

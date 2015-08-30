@@ -69,9 +69,6 @@ if __name__ == '__main__':
                         help = 'Flag to define whether BAM file is already sorted')
     parser.add_argument('-o', '--output-file', default = None,
                         help = 'Output file path for sorted/indexed BAM file')
-    #parser.add_argument('--overwrite', action = 'store_true', default = False,
-    #                    help = 'When used, the sorted BAM file overwrites the original\
-    #                    file. Do not use if you are not sure')
 
     args = parser.parse_args()
 

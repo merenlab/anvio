@@ -36,7 +36,7 @@ def experimental_organization(args):
 
     if args.profile_db:
         dbops.is_profile_db(args.profile_db)
-    dbops.is_annotation_db(args.annotation_db)
+    dbops.is_contigs_db(args.contigs_db)
 
     if not args.skip_store_in_db and not args.name:
         raise ConfigError, "Since you have not used the --skip-store-in-db flag, this program will attempt\
@@ -54,7 +54,7 @@ def experimental_organization(args):
             split_names = profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig')
         profile_db.disconnect()
 
-    db_paths = {'ANNOTATION.db': args.annotation_db}
+    db_paths = {'CONTIGS.db': args.contigs_db}
     config = ClusteringConfiguration(args.config_file, args.input_directory, db_paths = db_paths, row_ids_of_interest = split_names)
 
     config.print_summary(run)
@@ -80,10 +80,10 @@ if __name__ == '__main__':
                         help = 'Input directory where the input files addressed from the configuration\
                                 file can be found (i.e., the profile database, if PROFILE.db::TABLE\
                                 notation is used in the configuration file).')
-    parser.add_argument('-a', '--annotation-db', metavar = 'ANNOTATION_DB',
-                        help = 'anvio annotation database.', required = True)
+    parser.add_argument('-c', '--contigs-db', metavar = 'CONTIGS_DB',
+                        help = 'anvio contigs database.', required = True)
     parser.add_argument('-p', '--profile-db', default = None, metavar = 'PROFILE_DB',
-                        help = 'anvio annotation database.', required = False)
+                        help = 'anvio contigs database.', required = False)
     parser.add_argument('-N', '--name', default = None, metavar = 'NAME',
                         help = "The name to use when storing the resulting clustering in the database.\
                                 This name will appear in the interactive interface and other relevant\

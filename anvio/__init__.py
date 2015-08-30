@@ -33,17 +33,17 @@ def set_version():
         except:
             __version__ = 'unknown'
 
-    return __version__, t.annotation_db_version, t.profile_db_version, t.samples_info_db_version
+    return __version__, t.contigs_db_version, t.profile_db_version, t.samples_info_db_version
 
 
 def print_version():
     run.info("Anvi'o version", __version__, mc = 'green')
-    run.info("Annotation DB version", __annotation__version__)
+    run.info("Contigs DB version", __contigs__version__)
     run.info("Profile DB version", __profile__version__)
     run.info("Samples information DB version", __samples__version__)
 
 
-__version__, __annotation__version__, __profile__version__, __samples__version__ = set_version()
+__version__, __contigs__version__, __profile__version__, __samples__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:

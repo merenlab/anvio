@@ -39,7 +39,7 @@ if __name__ == '__main__':
                           for more info. Also you shouldn't hesitate to try to find the right file format until you get\
                           it working. There are stringent checks on this file, and you will not break anything while trying!.")
     parser.add_argument('-o', '--db-path', default = "SAMPLES.db", 
-                  help = 'Output file path for the new annotation database to be generated.')
+                  help = 'Output file path for the new contigs database to be generated.')
 
     args = parser.parse_args()
 

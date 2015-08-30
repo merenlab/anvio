@@ -155,23 +155,23 @@ class HMMSearch:
 
 
 class SequencesForHMMHits:
-    def __init__(self, annotation_db_path, sources = set([]), run = run, progress = progress):
+    def __init__(self, contigs_db_path, sources = set([]), run = run, progress = progress):
         if type(sources) != type(set([])):
             raise ConfigError, "'sources' variable has to be a set instance."
 
         self.sources = set([s for s in sources if s])
 
-        # take care of annotation db related stuff and move on:
-        annotation_db = db.DB(annotation_db_path, anvio.__annotation__version__)
-        self.search_info_table = annotation_db.get_table_as_dict(t.hmm_hits_info_table_name)
-        self.search_table_splits = annotation_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        self.search_table_contigs = annotation_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
-        self.contig_sequences = annotation_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
-        annotation_db.disconnect()
+        # take care of contigs db related stuff and move on:
+        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+        self.search_info_table = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.search_table_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        self.search_table_contigs = contigs_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+        self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        contigs_db.disconnect()
 
         missing_sources = [s for s in self.sources if s not in self.search_info_table]
         if len(missing_sources):
-            raise ConfigError, 'Some of the requested sources were not found in the annotation database :/\
+            raise ConfigError, 'Some of the requested sources were not found in the contigs database :/\
                                 Here is a list of the ones that are missing: %s' % ', '.join(missing_sources)
 
         if len(self.sources):

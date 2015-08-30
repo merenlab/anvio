@@ -16,45 +16,45 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_annotation_db_from_v2_to_v3(annotation_db_path):
-    if annotation_db_path is None:
+def update_contigs_db_from_v2_to_v3(contigs_db_path):
+    if contigs_db_path is None:
         raise ConfigError, "No database path is given."
 
     # make sure someone is not being funny
-    dbops.is_annotation_db(annotation_db_path)
+    dbops.is_contigs_db(contigs_db_path)
 
     # make sure the version is 2
-    annotation_db = db.DB(annotation_db_path, None, ignore_version = True)
-    if str(annotation_db.get_version()) != '2':
-        raise ConfigError, "Version of this annotation database is not 2 (hence, this script cannot really do anything)."
+    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    if str(contigs_db.get_version()) != '2':
+        raise ConfigError, "Version of this contigs database is not 2 (hence, this script cannot really do anything)."
 
-    progress.new("Trying to upgrade the annotation database")
+    progress.new("Trying to upgrade the contigs database")
     progress.update('...')
 
     # get a copy of the existing data
-    hmm_hits_contigs = annotation_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
-    sources = annotation_db.get_table_as_dict(t.hmm_hits_info_table_name)
+    hmm_hits_contigs = contigs_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+    sources = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
 
     # drop the old tables:
-    annotation_db._exec('''DROP TABLE %s''' % t.hmm_hits_info_table_name)
-    annotation_db._exec('''DROP TABLE %s''' % t.hmm_hits_contigs_table_name)
-    annotation_db._exec('''DROP TABLE %s''' % t.hmm_hits_splits_table_name)
-    annotation_db.commit()
+    contigs_db._exec('''DROP TABLE %s''' % t.hmm_hits_info_table_name)
+    contigs_db._exec('''DROP TABLE %s''' % t.hmm_hits_contigs_table_name)
+    contigs_db._exec('''DROP TABLE %s''' % t.hmm_hits_splits_table_name)
+    contigs_db.commit()
 
     # create new empty ones
-    annotation_db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
-    annotation_db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
-    annotation_db.create_table(t.hmm_hits_contigs_table_name, t.hmm_hits_contigs_table_structure, t.hmm_hits_contigs_table_types)
+    contigs_db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
+    contigs_db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
+    contigs_db.create_table(t.hmm_hits_contigs_table_name, t.hmm_hits_contigs_table_structure, t.hmm_hits_contigs_table_types)
 
     # set the version
-    annotation_db.remove_meta_key_value_pair('version')
-    annotation_db.set_version('3')
+    contigs_db.remove_meta_key_value_pair('version')
+    contigs_db.set_version('3')
 
     # bye
-    annotation_db.disconnect()
+    contigs_db.disconnect()
 
     # now feed the old data though the TablesForSearches class:
-    search_tables = dbops.TablesForSearches(annotation_db_path)
+    search_tables = dbops.TablesForSearches(contigs_db_path)
     for source in sources:
         kind_of_search = sources[source]['search_type']
         all_genes_searched_against = [g.strip() for g in sources[source]['genes'].split(',')]
@@ -69,16 +69,16 @@ def update_annotation_db_from_v2_to_v3(annotation_db_path):
 
     # bye
     progress.end()
-    run.info_single("The annotation database successfully upgraded from version 2 to 3!")
+    run.info_single("The contigs database successfully upgraded from version 2 to 3!")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to upgrade annotation database to version 2 to version 3')
-    parser.add_argument('annotation_db', metavar = 'ANNOTATION_DB', help = 'Annotation database')
+    parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database to version 2 to version 3')
+    parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
     args = parser.parse_args()
 
     try:
-        update_annotation_db_from_v2_to_v3(args.annotation_db)
+        update_contigs_db_from_v2_to_v3(args.contigs_db)
     except ConfigError, e:
         print e
         sys.exit(-1)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 """
-    Classes to create, access, and/or populate annotation and profile databases.
+    Classes to create, access, and/or populate contigs and profile databases.
 """
 
 import os
@@ -46,7 +46,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class AnnotationSuperclass(object):
+class ContigsSuperclass(object):
     def __init__(self, args, r = run, p = progress):
         self.run = r
         self.progress = p
@@ -68,44 +68,44 @@ class AnnotationSuperclass(object):
         self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
 
         try:
-            self.annotation_db_path = args.annotation_db
+            self.contigs_db_path = args.contigs_db
         except:
-            self.run.warning('AnnotationSuperclass class called with args without annotation_db member')
+            self.run.warning('ContigsSuperclass class called with args without contigs_db member')
             return
 
-        if not self.annotation_db_path:
+        if not self.contigs_db_path:
             return
 
-        filesnpaths.is_file_exists(self.annotation_db_path)
+        filesnpaths.is_file_exists(self.contigs_db_path)
 
-        self.progress.new('Loading the annotation DB')
-        annotation_db = AnnotationDatabase(self.annotation_db_path)
+        self.progress.new('Loading the contigs DB')
+        contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        self.progress.update('Setting annotation self data dict')
-        self.a_meta = annotation_db.meta
+        self.progress.update('Setting contigs self data dict')
+        self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
         for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs']:
             self.a_meta[key] = int(self.a_meta[key])
 
         self.progress.update('Reading contigs basic info')
-        self.contigs_basic_info = annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
+        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
 
         self.progress.update('Reading splits basic info')
-        self.splits_basic_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        self.splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
 
         self.progress.update('Reading genes in contigs table')
-        self.genes_in_contigs_dict = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name)
+        self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_contigs_table_name)
 
         self.progress.update('Reading genes in splits table')
-        self.genes_in_splits = annotation_db.db.get_table_as_dict(t.genes_splits_table_name)
+        self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_splits_table_name)
 
         self.progress.update('Reading genes in splits summary table')
-        self.genes_in_splits_summary_dict = annotation_db.db.get_table_as_dict(t.genes_splits_summary_table_name)
-        self.genes_in_splits_summary_headers = annotation_db.db.get_table_structure(t.genes_splits_summary_table_name)
+        self.genes_in_splits_summary_dict = contigs_db.db.get_table_as_dict(t.genes_splits_summary_table_name)
+        self.genes_in_splits_summary_headers = contigs_db.db.get_table_structure(t.genes_splits_summary_table_name)
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
-        self.hmm_sources_info = annotation_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
         for hmm_source in self.hmm_sources_info:
             self.hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in self.hmm_sources_info[hmm_source]['genes'].split(',')])
 
@@ -126,8 +126,8 @@ class AnnotationSuperclass(object):
 
         self.progress.end()
 
-        annotation_db.disconnect()
-        run.info('Annotation DB', 'Initialized: %s (v. %s)' % (self.annotation_db_path, anvio.__annotation__version__))
+        contigs_db.disconnect()
+        run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
     def init_contig_sequences(self, min_contig_length = 0):
@@ -137,9 +137,9 @@ class AnnotationSuperclass(object):
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
         self.progress.update('Reading contig sequences')
-        annotation_db = AnnotationDatabase(self.annotation_db_path)
-        self.contig_sequences = annotation_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
-        annotation_db.disconnect()
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        contigs_db.disconnect()
 
         self.progress.update('Filtering out shorter contigs')
         for contig_name in contigs_shorter_than_M:
@@ -181,7 +181,7 @@ class AnnotationSuperclass(object):
 
 
     def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
-        if not self.annotation_db_path or not len(self.non_singlecopy_gene_hmm_sources):
+        if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
         self.progress.new('Initializing non-single-copy HMM sources')
@@ -192,8 +192,8 @@ class AnnotationSuperclass(object):
         for source in self.non_singlecopy_gene_hmm_sources:
             non_singlecopy_gene_hmm_info_dict[source] = self.hmm_sources_info[source]
 
-        annotation_db = AnnotationDatabase(self.annotation_db_path)
-        non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(annotation_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
 
         if split_names_of_interest:
             non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
@@ -258,7 +258,7 @@ class ProfileSuperclass(object):
 
         filesnpaths.is_file_exists(self.profile_db_path)
 
-        self.progress.new('Loading the annotation DB')
+        self.progress.new('Loading the contigs DB')
         profile_db = ProfileDatabase(self.profile_db_path)
 
         self.progress.update('Setting profile self data dict')
@@ -297,13 +297,13 @@ class ProfileSuperclass(object):
 
         if not len(gene_coverages_table):
             self.progress.end()
-            self.run.warning('Something came up, please read this carefuly: your annotation database does\
+            self.run.warning('Something came up, please read this carefuly: your contigs database does\
                               contain information for open reading frames in your contigs. however, the\
                               gene coverages table in the profile database is empty. This happens when you\
-                              annotate your annotation database with gene/function calls *after* you have\
+                              annotate your contigs database with gene/function calls *after* you have\
                               profiled your samples. If you are OK with this situation, you can simply\
                               ignore this message. If you need to access to this information, you must\
-                              re-profile your samples (and merge them) using your most update annotation\
+                              re-profile your samples (and merge them) using your most update contigs\
                               database :/ Sorry!')
             return
 
@@ -398,19 +398,19 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
 
-class DatabasesMetaclass(ProfileSuperclass, AnnotationSuperclass, object):
+class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
     """Essential data to load for a given run"""
     def __init__(self, args, r = run, p = progress):
         self.args = args
         self.run = r
         self.progress = p
 
-        filesnpaths.is_file_exists(args.annotation_db)
+        filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        is_annotation_and_profile_dbs_compatible(args.annotation_db, args.profile_db)
+        is_contigs_db_and_profile_db_compatible(args.contigs_db, args.profile_db)
 
-        AnnotationSuperclass.__init__(self, self.args, self.run, self.progress)
+        ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
@@ -482,15 +482,15 @@ class ProfileDatabase:
 
         self.disconnect()
 
-        self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
 
 
     def disconnect(self):
         self.db.disconnect()
 
 
-class AnnotationDatabase:
-    """To create an empty annotation database and/or access one."""
+class ContigsDatabase:
+    """To create an empty contigs database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet = True):
         self.db = None
         self.db_path = db_path
@@ -505,12 +505,12 @@ class AnnotationDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            is_annotation_db(self.db_path)
-            self.db = db.DB(self.db_path, anvio.__annotation__version__)
+            is_contigs_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__contigs__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            self.run.info('Annotation database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
+            self.run.info('Contigs database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
             self.run.info('Number of contigs', self.meta['num_contigs'], quiet = self.quiet)
             self.run.info('Number of splits', self.meta['num_splits'], quiet = self.quiet)
             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet = self.quiet)
@@ -532,16 +532,16 @@ class AnnotationDatabase:
                                 requirement: %s (anvi'o is very upset for making you do this)." % ('http://goo.gl/Q9ChpS')
 
         if os.path.exists(self.db_path):
-            raise ConfigError, "Anvi'o will not overwrite an existing annotation database. Please choose a different name\
+            raise ConfigError, "Anvi'o will not overwrite an existing contigs database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
 
         if not split_length:
-            raise ConfigError, "Creating a new annotation database requires split length information to be\
-                                provided. But the AnnotationDatabase class was called to create one without this\
+            raise ConfigError, "Creating a new contigs database requires split length information to be\
+                                provided. But the ContigsDatabase class was called to create one without this\
                                 bit of information. Not cool."
 
         if not os.path.exists(contigs_fasta):
-            raise ConfigError, "Creating a new annotation database requires a FASTA file with contigs to be provided."
+            raise ConfigError, "Creating a new contigs database requires a FASTA file with contigs to be provided."
 
 
         if not self.db_path.lower().endswith('.db'):
@@ -562,12 +562,12 @@ class AnnotationDatabase:
             raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!)."
 
-        self.db = db.DB(self.db_path, anvio.__annotation__version__, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database = True)
 
         # know thyself
-        self.db.set_meta_value('db_type', 'annotation')
+        self.db.set_meta_value('db_type', 'contigs')
         # this will be the unique information that will be passed downstream whenever this db is used:
-        self.db.set_meta_value('annotation_hash', '%08x' % random.randrange(16**8))
+        self.db.set_meta_value('contigs_db_hash', '%08x' % random.randrange(16**8))
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
@@ -632,7 +632,7 @@ class AnnotationDatabase:
 
         self.disconnect()
 
-        self.run.info('Annotation database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
         self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet = self.quiet)
         self.run.info('Number of splits', splits_info_table.total_splits, quiet = self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
@@ -922,7 +922,7 @@ class TablesForSearches(Table):
 
         self.debug = False
 
-        Table.__init__(self, self.db_path, anvio.__annotation__version__, run, progress)
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
         self.set_next_available_id(t.hmm_hits_contigs_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
@@ -975,20 +975,20 @@ class TablesForSearches(Table):
 
         self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
 
-        annotation_db = AnnotationDatabase(self.db_path)
+        contigs_db = ContigsDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
-        annotation_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
+        contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
 
         # then populate serach_data table for each contig.
         db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name)] + [v[h] for h in t.hmm_hits_contigs_table_structure[1:]]) for v in search_results_dict.values()]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
 
         db_entries = self.process_splits(search_results_dict)
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
 
-        annotation_db.disconnect()
+        contigs_db.disconnect()
 
 
     def process_splits(self, search_results_dict):
@@ -1084,12 +1084,12 @@ class TablesForCollections(Table):
         num_splits = len(db_entries)
 
 
-        # FIXME: This function can be called to populate the annotation database (via anvi-populate-collections), or
-        # the profile database. when it is annotation database, the superclass Table has the self.splits_info variable
+        # FIXME: This function can be called to populate the contigs database (via anvi-populate-collections), or
+        # the profile database. when it is contigs database, the superclass Table has the self.splits_info variable
         # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
-        # the profile database. hence some special controls for annotation db (note that collections_contigs_table is
-        # only populated in the annotations database):
-        if self.db_type == 'annotation':
+        # the profile database. hence some special controls for contigs db (note that collections_contigs_table is
+        # only populated in the contigs database):
+        if self.db_type == 'contigs':
             splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits_info]
             splits_only_in_db = [c for c in self.splits_info if c not in splits_in_clusters_dict]
 
@@ -1187,10 +1187,10 @@ class TablesForGenes(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, anvio.__annotation__version__, run, progress)
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
         # this class keeps track of genes that occur in splits, and responsible
-        # for generating the necessary table in the annotation database
+        # for generating the necessary table in the contigs database
         self.genes_in_splits = GenesInSplits()
 
 
@@ -1200,26 +1200,26 @@ class TablesForGenes(Table):
         self.sanity_check()
 
         # oepn connection
-        annotation_db = AnnotationDatabase(self.db_path)
+        contigs_db = ContigsDatabase(self.db_path)
 
-        self.splits_info = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
+        self.splits_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
 
         # test whether there are already genes tables populated
-        genes_annotation_source = annotation_db.meta['genes_annotation_source']
+        genes_annotation_source = contigs_db.meta['genes_annotation_source']
         if genes_annotation_source:
-            self.run.warning('Previous genes annotation data from "%s" will be replaced with the incoming data' % parser)
-            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_contigs_table_name))
-            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_table_name))
-            annotation_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_summary_table_name))
+            self.run.warning('Previous genes contigs data from "%s" will be replaced with the incoming data' % parser)
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.genes_contigs_table_name))
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_table_name))
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.genes_splits_summary_table_name))
 
         # set the parser
-        annotation_db.db.remove_meta_key_value_pair('genes_annotation_source')
-        annotation_db.db.set_meta_value('genes_annotation_source', parser)
+        contigs_db.db.remove_meta_key_value_pair('genes_annotation_source')
+        contigs_db.db.set_meta_value('genes_annotation_source', parser)
         # push raw entries
         db_entries = [tuple([prot] + [self.genes_dict[prot][h] for h in t.genes_contigs_table_structure[1:]]) for prot in self.genes_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.genes_contigs_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.genes_contigs_table_name, db_entries)
         # disconnect like a pro.
-        annotation_db.disconnect()
+        contigs_db.disconnect()
 
 
         # compute and push split taxonomy information.
@@ -1231,7 +1231,7 @@ class TablesForGenes(Table):
         keys_found = ['prot'] + self.genes_dict.values()[0].keys()
         missing_keys = [key for key in t.genes_contigs_table_structure if key not in keys_found]
         if len(missing_keys):
-            raise ConfigError, "Your input lacks one or more header fields to generate a anvio annotation db. Here is\
+            raise ConfigError, "Your input lacks one or more header fields to generate a anvio contigs db. Here is\
                                 what you are missing: %s. The complete list (and order) of headers in your TAB\
                                 delimited matrix file (or dictionary) must follow this: %s." % (', '.join(missing_keys),
                                                                                                 ', '.join(t.genes_contigs_table_structure))
@@ -1243,15 +1243,15 @@ class TablesForGenes(Table):
         for contig in contig_names_in_matrix:
             if contig not in contig_names_in_db:
                 raise ConfigError, "We have a problem... Every contig name found in the input file you provide\
-                                    must be found in the annotation database. But it seems it is not the case. I did not check\
+                                    must be found in the contigs database. But it seems it is not the case. I did not check\
                                     all, but there there is at least one contig name ('%s') that appears in your\
                                     matrices, but missing in the database. You may need to format the contig\
-                                    names in your FASTA file and regenerate the annotation database to match contig\
+                                    names in your FASTA file and regenerate the contigs database to match contig\
                                     names appear in your matrices. Keep in mind that contig names must also match the\
                                     ones in your BAM files later on. Even when you use one software for assembly and\
                                     mapping, disagreements between contig names may arise. We know that it is the case\
                                     with CLC for instance. OK. Going back to the issue. Here is one contig name from\
-                                    the annotation database (which was originally in your contigs FASTA): '%s', and\
+                                    the contigs database (which was originally in your contigs FASTA): '%s', and\
                                     here is one from your input files you just provided: '%s'. You should make them\
                                     identical (and make sure whatever solution you come up with will not make them\
                                     incompatible with names in your BAM files later on. Sorry about this mess, but\
@@ -1338,15 +1338,15 @@ class TablesForGenes(Table):
                     splits_dict[split_name]['tax_accuracy'] = occurrence * 1.0 / len(taxonomy_strings)
 
         # open connection
-        annotation_db = AnnotationDatabase(self.db_path)
+        contigs_db = ContigsDatabase(self.db_path)
         # push raw entries for splits table
         db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_splits_summary_table_structure[1:]]) for split in splits_dict]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_splits_summary_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_splits_summary_table_name, db_entries)
         # push entries for genes in splits table
         db_entries = [tuple([entry_id] + [self.genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_splits_table_structure[1:]]) for entry_id in self.genes_in_splits.splits_to_prots]
-        annotation_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_splits_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_splits_table_name, db_entries)
         # disconnect
-        annotation_db.disconnect()
+        contigs_db.disconnect()
 
 
     def get_consensus_taxonomy_for_split(self, contig, t_level = 't_species', start = 0, stop = sys.maxint):
@@ -1414,10 +1414,10 @@ def is_samples_information_db(db_path):
     if get_db_type(db_path) != 'samples_information':
         raise ConfigError, "'%s' is not an anvi'o samples information database." % db_path
 
-def is_annotation_db(db_path):
+def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'annotation':
-        raise ConfigError, "'%s' is not an anvi'o annotation database." % db_path
+    if get_db_type(db_path) != 'contigs':
+        raise ConfigError, "'%s' is not an anvi'o contigs database." % db_path
 
 
 def is_profile_db(db_path):
@@ -1444,23 +1444,23 @@ def get_db_type(db_path):
     return db_type
 
 
-def is_annotation_and_profile_dbs_compatible(annotation_db_path, profile_db_path):
-    is_annotation_db(annotation_db_path)
+def is_contigs_db_and_profile_db_compatible(contigs_db_path, profile_db_path):
+    is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
 
-    annotation_db = AnnotationDatabase(annotation_db_path)
+    contigs_db = ContigsDatabase(contigs_db_path)
     profile_db = ProfileDatabase(profile_db_path)
 
-    a_hash = annotation_db.meta['annotation_hash']
-    p_hash = profile_db.meta['annotation_hash']
+    a_hash = contigs_db.meta['contigs_db_hash']
+    p_hash = profile_db.meta['contigs_db_hash']
     merged = profile_db.meta['merged']
 
-    annotation_db.disconnect()
+    contigs_db.disconnect()
     profile_db.disconnect()
 
     if a_hash != p_hash:
-        raise ConfigError, 'The annotation database and the profile database does not\
-                            seem to be compatible. More specifically, this annotation\
+        raise ConfigError, 'The contigs database and the profile database does not\
+                            seem to be compatible. More specifically, this contigs\
                             database is not the one that was used when %s generated\
                             this profile database.'\
                                 % 'anvi-merge' if merged else 'anvi-profile'

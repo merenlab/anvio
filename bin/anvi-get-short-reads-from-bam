@@ -31,9 +31,9 @@ if __name__ == '__main__':
                         help = 'BAM file(s) to access to recover short reads')
     parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
                         help = 'Profile database.')
-    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database.')
-    parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', required = True,
+    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS_DB',
+                        help = 'Contigs database.')
+    parser.add_argument('-C', '--collection-id', metavar = 'COLLECTION-ID', required = True,
                         help = 'Collection id to look for bins.')
     parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
                         help = 'A bin to analayze (you either use this, or use a file to list\

@@ -44,7 +44,7 @@ class Summarizer(DatabasesMetaclass):
 
         self.debug = False
         self.profile_db_path = None
-        self.annotation_db_path = None
+        self.contigs_db_path = None
         self.output_directory = None
         self.split_names_per_bin = None
         self.completeness_data_available = False
@@ -61,7 +61,7 @@ class Summarizer(DatabasesMetaclass):
             self.gene_coverages_data_available = True
 
         self.collections = ccollections.Collections()
-        self.collections.populate_sources_dict(self.annotation_db_path, anvio.__annotation__version__)
+        self.collections.populate_sources_dict(self.contigs_db_path, anvio.__contigs__version__)
         self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         self.collection_id = None
@@ -99,7 +99,7 @@ class Summarizer(DatabasesMetaclass):
         self.init_collection_profile(collection_dict)
 
         # load completeness information if available
-        self.completeness = completeness.Completeness(self.annotation_db_path)
+        self.completeness = completeness.Completeness(self.contigs_db_path)
         if len(self.completeness.sources):
             self.completeness_data_available = True
 
@@ -117,15 +117,15 @@ class Summarizer(DatabasesMetaclass):
                                 'num_contigs_in_collection': 0,
                                 'anvio_version': __version__, 
                                 'profile': self.p_meta,
-                                'annotation': self.a_meta,
+                                'contigs': self.a_meta,
                                 'gene_coverages_data_available': self.gene_coverages_data_available,
                                 'completeness_data_available': self.completeness_data_available,
                                 'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available, 
-                                'percent_annotation_nts_described_by_collection': 0.0,
+                                'percent_contigs_nts_described_by_collection': 0.0,
                                 'percent_profile_nts_described_by_collection': 0.0,
-                                'percent_annotation_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
-                                'percent_annotation_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']) ,
-                                'percent_annotation_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']) ,
+                                'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
+                                'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']) ,
+                                'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']) ,
                                     }
 
         # I am not sure whether this is the best place to do this, 
@@ -137,7 +137,7 @@ class Summarizer(DatabasesMetaclass):
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
                                                     ],
-                                         'annotation': [
+                                         'contigs': [
                                                         ('Created on', self.p_meta['creation_date']),
                                                         ('Version', self.a_meta['version']),
                                                         ('Split length', pretty(int(self.a_meta['split_length']))),
@@ -174,7 +174,7 @@ class Summarizer(DatabasesMetaclass):
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
 
         # bins are computed, add some relevant meta info:
-        self.summary['meta']['percent_annotation_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
+        self.summary['meta']['percent_contigs_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
@@ -277,9 +277,9 @@ class Bin:
         self.output_directory = None
         self.contig_lengths = []
 
-        # make sure all split_ids in the collection is actually in the annotation database.
-        # in collections stored in the annotation database, split_ids that are not in the
-        # oritinal contigs used to generate annotation database *may* end up in the
+        # make sure all split_ids in the collection is actually in the contigs database.
+        # in collections stored in the contigs database, split_ids that are not in the
+        # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
         missing_ids = [split_id for split_id in self.split_ids if split_id not in self.summary.split_sequences]
         if len(missing_ids):
@@ -287,11 +287,11 @@ class Bin:
                 self.split_ids.remove(missing_id)
 
             self.run.warning('%d split id(s) in bin "%s" reported by collection "%s" is not found in the\
-                              annotation database and removed from the bin summary. If this does not make\
+                              contigs database and removed from the bin summary. If this does not make\
                               any sense, you may need make sure everything is in order. The thing is,\
-                              sometimes external clustering results that are added to the annotation via\
+                              sometimes external clustering results that are added to the contigs via\
                               `anvi-populate-collections-table` may include split names that are not used\
-                              while the annotation database was generated.'\
+                              while the contigs database was generated.'\
                                                 % (len(missing_ids), bin_id, self.summary.collection_id))
 
 
@@ -467,7 +467,7 @@ class Bin:
 
 
     def store_sequences_for_hmm_hits(self):
-        s = SequencesForHMMHits(self.summary.annotation_db_path)
+        s = SequencesForHMMHits(self.summary.contigs_db_path)
         hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits({self.bin_id: self.split_ids})
 
         single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]

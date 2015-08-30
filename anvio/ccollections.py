@@ -6,7 +6,7 @@ masking the standard collections library).
 If the user have analyzed their metagenome using a metagenome binning software
 and identified draft genomes in their data (or by any other means binned their
 contigs based on any criterion), this information can be stored in the
-annotation database's collections_* tables. The class implemented here collects
+contigs database's collections_* tables. The class implemented here collects
 this information from the database, and presents it as an intuitive data structure
 for the client.
 """
@@ -49,8 +49,8 @@ class Collections:
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
 
-        # collections info must be read only if its coming from the annotation database.
-        if db_type == 'annotation':
+        # collections info must be read only if its coming from the contigs database.
+        if db_type == 'contigs':
             read_only = True
         elif db_type == 'profile':
             read_only = False
@@ -134,7 +134,7 @@ class GetSplitNamesInBins:
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_id = A('collection_id')
-        self.annotation_db_path = A('annotation_db')
+        self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 

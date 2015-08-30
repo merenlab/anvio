@@ -39,7 +39,7 @@ class BAMProfiler:
     def __init__(self, args = None):
         self.args = None
         self.input_file_path = None 
-        self.annotation_db_path = None
+        self.contigs_db_path = None
         self.serialized_profile_path = None 
         self.split_length = 20000
         self.output_directory = None 
@@ -55,7 +55,7 @@ class BAMProfiler:
         if args:
             self.args = args
             self.input_file_path = args.input_file
-            self.annotation_db_path = args.annotation_db_path
+            self.contigs_db_path = args.contigs_db_path
             self.serialized_profile_path = args.profile
             self.output_directory = args.output_directory
             self.list_contigs_and_exit = args.list_contigs
@@ -79,9 +79,9 @@ class BAMProfiler:
         self.bam = None
         self.contigs = {}
         self.genes_in_contigs = {}
-        self.contig_names_in_annotation_db = None
+        self.contig_names_in_contigs_db = None
 
-        self.database_paths = {'ANNOTATION.db': self.annotation_db_path}
+        self.database_paths = {'CONTIGS.db': self.contigs_db_path}
 
         self.profile_db_path = None
 
@@ -98,9 +98,9 @@ class BAMProfiler:
 
 
     def init_dirs_and_dbs(self):
-        if not self.annotation_db_path:
-            raise ConfigError, "You can not run profiling without an annotation database. You can create\
-                                      one using 'anvi-gen-annotation-database'. Not sure how? Please see the\
+        if not self.contigs_db_path:
+            raise ConfigError, "You can not run profiling without a contigs database. You can create\
+                                      one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
                                       user manual."
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
@@ -111,14 +111,14 @@ class BAMProfiler:
         self.progress.update('Creating the output directory ...')
         filesnpaths.gen_output_directory(self.output_directory, self.progress, delete_if_exists = self.overwrite_output_destinations)
 
-        self.progress.update('Initializing the annotation database ...')
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        self.split_length = int(annotation_db.meta['split_length'])
-        self.annotation_hash = annotation_db.meta['annotation_hash']
-        self.contig_names_in_annotation_db = set(annotation_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
-        annotation_db.disconnect()
+        self.progress.update('Initializing the contigs database ...')
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.split_length = int(contigs_db.meta['split_length'])
+        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        self.contig_names_in_contigs_db = set(contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
+        contigs_db.disconnect()
 
-        self.progress.update('Creating a new single profile database with annotation hash "%s" ...' % self.annotation_hash)
+        self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.contigs_db_hash)
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
@@ -131,7 +131,7 @@ class BAMProfiler:
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'report_variability_full': self.report_variability_full,
-                       'annotation_hash': self.annotation_hash}
+                       'contigs_db_hash': self.contigs_db_hash}
         profile_db.create(meta_values)
 
         self.progress.end()
@@ -148,19 +148,19 @@ class BAMProfiler:
 
         self.init_dirs_and_dbs()
 
-        # we will set up things here so the information in the annotation_db
+        # we will set up things here so the information in the contigs_db
         # can be utilized directly from within the contigs for loop. contig to
         # gene associations will be stored in self.genes_in_contigs dictionary for
         # fast access.
-        if self.annotation_db_path:
+        if self.contigs_db_path:
             self.populate_genes_in_contigs_dict()
 
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path, display_only = True)
-        self.run.info('annotation_db', True if self.annotation_db_path else False)
-        self.run.info('annotation_hash', self.annotation_hash)
+        self.run.info('contigs_db', True if self.contigs_db_path else False)
+        self.run.info('contigs_db_hash', self.contigs_db_hash)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
         self.run.info('split_length', self.split_length)
@@ -206,11 +206,11 @@ class BAMProfiler:
 
 
     def populate_genes_in_contigs_dict(self):
-        self.progress.new('Annotation')
+        self.progress.new('Contigs')
         self.progress.update('Reading genes in contigs table')
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        genes_in_contigs_table = annotation_db.db.get_table_as_dict(t.genes_contigs_table_name, t.genes_contigs_table_structure)
-        annotation_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        genes_in_contigs_table = contigs_db.db.get_table_as_dict(t.genes_contigs_table_name, t.genes_contigs_table_structure)
+        contigs_db.disconnect()
 
         self.progress.update('Populating ORFs dictionary for each contig ...')
         for gene in genes_in_contigs_table:
@@ -221,7 +221,7 @@ class BAMProfiler:
                 self.genes_in_contigs[e['contig']] = set([(gene, e['start'], e['stop']), ])
 
         self.progress.end()
-        self.run.info('annotation_db', "%d genes processed successfully." % len(genes_in_contigs_table), display_only = True)
+        self.run.info('contigs_db', "%d genes processed successfully." % len(genes_in_contigs_table), display_only = True)
 
 
     def generate_variabile_positions_table(self):
@@ -248,7 +248,7 @@ class BAMProfiler:
         for i in range(0, num_contigs):
             contig = contig_names[i]
             self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
-            # if no open reading frames were found in a contig, it wouldn't have an entry in the annotation table,
+            # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
             if self.genes_in_contigs.has_key(contig):
@@ -277,7 +277,7 @@ class BAMProfiler:
 
 
     def check_contigs_without_any_ORFs(self, contig_names):
-        if not self.annotation_db_path:
+        if not self.contigs_db_path:
             return
         contig_names = set(contig_names)
         contigs_without_annotation = [c for c in contig_names if c not in self.genes_in_contigs]
@@ -285,14 +285,14 @@ class BAMProfiler:
         if len(contigs_without_annotation):
             import random
             P = lambda x: 'are %d contigs' % (x) if x > 1 else 'there is one contig'
-            self.run.warning('You have instructed profiling to use an annotation database,\
+            self.run.warning('You have instructed profiling to use a contigs database,\
                               however, there %s in your BAM file that did not get annotated. Which means\
                               whatever method you used to identify open reading frames in these contigs\
                               failed to find any open reading frames in those. Which may be normal\
                               (a) if your contigs are very short, or (b) if your gene finder is not\
                               capable of dealing with your stuff. If you know what you are doing, that\
                               is fine. Otherwise please double check. Here is one contig missing\
-                              annotation if you would like to play: %s"' %\
+                              contigs if you would like to play: %s"' %\
                                       (P(len(contigs_without_annotation)), random.choice(contigs_without_annotation)))
 
 
@@ -418,25 +418,25 @@ class BAMProfiler:
         # let's see whether the user screwed up to follow the simple instructions
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
         for contig_name in self.contig_names:
-            if contig_name not in self.contig_names_in_annotation_db:
+            if contig_name not in self.contig_names_in_contigs_db:
                 raise ConfigError, "At least one contig name in your BAM file does not match contig names stored in the\
-                                    annotation database. For instance, this is one contig name found in your BAM file: '%s',\
-                                    and this is another one found in your annotation database: '%s'. You may be using an\
-                                    annotation database for profiling that has nothing to do with the BAM file you are\
+                                    contigs database. For instance, this is one contig name found in your BAM file: '%s',\
+                                    and this is another one found in your contigs database: '%s'. You may be using an\
+                                    contigs database for profiling that has nothing to do with the BAM file you are\
                                     trying to profile, or you may have failed to fix your contig names in your FASTA file\
                                     prior to mapping, which is described here: %s"\
-                                        % (contig_name, self.contig_names_in_annotation_db.pop(), 'http://goo.gl/Q9ChpS')
+                                        % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
 
         # finally, compute contig splits.
-        annotation_db = dbops.AnnotationDatabase(self.annotation_db_path)
-        self.splits_in_annotation_db = annotation_db.db.get_table_as_dict(t.splits_info_table_name)
-        annotation_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.splits_in_contigs_db = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+        contigs_db.disconnect()
 
         contigs_longer_than_M = set(self.contig_names) # for fast access
         self.split_names = set([])
         self.contig_name_to_splits = {}
-        for split_name in self.splits_in_annotation_db:
-            parent = self.splits_in_annotation_db[split_name]['parent']
+        for split_name in self.splits_in_contigs_db:
+            parent = self.splits_in_contigs_db[split_name]['parent']
 
             if parent not in contigs_longer_than_M:
                 continue
@@ -498,7 +498,7 @@ class BAMProfiler:
 
             # populate contig with empty split objects and 
             for split_name in self.contig_name_to_splits[contig_name]:
-                s = self.splits_in_annotation_db[split_name]
+                s = self.splits_in_contigs_db[split_name]
                 split = contigops.Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 

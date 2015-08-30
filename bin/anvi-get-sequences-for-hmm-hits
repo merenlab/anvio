@@ -34,7 +34,7 @@ progress = terminal.Progress()
 
 def main(args):
     if args.list_available_sources:
-        info_table = SequencesForHMMHits(args.annotation_db).search_info_table
+        info_table = SequencesForHMMHits(args.contigs_db).search_info_table
         for source in info_table:
             t = info_table[source]
             run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
@@ -44,7 +44,7 @@ def main(args):
     run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
 
     sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
-    s = SequencesForHMMHits(args.annotation_db, sources = sources)
+    s = SequencesForHMMHits(args.contigs_db, sources = sources)
 
     hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits(splits_dict)
     run.info('Result', '%d genes for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
@@ -57,9 +57,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get sequences for all HMM hits in a given bin")
     parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
                         help = 'Profile database.')
-    parser.add_argument('-a', '--annotation-db', required = True, metavar = 'ANNOTATION_DB',
-                        help = 'Annotation database.')
-    parser.add_argument('-c', '--collection-id', metavar = 'COLLECTION-ID', default = None,
+    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS_DB',
+                        help = 'Contigs database.')
+    parser.add_argument('-C', '--collection-id', metavar = 'COLLECTION-ID', default = None,
                         help = 'Collection id to look for bins.')
     parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
                         help = 'One bin to analayze (you either use this, or use a file to list\
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                         help = 'Get sequences for a specific list of HMM sources. You can list one or more\
                                 sources by separating them from each other with a comma character (i.e., \
                                 "--hmm-sources source_1,source_2,source_3"). If you would like to see a list\
-                                of available sources in the annotation database, run this program with\
+                                of available sources in the contigs database, run this program with\
                                 "--list-available-sources" flag.')
     parser.add_argument('-o', '--output-file', metavar = 'FILE NAME', default = 'sequences_for_hmm_hits.fa',
                         help = 'Output file path. Default is %(default)s.')

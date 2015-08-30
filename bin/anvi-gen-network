@@ -133,7 +133,7 @@ def generate_gexf_network_file(units, samples_dict, output_file, sample_mapping_
 class NetworkDescriptonSamples:
     def __init__(self):
         self.runinfo_path = None
-        self.annotation_db_path = None
+        self.contigs_db_path = None
         self.use_named_functions_only = False
         self.runinfo = None
         self.functions = {'labels': {}}
@@ -142,17 +142,17 @@ class NetworkDescriptonSamples:
 
     def init(self):
         filesnpaths.is_file_exists(self.runinfo_path)
-        filesnpaths.is_file_exists(self.annotation_db_path)
+        filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.runinfo = dictio.read_serialized_object(self.runinfo_path)
         self.profile_db_path = self.P(self.runinfo['profile_db'])
         self.profile_db = db.DB(self.profile_db_path, t.profile_db_version)
 
-        self.annotation_db = db.DB(self.annotation_db_path, t.annotation_db_version)
+        self.contigs_db = db.DB(self.contigs_db_path, t.contigs_db_version)
 
-        if self.annotation_db.get_meta_value('annotation_hash') != self.profile_db.get_meta_value('annotation_hash'):
-            raise ConfigError, "OK. The run described in '%s' was not profiled using the annotation database\
-                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.annotation_db_path)
+        if self.contigs_db.get_meta_value('contigs_db_hash') != self.profile_db.get_meta_value('contigs_db_hash'):
+            raise ConfigError, "OK. The run described in '%s' was not profiled using the contigs database\
+                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.contigs_db_path)
 
         table_names = self.profile_db.get_table_names()
 
@@ -170,8 +170,8 @@ class NetworkDescriptonSamples:
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
         self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
 
-        progress.update('Reading annotations table from %s  ...' % self.annotation_db_path)
-        self.genes_in_contigs = self.annotation_db.get_table_as_dict(t.genes_contigs_table_name)
+        progress.update('Reading annotations table from %s  ...' % self.contigs_db_path)
+        self.genes_in_contigs = self.contigs_db.get_table_as_dict(t.genes_contigs_table_name)
 
         # read functions.
         progress.update('Sifting through genes with non-hypothetical functions ...')
@@ -221,15 +221,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a network description file')
     parser.add_argument('runinfo', metavar = 'RUNINFO',
                         help = 'anvio RUNINFO file')
-    parser.add_argument('annotation_db', metavar = 'ANNOTATION',
-                        help = 'Annotation database that has been used for the run described in RUNINFO file')
+    parser.add_argument('contigs_db', metavar = 'CONTIGS',
+                        help = 'Contigs database that has been used for the run described in RUNINFO file')
 
     args = parser.parse_args()
 
     try:
         network = NetworkDescriptonSamples()
         network.runinfo_path = args.runinfo
-        network.annotation_db_path = args.annotation_db
+        network.contigs_db_path = args.contigs_db
         network.init()
         network.generate_genes_network()
         network.generate_functions_network()
