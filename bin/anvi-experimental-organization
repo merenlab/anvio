@@ -51,7 +51,7 @@ def experimental_organization(args):
         if int(profile_db.meta['merged']):
             split_names = profile_db.db.get_single_column_from_table('mean_coverage_splits', 'contig')
         else:
-            split_names = profile_db.db.get_single_column_from_table('metadata_splits', 'contig')
+            split_names = profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig')
         profile_db.disconnect()
 
     db_paths = {'ANNOTATION.db': args.annotation_db}
