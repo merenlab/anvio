@@ -202,7 +202,7 @@ class GetReadsFromBAM:
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.debug = A('debug')
-        self.output_file_name = A('output_file_name')
+        self.output_file_path = A('output_file')
 
         self.bins = set([])
         self.split_names_of_interest = set([])
@@ -293,11 +293,11 @@ class GetReadsFromBAM:
 
         self.progress.new('Storing reads')
         self.progress.update('...')
-        utils.store_dict_as_FASTA_file(short_reds_for_splits_dict, self.output_file_name)
+        utils.store_dict_as_FASTA_file(short_reds_for_splits_dict, self.output_file_path)
         self.progress.end()
 
         self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict)))
-        self.run.info('FASTA output', self.output_file_name)
+        self.run.info('FASTA output', self.output_file_path)
 
 
     def sanity_check(self):
@@ -313,7 +313,7 @@ class GetReadsFromBAM:
                                 file(s) do not look like proper BAM files [ here is the actual\
                                 error: "%s"]: %s.' % (e, ','.join(bad_bam_files))
 
-        if not self.output_file_name:
-            self.output_file_name = 'short_reads.fa'
+        if not self.output_file_path:
+            self.output_file_path = 'short_reads.fa'
 
-        filesnpaths.is_output_file_writable(self.output_file_name)
+        filesnpaths.is_output_file_writable(self.output_file_path)
