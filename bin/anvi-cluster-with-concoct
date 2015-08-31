@@ -19,29 +19,21 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description="A script to call CONCOCT clustering on a merged anvi'o profile")
-    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,
-                        help = 'Profile database.')
-    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS_DB',
-                        help = 'anvio contigs database.')
-    parser.add_argument('-o', '--output-file', metavar = 'OUTPUT.txt', default = None,
-                        help = 'Store results as a TAB-delimited file')
-    parser.add_argument('--skip-db', default = False, action = 'store_true',
-                        help = 'By default, results are stored in the profile database that is given as a parameter\
-                                Use this flag if you would like to skip that step')
-    parser.add_argument('--source-identifier', default = 'CONCOCT', metavar = 'SOURCE',
-                        help = "The source identifier when results are stored in the profile database. The default id\
-                                is '%(default)s'. If there is another entry for '%(default)s', it will be overwrotten\
-                                with new results. Using this parameter you can avoid that.")
-    parser.add_argument('--debug', action='store_true', help = 'Print out debug info.')
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
+    parser.add_argument(*anvio.A('source-identifier'), **anvio.K('source-identifier', {'default': 'CONCOCT'}))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+
     args = parser.parse_args()
-
-
 
     try:
         source = args.source_identifier.strip()
@@ -63,7 +55,7 @@ if __name__ == '__main__':
 
         if args.output_file:
             c.store_clusters_as_TAB_delimited_text(args.output_file)
-        if not args.skip_db:
+        if not args.skip_store_in_db:
             c.store_clusters_in_db(source = source)
 
     except ConfigError, e:

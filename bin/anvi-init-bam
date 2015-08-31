@@ -18,7 +18,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 pp = terminal.pretty_print 
@@ -67,14 +66,14 @@ if __name__ == '__main__':
                         help = 'BAM file to analyze')
     parser.add_argument('--sorted', action = 'store_true', default = False,
                         help = 'Flag to define whether BAM file is already sorted')
-    parser.add_argument('-o', '--output-file', default = None,
-                        help = 'Output file path for sorted/indexed BAM file')
+
+    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     args = parser.parse_args()
 
     try:
         sys.exit(init_bam_file(input_file_path = args.input_file,
-                               output_file_path = args.output_file,
+                               output_file_path = args.output_file_prefix,
                                already_sorted = args.sorted))
     except ConfigError, e:
         print e

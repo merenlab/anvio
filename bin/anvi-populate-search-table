@@ -19,7 +19,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
@@ -46,7 +45,7 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    search_tables = dbops.TablesForSearches(args.contigs_db_path)
+    search_tables = dbops.TablesForSearches(args.contigs_db)
     search_tables.debug = args.debug
     search_tables.populate_search_tables(sources)
 
@@ -55,16 +54,10 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='This program deals with populating tables that store HMM hits in an\
                                                   contigs database. See the documentation for more information.')
-    parser.add_argument('contigs_db_path', metavar = 'CONTIGS_DB',
-                        help = 'Contigs database to update.')
-    parser.add_argument('-H', '--hmm-profile-dir', default = None,
-                        help = 'If this is empty, anvio will perform the HMM search against the default collections that\
-                                are on the system. If it is not, this parameter should be used to point to a directory\
-                                that contains 4 files: (1) genes.hmm.gz, (2) genes.txt, (3) kind.txt, and (4)\
-                                reference.txt. Please see the documentation for specifics of these files.')
-    parser.add_argument('--debug', action='store_true', default = False,
-                        help = 'When declared, anvio will not remove temporary directories with intermediate search\
-                                results that may be useful to investigate unexpected behavior.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
 

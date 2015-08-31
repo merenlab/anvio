@@ -17,7 +17,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
@@ -27,34 +26,16 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate a new anvio contigs database.')
-    parser.add_argument('-f', '--contigs-fasta', metavar = 'FASTA', required = True,
-                        help = 'The FASTA file that contains reference sequences you mapped your samples against. This\
-                                could be a reference genome, or contigs from your assembler. Contig names in this file\
-                                must match to those in other input files. If there is a problem, anvio will gracefully\
-                                complain about it.')
-    parser.add_argument('-L', '--split-length', metavar = 'INTEGER', default = 20000, type=int,
-                        help = 'Splitting very large contigs into multiple pieces improves\
-                                the efficacy of the visualization step. The default value\
-                                is (%(default)d). If you are not sure, we advise you to not\
-                                go below 10,000. The lower you go, the more complicated the\
-                                tree will be, and will take more time and computational\
-                                resources to finish the analysis. Also this is not a case\
-                                of "the smaller the split size the more sensitive the results". If you do\
-                                not want your contigs to be split, you can either enter a very\
-                                large integer, or "-1".')
-    parser.add_argument('-K', '--kmer-size', metavar = 'INTEGER', default = 4, type=int,
-                        help = 'K-mer size for k-mer frequency calculations. The default k-mer size for composition-based\
-                                analyses is 4, historically. Although tetra-nucleotide frequencies seem to offer the\
-                                the sweet spot of sensitivity, information density, and manageable number of dimensions\
-                                for clustering approaches, you are welcome to experiment (but maybe you should leave\
-                                it as is for your first set of analyses).')
-    parser.add_argument('-o', '--db-path', default = "CONTIGS.db", 
-                        help = 'Output file path for the new contigs database to be generated.')
+
+    parser.add_argument(*anvio.A('contigs-fasta'), **anvio.K('contigs-fasta'))
+    parser.add_argument(*anvio.A('split-length'), **anvio.K('split-length'))
+    parser.add_argument(*anvio.A('kmer-size'), **anvio.K('kmer-size'))
+    parser.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'CONTIGS.db'}))
 
     args = parser.parse_args()
 
     try:
-        a = dbops.ContigsDatabase(args.db_path, run, progress, quiet=False)
+        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False)
         a.create(args.contigs_fasta, args.split_length, args.kmer_size)
     except ConfigError, e:
         print e

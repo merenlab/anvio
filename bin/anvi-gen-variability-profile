@@ -29,7 +29,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 pp = terminal.pretty_print
@@ -85,8 +84,8 @@ class VariablePositions:
         self.contigs_db_path = args.contigs_db
         self.quince_mode = args.quince_mode
 
-        if args.output:
-            self.output_file_path = args.output
+        if args.output_file:
+            self.output_file_path = args.output_file
             filesnpath.is_output_file_writable(self.output_file_path)
 
 
@@ -469,79 +468,40 @@ class VariablePositions:
         for e in self.variable_positions_table:
             self.variable_positions_table[e]['competing_nts'] = ''.join(sorted(self.variable_positions_table[e]['competing_nts']))
 
-        utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output, new_structure)
+        utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, args.output_file, new_structure)
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(self.variable_positions_table)))
-        self.run.info('Output File', args.output) 
+        self.run.info('Output File', args.output_file) 
         self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
-
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupD.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", required = True,\
-                        help = 'Profile database.')
-    groupD.add_argument('-c', '--contigs-db', metavar = "CONTIGS_DB", required = True,\
-                        help = 'Contigs database.')
 
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
                                                   ways to do it. One, you can give a file path with split names,\
                                                   or, as an alternative, you can provide a collection id with a\
                                                   bin name.')
-    groupS.add_argument('-s', '--splits-of-interest', metavar = "SPLITS",\
-                         help = 'File path that contains the list of splits to analyze.')
-    groupS.add_argument('-C', '--collection-id', metavar = 'COLLECTION-ID',
-                        help = 'Collection ID to look for the bin you are interested in.')
-    groupS.add_argument('-b', '--bin-id', metavar = 'BIN-NAME',
-                        help = 'Bin name in the collection to recover split names of interest.')
-
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
-    groupO.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the resulting matrix.')
-    groupO.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
-                        help = 'File that contains the list of samples to foucs. If not declared, all samples are used.')
-    groupO.add_argument('--quince-mode', action='store_true', default=False,
-                  help = 'The default behavior is to report base frequencies of nucleotide positions only if there\
-                          is any variation reported during profiling (which by default uses some heuristics to minimize\
-                          the impact of error-driven variation). So, if there are 10 samples, and a given position has been\
-                          reported as a varaible site during profiling in only one of those samples, there will be no\
-                          information will be stored in the database for the remaining 9. When this flag is\
-                          used, we go back to each sample, and report base frequencies for each sample at this position\
-                          even if they do not vary. It will take considerably longer to report when this flag is on, and the use\
-                          of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
-                          (as well as for some beautiful visualizations).')
-
     groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
                                                   If you declare nothing from this bunch, you will get "everything"\
                                                   to play with, which is not necessarily a good thing...')
-    groupE.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
-                  help = 'Each split may have one or more variable positions. What is the maximum number of positons\
-                          to report from each split is described via this paramter. The default is %(default)d. Which\
-                          means from every split, a maximum of %(default)d eligable SNP is going to be reported.')
-    groupE.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
-                  help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
-    groupE.add_argument('-x', '--min-occurrence', type=float, default = 1, metavar = 'NUM_SAMPLES',
-                  help = 'Minimum number of samples a nucleotide position should be reported as variable. Default is %(default)d.\
-                          If you set it to 2, for instance, each eligable variable position will be expected to appear in at least\
-                          two samples, which will reduce the impact of stochastic, or unintelligeable varaible positions.')
-    groupE.add_argument('-m', '--min-scatter', type=int, default = 0,
-                  help = 'This one is tricky. If you have N samples in your dataset, a given variable position x in one\
-                          of your splits can split your N samples into `t` groups based on the identity of the\
-                          variation they harbor at position x. For instance, `t` would have been 1, if all samples had the same\
-                          type of variation at position x (which would not be very interesting, because in this case\
-                          position x would have zero contribution to a deeper understanding of how these samples differ\
-                          based on variability. When `t` > 1, it would mean that identities at position x across samples\
-                          do differ. But how much scattering occurs based on position x when t > 1? If t=2, how many\
-                          samples ended in each group? Obviously, even distribution of samples across groups may tell\
-                          us something different than uneven distribution of samples across groups. So, this parameter\
-                          filters out any x if "the number of samples in the second largest group" (=scatter) is less\
-                          than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
-                          of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
-                          position would not be reported in your output matrix. The default value for -m is\
-                          %(default)d, which means every x found in the database and survived previous filtering\
-                          criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
-                          Please refer to the user documentation if this is confusing.')
+
+    groupS.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
+    groupS.add_argument(*anvio.A('collection-id'), **anvio.K('collection-id'))
+    groupS.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
+    groupO.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
+    groupO.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
+    groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
+    groupE.add_argument(*anvio.A('min-ratio-of-competings-nts'), **anvio.K('min-ratio-of-competings-nts'))
+    groupE.add_argument(*anvio.A('min-occurrence-of-variable-postiions'), **anvio.K('min-occurrence-of-variable-postiions'))
+    groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
+
     args = parser.parse_args()
     
     try:

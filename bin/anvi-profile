@@ -15,88 +15,37 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
+
     groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
                                                   to declare either of these two.')
     groupI.add_argument('-i', '--input-file', metavar = 'INPUT_BAM', default = None,
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
-    groupI.add_argument('-c', '--contigs-db-path', default = None, metavar = 'CONTIGS_DB',
-                        help = 'anvio contigs database.')
-    groupI.add_argument('-d', '--profile', default = None, metavar = 'PROFILE',
-                        help = 'Serialized profile (PROFILE.cp). This file would be a result of a previous\
-                                anvio profiling run. It is faster, and can be used to refine previously obtained results.')
-
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but very useful if declared.')
-    groupM.add_argument('--cluster-contigs', action = 'store_true', default = False,
-                        help = 'Single profiles are rarely used for genome binning or visualization, and since\
-                                clustering step increases the profiling runtime for no good reason, the default\
-                                behavior is to not cluster contigs for individual runs. However, if you are\
-                                planning to do binning on one sample, you must use this flag to tell anvio to\
-                                run cluster configurations for single runs on your sample.')
-    groupM.add_argument('-o', '--output-directory', default = None,
-                        help = 'The directory for output files to be stored.')
-    groupM.add_argument('-O', '--overwrite-output-destinations', action='store_true', default = False,
-                        help = 'Overwrite if the output files and/or directories exist.')
-    groupM.add_argument('-S', '--sample-id', metavar = 'SAMPLE_ID', default = None,
-                        help = 'It is important to set a sample name (using only ASCII letters and digits\
-                                and without spaces) that is unique to a particular profile. If you do not\
-                                provide one, anvio will generate one for you based on the input BAM file\
-                                name (it usually is a good practice to not let software decide for these\
-                                kinds of things).')
-    groupM.add_argument('--report-variability-full', default = False, action="store_true",
-                        help = 'One of the things anvi-profile does is to store information about variable\
-                                nucleotide positions. Usually it does not report every variable position, since\
-                                not every variable position is geniune variation. Say, if you have 1,000 coverage,\
-                                and all nucleotides at that position are Ts and only one of them is a C, the\
-                                confidence of that C being a real variation is quite low. anvio has a simple\
-                                algorithm in place to reduce the impact of noise. However, using this flag\
-                                you can diable it and ask profiler to report every single variation (which\
-                                may result in very large output files and millions of reports, but you are the\
-                                boss). Do not forget to take a look at "--min-coverage-for-variability" parameter')
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
                                         reasonable for your sample.')
-    groupQ.add_argument('-M', '--min-contig-length', metavar = "LENGTH", default = 5000, type=int,
-                        help = 'Minimum length of contigs in a BAM file to analyze. The\
-                                minimum length should be long enough for tetra-nucleotide\
-                                frequency analysis to be meaningful. There is no way to define a golden\
-                                number of minumum length that would be applicable to genomes found in all\
-                                environments, but we chose the default to be %(default)d, and have been happy\
-                                with it. You are welcome to experiment, but we advise to never go below 1,000.\
-                                You also should remember that the lower you go, the more time it will take to\
-                                analyze all contigs. You can use --list-contigs parameter to have an idea how\
-                                many contigs would be discarded for a given M.')
-    groupQ.add_argument('-X', '--min-mean-coverage', metavar = "MIN_COVERAGE", default = 0, type=int,
-                        help = 'Minimum mean coverage for contigs to be kept in the\
-                                analysis. The default value is %(default)d, which is for your best interest\
-                                if you are going to profile muptiple BAM files which are then going to be\
-                                merged for a cross-sectional or time series analysis. Do not change it if\
-                                you are not sure this is what you want to do.')
-    groupQ.add_argument('-V', '--min-coverage-for-variability', metavar = "COVERAGE", default = 10, type=int,
-                        help = 'Minimum coverage of a nucleotide position to be subjected to SNP profiling.\
-                                By default, anvio will not attempt to make sense of variation in a given\
-                                nucleotide position if it is covered less than %(default)dX. You can\
-                                change that minimum using this parameter.')
     groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
-    groupC.add_argument('--list-contigs', action = 'store_true', default = False,
-                        help = 'When declared, the profiler would list contigs in the BAM file and\
-                                exit gracefully without any further analysis.')
-    groupC.add_argument('--contigs-of-interest', metavar = 'CONTIGS', default = None,
-                        help = 'It is possible to analyze only a group of contigs from\
-                                a given BAM file. If you provide a text file, in which every contig\
-                                of interest is listed line by line, the profiler would focus only on\
-                                those contigs in the BAM file and ignore the rest. This can be used\
-                                for debug purposes, or to focus on a particular group of contigs that\
-                                were identified as relevant during the interactive analysis.')
-    
+
+    groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
+    groupM.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
+    groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
+    groupM.add_argument(*anvio.A('report-variability-full'), **anvio.K('report-variability-full'))
+    groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
+    groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
+    groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
+    groupC.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
+    groupC.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
 
     args = parser.parse_args()
 

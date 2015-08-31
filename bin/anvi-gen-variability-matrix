@@ -21,7 +21,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 pp = terminal.pretty_print
@@ -172,7 +171,7 @@ class VariabilityWrapper:
         run_files_path = os.path.dirname(os.path.abspath(args.summary_dict))
         summary_index = dictio.read_serialized_object(args.summary_dict)
         num_positions_from_each_split = args.num_positions_from_each_split
-        min_scatter = args.minimum_scatter
+        min_scatter = args.min_scatter
         
         splits = [c.strip() for c in open(args.splits_of_interest).readlines()]
         num_splits = len(splits)
@@ -199,9 +198,9 @@ class VariabilityWrapper:
             w.add_split(split_name, d, split_sequence, num_positions_from_each_split)
 
         progress.update('Generating output ...')
-        w.create_TAB_delim_file(args.output, min_scatter)
+        w.create_TAB_delim_file(args.output_file, min_scatter)
         progress.end()
-        run.info('Output matrix', args.output)
+        run.info('Output matrix', args.output_file)
 
 
     def add_split(self, split_name, split_data, split_sequence, num_positions_from_each_split = 2):
@@ -260,38 +259,22 @@ class VariabilityWrapper:
 
 ##############################################################################
 
-parser = argparse.ArgumentParser(description='Generate Variability Matrix')
-parser.add_argument('summary_dict', metavar = 'SUMMARY_DICT', default = None,
-                    help = 'Summary file')
-parser.add_argument('-c', '--contigs-db', metavar = "CONTIGS_DB", required = True,\
-                    help = 'Contigs database.')
-parser.add_argument('-s', '--splits-of-interest', metavar = "SPLITS", required = True,\
-                    help = 'List of splits to analyze.')
-parser.add_argument('-S', '--samples-of-interest', metavar = "SAMPLES", default = None,\
-                    help = 'List of samples to retain. If not declared, all samples are used.')
-parser.add_argument('-n', '--num-positions-from-each-split', type=int, default = 2,
-                    help = 'Each split may have one or more variable positions. What is the maximum number of positons\
-                            to report from each split is described via this paramter.')
-parser.add_argument('-r', '--min-ratio', type=float, default = 0, metavar = 'RATIO',
-                    help = 'Minimum ratio of the competing nucleotides at a given position. Default is %(default)d.')
-parser.add_argument('-m', '--minimum-scatter', type=int, default = 1,
-                    help = 'This is tricky. If you have N samples in your dataset, a given variable position x in one\
-                            of your splits can split your N samples into t groups based on the identity of the\
-                            variation they harbor at position x. For instance, t would have been 1, if all samples had the same\
-                            type of variation at position x (which would not be very interesting, because in this case\
-                            position x would have zero contribution to a deeper understanding of how these samples differ\
-                            based on variability. When t > 1, it would mean that identities at position x across samples\
-                            do differ. But how much scattering occurs based on position x when t > 1? If t=2, how many\
-                            samples ended in each group? Obviously, even distribution of samples across groups may tell\
-                            us something different than uneven distribution of samples across groups. So, this parameter\
-                            filters out any x if "the number of samples in the second largest group" (=scatter) is less\
-                            than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
-                            of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
-                            position would not be reported in your output matrix. The default value for -m is\
-                            %(default)d, which means every x that is returned from ContigVariability class is reported.')
-parser.add_argument('-o', '--output', type=str, default = 'variability.txt', help = 'Output path for the matrix')
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Generate Variability Matrix')
 
+    parser.add_argument('summary_dict', metavar = 'SUMMARY_DICT', default = None,
+                        help = 'Summary file')
 
-w = VariabilityWrapper(args)
-w.analyze()
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest', {'required': True}))
+    parser.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
+    parser.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
+    parser.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
+    parser.add_argument(*anvio.A('min-ratio-of-competings-nts'), **anvio.K('min-ratio-of-competings-nts'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
+
+    args = parser.parse_args()
+    
+    
+    w = VariabilityWrapper(args)
+    w.analyze()

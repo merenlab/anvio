@@ -21,7 +21,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
@@ -76,26 +75,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='why yes we do stuff here.')
     parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
                         help = 'Config file for clustering of contigs. See documentation for help.')
-    parser.add_argument('-i', '--input-directory', metavar = 'INPUT_DIR', default = None, type=str,
-                        help = 'Input directory where the input files addressed from the configuration\
-                                file can be found (i.e., the profile database, if PROFILE.db::TABLE\
-                                notation is used in the configuration file).')
-    parser.add_argument('-c', '--contigs-db', metavar = 'CONTIGS_DB',
-                        help = 'anvio contigs database.', required = True)
-    parser.add_argument('-p', '--profile-db', default = None, metavar = 'PROFILE_DB',
-                        help = 'anvio contigs database.', required = False)
-    parser.add_argument('-N', '--name', default = None, metavar = 'NAME',
-                        help = "The name to use when storing the resulting clustering in the database.\
-                                This name will appear in the interactive interface and other relevant\
-                                interfaces. Please consider using a short and descriptive single-word\
-                                (if you do not do that you will make anvi'o complain).")
-    parser.add_argument('--skip-store-in-db', default = False, action = 'store_true', 
-                        help = 'By defaut, the resulting tree is stored in the profile database.\
-                                When declared, this flag skips that step.')
-    parser.add_argument('-o', '--output-file', metavar = 'FILE', default = None, type=str,
-                        help = 'To store the newick output.')
-    parser.add_argument('-D', '--dry-run', default = False, action = 'store_true', 
-                        help = 'Do not do anything, just print out the configuration.')
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('experimental-org-input-dir'), **anvio.K('experimental-org-input-dir'))
+    parser.add_argument(*anvio.A('clustering-name'), **anvio.K('clustering-name'))
+    parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     
     args = parser.parse_args()
 

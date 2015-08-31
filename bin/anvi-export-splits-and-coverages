@@ -30,22 +30,21 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
 
 def main(args):
-    merged_profile_db = db.DB(args.merged_profile_db, anvio.__profile__version__)
+    merged_profile_db = db.DB(args.profile_db, anvio.__profile__version__)
     contigs_db = db.DB(args.contigs_db, anvio.__contigs__version__)
 
     if(merged_profile_db.get_meta_value('merged') != True):
-        raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.merged_profile_db
+        raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.profile_db
 
-    if args.output_directory:
-        filesnpaths.gen_output_directory(args.output_directory)
+    if args.output_dir:
+        filesnpaths.gen_output_dir(args.output_dir)
     else:
-        args.output_directory = os.path.dirname(os.path.abspath(args.merged_profile_db))
+        args.output_dir = os.path.dirname(os.path.abspath(args.profile_db))
 
     if not args.output_file_prefix:
         args.output_file_prefix = merged_profile_db.get_meta_value('sample_id')
@@ -58,8 +57,8 @@ def main(args):
     merged_profile_db.disconnect()
     contigs_db.disconnect()
 
-    coverages_file = os.path.join(args.output_directory, args.output_file_prefix + '-COVs.txt')
-    splits_fasta = os.path.join(args.output_directory, args.output_file_prefix + '-SPLITS.fa')
+    coverages_file = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
+    splits_fasta = os.path.join(args.output_dir, args.output_file_prefix + '-SPLITS.fa')
 
     utils.store_dict_as_TAB_delimited_file(coverages, coverages_file, ['contig'] + samples)
 
@@ -78,14 +77,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Export splits and the coverage table from database')
-    parser.add_argument('-p', '---merged-profile-db', metavar = "MERGED PROFILE DB", required = True,
-                        help = 'Profile database.')
-    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS DB',
-                        help = 'anvio contigs database.')
-    parser.add_argument('-o', '--output-directory', default = None, metavar = 'OUTPUT_DIR',
-                        help = 'Output directory for files to be stored')
-    parser.add_argument('-O', '--output-file-prefix', default = None, metavar = 'FILENAME_PREFIX',
-                        help = 'A prefix to name output files.')
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     args = parser.parse_args()
 

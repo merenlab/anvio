@@ -33,7 +33,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    if args.list_available_sources:
+    if args.list_available_hmm_sources:
         info_table = SequencesForHMMHits(args.contigs_db).search_info_table
         for source in info_table:
             t = info_table[source]
@@ -55,28 +55,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get sequences for all HMM hits in a given bin")
-    parser.add_argument('-p', '--profile-db', metavar = "PROFILE_DB", default = None,
-                        help = 'Profile database.')
-    parser.add_argument('-c', '--contigs-db', required = True, metavar = 'CONTIGS_DB',
-                        help = 'Contigs database.')
-    parser.add_argument('-C', '--collection-id', metavar = 'COLLECTION-ID', default = None,
-                        help = 'Collection id to look for bins.')
-    parser.add_argument('-b', '--bin-id', required = False, metavar = 'BIN_ID', default = None,
-                        help = 'One bin to analayze (you either use this, or use a file to list\
-                                each bin id you prefer to analyze).')
-    parser.add_argument('-B', '--bin-ids-file', required = False, metavar = 'BINS FILE', default = None,
-                        help = 'Text file for bins (each line should be a bin id).')
-    parser.add_argument('-s', '--hmm-sources', metavar = 'HMM SOURCE', default = None,
-                        help = 'Get sequences for a specific list of HMM sources. You can list one or more\
-                                sources by separating them from each other with a comma character (i.e., \
-                                "--hmm-sources source_1,source_2,source_3"). If you would like to see a list\
-                                of available sources in the contigs database, run this program with\
-                                "--list-available-sources" flag.')
-    parser.add_argument('-o', '--output-file', metavar = 'FILE NAME', default = 'sequences_for_hmm_hits.fa',
-                        help = 'Output file path. Default is %(default)s.')
-    parser.add_argument('-l', '--list-available-sources', default = False, action = 'store_true',
-                        help = 'List available HMM sources in the profile database and quit.')
-    
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('collection-id'), **anvio.K('collection-id'))
+    parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    parser.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+    parser.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('list-available-hmm-sources'), **anvio.K('list-available-hmm-sources'))
+
     args = parser.parse_args() 
     
     try:

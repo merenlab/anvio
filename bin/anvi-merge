@@ -18,40 +18,22 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Merge multiple anvio profiles')
+
     parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
                         help = 'anvio RUNINFO files to create a merged output')
-    parser.add_argument('-c', '--contigs-db-path', default = None, metavar = 'CONTIGS_DB',
-                        help = 'anvio contigs database (particularly the one used to profile each run\
-                                you will be merging.')
-    parser.add_argument('-o', '--output-dir', help = 'Output directory')
-    parser.add_argument('-S', '--sample-id', metavar = 'NAME', default = None,
-                        help = 'It is important to set a sample name (using only ASCII letters and digits\
-                                and without spaces) that is unique to a particular merged run. If you do not\
-                                provide one, anvio will make up one for you based on the output_directory\
-                                name you set (although, you should never let the software to decide these\
-                                things).')
-    parser.add_argument('--skip-hierarchical-clustering', action = 'store_true', default = False,
-                        help = 'If you are not planning to use the interactive interface (or if you have other\
-                                means to add a tree of contigs in the database) you may skip the clustering step\
-                                and simply just merge multiple runs')
 
-    parser.add_argument('--skip-concoct-binning', action = 'store_true', default = False,
-                        help = "Anvi'o uses CONCOCT (Alneberg et al.) by default for unsupervised genome binning\
-                                for merged runs. CONCOCT results are stored in the profile database, which then\
-                                can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
-                                etc). Use this flag if you would like to skip this step")
-    parser.add_argument('--skip-merging-summaries', action = 'store_true', default = False,
-                        help = "If this flag is used, merging will not attempt to merge summaries. Summary files\
-                                contain the coverage summary of each contig and generted during the profiling step.\
-                                Do not use this flag if you are not sure that it is absolutely necessary.")
-    parser.add_argument('--debug', action='store_true', help = 'Print out debug info.')
-    parser.add_argument('-O', '--overwrite-output-destinations', action='store_true', default = False,
-                        help = 'Overwrite if the output files and/or directories exist.')
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    parser.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
+    parser.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
+    parser.add_argument(*anvio.A('skip-concoct-binning'), **anvio.K('skip-concoct-binning'))
+    parser.add_argument(*anvio.A('skip-merging-summaries'), **anvio.K('skip-merging-summaries'))
+    parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
 

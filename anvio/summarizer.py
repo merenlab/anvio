@@ -72,7 +72,7 @@ class Summarizer(DatabasesMetaclass):
                 sys.exit()
 
             self.collection_id = args.collection_id
-            self.output_directory = args.output_directory
+            self.output_directory = args.output_dir
             self.debug = args.debug
 
         self.sanity_check()

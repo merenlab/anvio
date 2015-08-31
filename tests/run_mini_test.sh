@@ -15,7 +15,7 @@ INFO "Initializing raw BAM files ..."
 # init raw bam files.
 for f in 6M 7M 9M
 do
-    anvi-init-bam 204_3contigs_"$f".bam -o test-output/204-$f
+    anvi-init-bam 204_3contigs_"$f".bam --output-file-prefix test-output/204-$f
     echo
 done
 
@@ -24,13 +24,13 @@ INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
 INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-anvi-populate-genes-table test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+anvi-populate-genes-table -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
-anvi-populate-search-table test-output/CONTIGS.db
+anvi-populate-search-table -c test-output/CONTIGS.db
 
 INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
-anvi-populate-search-table test-output/CONTIGS.db -H external_hmm_profile
+anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'

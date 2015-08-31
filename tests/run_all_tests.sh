@@ -21,7 +21,7 @@ INFO "Initializing raw BAM files ..."
 # init raw bam files.
 for f in 6M 7M 9M
 do
-    anvi-init-bam 204_3contigs_"$f".bam -o test-output/204-$f
+    anvi-init-bam 204_3contigs_"$f".bam -O test-output/204-$f
     echo
 done
 
@@ -33,25 +33,25 @@ INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
 INFO "Populating the genes tables in the contigs database using 'myrast_gui' parser ..."
-anvi-populate-genes-table test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
+anvi-populate-genes-table -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
 
 INFO "Populating the genes tables in the contigs database using 'myrast_cmdline_dont_use' parser ..."
-anvi-populate-genes-table test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
+anvi-populate-genes-table -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
 INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-anvi-populate-genes-table test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+anvi-populate-genes-table -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
 INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
-anvi-export-genes-table test-output/CONTIGS.db -o test-output/CONTIGS_recovered.txt
+anvi-export-genes-table -c test-output/CONTIGS.db -o test-output/CONTIGS_recovered.txt
 
 INFO "Re-populating the genes tables in the contigs database using the recovered matrix file with 'default_matrix' parser ..."
-anvi-populate-genes-table test-output/CONTIGS.db -p default_matrix -i test-output/CONTIGS_recovered.txt
+anvi-populate-genes-table -c test-output/CONTIGS.db -p default_matrix -i test-output/CONTIGS_recovered.txt
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
-anvi-populate-search-table test-output/CONTIGS.db
+anvi-populate-search-table -c test-output/CONTIGS.db
 
 INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
-anvi-populate-search-table test-output/CONTIGS.db -H external_hmm_profile
+anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
@@ -79,7 +79,7 @@ anvi-matrix-to-newick test-output/204-MERGED/s204_MERGED-COVs.txt
 
 INFO "Generating network descriptions for samples based on ORFs and functions ..."
 # generate gene and function networks for the merge
-anvi-gen-network test-output/204-MERGED/RUNINFO.mcp test-output/CONTIGS.db
+anvi-gen-network -r test-output/204-MERGED/RUNINFO.mcp -c test-output/CONTIGS.db
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -c test-output/CONTIGS.db -o test-output/204-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
@@ -91,16 +91,16 @@ INFO "Importing external binning results for splits into the profile database as
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
                        -p test-output/204-MERGED/PROFILE.db \
                        -c test-output/CONTIGS.db \
-                       -S 'SPLITS_IMPORTED' \
+                       --source-identifier 'SPLITS_IMPORTED' \
                        --colors example_files_for_external_binning_results/example_colors_file.txt
 
 INFO "Importing external binning results for splits into the profile database as 'CONTIGS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_contigs.txt \
                        -c test-output/CONTIGS.db \
                        -p test-output/204-MERGED/PROFILE.db \
-                       -S 'CONTIGS_IMPORTED' \
+                       --source-identifier 'CONTIGS_IMPORTED' \
                        --colors example_files_for_external_binning_results/example_colors_file.txt \
-                       --contigs
+                       --contigs-mode
 
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/anvio_concoct_clusters.txt --source-identifier 'cmdline_concoct'
@@ -115,7 +115,10 @@ INFO "Generate a variabilty profile for Bin_1 using a collection id"
 anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C cmdline_concoct -b Bin_1 -o test-output/variability_Bin_1.txt
 
 INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
-anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -s test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt -o test-output/variability_Bin_1_ALT.txt
+anvi-gen-variability-profile -c test-output/CONTIGS.db \
+                             -p test-output/204-MERGED/PROFILE.db \
+                             --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt \
+                             -o test-output/variability_Bin_1_ALT.txt
 
 INFO "Get sequences for HMM hits for a bin in a collection ..."
 anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt

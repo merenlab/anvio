@@ -19,26 +19,24 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
 
 def main(args):
-    contigs_db = dbops.ContigsDatabase(args.db_path)
+    contigs_db = dbops.ContigsDatabase(args.contigs_db)
     genes_contigs_table = contigs_db.db.get_table_as_dict(t.genes_contigs_table_name)
     genes_contigs_table_headers = contigs_db.db.get_table_structure(t.genes_contigs_table_name)
-    utils.store_dict_as_TAB_delimited_file(genes_contigs_table, args.output, genes_contigs_table_headers)
-    run.info('Recovered matrix', os.path.abspath(args.output))
+    utils.store_dict_as_TAB_delimited_file(genes_contigs_table, args.output_file, genes_contigs_table_headers)
+    run.info('Recovered matrix', os.path.abspath(args.output_file))
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate a TAB-delimited matrix file from genes tables found in an\
                                                   contigs database')
-    parser.add_argument('db_path', metavar = 'DB_PATH', default = None,
-                        help = 'Path to the contigs database.')
-    parser.add_argument('-o', '--output', default = "CONTIGS.txt",
-                        help = 'Output file path. Default is %(default)s.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.parse_args()
 

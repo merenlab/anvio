@@ -20,27 +20,19 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
-
 
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Access reads in contigs and positions in a BAM file')
+
     parser.add_argument('-i', '--input-file', metavar = 'INPUT_BAM', required = True,
                         help = 'Sorted and indexed BAM file to analyze.')
-    parser.add_argument('-o', '--output-file', required = True,
-                        help = 'Output file name for the report.')
-    parser.add_argument('-P', '--contigs-and-positions', metavar = 'CONTIGS_AND_POSITIONS', required = True,
-                        help = 'This is the file where you list the contigs, and nucleotide positions you\
-                                are interested in. This is supposed to be a TAB-delimited file with two columns.\
-                                In each line, the first column should be the contig name, and the second column\
-                                should be the comma-separated list of integers for nucleotide positions.')
-    parser.add_argument('--list-contigs', action = 'store_true', default = False,
-                        help = 'When declared, this program would list contigs in the BAM file and\
-                                exit gracefully without any further analysis.')
-    
+
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('contigs-and-positions'), **anvio.K('contigs-and-positions'))
+    parser.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 
     args = parser.parse_args()
 

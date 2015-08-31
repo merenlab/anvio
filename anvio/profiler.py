@@ -55,9 +55,9 @@ class BAMProfiler:
         if args:
             self.args = args
             self.input_file_path = args.input_file
-            self.contigs_db_path = args.contigs_db_path
-            self.serialized_profile_path = args.profile
-            self.output_directory = args.output_directory
+            self.contigs_db_path = args.contigs_db
+            self.serialized_profile_path = args.serialized_profile
+            self.output_directory = args.output_dir
             self.list_contigs_and_exit = args.list_contigs
             self.min_contig_length = args.min_contig_length
             self.min_mean_coverage = args.min_mean_coverage
@@ -65,7 +65,7 @@ class BAMProfiler:
             self.contigs_shall_be_clustered = args.cluster_contigs
             self.number_of_threads = 4 
             self.no_trehading = True
-            self.sample_id = args.sample_id
+            self.sample_id = args.sample_name
             self.report_variability_full = args.report_variability_full
             self.overwrite_output_destinations = args.overwrite_output_destinations
 

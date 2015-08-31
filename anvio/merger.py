@@ -52,7 +52,7 @@ class MultipleRuns:
         self.progress = progress
         self.run = run 
 
-        self.sample_id = args.sample_id
+        self.sample_id = args.sample_name
         self.merged_sample_ids = []
         self.input_runinfo_dicts = {}
         self.input_runinfo_paths = args.input

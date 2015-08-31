@@ -21,7 +21,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
@@ -65,29 +64,25 @@ def main(args):
         run.info('Columns to report', '"%s"' % ', '.join(table_columns))
 
 
-    if not args.output:
-        args.output = args.table + '.txt'
+    if not args.output_file:
+        args.output_file = args.table + '.txt'
 
-    utils.store_dict_as_TAB_delimited_file(table_content, args.output, table_columns)
-    run.info('Output', args.output)
+    utils.store_dict_as_TAB_delimited_file(table_content, args.output_file, table_columns)
+    run.info('Output', args.output_file)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='A script to export anvio tables as TAB-delimited matrices.')
+
     parser.add_argument('db_path', metavar = 'DB',
                         help = 'Database to read.')
-    parser.add_argument('-t', '--table', default = None, metavar = 'TABLE',
-                        help = 'Table name to export.')
-    parser.add_argument('-l', '--list', action="store_true", default = False,
-                        help = 'Gives a list of tables in a database and quits. If a table is already declared\
-                                this time it lists all the fields in a given table, in case you would to export\
-                                only a specific list of fields from the table using --fields parameter.')
-    parser.add_argument('-f', '--fields', default = None, metavar = 'TABLE',
-                        help='Fields to report. USe --list parameter with a table name to see available\
-                                fields  You can list fields using this notation: --fields "field_1, field_2, ... field_N"')
-    parser.add_argument('-o', '--output', type=str, default = None,
-                        help = 'Output file path.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('table'), **anvio.K('table'))
+    parser.add_argument(*anvio.A('list'), **anvio.K('list'))
+    parser.add_argument(*anvio.A('fields'), **anvio.K('fields'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.parse_args()
 

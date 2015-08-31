@@ -26,25 +26,15 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Create a new anvi'o samples information database.")
-    parser.add_argument('-D', '--samples-information', metavar = "FILE", default = None,
-                  help = "A TAB-delimited file with information about samples in your dataset (which also correspond)\
-                          to 'view layers'. Each row in this file must correspond to a sample name. Each column must\
-                          contain a unique attribute. Please refer to the documentation to learn more about the \
-                          structure and purpose of this file.")
-    parser.add_argument('-R', '--samples-order', metavar = "FILE", default = None,
-                  help = "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
-                          the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
-                          tree structurei that describes the organization of each sample. Anvi'o will look for a\
-                          comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
-                          for more info. Also you shouldn't hesitate to try to find the right file format until you get\
-                          it working. There are stringent checks on this file, and you will not break anything while trying!.")
-    parser.add_argument('-o', '--db-path', default = "SAMPLES.db", 
-                  help = 'Output file path for the new contigs database to be generated.')
+
+    parser.add_argument(*anvio.A('samples-information'), **anvio.K('samples-information'))
+    parser.add_argument(*anvio.A('samples-order'), **anvio.K('samples-order'))
+    parser.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'SAMPLES.db'}))
 
     args = parser.parse_args()
 
     try:
-        s = dbops.SamplesInformationDatabase(args.db_path, run, progress, quiet=False)
+        s = dbops.SamplesInformationDatabase(args.output_db_path, run, progress, quiet=False)
         s.create(args.samples_information, args.samples_order)
     except ConfigError, e:
         print e
