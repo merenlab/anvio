@@ -463,4 +463,4 @@ try:
 except KeyboardInterrupt:
     run.warning('The server is being terminated.', header='Please wait...')
     server_process.terminate()
-    sys.exit(1)
+    sys.exit(0)
