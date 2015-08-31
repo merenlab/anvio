@@ -55,6 +55,8 @@ class CONCOCT:
         self.profile_db_path = args.profile_db
         self.contigs_db_path = args.contigs_db
 
+        dbops.is_contigs_db_and_profile_db_compatible(self.profile_db_path, self.contigs_db_path)
+
         self.clusters = {}
 
         self.lengths = {}
