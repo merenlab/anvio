@@ -145,7 +145,7 @@ function lineMouseEnterHandler(event) {
 
     $('#path_hover').remove();
 
-    if (p.id == 0)
+    if (typeof p === 'undefined' || p.id == 0)
         return; // skip root
 
     var bin_id = getBinId();

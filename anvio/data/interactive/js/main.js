@@ -898,8 +898,15 @@ function getContigNames(bin_id) {
 }
 
 
-function showContigNames(bin_id) {
+function showContigNames(bin_id, updateOnly) {
+    if (typeof updateOnly === 'undefined')
+        updateOnly = false;
+
     var title = 'Splits in "' + $('#bin_name_' + bin_id).val() + '"';
+
+    if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
+        return;
+
     var msg = '<table class="table table-striped">';
     var names = getContigNames(bin_id);
 
@@ -908,7 +915,7 @@ function showContigNames(bin_id) {
 
     msg = msg + '</table>';
 
-    showDraggableDialog(title, msg);
+    showDraggableDialog(title, msg, updateOnly);
 }
 
 function newBin(id, binState) {
@@ -1068,6 +1075,7 @@ function updateBinsWindow(bin_list) {
         $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
         updateComplateness(bin_id);
+        showContigNames(bin_id, true);
     }
 
     $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
@@ -1102,11 +1110,17 @@ function updateComplateness(bin_id) {
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#redundancy_' + bin_id).attr("disabled", false);
+
+            showCompleteness(bin_id, true);
+            showRedundants(bin_id, true);
         },
     });
 }
 
-function showCompleteness(bin_id) {
+function showCompleteness(bin_id, updateOnly) {
+    if (typeof updateOnly === 'undefined')
+        updateOnly = false;
+
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
@@ -1114,6 +1128,9 @@ function showCompleteness(bin_id) {
     var stats = completeness_dict[bin_id]['stats'];
 
     var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
+
+    if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
+        return;
 
     var msg = '<table class="table table-striped sortable">' +
         '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">Percent complenetess</th></tr></thead><tbody>';
@@ -1123,16 +1140,23 @@ function showCompleteness(bin_id) {
 
     msg = msg + '</tbody></table>';
 
-    showDraggableDialog(title, msg);
+    showDraggableDialog(title, msg, updateOnly);
 }
 
-function showRedundants(bin_id) {
+function showRedundants(bin_id, updateOnly) {
+    if (typeof updateOnly === 'undefined')
+        updateOnly = false;
+    
     if (!completeness_dict.hasOwnProperty(bin_id))
         return;
 
     var stats = completeness_dict[bin_id]['stats'];
 
     var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
+
+    if (updateOnly && !checkObjectExists('#modal' + output_title.hashCode()))
+        return;
+
     var output = '<div class="col-md-12">'
     var oddeven=0;
 
@@ -1175,7 +1199,7 @@ function showRedundants(bin_id) {
 
     output += '</div>';
 
-    showDraggableDialog(output_title, output);
+    showDraggableDialog(output_title, output, updateOnly);
 }
 
 function exportSvg() {
