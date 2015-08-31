@@ -1444,7 +1444,7 @@ def get_db_type(db_path):
     return db_type
 
 
-def is_profile_db_and_contigs_db_compatible(contigs_db_path, profile_db_path):
+def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
 

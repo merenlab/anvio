@@ -100,7 +100,7 @@ class VariablePositions:
         if not self.contigs_db_path:
             raise ConfigError, 'You need to provide a contigs database.'
 
-        dbops.is_profile_db_and_contigs_db_compatible(self.contigs_db_path, self.profile_db_path)
+        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.update('Attempting to get our splits of interest sorted ..')
         if self.collection_id:
