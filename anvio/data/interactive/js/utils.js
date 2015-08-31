@@ -152,27 +152,36 @@ function fire_up_ncbi_blast(contig_name, program, database)
 
 //--------------------------------------------------------------------------------------------------
 
-function showDraggableDialog(title, content)
+function showDraggableDialog(title, content, updateOnly)
 {
+    var randomID = title.hashCode();
 
-    var randomID = Math.floor((Math.random() * 100000) + 1);
-
-    var template = '<div class="modal" id="modal' + randomID + '" data-backdrop="false" style="pointer-events: none;"> \
-        <div class="modal-dialog" style="pointer-events: all;"> \
-            <div class="modal-content no-shadow"> \
-                <div class="modal-header"> \
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button> \
-                     <h4 class="modal-title">' + title + '</h4> \
-                </div> \
-                <div class="modal-body"> \
-                    ' + content + ' \
-                </div> \
-                <div class="modal-footer"> \
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button> \
+    if (updateOnly)
+    {
+        if (checkObjectExists('#modal' + randomID))
+            $('#modal' + randomID).find('.modal-body').html(content);
+        
+        return;
+    }
+    else
+    {
+        var template = '<div class="modal" id="modal' + randomID + '" data-backdrop="false" style="pointer-events: none;"> \
+            <div class="modal-dialog" style="pointer-events: all;"> \
+                <div class="modal-content no-shadow"> \
+                    <div class="modal-header"> \
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button> \
+                         <h4 class="modal-title">' + title + '</h4> \
+                    </div> \
+                    <div class="modal-body"> \
+                        ' + content + ' \
+                    </div> \
+                    <div class="modal-footer"> \
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button> \
+                    </div> \
                 </div> \
             </div> \
-        </div> \
-    </div>';
+        </div>';
+    }
 
     $('body').append(template);
     $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
@@ -180,6 +189,28 @@ function showDraggableDialog(title, content)
         $(this).remove();
     });
 }
+
+//--------------------------------------------------------------------------------------------------
+
+function checkObjectExists(selector)
+{
+    if ($(selector).length > 0)
+        return true;
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+// https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+String.prototype.hashCode = function() {
+  var hash = 0, i, chr, len;
+  if (this.length == 0) return hash;
+  for (i = 0, len = this.length; i < len; i++) {
+    chr   = this.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
 
 
 //--------------------------------------------------------------------------------------------------

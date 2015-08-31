@@ -26,8 +26,20 @@ function createBin(parent, bin_id) {
     g.setAttribute('id', bin_id);
     svgObject.appendChild(g);
 }
-//--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+function drawTitle(top, left, settings) {
+    top -= 250;
+    drawText('viewport', {'x': left, 'y': top}, document.title, '120px', 'center');
+    top += 130;
+    var _sub_title = "Order-by: " + settings['order-by'] + " | ";
+    _sub_title    += "View: " + settings['current-view'] + " | ";
+    _sub_title    += "Sample Order: " + settings['samples-order'];
+
+    drawText('viewport', {'x': left, 'y': top}, _sub_title, '72px', 'center');
+}
+
+//--------------------------------------------------------------------------------------------------
 function drawLegend(top, left, line_end) {
     var _left = left;
     var line_height = (line_end - _left) / 80;
@@ -2277,11 +2289,11 @@ function draw_tree(settings) {
     switch (settings['tree-type']) {
         case 'phylogram':
             drawLegend(total_radius, 0 - td.settings.height, 0);
-            drawText('viewport', {'x': -0.5 * td.settings.height, 'y': -150}, document.title, '72px', 'center');
+            drawTitle(-150, -0.5 * td.settings.height, settings);
             break;
         case 'circlephylogram':
             drawLegend(total_radius, 0 - total_radius, total_radius - 40);
-            drawText('viewport', {'x': 0, 'y': -1 * total_radius - 150}, document.title, '72px', 'center');
+            drawTitle(-1 * total_radius - 150, 0, settings);
             break;
     }
 
