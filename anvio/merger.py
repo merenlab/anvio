@@ -64,7 +64,7 @@ class MultipleRuns:
         self.skip_concoct_binning = args.skip_concoct_binning
         self.skip_merging_summaries = args.skip_merging_summaries
 
-        self.contigs_db_path = args.contigs_db_path
+        self.contigs_db_path = args.contigs_db
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
