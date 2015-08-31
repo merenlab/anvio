@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, is_contigs_db_and_profile_db_compatible
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, is_profile_db_and_contigs_db_compatible
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
@@ -85,7 +85,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         if self.contigs_db_path and self.profile_db_path:
             # make sure we are not dealing with apples and oranges here.
-            is_contigs_db_and_profile_db_compatible(self.contigs_db_path, self.profile_db_path)
+            is_profile_db_and_contigs_db_compatible(self.contigs_db_path, self.profile_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()

@@ -408,7 +408,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        is_contigs_db_and_profile_db_compatible(args.contigs_db, args.profile_db)
+        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
@@ -1444,7 +1444,7 @@ def get_db_type(db_path):
     return db_type
 
 
-def is_contigs_db_and_profile_db_compatible(contigs_db_path, profile_db_path):
+def is_profile_db_and_contigs_db_compatible(contigs_db_path, profile_db_path):
     is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
 
