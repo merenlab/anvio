@@ -336,6 +336,28 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
 }
 
 //--------------------------------------------------------------------------------------------------
+function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) {
+
+    var foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+
+    foreignObject.setAttribute('x', p['x']);
+    foreignObject.setAttribute('y', p['y']);
+    foreignObject.setAttribute('width', width);
+    foreignObject.setAttribute('height', height);
+    foreignObject.setAttribute('pointer-events', 'none');
+
+    var textNode = document.createElement('div');
+    textNode.setAttribute('style', 'height:inherit; line-height:100%; width: inherit; inherit; overflow: hidden; white-space: nowrap; font-size:' + font_size + '; color: ' + color);
+    textNode.textContent = string;
+    foreignObject.appendChild(textNode);
+
+    var svg = document.getElementById(svg_id);
+    svg.appendChild(foreignObject);
+
+    return foreignObject;
+}
+
+//--------------------------------------------------------------------------------------------------
 function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
@@ -2273,10 +2295,15 @@ function draw_tree(settings) {
                 layer_title = layer_title.replace(/_/g, " ");
             }
 
-            drawText('tree_bin', {
-                'x': 10,
-                'y': 0 - (layer_boundaries[layer_index][1] + layer_boundaries[layer_index][0]) / 2
-            }, layer_title , layers[pindex]['height'] + 'px', 'left', layers[pindex]['color']);
+            drawFixedWidthText('tree_bin', {
+                    'x': 10,
+                    'y': 0 - layer_boundaries[layer_index][1]
+                }, 
+                layer_title, 
+                layers[pindex]['height'] + 'px',
+                layers[pindex]['color'],
+                total_radius,
+                layers[pindex]['height']);
         }
 
         createBin('viewport', 'samples');
