@@ -195,7 +195,7 @@ $(document).ready(function() {
 
             if (!$.browser.chrome)
             {
-                toastr.info("Anvio developed and tested in Google Chrome. It seems that you are using different browser, for best experience please use Anvio with latest version of Google Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser. For the best performance, and to avoid unexpected issues, please consider using anvi'o with the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
 
             if (modeResponse[0] == 'refine')
