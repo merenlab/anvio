@@ -193,6 +193,11 @@ $(document).ready(function() {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
 
+            if (!$.browser.chrome)
+            {
+                toastr.info("Anvio developed and tested in Google Chrome. It seems that you are using different browser, for best experience please use Anvio with latest version of Google Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            }
+
             if (modeResponse[0] == 'refine')
             {
                 $('.full-mode').hide();
