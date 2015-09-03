@@ -292,7 +292,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.title:
             self.title = self.title
         else:
-            self.title = self.p_meta['sample_id']
+            self.title = self.p_meta['sample_id'].replace('-', ' ').replace('_', ' ')
 
 
     def check_names_consistency(self):
