@@ -288,18 +288,27 @@ D = {
                       criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
                       Please refer to the user documentation if this is confusing."}
                 ),
-    'min-ratio-of-competings-nts': (
-            ['-r', '--min-ratio'],
+
+    'min-coverage-in-each-sample': (
+            ['--min-coverage-in-each-sample'],
             {'metavar': 'INT',
              'default': 0,
+             'type': int,
+             'help': "Minimum coverage of a given variable nucleotide position in all samples. If a nucleotide position\
+                      is covered less than this value, the position will be removed from the analysis. Default is %(default)d."}
+                ),
+    'min-ratio-of-competings-nts': (
+            ['-r', '--min-ratio'],
+            {'metavar': 'FLOAT',
+             'default': 0,
              'type': float,
-             'help': "Minimum ratio of the competing nucleotides at a given position. Default is %(default)d."}
+             'help': "Minimum ratio of the competing nucleotides at a given position. Default is %(default)f."}
                 ),
     'min-occurrence-of-variable-postiions': (
             ['-x', '--min-occurrence'],
             {'metavar': 'NUM_SAMPLES',
              'default': 1,
-             'type': float,
+             'type': int,
              'help': "Minimum number of samples a nucleotide position should be reported as variable. Default is %(default)d.\
                       If you set it to 2, for instance, each eligable variable position will be expected to appear in at least\
                       two samples, which will reduce the impact of stochastic, or unintelligeable varaible positions."}
