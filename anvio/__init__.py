@@ -295,7 +295,8 @@ D = {
              'default': 0,
              'type': int,
              'help': "Minimum coverage of a given variable nucleotide position in all samples. If a nucleotide position\
-                      is covered less than this value, the position will be removed from the analysis. Default is %(default)d."}
+                      is covered less than this value even in one sample, it will be removed from the analysis. Default\
+                      is %(default)d."}
                 ),
     'min-ratio-of-competings-nts': (
             ['-r', '--min-ratio'],
