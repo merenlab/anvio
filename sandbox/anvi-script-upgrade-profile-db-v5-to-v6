@@ -40,6 +40,11 @@ def update_profile_db_from_v5_to_v6(profile_db_path):
         profile_db._exec('DELETE FROM views;')
         profile_db._exec('''INSERT INTO views VALUES ("single","atomic_data_splits")''')
 
+    # fix the hash entry in the metadata table
+    db_hash = profile_db.get_meta_value('annotation_hash')
+    profile_db.remove_meta_key_value_pair('annotation_hash')
+    profile_db.set_meta_value('contigs_db_hash', db_hash)
+
     # set the version
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version('6')
