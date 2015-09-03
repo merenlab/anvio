@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio.db as db
+import anvio.terminal as terminal 
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def convert_annotation_db_to_contigs_db(annotation_db_path):
+    if annotation_db_path is None:
+        raise ConfigError, "No database path is given."
+
+    annotation_db = db.DB(annotation_db_path, None, ignore_version = True)
+
+    if annotation_db.get_meta_value('db_type') != 'annotation':
+        raise ConfigError, "'%s' does not seem to be an anvi'o annotation database :/"
+
+    # fix the hash entry in the metadata table
+    db_hash = annotation_db.get_meta_value('annotation_hash')
+    annotation_db.remove_meta_key_value_pair('annotation_hash')
+    annotation_db.set_meta_value('contigs_db_hash', db_hash)
+
+    # correct the db type
+    annotation_db.remove_meta_key_value_pair('db_type')
+    annotation_db.set_meta_value('db_type', 'contigs')
+
+    # bye
+    annotation_db.disconnect()
+
+    run.info_single("Your annotation database is successfully upgraded to a contigs database!")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to convert annotation databases to contigs databases. See this: https://github.com/meren/anvio/issues/198')
+    parser.add_argument('annotation_db', metavar = 'CONTIGS_DB', help = "Anvi'o annotation database")
+    args = parser.parse_args()
+
+    try:
+        convert_annotation_db_to_contigs_db(args.annotation_db)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
