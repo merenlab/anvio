@@ -529,7 +529,8 @@ class ContigsDatabase:
         if not utils.check_contig_names(defline, dont_raise = True):
             raise ConfigError, "The FASTA file you provided does not comply with the 'simple deflines' requirement of\
                                 anvi'o. Please read this section in the tutorial to understand the reason behind this\
-                                requirement: %s (anvi'o is very upset for making you do this)." % ('http://goo.gl/Q9ChpS')
+                                requirement (anvi'o is very upset for making you do this): %s" \
+                                                      % ('http://merenlab.org/2015/05/02/anvio-tutorial/#preparation')
 
         if os.path.exists(self.db_path):
             raise ConfigError, "Anvi'o will not overwrite an existing contigs database. Please choose a different name\
