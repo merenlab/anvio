@@ -1602,6 +1602,7 @@ function saveState()
 
                 current_state_name = name;
                 $('#current_state').html('[current state: ' + current_state_name + ']');
+                toastr.success("State '" + current_state_name + "' successfully saved.");
             }
         }
     });
@@ -1628,6 +1629,9 @@ function showLoadStateWindow()
 
 function loadState()
 {
+    if ($('#loadState_list').val() == null)
+        return;
+
     $.ajax({
         type: 'POST',
         cache: false,
@@ -1773,6 +1777,8 @@ function loadState()
             current_state_name = $('#loadState_list').val();
             $('#current_state').html('[current state: ' + current_state_name + ']');
             $('#modLoadState').modal('hide');
+
+            toastr.success("State '" + current_state_name + "' successfully loaded.");
         }
     });
 }
