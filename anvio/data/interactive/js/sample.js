@@ -62,8 +62,10 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         return;
     }
     
+    var order_from_state = true;
     if (typeof(samples_layer_order) === 'undefined') {
         samples_layer_order = Object.keys(samples_information_dict[first_sample]); // get layer order from first sample's samples
+        order_from_state = false;
     }
     
     $('#tbody_samples').empty();
@@ -199,7 +201,14 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin);
         
-            $('#tbody_samples').prepend(template);
+            if (order_from_state)
+            {
+                $('#tbody_samples').append(template);
+            }
+            else
+            {
+                $('#tbody_samples').prepend(template);
+            }
         }  
     }
 
