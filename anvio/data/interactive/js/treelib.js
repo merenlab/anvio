@@ -2275,41 +2275,46 @@ function draw_tree(settings) {
         attributeFilter: ["transform"]
     });
 
-    // draw layer names (in circlephylogram with 0-270)
-    if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] == 270)
+    // draw layer names and samples in circlephylogram for special angles.
+    if (settings['tree-type'] == 'circlephylogram')
     {
-        for (var i = 0; i < settings['layer-order'].length; i++) {
-            var layer_index = i+1;
-            var pindex = settings['layer-order'][i];
-            var layer = settings['views'][current_view][pindex];
+        if (settings['angle-max'] == 270)
+        {
+            for (var i = 0; i < settings['layer-order'].length; i++) {
+                var layer_index = i+1;
+                var pindex = settings['layer-order'][i];
+                var layer = settings['views'][current_view][pindex];
 
-            var layer_title = layerdata[0][pindex];
+                var layer_title = layerdata[0][pindex];
 
-            if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
-                layer_title = named_layers[layer_title]['pretty_name'];
-            } else if(layer_title.substring(0, 5) == "hmmx_") {
-                layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
-            } else if(layer_title.substring(0, 5) == "hmms_") {
-                layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
-            } else {
-                layer_title = layer_title.replace(/_/g, " ");
+                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
+                    layer_title = named_layers[layer_title]['pretty_name'];
+                } else if(layer_title.substring(0, 5) == "hmmx_") {
+                    layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
+                } else if(layer_title.substring(0, 5) == "hmms_") {
+                    layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
+                } else {
+                    layer_title = layer_title.replace(/_/g, " ");
+                }
+
+                drawFixedWidthText('tree_bin', {
+                        'x': 10,
+                        'y': 0 - layer_boundaries[layer_index][1]
+                    }, 
+                    layer_title, 
+                    layers[pindex]['height'] + 'px',
+                    layers[pindex]['color'],
+                    total_radius,
+                    layers[pindex]['height']);
             }
-
-            drawFixedWidthText('tree_bin', {
-                    'x': 10,
-                    'y': 0 - layer_boundaries[layer_index][1]
-                }, 
-                layer_title, 
-                layers[pindex]['height'] + 'px',
-                layers[pindex]['color'],
-                total_radius,
-                layers[pindex]['height']);
         }
 
-        createBin('viewport', 'samples');
-
-        //draw samples layers
-        drawSamplesLayers(settings);
+        if (settings['angle-min'] == 0 && settings['angle-max'] <= 270)
+        {
+            //draw samples layers
+            createBin('viewport', 'samples');
+            drawSamplesLayers(settings);
+        }
     }
 
     // draw title
