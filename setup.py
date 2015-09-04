@@ -30,7 +30,7 @@ setup(
     name = "anvio",
     version = open('VERSION').read().strip(),
 
-    scripts = [script for script in glob.glob('bin/*') if not script.endswith('-OBSOLETE')],
+    scripts = [script for script in glob.glob('bin/*') + glob.glob('sandbox/*') if not script.endswith('-OBSOLETE')],
     include_package_data = True,
 
     packages = find_packages(),
