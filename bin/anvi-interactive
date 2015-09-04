@@ -297,7 +297,7 @@ def gen_summary(collection_id):
     summarizer_args.collection_id = collection_id
     summarizer_args.list_collections = None
     summarizer_args.debug = None
-    summarizer_args.output_directory = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_id)
+    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_id)
 
     try:
         summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
