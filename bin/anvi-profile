@@ -27,6 +27,7 @@ if __name__ == '__main__':
     groupI.add_argument('-i', '--input-file', metavar = 'INPUT_BAM', default = None,
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
+
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but very useful if declared.')
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
@@ -34,7 +35,7 @@ if __name__ == '__main__':
                                         reasonable for your sample.')
     groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
 
-    groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
     groupM.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))

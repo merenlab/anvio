@@ -101,7 +101,7 @@ class BAMProfiler:
         if not self.contigs_db_path:
             raise ConfigError, "You can not run profiling without a contigs database. You can create\
                                       one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
-                                      user manual."
+                                      tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
                                                                    ok_if_exists = self.overwrite_output_destinations)
