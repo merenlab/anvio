@@ -823,6 +823,8 @@ function serializeSettings(use_layer_names) {
     }
 
     state['samples-categorical-colors'] = samples_categorical_colors;
+    state['samples-stack-bar-colors'] = samples_stack_bar_colors;
+
     state['samples-layer-order'] = [];
     state['samples-layers'] = {};
     $('#tbody_samples tr').each(
@@ -1770,6 +1772,9 @@ function loadState()
 
             if (state.hasOwnProperty('samples-categorical-colors'))
                 samples_categorical_colors = state['samples-categorical-colors']; 
+            if (state.hasOwnProperty('samples-stack-bar-colors'))
+                samples_stack_bar_colors = state['samples-stack-bar-colors']; 
+
 
             buildLayersTable(layer_order, views[current_view]);
             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
