@@ -110,6 +110,21 @@ function drawLegend(top, left, line_end) {
         });
     }
 
+    for (sample in samples_stack_bar_colors)
+    {
+        var names = sample.split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+
+        legends.push({
+            'name': sample,
+            'source': 'samples_stack_bar_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': keys,
+            //'stats': TO DO
+        });
+    }
+
     for (var i=0; i < legends.length; i++)
     {
         var bin_id = 'legend_' + i;

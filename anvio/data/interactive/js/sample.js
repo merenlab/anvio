@@ -1,4 +1,5 @@
 var samples_categorical_colors = {};
+var samples_stack_bar_colors = {};
 var samples_information_dict;
 var samples_order_dict;
 
@@ -156,6 +157,69 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             
             $('#tbody_samples').append(template); 
         }
+        else if (layer_name.indexOf(';') > -1) 
+        {
+            var data_type = "stack-bar";
+            
+            if (hasSettings)
+            {
+                var norm   = layer_settings['normalization'];
+                var height = layer_settings['height'];
+                var margin = layer_settings['margin'];
+            }
+            else
+            {
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none');
+                var height = getNamedLayerDefaults(layer_name, 'height', 500);
+                var margin = 15;
+
+                // pick random color for stack bar items
+                if (!(layer_name in samples_stack_bar_colors))
+                {
+                    samples_stack_bar_colors[layer_name] = new Array();
+                    for (var j=0; j < layer_name.split(";").length; j++)
+                    {
+                        samples_stack_bar_colors[layer_name].push(randomColor());
+                    } 
+                }  
+            }
+
+            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td>n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td>' +
+                '    <select onChange="clearMinMax(this);" class="normalization">' +
+                '        <option value="none"{option-none}>none</option>' +
+                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                '        <option value="log"{option-log}>log</option>' +
+                '    </select>' +
+                '</td>' +
+                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</input></td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+            template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{data-type}', 'g'), data_type)
+                               .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{margin}', 'g'), margin);
+        
+            if (order_from_state)
+            {
+                $('#tbody_samples').append(template);
+            }
+            else
+            {
+                $('#tbody_samples').prepend(template);
+            }
+        }
         else
         {
             var data_type = "categorical";
@@ -187,18 +251,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
-                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
-                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
-                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{color}', 'g'), color)
-                               .replace(new RegExp('{color-start}', 'g'), color_start)
-                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{min}', 'g'), min)
-                               .replace(new RegExp('{max}', 'g'), max)
-                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin);
         
             if (order_from_state)
@@ -254,6 +307,37 @@ function drawSamplesLayers(settings) {
                 {
                     samples_layer_max[layer] = parseFloat(_samples_information_dict[sample][layer]);
                 }
+            }
+            else if (settings['samples-layers'][layer]['data-type'] == 'stack-bar') 
+            {
+                var norm = settings['samples-layers'][layer]['normalization'];
+
+                var stack_bar_items = _samples_information_dict[sample][layer].split(';');
+                var _sum = 0;
+                for (var j=0; j < stack_bar_items.length; j++)
+                {
+                    if (norm == 'sqrt')
+                    {
+                        stack_bar_items[j] = Math.sqrt(parseFloat(stack_bar_items[j]));
+                    }
+                    else if (norm == 'log')
+                    {
+                        stack_bar_items[j] = log10(parseFloat(stack_bar_items[j]) + 1);
+                    }
+                    else
+                    {
+                        stack_bar_items[j] = parseFloat(stack_bar_items[j]);
+                    }
+
+                    _sum = _sum + stack_bar_items[j];
+                }
+
+                for (var j=0; j < stack_bar_items.length; j++)
+                {
+                    stack_bar_items[j] = stack_bar_items[j] / _sum;
+                }
+
+                _samples_information_dict[sample][layer] = stack_bar_items;
             }
             else
             {
@@ -406,6 +490,40 @@ function drawSamplesLayers(settings) {
 
                 rect.setAttribute('sample-name', sample_name);
                 rect.setAttribute('layer-name', samples_layer_name);
+            }
+            else if (samples_layer_settings['data-type'] == 'stack-bar') 
+            {
+                var stack_bar_items = _samples_information_dict[sample_name][samples_layer_name];
+
+                var offset = 0;
+                for (var _i=0; _i < stack_bar_items.length; _i++)
+                {
+                    var color = samples_stack_bar_colors[samples_layer_name][_i];
+                    var size  = (samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0]) * stack_bar_items[_i];
+
+                    var rect = drawPhylogramRectangle('samples',
+                        'samples',
+                        layer_boundaries[layer_index][0],
+                        0 - samples_layer_boundaries[i][0] - offset - (size / 2),
+                        size,
+                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                        color,
+                        1,
+                        true);
+
+                    rect.setAttribute('sample-name', sample_name);
+                    rect.setAttribute('layer-name', samples_layer_name);
+
+                    offset = offset + size;
+                    
+                    if (!backgrounds_done)
+                    {
+                        drawText('samples', {
+                            'x': total_radius + 20,
+                            'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+                        }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
+                    }
+                }
             }
             else
             {
