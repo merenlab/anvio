@@ -74,7 +74,6 @@ groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
 groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
 groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
 groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
-groupE.add_argument(*anvio.A('summary-index'), **anvio.K('summary-index'))
 groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
 groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
@@ -184,11 +183,7 @@ def charts(split_name):
              'next_contig_name': None,
              'genes': []}
 
-    if not d.splits_summary_index:
-        run.info_single("Contig details were requested, but no splits summary index is found.", mc = 'red')
-        return None
-
-    if not d.splits_summary_index.has_key(split_name):
+    if split_name not in d.split_names:
         return data
 
     index_of_split = d.split_names_ordered.index(split_name)
@@ -200,8 +195,7 @@ def charts(split_name):
     data['index'] = index_of_split + 1
     data['total'] = len(d.split_names_ordered)
 
-    splits = dictio.read_serialized_object(d.P(d.splits_summary_index[split_name]))
-    layers = sorted(splits.keys())
+    layers = sorted(d.p_meta['samples'])
 
     # FIXME: There should be a flag for the `memory_efficient` mode, when it is false,
     #        the ad_hoc flag in the following function should be turned to False for
@@ -209,10 +203,19 @@ def charts(split_name):
     coverage_values_dict = d.get_coverage_values_for_split(split_name, ad_hoc = True)
     data['coverage'] = [coverage_values_dict[layer] for layer in layers]
 
+    ## get the variability information dict for split:
+    split_variability_info_dict = d.get_variability_information_for_split(split_name)
+
     for layer in layers:
         data['layers'].append(layer)
-        data['variability'].append(splits[layer]['variability'])
-        data['competing_nucleotides'].append(splits[layer]['competing_nucleotides'])
+        data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
+
+        # we get a nice dict back, but here we convert it into a shitty list...
+        l = [0] * d.splits_basic_info[split_name]['length']
+        vd = split_variability_info_dict[layer]['variability']
+        for pos in vd:
+            l[pos] = vd[pos]
+        data['variability'].append(l)
 
     levels_occupied = {1: []}
     for entry_id in d.split_to_genes_in_splits_ids[split_name]:
