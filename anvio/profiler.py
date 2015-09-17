@@ -176,10 +176,8 @@ class BAMProfiler:
             self.init_profile_from_BAM()
             self.profile()
             self.store_profile()
-            self.store_summarized_profile_for_each_split()
         else:
             self.init_serialized_profile()
-            self.store_summarized_profile_for_each_split()
 
         self.generate_variabile_positions_table()
         self.generate_gene_coverages_table()
@@ -560,30 +558,6 @@ class BAMProfiler:
         dictio.write_serialized_object(self.contigs, output_file)
         self.progress.end()
         self.run.info('profile_dict', output_file)
-
-
-    def store_summarized_profile_for_each_split(self):
-        summary_index = {}
-        summary_index_output_path = self.generate_output_destination('SUMMARY.cp')
-        summary_dir = self.generate_output_destination('SUMMARY', directory=True)
-        self.progress.new('Storing summary files')
-
-        counter = 1
-
-        for contig in self.contigs:
-            self.progress.update('working on contig %s of %s' % (pp(counter), pp(len(self.contigs))))
-            for split in self.contigs[contig].splits:
-                split_summary_path = self.generate_output_destination(os.path.join(summary_dir, '%.6d.cp' % counter))
-                dictio.write_serialized_object({self.sample_id: {'variability': split.auxiliary.v,
-                                                                 'competing_nucleotides': split.auxiliary.competing_nucleotides}},
-                                                                 split_summary_path)
-                summary_index[split.name] = split_summary_path
-                counter += 1
-
-        self.progress.end()
-        self.run.info('profile_summary_dir', summary_dir)
-        dictio.write_serialized_object(dictio.strip_prefix_from_dict_values(summary_index, self.output_directory), summary_index_output_path)
-        self.run.info('profile_summary_index', summary_index_output_path)
 
 
     def check_contigs(self):
