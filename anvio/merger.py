@@ -62,7 +62,6 @@ class MultipleRuns:
         self.output_directory = args.output_dir
         self.skip_hierarchical_clustering = args.skip_hierarchical_clustering
         self.skip_concoct_binning = args.skip_concoct_binning
-        self.skip_merging_summaries = args.skip_merging_summaries
 
         self.contigs_db_path = args.contigs_db
         self.profile_db_path = None
@@ -86,7 +85,6 @@ class MultipleRuns:
         input_dir = os.path.dirname(os.path.abspath(path))
         runinfo['input_dir'] = input_dir
         runinfo['profile_db'] = os.path.join(input_dir, 'PROFILE.db')
-        runinfo['profile_summary_index'] = os.path.join(input_dir, 'SUMMARY.cp')
 
         return sample_id, runinfo
 
@@ -360,13 +358,6 @@ class MultipleRuns:
         self.merge_variable_positions_tables()
         self.progress.end()
 
-        if not self.skip_merging_summaries:
-            self.progress.new('Generating merged summary')
-            summary_dir, profile_summary_index = self.merge_split_summaries()
-            self.progress.end()
-            self.run.info('profile_summary_dir', summary_dir)
-            self.run.info('profile_summary_index', profile_summary_index)
-
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
 
@@ -505,38 +496,6 @@ class MultipleRuns:
                     continue
 
                 dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == constants.merged_default, run = self.run)
-
-
-    def merge_split_summaries(self):
-        merged_summary_index = {}
-        merged_summary_index_path = os.path.join(self.output_directory, 'SUMMARY.cp')
-        summary_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'SUMMARY'), delete_if_exists = True)
-
-
-        # read all index files per run into a dict here, so the access is easier from within
-        # the for loop below
-        run_sum_indices = {}
-        for runinfo  in self.input_runinfo_dicts.values():
-            run_sum_indices[runinfo['sample_id']] = dictio.read_serialized_object(runinfo['profile_summary_index'])
-
-        for i in range(0, len(self.split_names)):
-            self.progress.update('merging summaries for splits %s of %s' % (i + 1, len(self.split_names)))
-            split_name = self.split_names[i]
-
-            merged_summary = {}
-            for runinfo in self.input_runinfo_dicts.values(): 
-                run_split_summary = dictio.read_serialized_object(os.path.join(runinfo['input_dir'], run_sum_indices[runinfo['sample_id']][split_name]))
-                merged_summary[runinfo['sample_id']] = run_split_summary[runinfo['sample_id']]
-
-            merged_split_summary_path = os.path.join(summary_dir, os.path.basename(run_sum_indices[runinfo['sample_id']][split_name]))
-            dictio.write_serialized_object(merged_summary, merged_split_summary_path)
-            merged_summary_index[split_name] = merged_split_summary_path
-
-        self.progress.update('Serializing merged split summary index ...')
-        dictio.write_serialized_object(dictio.strip_prefix_from_dict_values(merged_summary_index, self.output_directory),\
-                                           merged_summary_index_path)
-
-        return summary_dir, merged_summary_index_path
 
 
     def get_split_parents(self):
