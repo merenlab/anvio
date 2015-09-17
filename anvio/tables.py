@@ -11,7 +11,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "3"
-profile_db_version = "6"
+profile_db_version = "7"
 samples_info_db_version = "1"
 
 
@@ -58,6 +58,43 @@ hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
 hmm_hits_splits_table_types          = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
 
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE PROFILE DATABASE
+#
+####################################################################################################
+
+clusterings_table_name               = 'clusterings'
+clusterings_table_structure          = ['clustering', 'newick' ]
+clusterings_table_types              = [   'str'    ,  'str'   ]
+
+states_table_name                    = 'states'
+states_table_structure               = ['name', 'content', 'last_modified']
+states_table_types                   = ['text',  'text'  ,      'text'    ]
+
+split_coverage_values_table_name     = 'split_coverage_values'
+split_coverage_values_table_structure= ['entry_id', 'split_name', 'sample_id', 'coverage_list']
+split_coverage_values_table_types    = [ 'numeric',    'text'   ,    'text'  ,      'blob'    ]
+
+variable_positions_table_name        = 'variable_positions'
+variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
+variable_positions_table_types       = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
+
+# notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
+# for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
+# each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
+# become sample names. 
+atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
+atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
+
+
+####################################################################################################
+#
+#     DESCRIPTIONS FOR TABLES THAT ARE BOTH IN CONTIGS and PROFILE DATABASES
+#
+####################################################################################################
+
 collections_info_table_name          = 'collections_info'
 collections_info_table_structure     = ['source', 'num_splits', 'num_clusters']
 collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ]
@@ -74,30 +111,12 @@ collections_splits_table_name        = 'collections_of_splits'
 collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
 
-states_table_name                    = 'states'
-states_table_structure               = ['name', 'content', 'last_modified']
-states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
+#     TABLE DESCRIPTIONS FOR THE SAMPLES DATABASE
 #
 ####################################################################################################
-
-# notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
-# for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
-# each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
-# become sample names. 
-atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'normalized_coverage', 'max_normalized_ratio', 'relative_abundance', 'portion_covered', 'abundance', 'variability', '__parent__']
-atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,       'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
-
-clusterings_table_name               = 'clusterings'
-clusterings_table_structure          = ['clustering', 'newick' ]
-clusterings_table_types              = [   'str'    ,  'str'   ]
-
-variable_positions_table_name        = 'variable_positions'
-variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
-variable_positions_table_types       = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
 gene_coverages_table_name            = 'gene_coverages'
 gene_coverages_table_structure       = ['entry_id', 'prot', 'sample_id', 'mean_coverage']
