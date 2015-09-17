@@ -42,10 +42,10 @@ INFO "Populating the genes tables in the database using 'myrast_cmdline' parser 
 anvi-populate-genes-table -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
 INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
-anvi-export-genes-table -c test-output/CONTIGS.db -o test-output/CONTIGS_recovered.txt
+anvi-export-genes-table -c test-output/CONTIGS.db -o test-output/functions_and_taxonomy_sample_matrix.txt
 
 INFO "Re-populating the genes tables in the contigs database using the recovered matrix file with 'default_matrix' parser ..."
-anvi-populate-genes-table -c test-output/CONTIGS.db -p default_matrix -i test-output/CONTIGS_recovered.txt
+anvi-populate-genes-table -c test-output/CONTIGS.db -p default_matrix -i test-output/functions_and_taxonomy_sample_matrix.txt
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db
