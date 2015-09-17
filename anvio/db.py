@@ -21,7 +21,6 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
-
 class DB:
     def __init__(self, db_path, client_version, new_database=False, ignore_version=False):
         self.db_path = db_path
@@ -209,6 +208,42 @@ class DB:
         return results_dict
 
 
+    def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data = True, string_the_key = False):
+        """This is similar to get_table_as_dict, but much less general.
+        
+           get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
+           In some cases the programmer may like to access to only a small fraction of entries in a table
+           by using `WHERE column = value` notation, which is not possible with the more generalized
+           function."""
+
+        results_dict = {}
+
+        table_structure = self.get_table_structure(table)
+        columns_to_return = range(0, len(table_structure))
+
+        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause)).fetchall()
+
+        for row in rows:
+            entry = {}
+
+            for i in columns_to_return[1:]:
+                entry[table_structure[i]] = row[i]
+
+            if string_the_key:
+                results_dict[str(row[0])] = entry
+            else:
+                results_dict[row[0]] = entry
+
+        if error_if_no_data and not len(results_dict):
+            raise ConfigError, "Query on %s with the where clause of '%s' did not return anything." % (table, where_clause)
+
+        return results_dict
+
+
     def get_table_names(self):
         response = self._exec("""select name from sqlite_master where type='table'""")
         return [r[0] for r in response.fetchall()]
+
+
+def binary(data):
+    return sqlite3.Binary(data)
