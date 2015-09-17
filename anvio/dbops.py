@@ -370,13 +370,14 @@ class ProfileSuperclass(object):
 
             profile_db = ProfileDatabase(self.profile_db_path)
             split_coverage_values = profile_db.db.get_some_rows_from_table_as_dict(t.split_coverage_values_table_name, '''split_name = "%s"''' % split_name).values()
+            profile_db.disconnect()
 
             for e in split_coverage_values:
                 d[e['split_name']][e['sample_id']] = cPickle.loads(cStringIO.StringIO(e['coverage_list']).read())
 
             return d[split_name]
 
-
+        # no ad hoc
         if not self.split_coverage_values_dict:
             self.init_split_coverage_values_dict()
 
