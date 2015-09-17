@@ -203,9 +203,14 @@ def charts(split_name):
     splits = dictio.read_serialized_object(d.P(d.splits_summary_index[split_name]))
     layers = sorted(splits.keys())
 
+    # FIXME: There should be a flag for the `memory_efficient` mode, when it is false,
+    #        the ad_hoc flag in the following function should be turned to False for
+    #        speed efficiency
+    coverage_values_dict = d.get_coverage_values_for_split(split_name, ad_hoc = True)
+    data['coverage'] = [coverage_values_dict[layer] for layer in layers]
+
     for layer in layers:
         data['layers'].append(layer)
-        data['coverage'].append(splits[layer]['coverage'])
         data['variability'].append(splits[layer]['variability'])
         data['competing_nucleotides'].append(splits[layer]['competing_nucleotides'])
 
