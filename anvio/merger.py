@@ -159,7 +159,7 @@ class MultipleRuns:
             self.run.info(k, v.pop())
 
         # get split names from one of the profile databases. split names must be identical across all 
-        self.split_names = sorted(list(self.get_split_names(self.input_runinfo_dicts.values()[0]['profile_db'])))
+        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(self.input_runinfo_dicts.values()[0]['profile_db'])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
         sample_runinfos = self.input_runinfo_dicts.values()
@@ -213,10 +213,10 @@ class MultipleRuns:
             return
         else:
             # some weird shit must have happened.
-            raise ConfigError, "anvio is confused. While merging multiple runs, it seem some of the runs have the\
+            raise ConfigError, "Anvi'o is confused. While merging multiple runs, it seem some of the runs have the\
                                       '%s' in their PROFILE.db's, and others do not. This should never happen. Probably\
                                       your best bet is to profile everything (with of course using the same parameters)\
-                                      from scratch :/"
+                                      from scratch :/" % runinfo_variable
 
     def merge_variable_positions_tables(self):
         self.is_all_samples_have_it('variable_positions_table')
@@ -252,6 +252,23 @@ class MultipleRuns:
             sample_profile_db.disconnect()
 
         gene_coverages_table.store()
+
+
+    def merge_split_coverage_values_table(self):
+        self.is_all_samples_have_it('split_coverage_values_table')
+
+        # create an instance from genes
+        split_coverage_values_table = dbops.TableForSplitCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+
+        # fill coverages in from all samples
+        for runinfo in self.input_runinfo_dicts.values():
+            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
+            sample_split_coverages = sample_profile_db.db.get_table_as_dict(tables.split_coverage_values_table_name)
+            for e in sample_split_coverages.values():
+                split_coverage_values_table.append(e['split_name'], e['sample_id'], e['coverage_list'], binary = True)
+            sample_profile_db.disconnect()
+
+        split_coverage_values_table.store()
 
 
     def set_normalization_multiplier(self):
@@ -333,6 +350,10 @@ class MultipleRuns:
 
         self.progress.new('Merging gene coverages tables')
         self.merge_gene_coverages_tables()
+        self.progress.end()
+
+        self.progress.new('Merging split coverage values tables')
+        self.merge_split_coverage_values_table()
         self.progress.end()
 
         self.progress.new('Merging variable positions tables')
@@ -543,11 +564,3 @@ class MultipleRuns:
         db.disconnect()
 
         return atomic_data_table_fields, atomic_data_table_for_each_run
-
-
-    def get_split_names(self, profile_db_path):
-        profile_db = dbops.ProfileDatabase(profile_db_path)
-        split_names = profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig')
-        profile_db.disconnect()
-
-        return split_names
