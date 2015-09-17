@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.dictio as d
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def update_profile_db_from_v6_to_v7(args):
+    profile_db_path = args.profile_db
+
+    if profile_db_path is None:
+        raise ConfigError, "No profile database is given."
+
+    # make sure someone is not being funny
+    dbops.is_profile_db(profile_db_path)
+
+    # make sure the version is 6
+    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    if str(profile_db.get_version()) != '6':
+        raise ConfigError, "Version of this profile database is not 5 (hence, this script cannot really do anything)."
+
+    progress.new("Trying to upgrade the profile database")
+    progress.update('...')
+
+    if t.split_coverage_values_table_name in profile_db.get_table_names():
+        progress.end()
+        raise ConfigError, "It seems '%s' table already exists in your profile database." % t.split_coverage_values_table_name
+
+    # create the table
+    profile_db.create_table(t.split_coverage_values_table_name, t.split_coverage_values_table_structure, t.split_coverage_values_table_types)
+
+    # set the version
+    profile_db.remove_meta_key_value_pair('version')
+    profile_db.set_version('7')
+
+    # bye
+    profile_db.disconnect()
+    progress.end()
+    run.info_single("An empty coverages table is generated.")
+
+    # next: state
+    progress.new("Importing summary files")
+    progress.update('...')
+
+    summary_cp_path = os.path.join(os.path.dirname(profile_db_path), 'SUMMARY.cp')
+    if not os.path.exists(summary_cp_path):
+        raise ConfigError, "No SUMMARY.cp was found at '%s'" % summary_cp_path
+
+    split_coverage_values_table = dbops.TableForSplitCoverages(profile_db_path, anvio.__profile__version__)
+
+    output_directory = os.path.dirname(summary_cp_path)
+    summary_cp_content = d.read_serialized_object(summary_cp_path)
+
+    counter = 1
+    for split_name in summary_cp_content:
+        progress.update('Reading summary cp files for each split ... %d' % counter)
+        c = d.read_serialized_object(os.path.join(output_directory, summary_cp_content[split_name]))
+
+        for sample_name in c:
+            split_coverage_values_table.append(split_name, sample_name, c[sample_name]['coverage'])
+
+        counter += 1
+
+    progress.end()
+
+    split_coverage_values_table.store()
+
+    run.info_single("Your profile database was successfuly upgraded to version 7. Now you can delete 'SUMMARY.cp'\
+                     and the 'SUMMARY/' directory from your analysis directory. The information we previously\
+                     stored in those files are in your profile database! Better late than never! Yay for better\
+                     design and increased speed and flexibility...")
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-p', '--profile_db', required = True)
+
+    args = parser.parse_args()
+
+    try:
+        update_profile_db_from_v6_to_v7(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
