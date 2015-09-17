@@ -494,14 +494,6 @@ D = {
                       can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
                       etc). Use this flag if you would like to skip this step"}
                 ),
-    'skip-merging-summaries': (
-            ['--skip-merging-summaries'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "If this flag is used, merging will not attempt to merge summaries. Summary files\
-                      contain the coverage summary of each contig and generted during the profiling step.\
-                      Do not use this flag if you are not sure that it is absolutely necessary."}
-                ),
     'overwrite-output-destinations': (
             ['-W', '--overwrite-output-destinations'],
             {'default': False,
