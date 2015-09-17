@@ -9,7 +9,8 @@ all available collections in a given contigs database.
 import argparse
 
 import anvio.terminal as terminal 
-import anvio.contigs as contigs
+import anvio.dbops as dbops
+import anvio.tables as t
 
 
 run = terminal.Run()
@@ -26,11 +27,11 @@ args = parser.parse_args()
 contigs = set([])
 contig_lengths = {}
 
-db = contigs.ContigsDatabase(args.contigs_db, quiet=False)
-collections_splits_table = db.db.get_table_as_dict(contigs.collections_splits_table_name)
-collections_info_table = db.db.get_table_as_dict(contigs.collections_info_table_name)
-contig_lengths_table = db.db.get_table_as_dict(contigs.contig_lengths_table_name)
-contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
+db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
+collections_splits_table = db.db.get_table_as_dict(t.collections_splits_table_name)
+collections_info_table = db.db.get_table_as_dict(t.collections_info_table_name)
+contigs_info_table = db.db.get_table_as_dict(t.contigs_info_table_name)
+contig_lengths = dict([(c, contigs_info_table[c]['length']) for c in contigs_info_table])
 db.disconnect()
 
 sources = collections_info_table.keys()
