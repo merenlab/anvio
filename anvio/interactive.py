@@ -55,13 +55,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.view_data_path = A('view_data')
         self.tree = A('tree')
         self.title = A('title')
-        self.summary_index = A('summary_index')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
         self.skip_check_names = A('skip_check_names')
 
         self.split_names_ordered = None
-        self.splits_summary_index = {}
         self.additional_layers = None
 
         self.samples_information_dict = {}
@@ -174,10 +172,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.default_view = self.p_meta['default_view']
 
-        if self.summary_index:
-            self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
-            self.splits_summary_index = dictio.read_serialized_object(self.p_meta['profile_summary_index'])
-
         # sanity of the view data
         filesnpaths.is_file_tab_delimited(view_data_path)
         view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
@@ -272,21 +266,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             else:
                 self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
-
-        # is summary being overwritten?
-        if self.summary_index:
-            run.info('Warning', "The default summary index in RUNINFO is being overriden by '%s'." % self.summary_index)
-            self.p_meta['profile_summary_index'] = os.path.abspath(self.summary_index)
-
-        if os.path.exists(self.P('SUMMARY.cp')):
-            self.splits_summary_index = dictio.read_serialized_object(self.P('SUMMARY.cp'))
-        else:
-            self.splits_summary_index = None
-            run.warning("SUMMARY.cp is missing for your run. Anvi'o will continue working (well, at least\
-                         it will attempt to do it), but things may behave badly with the absence of\
-                         SUMMARY.cp (first and foremost, you will not be able to inspect individual\
-                         contigs through any of the interactive interfaces). Please investigate it\
-                         if you were not expecting this.")
 
         # set title
         if self.title:
