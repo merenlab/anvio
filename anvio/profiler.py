@@ -183,6 +183,7 @@ class BAMProfiler:
 
         self.generate_variabile_positions_table()
         self.generate_gene_coverages_table()
+        self.generate_split_coverage_values_table()
 
         # here we store atomic data for contigs and splits into the database:
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
@@ -257,6 +258,28 @@ class BAMProfiler:
         gene_coverages_table.store()
         self.progress.end()
         self.run.info('gene_coverages_table', True, quiet = True)
+
+
+    def generate_split_coverage_values_table(self):
+        split_coverage_values_table = dbops.TableForSplitCoverages(self.profile_db_path, anvio.__profile__version__, quiet = True)
+
+        self.progress.new('Generating split coverage values table')
+
+        contigs_counter = 1
+        for contig_name in self.contigs:
+            self.progress.update('working on contig %s of %s' % (pp(contigs_counter), pp(len(self.contigs))))
+
+            for split in self.contigs[contig_name].splits:
+                split_coverage_values_table.append(split.name, self.sample_id, split.coverage.c)
+
+            contigs_counter += 1
+
+        self.progress.end()
+
+        split_coverage_values_table.store()
+
+        self.run.info('split_coverage_values_table', 'ready with %d entries' % len(split_coverage_values_table.table_data), display_only = True)
+        self.run.info('split_coverage_values_table', True, quiet = True)
 
 
     def set_sample_id(self):
@@ -551,8 +574,7 @@ class BAMProfiler:
             self.progress.update('working on contig %s of %s' % (pp(counter), pp(len(self.contigs))))
             for split in self.contigs[contig].splits:
                 split_summary_path = self.generate_output_destination(os.path.join(summary_dir, '%.6d.cp' % counter))
-                dictio.write_serialized_object({self.sample_id: {'coverage': split.coverage.c,
-                                                                 'variability': split.auxiliary.v,
+                dictio.write_serialized_object({self.sample_id: {'variability': split.auxiliary.v,
                                                                  'competing_nucleotides': split.auxiliary.competing_nucleotides}},
                                                                  split_summary_path)
                 summary_index[split.name] = split_summary_path
