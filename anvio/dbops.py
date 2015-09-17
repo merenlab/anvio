@@ -384,6 +384,32 @@ class ProfileSuperclass(object):
         return self.split_coverage_values_dict[split_name]
 
 
+    def get_variability_information_for_split(self, split_name, return_raw_results = False):
+        if not split_name in self.split_names:
+            raise ConfigError, "get_variability_information_for_split: The split name '%s' does not seem to be\
+                                represented in this profile database. Are you sure you are looking for it\
+                                in the right database?" % split_name
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_positions_table_name, '''split_name = "%s"''' % split_name, error_if_no_data = False).values()
+        profile_db.disconnect()
+
+        if return_raw_results:
+            return split_variability_information
+
+        # they want pretty stuff...
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'variability': {}, 'competing_nucleotides': {}}
+
+        for e in split_variability_information:
+            d[e['sample_id']]['variability'][e['pos']] = e['n2n1ratio']
+            d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
+
+        return d
+
+
     def init_collection_profile(self, collection):
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
