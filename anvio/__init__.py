@@ -221,12 +221,6 @@ D = {
             {'metavar': 'NAME',
              'help': "Single-copy gene source to use to estimate completeness."}
                 ),
-    'summary-index': (
-            ['--summary-index'],
-            {'metavar': 'FILE',
-             'help': "SUMMARY.cp, if there is one available, to inspect contigs from the interface. Will\
-                      override the one found in RUNINFO file if it was also declared using -r parameter."}
-                ),
     'splits-of-interest': (
             ['--splits-of-interest'],
             {'metavar': 'FILE',
