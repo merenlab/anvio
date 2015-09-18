@@ -14,10 +14,10 @@ import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpath
 import anvio.ccollections as ccollections
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 
@@ -62,10 +62,10 @@ class VariablePositions:
         self.samples_of_interest_path = A('samples_of_interest', null)
 
         self.variable_positions_table = {} 
+        self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
         self.split_name_position_dict = {}
         self.unique_pos_id_to_entry_id = {}
-        self.summaries = None
         self.contig_sequences = None
         self.input_file_path = None
 
@@ -137,15 +137,22 @@ class VariablePositions:
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.sample_ids = profile_db.samples # we set this now, but we will overwrite it with args.samples_of_interest if necessary
         self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
+        db_hash = profile_db.meta['contigs_db_hash']
         profile_db.disconnect()
+
+        if self.quince_mode:
+            self.progress.update('Accessing auxiliary data file ...')
+            auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+            if not os.path.exists(auxiliary_data_file_path):
+                raise ConfigError, "Anvi'o needs the aixiliary data file to run this program with '--quince-more' flag.\
+                                    However it wasn't found at '%s' :/" % auxiliary_data_file_path
+            self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, db_hash)
 
         self.progress.update('Reading splits info table ...')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.splits_info_table = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
         self.num_splits_in_db = len(self.splits_info_table)
         if self.quince_mode:
-            self.progress.update('Reading summaries ...')
-            self.summaries = dictio.read_serialized_object(os.path.join(self.input_file_path, 'SUMMARY.cp'))
             self.progress.update('Reading contig sequences table ...')
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
         contigs_db.disconnect()
@@ -483,10 +490,12 @@ class VariablePositions:
         counter = 0
         for split in splits_to_consider:
             counter += 1
-            self.progress.update('accessing split summaries and updating variable positions dict :: %s' % pp(counter))
+            self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
+
+            split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
             split_info = self.splits_info_table[split]
-            summary = dictio.read_serialized_object(os.path.join(self.input_file_path, self.summaries[split]))
+
             for pos in splits_to_consider[split]:
                 parent_seq = self.contig_sequences[split_info['parent']]['sequence']
                 base_at_pos = parent_seq[split_info['start'] + pos]
@@ -496,13 +505,13 @@ class VariablePositions:
                                                                               'consensus': base_at_pos,
                                                                               'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                                               'pos': pos,
-                                                                              'coverage': summary[sample]['coverage'][pos],
+                                                                              'coverage': split_coverage_across_samples[sample][pos],
                                                                               'sample_id': sample,
                                                                               'competing_nts': base_at_pos + base_at_pos,
                                                                               'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
                                                                               'unique_position_id': '%s_%d' % (split, pos),
                                                                               'split_name': split}
-                    self.variable_positions_table[next_available_entry_id][base_at_pos] = summary[sample]['coverage'][pos]
+                    self.variable_positions_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
 
         self.progress.end()
