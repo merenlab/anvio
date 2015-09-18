@@ -11,8 +11,9 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "3"
-profile_db_version = "7"
+profile_db_version = "6"
 samples_info_db_version = "1"
+auxiliary_hdf5_db_version = "1"
 
 
 ####################################################################################################
@@ -72,10 +73,6 @@ clusterings_table_types              = [   'str'    ,  'str'   ]
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
-
-split_coverage_values_table_name     = 'split_coverage_values'
-split_coverage_values_table_structure= ['entry_id', 'split_name', 'sample_id', 'coverage_list']
-split_coverage_values_table_types    = [ 'numeric',    'text'   ,    'text'  ,      'blob'    ]
 
 variable_positions_table_name        = 'variable_positions'
 variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
