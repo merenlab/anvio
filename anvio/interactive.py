@@ -152,7 +152,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
     def load_from_files(self, args):
         if (not self.fasta_file) or (not self.view_data_path) or (not self.tree) or (not self.output_dir):
             raise ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
-                                           '-f', '-m', '-t' and '-o' parameters. Please see '--help' for\
+                                           '-f', '-d', '-t' and '-o' parameters. Please see '--help' for\
                                            more detailed information on them."
 
         if self.view:
