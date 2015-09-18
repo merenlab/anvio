@@ -15,6 +15,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
@@ -252,21 +253,25 @@ class MultipleRuns:
         gene_coverages_table.store()
 
 
-    def merge_split_coverage_values_table(self):
-        self.is_all_samples_have_it('split_coverage_values_table')
+    def merge_split_coverage_data(self):
+        self.is_all_samples_have_it('split_coverage_values')
 
-        # create an instance from genes
-        split_coverage_values_table = dbops.TableForSplitCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.h5')
+        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new = True)
 
         # fill coverages in from all samples
         for runinfo in self.input_runinfo_dicts.values():
-            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
-            sample_split_coverages = sample_profile_db.db.get_table_as_dict(tables.split_coverage_values_table_name)
-            for e in sample_split_coverages.values():
-                split_coverage_values_table.append(e['split_name'], e['sample_id'], e['coverage_list'], binary = True)
-            sample_profile_db.disconnect()
+            input_file_path = os.path.join(os.path.dirname(runinfo['profile_db']), 'AUXILIARY-DATA.h5')
+            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(input_file_path, self.contigs_db_hash)
 
-        split_coverage_values_table.store()
+            for split_name in self.split_names:
+                coverages_dict = sample_split_coverage_values.get(split_name)
+                for sample_name in coverages_dict:
+                    merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
+
+            sample_split_coverage_values.close()
+
+        merged_split_coverage_values.close()
 
 
     def set_normalization_multiplier(self):
@@ -340,8 +345,6 @@ class MultipleRuns:
         self.run.info('merged_sample_ids', self.merged_sample_ids)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('num_runs_processed', len(self.merged_sample_ids))
-        #self.run.info('num_splits_found', pp(len(self.contigs.values()[0])))
-        #self.run.info('contigs_total_length', pp(sum([len(s) for s in self.contigs.values()[0]])))
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
 
         self.set_normalization_multiplier()
@@ -350,8 +353,8 @@ class MultipleRuns:
         self.merge_gene_coverages_tables()
         self.progress.end()
 
-        self.progress.new('Merging split coverage values tables')
-        self.merge_split_coverage_values_table()
+        self.progress.new('Merging split coverage values')
+        self.merge_split_coverage_data()
         self.progress.end()
 
         self.progress.new('Merging variable positions tables')
