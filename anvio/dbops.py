@@ -9,11 +9,9 @@ import time
 import copy
 import numpy
 import random
-import cPickle
 import hashlib
 import datetime
 import operator
-import cStringIO
 from itertools import chain
 from collections import Counter
 
@@ -27,6 +25,7 @@ import anvio.samplesops as samplesops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
 import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.hmmops import HMMSearch
@@ -244,10 +243,6 @@ class ProfileSuperclass(object):
         self.progress = p
 
         self.gene_coverages_dict = None
-        self.split_coverage_values_dict = None # <- note that this is not 'mean coverage'. this holds raw coverage values
-                                               #    for each nucleotide position in for each split. that's why we don't
-                                               #    initialize by default. see self.init_split_coverage_values_dict for
-                                               #    details.
 
         self.split_names = set([])
         self.clusterings = {}
@@ -291,9 +286,12 @@ class ProfileSuperclass(object):
             self.p_meta['default_clustering'] = None
             self.clusterings = None
 
-        self.progress.end()
-
         profile_db.disconnect()
+
+        self.progress.update('Accessing the auxiliary data file')
+        self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5'), self.p_meta['contigs_db_hash'])
+
+        self.progress.end()
 
 
     def init_gene_coverages_dict(self):
@@ -329,59 +327,6 @@ class ProfileSuperclass(object):
             self.gene_coverages_dict[prot_id][gene_coverage_entry['sample_id']] = gene_coverage_entry['mean_coverage']
 
         self.progress.end()
-
-
-    def init_split_coverage_values_dict(self):
-        """Populates split_coverage_values_dict with raw coverage values for each nt in each split across all samples.
-
-           Because this can be extremely memory inefficient, the class does not call this function by default. Ad hoc
-           access to these values can be done by `get_coverage_values_for_split` function with 'ad_hoc = True'
-           parameter. If `ad_hoc` is not True, `get_coverage_values_for_split` function will initialize the entire
-           table into the memory by calling this function.
-    """
-        profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
-
-        split_coverage_values_table = profile_db.db.get_table_as_dict(t.split_coverage_values_table_name)
-
-        # initialize the split_coverage_values_dict.
-        self.split_coverage_values_dict = {}
-        for split_name in self.split_names:
-            self.split_coverage_values_dict[split_name] = {}
-
-        for e in split_coverage_values_table.values():
-            split_name, sample_id, coverage_list = e['split_name'], e['sample_id'], cPickle.loads(cStringIO.StringIO(e['coverage_list']).read())
-            self.split_coverage_values_dict[split_name][sample_id] = coverage_list
-
-
-    def get_coverage_values_for_split(self, split_name, ad_hoc = False):
-        """Get raw coverage values for a given split name,
-        
-           If ad hoc is True, then the coverage values table will be queried each time this function is
-           called for the split name. Otherwhise it will load the entire table the first time it is called
-           and respond to requests from the dictionary."""
-
-        if not split_name in self.split_names:
-            raise ConfigError, "get_coverage_values_for_split: The split name '%s' does not seem to be\
-                                represented in this profile database. Are you sure you are looking for it\
-                                in the right database?" % split_name
-
-        if ad_hoc:
-            d = {split_name: {}}
-
-            profile_db = ProfileDatabase(self.profile_db_path)
-            split_coverage_values = profile_db.db.get_some_rows_from_table_as_dict(t.split_coverage_values_table_name, '''split_name = "%s"''' % split_name).values()
-            profile_db.disconnect()
-
-            for e in split_coverage_values:
-                d[e['split_name']][e['sample_id']] = cPickle.loads(cStringIO.StringIO(e['coverage_list']).read())
-
-            return d[split_name]
-
-        # no ad hoc
-        if not self.split_coverage_values_dict:
-            self.init_split_coverage_values_dict()
-
-        return self.split_coverage_values_dict[split_name]
 
 
     def get_variability_information_for_split(self, split_name, return_raw_results = False):
@@ -569,7 +514,6 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-        self.db.create_table(t.split_coverage_values_table_name, t.split_coverage_values_table_structure, t.split_coverage_values_table_types)
 
         self.disconnect()
 
@@ -1494,43 +1438,6 @@ class GenesInSplits:
                                                'stop_in_split': stop_in_split,
                                                'percentage_in_split': percentage_in_split}
         self.entry_id += 1
-
-
-class TableForSplitCoverages(Table):
-    """A class to operate on the splits_coverage_values table in profile databases"""
-    def __init__(self, db_path, version, run=run, progress=progress, quiet = False):
-        self.db_path = db_path
-
-        is_profile_db(self.db_path)
-
-        Table.__init__(self, self.db_path, version, run, progress)
-
-        self.quiet = quiet
-
-        self.table_data = {}
-        self.set_next_available_id(t.split_coverage_values_table_name)
-
-
-    def append(self, split_name, sample_id, coverage_list, binary = False):
-        self.table_data[self.next_id(t.split_coverage_values_table_name)] = {'split_name': split_name,
-                                                                             'sample_id' : sample_id,
-                                                                             'coverage_list': coverage_list if binary else db.binary(cPickle.dumps(coverage_list, cPickle.HIGHEST_PROTOCOL))}
-
-
-    def store(self):
-        database = db.DB(self.db_path, anvio.__profile__version__)
-
-        entry_ids = self.table_data.keys()
-
-        # populate splits table
-        db_entries = [tuple([entry_id] + [self.table_data[entry_id][h] for h in t.split_coverage_values_table_structure[1:]]) for entry_id in entry_ids]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.split_coverage_values_table_name, db_entries)
-
-        database.disconnect()
-
-        if not self.quiet:
-            self.run.info('Raw coverage values', '%d entries have been successfully added to the profile database at "%s".'\
-                                        % (len(entry_ids), self.db_path), mc='green')
 
 
 ####################################################################################################
