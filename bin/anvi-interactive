@@ -20,7 +20,6 @@ from bottle import run as run_server
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.interactive as interactive
@@ -62,8 +61,8 @@ groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters an
                                                                    nice to have).")
 groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
-groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
 groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
@@ -186,6 +185,9 @@ def charts(split_name):
     if split_name not in d.split_names:
         return data
 
+    if not d.auxiliary_data_available:
+        return data
+
     index_of_split = d.split_names_ordered.index(split_name)
     if index_of_split:
         data['previous_contig_name'] = d.split_names_ordered[index_of_split - 1]
@@ -197,11 +199,8 @@ def charts(split_name):
 
     layers = sorted(d.p_meta['samples'])
 
-    # FIXME: There should be a flag for the `memory_efficient` mode, when it is false,
-    #        the ad_hoc flag in the following function should be turned to False for
-    #        speed efficiency
-    coverage_values_dict = d.get_coverage_values_for_split(split_name, ad_hoc = True)
-    data['coverage'] = [coverage_values_dict[layer] for layer in layers]
+    coverage_values_dict = d.split_coverage_values.get(split_name)
+    data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
 
     ## get the variability information dict for split:
     split_variability_info_dict = d.get_variability_information_for_split(split_name)
