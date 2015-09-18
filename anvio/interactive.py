@@ -6,11 +6,11 @@ import sys
 
 import anvio
 import anvio.utils as utils
-import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, is_profile_db_and_contigs_db_compatible
 from anvio.errors import ConfigError
@@ -64,6 +64,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
+
+        self.auxiliary_data_available = False
 
         self.external_clustering = external_clustering
 
@@ -273,6 +275,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         else:
             self.title = self.p_meta['sample_id'].replace('-', ' ').replace('_', ' ')
 
+        # do we have auxiliary data available?
+        auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+        if os.path.exists(auxiliary_data_file_path):
+            self.auxiliary_data_available = True
+            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, self.p_meta['contigs_db_hash'])
 
     def check_names_consistency(self):
         if self.skip_check_names:
