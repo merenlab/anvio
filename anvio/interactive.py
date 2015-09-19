@@ -280,10 +280,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.run.warning("Auxiliary data is not available; which means you will not be able to perform\
                               certain operations (i.e., the inspect menu in the interactive interface will\
                               not work, etc). %s" % ('' if not summary_cp_available else "Although, you have\
-                              a SUMMARY.cp file in your work directory, which means you are working with a\
-                              previously profiled/merged anvi'o run. You can convert your SUMMARY.cp into an\
-                              auxiliary data file by using `anvi-script-generate-auxiliary-data-from-summary-cp`\
-                              script."))
+                              a SUMMARY.cp file in your work directory, which means you are working with an\
+                              outdated anvi'o run. You can convert your SUMMARY.cp into an auxiliary data file\
+                              by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
 
     def check_names_consistency(self):
         if self.skip_check_names:
