@@ -65,7 +65,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.samples_information_dict = {}
         self.samples_order_dict = {}
 
-        self.auxiliary_data_available = False
 
         self.external_clustering = external_clustering
 
@@ -276,10 +275,15 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.title = self.p_meta['sample_id'].replace('-', ' ').replace('_', ' ')
 
         # do we have auxiliary data available?
-        auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
-        if os.path.exists(auxiliary_data_file_path):
-            self.auxiliary_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, self.p_meta['contigs_db_hash'])
+        if not self.auxiliary_data_available:
+            summary_cp_available = os.path.exists(os.path.join(os.path.dirname(self.profile_db_path), 'SUMMARY.cp'))
+            self.run.warning("Auxiliary data is not available; which means you will not be able to perform\
+                              certain operations (i.e., the inspect menu in the interactive interface will\
+                              not work, etc). %s" % ('' if not summary_cp_available else "Although, you have\
+                              a SUMMARY.cp file in your work directory, which means you are working with a\
+                              previously profiled/merged anvi'o run. You can convert your SUMMARY.cp into an\
+                              auxiliary data file by using `anvi-script-generate-auxiliary-data-from-summary-cp`\
+                              script."))
 
     def check_names_consistency(self):
         if self.skip_check_names:

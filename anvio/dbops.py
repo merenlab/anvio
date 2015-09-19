@@ -243,6 +243,7 @@ class ProfileSuperclass(object):
         self.progress = p
 
         self.gene_coverages_dict = None
+        self.split_coverage_values = None
 
         self.split_names = set([])
         self.clusterings = {}
@@ -289,9 +290,18 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5'), self.p_meta['contigs_db_hash'])
+        auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+        if not os.path.exists(auxiliary_data_path):
+            self.auxiliary_data_available = False
+        else:
+            self.auxiliary_data_available = True
+            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
+
+        if self.auxiliary_data_available:
+            run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_data_path, anvio.__hdf5__version__))
+        run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
     def init_gene_coverages_dict(self):
