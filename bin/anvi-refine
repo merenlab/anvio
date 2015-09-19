@@ -186,6 +186,9 @@ def charts(split_name):
     if split_name not in d.split_names:
         return data
 
+    if not d.auxiliary_data_available:
+        return data
+
     index_of_split = d.split_names_ordered.index(split_name)
     if index_of_split:
         data['previous_contig_name'] = d.split_names_ordered[index_of_split - 1]
@@ -197,8 +200,8 @@ def charts(split_name):
 
     layers = sorted(d.p_meta['samples'])
 
-    coverage_values_dict = d.get_coverage_values_for_split(split_name, ad_hoc = True)
-    data['coverage'] = [coverage_values_dict[layer] for layer in layers]
+    coverage_values_dict = d.split_coverage_values.get(split_name)
+    data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
 
     ## get the variability information dict for split:
     split_variability_info_dict = d.get_variability_information_for_split(split_name)
