@@ -10,7 +10,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
-import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, is_profile_db_and_contigs_db_compatible
 from anvio.errors import ConfigError
