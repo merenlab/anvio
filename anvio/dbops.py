@@ -714,10 +714,11 @@ class SamplesInformationDatabase:
                                 'None' type :/"
 
         if os.path.exists(self.db_path):
-            is_samples_information_db(self.db_path)
+            is_samples_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__samples__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+            self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
             self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
         else:
@@ -1456,10 +1457,6 @@ class GenesInSplits:
 #
 ####################################################################################################
 
-def is_samples_information_db(db_path):
-    if get_db_type(db_path) != 'samples_information':
-        raise ConfigError, "'%s' is not an anvi'o samples information database." % db_path
-
 
 def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
@@ -1473,6 +1470,12 @@ def is_profile_db(db_path):
         raise ConfigError, "'%s' is not an anvi'o profile database." % db_path
 
 
+def is_samples_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'samples_information':
+        raise ConfigError, "'%s' is not an anvi'o samples database." % db_path
+
+
 def get_db_type(db_path):
     try:
         database = db.DB(db_path, None, ignore_version = True)
@@ -1483,7 +1486,7 @@ def get_db_type(db_path):
     tables = database.get_table_names()
     if 'self' not in tables:
         database.disconnect()
-        raise ConfigError, '"%s" does not seem to be a anvio database...' % db_path
+        raise ConfigError, "'%s' does not seem to be a anvi'o database..." % db_path
 
     db_type = database.get_meta_value('db_type')
     database.disconnect()
@@ -1513,6 +1516,29 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
                                 % 'anvi-merge' if merged else 'anvi-profile'
 
     return True
+
+
+def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
+    """Check whether every sample name in the profile database is represented in the samples information database"""
+    profile_db = ProfileDatabase(profile_db_path)
+    samples_db = SamplesInformationDatabase(samples_db_path)
+
+    missing_samples = profile_db.samples - samples_db.samples
+    num_represented_samples = len(profile_db.samples) - len(missing_samples)
+
+
+    if len(missing_samples):
+        how_much_of_the_samples_are_represented_txt = 'none' if len(missing_samples) == len(profile_db.samples) else\
+                                                      'only %d of %d' % (num_represented_samples, len(profile_db.samples))
+
+        raise ConfigError, "The samples information database you provided ('%s') does not seem to agree well with the profile\
+                            database ('%s'). More specifically, %s of the samples in the profile database are repesented in\
+                            the samples information database. Names for these missing samples go like this: %s ...,\
+                            while the sample names in the samples information database go like this: %s ... This could be due to\
+                            a simple typo, or you may be using the wrong or outdated samples information database. You may need to\
+                            regenerate the samples information database to fix this problem :/"\
+                                                % (samples_db_path, profile_db_path, how_much_of_the_samples_are_represented_txt,
+                                                   ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3]))
 
 
 def get_split_names_in_profile_db(profile_db_path):
