@@ -515,14 +515,14 @@ function drawSamplesLayers(settings) {
                     rect.setAttribute('layer-name', samples_layer_name);
 
                     offset = offset + size;
-                    
-                    if (!backgrounds_done)
-                    {
-                        drawText('samples', {
-                            'x': total_radius + 20,
-                            'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-                        }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
-                    }
+                }
+
+                if (!backgrounds_done)
+                {
+                    drawText('samples', {
+                        'x': total_radius + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+                    }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
                 }
             }
             else
