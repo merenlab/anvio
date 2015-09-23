@@ -106,6 +106,12 @@ var named_layers = {
 
 function getNamedLayerDefaults(layer, attribute, default_value)
 {
+    if (typeof default_value == "string" && default_value.charAt(0) != '#'){
+        // make the default value a bit prettier, if possible.
+        default_value = default_value.replace(/_/g, " ");
+        default_value = default_value.charAt(0).toUpperCase() + default_value.slice(1);
+    }
+
     if (layer in named_layers)
     {
         if (attribute in named_layers[layer])
