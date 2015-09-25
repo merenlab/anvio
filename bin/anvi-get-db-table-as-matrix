@@ -78,7 +78,6 @@ if __name__ == '__main__':
     parser.add_argument('db_path', metavar = 'DB',
                         help = 'Database to read.')
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('table'), **anvio.K('table'))
     parser.add_argument(*anvio.A('list'), **anvio.K('list'))
     parser.add_argument(*anvio.A('fields'), **anvio.K('fields'))
