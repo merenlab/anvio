@@ -49,7 +49,7 @@ parser = argparse.ArgumentParser(description="Start an anvi'o server for the int
 groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
                                                       anvi'o databases. The default use assumes you have your\
                                                       profile and contigs database, however, it is also possible\
-                                                      to start the interface using ad-hoc input files. See 'MANUAL\
+                                                      to start the interface using ad hoc input files. See 'MANUAL\
                                                       INPUT' section for other set of parameters that are mutually\
                                                       exclusive with datanases.")
 groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
@@ -64,6 +64,7 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
+groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
 groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
 groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
 groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
@@ -289,11 +290,15 @@ def send_summary_static(collection_id, filename):
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
+    set_default_headers(response)
+
     if args.read_only:
-        return json.dumps("Sorry! This is a read-only instance.")
+        return json.dumps({'error': "Sorry! This is a read-only instance."})
+
+    if d.manual_mode:
+        return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
 
     run.info_single('A summary of collection "%s" has been requested.' % collection_id)
-    set_default_headers(response)
 
     class Args:
         pass

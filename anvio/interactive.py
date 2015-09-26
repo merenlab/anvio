@@ -11,7 +11,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
 from anvio.errors import ConfigError
 
@@ -43,12 +43,13 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.title = 'Unknown Project'
 
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.manual_mode = A('manual_mode')
         self.state = A('state')
         self.split_hmm_layers = A('split_hmm_layers')
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
-        self.profile_db_path = A('profile_db')
-        self.contigs_db_path = A('contigs_db')
         self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
@@ -94,22 +95,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.cwd = os.getcwd()
 
         # here is where the big deal stuff takes place:
-        if self.profile_db_path:
-            if not self.contigs_db_path:
-                raise ConfigError, "Anvi'o needs the contigs database to make sense of this run."
-
-            ProfileSuperclass.__init__(self, args)
-
-            # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
-            # all the split sequences since only now we know the mun_contig_length that was used to profile
-            # this stuff
-            self.init_split_sequences(self.p_meta['min_contig_length'])
-
-            self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
-
-            self.load_from_profile_database(args)
+        if self.manual_mode:
+            self.load_from_user_files(args)
         else:
-            self.load_from_files(args)
+            self.load_from_anvio_files(args)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -154,21 +143,45 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.convert_view_data_into_json()
 
 
-    def load_from_files(self, args):
-        if (not self.fasta_file) or (not self.view_data_path) or (not self.tree) or (not self.output_dir):
-            raise ConfigError, "If you do not have a RUNINFO dict, you must declare each of\
-                                           '-f', '-d', '-t' and '-o' parameters. Please see '--help' for\
-                                           more detailed information on them."
+    def load_from_user_files(self, args):
+        if self.contigs_db_path:
+            raise ConfigError, "When you want to use the interactive interface in an ad hoc manner, you must\
+                                not use a contigs database."
+
+        if not self.profile_db_path:
+            raise ConfigError, "Even when you want to use the interactive interface in an ad hoc manner by\
+                                using the '--manual-mode' flag, you still need to declare a profile database.\
+                                The profile database in this mode only used to read or store the 'state' of\
+                                the display for visualization purposes. You DO NOT need to point to an already\
+                                existing database, as anvi'o will generate an empty one for your if there is no\
+                                profile database."
+
+        if (not self.fasta_file) or (not self.view_data_path) or (not self.tree):
+            raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
+                                each of '-f', '-d', and '-t' parameters. Please see the help menu for more info."
 
         if self.view:
-            raise ConfigError, "You can't use '-v' parameter when this program is not called with a RUNINFO.cp"
+            raise ConfigError, "You can't use '--view' parameter when you are running the interactive interface\
+                                in manual mode"
 
         if self.show_views:
-            raise ConfigError, "Sorry, there are no views to show when there is no RUNINFO.cp :/"
+            raise ConfigError, "Sorry, there are no views to show in manual mode :/"
+
+
+        # create a new, empty profile database for ad hoc operations
+        if not os.path.exists(self.profile_db_path):
+            profile_db = ProfileDatabase(self.profile_db_path)
+            profile_db.create({'db_type': 'profile', 'contigs_db_hash': None})
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
+
+        # also populate collections, if there are any
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         view_data_path = os.path.abspath(self.view_data_path)
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
-        self.p_meta['output_dir'] = os.path.abspath(self.output_dir)
+        self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
         self.p_meta['default_view'] = 'single'
         self.p_meta['default_clustering'] = 'default'
@@ -200,20 +213,22 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
                                                 'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
-        # reminder: this is being stored in the output dir provided as a commandline parameter:
-        self.p_meta['self_path'] = os.path.join(self.p_meta['output_dir'], 'RUNINFO.cp')
-
         if self.title:
             self.title = self.title
 
-        filesnpaths.gen_output_directory(self.p_meta['output_dir'])
 
+    def load_from_anvio_files(self, args):
+        if not self.contigs_db_path:
+            raise ConfigError, "Anvi'o needs the contigs database to make sense of this run."
 
-    def load_from_profile_database(self, args):
-        if self.p_meta['version'] != anvio.__profile__version__:
-            raise ConfigError, "The profile database has a version number that differs from the version that is valid\
-                                for this codebase (the profile database is at '%s', and the codebase is at '%s'). Very\
-                                unfortunately, you need to re-profile and re-merge this project using the current anvi'o :("
+        ProfileSuperclass.__init__(self, args)
+
+        # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
+        # all the split sequences since only now we know the mun_contig_length that was used to profile
+        # this stuff
+        self.init_split_sequences(self.p_meta['min_contig_length'])
+
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         self.p_meta['self_path'] = self.profile_db_path
         self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(self.profile_db_path))
