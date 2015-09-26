@@ -50,8 +50,7 @@ groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface 
                                                       anvi'o databases. The default use assumes you have your\
                                                       profile and contigs database, however, it is also possible\
                                                       to start the interface using ad hoc input files. See 'MANUAL\
-                                                      INPUT' section for other set of parameters that are mutually\
-                                                      exclusive with datanases.")
+                                                      INPUT' section for required parameters.")
 groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
                                                      without anvi'o databases.")
 groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
