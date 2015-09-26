@@ -1369,6 +1369,8 @@ function generateSummary() {
         url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             if ('error' in data){
+                $('#modGenerateSummary').modal('hide');
+                waitingDialog.hide();
                 toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             } else {
                 $('#modGenerateSummary').modal('hide');
