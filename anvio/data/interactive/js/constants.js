@@ -104,12 +104,35 @@ var named_layers = {
 	},
 };
 
+pretty_names = {
+    'tnf-cov': 'Seq. Composition + Diff. Coverage',
+    'cov': 'Differential coverage',
+    'tnf': 'Sequence composition'
+};
+
+function getPrettyName(name)
+{
+
+    if (name in named_layers){
+        if ('pretty_name' in named_layers[name]){
+            return named_layers[name]['pretty_name']
+        }
+    }
+
+    if (name in pretty_names){
+        return pretty_names[name]
+    }
+
+    name = name.replace(/_/g, " ").replace(/-/g, " ");
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+
+    return name;
+}
+
 function getNamedLayerDefaults(layer, attribute, default_value)
 {
     if (typeof default_value == "string" && default_value.charAt(0) != '#'){
-        // make the default value a bit prettier, if possible.
-        default_value = default_value.replace(/_/g, " ");
-        default_value = default_value.charAt(0).toUpperCase() + default_value.slice(1);
+        default_value = getPrettyName(default_value)
     }
 
     if (layer in named_layers)

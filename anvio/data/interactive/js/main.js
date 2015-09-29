@@ -411,19 +411,20 @@ function getComboBoxContent(default_item, available_items){
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
     $.each(available_items, function(index, value) {
+        text_val = getPrettyName(index);
         if(index == default_item)
         {
             combo += combo_item
                         .replace('{val}', index)
                         .replace('{sel}', ' selected')
-                        .replace('{text}', index);
+                        .replace('{text}', text_val);
         }
         else
         {
             combo += combo_item
                         .replace('{val}', index)
                         .replace('{sel}', '')
-                        .replace('{text}', index);
+                        .replace('{text}', text_val);
         }
     });
 
