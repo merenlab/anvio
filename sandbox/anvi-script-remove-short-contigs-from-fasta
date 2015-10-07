@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.fastalib as u
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def remove_short_contigs_from_fasta(args):
+    filesnpaths.is_output_file_writable(args.output)
+    filesnpaths.is_file_exists(args.contigs_fasta)
+
+    output = u.FastaOutput(args.output)
+    fasta = u.SequenceSource(args.contigs_fasta)
+
+    run.info('Input', args.contigs_fasta)
+    run.info('Output', args.output)
+    run.info('Minimum length', args.min_len)
+
+    total_num_nucleotides = 0
+    total_num_contigs = 0
+    total_num_nucleotides_removed = 0
+    total_num_contigs_removed = 0
+
+    while fasta.next():
+        l = len(fasta.seq)
+
+        total_num_nucleotides += l
+        total_num_contigs += 1
+
+        if len(fasta.seq) < args.min_len:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
+
+        output.store(fasta, split = False)
+
+    fasta.close()
+    output.close()
+
+    run.info('Total num contigs', total_num_contigs)
+    run.info('Total num nucleotides', total_num_nucleotides)
+    run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
+    run.info('Nucleotides removed', '%d (%.2f%% of all)' % (total_num_nucleotides_removed, total_num_nucleotides_removed * 100.0 / total_num_nucleotides), mc='green')
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Remove short contigs from a given FASTA file")
+
+    parser.add_argument('contigs_fasta')
+    parser.add_argument('-l', '--min-len', type=int, required=True, metavar='MIN_LENGTH',
+                        help="Minimum length of contigs to keep (contigs shorter than this value\
+                              will not be included in the output file).")
+    parser.add_argument('-o', '--output', required=True, metavar='FASTA FILE',
+                        help="Output file path.")
+
+
+    args = parser.parse_args()
+
+    try:
+        remove_short_contigs_from_fasta(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
