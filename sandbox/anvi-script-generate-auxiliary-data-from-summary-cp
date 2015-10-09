@@ -69,7 +69,9 @@ def create_HDF5_summary_from_summary_cp(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description = "Create an AUXILIARY-DATA.h5 from SUMMARY.cp. For details, please see\
+                                                    release notes for anvi'o version 1.2.0 and the related issue in the\
+                                                    codebase (https://github.com/meren/anvio/issues/202).")
 
     parser.add_argument('profile_db')
     parser.add_argument('summary_cp')
