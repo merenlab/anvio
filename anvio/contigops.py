@@ -76,7 +76,7 @@ class Contig:
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,
-             'variability': sum(s.auxiliary.variability_score for s in self.splits),
+             'variability': sum(s.auxiliary.variation_density for s in self.splits),
              '__parent__': None}
 
         return d
@@ -122,7 +122,7 @@ class Split:
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,
-             'variability': self.auxiliary.variability_score,
+             'variability': self.auxiliary.variation_density,
              '__parent__': self.parent}
 
         return d
@@ -135,7 +135,7 @@ class Auxiliary:
         self.report_variability_full = report_variability_full 
         self.split = split
         self.column_profile = self.split.column_profiles
-        self.variability_score = 0.0
+        self.variation_density = 0.0
         self.v = []
         self.competing_nucleotides = {}
 
@@ -165,9 +165,8 @@ class Auxiliary:
                 ratios.append((cp['n2n1ratio'], cp['coverage']), )
                 self.column_profile[pileupcolumn.pos] = cp
 
-        # take top 50 based on n2n1ratio, then take top 25 of those with highest coverage:
-        variable_positions_with_high_cov = sorted([(x[1], x[0]) for x in sorted(ratios, reverse=True)[0:50]], reverse=True)[0:25]
-        self.variability_score = sum([x[1] * x[0] for x in variable_positions_with_high_cov])
+        # variation density = number of SNPs per kb
+        self.variation_density = len(ratios) * 1000.0 / self.split.length
 
         for i in range(self.split.start, self.split.end):
             if self.column_profile.has_key(i):
