@@ -178,6 +178,16 @@ class Summarizer(DatabasesMetaclass):
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
+        # generate a TAB-delimited text output file for bin summaries
+        summary_of_bins_matrix_output = {}
+        properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content', 'percent_complete', 'percent_redundancy']
+
+        for bin_name in self.summary['collection']:
+            summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
+
+        output_file_obj = self.get_output_file_handle(prefix = 'general_bins_summary.txt')
+        utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers = ['bins'] + properties, file_obj = output_file_obj)
+
         # save merged matrices for bins x samples
         for table_name in self.collection_profile.values()[0].keys():
             d = {}
