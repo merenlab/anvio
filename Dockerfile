@@ -32,6 +32,7 @@ RUN apt-get update \
         scikit-learn==0.16.1 \
         django==1.8.4 \
         pysam==0.8.3 \
+        h5py==2.5.0 \
     && pip install anvio==$ANVIO_VERSION \
     && apt-get remove -y \
         binutils \
