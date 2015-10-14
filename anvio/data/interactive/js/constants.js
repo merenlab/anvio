@@ -113,6 +113,10 @@ pretty_names = {
 function getPrettyName(name)
 {
 
+    if (['none', 'sqrt', 'log'].indexOf(name) >= 0){
+        return name;
+    }
+
     if (name in named_layers){
         if ('pretty_name' in named_layers[name]){
             return named_layers[name]['pretty_name']
