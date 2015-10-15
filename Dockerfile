@@ -1,21 +1,21 @@
-FROM ubuntu:trusty                                                                                                                                                                                    |
-                                                                                                                                                                                                      |
-ENV ANVIO_VERSION 1.2.0                                                                                                                                                                               |
-                                                                                                                                                                                                      |
-ENV DEBIAN_FRONTEND noninteractive                                                                                                                                                                    |
-                                                                                                                                                                                                      |
-RUN apt-get update \                                                                                                                                                                                  |
-    && apt-get install -y --no-install-recommends \                                                                                                                                                   |
-        build-essential \                                                                                                                                                                             |
-        gsl-bin \                                                                                                                                                                                     |
-        hmmer \                                                                                                                                                                                       |
-        libgsl0-dbg \                                                                                                                                                                                 |
-        libgsl0-dev \                                                                                                                                                                                 |
-        libgsl0ldbl \                                                                                                                                                                                 |
-        python-dev \                                                                                                                                                                                  |
-        python-numpy \                                                                                                                                                                                |
-        python-pip \                                                                                                                                                                                  |
-        python-scipy \                                                                                                                                                                                |
+FROM ubuntu:trusty
+ 
+ENV ANVIO_VERSION 1.2.0
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        gsl-bin \
+        hmmer \
+        libgsl0-dbg \
+        libgsl0-dev \
+        libgsl0ldbl \
+        python-dev \
+        python-numpy \
+        python-pip \
+        python-scipy \
         sqlite3 \
         wget \
         zlib1g-dev \
@@ -47,9 +47,9 @@ RUN apt-get update \                                                            
         patch \
     && apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
- 
+
 COPY tests /anvio-tests
- 
+
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /etc/profile.d/prompt.sh
- 
+
 CMD /bin/bash -l
