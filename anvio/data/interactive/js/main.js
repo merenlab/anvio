@@ -91,6 +91,7 @@ var current_state_name = "";
 
 var unique_session_id;
 var ping_timer;
+var autoload_state;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -186,9 +187,14 @@ $(document).ready(function() {
             type: 'GET',
             cache: false,
             url: '/data/samples_information?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/state/autoload?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, stateAutoloadResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -216,6 +222,9 @@ $(document).ready(function() {
 
             document.title = titleResponse[0];
             contig_lengths = eval(contigLengthsResponse[0]);
+
+            // if --state parameter given, autoload given state.
+            autoload_state = stateAutoloadResponse[0];
 
             /* 
             //  Clusterings
@@ -302,7 +311,14 @@ $(document).ready(function() {
 
                         $("#tbody_layers").empty();
 
-                        buildLayersTable(layer_order, views[current_view]);                    
+                        buildLayersTable(layer_order, views[current_view]);  
+
+                        waitingDialog.hide();
+
+                        if (autoload_state !== null)
+                        {
+                            loadState(autoload_state);
+                        }          
                     }
                 });
             });
@@ -325,8 +341,6 @@ $(document).ready(function() {
             buildSamplesTable();
 
             $('#views_container').trigger('change'); // load default view
-
-
             /*
             //  Add bins
             */
@@ -727,9 +741,6 @@ function buildLayersTable(order, settings)
             $('#samples_order').val('custom').trigger('change');
         });
     }
-
-
-    waitingDialog.hide();
 }
 
 function getLayerName(layer_id)
@@ -1634,14 +1645,25 @@ function showLoadStateWindow()
 
 function loadState()
 {
-    if ($('#loadState_list').val() == null)
-        return;
+    var state_name;
+    if (autoload_state !== null)
+    {
+        state_name = autoload_state;
+        autoload_state = null // to prevent load again.
+    }
+    else
+    {
+        if ($('#loadState_list').val() == null)
+            return;
+
+        state_name = $('#loadState_list').val();
+    }
 
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/state/get?timestamp=' + new Date().getTime(),
-        data: {'name': $('#loadState_list').val() },
+        data: {'name': state_name },
         success: function(response) {
             try{
                 var state = JSON.parse(response);
@@ -1782,7 +1804,7 @@ function loadState()
             buildLayersTable(layer_order, views[current_view]);
             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
 
-            current_state_name = $('#loadState_list').val();
+            current_state_name = state_name;
             $('#current_state').html('[current state: ' + current_state_name + ']');
             $('#modLoadState').modal('hide');
 

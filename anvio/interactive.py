@@ -46,7 +46,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.manual_mode = A('manual_mode')
-        self.state = A('state')
         self.split_hmm_layers = A('split_hmm_layers')
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
@@ -58,6 +57,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
+        self.state = A('state')
+        self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
 
         self.split_names_ordered = None
@@ -167,6 +168,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.show_views:
             raise ConfigError, "Sorry, there are no views to show in manual mode :/"
 
+        if self.show_states:
+            raise ConfigError, "Sorry, there are no states to show in manual mode :/"
+
 
         # create a new, empty profile database for ad hoc operations
         if not os.path.exists(self.profile_db_path):
@@ -251,6 +255,16 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             print
             sys.exit()
 
+        if self.show_states:
+            run.warning('', header = 'Available states (%d)' % len(self.states_table.states), lc = 'green')
+            for state in self.states_table.states:
+                run.info(state,
+                         'Last modified %s' % self.states_table.states[state]['last_modified'],
+                         lc='crimson',
+                         mc='crimson')
+            print
+            sys.exit()
+
         # if the user has an additional view data, load it up into the self.views dict.
         if self.additional_view_path:
             filesnpaths.is_file_tab_delimited(self.additional_view_path)
@@ -302,6 +316,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                               a SUMMARY.cp file in your work directory, which means you are working with an\
                               outdated anvi'o run. You can convert your SUMMARY.cp into an auxiliary data file\
                               by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
+
+        if self.state:
+            if not self.state in self.states_table.states:
+                raise ConfigError, "The requested state ('%s') is not available for this run. Please see\
+                                          available states by running this program with --show-states flag." % self.state               
+
 
     def check_names_consistency(self):
         if self.skip_check_names:

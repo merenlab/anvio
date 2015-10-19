@@ -576,6 +576,18 @@ D = {
                       the contig name, and the second column should be the comma-separated list of integers for nucleotide\
                       positions."}
                 ),
+    'state': (
+            ['--state'],
+            {'metavar': 'NAME',
+             'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
+                      use --show-states flag."}
+                ),
+    'show-states': (
+            ['--show-states'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared program will print all available states and exit."}
+                ),
 }
 
 # two functions that works with the dictionary above.
