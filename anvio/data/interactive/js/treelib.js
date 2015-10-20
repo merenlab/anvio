@@ -173,8 +173,8 @@ function drawLegend(top, left, line_end) {
 
             var text = drawText(bin_id, {
                 'x': _left,
-                'y': _top + line_height / 2
-            }, _name, line_height + 'px');
+                'y': _top + (line_height * 3/4)
+            }, _name, line_height + 'px', 'left', '#000000', 'baseline');
 
             _left += text.getBBox().width + gap;
         }
