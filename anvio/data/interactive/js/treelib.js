@@ -324,7 +324,7 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('text-rendering', 'optimizeLegibility');
-    text.setAttribute('font-family', '"Helvetica Neue", Helvetica, Arial, sans-serif;')
+    text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
 
     switch (align) {
         case 'left':
@@ -353,24 +353,20 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
 
 //--------------------------------------------------------------------------------------------------
 function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) {
+    var textObj = drawText(svg_id, p, string, font_size, 'left', color, 'baseline');
 
-    var foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    //https://stackoverflow.com/questions/9241315/trimming-text-to-a-given-pixel-width-in-svg
+    if (textObj.getSubStringLength(0,string.length)>=width){
+        for (var x=string.length-3;x>0;x-=3){
+            if (textObj.getSubStringLength(0,x)<=width){
+                textObj.textContent=string.substring(0,x)+"...";
+                return;
+            }
+        }
+        textObj.textContent="..."; //can't place at all
+    }
 
-    foreignObject.setAttribute('x', p['x']);
-    foreignObject.setAttribute('y', p['y']);
-    foreignObject.setAttribute('width', width);
-    foreignObject.setAttribute('height', height);
-    foreignObject.setAttribute('pointer-events', 'none');
-
-    var textNode = document.createElement('div');
-    textNode.setAttribute('style', 'height:inherit; line-height:100%; width: inherit; inherit; overflow: hidden; white-space: nowrap; font-size:' + font_size + '; color: ' + color);
-    textNode.textContent = string;
-    foreignObject.appendChild(textNode);
-
-    var svg = document.getElementById(svg_id);
-    svg.appendChild(foreignObject);
-
-    return foreignObject;
+    return textObj
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2280,6 +2276,7 @@ function draw_tree(settings) {
     }
 
     rebuildIntersections();
+    createBin('tree_bin', 'layer_labels');
     createBin('tree_bin', 'bin');
     // redrawBins() call moved to draw_tree_callback because redrawBins needs last_settings to be set.
 
@@ -2301,6 +2298,10 @@ function draw_tree(settings) {
                 var pindex = settings['layer-order'][i];
                 var layer = settings['views'][current_view][pindex];
 
+                // !!IMPORTANT!! no label for hidden layers, font-size: 0px causes bug on inkscape 0.91
+                if ((layers[pindex]['height']) == 0)
+                    continue;
+
                 var layer_title = layerdata[0][pindex];
 
                 if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
@@ -2313,9 +2314,10 @@ function draw_tree(settings) {
                     layer_title = layer_title.replace(/_/g, " ");
                 }
 
-                drawFixedWidthText('tree_bin', {
+
+                drawFixedWidthText('layer_labels', {
                         'x': 10,
-                        'y': 0 - layer_boundaries[layer_index][1]
+                        'y': 0 - layer_boundaries[layer_index][1] + (layers[pindex]['height'] * 3/4) 
                     }, 
                     layer_title, 
                     layers[pindex]['height'] + 'px',
