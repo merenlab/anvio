@@ -1255,8 +1255,7 @@ function exportSvg() {
     // now we are going to use "last_settings" which updated by draw button.
     var settings = {};
     settings = last_settings; 
-
-    drawLayerLegend(settings['views'][current_view], settings['layer-order'], top, left);
+    drawLayerLegend(settings['layers'], settings['views'][current_view], settings['layer-order'], top, left);
 
     svgCrowbar();
 

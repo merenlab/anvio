@@ -217,11 +217,11 @@ function drawBinLegend(bins_to_draw, top, left) {
     }
 }
 
-function drawLayerLegend(layers, layer_order, top, left) {
+function drawLayerLegend(_layers, _view, _layer_order, top, left) {
     createBin('viewport', 'layer_legend');
 
     // legend border
-    drawRectangle('layer_legend', left - 10, top - 20,20 + (layer_order.length + 2.5) * 20, 300, 'white', 1, 'black');
+    drawRectangle('layer_legend', left - 10, top - 20,20 + (_layer_order.length + 2.5) * 20, 300, 'white', 1, 'black');
     
     // legend title
     drawText('layer_legend', {
@@ -239,37 +239,40 @@ function drawLayerLegend(layers, layer_order, top, left) {
     drawText('layer_legend', {'x': left + 245, 'y': top}, 'Max', '10px');
 
     // table items
-    for (var i = 0; i < layer_order.length; i++) 
+    for (var i = 0; i < _layer_order.length; i++) 
     {
-        var pindex = layer_order[i];
-        var layer = layers[pindex];
-        var layer_name = layerdata[0][pindex];
+        var pindex = _layer_order[i];
+
+        var layer_settings = _layers[pindex];
+        var layer_view = _view[pindex];
+
+        var layer_name = getLayerName(pindex);
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
         top = top + 20;
 
         // color
-        if (layer.hasOwnProperty('color') && typeof layer['color'] != 'undefined') 
-            drawRectangle('layer_legend', left, top - 8, 16, 16, layer['color'], 1, 'black');
+        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined') 
+            drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
 
         // name
         drawText('layer_legend', {'x': left + 30, 'y': top}, short_name, '12px');
 
         // normalization
-        if (layer.hasOwnProperty('normalization') && typeof layer['normalization'] != 'undefined') {
-            var _norm = layer['normalization'];   
+        if (layer_view.hasOwnProperty('normalization') && typeof layer_view['normalization'] != 'undefined') {
+            var _norm = layer_view['normalization'];   
         } else {
             var _norm = "-";
         }
         drawText('layer_legend', {'x': left + 120, 'y': top}, _norm, '12px');
 
         // height
-        drawText('layer_legend', {'x': left + 160, 'y': top}, layer['height'], '12px');
+        drawText('layer_legend', {'x': left + 160, 'y': top}, layer_settings['height'], '12px');
 
         // min & max
-        if (layer['min'].hasOwnProperty('value') && typeof layer['min']['value'] != 'undefined') {
-            var _min = layer['min']['value'];
-            var _max = layer['max']['value'];
+        if (layer_view['min'].hasOwnProperty('value') && typeof layer_view['min']['value'] != 'undefined') {
+            var _min = layer_view['min']['value'];
+            var _max = layer_view['max']['value'];
 
             // normalize floating numbers 
             if (_min % 1 !== 0)
