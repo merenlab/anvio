@@ -232,35 +232,11 @@ $(document).ready(function() {
             var default_tree = clusteringsResponse[0][0];
             var available_trees = clusteringsResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
-            var first_run = true;
 
             $('#trees_container').append(available_trees_combo);
-
             $('#trees_container').change(function() {
-
-                $('#trees_container').prop('disabled', true);
-                $('#btn_draw_tree').prop('disabled', true);
-
-                waitingDialog.show('Requesting the tree data ...', {dialogSize: 'sm'});
-
-                $.ajax({
-                    type: 'GET',
-                    cache: false,
-                    url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
-                    success: function(data) {
-                        newick = data;
-                        $('#trees_container').attr('disabled', false);
-                        $('#btn_draw_tree').attr('disabled', false); 
-
-                        if (!first_run){
-                            waitingDialog.hide();
-                        }
-                        first_run = false;
-                    }
-                });
+                onTreeClusteringChange();
             });
-
-            $('#trees_container').trigger('change'); // load default newick tree
 
             /* 
             //  Views
@@ -270,57 +246,8 @@ $(document).ready(function() {
             var available_views_combo = getComboBoxContent(default_view, available_views);
 
             $('#views_container').append(available_views_combo);
-
             $('#views_container').change(function() {
-
-                $('#views_container').prop('disabled', false);
-                $('#btn_draw_tree').prop('disabled', true);
-
-                waitingDialog.show('Requesting view data from the server ...', {dialogSize: 'sm'});
-
-                $.ajax({
-                    type: 'GET',
-                    cache: false,
-                    url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
-                    success: function(data) {
-                        layerdata = eval(data);
-                        parameter_count = layerdata[0].length;
-
-                        // since we are painting parent layers odd-even, 
-                        // we should remove single parents (single means no parent)
-                        removeSingleParents(); // in utils.js
-
-                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-                        layer_types = {};
-
-                        // add layerdata columns to search window
-                        $('#searchLayerList').empty();
-                        for (var i=0; i < layerdata[0].length; i++)
-                        {
-                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
-                        }
-
-                        $('#views_container').attr('disabled', false);
-                        $('#btn_draw_tree').attr('disabled', false);
-
-                        if (current_view != '') {
-                            // backup current layer order and layers table to global views object
-                            syncViews();
-                        }
-                        current_view = $('#views_container').val();
-
-                        $("#tbody_layers").empty();
-
-                        buildLayersTable(layer_order, views[current_view]);  
-
-                        waitingDialog.hide();
-
-                        if (autoload_state !== null)
-                        {
-                            loadState(autoload_state);
-                        }          
-                    }
-                });
+                onViewChange();
             });
 
             // make layers and samples table sortable
@@ -340,7 +267,16 @@ $(document).ready(function() {
             }
             buildSamplesTable();
 
-            $('#views_container').trigger('change'); // load default view
+            // load default data
+            $.when({}).then(onTreeClusteringChange).then(onViewChange).then(
+                function() {
+                    if (autoload_state !== null)
+                    {
+                        $.when({}).then(loadState).then(function() {
+                            drawTree();
+                        });
+                    }
+                });
             /*
             //  Add bins
             */
@@ -395,6 +331,81 @@ $(document).ready(function() {
     });
 
 }); // document ready
+
+function onViewChange() {
+    var defer = $.Deferred();
+    console.log('View data ' + $('#views_container').val() + ' requested.');
+
+    $('#views_container').prop('disabled', false);
+    $('#btn_draw_tree').prop('disabled', true);
+
+    waitingDialog.show('Requesting view data from the server ...', {dialogSize: 'sm', onHide: function() {defer.resolve(); }});
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            layerdata = eval(data);
+            parameter_count = layerdata[0].length;
+
+            // since we are painting parent layers odd-even, 
+            // we should remove single parents (single means no parent)
+            removeSingleParents(); // in utils.js
+
+            layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+            layer_types = {};
+
+            // add layerdata columns to search window
+            $('#searchLayerList').empty();
+            for (var i=0; i < layerdata[0].length; i++)
+            {
+                $('#searchLayerList').append(new Option(layerdata[0][i],i));
+            }
+
+            $('#views_container').attr('disabled', false);
+            $('#btn_draw_tree').attr('disabled', false);
+
+            if (current_view != '') {
+                // backup current layer order and layers table to global views object
+                syncViews();
+            }
+            current_view = $('#views_container').val();
+
+            $("#tbody_layers").empty();
+
+            buildLayersTable(layer_order, views[current_view]);  
+
+            waitingDialog.hide();
+        }
+    });
+
+    return defer.promise();
+}
+
+function onTreeClusteringChange() {
+    var defer = $.Deferred();
+    console.log('Tree clustering data ' + $('#trees_container').val() + ' requested.');
+    $('#trees_container').prop('disabled', true);
+    $('#btn_draw_tree').prop('disabled', true);
+
+    waitingDialog.show('Requesting the tree data ...', {dialogSize: 'sm', onHide: function() { defer.resolve(); }});
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            newick = data;
+            $('#trees_container').attr('disabled', false);
+            $('#btn_draw_tree').attr('disabled', false); 
+
+            waitingDialog.hide();
+        }
+    });
+
+    return defer.promise();
+}
 
 function syncViews() {
     views[current_view] = {};
@@ -1644,6 +1655,8 @@ function showLoadStateWindow()
 
 function loadState()
 {
+    $('#modLoadState').modal('hide');
+    var defer = $.Deferred();
     var state_name;
     if (autoload_state !== null)
     {
@@ -1652,8 +1665,10 @@ function loadState()
     }
     else
     {
-        if ($('#loadState_list').val() == null)
+        if ($('#loadState_list').val() == null) {
+            defer.reject();
             return;
+        }
 
         state_name = $('#loadState_list').val();
     }
@@ -1668,12 +1683,14 @@ function loadState()
                 var state = JSON.parse(response);
             }catch(e){
                 toastr.error('Failed to parse state data, ' + e);
+                defer.reject();
                 return;
             }
 
             if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
             {
                 toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                defer.reject();
                 return;
             }
 
@@ -1805,9 +1822,11 @@ function loadState()
 
             current_state_name = state_name;
             $('#current_state').html('[current state: ' + current_state_name + ']');
-            $('#modLoadState').modal('hide');
 
             toastr.success("State '" + current_state_name + "' successfully loaded.");
+            defer.resolve();
         }
     });
+
+    return defer.promise();
 }
