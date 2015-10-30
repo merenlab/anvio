@@ -88,10 +88,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.contigs_db_path and self.profile_db_path:
             is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        # make sure the samples information database, if there is one, is in fact compatible with the profile database
-        if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path)
-
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
@@ -100,6 +96,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.load_from_user_files(args)
         else:
             self.load_from_anvio_files(args)
+
+        # make sure the samples information database, if there is one, is in fact compatible with the profile database
+        # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
+        # being filled within the self.load_from_user_files function based on the headers of the view data.
+        if self.profile_db_path and self.samples_information_db_path:
+            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -172,17 +174,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             raise ConfigError, "Sorry, there are no states to show in manual mode :/"
 
 
-        # create a new, empty profile database for ad hoc operations
-        if not os.path.exists(self.profile_db_path):
-            profile_db = ProfileDatabase(self.profile_db_path)
-            profile_db.create({'db_type': 'profile', 'contigs_db_hash': None})
-
-        # create an instance of states table
-        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
-
-        # also populate collections, if there are any
-        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
-
         view_data_path = os.path.abspath(self.view_data_path)
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
         self.p_meta['output_dir'] = None
@@ -203,10 +194,13 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                       ('%s'). Please make sure this is a properly formatted view data\
                                       file." % (view_data_path)
 
-        # store view data as view:
+        # load view data as the default view:
         self.views[self.default_view] = {'header': view_data_columns[1:],
                                          'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
         self.split_names_ordered = self.views[self.default_view]['dict'].keys()
+
+        # we assume that the sample names are the header of the view data, so we might as well set it up: 
+        self.p_meta['samples'] = self.views[self.default_view]['header']
 
         filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
         self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
@@ -216,6 +210,17 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         for split_id in self.split_names_ordered:
             self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
                                                 'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
+
+        # create a new, empty profile database for ad hoc operations
+        if not os.path.exists(self.profile_db_path):
+            profile_db = ProfileDatabase(self.profile_db_path)
+            profile_db.create({'db_type': 'profile', 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
+
+        # also populate collections, if there are any
+        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
         if self.title:
             self.title = self.title
