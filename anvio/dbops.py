@@ -1520,6 +1520,9 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
 
 def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
     """Check whether every sample name in the profile database is represented in the samples information database"""
+    is_profile_db(profile_db_path)
+    is_samples_db(samples_db_path)
+
     profile_db = ProfileDatabase(profile_db_path)
     samples_db = SamplesInformationDatabase(samples_db_path)
 
