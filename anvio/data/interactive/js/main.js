@@ -466,13 +466,13 @@ function buildLayersTable(order, settings)
         var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
 
         var hasViewSettings = false;
-        if (typeof settings !== 'undefined') {
+        if (typeof settings !== 'undefined' && settings.hasOwnProperty(layer_id)) {
             var view_settings = settings[layer_id];
             var hasViewSettings = true;
         }
 
         var hasLayerSettings = false;
-        if (typeof layers[layer_id] !== 'undefined')
+        if (typeof layers !== 'undefined' && layers.hasOwnProperty(layer_id))
         {
             var layer_settings = layers[layer_id];
             hasLayerSettings = true;
