@@ -21,7 +21,6 @@ from bottle import run as run_server
 import anvio
 import anvio.utils as utils
 import anvio.refine as refine
-import anvio.dictio as dictio
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, RefineError
@@ -296,6 +295,13 @@ def completeness():
     completeness_stats = d.completeness.get_info_for_splits(set(split_names))
 
     return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
+
+@route('/state/autoload')
+def state_autoload():
+    # see --state parameter.
+    set_default_headers(response)
+
+    return json.dumps(d.state)
 
 @route('/state/all')
 def state_all():
