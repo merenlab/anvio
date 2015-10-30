@@ -124,11 +124,11 @@ def is_proper_samples_order_file(file_path):
             num_samples_described_in_basic_organizations.append(len(samples))
             sample_names_described_by_each_organization.append(samples)
 
-    if len(set(num_samples_described_in_basic_organizations)) != 1:
+    if num_samples_described_in_basic_organizations and len(set(num_samples_described_in_basic_organizations)) != 1:
         raise SamplesError, 'The number of samples described by each comma-separated basic organization line\
                              must be equal. But that does not seem to be the case with your input :/'
 
-    if len(set(num_samples_described_in_newick_organizations)) != 1:
+    if num_samples_described_in_newick_organizations and len(set(num_samples_described_in_newick_organizations)) != 1:
         raise SamplesError, 'The number of samples described by each newick-formatted organization \
                              must be equal. But that does not seem to be the case with your input :/'
 
