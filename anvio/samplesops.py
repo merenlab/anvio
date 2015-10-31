@@ -103,9 +103,34 @@ class SamplesInformation:
         self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict))
 
 
+    def update_samples_order_dict(self):
+        """Some attributes in the samples information dict may also be used as orders"""
+
+        def F(v):
+            if not v:
+                return 0.0
+            try:
+                return float(v)
+            except:
+                return v
+
+        for sample_attribute_tuples in [[(F(self.samples_information_dict[sample][attribute]), sample, attribute) \
+                                            for sample in self.samples_information_dict] \
+                                            for attribute in self.aliases_to_attributes_dict]:
+            # skip bar charts:
+            if ';' in str(sample_attribute_tuples[0][0]):
+                continue
+
+            attribute = self.aliases_to_attributes_dict[sample_attribute_tuples[0][2]]
+            if attribute not in self.samples_order_dict:
+                self.samples_order_dict['>> ' + attribute] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples)])}
+                self.samples_order_dict['>> ' + attribute + ' (reverse)'] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples, reverse=True)])}
+
+
     def populate_from_input_files(self, samples_information_path = None, samples_order_path = None):
         self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
+        self.update_samples_order_dict()
 
         self.sanity_check()
 
