@@ -719,6 +719,7 @@ class SamplesInformationDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+            self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')])
 
             self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
         else:
@@ -781,6 +782,7 @@ class SamplesInformationDatabase:
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names))
+        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
 
         self.disconnect()
 
@@ -1542,6 +1544,15 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
                             regenerate the samples information database to fix this problem :/"\
                                                 % (samples_db_path, profile_db_path, how_much_of_the_samples_are_represented_txt,
                                                    ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3]))
+
+    if samples_db.sample_names_for_order:
+        missing_samples = samples_db.sample_names_for_order - profile_db.samples
+
+        if len(missing_samples):
+            raise ConfigError, "The samples order information in the samples database do not match with the sample names in\
+                                the profile database (or the input data). To be precise, %d sample(s) occur(s) only in the\
+                                samples database, and not found in the profile database (or in the input data). Here is some of\
+                                them: %s ..." % (len(missing_samples), ', '.join(list(missing_samples)[0:3]))
 
 
 def get_split_names_in_profile_db(profile_db_path):
