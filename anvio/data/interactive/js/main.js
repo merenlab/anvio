@@ -256,9 +256,13 @@ $(document).ready(function() {
 
             samples_order_dict = samplesOrderResponse[0];
             samples_information_dict = sampleInformationResponse[0];
+
+            available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
-            for (order in samples_order_dict)
+
+            for (order_index in available_orders)
             {
+                order = available_orders[order_index];
                 var order_name = order;
                 if (samples_order_dict[order]['newick'] != '')
                     order_name += " (tree)";
