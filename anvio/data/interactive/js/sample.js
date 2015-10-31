@@ -590,8 +590,15 @@ function drawSamplesTree(settings, sample_xy)
     {
         if (q.IsLeaf())
         {
-            q.xy = sample_xy[q.label];
+            if (!sample_xy.hasOwnProperty(q.label))
+            {
+                var _message = "Error: Sample order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name.";
+                console.log(_message);
+                toastr.error(_message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                return;
+            }
 
+            q.xy = sample_xy[q.label];
             if (sample_y == -1)
             {
                 sample_y = q.xy['y'];
