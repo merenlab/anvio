@@ -670,20 +670,6 @@ function buildLayersTable(order, settings)
                 var type = "bar";
             }
 
-            /* Some ad-hoc manipulation of special hmmx_ split hmm layers */ 
-            if (layer_name.substring(0, 5) == "hmmx_"){
-                var height = '30';
-                var norm   = 'none';
-                var color  = '#882222';
-            }
-
-            /* Some ad-hoc manipulation of special hmms_ single hmm layers */ 
-            if (layer_name.substring(0, 5) == "hmms_"){
-                var height = '150';
-                var norm   = 'sqrt';
-                var color  = '#882222';
-            }
-
             var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
