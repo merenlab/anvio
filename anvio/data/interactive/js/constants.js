@@ -147,7 +147,7 @@ function getNamedLayerDefaults(layer, attribute, default_value)
     }
 
     /* Some ad-hoc manipulation of special hmms_ single hmm layers */ 
-    if (layer_name.substring(0, 5) == "hmms_"){
+    if (layer.substring(0, 5) == "hmms_"){
         if (attribute == 'height') return '150';
         if (attribute == 'norm')   return 'sqrt';
         if (attribute == 'color')  return '#882222'
