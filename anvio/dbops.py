@@ -555,6 +555,11 @@ class ContigsDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
+            if 'creation_date' not in self.meta:
+                raise ConfigError, "The contigs database ('%s') seems to be corrupted :/ This happens if the process that\
+                                    that generates the database ends prematurely. Most probably, you will need to generate\
+                                    the contigs database from scratch. Sorry!" % (self.db_path)
+
             self.run.info('Contigs database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
             self.run.info('Number of contigs', self.meta['num_contigs'], quiet = self.quiet)
             self.run.info('Number of splits', self.meta['num_splits'], quiet = self.quiet)
@@ -658,7 +663,6 @@ class ContigsDatabase:
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
 
         # set some useful meta values:
-        self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
@@ -675,6 +679,8 @@ class ContigsDatabase:
         self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+
+        self.db.set_meta_value('creation_date', time.time())
 
         self.disconnect()
 
