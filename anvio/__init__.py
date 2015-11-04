@@ -328,6 +328,12 @@ D = {
                       of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
                       (as well as for some beautiful visualizations)."}
                 ),
+    'transpose': (
+            ['--transpose'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Transpose the input matrix file before clustering."}
+                ),
     'skip-check-names': (
             ['--skip-check-names'],
             {'default': False,

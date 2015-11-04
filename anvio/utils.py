@@ -5,7 +5,6 @@
 import os
 import sys
 import time
-import json
 import copy
 import socket
 import textwrap
@@ -250,6 +249,21 @@ def HTMLColorToRGB(colorstring, scaled = True):
         return (r, g, b)
 
 
+def transpose_tab_delimited_file(input_file_path, output_file_path):
+    filesnpaths.is_file_exists(input_file_path)
+    filesnpaths.is_file_tab_delimited(input_file_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path).readlines()]
+
+    output_file = open(output_file_path, 'w')
+    for entry in zip(*file_content):
+        output_file.write('\t'.join(entry) + '\n')
+    output_file.close()
+
+    return output_file_path
+
+
 def get_random_colors_dict(keys):
     # FIXME: someone's gotta implement this
     # keys   : set(1, 2, 3, ..)
@@ -264,9 +278,14 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path).readline().strip('\n').split('\t')[1:]
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = []):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = [], transpose = False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
+
+    if transpose:
+        transposed_file_path = filesnpaths.get_temp_file_path()
+        transpose_tab_delimited_file(file_path, transposed_file_path)
+        file_path = transposed_file_path
 
     rows_to_return = set(rows_to_return)
     vectors = []
@@ -305,6 +324,12 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         vectors.append(vector)
 
         id_counter += 1
+
+    input_matrix.close()
+
+    if transpose:
+        # remove clutter
+        os.remove(file_path)
 
     sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.iteritems()])
 
