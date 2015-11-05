@@ -971,7 +971,7 @@ class TableForGeneCoverages(Table):
         profile_db.disconnect()
 
 
-class TablesForSearches(Table):
+class TablesForHMMHits(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 

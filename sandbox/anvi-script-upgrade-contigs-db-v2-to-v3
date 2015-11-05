@@ -53,8 +53,8 @@ def update_contigs_db_from_v2_to_v3(contigs_db_path):
     # bye
     contigs_db.disconnect()
 
-    # now feed the old data though the TablesForSearches class:
-    search_tables = dbops.TablesForSearches(contigs_db_path)
+    # now feed the old data though the TablesForHMMHits class:
+    search_tables = dbops.TablesForHMMHits(contigs_db_path)
     for source in sources:
         kind_of_search = sources[source]['search_type']
         all_genes_searched_against = [g.strip() for g in sources[source]['genes'].split(',')]
