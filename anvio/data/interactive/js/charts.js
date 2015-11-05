@@ -112,9 +112,17 @@ function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
 
-    var layers_ordered = state['layer-order'];
+    var layers_ordered;
 
-    layers_ordered = layers_ordered.filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+    if (state['current-view'] == "single"){
+        // if we are working with a non-merged single profile, we need to do some ugly hacks here,
+        // simply because the sample name does not appear among 'layers' found in the state variable.
+        layers_ordered = layers;
+        state['layers'][layers[0]] = state['layers']['mean_coverage'];
+    } else {
+        // this is the usual path for merged profiles:
+        layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+    }
 
     var visible_layers = 0;
     for (i in layers_ordered)
