@@ -4,7 +4,6 @@
 """
 
 import os
-import shutil
 
 import anvio.utils as utils
 import anvio.terminal as terminal
