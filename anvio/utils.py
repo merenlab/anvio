@@ -172,6 +172,18 @@ def run_command(cmdline):
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
 
+def get_command_output_from_shell(cmd_line):
+    ret_code = 0
+
+    try:
+        out_bytes = subprocess.check_output(cmd_line.split(), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        out_bytes = e.output
+        ret_code  = e.returncode
+
+    return out_bytes, ret_code
+
+
 def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = []):
     filesnpaths.is_output_file_writable(output_path)
 
