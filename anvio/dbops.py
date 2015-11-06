@@ -21,10 +21,11 @@ import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.kmers as kmers
-import anvio.samplesops as samplesops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
+import anvio.samplesops as samplesops
 import anvio.filesnpaths as filesnpaths
+import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
@@ -569,13 +570,16 @@ class ContigsDatabase:
             self.db = None
 
 
-    def create(self, contigs_fasta, split_length, kmer_size = 4):
+    def create(self, contigs_fasta, split_length, kmer_size = 4, skip_gene_calling = False):
+        filesnpaths.is_file_fasta_formatted(contigs_fasta)
+
         # just take a quick look at the first defline to make sure this FASTA file complies with anvi'o's
         # "simple defline" rule.
         fasta = u.SequenceSource(contigs_fasta)
         fasta.next()
         defline = fasta.id
         fasta.close()
+
         if not utils.check_contig_names(defline, dont_raise = True):
             raise ConfigError, "The FASTA file you provided does not comply with the 'simple deflines' requirement of\
                                 anvi'o. Please read this section in the tutorial to understand the reason behind this\
@@ -604,6 +608,9 @@ class ContigsDatabase:
             split_length = int(split_length)
         except:
             raise ConfigError, "Split size must be an integer."
+
+        if split_length <= 0:
+            raise ConfigError, "For obvious reasons, split length must be a positive number. Nice try, though..."
 
         try:
             kmer_size = int(kmer_size)
@@ -634,7 +641,9 @@ class ContigsDatabase:
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
+        self.progress.new('Computing k-mer frequencies')
         while fasta.next():
+            self.progress.update('processing contig %d' % fasta.pos)
             contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(fasta.id, fasta.seq)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
@@ -653,6 +662,7 @@ class ContigsDatabase:
                 splits_info_table.append(split_name, fasta.seq[start:end], order, start, end, contig_gc_content, fasta.id)
 
             db_entries_contig_sequences.append((fasta.id, fasta.seq), )
+        self.progress.end()
 
         self.db.set_meta_value('kmer_size', kmer_size)
         contigs_kmer_table.store(self.db)
@@ -667,6 +677,7 @@ class ContigsDatabase:
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
         self.db.set_meta_value('genes_annotation_source', None)
+        self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
 
         # creating empty default tables
         self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
@@ -679,6 +690,8 @@ class ContigsDatabase:
         self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.gene_calls_in_contigs_table_name, t.gene_calls_in_contigs_table_structure, t.gene_calls_in_contigs_table_types)
+        self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
 
         self.db.set_meta_value('creation_date', time.time())
 
@@ -689,6 +702,11 @@ class ContigsDatabase:
         self.run.info('Number of splits', splits_info_table.total_splits, quiet = self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
         self.run.info('Split length', split_length, quiet = self.quiet)
+
+        # do the gene calling on contigs
+        if not skip_gene_calling:
+            gene_calls_table = TablesForGeneCalls(self.db_path, contigs_fasta)
+            gene_calls_table.populate_gene_calls_table()
 
 
     def disconnect(self):
@@ -971,6 +989,49 @@ class TableForGeneCoverages(Table):
         profile_db.disconnect()
 
 
+class TablesForGeneCalls(Table):
+    def __init__(self, db_path, contigs_fasta = None, run=run, progress=progress):
+        self.db_path = db_path
+        self.contigs_fasta = contigs_fasta
+        self.debug = False
+
+        is_contigs_db(self.db_path)
+
+        if self.contigs_fasta:
+            filesnpaths.is_file_exists(self.contigs_fasta)
+            filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+
+        self.set_next_available_id(t.gene_calls_in_contigs_table_name)
+
+
+    def populate_gene_calls_table(self, gene_caller = 'prodigal'):
+        remove_fasta_after_processing = False
+
+        if not self.contigs_fasta:
+            self.contigs_fasta = self.export_sequences_table_in_db_into_FASTA_file()
+            remove_fasta_after_processing = True
+
+        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller = gene_caller)
+
+        gene_calls_dict, protein_sequences = gene_caller.process()
+
+        if not self.debug and remove_fasta_after_processing:
+            os.remove(self.contigs_fasta)
+
+        # populate tables
+        contigs_db = ContigsDatabase(self.db_path)
+
+        for entry_id in gene_calls_dict:
+            unique_id = self.next_id(t.gene_calls_in_contigs_table_name)
+
+            contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.gene_calls_in_contigs_table_name, tuple([unique_id] + [gene_calls_dict[entry_id][h] for h in t.gene_calls_in_contigs_table_structure[1:]]))
+            contigs_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, tuple([unique_id] + [protein_sequences[entry_id]]))
+
+        contigs_db.disconnect()
+
+
 class TablesForHMMHits(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
@@ -979,11 +1040,23 @@ class TablesForHMMHits(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
+        if not self.genes_are_called:
+            raise ConfigError, "It seems the contigs database '%s' was created with '--skip-gene-calling' flag.\
+                                Nothing to do here :/" % (self.db_path)
+
+        self.init_gene_calls_dict()
+
+        if not len(self.gene_calls_dict):
+            raise ConfigError, "Tables that should contain gene calls are empty. Which probably means the gene\
+                                caller reported no genes for your contigs."
+
         self.set_next_available_id(t.hmm_hits_contigs_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
 
+    def populate_search_tables(self, protein_sequences_fasta = None, sources = {}):
+        # if we end up generating a temporary file for protein sequences:
+        remove_fasta_file_upon_finish = False
 
-    def populate_search_tables(self, sources = {}):
         if not len(sources):
             import anvio.data.hmm
             sources = anvio.data.hmm.sources
@@ -991,11 +1064,12 @@ class TablesForHMMHits(Table):
         if not sources:
             return
 
-        commander = HMMSearch()
-        contigs_fasta = self.export_contigs_in_db_into_FASTA_file()
-        proteins_in_contigs_fasta = commander.run_prodigal(contigs_fasta)
-        if not self.debug:
-            os.remove(contigs_fasta)
+        if not protein_sequences_fasta:
+            # creating a temporary fasta file for protein sequences:
+            protein_sequences_fasta = self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name)
+            remove_fasta_file_upon_finish = True
+
+        commander = HMMSearch(protein_sequences_fasta)
 
         for source in sources:
             kind_of_search = sources[source]['kind']
@@ -1010,7 +1084,7 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmscan'](proteins_in_contigs_fasta, hmm_scan_hits_txt)
+                parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt)
                 search_results_dict = parser.get_search_results()
 
             self.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
@@ -1018,14 +1092,24 @@ class TablesForHMMHits(Table):
         if not self.debug:
             commander.clean_tmp_dirs()
 
+        if remove_fasta_file_upon_finish and not self.debug:
+            os.remove(protein_sequences_fasta)
+
 
     def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
+
+        if not len(search_results_dict):
+            return
+
         for entry_id in search_results_dict:
             hit = search_results_dict[entry_id]
-            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([hit['contig'], hit['gene_name'], str(hit['start']), str(hit['stop'])])).hexdigest()
+
+            gene_call = self.gene_calls_dict[hit['gene_callers_id']]
+
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])])).hexdigest()
             hit['source'] = source
 
         self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
@@ -1038,7 +1122,7 @@ class TablesForHMMHits(Table):
 
         # then populate serach_data table for each contig.
         db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name)] + [v[h] for h in t.hmm_hits_contigs_table_structure[1:]]) for v in search_results_dict.values()]
-        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
 
         db_entries = self.process_splits(search_results_dict)
         contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
@@ -1049,10 +1133,12 @@ class TablesForHMMHits(Table):
     def process_splits(self, search_results_dict):
         hits_per_contig = {}
         for hit in search_results_dict.values():
-            if hits_per_contig.has_key(hit['contig']):
-                hits_per_contig[hit['contig']].append(hit)
+            contig_name = self.gene_calls_dict[hit['gene_callers_id']]['contig']
+
+            if hits_per_contig.has_key(contig_name):
+                hits_per_contig[contig_name].append(hit)
             else:
-                hits_per_contig[hit['contig']] = [hit]
+                hits_per_contig[contig_name] = [hit]
 
         db_entries_for_splits = []
 
@@ -1067,11 +1153,14 @@ class TablesForHMMHits(Table):
 
                 # FIXME: this really needs some explanation.
                 for hit in hits_per_contig[contig]:
-                    if hit['stop'] > start and hit['start'] < stop:
-                        gene_length = hit['stop'] - hit['start']
+                    hit_start = self.gene_calls_dict[hit['gene_callers_id']]['start']
+                    hit_stop = self.gene_calls_dict[hit['gene_callers_id']]['stop']
+
+                    if hit_stop > start and hit_start < stop:
+                        gene_length = hit_stop - hit_start
                         # if only a part of the gene is in the split:
-                        start_in_split = (start if hit['start'] < start else hit['start']) - start
-                        stop_in_split = (stop if hit['stop'] > stop else hit['stop']) - start
+                        start_in_split = (start if hit_start < start else hit_start) - start
+                        stop_in_split = (stop if hit_stop > stop else hit_stop) - start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
                         db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['source'], hit['gene_unique_identifier'], hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
