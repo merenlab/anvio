@@ -26,52 +26,20 @@ progress = terminal.Progress()
 
 
 class HMMSearch:
-    def __init__(self, progress = progress, run = run):
+    def __init__(self, protein_sequences_fasta, progress = progress, run = run):
         self.progress = progress
         self.run = run
 
-        # hmm_scan_hits and proteins_in_contigs are the files to access later on for
-        # parsing:
+        filesnpaths.is_file_fasta_formatted(protein_sequences_fasta)
+
+        self.protein_sequences_fasta = protein_sequences_fasta
+
+        # hmm_scan_hits is the file to access later on for parsing:
         self.hmm_scan_output = None
         self.hmm_scan_hits = None
         self.genes_in_contigs = None
-        self.proteins_in_contigs = None
 
         self.tmp_dirs = []
-
-
-    def run_prodigal(self, fasta_file_path):
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        self.tmp_dirs.append(tmp_dir)
-
-        self.genes_in_contigs = os.path.join(tmp_dir, 'contigs.genes')
-        self.proteins_in_contigs = os.path.join(tmp_dir, 'contigs.proteins')
-
-        log_file_path = os.path.join(tmp_dir, '00_log.txt')
-
-        self.run.warning('', header = 'Finding ORFs in contigs', lc = 'green')
-        self.run.info('Genes', self.genes_in_contigs)
-        self.run.info('Proteins', self.proteins_in_contigs)
-        self.run.info('Log file', log_file_path)
-
-        self.progress.new('Processing')
-        self.progress.update('Identifying ORFs in contigs ...')
-        cmd_line = ('prodigal -i "%s" -o "%s" -a "%s" -p meta >> "%s" 2>&1' % (fasta_file_path,
-                                                                               self.genes_in_contigs,
-                                                                               self.proteins_in_contigs,
-                                                                               log_file_path))
-        with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
-
-        if not os.path.exists(self.proteins_in_contigs):
-            raise ConfigError, "Something went wrong with prodigal, and it failed to generate the\
-                                expected output :/ Fortunately, this log file should tell you what\
-                                might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path
-
-        self.progress.end()
-
-        return self.proteins_in_contigs
 
 
     def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag = "--cut_ga"):
@@ -121,7 +89,7 @@ class HMMSearch:
                                                                               cut_off_flag,
                                                                               self.hmm_scan_hits_shitty,
                                                                               hmm_file_path,
-                                                                              self.proteins_in_contigs,
+                                                                              self.protein_sequences_fasta,
                                                                               log_file_path))
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
         utils.run_command(cmd_line)
