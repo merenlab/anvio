@@ -4,6 +4,7 @@
 """
 
 import os
+import shutil
 
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -131,7 +132,7 @@ class Prodigal:
 
         self.progress.end()
 
-        self.run.info('x', 'Prodigal (%s) has identified %d genes.' % (self.installed_prodigal_version, len(gene_calls_dict)), nl_after = 1)
+        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_prodigal_version, len(gene_calls_dict)), nl_after = 1)
 
         return gene_calls_dict, protein_sequences_dict
 
