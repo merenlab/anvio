@@ -106,6 +106,14 @@ D = {
                       for clustering approaches, you are welcome to experiment (but maybe you should leave\
                       it as is for your first set of analyses)."}
                 ),
+    'skip-gene-calling': (
+            ['--skip-gene-calling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, generating an anvi'o contigs database includes the identification of open reading\
+                      frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
+                      process. If you prefer, you can later import your own gene calling results into the database."}
+                ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],
             {'metavar': 'FASTA',
