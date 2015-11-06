@@ -10,7 +10,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "3"
+contigs_db_version = "4"
 profile_db_version = "6"
 samples_info_db_version = "1"
 auxiliary_hdf5_db_version = "1"
@@ -23,41 +23,55 @@ auxiliary_hdf5_db_version = "1"
 ####################################################################################################
 
 
-contig_sequences_table_name          = 'contig_sequences'
-contig_sequences_table_structure     = ['contig', 'sequence']
-contig_sequences_table_types         = [  'str' ,   'str'   ]
+contig_sequences_table_name            = 'contig_sequences'
+contig_sequences_table_structure       = ['contig', 'sequence']
+contig_sequences_table_types           = [  'str' ,   'str'   ]
 
-contigs_info_table_name              = 'contigs_basic_info'
-contigs_info_table_structure         = ['contig', 'length' , 'gc_content', 'num_splits']
-contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ,   'numeric' ]
+contigs_info_table_name                = 'contigs_basic_info'
+contigs_info_table_structure           = ['contig', 'length' , 'gc_content', 'num_splits']
+contigs_info_table_types               = [  'str' , 'numeric',   'numeric' ,   'numeric' ]
 
-splits_info_table_name               = 'splits_basic_info'
-splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
-splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
+splits_info_table_name                 = 'splits_basic_info'
+splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
+splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
-genes_contigs_table_name             = 'genes_in_contigs'
-genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-genes_contigs_table_types            = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+# the following three tables are here to accommodate functional annotations acquired from external resources, such as RAST or IMG.
 
-genes_splits_summary_table_name      = 'genes_in_splits_summary'
-genes_splits_summary_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
-genes_splits_summary_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
+genes_contigs_table_name               = 'annotated_genes_in_contigs'
+genes_contigs_table_structure          = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+genes_contigs_table_types              = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-genes_splits_table_name              = 'genes_in_splits'
-genes_splits_table_structure         = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-genes_splits_table_types             = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
+genes_splits_summary_table_name        = 'annotated_genes_in_splits_summary'
+genes_splits_summary_table_structure   = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
+genes_splits_summary_table_types       = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
 
-hmm_hits_info_table_name             = 'hmm_hits_info'
-hmm_hits_info_table_structure        = ['source', 'ref' , 'search_type', 'genes']
-hmm_hits_info_table_types            = [ 'text' , 'text',    'text'    , 'text' ]
+genes_splits_table_name                = 'annotated_genes_in_splits'
+genes_splits_table_structure           = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+genes_splits_table_types               = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-hmm_hits_contigs_table_name          = 'hmm_hits_in_contigs'
-hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'gene_unique_identifier', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
-hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,          'text'         ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
+# the following two tables keep ORFs and correspondign protein sequences identified by a gene caller (such as prodigal)
 
-hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
-hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
-hmm_hits_splits_table_types          = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
+gene_calls_in_contigs_table_name       = 'gene_calls_in_contigs'
+gene_calls_in_contigs_table_structure  = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
+gene_calls_in_contigs_table_types      = [     'numeric'   ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
+
+gene_protein_sequences_table_name      = 'protein_sequences_for_gene_calls'
+gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
+gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
+
+# the followitn three tables keep hmm hits. they require the gene calls to be made.
+
+hmm_hits_info_table_name               = 'hmm_hits_info'
+hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'genes']
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #         This one here is the id that apperas in gene_calls table
+                                                                                         #        / 
+hmm_hits_contigs_table_name            = 'hmm_hits_in_contigs'                           # _______|_______
+hmm_hits_contigs_table_structure       = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_id', 'e_value']
+hmm_hits_contigs_table_types           = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,  'text'  , 'numeric']
+
+hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
+hmm_hits_splits_table_structure        = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
+hmm_hits_splits_table_types            = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
 
 
 ####################################################################################################
