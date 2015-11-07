@@ -211,7 +211,7 @@ class BAMProfiler:
         self.progress.new('Contigs')
         self.progress.update('Reading genes in contigs table')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        genes_in_contigs_table = contigs_db.db.get_table_as_dict(t.gene_calls_in_contigs_table_name)
+        genes_in_contigs_table = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
 
         self.progress.update('Populating ORFs dictionary for each contig ...')
