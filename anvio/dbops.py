@@ -1053,7 +1053,7 @@ class TablesForHMMHits(Table):
         self.set_next_available_id(t.hmm_hits_contigs_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
 
-    def populate_search_tables(self, protein_sequences_fasta = None, sources = {}):
+    def populate_search_tables(self, sources = {}, protein_sequences_fasta = None):
         # if we end up generating a temporary file for protein sequences:
         remove_fasta_file_upon_finish = False
 
