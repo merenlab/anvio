@@ -973,13 +973,13 @@ class TableForGeneCoverages(Table):
                 contig_coverage.extend(split.coverage.c)
             self.contig_coverages[contig.name] = contig_coverage
 
-        for prot, start, stop in start_stop_pos_list:
+        for gene_callers_id, start, stop in start_stop_pos_list:
             gene_coverage = numpy.mean(self.contig_coverages[contig.name][start:stop])
-            self.add_gene_entry(prot, sample_id, gene_coverage)
+            self.add_gene_entry(gene_callers_id, sample_id, gene_coverage)
 
 
-    def add_gene_entry(self, prot, sample_id, coverage):
-        self.genes.append({'prot': prot, 'sample_id': sample_id, 'mean_coverage': coverage})
+    def add_gene_entry(self, gene_callers_id, sample_id, coverage):
+        self.genes.append({'gene_callers_id': gene_callers_id, 'sample_id': sample_id, 'mean_coverage': coverage})
 
 
     def store(self):
