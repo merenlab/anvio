@@ -35,36 +35,42 @@ splits_info_table_name                 = 'splits_basic_info'
 splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
 splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
-# the following three tables are here to accommodate functional annotations acquired from external resources, such as RAST or IMG.
 
-genes_contigs_table_name               = 'annotated_genes_in_contigs'
-genes_contigs_table_structure          = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-genes_contigs_table_types              = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+# following tables deal with open reading frames found in contis by a gene caller (such as prodigal), and their functional annotations and stuff.
 
-genes_splits_summary_table_name        = 'annotated_genes_in_splits_summary'
-genes_splits_summary_table_structure   = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
-genes_splits_summary_table_types       = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
+genes_in_contigs_table_name             = 'genes_in_contigs'
+genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
+genes_in_contigs_table_types            = [     'numeric'   ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
 
-genes_splits_table_name                = 'annotated_genes_in_splits'
-genes_splits_table_structure           = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-genes_splits_table_types               = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
+genes_in_splits_table_name             = 'genes_in_splits'
+genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-# the following two tables keep ORFs and correspondign protein sequences identified by a gene caller (such as prodigal)
+genes_in_splits_summary_table_name     = 'genes_in_splits_summary'
+genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
+genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
 
-gene_calls_in_contigs_table_name       = 'gene_calls_in_contigs'
-gene_calls_in_contigs_table_structure  = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
-gene_calls_in_contigs_table_types      = [     'numeric'   ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
-
-gene_protein_sequences_table_name      = 'protein_sequences_for_gene_calls'
+gene_protein_sequences_table_name      = 'gene_protein_sequences'
 gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
 gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
+
+gene_annotations_table_name            = 'gene_annotations'
+gene_annotations_table_structure       = ['gene_callers_id', 'function']
+gene_annotations_table_types           = [     'numeric'   ,   'text'  ]
+
+# tables for taxonomy at the split-level
+
+splits_taxonomy_table_name             = 'splits_taxonomy'
+splits_taxonomy_table_structure        = ['split', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+splits_taxonomy_table_types            = [ 'str' ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+
 
 # the followitn three tables keep hmm hits. they require the gene calls to be made.
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'genes']
-hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #         This one here is the id that apperas in gene_calls table
-                                                                                         #        /
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #           This one here is the id that apperas in gene_calls table
+                                                                                         #         /
 hmm_hits_contigs_table_name            = 'hmm_hits_in_contigs'                           # _______|_______
 hmm_hits_contigs_table_structure       = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_id', 'e_value']
 hmm_hits_contigs_table_types           = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,  'text'  , 'numeric']
