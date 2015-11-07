@@ -42,7 +42,7 @@ class BAMProfiler:
         self.input_file_path = None 
         self.contigs_db_path = None
         self.serialized_profile_path = None 
-        self.split_length = 20000
+        self.split_length = None
         self.output_directory = None 
         self.list_contigs_and_exit = None 
         self.min_contig_length = 10000 
@@ -116,6 +116,7 @@ class BAMProfiler:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.split_length = int(contigs_db.meta['split_length'])
         self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        self.genes_are_called = int(contigs_db.meta['genes_are_called'])
         self.contig_names_in_contigs_db = set(contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
         contigs_db.disconnect()
 
@@ -299,24 +300,24 @@ class BAMProfiler:
                 self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
 
 
-    def check_contigs_without_any_ORFs(self, contig_names):
-        if not self.contigs_db_path:
+    def check_contigs_without_any_gene_calls(self, contig_names):
+        if not self.genes_are_called:
+            self.run.warning("The contigs database '%s' does not contain any gene calls. Which means the profiling step\
+                              will not be able to characterize 'gene coverages'. If you are OK with this, anvi'o will be\
+                              OK with it as well." % (self.contigs_db_path))
             return
-        contig_names = set(contig_names)
-        contigs_without_annotation = [c for c in contig_names if c not in self.genes_in_contigs]
 
-        if len(contigs_without_annotation):
+        contig_names = set(contig_names)
+        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.genes_in_contigs]
+
+        if len(contigs_without_any_gene_calls):
             import random
             P = lambda x: 'are %d contigs' % (x) if x > 1 else 'there is one contig'
-            self.run.warning('You have instructed profiling to use a contigs database,\
-                              however, there %s in your BAM file that did not get annotated. Which means\
-                              whatever method you used to identify open reading frames in these contigs\
-                              failed to find any open reading frames in those. Which may be normal\
-                              (a) if your contigs are very short, or (b) if your gene finder is not\
-                              capable of dealing with your stuff. If you know what you are doing, that\
-                              is fine. Otherwise please double check. Here is one contig missing\
-                              contigs if you would like to play: %s"' %\
-                                      (P(len(contigs_without_annotation)), random.choice(contigs_without_annotation)))
+            self.run.warning('According to the data generated in the contigs database, there %s in your BAM file\
+                              with 0 gene calls. Which may not be unusual if (a) some of your contigs are very short,\
+                              or (b) your the gene caller was not capable of dealing with the type of data you had.\
+                              If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %\
+                                      (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
 
 
     def init_serialized_profile(self):
@@ -342,7 +343,7 @@ class BAMProfiler:
         self.check_contigs()
 
         # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_contigs_without_any_ORFs(self.contigs.keys())
+        self.check_contigs_without_any_gene_calls(self.contigs.keys())
 
         contigs_to_discard = set()
         for contig in self.contigs.values():
@@ -421,7 +422,7 @@ class BAMProfiler:
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
 
         # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_contigs_without_any_ORFs(self.contig_names)
+        self.check_contigs_without_any_gene_calls(self.contig_names)
 
         # check for the -M parameter.
         contigs_longer_than_M = set()
