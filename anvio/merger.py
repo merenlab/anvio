@@ -247,7 +247,7 @@ class MultipleRuns:
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
             sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
             for g in sample_gene_profiles.values():
-                gene_coverages_table.add_gene_entry(g['prot'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
+                gene_coverages_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
             sample_profile_db.disconnect()
 
         gene_coverages_table.store()
