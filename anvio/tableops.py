@@ -121,7 +121,7 @@ class Table(object):
 
 
     def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
-        # FIXME: this shoudl be in db.py
+        # FIXME: this should be in db.py
         # removes rows from each table in 'tables_to_remove' where 'table_column' equals 'value'
         database = db.DB(self.db_path, self.version)
 

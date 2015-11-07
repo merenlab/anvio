@@ -64,7 +64,7 @@ gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'genes']
 hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #         This one here is the id that apperas in gene_calls table
-                                                                                         #        / 
+                                                                                         #        /
 hmm_hits_contigs_table_name            = 'hmm_hits_in_contigs'                           # _______|_______
 hmm_hits_contigs_table_structure       = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_id', 'e_value']
 hmm_hits_contigs_table_types           = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,  'text'  , 'numeric']
