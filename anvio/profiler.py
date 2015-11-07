@@ -116,7 +116,7 @@ class BAMProfiler:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.split_length = int(contigs_db.meta['split_length'])
         self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        self.genes_are_called = int(contigs_db.meta['genes_are_called'])
+        self.gene_calls_present_in_contigs_db = int(contigs_db.meta['genes_are_called'])
         self.contig_names_in_contigs_db = set(contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
         contigs_db.disconnect()
 
@@ -133,7 +133,8 @@ class BAMProfiler:
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'report_variability_full': self.report_variability_full,
-                       'contigs_db_hash': self.contigs_db_hash}
+                       'contigs_db_hash': self.contigs_db_hash,
+                       'gene_coverages_computed': self.gene_calls_present_in_contigs_db}
         profile_db.create(meta_values)
 
         self.progress.end()
@@ -301,7 +302,7 @@ class BAMProfiler:
 
 
     def check_contigs_without_any_gene_calls(self, contig_names):
-        if not self.genes_are_called:
+        if not self.gene_calls_present_in_contigs_db:
             self.run.warning("The contigs database '%s' does not contain any gene calls. Which means the profiling step\
                               will not be able to characterize 'gene coverages'. If you are OK with this, anvi'o will be\
                               OK with it as well." % (self.contigs_db_path))
