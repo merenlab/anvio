@@ -142,7 +142,7 @@ class Table(object):
         self.progress.update('...')
 
         database = db.DB(self.db_path, self.version)
-        self.gene_calls_dict = database.get_table_as_dict(t.gene_calls_in_contigs_table_name)
+        self.gene_calls_dict = database.get_table_as_dict(t.genes_in_contigs_table_name)
         database.disconnect()
 
         self.progress.end()
