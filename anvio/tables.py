@@ -11,7 +11,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "4"
-profile_db_version = "6"
+profile_db_version = "7"
 samples_info_db_version = "1"
 auxiliary_hdf5_db_version = "1"
 
@@ -130,8 +130,8 @@ collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'
 ####################################################################################################
 
 gene_coverages_table_name            = 'gene_coverages'
-gene_coverages_table_structure       = ['entry_id', 'prot', 'sample_id', 'mean_coverage']
-gene_coverages_table_types           = [ 'numeric', 'text',   'text'   ,    'numeric'   ]
+gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
+gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
