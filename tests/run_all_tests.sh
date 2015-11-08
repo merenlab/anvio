@@ -33,19 +33,16 @@ INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
 INFO "Populating the genes tables in the contigs database using 'myrast_gui' parser ..."
-anvi-import-taxonomy -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
 
 INFO "Populating the genes tables in the contigs database using 'myrast_cmdline_dont_use' parser ..."
-anvi-import-taxonomy -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
 INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-anvi-import-taxonomy -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
-INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
-anvi-export-genes-table -c test-output/CONTIGS.db -o test-output/functions_and_taxonomy_sample_matrix.txt
-
-INFO "Re-populating the genes tables in the contigs database using the recovered matrix file with 'default_matrix' parser ..."
-anvi-import-taxonomy -c test-output/CONTIGS.db -p default_matrix -i test-output/functions_and_taxonomy_sample_matrix.txt
+INFO "Re-populating the genes in contigs table using the recovered matrix file with 'default_matrix' parser ..."
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i gene_calls_sample_matrix.txt
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db
