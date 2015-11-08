@@ -603,7 +603,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                                         separator = '\t', no_header = False, ascii_only = False, only_expected_fields = False):
     """Takes a file path, returns a dictionary."""
 
-    if not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
+    if expected_fields and not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
         raise ConfigError, "'expected_fields' variable must be a list (or a set)."
 
         raise ConfigError, "'only_expected_fields' variable guarantees that there are no more fields present\
