@@ -340,9 +340,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database
 
         if splits_in_tree_but_not_in_view_data:
+            num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
+            example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
             raise ConfigError, 'Some split names found in your tree are missing in your view data. Hard to\
-                                know what cuased this, but here is a couple of them that: %s'\
-                                    % ', '.join(splits_in_tree_but_not_in_view_data[0:5])
+                                know what cuased this, but essentially your tree and your view does not\
+                                seem to be compatible. Here is a couple of splits that appear in the tree\
+                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view)
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
