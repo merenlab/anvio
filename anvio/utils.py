@@ -210,7 +210,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = 
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers = None, file_obj = None):
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
 
@@ -218,6 +218,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
         f = open(output_path, 'w')
     else:
         f = file_obj
+
+    if not headers:
+        headers = ['key'] + sorted(d.values()[0].keys())
 
     f.write('%s\n' % '\t'.join(headers))
 
@@ -597,7 +600,17 @@ def is_ascii_only(text):
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
                                         column_mapping = None, indexing_field = 0, assign_none_for_missing = False,\
-                                        separator = '\t', no_header = False, ascii_only = False):
+                                        separator = '\t', no_header = False, ascii_only = False, only_expected_fields = False):
+    """Takes a file path, returns a dictionary."""
+
+    if not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
+        raise ConfigError, "'expected_fields' variable must be a list (or a set)."
+
+        raise ConfigError, "'only_expected_fields' variable guarantees that there are no more fields present\
+                            in the input file but the ones requested with 'expected_fields' variable. If you\
+                            need to use this flag, you must also be explicit abou twhat fields you expect to\
+                            find in the file."
+
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
@@ -657,7 +670,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                     raise ConfigError, "Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i]
                 except ValueError:
                     raise ConfigError, "Mapping funciton '%s' did not like the value '%s' in column number %d\
-                                        of the matrix :/" % (column_mapping[i], line_fields[i], i + 1)
+                                        of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path)
             line_fields = updated_line_fields 
 
         if indexing_field == -1:
