@@ -63,7 +63,7 @@ def main(args):
                                                                 expected_fields = ['gene_id', 'contig', 'direction', 'start',
                                                                                    'stop', 't_phylum', 't_order', 't_class',
                                                                                    't_family', 't_genus', 't_species'],
-                                                                column_mapping  = [int, str, str, int, int, str, str, str, str, str, str],
+                                                                column_mapping  = [str, str, str, int, int, str, str, str, str, str, str],
                                                                 only_expected_fields = True)
 
     tables_for_splits_taxonomy = dbops.TableForSplitsTaxonomy(args.contigs_db, run, progress)
