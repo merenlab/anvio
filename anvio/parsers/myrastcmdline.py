@@ -60,6 +60,7 @@ class MyRastCMDLine(Parser):
             start, stop = int(start), int(stop)
             entry['start'], entry['stop'], entry['direction'] = (start, stop, 'f') if start < stop else (stop, start, 'r')
             entry['contig'] = contig
+            entry['function'] = None
 
             annotations_dict[prot] = entry
 
