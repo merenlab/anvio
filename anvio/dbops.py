@@ -1431,7 +1431,11 @@ class TableForSplitsTaxonomy(Table):
 
     def create(self, genes_dict, parser):
         self.genes_dict = genes_dict
-        self.parser = parser
+
+        if parser:
+            self.parser = parser
+        else:
+            self.parser = "user_input"
 
         self.sanity_check()
 
@@ -1443,7 +1447,8 @@ class TableForSplitsTaxonomy(Table):
         # test whether there are already genes tables populated
         taxonomy_source = contigs_db.meta['taxonomy_source']
         if taxonomy_source:
-            self.run.warning('Previous taxonomy information from "%s" will be replaced with the incoming data' % parser)
+            self.run.warning('Previous taxonomy information from "%s" will be replaced with the incoming data\
+                              through "%s"' % (taxonomy_source, self.parser))
             contigs_db.db._exec('''DELETE FROM %s''' % (t.splits_taxonomy_table_name))
 
         # compute and push split taxonomy information.
@@ -1451,7 +1456,7 @@ class TableForSplitsTaxonomy(Table):
 
         # set the parser
         contigs_db.db.remove_meta_key_value_pair('taxonomy_source')
-        contigs_db.db.set_meta_value('taxonomy_source', parser)
+        contigs_db.db.set_meta_value('taxonomy_source', self.parser)
 
         # disconnect like a pro.
         contigs_db.disconnect()
@@ -1460,7 +1465,7 @@ class TableForSplitsTaxonomy(Table):
     def sanity_check(self):
         # check whether input matrix dict 
         keys_found = ['prot'] + self.genes_dict.values()[0].keys()
-        missing_keys = [key for key in t.splits_taxonomy_table_structure if key not in keys_found]
+        missing_keys = [key for key in t.splits_taxonomy_table_structure[1:] if key not in keys_found]
         if len(missing_keys):
             raise ConfigError, "Your dictionary is missing one or more keys that are necessary to populate the\
                                 taxonomy table. Here is a list of missing keys: %s. The complete list of input\
