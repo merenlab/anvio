@@ -167,16 +167,18 @@ class NetworkDescriptonSamples:
         progress.update('Reading genes table from %s ...' % self.profile_db_path)
         self.genes_dict = self.profile_db.get_table_as_dict(t.gene_coverages_table_name)
         self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
-        self.genes = sorted(list(set([r['prot'] for r in self.genes_dict.values()])))
+        self.genes = sorted(list(set([r['gene_callers_id'] for r in self.genes_dict.values()])))
 
         progress.update('Reading annotations table from %s  ...' % self.contigs_db_path)
-        self.genes_in_contigs = self.contigs_db.get_table_as_dict(t.genes_contigs_table_name)
+        self.genes_in_contigs = self.contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
 
         # read functions.
         progress.update('Sifting through genes with non-hypothetical functions ...')
-        for gene in self.genes_in_contigs:
-            if self.genes_in_contigs[gene]['function'] and self.genes_in_contigs[gene]['function'].lower().find('hypothetical') < 0 and gene in self.genes:
-                self.functions['labels'][gene] = self.genes_in_contigs[gene]['function']
+
+        for gene in self.genes:
+            # FIXME: The following is a temporary workaround, and the proper waay to address this 
+            #        is to read the functions for each gene from the appropriate resource:
+            self.functions['labels'][gene] = 'Unknown'
 
         self.samples_dict = self.get_samples_dict(self.samples, self.genes_dict)
         progress.end()
@@ -205,7 +207,7 @@ class NetworkDescriptonSamples:
 
 
 
-    def get_samples_dict(self, samples, table, unit = 'prot'):
+    def get_samples_dict(self, samples, table, unit = 'gene_callers_id'):
         samples_dict = {}
         for sample in samples:
             samples_dict[sample] = {}
