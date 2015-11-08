@@ -1,0 +1,49 @@
+gene_id	contig	direction	start	stop	t_phylum	t_order	t_class	t_family	t_genus	t_species
+gene_00001	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	13	933						
+gene_00002	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	1114	1677						
+gene_00003	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	1738	2142						
+gene_00004	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	2230	3447						
+gene_00005	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	3440	6820						
+gene_00006	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	6820	7761						
+gene_00007	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	7822	8409						
+gene_00008	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	8497	10350						
+gene_00009	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	10409	10855						
+gene_00010	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	11029	12243						
+gene_00011	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	12284	14533						
+gene_00012	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	14600	15310						Bifidobacterium adolescentis
+gene_00013	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	15415	16377						
+gene_00014	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	16529	17212						
+gene_00015	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	17265	18833						
+gene_00016	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	18848	20488						
+gene_00017	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	20623	21453						
+gene_00018	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	21548	21739						
+gene_00019	204_10M_MERGED.PERFECT.gz.keep_contig_878	f	21739	23205						Bifidobacterium adolescentis
+gene_00020	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	23279	24079						
+gene_00021	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	24076	24435						
+gene_00022	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	24579	24860						
+gene_00023	204_10M_MERGED.PERFECT.gz.keep_contig_878	r	25015	27450						
+gene_00024	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	298	1650						Ruminococcus sp.
+gene_00025	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	1747	1914						
+gene_00026	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	1972	3132						Ruminococcus sp.
+gene_00027	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	3231	4007						
+gene_00028	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	4162	5202						Ruminococcus sp.
+gene_00029	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	5195	5926						
+gene_00030	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	5919	7970						Ruminococcus sp.
+gene_00031	204_10M_MERGED.PERFECT.gz.keep_contig_6515	r	8000	8662						
+gene_00032	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	8624	9487						Ruminococcus sp.
+gene_00033	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	9588	10565						
+gene_00034	204_10M_MERGED.PERFECT.gz.keep_contig_6515	f	10694	11737						Ruminococcus sp.
+gene_00035	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	11	610						Clostridium ramosum
+gene_00036	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	607	2514						Clostridium ramosum
+gene_00037	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	2752	3207						Clostridium ramosum
+gene_00038	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	3220	5616						Clostridium ramosum
+gene_00039	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	5721	6233						Clostridium ramosum
+gene_00040	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	6235	7008						
+gene_00041	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	7077	7262						
+gene_00042	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	7597	7770						Clostridium ramosum
+gene_00043	204_10M_MERGED.PERFECT.gz.keep_contig_1720	r	7797	8963						Clostridium ramosum
+gene_00044	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	9028	9963						Clostridium ramosum
+gene_00045	204_10M_MERGED.PERFECT.gz.keep_contig_1720	r	9986	11569						
+gene_00046	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	11757	12641						Clostridium ramosum
+gene_00047	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	12727	14445						Clostridium ramosum
+gene_00048	204_10M_MERGED.PERFECT.gz.keep_contig_1720	f	14438	16174						Clostridium ramosum
