@@ -92,32 +92,46 @@ class Table(object):
         database.disconnect()
 
 
-    def export_sequences_table_in_db_into_FASTA_file(self, table = t.contig_sequences_table_name):
+    def export_sequences_table_in_db_into_FASTA_file(self, table = t.contig_sequences_table_name, output_file_path = None):
         if self.db_type != 'contigs':
             return None
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+        else:
+            output_file_path = os.path.join(filesnpaths.get_temp_directory_path(), 'sequences.fa')
 
         database = db.DB(self.db_path, self.version)
 
         if table not in database.get_table_names():
-            raise ConfigError, 'Trying to expor sequences into a FASTA file, but the table\
+            raise ConfigError, 'Trying to export sequences into a FASTA file, but the table\
                                 "%s" does not seem to be in this database :/' % (table)
+
+        if 'sequence' not in database.get_table_structure(table):
+            raise ConfigError, "You requested to store sequences in table '%s' into a FASTA\
+                                file, however this table does not seem to be a table that\
+                                stores sequence information :(" % table
 
         sequences_table = database.get_table_as_dict(table)
         database.disconnect()
 
+        if not len([sequences_table]):
+            raise ConfigError, "There are no sequences to report in table '%s'." % (table)
+
         self.progress.new('Exporting %d sequences into a FASTA file' % len(sequences_table))
         self.progress.update('...')
-        sequences_fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'sequences.fa')
-        sequences_fasta = u.FastaOutput(sequences_fasta_path)
+
+        sequences_fasta = u.FastaOutput(output_file_path)
 
         for seq_id in sequences_table:
             sequences_fasta.write_id(seq_id)
             sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
 
         self.progress.end()
-        self.run.info('FASTA for sequences', sequences_fasta_path)
+        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table)))
+        self.run.info('FASTA', output_file_path)
 
-        return sequences_fasta_path
+        return output_file_path
 
 
     def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
