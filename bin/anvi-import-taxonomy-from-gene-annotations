@@ -86,7 +86,7 @@ if __name__ == '__main__':
                                 but make anvio more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
                                 regarding parsers.' % (len(parser_modules['taxonomy']), parser_modules['taxonomy'].keys()))
-    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None,
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')
 
