@@ -131,28 +131,23 @@ class SequencesForHMMHits:
 
         # take care of contigs db related stuff and move on:
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
-        self.search_info_table = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
-        self.search_table_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        self.search_table_contigs = contigs_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+        self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
+        self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
         self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
 
-        missing_sources = [s for s in self.sources if s not in self.search_info_table]
+        missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             raise ConfigError, 'Some of the requested sources were not found in the contigs database :/\
                                 Here is a list of the ones that are missing: %s' % ', '.join(missing_sources)
 
         if len(self.sources):
-            self.search_table_splits = utils.get_filtered_dict(self.search_table_splits, 'source', self.sources)
-            self.search_table_contigs = utils.get_filtered_dict(self.search_table_contigs, 'source', self.sources)
+            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
+            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
         else:
-            self.sources = self.search_info_table.keys()
-
-        # create a map of all unique gene ids to contigs table entry ids for fast access:
-        self.unique_id_to_contig_entry_id = {}
-        for entry_id in self.search_table_contigs:
-            unique_id = self.search_table_contigs[entry_id]['gene_unique_identifier']
-            self.unique_id_to_contig_entry_id[unique_id] = entry_id
+            self.sources = self.hmm_hits_info.keys()
 
 
     def get_hmm_sequences_dict_for_splits(self, splits_dict):
@@ -170,34 +165,37 @@ class SequencesForHMMHits:
         for s in splits_dict.values():
             split_names.update(s)
 
-        hits = utils.get_filtered_dict(self.search_table_splits, 'split', split_names)
+        hits_in_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'split', split_names)
 
         split_name_to_bin_id = {}
         for bin_id in splits_dict:
             for split_name in splits_dict[bin_id]:
                 split_name_to_bin_id[split_name] = bin_id
 
-        if not hits:
+        if not hits_in_splits:
             return {}
 
         hmm_sequences_dict_for_splits = {}
 
         unique_ids_taken_care_of = set([])
-        for entry in hits.values():
-            split_name = entry['split']
-            source = entry['source']
-            gene_name = entry['gene_name']
-            e_value = entry['e_value']
-            gene_unique_id = entry['gene_unique_identifier']
+        for split_entry in hits_in_splits.values():
+            hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
+
+            split_name = split_entry['split']
+            source = hmm_hit['source']
+            gene_name = hmm_hit['gene_name']
+            e_value = hmm_hit['e_value']
+            gene_unique_id = hmm_hit['gene_unique_identifier']
 
             if gene_unique_id in unique_ids_taken_care_of:
                 continue
             else:
                 unique_ids_taken_care_of.add(gene_unique_id)
 
-            contig_entry = self.search_table_contigs[self.unique_id_to_contig_entry_id[gene_unique_id]]
-            contig_name = contig_entry['contig']
-            start, stop = contig_entry['start'], contig_entry['stop']
+            gene_call = self.genes_in_contigs[hmm_hit['gene_callers_id']]
+
+            contig_name = gene_call['contig']
+            start, stop = gene_call['start'], gene_call['stop']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
             hmm_sequences_dict_for_splits[gene_unique_id] = {'sequence': sequence,
@@ -205,7 +203,7 @@ class SequencesForHMMHits:
                                                              'bin_id': split_name_to_bin_id[split_name],
                                                              'gene_name': gene_name,
                                                              'e_value': e_value,
-                                                             'contig': contig_entry['contig'],
+                                                             'contig': contig_name,
                                                              'start': start,
                                                              'stop': stop,
                                                              'length': stop - start}
