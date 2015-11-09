@@ -10,7 +10,7 @@ class HMMScan(Parser):
         files_expected = {'hits': hmm_scan_hits_txt}
 
         files_structure = {'hits': 
-                                {'col_names': ['gene_name', 'gene_id', 'gene_callers_id', 'f', 'e_value', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f','f', 'f','f'],
+                                {'col_names': ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f','f', 'f','f'],
                                  'col_mapping': [str, str, int, str, float, str, str, str, str, str, str, str, str, str, str, str, str, str],
                                  'indexing_field': -1,
                                  'no_header': True
@@ -24,13 +24,13 @@ class HMMScan(Parser):
         annotations_dict = {}
 
         # this is the stuff we are going to try to fill with this:
-        # search_table_structure = ['entry_id', 'source', 'search_type', 'contig', 'gene_callers_id' 'gene_name', 'gene_id', 'e_value']
+        # search_table_structure = ['entry_id', 'source', 'search_type', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
 
         entry_id = 0
         for hit in self.dicts['hits'].values():
             entry = {'entry_id': entry_id,
                      'gene_name': hit['gene_name'],
-                     'gene_id': hit['gene_id'],
+                     'gene_hmm_id': hit['gene_hmm_id'],
                      'gene_callers_id': hit['gene_callers_id'],
                      'e_value': hit['e_value']}
 
