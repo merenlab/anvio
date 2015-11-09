@@ -680,9 +680,9 @@ class ContigsDatabase:
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
 
         # creating empty default tables
+        self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
         self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
         self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
-        self.db.create_table(t.hmm_hits_contigs_table_name, t.hmm_hits_contigs_table_structure, t.hmm_hits_contigs_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
@@ -1142,7 +1142,7 @@ class TablesForHMMHits(Table):
             raise ConfigError, "Tables that should contain gene calls are empty. Which probably means the gene\
                                 caller reported no genes for your contigs."
 
-        self.set_next_available_id(t.hmm_hits_contigs_table_name)
+        self.set_next_available_id(t.hmm_hits_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
 
 
@@ -1205,7 +1205,7 @@ class TablesForHMMHits(Table):
             hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])])).hexdigest()
             hit['source'] = source
 
-        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_contigs_table_name, t.hmm_hits_splits_table_name])
+        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
 
         contigs_db = ContigsDatabase(self.db_path)
 
@@ -1214,11 +1214,19 @@ class TablesForHMMHits(Table):
         contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
 
         # then populate serach_data table for each contig.
-        db_entries = [tuple([self.next_id(t.hmm_hits_contigs_table_name)] + [v[h] for h in t.hmm_hits_contigs_table_structure[1:]]) for v in search_results_dict.values()]
-        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_contigs_table_name, db_entries)
+        db_entries = []
+        for hit in search_results_dict.values():
+            entry_id = self.next_id(t.hmm_hits_table_name)
+            db_entries.append(tuple([entry_id] + [hit[h] for h in t.hmm_hits_table_structure[1:]]))
+            # tiny hack here: for each hit, we are generating a unique id (`entry_id`), and feeding that information
+            #                 back into the dictionary to pass it to processing of splits, so each split-level
+            #                 entry knows who is their parent.
+            hit['hmm_hit_entry_id'] = entry_id
+
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_table_name, db_entries)
 
         db_entries = self.process_splits(search_results_dict)
-        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
 
         contigs_db.disconnect()
 
@@ -1256,7 +1264,7 @@ class TablesForHMMHits(Table):
                         stop_in_split = (split_stop if hit_stop > split_stop else hit_stop) - split_start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
-                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['source'], hit['gene_unique_identifier'], hit['gene_name'], split_name, percentage_in_split, hit['e_value']])
+                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, hit['source'], percentage_in_split])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
