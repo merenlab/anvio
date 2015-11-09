@@ -234,5 +234,3 @@ class SequencesForHMMHits:
 
             f.write('>%s\n' % header)
             f.write('%s\n' % sequence)
-
-
