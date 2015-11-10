@@ -29,7 +29,10 @@ anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -p myrast_c
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db
 
-INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
+INFO "Importing gene function calls using 'interproscan' parser ..."
+anvi-import-functional-annotation-of-genes -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
+
+INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory ..."
 anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
 
 INFO "Contigs DB is ready; here are the tables in it:"

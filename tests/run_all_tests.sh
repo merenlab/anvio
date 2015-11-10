@@ -32,23 +32,26 @@ done
 INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
-INFO "Populating the genes tables in the contigs database using 'myrast_gui' parser ..."
+INFO "Populating taxonomy for splits table in the database using 'myrast_gui' parser ..."
 anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
 
-INFO "Populating the genes tables in the contigs database using 'myrast_cmdline_dont_use' parser ..."
+INFO "Re-populating taxonomy for splits table in the database using 'myrast_cmdline_dont_use' parser ..."
 anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
-INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
+INFO "Re-populating taxonomy for splits table in the database using 'myrast_cmdline' parser ..."
 anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
-INFO "Re-populating the genes in contigs table using the recovered matrix file with 'default_matrix' parser ..."
+INFO "Re-populating taxonomy for splits table in the database using the recovered matrix file with 'default_matrix' parser ..."
 anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i gene_calls_sample_matrix.txt
 
-INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
+INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db
 
-INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
+INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory ..."
 anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
+
+INFO "Importing gene function calls using 'interproscan' parser ..."
+anvi-import-functional-annotation-of-genes -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
