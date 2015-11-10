@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+
+from anvio.parsers import parser_modules
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def get_functions_dict(args):
+    if args.parser not in parser_modules['functions']:
+        raise ConfigError, "Anvi'o does not know what to do with '%s'. You must use one of the available parsers\
+                            to make sense of genes (well, open reading frames) found in your contigs (please see\
+                            the documentation for a more detailed explanation): %s"\
+                                                 % (args.parser, ', '.join(parser_modules['functions']))
+    if not args.input_files:
+        raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
+                            parser you chose. Please see the documentation for details."
+
+
+    parser = parser_modules['functions'][args.parser](args.input_files)
+    genes_dict = parser.get_dict()
+
+    if not len(genes_dict):
+        raise ConfigError, "Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong.\
+                            Maybe you selected a wrong parser, or the input file format has changed between when this\
+                            parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
+                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
+
+    return genes_dict
+
+
+def main(args):
+    # make sure we have the parser
+    if args.parser:
+        functions_dict = get_functions_dict(args)
+    else:
+        if len(args.input_files) != 1:
+            raise ConfigError, "When you are using a simple gene calls matrix file to import functions, you can't use more than\
+                                one file as an input."
+
+        input_matrix = args.input_files[0]
+        functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix, 
+                                                                    expected_fields = ['gene_callers_id', 'source', 'accesssion', 'function', 'e_value'],
+                                                                    column_mapping  = [int, str, str, str, float],
+                                                                    only_expected_fields = True)
+
+    gene_function_calls_table = dbops.TableForGeneFunctions(args.contigs_db, run, progress)
+    gene_function_calls_table.create(functions_dict)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='AnalyzegeneanCreate and store information into a anvio contigs database using\
+                                                  available parsers for various gene contigs resources.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    parser.add_argument('-p', '--parser', default = None,
+                        help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
+                                It is OK if you do not select a parser, but in that case there will be no additional\
+                                contigs available except the identification of single-copy genes in your contigs\
+                                for later use. Using a parser will not prevent the analysis of single-copy genes,\
+                                but make anvio more powerful to help you make sense of your results. Please see the\
+                                documentation, or get in touch with the developers if you have any questions\
+                                regarding parsers.' % (len(parser_modules['functions']), parser_modules['functions'].keys()))
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
+                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
+                                process that you generate before running anvio. Please see the documentation for details.')
+
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
