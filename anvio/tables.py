@@ -54,9 +54,9 @@ gene_protein_sequences_table_name      = 'gene_protein_sequences'
 gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
 gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
 
-gene_annotations_table_name            = 'gene_annotations'
-gene_annotations_table_structure       = ['gene_callers_id', 'function']
-gene_annotations_table_types           = [     'numeric'   ,   'text'  ]
+gene_function_calls_table_name         = 'gene_functions'
+gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
+gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'   ,   'text'  , 'numeric']
 
 # tables for taxonomy at the split-level
 
