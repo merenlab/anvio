@@ -1564,7 +1564,6 @@ class TableForGeneFunctions(Table):
     def create(self, functions_dict):
         self.sanity_check()
 
-        print functions_dict
         # oepn connection
         contigs_db = ContigsDatabase(self.db_path)
 
