@@ -467,7 +467,9 @@ function buildLayersTable(order, settings)
         // common layer variables
         var layer_id = order[i];
         var layer_name = layerdata[0][layer_id];
-        var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
+
+        var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
+        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && settings.hasOwnProperty(layer_id)) {
@@ -540,7 +542,8 @@ function buildLayersTable(order, settings)
                 if (!(layer_id in stack_bar_colors))
                 {
                     stack_bar_colors[layer_id] = new Array();
-                    for (var j=0; j < layer_name.split(";").length; j++)
+                    var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+                    for (var j=0; j < bars.length; j++)
                     {
                         stack_bar_colors[layer_id].push(randomColor());
                     } 
