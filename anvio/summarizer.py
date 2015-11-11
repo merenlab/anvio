@@ -108,6 +108,9 @@ class Summarizer(DatabasesMetaclass):
             self.init_non_singlecopy_gene_hmm_sources()
             self.non_single_copy_gene_hmm_data_available = True
 
+        # load gene functions from contigs db superclass
+        self.init_functions()
+
         # set up the initial summary dictionary
         self.summary['meta'] = {'output_directory': self.output_directory,
                                 'collection': collection_dict.keys(),
@@ -322,7 +325,7 @@ class Bin:
 
         self.compute_basic_stats()
 
-        if self.summary.a_meta['genes_annotation_source']:
+        if self.summary.a_meta['taxonomy_source']:
             self.set_taxon_calls()
 
         if self.summary.gene_coverages_dict:
@@ -442,38 +445,80 @@ class Bin:
     def store_gene_coverages_matrix(self):
         self.progress.update('Storing gene coverages ...')
 
-        info_dict = {}
+        # because splits are cut from arbitrary locations, we may have partial hits of genes in a bin.
+        # we don't want genes to appear in a bin more than once due to this, or end up appearing in
+        # two different bins just because one bin has a fraction of a gene. here we will build the
+        # genes_dict, which will contain every gene hit in all splits that are found in this genome
+        # bin.
         genes_dict = {}
 
-        gene_entry_ids_in_bin = set([])
         for split_name in self.split_ids:
-            gene_entry_ids_in_bin.update(self.summary.split_to_genes_in_splits_ids[split_name])
+            if split_name not in self.summary.split_to_genes_in_splits_ids:
+                continue
 
-        info_dict['num_genes_found'] = len(gene_entry_ids_in_bin)
+            for gene_entry_id in self.summary.split_to_genes_in_splits_ids[split_name]:
+                gene_call_in_split = self.summary.genes_in_splits[gene_entry_id]
+                gene_callers_id = gene_call_in_split['gene_callers_id']
 
-        headers = ['function', 'contig', 'start', 'stop', 'direction']
-        for gene_entry_id in gene_entry_ids_in_bin:
-            prot_id = self.summary.genes_in_splits[gene_entry_id]['prot']
-            genes_dict[prot_id] = {}
+                if genes_dict.has_key(gene_callers_id):
+                    genes_dict[gene_callers_id].append(gene_call_in_split)
+                else:
+                    genes_dict[gene_callers_id] = [gene_call_in_split]
+
+
+        # here we have every gene hit in this bin stored in genes_dict. what we will do is to find gene
+        # call ids for genes more than 90% of which apper to be in this bin (so nothing wil be reported for
+        # a gene where only like 20% of it ended up in this bin).
+        gene_callers_ids_for_complete_genes = set([])
+        for gene_caller_id in genes_dict:
+            if sum([x['percentage_in_split'] for x in genes_dict[gene_caller_id]]) > 90:
+                gene_callers_ids_for_complete_genes.add(gene_caller_id)
+
+        del genes_dict
+
+        d = {}
+
+        headers = ['contig', 'start', 'stop', 'direction']
+        for gene_callers_id in gene_callers_ids_for_complete_genes:
+            d[gene_callers_id] = {}
 
             # first fill in sample independent information;
             for header in headers:
-                genes_dict[prot_id][header] = self.summary.genes_in_contigs_dict[prot_id][header]
+                d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
             # then fill in distribution across samples:
             for sample_name in self.summary.p_meta['samples']:
-                genes_dict[prot_id][sample_name] = self.summary.gene_coverages_dict[prot_id][sample_name]
+                d[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+
+            # add functions if there are any:
+            if len(self.summary.gene_function_call_sources):
+                for source in self.summary.gene_function_call_sources:
+                    if gene_callers_id not in self.summary.gene_function_calls_dict:
+                        # this gene did not get any functional annotation
+                        d[gene_callers_id][source] = ''
+                        continue
+
+                    if self.summary.gene_function_calls_dict[gene_callers_id][source]:
+                        d[gene_callers_id][source] = self.summary.gene_function_calls_dict[gene_callers_id][source][0]
+                    else:
+                        d[gene_callers_id][source] = ''
 
             # finally add the sequence:
-            contig = self.summary.genes_in_contigs_dict[prot_id]['contig']
-            start = self.summary.genes_in_contigs_dict[prot_id]['start']
-            stop = self.summary.genes_in_contigs_dict[prot_id]['stop']
-            genes_dict[prot_id]['sequence'] = self.summary.contig_sequences[contig]['sequence'][start:stop]
+            contig = self.summary.genes_in_contigs_dict[gene_callers_id]['contig']
+            start = self.summary.genes_in_contigs_dict[gene_callers_id]['start']
+            stop = self.summary.genes_in_contigs_dict[gene_callers_id]['stop']
+            d[gene_callers_id]['sequence'] = self.summary.contig_sequences[contig]['sequence'][start:stop]
 
         output_file_obj = self.get_output_file_handle('functions.txt')
-        utils.store_dict_as_TAB_delimited_file(genes_dict, None, headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence'], file_obj = output_file_obj)
 
-        self.bin_info_dict['genes'] = info_dict
+        if self.summary.gene_function_call_sources:
+            headers = ['prot'] + headers + self.summary.p_meta['samples'] + self.summary.gene_function_call_sources + ['sequence']
+        else:
+            headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence']
+
+        utils.store_dict_as_TAB_delimited_file(d, None, headers = headers, file_obj = output_file_obj)
+
+        self.bin_info_dict['genes'] = {'num_genes_found': len(gene_callers_ids_for_complete_genes)}
 
 
     def store_sequences_for_hmm_hits(self):
@@ -578,10 +623,10 @@ class Bin:
 
     def set_taxon_calls(self):
         self.progress.update('Filling in taxonomy info ...')
-
+ 
         taxon_calls_counter = Counter()
         for split_id in self.split_ids:
-            taxon_calls_counter[self.summary.genes_in_splits_summary_dict[split_id]['taxonomy']] += 1
+            taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]['t_species']] += 1
 
         taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key = lambda x: int(x[1]), reverse = True)
 
