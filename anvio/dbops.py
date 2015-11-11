@@ -4,7 +4,6 @@
 """
 
 import os
-import sys
 import time
 import copy
 import numpy
@@ -56,6 +55,7 @@ class ContigsSuperclass(object):
         self.a_meta = {}
         self.genes_in_contigs_dict = {}
         self.genes_in_splits = {}
+        self.splits_taxonomy_dict = {}
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
@@ -65,6 +65,9 @@ class ContigsSuperclass(object):
         self.hmm_sources_info = {}
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
+
+        self.gene_function_call_sources = []
+        self.gene_function_calls_dict = {}
 
         self.hmm_searches_dict = {}   # <--- upon initiation, this dict only keeps hmm hits for non-singlecopy
         self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
@@ -106,6 +109,10 @@ class ContigsSuperclass(object):
         self.genes_in_splits_summary_dict = contigs_db.db.get_table_as_dict(t.genes_in_splits_summary_table_name)
         self.genes_in_splits_summary_headers = contigs_db.db.get_table_structure(t.genes_in_splits_summary_table_name)
 
+        self.progress.update('Reading splits taxonomy')
+        self.splits_taxonomy_dict = contigs_db.db.get_table_as_dict(t.splits_taxonomy_table_name)
+
+        self.genes_in_splits_summary_headers = contigs_db.db.get_table_structure(t.genes_in_splits_summary_table_name)
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
         for hmm_source in self.hmm_sources_info:
@@ -189,7 +196,6 @@ class ContigsSuperclass(object):
         self.progress.new('Initializing non-single-copy HMM sources')
         self.progress.update('...')
 
-
         non_singlecopy_gene_hmm_info_dict = {}
         for source in self.non_singlecopy_gene_hmm_sources:
             non_singlecopy_gene_hmm_info_dict[source] = self.hmm_sources_info[source]
@@ -233,6 +239,39 @@ class ContigsSuperclass(object):
 
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
                 self.hmm_searches_dict[e['split']][source].append((e['gene_name'], e['gene_unique_identifier']),)
+
+        self.progress.end()
+
+
+    def init_functions(self):
+        if not self.contigs_db_path:
+            return
+
+        self.progress.new('Initializing functions class')
+        self.progress.update('...')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        self.gene_function_call_sources = contigs_db.meta['gene_function_sources'].split(',')
+        for hit in contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values():
+            gene_callers_id = hit['gene_callers_id']
+            source = hit['source']
+            accession = hit['accession']
+            function = hit['function']
+            e_value = hit['e_value']
+
+            if gene_callers_id not in self.gene_function_calls_dict:
+                self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
+
+            if self.gene_function_calls_dict[gene_callers_id][source]:
+                if self.gene_function_calls_dict[gene_callers_id][source][1] < e_value:
+                    # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
+                    # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
+                    continue
+
+            entry = ('%s :: %s' % (function if function else 'unknown', accession), e_value)
+            self.gene_function_calls_dict[gene_callers_id][source] = entry
+
+        contigs_db.disconnect()
 
         self.progress.end()
 
