@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Modified Viewer</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    <link rel="icon" type="image/png" href="images/logo.png">
+
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="css/main.css" type="text/css" />
+
+    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/core.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
+    <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
+    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
+    <script type="text/javascript" src="lib/bootstrap-waitingfor/bootstrap-waitingfor.js"></script>
+    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+
+    <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src="js/main.js"></script>
+    <script type="text/javascript" src="js/treelib.js"></script>
+    <script type="text/javascript" src="js/mouse-events.js"></script>
+    <script type="text/javascript" src="js/constants.js"></script>
+    <script type="text/javascript" src="js/help-messages.js"></script>
+    <script type="text/javascript" src="js/multiple.js"></script>
+    <script type="text/javascript" src="js/search.js"></script>
+    <script type="text/javascript" src="js/sample.js"></script>
+    <script type="text/javascript" src="js/session.js"></script>
+
+    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+    <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+    <!-- /Table sorter -->
+
+</head>
+
+<body>
+    <div id="wrapper">
+      <div style="width: 490px; border-right: 1px solid #d3d3d3; padding-left: 10px;">
+	<div id="loginFormWrapper" style="padding-top: 2px; padding-bottom: 2px;">
+	  <form class="form-inline" id="loginForm">
+	    <button class="btn btn-default btn-sm">register</button>
+	    <button type="button" class="btn btn-default btn-sm" title="help"><span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></button>
+	    <input type="text" class="form-control input-sm" id="login" placeholder="login name">
+	    <input type="password" class="form-control input-sm" id="password" placeholder="password">
+	    <button class="btn btn-default btn-sm" onclick="performLogin();">login</button>
+	  </form>
+	</div>
+	<div id="sessionWrapper" style="display: none;"></div>
+      </div>
+      <div id="fixed-navbar-div">
+            <div role="tabpanel" style="margin: 0px;">
+                <ul class="nav nav-tabs" role="tablist">
+                  <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
+                  <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
+                  <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" onclick="this.style['color'] = '#337ab7';"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
+                  <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
+                  <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
+                  <li role="presentation" class="dropdown-submenu pull-right">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+                      <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true" style="color: #008A77;"></span>
+                    </a>
+                    <ul class="dropdown-menu multi-level" role="menu">
+                      <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
+                      <li><a href="http://merenlab.org/2015/05/01/anvio-tutorial/">Anvi'o user manual</a></li>
+                      <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
+                      <li><a href="http://merenlab.org/people/">Contact us</a></li>
+                      <li role="separator" class="divider"></li>
+                      <li><p>Show help tooltips for the interactive interface: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></li>
+                    </ul>
+                  </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="sidebar">
+            <div class="tab-content">
+                <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
+                    <div id="tree-settings" class="form-horizontal">
+                        <h4>Tree Settings</h4>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>  
+                                <div class="col-md-8">
+                                    <select id="tree_type" class="form-control input-xs">
+                                        <option value="phylogram">Phylogram</option>
+                                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                                    </select>
+                                </div>
+                        </div>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Clustering:</label>  
+                                <div class="col-md-8">
+                                    <select id="trees_container" class="form-control input-xs"></select>
+                                </div>
+                        </div>               
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>  
+                                <div class="col-md-8">
+                                    <select id="views_container" class="form-control input-xs"></select>
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Draw Angle:</label>  
+                                <div class="col-md-8 form-inline">
+                                    <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to 
+                                    <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
+                                </div>
+                        </div>
+                        <div class="form-group form-margin circlephylogram_settings">
+                                <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Tree radius:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin phylogram_settings" style="display: none;">
+                                <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Tree height:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin phylogram_settings" style="display: none;">
+                                <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Tree width:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Bins layer height:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Layer margins:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="custom-layer-margins">Custom layer margins:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="edge-length-norm">Edge length norm.:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
+                                </div>
+                        </div> 
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="show-grids">Show grids for bins:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                    <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                    <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                </div>
+                        </div> 
+
+                        <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                        </div>
+
+
+                        <h4>Layer Settings <span id="current_state"></span></h4>
+
+                        <div id="table_layers_container">
+                            <table id="table_layers">
+                                <thead>
+                                    <tr>
+                                        <td></td>
+                                        <td data-help="layer-name">Name</td>
+                                        <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                        <td data-help="layer-type">Type</td>
+                                        <td data-help="layer-norm">Norm.</td>
+                                        <td data-help="layer-height">Height</td>
+                                        <td data-help="layer-margin" class="column-margin">Margin</td>
+                                        <td data-help="layer-min">Min</td>
+                                        <td data-help="layer-max">Max</td>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_layers"></tbody>
+                                <tbody id="tbody_bottom">
+                                    <tr style="height: 30px">
+                                        <td colspan="9">
+                                            <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
+                                        <td style="width: 50px;">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
+                                                <option value="bar">Bar</option>
+                                                <option value="intensity">Intensity</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="normalization_multiple">
+                                                <option value="none">none</option>
+                                                <option value="sqrt">sqrt</option>
+                                                <option value="log">log</option>
+                                            </select>
+                                        </td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
+                    <div id="bin-settings" class="form-horizontal">
+                        <div class="panel-body">
+                            <table class="table table-striped sortable" id="bins-table">
+                                <thead id="thead_bins">
+                                    <tr>
+                                        <th data-defaultsort='disabled'></th>
+                                        <th data-defaultsort='disabled' class="text-center"></th>
+                                        <th>Name</th>
+                                        <th>Splits</th>
+                                        <th>Len</th>
+                                        <th>Comp.</th>
+                                        <th>Cont.</th>
+                                        <th data-defaultsort='disabled'></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_bins">
+                                    <!-- JS FILLS HERE -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
+                        </div>
+
+                        <div class="full-mode">
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                            </div>
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                            </div>
+                        </div>
+
+                        <div class="refine-mode" style="display: none">
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="bins-bottom" class="col-md-12">
+                        <!-- JS FILLS HERE -->
+                    </div>
+                </div>
+
+                <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
+                    <div id="sample-settings" class="form-horizontal">
+                       <h4>Sample Order</h4>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Sample order:</label>
+                                <div class="col-md-8">
+                                    <select id="samples_order" class="form-control input-xs">
+                                        <!-- JS FILLS HERE -->
+                                    </select>
+                                </div>
+                        </div>
+
+                        <h4>Sample Layers</h4>
+
+                        <div id="table_samples_container">
+                            <table id="table_samples">
+                                <thead>
+                                    <tr>
+                                        <td></td>
+                                        <td data-help="layer-name">Name</td>
+                                        <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                        <td data-help="layer-type">Type</td>
+                                        <td data-help="layer-norm">Norm.</td>
+                                        <td data-help="layer-height">Height</td>
+                                        <td data-help="layer-margin">Margin</td>
+                                        <td data-help="layer-min">Min</td>
+                                        <td data-help="layer-max">Max</td>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody_samples"></tbody>
+                                <tbody id="tbody_samples_bottom">
+                                    <tr style="height: 30px">
+                                        <td colspan="9">
+                                            <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                        <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
+                                        <td style="width: 50px;">
+                                            <select class="type_multiple" style="width: 50px;" class="type">
+                                                <option value="bar">Bar</option>
+                                                <option value="intensity">Intensity</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="normalization_multiple">
+                                                <option value="none">none</option>
+                                                <option value="sqrt">sqrt</option>
+                                                <option value="log">log</option>
+                                            </select>
+                                        </td>
+                                        <td><input class="input-height-multiple" size="3"></input></td>
+                                        <td><input class="input-margin-multiple" size="3"></input></td>
+                                        <td><input class="input-min-multiple" size="4"></input></td>
+                                        <td><input class="input-max-multiple" size="4"></input></td>
+                                        <td><input type="checkbox" class="select_all"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <br />
+                        <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
+                            <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="$('#samples').empty(); drawSamplesLayers(serializeSettings());" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span>Redraw sample layers</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div role="tabpanel" class="tab-pane fade in" id="mouse_hover">
+                    <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.
+                    <div id="mouse_hover" class="form-horizontal">
+                        <table class="table table-striped sortable" id="tooltips-table">
+                            <thead id="thead_search_results">
+                                <tr>
+                                    <th width="30%">Key</th>
+                                    <th width="70%">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tooltip_content" class="search-results-display">
+                                <!-- JS FILLS HERE -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div role="tabpanel" class="tab-pane fade in" id="search_tab">
+                    <p style="color: #AAAAAA; padding: 10px;">Search splits based on various attributes.
+                    <div id="search_tab" class="form-horizontal">
+                        <h4 data-help='search-expression'>Expression:</h4> 
+                        <select id="searchLayerList" data-help="search-layer"></select>
+                        <select id="searchOperator" data-help="search-operator">
+                            <option value="6">Contains</option>
+                            <option value="0">==</option>
+                            <option value="1">!=</option>
+                            <option value="2">&gt;</option>
+                            <option value="3">&lt;</option>
+                            <option value="4">&gt;=</option>
+                            <option value="5">&lt;=</option>
+                        </select>
+                        <input id="searchValue" value="" data-help="search-value">
+                        <br />
+                        <br />
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>
+                            <div id="search_result_message"><span></span></div>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                            <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FFC000;" color="#FFC000" data-help="search-color"></div>
+                            <button type="button" class="btn btn-default btn-sm" onclick="highlighted_splits = []; redrawBins();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                        </div>
+                        <div class="sidebar-search-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                        </div>
+
+                        <span id="search-results-table-header" class="col-md-12"></span>
+                        <table class="table table-striped sortable" id="search-results-table">
+                            <thead id="thead_search_results">
+                                <tr>
+                                    <th id="search-results-table-search-name"></th>
+                                    <th id="search-results-table-search-item"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_search_body" class="search-results-display">
+                                <!-- JS FILLS HERE -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-draw">
+                <button type="button" class="btn btn-default btn-sm" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
+                    <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> Draw
+                </button>
+                <span id="draw_delta_time" style="padding-left: 10px;"></span>
+            </div>
+            <div class="btn-group" id="sidebar-footer-controls" role="group">
+                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></button>                
+                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></button>
+                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
+                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>
+            </div>
+        </div>
+        
+        <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
+            <g id="viewport"></g>
+        </svg>
+    </div>
+
+    <!-- DIALOGS SECTION -->
+
+    <!-- LOAD STATE -->
+    <div class="modal fade" id="modLoadState">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Load State</h4>
+                </div>
+
+                <div class="modal-body">
+                    <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();" onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+                    <br />
+                    <div id="loadState_lastmodified">Last modified: n/a</div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVE STATE -->
+    <div class="modal fade" id="modSaveState">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Save State</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
+                    </div>
+                    <div class="form-group">
+                            <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>  
+                            <div class="col-md-10">
+                                <input type="text" id="saveState_name" class="form-control" />
+                            </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPLOAD DATA -->
+    <div class="modal fade" id="modUploadData">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Upload data</h4>
+                </div>
+
+                <div class="modal-body">
+                  <input type="file" style="display: none;" id="treeFileSelect" onchange="uploadFileSelected('tree');">
+                  <input type="file" style="display: none;" id="fastaFileSelect" onchange="uploadFileSelected('fasta');">
+                  <input type="file" style="display: none;" id="dataFileSelect" onchange="uploadFileSelected('data');">
+
+		  <div class="col-md-12">To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</div>
+
+		  <form class="form-horizontal" id="uploadDataForm">
+		    <div class="form-group">
+		      <label class="col-sm-2 control-label" for="uploadTitle">title</label>
+		      <div class="col-sm-10">
+			<input type="text" id="uploadTitle" placeholder="choose a title" class="form-control">
+		      </div>
+		    </div>
+		    <div class="form-group">
+		      <label class="col-sm-2 control-label" for="treeFileName">tree file</label>
+		      <div class="col-sm-10">
+			<div class="input-group">
+			  <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#treeFileSelect').click();">...</button></span>
+			</div>
+		      </div>
+		    </div>
+		    <div class="form-group">
+		      <label class="col-sm-2 control-label" for="fastaFileName">fasta file</label>
+		      <div class="col-sm-10">
+			<div class="input-group">
+			  <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#fastaFileSelect').click();">...</button></span>
+			</div>
+		      </div>
+		    </div>
+		    <div class="form-group">
+		      <label class="col-sm-2 control-label" for="dataFileName">data file</label>
+		      <div class="col-sm-10">
+			<div class="input-group">
+			  <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#dataFileSelect').click();">...</button></span>
+			</div>
+		      </div>
+		    </div>
+		  </form>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="uploadFiles();">Load</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOAD COLLECTION -->
+    <div class="modal fade" id="modLoadCollection">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Load bin collection</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-7">
+                        <select class="form-control" size="10" id="loadCollection_list" ondblclick="loadCollection();" onchange="showCollectionDetails(this);"></select>
+                    </div>
+                    <div class="col-md-5 collection-details">
+                            <div class="col-md-12">Collection Details</div>
+                            <hr>
+                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
+                            <div class="col-md-8">Number of Clusters:</div><div class="col-md-4">n/a</div>
+                    </div>
+
+                    <div class="col-md-6 col-md-offset-3 form-inline">
+                    <br />
+                        Minimum bin size: 
+                        <input type="text" id="loadCollection_threshold" value="1" size="4" class="form-control input-xs">
+                        <select id="loadCollection_threshold_base" class="form-control input-xs">
+                            <option value="1000">K</option>
+                            <option value="1000000">M</option>
+                            <option value="1000000000">G</option>
+                        </select> bases.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="loadCollection();">Load</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVE COLLECTION -->
+    <div class="modal fade" id="modStoreCollection">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Store bin collection</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <select class="form-control" id="storeCollection_list" size="10" onchange="$('#storeCollection_name').val(this.value);" ondblclick="storeCollection();"></select>
+                    </div>
+                    <div class="form-group">
+                            <label class="col-md-2 settings-label label-big" for="storeCollection_name">Name: </label>  
+                            <div class="col-md-10">
+                                <input type="text" id="storeCollection_name" class="form-control" />
+                            </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="storeCollection();">Store</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERATE SUMMARY -->
+    <div class="modal fade" id="modGenerateSummary">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Generate Summary</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-7">
+                        <select class="form-control" size="10" id="summaryCollection_list" ondblclick="generateSummary();" onchange="showCollectionDetails(this);"></select>
+                    </div>
+                    <div class="col-md-5 collection-details">
+                            <div class="col-md-12">Collection Details</div>
+                            <hr>
+                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
+                            <div class="col-md-8">Number of Clusters:</div><div class="col-md-4">n/a</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-generate-summary" class="btn btn-primary" onclick="generateSummary();">Generate</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY RESULT -->
+    <div class="modal fade" id="modSummaryResult">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Summary is ready</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div id="summary_link" class="col-md-12">
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPLIT SEQUENCE -->
+    <div class="modal fade" id="modSplitSequence">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Split Sequence</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <textarea class="form-control" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT CLICK MENU -->
+    <ul id="control_contextmenu" class="dropdown-menu" role="menu" style="display:none" >
+        <li id="select"><a href="#" onclick="menu_callback('select');">Select</a></li>
+        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove</a></li>
+        <li class="divider"></li>
+        <li><a href="#" onclick="menu_callback('inspect');">Inspect</a></li>
+        <li class="divider"></li>
+        <li><a href="#" onclick="menu_callback('content');">Show split sequence</a></li>
+        <li><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
+        <li><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
+        <li><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>
+        <li><a href="#" onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</a></li>
+    </ul>
+
+
+    <!-- AREA ZOOM -->
+    <div id="divzoom"><div id="divzoom_inner"></div></div>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+
+    function titleSetter()
+    {
+        if (!$("#show-help-tooltips").is(':checked'))
+            return "";
+
+        if (this.hasAttribute('data-help') && help_contents.hasOwnProperty(this.getAttribute('data-help')))
+            return help_contents[this.getAttribute('data-help')];
+
+        if (this.hasAttribute('title'))
+            return this.getAttribute('title');
+
+        return "";
+    }
+
+    function placementSetter(tooltip, source)
+    {
+        if (source.hasAttribute('data-help') && tooltip_placements.hasOwnProperty(source.getAttribute('data-help')))
+            return tooltip_placements[source.getAttribute('data-help')]; 
+
+        return 'top';      
+    }
+
+    $(document).ready(function() {
+        $("body").tooltip({ 
+            selector: '[data-toggle=tooltip], [data-help]',
+            title: titleSetter,
+            placement: placementSetter, 
+            container: 'body'
+        });
+    });
+
+    // open all links in a new tab
+    $("body a[href^='http']").attr("target","_blank");
+    </script>
+</body>
+</html>
