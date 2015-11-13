@@ -99,7 +99,7 @@ class Completeness:
 
 
     def get_info_for_splits(self, split_names, min_e_value = 1e-5):
-        hits = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
+        hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
         info_dict, gene_name_to_unique_id = {}, {}
@@ -107,15 +107,17 @@ class Completeness:
             info_dict[source], gene_name_to_unique_id[source] = {}, {}
 
         # here we go through every hit and populate 'info_dict' and 'gene_name_to_unique_id':
-        for entry in hits.values():
-            if entry['e_value'] > min_e_value:
+        for entry in hmm_hits_splits_table.values():
+            hmm_hit = self.hmm_hits_table[entry['hmm_hit_entry_id']]
+
+            if hmm_hit['e_value'] > min_e_value:
                 continue
 
-            source = entry['source']
-            e_value = entry['e_value']
-            gene_name = entry['gene_name']
+            source = hmm_hit['source']
+            e_value = hmm_hit['e_value']
+            gene_name = hmm_hit['gene_name']
             percentage = entry['percentage_in_split']
-            gene_unique_id = entry['gene_unique_identifier']
+            gene_unique_id = hmm_hit['gene_unique_identifier']
 
             if info_dict[source].has_key(gene_unique_id):
                 info_dict[source][gene_unique_id]['percentage'] += percentage
