@@ -600,8 +600,17 @@ D = {
             ['--show-states'],
             {'default': False,
              'action': 'store_true',
-             'help': "When declared program will print all available states and exit."}
+             'help': "When declared the program will print all available states and exit."}
                 ),
+    'skip-init-functions': (
+            ['--skip-init-functions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, function calls for genes will not be initialized (therefore will be missing from all\
+                      relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
+                      processing time for large datasets."}
+                ),
+
 }
 
 # two functions that works with the dictionary above.
