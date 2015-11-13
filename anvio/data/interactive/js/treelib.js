@@ -116,11 +116,12 @@ function drawLegend(top, left, line_end) {
 
     for (sample in samples_stack_bar_colors)
     {
-        var names = sample.split(';');
+        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
         var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
         legends.push({
-            'name': sample,
+            'name': pretty_name,
             'source': 'samples_stack_bar_colors',
             'key': sample,
             'item_names': names,
