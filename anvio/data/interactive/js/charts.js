@@ -2,7 +2,7 @@
  * Javascript library to visualize anvi'o charts
  *
  *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen, Gökmen Göksel
+ *  Credits: Özcan Esen, Gökmen Göksel, Tobias Paczian.
  *  Copyright 2015, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/meren/anvio>).
