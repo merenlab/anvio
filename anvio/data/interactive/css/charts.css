@@ -1,7 +1,7 @@
 @import url('normalize.css');
 
 #chart-container {
-    width: 1200px; //this is being overwritten though. 
+    width: 1200px; //this is being overwritten though.
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
     box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
@@ -154,7 +154,7 @@ a{
   left: 0;
   z-index: 1060;
   display: none;
-  max-width: 276px;
+  max-width: 900px;
   padding: 1px;
   color: black;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -183,6 +183,7 @@ a{
 
   line-break: auto;
 }
+
 .popover.top {
   margin-top: -10px;
 }
@@ -282,3 +283,30 @@ a{
   border-right-width: 0;
   border-left-color: #fff;
 }
+
+table {
+  color: #333; /* Lighten up font color */
+  font-family: Helvetica, Arial, sans-serif; /* Nicer font */
+  border-collapse:
+  collapse; border-spacing: 0;
+}
+
+td, th { border: 1px solid #CCC; height: 30px;  } /* Make cells a bit taller */
+
+th {
+  background: #F3F3F3; /* Light grey background */
+  font-weight: bold; /* Make sure they're bold */
+}
+
+td {
+  padding: 0px 10px;
+}
+
+tr:nth-child(even) {
+    background-color: #FAFAFA;
+}
+
+tr:nth-child(odd) {
+    background-color: #FFFFFF;
+}
+

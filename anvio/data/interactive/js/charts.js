@@ -281,20 +281,33 @@ function removeGeneChart() {
   }
 }
 
-function get_gene_functions_text(functions){
-    functions_text = ''
+function get_gene_functions_table_html(functions){
+    if(!functions)
+        return ''
+
+    functions_table_html = '<table class="table table-striped">';
+    functions_table_html += '<thead><th>Source</th><th>Hit</th><th>Score</th></thead>';
+    functions_table_html += '<tbody>';
 
     for (function_source in functions){
-        functions_text += function_source + ': ';
+        functions_table_html += '<tr>';
+
+        functions_table_html += '<td><b>' + function_source + '</b></td>';
         if (functions[function_source]) {
-            functions_text += functions[function_source][0];
+            functions_table_html += '<td>' + functions[function_source][0] + '</td>';
+            functions_table_html += '<td><em>' + functions[function_source][1] + '</em></td>';
         } else {
-            functions_text += '--';
+            functions_table_html += '<td>&nbsp;</td>';
+            functions_table_html += '<td>&nbsp;</td>';
         }
-        functions_text += '<br />';
+
+        functions_table_html += '</tr>';
     }
 
-    return functions_text;
+    functions_table_html += '</body>';
+    functions_table_html += '</table>';
+
+    return functions_table_html;
 }
 
 function drawArrows(_start, _stop) {
@@ -336,7 +349,7 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      color = (gene.function !== null ? 'green' : 'gray');
+      color = (gene.functions !== null ? 'green' : 'gray');
 
       // M10 15 l20 0
       path = paths.append('svg:path')
@@ -356,7 +369,7 @@ function drawArrows(_start, _stop) {
            .attr('transform', function() {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
              })
-           .attr('data-content', get_gene_functions_text(gene.functions) + '')
+           .attr('data-content', get_gene_functions_table_html(gene.functions) + '')
 	    .attr('data-toggle', 'popover');
     });
     $('[data-toggle="popover"]').popover({"html": true, "trigger": "hover", "container": "body", "placement": "top"});
