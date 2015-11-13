@@ -202,6 +202,7 @@ class ContigsSuperclass(object):
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
         non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        hmm_hits_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
 
         if split_names_of_interest:
             non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
@@ -223,7 +224,8 @@ class ContigsSuperclass(object):
                 self.hmm_searches_dict[split_name] = copy.deepcopy(sources_tmpl)
 
             for e in non_singlecopy_gene_hmm_results_dict.values():
-                search_term = 'hmmx_%s_%s' % (self.hmm_sources_info[e['source']]['search_type'], e['gene_name'])
+                hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
+                search_term = 'hmmx_%s_%s' % (self.hmm_sources_info[e['source']]['search_type'], hmm_hit['gene_name'])
                 self.hmm_searches_dict[e['split']][search_term] = 1
         else:
             for source in self.non_singlecopy_gene_hmm_sources:
@@ -232,13 +234,14 @@ class ContigsSuperclass(object):
                 self.hmm_searches_header.append((search_type, source),)
 
             for e in non_singlecopy_gene_hmm_results_dict.values():
+                hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
                 if not e['split'] in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
 
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
-                self.hmm_searches_dict[e['split']][source].append((e['gene_name'], e['gene_unique_identifier']),)
+                self.hmm_searches_dict[e['split']][source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
         self.progress.end()
 
@@ -1305,7 +1308,7 @@ class TablesForHMMHits(Table):
                         stop_in_split = (split_stop if hit_stop > split_stop else hit_stop) - split_start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
                         
-                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, hit['source'], percentage_in_split])
+                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, percentage_in_split, hit['source']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
