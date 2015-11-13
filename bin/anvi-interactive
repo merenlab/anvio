@@ -78,6 +78,7 @@ groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
 groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
@@ -220,7 +221,7 @@ def charts(split_name):
 
     levels_occupied = {1: []}
     for entry_id in d.split_to_genes_in_splits_ids[split_name]:
-        prot_id = d.genes_in_splits[entry_id]['prot']
+        gene_callers_id = d.genes_in_splits[entry_id]['gene_callers_id']
         p = d.genes_in_splits[entry_id]
         # p looks like this at this point:
         #
@@ -231,8 +232,8 @@ def charts(split_name):
         #  'split'              : u'D23-1contig18_split_00036'}
         #
         # we will add two more attributes:
-        p['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
-        p['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
+        p['direction'] = d.genes_in_contigs_dict[gene_callers_id]['direction']
+        p['functions'] = d.gene_function_calls_dict[gene_callers_id] if d.gene_function_calls_dict.has_key(gene_callers_id) else None
 
         for level in levels_occupied:
             level_ok = True
