@@ -635,6 +635,7 @@ class Bin:
         # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
         l = [tc for tc in taxon_calls if tc[0]]
         num_calls = sum(taxon_calls_counter.values())
+
         # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
         if l and l[0][1] > num_calls / 4.0:
             # if l[0] is associated with more than 25 percent of splits:
