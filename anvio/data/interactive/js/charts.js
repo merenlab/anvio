@@ -356,10 +356,10 @@ function drawArrows(_start, _stop) {
            .attr('transform', function() {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
              })
-           .append('svg:title')
-             .text(get_gene_functions_text(gene.functions) + '');
+           .attr('data-content', get_gene_functions_text(gene.functions) + '')
+	    .attr('data-toggle', 'popover');
     });
-
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "hover", "container": "body", "placement": "top"});
 }
 
 
