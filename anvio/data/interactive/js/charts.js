@@ -281,6 +281,22 @@ function removeGeneChart() {
   }
 }
 
+function get_gene_functions_text(functions){
+    functions_text = ''
+
+    for (function_source in functions){
+        functions_text += function_source + ': ';
+        if (functions[function_source]) {
+            functions_text += functions[function_source][0];
+        } else {
+            functions_text += '--';
+        }
+        functions_text += '<br />';
+    }
+
+    return functions_text;
+}
+
 function drawArrows(_start, _stop) {
 
     width = VIEWER_WIDTH * 0.80;
@@ -341,7 +357,7 @@ function drawArrows(_start, _stop) {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
              })
            .append('svg:title')
-             .text(gene.function + '');
+             .text(get_gene_functions_text(gene.functions) + '');
     });
 
 }
