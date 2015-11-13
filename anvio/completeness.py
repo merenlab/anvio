@@ -44,21 +44,21 @@ class Completeness:
         for non_singlecopy_source in non_singlecopy_sources:
             info_table.pop(non_singlecopy_source)
 
-        # read search table (which holds hmmscan hits for splits).
-        self.search_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
+        # get the hmm hits table
+        self.hmm_hits_table = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
 
-        # an example entry in self.search_table looks loke this:
+        # read search table (which holds hmmscan hits for splits).
+        self.hmm_hits_splits_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
+
+        # an example entry in self.hmm_hits_splits_table looks loke this:
         #
         # {
-        #    'percentage_in_split'   : 100,
+        #    'percentage_in_split'   : 69.6763202725724,
         #    'source'                : u'Campbell_et_al',
-        #    'gene_unique_identifier': u'c70c1cc3025b636100fd8a910b5b7f0dd09752fc78e2a1f10ee60954',
-        #    'e_value'               : 0.0013,
-        #    'gene_name'             : u'UvrC_HhH_N',
-        #    'split'                 : u'ANTARCTICAAQUATIC_SMPL_SITE231_3.0UMcontig18439_split_00001'
+        #    'split'                 : u'ANTARCTICAAQUATIC_SMPL_SITE231_3.0UMcontig18439_split_00001',
+        #    'hmm_hit_entry_id'      : 1
         # }
         #
-
 
         # a little convenience for potential clients:
         self.http_refs = {}
@@ -80,23 +80,26 @@ class Completeness:
             # filter out sources that are not requested
             self.sources = [source]
             self.genes_in_db = {source: self.genes_in_db[source]}
-            self.search_table = utils.get_filtered_dict(self.search_table, 'source', set([source]))
+            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source]))
 
         self.unique_gene_id_to_gene_name = {}
         self.splits_unique_gene_id_occurs = {}
         # these will be very useful later. trust me.
-        for entry in self.search_table.values():
-            if entry['gene_unique_identifier'] not in self.unique_gene_id_to_gene_name:
-                self.unique_gene_id_to_gene_name[entry['gene_unique_identifier']] = entry['gene_name']
+        for entry in self.hmm_hits_splits_table.values():
+            hmm_hit = self.hmm_hits_table[entry['hmm_hit_entry_id']]
+            gene_unique_identifier = hmm_hit['gene_unique_identifier']
 
-            if entry['gene_unique_identifier'] not in self.splits_unique_gene_id_occurs:
-                self.splits_unique_gene_id_occurs[entry['gene_unique_identifier']] = [entry['split']]
+            if gene_unique_identifier not in self.unique_gene_id_to_gene_name:
+                self.unique_gene_id_to_gene_name[gene_unique_identifier] = hmm_hit['gene_name']
+
+            if gene_unique_identifier not in self.splits_unique_gene_id_occurs:
+                self.splits_unique_gene_id_occurs[gene_unique_identifier] = [entry['split']]
             else:
-                self.splits_unique_gene_id_occurs[entry['gene_unique_identifier']].append(entry['split'])
+                self.splits_unique_gene_id_occurs[gene_unique_identifier].append(entry['split'])
 
 
     def get_info_for_splits(self, split_names, min_e_value = 1e-5):
-        hits = utils.get_filtered_dict(self.search_table, 'split', split_names)
+        hits = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
         info_dict, gene_name_to_unique_id = {}, {}
