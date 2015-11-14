@@ -65,7 +65,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     
     var order_from_state = true;
     if (typeof(samples_layer_order) === 'undefined') {
-        samples_layer_order = samples_information_default_layer_order;
+        samples_layer_order = Object.keys(samples_information_dict[first_sample]);
         order_from_state = false;
     }
     
