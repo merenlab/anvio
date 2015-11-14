@@ -158,6 +158,8 @@ def send_data(name):
         return json.dumps(d.samples_order_dict)
     elif name == "samples_information":
         return json.dumps(d.samples_information_dict)
+    elif name == "samples_information_default_layer_order":
+        return json.dumps(d.samples_information_default_layer_order)
 
 
 @route('/data/view/<view_id>')

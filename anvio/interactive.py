@@ -77,6 +77,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
             self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
+            self.samples_information_default_layer_order = samples_information_db.get_samples_information_default_layer_order()
+            samples_information_db.disconnect()
 
         if self.contigs_db_path:
             self.completeness = completeness.Completeness(self.contigs_db_path)

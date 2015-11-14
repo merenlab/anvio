@@ -191,10 +191,15 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
+            url: '/data/samples_information_default_layer_order?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
             url: '/state/autoload?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, stateAutoloadResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, sampleInformationDefaultLayerOrderResponse, stateAutoloadResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -256,6 +261,8 @@ $(document).ready(function() {
 
             samples_order_dict = samplesOrderResponse[0];
             samples_information_dict = sampleInformationResponse[0];
+            samples_information_default_layer_order = sampleInformationDefaultLayerOrderResponse[0];
+            console.log(samples_information_default_layer_order)
 
             available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
@@ -1679,7 +1686,7 @@ function loadState()
                 defer.reject();
                 return;
             }
-
+            
             if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
             {
                 toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");

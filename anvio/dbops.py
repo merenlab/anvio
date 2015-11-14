@@ -726,6 +726,7 @@ class SamplesInformationDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
             self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')])
+            self.samples_information_default_layer_order = self.meta['samples_information_default_layer_order'].split(',')
 
             self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
         else:
@@ -743,6 +744,13 @@ class SamplesInformationDatabase:
         samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
 
         return samples_information_dict, samples_order_dict
+
+
+    def get_samples_information_default_layer_order(self):
+        if not self.db:
+            raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
+
+        return self.samples_information_default_layer_order
 
 
     def create(self, samples_information_path = None, samples_order_path = None):
@@ -789,6 +797,7 @@ class SamplesInformationDatabase:
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names))
         self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order))
 
         self.disconnect()
 
