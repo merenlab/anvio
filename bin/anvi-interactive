@@ -158,6 +158,7 @@ def set_user_data():
             d = interactive.InputHandler(orig_args)
     else:
         d = interactive.InputHandler(orig_args)
+        
 
 @route('/')
 def redirect_to_app():        
@@ -173,6 +174,23 @@ def get_user_by_token():
         del retval[1]['accepted']
         
     return json.dumps(retval)
+
+@route('/requestAccount', method='GET')
+def request_account():
+    retval = userdb.create_user(request.query.firstname, request.query.lastname, request.query.email, request.query.login, request.query.password)
+
+    set_default_headers(response)
+    if retval[0]:
+        return '{ "OK": "'+retval[1]+'" }'
+    else:
+        return '{ "ERROR": "'+retval[1]+'" }'
+
+@route('/confirm', method='GET')
+def accept_user():
+    retval = userdb.accept_user(request.query.login, request.query.code)
+    response.set_header('Content-Type', 'text/html')
+    
+    return retval[1]
 
 @route('/login', method='POST')
 def login_to_app():

@@ -10,11 +10,12 @@ import crypt
 import string
 import random
 import hashlib
-import pprint
 import shutil
+import smtplib
 
 import anvio
 import anvio.filesnpaths as filesnpaths
+import anvio.mailsetup as mailsetup
 
 from anvio.errors import ConfigError
 
@@ -118,7 +119,7 @@ class UserMGMT:
     def create_user(self, firstname, lastname, email, login, password):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
-            raise ConfigError, "You must pass a firstname, lastname, email login and password to create a user"
+            return (False, "You must pass a firstname, lastname, email login and password to create a user")
 
         # check if the login name is already taken
         p = (login, )
@@ -126,7 +127,7 @@ class UserMGMT:
         row = response.fetchone()
 
         if row:
-            raise ConfigError, "Login '%s' is already taken." % login
+            return (False, "Login '%s' is already taken." % login)
 
         # calculate path
         path = hashlib.md5(login).hexdigest()
@@ -145,12 +146,18 @@ class UserMGMT:
         response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", p)
         self.conn.commit()
 
-        # create the user directory
-        path = self.path + 'userdata/' + path
-        if not os.path.exists(path):
-            os.makedirs(path)
+        # send the user a mail to verify the email account
 
-        return token
+        mail = mailsetup.mailsetup()
+        
+        # these vars need to come from the config
+        anvioURL = "http://0.0.0.0:8080/";
+        messageSubject = "anvio account request"
+        messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
+
+        mail.sendEmail(email, messageSubject, messageText)
+
+        return (True, "User request created")
 
     def get_user_for_login(self, login):
         if not login:
@@ -188,20 +195,26 @@ class UserMGMT:
             raise ConfigError, "You must pass a login and a token to accept a user"
 
         p = (login, )
-        response = self.cursor.execute("SELECT token FROM users WHERE login=?", p)
+        response = self.cursor.execute("SELECT token, path FROM users WHERE login=?", p)
         row = response.fetchone()
 
         if not row:
-            raise ConfigError, "No user found for login '%s'." % login
+            return(False, "No user found for login '%s'." % login)
 
         val = row['token']
 
         if val == token:
             self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", p)
             self.conn.commit()
-            return 1
+
+            # create the user directory
+            path = self.path + 'userdata/' + row['path']
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            return (True, "User confirmed")
         else:
-            raise ConfigError, "Invalid token for user '%s'." % login
+            return (False, "Invalid token for user '%s'." % login)
 
 
     def login_user(self, login, password):
