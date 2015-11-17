@@ -65,7 +65,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     
     var order_from_state = true;
     if (typeof(samples_layer_order) === 'undefined') {
-        samples_layer_order = Object.keys(samples_information_dict[first_sample]); // get layer order from first sample's samples
+        samples_layer_order = Object.keys(samples_information_dict[first_sample]);
         order_from_state = false;
     }
     
@@ -75,7 +75,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     {
         var layer_name  = samples_layer_order[i];
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
-        var short_name  = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
+        pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
+        
+        var short_name = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
 
         var hasSettings = false;
         if (typeof(samples_layers) !== 'undefined' && typeof(samples_layers[layer_name]) !== 'undefined') {
@@ -186,7 +188,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
 
             var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                '<td title="{name}" class="titles">{short-name}</td>' +
+                '<td title="{pretty-name}" class="titles">{short-name}</td>' +
                 '<td>n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td>' +
@@ -206,6 +208,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{pretty-name}', 'g'), pretty_name)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
@@ -408,6 +411,7 @@ function drawSamplesLayers(settings) {
         {
             var samples_layer_name     = settings['samples-layer-order'][i];
             var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+            var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
 
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
@@ -522,7 +526,7 @@ function drawSamplesLayers(settings) {
                     drawText('samples', {
                         'x': total_radius + 20,
                         'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-                    }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
+                    }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
                 }
             }
             else

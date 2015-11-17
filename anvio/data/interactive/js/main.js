@@ -191,10 +191,15 @@ $(document).ready(function() {
         $.ajax({
             type: 'GET',
             cache: false,
+            url: '/data/samples_information_default_layer_order?timestamp=' + timestamp,
+        }),
+        $.ajax({
+            type: 'GET',
+            cache: false,
             url: '/state/autoload?timestamp=' + timestamp,
         }))
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, stateAutoloadResponse) 
+        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, sampleInformationDefaultLayerOrderResponse, stateAutoloadResponse) 
         {
             unique_session_id = sessionIdResponse[0];
             ping_timer = setInterval(checkBackgroundProcess, 5000);
@@ -256,6 +261,7 @@ $(document).ready(function() {
 
             samples_order_dict = samplesOrderResponse[0];
             samples_information_dict = sampleInformationResponse[0];
+            samples_information_default_layer_order = sampleInformationDefaultLayerOrderResponse[0];
 
             available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
@@ -269,7 +275,7 @@ $(document).ready(function() {
 
                 $('#samples_order').append(new Option(order_name, order));
             }
-            buildSamplesTable();
+            buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
             $.when({}).then(onTreeClusteringChange).then(onViewChange).then(
@@ -467,7 +473,9 @@ function buildLayersTable(order, settings)
         // common layer variables
         var layer_id = order[i];
         var layer_name = layerdata[0][layer_id];
-        var short_name = (layer_name.length > 10) ? layer_name.slice(0,10) + "..." : layer_name;
+
+        var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
+        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && settings.hasOwnProperty(layer_id)) {
@@ -540,7 +548,8 @@ function buildLayersTable(order, settings)
                 if (!(layer_id in stack_bar_colors))
                 {
                     stack_bar_colors[layer_id] = new Array();
-                    for (var j=0; j < layer_name.split(";").length; j++)
+                    var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+                    for (var j=0; j < bars.length; j++)
                     {
                         stack_bar_colors[layer_id].push(randomColor());
                     } 
@@ -1676,7 +1685,7 @@ function loadState()
                 defer.reject();
                 return;
             }
-
+            
             if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
             {
                 toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
