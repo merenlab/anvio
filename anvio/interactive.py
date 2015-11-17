@@ -66,6 +66,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
+        self.samples_information_default_layer_order = {}
 
 
         self.external_clustering = external_clustering
@@ -180,6 +181,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
+        self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
         self.p_meta['default_clustering'] = 'default'
         self.p_meta['available_clusterings'] = ['default']
@@ -216,7 +218,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # create a new, empty profile database for ad hoc operations
         if not os.path.exists(self.profile_db_path):
             profile_db = ProfileDatabase(self.profile_db_path)
-            profile_db.create({'db_type': 'profile', 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
+            profile_db.create({'db_type': 'profile', 'merged': True, 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
