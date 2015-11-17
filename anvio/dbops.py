@@ -1543,6 +1543,9 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
     profile_db = ProfileDatabase(profile_db_path)
     samples_db = SamplesInformationDatabase(samples_db_path)
 
+    if profile_db.meta.has_key('merged') and not int(profile_db.meta['merged']):
+        raise ConfigError, "Samples databases are only useful if you are working on a merged profile."
+
     missing_samples = profile_db.samples - samples_db.samples
     num_represented_samples = len(profile_db.samples) - len(missing_samples)
 
