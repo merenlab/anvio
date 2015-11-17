@@ -33,18 +33,37 @@ $(document).ready(function() {
             return;
 
         var organization = samples_order_dict[this.value];
-        var new_order;
+        var samples_new_order;
 
         // get new sample order
         if (organization['basic'] != "")
         {
-            new_order = organization['basic'].split(',');
+            samples_new_order = organization['basic'].split(',');
         }
         else
         {
-            new_order = get_newick_leaf_order(organization['newick']);
+            samples_new_order = get_newick_leaf_order(organization['newick']);
         }
-        $.map(new_order, $.trim);
+        $.map(samples_new_order, $.trim);
+
+        var new_order = [];
+
+        var i=0;
+        $('#tbody_layers tr').each(
+            function(index, layer) {
+                var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
+                var layer_name = getLayerName(layer_id);
+
+                if (samples_new_order.indexOf(layer_name) > -1)
+                {
+                    new_order.push(samples_new_order[i++]);
+                }
+                else
+                {
+                    new_order.push(layer_name);
+                }
+            }
+        );
 
         for(var i=0; i < new_order.length; i++)
         {
