@@ -70,6 +70,7 @@ groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'
 groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
