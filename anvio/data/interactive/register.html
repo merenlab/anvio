@@ -15,7 +15,7 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script>
+    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
     <script>
       $(document).ready(function(){
 //	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
@@ -27,12 +27,13 @@ function checkMatch() {
 }
 function performRegistration() {
     document.getElementById('submit').setAttribute('disabled', 'disabled');
-    jQuery.post("requestAccount", {
+    jQuery.post("/requestAccount", {
 	"email": document.getElementById('inputEmail').value,
 	"firstname": document.getElementById('inputFirstname').value,
 	"lastname": document.getElementById('inputLastname').value,
 	"login": document.getElementById('inputLogin').value,
-	"response": grecaptcha.getResponse()
+	"password": document.getElementById('inputPassword').value,
+//	"response": grecaptcha.getResponse()
     }, function (result) {
 	if (result.hasOwnProperty('ERROR')) {
 	    alert("Your registration failed: "+result.ERROR);

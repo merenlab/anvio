@@ -54,11 +54,11 @@
       <div style="width: 490px; border-right: 1px solid #d3d3d3; padding-left: 10px;">
 	<div id="loginFormWrapper" style="padding-top: 2px; padding-bottom: 2px;">
 	  <form class="form-inline" id="loginForm">
-	    <button class="btn btn-default btn-sm" onclick="window.location='register.html'">register</button>
-	    <button type="button" class="btn btn-default btn-sm" title="help"><span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></button>
+	    <button type="button" class="btn btn-default btn-sm" onclick="window.location='register.html'">register</button>
+	    <button type="button" class="btn btn-default btn-sm" title="help" onclick="window.open('http://merenlab.org/projects/anvio/')"><span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span></button>
 	    <input type="text" class="form-control input-sm" id="login" placeholder="login name">
 	    <input type="password" class="form-control input-sm" id="password" placeholder="password">
-	    <button class="btn btn-default btn-sm" onclick="performLogin();">login</button>
+	    <button type="button" class="btn btn-default btn-sm" onclick="performLogin();">login</button>
 	  </form>
 	</div>
 	<div id="sessionWrapper" style="display: none;"></div>
@@ -494,61 +494,119 @@
 
     <!-- UPLOAD DATA -->
     <div class="modal fade" id="modUploadData">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Upload data</h4>
-                </div>
-
-                <div class="modal-body">
-                  <input type="file" style="display: none;" id="treeFileSelect" onchange="uploadFileSelected('tree');">
-                  <input type="file" style="display: none;" id="fastaFileSelect" onchange="uploadFileSelected('fasta');">
-                  <input type="file" style="display: none;" id="dataFileSelect" onchange="uploadFileSelected('data');">
-
-		  <div class="col-md-12">To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</div>
-
-		  <form class="form-horizontal" id="uploadDataForm">
-		    <div class="form-group">
-		      <label class="col-sm-2 control-label" for="uploadTitle">title</label>
-		      <div class="col-sm-10">
-			<input type="text" id="uploadTitle" placeholder="choose a title" class="form-control">
-		      </div>
-		    </div>
-		    <div class="form-group">
-		      <label class="col-sm-2 control-label" for="treeFileName">tree file</label>
-		      <div class="col-sm-10">
-			<div class="input-group">
-			  <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#treeFileSelect').click();">...</button></span>
-			</div>
-		      </div>
-		    </div>
-		    <div class="form-group">
-		      <label class="col-sm-2 control-label" for="fastaFileName">fasta file</label>
-		      <div class="col-sm-10">
-			<div class="input-group">
-			  <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#fastaFileSelect').click();">...</button></span>
-			</div>
-		      </div>
-		    </div>
-		    <div class="form-group">
-		      <label class="col-sm-2 control-label" for="dataFileName">data file</label>
-		      <div class="col-sm-10">
-			<div class="input-group">
-			  <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#dataFileSelect').click();">...</button></span>
-			</div>
-		      </div>
-		    </div>
-		  </form>
-
-                <div class="modal-footer">
-                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="uploadFiles();">Load</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+            <h4 class="modal-title">Upload data</h4>
+          </div>
+	  
+          <div class="modal-body">
+            <input type="file" style="display: none;" id="treeFileSelect" onchange="uploadFileSelected('tree');">
+            <input type="file" style="display: none;" id="fastaFileSelect" onchange="uploadFileSelected('fasta');">
+            <input type="file" style="display: none;" id="dataFileSelect" onchange="uploadFileSelected('data');">
+	    
+	    <div class="col-md-12">To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</div>
+	    
+	    <form class="form-horizontal" id="uploadDataForm">
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="uploadTitle">title</label>
+		<div class="col-sm-10">
+		  <input type="text" id="uploadTitle" placeholder="choose a title" class="form-control">
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="treeFileName">tree file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#treeFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="fastaFileName">fasta file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#fastaFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="dataFileName">data file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#dataFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	    </form>
+	  </div>
+	  
+          <div class="modal-footer">
+            <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="uploadFiles();">Load</button>
+            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+          </div>
         </div>
+      </div>
     </div>
 
+    <!-- SHARE PROJECT -->
+    <div class="modal fade" id="modShareProject">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+            <h4 class="modal-title">Share project</h4>
+          </div>
+	  
+          <div class="modal-body">
+	    <div class="col-md-12">You can share your project with other users by link or you can make it publicly accessible to all users.</div>
+	    
+	    <form class="form-horizontal" id="uploadDataForm">
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="projectName">name</label>
+		<div class="col-sm-10">
+		  <input type="text" id="projectName" placeholder="choose a name" class="form-control">
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="projectPublic">public</label>
+		<div class="col-sm-10">
+		  <input type="checkbox" id="projectPublic" checked class="form-control">
+		</div>
+	      </div>
+	    </form>
+	  </div>
+	  
+          <div class="modal-footer">
+            <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="shareProject();">Share</button>
+            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- PROJECT SETTINGS -->
+    <div class="modal fade" id="modProjectSettings">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+            <h4 class="modal-title">Project settings</h4>
+          </div>
+	  
+          <div class="modal-body">
+	    <div class="col-md-12">These are your current project settings</div>
+	    
+	    <div class="col-md-12" id="projectSettingsContent"></div>
+	  </div>
+          <div class="modal-footer">
+            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>	
+    
     <!-- LOAD COLLECTION -->
     <div class="modal fade" id="modLoadCollection">
         <div class="modal-dialog">

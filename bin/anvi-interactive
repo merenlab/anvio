@@ -27,6 +27,7 @@ import anvio.interactive as interactive
 # CUSTOM
 import anvio.usermgmt as usermgmt
 import copy
+import re
 # END CUSTOM
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
@@ -138,34 +139,74 @@ def get_user():
 
         # we have a cookie, check if it is valid
         return userdb.get_user_for_token(request.get_cookie('anvioSession'))
-    else:
-        return (False, 'no session cookie found')
 
-def set_user_data():
-    retval = get_user()
-    if retval[0]:
-        user = retval[1]
-        if user.has_key('project_path'):
-            basepath = 'userdata/' + user['path'] + '/' + user['project_path'] + '/'
+
+def check_user():
+    # check if we have a cookie
+    if request.get_cookie('anvioSession'):
+
+        # we have a cookie, check if it is valid
+        retval = userdb.get_user_for_token(request.get_cookie('anvioSession'))
+        if retval[0]:
+            user = retval[1]
+            if user.has_key('project_path'):
+                basepath = 'userdata/' + user['path'] + '/' + user['project_path'] + '/'
+                args.tree = basepath + 'treeFile'
+                args.fasta_file = basepath + 'fastaFile'
+                args.view_data = basepath + 'dataFile'
+                args.title = user['project']
+    
+                global d
+                d = interactive.InputHandler(args)
+                return True
+            else:
+                return False
+        else:
+            return False
+    else:
+        return False
+
+
+def check_view():
+    if request.get_cookie('anvioView'):
+        p = request.get_cookie('anvioView').split('|')
+        retval = userdb.get_view(p[0], p[1])
+        if retval[0]:
+            basepath = 'userdata/' + retval[1]['path'] + '/'
             args.tree = basepath + 'treeFile'
             args.fasta_file = basepath + 'fastaFile'
             args.view_data = basepath + 'dataFile'
-            args.title = user['project']
-    
+            args.title = retval[1]['project']
+            args.read_only = True
+
             global d
             d = interactive.InputHandler(args)
+                
+            return True
         else:
-            d = interactive.InputHandler(orig_args)
+            return False
     else:
-        d = interactive.InputHandler(orig_args)
-        
+        return False
 
+
+def set_user_data():
+    if check_view():
+        return
+    if check_user():
+        return
+
+    global d
+    d = interactive.InputHandler(orig_args)
+
+    
 @route('/')
 def redirect_to_app():        
     redirect('/app/index_tobi.html')
 
+
 @route('/token', method='POST')
 def get_user_by_token():
+    set_default_headers(response)
     retval = userdb.get_user_for_token(request.forms.get('token'))
         
     if retval[0]:
@@ -175,9 +216,10 @@ def get_user_by_token():
         
     return json.dumps(retval)
 
-@route('/requestAccount', method='GET')
+@route('/requestAccount', method='POST')
 def request_account():
-    retval = userdb.create_user(request.query.firstname, request.query.lastname, request.query.email, request.query.login, request.query.password)
+    set_default_headers(response)
+    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'))
 
     set_default_headers(response)
     if retval[0]:
@@ -185,49 +227,92 @@ def request_account():
     else:
         return '{ "ERROR": "'+retval[1]+'" }'
 
+
 @route('/confirm', method='GET')
 def accept_user():
     retval = userdb.accept_user(request.query.login, request.query.code)
-    response.set_header('Content-Type', 'text/html')
+    if retval[0]:
+        redirect('/app/accountOK.html')
+    else:
+        redirect('/app/accountBAD.html')
     
     return retval[1]
 
+
 @route('/login', method='POST')
 def login_to_app():
+    set_default_headers(response)
     retval = userdb.login_user(request.forms.get('login'), request.forms.get('password'))
     if retval[0]:
         response.set_header('Set-Cookie', 'anvioSession='+retval[1]["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
         
     return json.dumps(retval)
 
+
 @route('/logout', method='POST')
 def logout_from_app():
     userdb.logout_user(request.forms.get('login'))
     return 'OK'
 
+
+@route('/project', method='GET')
+def set_view_cookie():
+    if request.query.name:
+        name = request.query.name
+        token = request.query.code or ""
+        response.set_header('Set-Cookie', 'anvioView='+name+'|'+token+'; path=/;')
+        
+        redirect('/app/index_tobi.html')
+
 @route('/project', method='POST')
 def set_project():
+    set_default_headers(response)
     retval = get_user()
     if retval[0]:
         if request.forms.get('project'):
             userdb.set_project(retval[1]['login'], request.forms.get('project'))
             redirect_to_app()
         else:
-            return "{ 'ERROR': 'You need to specify a project name' }"
+            return '{ "ERROR": "You need to specify a project name" }'
     else:
-        return "{ 'ERROR': '" + retval[1] + "' }"
+        return '{ "ERROR": "' + retval[1] + '" }'
+
 
 @route('/project', method='DELETE')
 def delete_project():
+    set_default_headers(response)
     retval = get_user()
     if retval[0]:
         if request.forms.get('project'):
             userdb.delete_project(retval[1]['login'], request.forms.get('project'))
             redirect_to_app()
         else:
-            return "{ 'ERROR': 'You need to specify a project name' }"
+            return '{ "ERROR": "You need to specify a project name" }'
     else:
-        return "{ 'ERROR': '" + retval[1] + "' }"
+        return '{ "ERROR": "' + retval[1] + '" }'
+
+
+@route('/share', method='POST')
+def share_project():
+    set_default_headers(response)
+    if not request.forms.get('name'):
+        return '{ "ERROR": "no name specified for the share" }'
+    
+    if not re.match("^[A-Za-z0-9_-]+$", request.forms.get('name')):
+        return '{ "ERROR": "the share name contains invalid characters" }'
+    
+    retval = get_user()
+    if not retval[0]:
+        return '{ "ERROR": "no user logged in" }'
+
+    if not retval[1]['project']:
+        return '{ "ERROR": "no project selected" }'
+        
+    share = userdb.create_view(retval[1]['login'], request.forms.get('name'), retval[1]['project'], request.forms.get('public'))
+    if share[0]:
+        return '{ "token": "'+share[1]+'" }'
+    else:
+        return '{ "ERROR": "'+share[1]+'" }'
 
     
 @route('/upload', method='POST')
