@@ -321,10 +321,6 @@ class UserMGMT:
 
         if not user:
             return (False, "Could not find a user for login %s" % login)
-
-        # create a path name for the project
-        ppath = hashlib.md5(pname).hexdigest()
-        path = self.path + user["path"] + '/' + ppath
         
         p = (login, pname, )
         response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
@@ -351,7 +347,7 @@ class UserMGMT:
 
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
-        path = self.path + user["path"] + '/' + ppath
+        path = self.path + 'userdata/'+ user["path"] + '/' + ppath
         
         p = (login, pname, )
         response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
@@ -372,6 +368,105 @@ class UserMGMT:
             return (True, 'project deleted')
         else:
             return (False, 'the user does not own this project')
+
+
+    def get_view(self, vname, token=None):
+        # get the view
+        p = (vname, )
+        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
+        view = response.fetchone()
+        if not view:
+            return (False, "a view with name %s does not exist" % vname)
+
+        # get the project for this view
+        p = (view['project'], )
+        response = self.cursor.execute("SELECT * FROM projects WHERE name=?", p)
+        row = response.fetchone()
+        if row:           
+            # create the path and add it to the return structure
+            path = row['path']
+            
+            # get the user of the project
+            user = self.get_user_for_login(row['user'])
+
+            if not user:
+                return (False, "Could not find a user for this project")
+            
+            view['path'] = user['path'] + '/' + path
+        else:
+            # the project is gone, clean up this reference
+            p = (vname, )
+            response = self.cursor.execute("DELETE FROM views WHERE name=?", p)
+            self.conn.commit()
+            
+            return (False, "the project for this view does not exist")
+
+        # check if we have a token and if so see if it matches
+        if token:
+            if view['token'] == token:
+                return (True, view)
+            else:
+                return (False, "invalid token")
+
+        # otherwise check if the view is public
+        if view['public'] == 1:
+            return (True, view)
+        else:
+            return (False, "a token is required to access this view")
+        
+        return True
+
+
+    def delete_view(self, vname, login):
+        # get the user
+        user = self.get_user_for_login(login)
+
+        if not user:
+            return (False, "Could not find a user for login %s" % login)
+
+        # get the view
+        p = (vname, )
+        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
+        row = response.fetchone()
+        if not row:
+            return (False, "a view with name %s does not exist" % vname)
+
+        response = self.cursor.execute("DELETE FROM views WHERE name=?", p)
+        self.conn.commit()
+        
+        return (True, "view deleted")
+
+    def create_view(self, login, vname, pname, public=1):
+        # get the user
+        user = self.get_user_for_login(login)
+
+        if not user:
+            return (False, "Could not find a user for login %s" % login)
+                
+        # check if the view name is unique
+        p = (vname, )
+        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
+        row = response.fetchone()
+        if row:
+            return (False, "view name already taken")
+
+        # check if the project is owned by the user
+        p = (pname, login)
+        response = self.cursor.execute("SELECT * FROM projects WHERE name=? AND user=?", p)
+        row = response.fetchone()
+        if not row:
+            return (False, "The user does not own this project")
+
+        # create a token
+        token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+        
+        # create the db entry
+        p = (vname, pname, public, token, )
+        response = self.cursor.execute("INSERT INTO views (name, project, public, token) values (?, ?, ?, ?)", p)
+        self.conn.commit()
+        
+        return (True, token)
+
 
 def dict_factory(cursor, row):
     d = {}

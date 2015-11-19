@@ -41,30 +41,20 @@ function performLogin () {
 	type : 'POST',
     	data : formData,
     	success : function(data) {
-	    data = JSON.parse(data);
 	    if (data[0]) {
-		session = { "user": data[1] };
+		session = { "user": data[1],
+			    "project": { "name": document.title } };
 		setUserData();
+		toastr.success('Welcome back '+session.user.firstname+' '+session.user.lastname, 'login successful', {timeOut: 5000})
 	    } else {
-		alert(data[1]);
+		toastr.error(data[1], "login failed");
 	    }
     	}
     });
 }
 
 function checkCookie () {
-    var cookie = null;
-    var nameEQ = "anvioSession=";
-    var ca = document.cookie.split(';');
-    for(var i=0;i < ca.length;i++) {
-	var c = ca[i];
-	while (c.charAt(0)==' ') c = c.substring(1,c.length);
-	if (c.indexOf(nameEQ) == 0) {
-	    cookie = c.substring(nameEQ.length,c.length);
-	    break;
-	}
-    }
-
+    var cookie = $.cookie('anvioSession');
     if (cookie) {
 	var formData = new FormData();
 	formData.append('token', cookie);
@@ -75,9 +65,9 @@ function checkCookie () {
 	    type : 'POST',
     	    data : formData,
     	    success : function(data) {
-		data = JSON.parse(data);
 		if (data[0]) {
-		    session = { "user": data[1] };
+		    session = { "user": data[1],
+				"project": { "name": document.title } };
 		    setUserData();
 		}
     	    }
@@ -92,6 +82,13 @@ function setUserData () {
 
     // get all projects the user has access to
     var project_select = '<div class="btn-group" style="margin: 0px; height: 31px;"><button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width: 225px; text-align: left; height: 31px; overflow: hidden; text-overflow: ellipsis; whitespace: nowrap;" title="'+document.title+'"><span class="caret" style="margin-right: 4px;"></span> '+document.title+'</button><ul class="dropdown-menu">';
+    if (session.hasOwnProperty('publicProjects')) {
+	project_select += '<li class="disabled"><a>PUBLIC</a></li>';
+	for (var i=0; i<session.publicProjects.length; i++) {
+	    project_select += '<li><a href="#" onclick="setActiveProject(\''+session.publicProjects[i]+'\', true);">'+session.publicProjects[i]+'</a></li>';
+	}
+    }
+    project_select += '<li class="disabled"><a>PRIVATE</a></li>';
     for (var i=0; i<session.user.project_names.length; i++) {
 	project_select += '<li><a href="#" onclick="setActiveProject(\''+session.user.project_names[i]+'\');">'+session.user.project_names[i]+'</a></li>';
     }
@@ -101,8 +98,8 @@ function setUserData () {
     html += '<button type="button" style="margin-right: 5px; float: right;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button>';
     html += '<img src="images/user.png" style="width: 32px; float: right; border-radius: 3px; margin-right: 5px;" title="logged in as '+session.user.firstname+' '+session.user.lastname+' ('+session.user.login+')">';
     html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="upload data files" onclick="$(\'#modUploadData\').modal(\'show\');"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span></button>';
-    html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="project settings" onclick=""><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button>';
-    html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="create public view" onclick=""><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>';
+    html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="project settings" onclick="$(\'#modProjectSettings\').modal(\'show\');"><span class="glyphicon glyphicon-wrench" aria-hidden="true"></span></button>';
+    html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="create public view" onclick="$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>';
     html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="delete project" onclick="deleteProject()"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>';
     html += project_select;
     html += '</div>';
@@ -128,8 +125,12 @@ function performLogout () {
 }
 
 /* Project Management */
-function setActiveProject(p) {
+function setActiveProject(p, view, token) {
+    if (view) {
+	window.location(window.location.origin+'/project?name=p'+(token ? '&code='+token : ''));
+    }
     if (p !== document.title) {
+	$.removeCookie('anvioView', { path: '/' });
 	var formData = new FormData();
 	formData.append('project', p);
 	$.ajax({
@@ -157,6 +158,40 @@ function deleteProject() {
 	    contentType: false,
 	    success : function(data) {
 		document.location.reload(true);
+	    }
+	});
+    }
+}
+
+function shareProject() {
+    var name = document.getElementById('projectName').value;
+    var isPublic = document.getElementById('projectPublic').checked;
+    if (! name.match(/^\w+$/)) {
+	aler('The project name may only contain word characters');
+    } else {
+	$('#modShareProject').modal('hide');
+	session.project.view = name;
+	session.project.isPublic = isPublic;
+	var formData = new FormData();
+	formData.append('name', name);
+	formData.append('public', isPublic ? 1 : 0);
+	$.ajax({
+	    url : '/share',
+	    type : 'POST',
+	    data : formData,
+	    processData: false,
+	    contentType: false,
+	    complete : function(jqXHR) {
+		var data = JSON.parse(jqXHR.responseText);
+		if (data.hasOwnProperty('ERROR')) {
+		    toastr.error(data.ERROR, 'share project failed');
+		} else {
+		    var baseURL = window.location.origin + '/project?name='+session.project.view;
+		    var code = session.project.isPublic ? '' : '&code='+data.token;
+		    var msg = 'Your project has been shared.<br>It is now available via the following link:<br><br><a href="'+baseURL+code+'" target=_blank>'+baseURL+code+'</a>';
+		    document.getElementById('projectSettingsContent').innerHTML = msg;
+		    $('#modProjectSettings').modal('show');
+		}
 	    }
 	});
     }
@@ -221,3 +256,5 @@ function dataFileUploadProgress (event) {
 function uploadFileSelected (which) {
     $('#'+which+'FileName')[0].value = $('#'+which+'FileSelect')[0].files[0].name || "";
 }
+
+!function(e){"function"==typeof define&&define.amd?define(["jquery"],e):e(jQuery)}(function(e){function n(e){return u.raw?e:encodeURIComponent(e)}function o(e){return u.raw?e:decodeURIComponent(e)}function i(e){return n(u.json?JSON.stringify(e):String(e))}function r(e){0===e.indexOf('"')&&(e=e.slice(1,-1).replace(/\\"/g,'"').replace(/\\\\/g,"\\"));try{return e=decodeURIComponent(e.replace(c," ")),u.json?JSON.parse(e):e}catch(n){}}function t(n,o){var i=u.raw?n:r(n);return e.isFunction(o)?o(i):i}var c=/\+/g,u=e.cookie=function(r,c,a){if(void 0!==c&&!e.isFunction(c)){if(a=e.extend({},u.defaults,a),"number"==typeof a.expires){var d=a.expires,f=a.expires=new Date;f.setTime(+f+864e5*d)}return document.cookie=[n(r),"=",i(c),a.expires?"; expires="+a.expires.toUTCString():"",a.path?"; path="+a.path:"",a.domain?"; domain="+a.domain:"",a.secure?"; secure":""].join("")}for(var s=r?void 0:{},p=document.cookie?document.cookie.split("; "):[],m=0,v=p.length;v>m;m++){var x=p[m].split("="),k=o(x.shift()),l=x.join("=");if(r&&r===k){s=t(l,c);break}r||void 0===(l=t(l))||(s[k]=l)}return s};u.defaults={},e.removeCookie=function(n,o){return void 0===e.cookie(n)?!1:(e.cookie(n,"",e.extend({},o,{expires:-1})),!e.cookie(n))}});
