@@ -98,6 +98,14 @@ variable_positions_table_name        = 'variable_positions'
 variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
 variable_positions_table_types       = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
+gene_coverages_table_name            = 'gene_coverages'
+gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
+gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
+
+views_table_name                     = 'views'
+views_table_structure                = ['view_id', 'target_table']
+views_table_types                    = [  'str'  ,      'str'    ]
+
 # notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
 # for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
@@ -113,8 +121,8 @@ atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'  
 ####################################################################################################
 
 collections_info_table_name          = 'collections_info'
-collections_info_table_structure     = ['source', 'num_splits', 'num_clusters']
-collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ]
+collections_info_table_structure     = ['source', 'num_splits', 'num_clusters', 'cluster_ids']
+collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ,     'text'   ]
 
 collections_colors_table_name        = 'collections_colors'
 collections_colors_table_structure   = ['entry_id', 'source', 'cluster_id', 'htmlcolor']
@@ -127,21 +135,6 @@ collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text
 collections_splits_table_name        = 'collections_of_splits'
 collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
-
-
-####################################################################################################
-#
-#     TABLE DESCRIPTIONS FOR THE SAMPLES DATABASE
-#
-####################################################################################################
-
-gene_coverages_table_name            = 'gene_coverages'
-gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
-gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
-
-views_table_name                     = 'views'
-views_table_structure                = ['view_id', 'target_table']
-views_table_types                    = [  'str'  ,      'str'    ]
 
 
 ####################################################################################################

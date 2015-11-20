@@ -1363,8 +1363,8 @@ class TablesForCollections(Table):
         cluster_ids = clusters_dict.keys()
 
         # push information about this search result into serach_info table.
-        db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids)])
-        database._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_info_table_name, db_entries)
+        db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids), ','.join(cluster_ids)])
+        database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
 
         if not cluster_colors:
             cluster_colors = utils.get_random_colors_dict(cluster_ids)

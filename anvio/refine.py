@@ -56,11 +56,14 @@ class RefineBins(dbops.DatabasesMetaclass):
 
 
     def init(self):
-        # get split names
+        self.progress.new('Initializing')
+
+        self.progress.update('Getting split names')
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.bins = d.keys()
         for split_names in d.values():
             self.split_names_of_interest.update(split_names)
+        self.progress.end()
 
         # if the user updates the refinement of a single bin or bins, there shouldn't be multiple copies
         # of that stored in the database. so everytime 'store_refined_bins' function is called,
