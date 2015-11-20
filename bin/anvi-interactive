@@ -233,8 +233,12 @@ def charts(split_name):
         #  'prot'               : u'prot2_03215',
         #  'split'              : u'D23-1contig18_split_00036'}
         #
-        # we will add two more attributes:
+        # we will add a bit more attributes:
+        p['source'] = d.genes_in_contigs_dict[gene_callers_id]['source']
         p['direction'] = d.genes_in_contigs_dict[gene_callers_id]['direction']
+        p['start_in_contig'] = d.genes_in_contigs_dict[gene_callers_id]['start']
+        p['stop_in_contig'] = d.genes_in_contigs_dict[gene_callers_id]['stop']
+        p['length'] = p['stop_in_contig'] - p['start_in_contig'] 
         p['functions'] = d.gene_function_calls_dict[gene_callers_id] if d.gene_function_calls_dict.has_key(gene_callers_id) else None
 
         for level in levels_occupied:
