@@ -551,7 +551,7 @@ function buildLayersTable(order, settings)
                     var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                     for (var j=0; j < bars.length; j++)
                     {
-                        stack_bar_colors[layer_id].push(randomColor());
+                        stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
                     } 
                 }             
             }
@@ -957,7 +957,7 @@ function newBin(id, binState) {
         var from_state = false;
         var id = bin_counter;
         var name = bin_prefix + id;
-        var color = '#000000';
+        var color = randomColor({luminosity: 'dark'});
         var contig_count = 0;
         var contig_length = 0;
         var completeness = '---';
