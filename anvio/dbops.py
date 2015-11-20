@@ -254,7 +254,7 @@ class ContigsSuperclass(object):
         self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        self.gene_function_call_sources = contigs_db.meta['gene_function_sources'].split(',')
+        self.gene_function_call_sources = contigs_db.meta['gene_function_sources'].split(',') if contigs_db.meta['gene_function_sources'] else None
         for hit in contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values():
             gene_callers_id = hit['gene_callers_id']
             source = hit['source']
