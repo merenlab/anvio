@@ -594,6 +594,14 @@ D = {
              'action': 'store_true',
              'help': "When declared program will print all available states and exit."}
                 ),
+    'quick-summary': (
+            ['--quick-summary'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared the summary output will be generated as quickly as possible, with minimum amount\
+                      of essential information about bins."}
+                ),
+
 }
 
 # two functions that works with the dictionary above.

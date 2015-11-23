@@ -51,12 +51,12 @@ class SummaryHTMLOutput:
         self.summary_dict = summary_dict
 
 
-    def generate(self):
+    def generate(self, quick = False):
         self.progress.new('Copying static files')
         self.copy_files()
 
         self.progress.new('Rendering')
-        index_html = self.render()
+        index_html = self.render(quick)
 
         self.run.info('HTML Output', index_html)
 
@@ -69,9 +69,13 @@ class SummaryHTMLOutput:
         self.progress.end()
 
 
-    def render(self):
+    def render(self, quick = False):
         self.progress.update('Processing the template ...')
-        rendered = render_to_string('index.tmpl', self.summary_dict)
+
+        if quick:
+            rendered = render_to_string('index-mini.tmpl', self.summary_dict)
+        else:
+            rendered = render_to_string('index.tmpl', self.summary_dict)
 
         index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
         self.progress.update('Writing the index file ...')
@@ -97,6 +101,9 @@ def sumvals(d):
 
 @register.filter(name='humanize_n')
 def humanize_n(n):
+    if isinstance(n, str):
+        return n
+
     for unit in ['', ' Kb', ' Mb']:
         if abs(n) < 1000.0:
             return "%3.2f%s" % (n, unit)
@@ -105,6 +112,8 @@ def humanize_n(n):
 
 @register.filter(name='pretty')
 def pretty(n):
+    if not n:
+        return 'None'
     try:
         return pp(int(n))
     except ValueError:

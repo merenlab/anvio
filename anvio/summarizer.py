@@ -43,6 +43,7 @@ class Summarizer(DatabasesMetaclass):
         self.summary = {}
 
         self.debug = False
+        self.quick = False
         self.profile_db_path = None
         self.contigs_db_path = None
         self.output_directory = None
@@ -73,6 +74,7 @@ class Summarizer(DatabasesMetaclass):
 
             self.collection_id = args.collection_id
             self.output_directory = args.output_dir
+            self.quick = args.quick_summary
             self.debug = args.debug
 
         self.sanity_check()
@@ -104,12 +106,13 @@ class Summarizer(DatabasesMetaclass):
             self.completeness_data_available = True
 
         # load HMM sources for non-single-copy genes if available
-        if self.non_singlecopy_gene_hmm_sources:
+        if self.non_singlecopy_gene_hmm_sources and not self.quick:
             self.init_non_singlecopy_gene_hmm_sources()
             self.non_single_copy_gene_hmm_data_available = True
 
         # set up the initial summary dictionary
-        self.summary['meta'] = {'output_directory': self.output_directory,
+        self.summary['meta'] = {'quick': self.quick,
+                                'output_directory': self.output_directory,
                                 'collection': collection_dict.keys(),
                                 'num_bins': len(collection_dict.keys()),
                                 'collection_id': self.collection_id,
@@ -178,61 +181,62 @@ class Summarizer(DatabasesMetaclass):
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
-        # generate a TAB-delimited text output file for bin summaries
-        summary_of_bins_matrix_output = {}
-        properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content', 'percent_complete', 'percent_redundancy']
+        if not self.quick:
+            # generate a TAB-delimited text output file for bin summaries
+            summary_of_bins_matrix_output = {}
+            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content', 'percent_complete', 'percent_redundancy']
 
-        for bin_name in self.summary['collection']:
-            summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
+            for bin_name in self.summary['collection']:
+                summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
 
-        output_file_obj = self.get_output_file_handle(prefix = 'general_bins_summary.txt')
-        utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers = ['bins'] + properties, file_obj = output_file_obj)
+            output_file_obj = self.get_output_file_handle(prefix = 'general_bins_summary.txt')
+            utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers = ['bins'] + properties, file_obj = output_file_obj)
 
-        # save merged matrices for bins x samples
-        for table_name in self.collection_profile.values()[0].keys():
-            d = {}
-            for bin_id in self.collection_profile:
-                d[bin_id] = self.collection_profile[bin_id][table_name]
-
-            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
-            utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.p_meta['samples']), file_obj = output_file_obj)
-
-        # merge and store matrices for hmm hits
-        if self.non_single_copy_gene_hmm_data_available:
-            for hmm_search_source in self.summary['meta']['hmm_items']:
-                # this is to keep numbers per hmm item:
+            # save merged matrices for bins x samples
+            for table_name in self.collection_profile.values()[0].keys():
                 d = {}
+                for bin_id in self.collection_profile:
+                    d[bin_id] = self.collection_profile[bin_id][table_name]
 
-                for bin_id in self.summary['meta']['bins']:
-                    d[bin_id] = self.summary['collection'][bin_id]['hmms'][hmm_search_source]
+                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
+                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.p_meta['samples']), file_obj = output_file_obj)
 
-                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % hmm_search_source, within='hmms')
-                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj = output_file_obj)
+            # merge and store matrices for hmm hits
+            if self.non_single_copy_gene_hmm_data_available:
+                for hmm_search_source in self.summary['meta']['hmm_items']:
+                    # this is to keep numbers per hmm item:
+                    d = {}
 
-            # this is to keep number of hmm hits per bin:
-            n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
-            for hmm_search_source in self.summary['meta']['hmm_items']:
-                for bin_id in self.summary['meta']['bins']:
-                    n[bin_id][hmm_search_source] =  sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
+                    for bin_id in self.summary['meta']['bins']:
+                        d[bin_id] = self.summary['collection'][bin_id]['hmms'][hmm_search_source]
 
-            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'hmm_hit_totals.txt')
-            utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
+                    output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % hmm_search_source, within='hmms')
+                    utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj = output_file_obj)
 
-        # store percent abundance of each bin
-        self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
-        self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
-        output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
-        utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
-                                               None,
-                                               headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
-                                               file_obj = output_file_obj)
+                # this is to keep number of hmm hits per bin:
+                n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
+                for hmm_search_source in self.summary['meta']['hmm_items']:
+                    for bin_id in self.summary['meta']['bins']:
+                        n[bin_id][hmm_search_source] =  sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
+
+                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'hmm_hit_totals.txt')
+                utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
+
+            # store percent abundance of each bin
+            self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
+            self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
+            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
+            utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
+                                                   None,
+                                                   headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
+                                                   file_obj = output_file_obj)
 
 
         if self.debug:
             import json
             print json.dumps(self.summary, sort_keys=True, indent=4)
 
-        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate()
+        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate(quick = self.quick)
 
 
     def get_bins_ordered_by_completeness_and_size(self):
@@ -389,6 +393,10 @@ class Bin:
 
 
     def store_profile_data(self):
+
+        if self.summary.quick:
+            return
+
         self.progress.update('Storing profile data ...')
 
         for table_name in self.bin_profile:
@@ -406,6 +414,9 @@ class Bin:
            up above later makes sense of all to generate files and matrices, as well as
            dictionaries to diplay part of this information in the interface.
         """
+
+        if self.summary.quick:
+            return
 
         info_dict = {}
 
@@ -440,6 +451,10 @@ class Bin:
 
 
     def store_gene_coverages_matrix(self):
+
+        if self.summary.quick:
+            return
+
         self.progress.update('Storing gene coverages ...')
 
         info_dict = {}
@@ -477,6 +492,9 @@ class Bin:
 
 
     def store_sequences_for_hmm_hits(self):
+        if self.summary.quick:
+            return
+
         s = SequencesForHMMHits(self.summary.contigs_db_path)
         hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits({self.bin_id: self.split_ids})
 
@@ -506,6 +524,11 @@ class Bin:
            witht he identical FASTA id to the original contigs in the assembly file. Otherwise it appends
            `_partial_X_Y` to the FASTA id, X and Y being the start and stop positions.
         """
+
+        if self.summary.quick:
+            self.bin_info_dict['total_length'] = sum([self.summary.splits_basic_info[split_name]['length'] for split_name in self.summary.splits_basic_info if split_name in self.split_ids])
+            self.bin_info_dict['num_contigs'] = len(set([self.summary.splits_basic_info[split_name]['parent'] for split_name in self.summary.splits_basic_info if split_name in self.split_ids]))
+            return
 
         self.progress.update('Creating the FASTA file ...')
 
@@ -608,7 +631,7 @@ class Bin:
         self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
         self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
 
-        self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'])
+        self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'] if self.bin_info_dict['N50'] else 'NA')
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
