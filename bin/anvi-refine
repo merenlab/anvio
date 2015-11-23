@@ -278,10 +278,10 @@ def store_refined_bins():
     try:
         r.store_refined_bins(data, colors)
     except RefineError, e:
-        print e.clear_text()
-        return json.dumps(e.clear_text())
+        return json.dumps({'status': -1, 'message': e.clear_text()})
 
-    return json.dumps('Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_id))
+    message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_id)
+    return json.dumps({'status': 0, 'message': message})
 
 @route('/data/completeness', method='POST')
 def completeness():
