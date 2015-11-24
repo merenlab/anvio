@@ -610,6 +610,13 @@ D = {
                       relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
                       processing time for large datasets."}
                 ),
+    'quick-summary': (
+            ['--quick-summary'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared the summary output will be generated as quickly as possible, with minimum amount\
+                      of essential information about bins."}
+                ),
 
 }
 

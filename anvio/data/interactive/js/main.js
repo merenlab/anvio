@@ -1330,8 +1330,12 @@ function storeRefinedBins() {
         colors: JSON.stringify(colors, null, 4),
     },
     function(server_response, status){
-
-        toastr.info(server_response, "Server");
+        server_response = JSON.parse(server_response);
+        if (server_response.status == -1){
+            toastr.error(server_response.message, "You made the server upset :(");
+        } else {
+            toastr.info(server_response.message, "The server is on board");
+        }
     });
 }
 
