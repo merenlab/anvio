@@ -11,7 +11,6 @@ import sys
 import json
 import argparse
 import webbrowser
-import datetime
 import random
 
 from multiprocessing import Process
@@ -22,8 +21,9 @@ import anvio
 import anvio.utils as utils
 import anvio.refine as refine
 import anvio.terminal as terminal
+import anvio.bottleroutes as routes
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, RefineError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
 
 
 __author__ = "A. Murat Eren"
@@ -161,98 +161,15 @@ def send_data(name):
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
-    return json.dumps(d.views[view_id])
+    return routes.get_view_data(args, d, request, response, view_id)
 
 @route('/tree/<tree_id>')
-def send_tree(tree_id):
-    set_default_headers(response)
-
-    if tree_id in d.p_meta['clusterings']:
-        run.info_single("Clustering of '%s' has been requested" % (tree_id))
-        return json.dumps(d.p_meta['clusterings'][tree_id]['newick'])
-
-    return json.dumps("")
+def get_tree(tree_id):
+    return routes.get_tree(args, d, request, response, tree_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
-    data = {'layers': [],
-             'index': None,
-             'total': None,
-             'coverage': [],
-             'variability': [],
-             'competing_nucleotides': [],
-             'previous_contig_name': None,
-             'next_contig_name': None,
-             'genes': []}
-
-    if split_name not in d.split_names:
-        return data
-
-    if not d.auxiliary_data_available:
-        return data
-
-    index_of_split = d.split_names_ordered.index(split_name)
-    if index_of_split:
-        data['previous_contig_name'] = d.split_names_ordered[index_of_split - 1]
-    if (index_of_split + 1) < len(d.split_names_ordered):
-        data['next_contig_name'] = d.split_names_ordered[index_of_split + 1]
-
-    data['index'] = index_of_split + 1
-    data['total'] = len(d.split_names_ordered)
-
-    layers = sorted(d.p_meta['samples'])
-
-    coverage_values_dict = d.split_coverage_values.get(split_name)
-    data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
-
-    ## get the variability information dict for split:
-    split_variability_info_dict = d.get_variability_information_for_split(split_name)
-
-    for layer in layers:
-        data['layers'].append(layer)
-        data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
-
-        # we get a nice dict back, but here we convert it into a shitty list...
-        l = [0] * d.splits_basic_info[split_name]['length']
-        vd = split_variability_info_dict[layer]['variability']
-        for pos in vd:
-            l[pos] = vd[pos]
-        data['variability'].append(l)
-
-    levels_occupied = {1: []}
-    for entry_id in d.split_to_genes_in_splits_ids[split_name]:
-        prot_id = d.genes_in_splits[entry_id]['prot']
-        p = d.genes_in_splits[entry_id]
-        # p looks like this at this point:
-        #
-        # {'percentage_in_split': 100,
-        #  'start_in_split'     : 16049,
-        #  'stop_in_split'      : 16633}
-        #  'prot'               : u'prot2_03215',
-        #  'split'              : u'D23-1contig18_split_00036'}
-        #
-        # we will add two more attributes:
-        p['direction'] = d.genes_in_contigs_dict[prot_id]['direction']
-        p['function'] = d.genes_in_contigs_dict[prot_id]['function'] or None
-
-        for level in levels_occupied:
-            level_ok = True
-            for gene_tuple in levels_occupied[level]:
-                if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
-                            (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100):
-                    level_ok = False
-                    break
-            if level_ok:
-                levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
-                p['level'] = level
-                break
-        if not level_ok:
-            levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
-            p['level'] = level + 1
-
-        data['genes'].append(p)
-
-    return json.dumps(data)
+    return routes.charts(d, split_name)
 
 state_for_charts = {}
 
@@ -268,74 +185,31 @@ def get_parent_state():
 
 @route('/data/contig/<split_name>')
 def split_info(split_name):
-    set_default_headers(response)
-    return json.dumps(d.split_sequences[split_name])
+    return routes.get_split_info(args, d, request, response, split_name)
 
 @route('/store_refined_bins', method='POST')
 def store_refined_bins():
-    data = json.loads(request.forms.get('data'))
-    colors = json.loads(request.forms.get('colors'))
-
-    try:
-        r.store_refined_bins(data, colors)
-    except RefineError, e:
-        return json.dumps({'status': -1, 'message': e.clear_text()})
-
-    message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_id)
-    return json.dumps({'status': 0, 'message': message})
+    return routes.store_refined_bins(args, r, request, response)
 
 @route('/data/completeness', method='POST')
 def completeness():
-    completeness_stats = {}
-    if not d.completeness:
-        return json.dumps(completeness_stats)
-
-    split_names = json.loads(request.forms.get('split_names'))
-    bin_name = json.loads(request.forms.get('bin_name'))
-
-    run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), bin_name))
-
-    completeness_stats = d.completeness.get_info_for_splits(set(split_names))
-
-    return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
+    return routes.completeness(d, request)
 
 @route('/state/autoload')
 def state_autoload():
-    # see --state parameter.
-    set_default_headers(response)
-
-    return json.dumps(d.state)
+    return routes.state_autoload(d, response)
 
 @route('/state/all')
 def state_all():
-    set_default_headers(response)
-
-    return json.dumps(d.states_table.states)
+    return routes.state_all(d, response)
 
 @route('/state/get', method='POST')
 def get_state():
-    set_default_headers(response)
-
-    state = d.states_table.states[request.forms.get('name')]
-
-    if state is not None:
-        return json.dumps(state['content'])
-
-    return json.dumps("")
+    return routes.get_state(d, request, response)
 
 @route('/state/save', method='POST')
 def save_state():
-    if args.read_only:
-        return json.dumps({'status_code': '0'})
-
-    name = request.forms.get('name')
-    content = request.forms.get('content')
-    last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-
-    d.states_table.store_state(name, content, last_modified)
-
-    return json.dumps({'status_code': '1'})
-
+    return routes.save_state(args, d, request, response)
 
 #######################################################################################################################
 # bottle callbacks end
