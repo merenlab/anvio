@@ -1,6 +1,6 @@
 FROM ubuntu:trusty
  
-ENV ANVIO_VERSION 1.2.2
+ENV ANVIO_VERSION 1.2.3
 
 ENV DEBIAN_FRONTEND noninteractive
 
