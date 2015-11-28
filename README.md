@@ -1,7 +1,5 @@
 # README
 
-Anvi'o is an analysis and visualization platform for 'omics data.
-
 ![anvio logo](http://merenlab.org/images/anvio-logo.png)
 
 Please see the project page for information: 
