@@ -1102,9 +1102,15 @@ class TablesForGeneCalls(Table):
     def populate_genes_in_contigs_table(self, gene_calls_dict, protein_sequences, gene_calls_dict_id_to_db_unique_id):
         contigs_db = ContigsDatabase(self.db_path)
 
+        self.progress.new('Entering gene calls into the database')
+        counter = 0
         for entry_id in gene_calls_dict:
+            if counter % 10 == 0:
+                self.progress.update('%d ...' % (counter))
             contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, tuple([gene_calls_dict_id_to_db_unique_id[entry_id]] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]))
             contigs_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, tuple([gene_calls_dict_id_to_db_unique_id[entry_id]] + [protein_sequences[entry_id]]))
+            counter += 1
+        self.progress.end()
 
         contigs_db.disconnect()
 
