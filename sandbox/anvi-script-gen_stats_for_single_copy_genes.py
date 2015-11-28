@@ -41,7 +41,7 @@ contig_genes = {}
 genes = {}
 
 db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
-search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_table_name)
 search_info_dict = db.db.get_table_as_dict(t.hmm_hits_info_table_name)
 contig_lengths_table = db.db.get_table_as_dict(t.contigs_info_table_name)
 contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
