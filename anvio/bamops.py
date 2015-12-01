@@ -7,6 +7,7 @@ import os
 import sys
 import pysam
 import hashlib
+from collections import Counter
 
 import anvio
 import anvio.tables as t
@@ -19,6 +20,7 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 
 run = terminal.Run()
+progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
@@ -33,13 +35,16 @@ __status__ = "Development"
 
 
 class LinkMerDatum:
-    def __init__(self, read_id):
+    def __init__(self, read_id, is_read1):
         self.read_id = read_id
-        self.read_hash = hashlib.sha224(read_id).hexdigest()
+        self.read_X = 'read-1' if is_read1 else 'read-2'
+        self.read_unique_id = hashlib.sha224(read_id + self.read_X).hexdigest()
         self.contig_name = None
         self.pos_in_contig = None
         self.pos_in_read = None
         self.base = None
+        self.reverse = None
+        self.sequence = None
 
 
     def __str__(self):
@@ -51,24 +56,54 @@ class LinkMerDatum:
 
 
 class LinkMersData:
-    def __init__(self, bam):
+    def __init__(self, bam, run = run, progress = progress):
         self.bam = bam
         self.data = []
 
+        self.run = run
+        self.progress = progress
 
-    def append(self, contig_name, positions):
-        for pileupcolumn in self.bam.pileup(contig_name):
+    def append(self, contig_name, positions, keep_only_reads_covering_all_positions = True):
+        data = []
+
+        self.progress.new('Processing "%s"' % (contig_name))
+        self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
+
+        for pileupcolumn in self.bam.pileup(contig_name, min(positions) - 1, max(positions) + 1):
             if pileupcolumn.pos not in positions:
                 continue
 
             for pileupread in pileupcolumn.pileups:
                 if not pileupread.is_del:
-                    L = LinkMerDatum(pileupread.alignment.qname)
+                    L = LinkMerDatum(pileupread.alignment.qname, pileupread.alignment.is_read1)
                     L.contig_name = contig_name
                     L.pos_in_contig = pileupcolumn.pos
                     L.pos_in_read = pileupread.query_position
                     L.base = pileupread.alignment.seq[pileupread.query_position]
-                    self.data.append(L)
+                    L.reverse = pileupread.alignment.is_reverse
+                    L.sequence = pileupread.alignment.query
+                    # ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare', 'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap',
+                    #  'get_reference_positions', 'get_reference_sequence', 'get_tag', 'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
+                    #  'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary', 'is_unmapped', 'isize', 'mapping_quality', 'mapq',
+                    #  'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm', 'next_reference_id', 'next_reference_name', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos',
+                    #  'positions', 'qend', 'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length', 'query_alignment_qualities',
+                    #  'query_alignment_sequence', 'query_alignment_start', 'query_length', 'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id',
+                    #  'reference_length', 'reference_name', 'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
+                    #  'template_length', 'tid', 'tlen', 'tostring']
+                    data.append(L)
+        
+        self.progress.end()
+
+        self.run.info('data', '%d entries identified mapping at least one of the nucleotide positions for "%s"' % (len(data), contig_name))
+
+        if keep_only_reads_covering_all_positions:
+            num_positions = len(positions)
+            num_hits_dict = Counter([d.read_unique_id for d in data])
+            read_unique_ids_to_keep = set([read_unique_id for read_unique_id in num_hits_dict if num_hits_dict[read_unique_id] == num_positions])
+            self.run.info('data', '%s unique reads that covered all positions were kept' % (len(read_unique_ids_to_keep)), mc = 'red')
+            self.data.append((contig_name, positions, [d for d in data if d.read_unique_id in read_unique_ids_to_keep]))
+        else:
+            self.data.append((contig_name, positions, data))
 
 
 class LinkMers:
@@ -79,7 +114,7 @@ class LinkMers:
     def __init__(self, args = None):
         self.args = args
         self.input_file_path = None 
-        self.contigs_and_positions = {}
+        self.contig_and_position_requests_list = []
 
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
@@ -104,7 +139,7 @@ class LinkMers:
                 except ValueError:
                     raise ConfigError, 'Positions for contig "%s" does not seem to be comma-separated integers...' % contig_name
 
-                self.contigs_and_positions[contig_name] = set(positions)
+                self.contig_and_position_requests_list.append((contig_name, set(positions)),)
 
         self.bam = None
         self.linkmers = None
@@ -122,9 +157,6 @@ class LinkMers:
             raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_file_path, e)
         self.progress.end()
 
-        self.contig_names = self.bam.references
-        self.contig_lenghts = self.bam.lengths
-
         try:
             self.num_reads_mapped = self.bam.mapped
         except ValueError:
@@ -132,20 +164,14 @@ class LinkMers:
 
         self.run.info('input_bam', self.input_file_path)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
-        self.run.info('num_contigs', pp(len(self.contig_names)))
-        self.run.info('num_contigs_of_interest', pp(len(self.contigs_and_positions)))
-        self.run.info('num_positions', pp(sum([len(p) for p in self.contigs_and_positions.values()])))
+        self.run.info('num_contigs_in_bam', pp(len(self.bam.references)))
+        self.run.info('num_contigs_of_interest', pp(len(set([contig_name for contig_name, positions in self.contig_and_position_requests_list]))))
+        self.run.info('num_entries', pp(len(self.contig_and_position_requests_list)))
 
-        indexes = [self.contig_names.index(r) for r in self.contigs_and_positions if r in self.contig_names]
-        self.contig_names = [self.contig_names[i] for i in indexes]
-        self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
 
-        self.linkmers = LinkMersData(self.bam)
-        for i in range(0, len(self.contig_names)):
-            contig_name = self.contig_names[i]
-            contig_positions = self.contigs_and_positions[contig_name]
-
-            self.linkmers.append(contig_name, contig_positions)
+        self.linkmers = LinkMersData(self.bam, self.run, self.progress)
+        for contig_name, positions in self.contig_and_position_requests_list:
+            self.linkmers.append(contig_name, positions)
 
         return self.linkmers.data
 
@@ -154,12 +180,15 @@ class LinkMers:
         filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        output_file.write('\t'.join(['entry_id', 'contig_name', 'pos_in_contig', 'pos_in_read', 'base', 'read_id']) + '\n')
+        output_file.write('\t'.join(['entry_id', 'contig_name', 'pos_in_contig', 'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse', 'sequence']) + '\n')
         entry_id = 0
-        for d in self.linkmers.data:
-            entry_id += 1
-            output_file.write('%.5d\t%s\t%d\t%d\t%s\t%s\n' % (entry_id, d.contig_name, d.pos_in_contig, \
-                                                             d.pos_in_read, d.base, d.read_hash))
+        for contig_name, positions, data in self.linkmers.data:
+            for d in data:
+                entry_id += 1
+                output_file.write('%.9d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
+                                % (entry_id, d.contig_name, d.pos_in_contig, \
+                                   d.pos_in_read, d.base, d.read_unique_id, \
+                                   d.read_X, d.reverse, d.sequence))
         output_file.close()
 
         self.run.info('output_file', output_file_path)
@@ -179,8 +208,8 @@ class LinkMers:
 
 
     def sanity_check(self):
-        if not self.contigs_and_positions:
-            raise ConfigError, "Contig names and positions dictionary is empty"
+        if not self.contig_and_position_requests_list:
+            raise ConfigError, "Entries dictionary is empty"
 
 
 class GetReadsFromBAM:
