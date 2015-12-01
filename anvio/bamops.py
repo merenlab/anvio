@@ -35,8 +35,9 @@ __status__ = "Development"
 
 
 class LinkMerDatum:
-    def __init__(self, read_id, is_read1):
+    def __init__(self, sample_id, read_id, is_read1):
         self.read_id = read_id
+        self.sample_id = sample_id
         self.read_X = 'read-1' if is_read1 else 'read-2'
         self.read_unique_id = hashlib.sha224(read_id + self.read_X).hexdigest()
         self.contig_name = None
@@ -56,26 +57,45 @@ class LinkMerDatum:
 
 
 class LinkMersData:
-    def __init__(self, bam, run = run, progress = progress):
-        self.bam = bam
+    def __init__(self, run = run, progress = progress):
         self.data = []
 
         self.run = run
         self.progress = progress
 
-    def append(self, contig_name, positions, only_complete_links = False):
+    def append(self, input_bam_path, contig_name, positions, only_complete_links = False):
         data = []
 
-        self.progress.new('Processing "%s"' % (contig_name))
+        try:
+            bam = pysam.Samfile(input_bam_path, 'rb')
+        except ValueError as e:
+            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (input_bam_path, e)
+
+        try:
+            num_reads_mapped = bam.mapped
+        except ValueError:
+            self.progress.end()
+            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+
+        sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
+
+        self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
+
+        self.run.info('input_bam_path', input_bam_path)
+        self.run.info('sample_id', sample_id)
+        self.run.info('total_reads_mapped', pp(int(num_reads_mapped)))
+        self.run.info('num_contigs_in_bam', pp(len(bam.references)))
+
+        self.progress.new('Processing "%s" in "%s"' % (contig_name, input_bam_path))
         self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
 
-        for pileupcolumn in self.bam.pileup(contig_name, min(positions) - 1, max(positions) + 1):
+        for pileupcolumn in bam.pileup(contig_name, min(positions) - 1, max(positions) + 1):
             if pileupcolumn.pos not in positions:
                 continue
 
             for pileupread in pileupcolumn.pileups:
                 if not pileupread.is_del:
-                    L = LinkMerDatum(pileupread.alignment.qname, pileupread.alignment.is_read1)
+                    L = LinkMerDatum(sample_id, pileupread.alignment.qname, pileupread.alignment.is_read1)
                     L.contig_name = contig_name
                     L.pos_in_contig = pileupcolumn.pos
                     L.pos_in_read = pileupread.query_position
@@ -113,15 +133,21 @@ class LinkMers:
        be followed."""
     def __init__(self, args = None):
         self.args = args
-        self.input_file_path = None 
+        self.input_file_paths = []
         self.contig_and_position_requests_list = []
 
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
 
         if args:
-            filesnpaths.is_file_exists(args.input_file)
-            self.input_file_path = args.input_file
+            for input_file_path in args.input_files:
+                filesnpaths.is_file_exists(input_file_path)
+
+            self.input_file_paths = [os.path.abspath(p.strip()) for p in args.input_files]
+
+            if len(self.input_file_paths) != len(set(self.input_file_paths)):
+                raise ConfigError, "You can't declared the same BAM file twice :/"
+
             self.only_complete_links = args.only_complete_links
 
             if args.list_contigs:
@@ -142,37 +168,17 @@ class LinkMers:
 
                 self.contig_and_position_requests_list.append((contig_name, set(positions)),)
 
-        self.bam = None
         self.linkmers = None
 
 
     def process(self):
         self.sanity_check()
 
-        self.progress.new('Init')
-        self.progress.update('Reading BAM File')
-        try:
-            self.bam = pysam.Samfile(self.input_file_path, 'rb')
-        except ValueError as e:
-            self.progress.end()
-            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_file_path, e)
-        self.progress.end()
+        self.linkmers = LinkMersData(self.run, self.progress)
 
-        try:
-            self.num_reads_mapped = self.bam.mapped
-        except ValueError:
-            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
-
-        self.run.info('input_bam', self.input_file_path)
-        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
-        self.run.info('num_contigs_in_bam', pp(len(self.bam.references)))
-        self.run.info('num_contigs_of_interest', pp(len(set([contig_name for contig_name, positions in self.contig_and_position_requests_list]))))
-        self.run.info('num_entries', pp(len(self.contig_and_position_requests_list)))
-
-
-        self.linkmers = LinkMersData(self.bam, self.run, self.progress)
-        for contig_name, positions in self.contig_and_position_requests_list:
-            self.linkmers.append(contig_name, positions, self.only_complete_links)
+        for input_file in self.input_file_paths:
+            for contig_name, positions in self.contig_and_position_requests_list:
+                self.linkmers.append(input_file, contig_name, positions, self.only_complete_links)
 
         return self.linkmers.data
 
@@ -181,18 +187,19 @@ class LinkMers:
         filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        output_file.write('\t'.join(['entry_id', 'request_id', 'contig_name', 'pos_in_contig', 'pos_in_read',\
-                                     'base', 'read_unique_id', 'read_X', 'reverse', 'sequence']) + '\n')
+        output_file.write('\t'.join(['entry_id', 'sample_id', 'request_id', 'contig_name', 'pos_in_contig',\
+                                     'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse',\
+                                     'sequence']) + '\n')
         request_id = 0
         entry_id = 0
         for contig_name, positions, data in self.linkmers.data:
             request_id += 1
             for d in data:
                 entry_id += 1
-                output_file.write('%.9d\t%.3d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
-                                % (entry_id, request_id, d.contig_name, d.pos_in_contig, \
-                                   d.pos_in_read, d.base, d.read_unique_id, d.read_X, \
-                                   d.reverse, d.sequence))
+                output_file.write('%.9d\t%s\t%.3d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
+                                % (entry_id, d.sample_id, request_id, d.contig_name,\
+                                   d.pos_in_contig, d.pos_in_read, d.base, d.read_unique_id,\
+                                   d.read_X, d.reverse, d.sequence))
         output_file.close()
 
         self.run.info('output_file', output_file_path)
