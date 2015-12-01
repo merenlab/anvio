@@ -59,6 +59,7 @@ class ContigsSuperclass(object):
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
+        self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
         self.contigs_basic_info = {}
         self.split_sequences = {}
         self.contig_sequences = {}
@@ -68,6 +69,7 @@ class ContigsSuperclass(object):
 
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
+        self.gene_function_calls_initiated = False
 
         self.hmm_searches_dict = {}   # <--- upon initiation, this dict only keeps hmm hits for non-singlecopy
         self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
@@ -121,7 +123,7 @@ class ContigsSuperclass(object):
         self.singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
         self.non_singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
 
-        self.progress.update('Generating split to genes in splits mapping dict')
+        self.progress.update('Generating "split name" to "gene entry ids" mapping dict')
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']
             if split_name in self.split_to_genes_in_splits_ids:
@@ -132,6 +134,10 @@ class ContigsSuperclass(object):
         for split_name in self.splits_basic_info:
             if not self.split_to_genes_in_splits_ids.has_key(split_name):
                 self.split_to_genes_in_splits_ids[split_name] = set([])
+
+        self.progress.update('Generating "gene caller id" to "split name" mapping dict')
+        for entry in self.genes_in_splits.values():
+            self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
         self.progress.end()
 
@@ -277,6 +283,55 @@ class ContigsSuperclass(object):
         contigs_db.disconnect()
 
         self.progress.end()
+
+        self.gene_function_calls_initiated = True
+
+
+    def search_splits_for_gene_functions(self, search_terms, verbose = False):
+        if not isinstance(search_terms, list):
+            raise ConfigError, "Search terms must be of type 'list'"
+
+        search_terms = [s.strip() for s in search_terms]
+
+        if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
+            raise ConfigError, "Please do not use the same search term twice :/ Becasue, reasons. You know."
+
+        for search_term in search_terms:
+            if not len(search_term) >= 3:
+                raise ConfigError, "A search term cannot be less than three characters"
+
+        self.run.info('Search terms', '%d found' % (len(search_terms)))
+        matching_gene_caller_ids = dict([(search_term, {}) for search_term in search_terms])
+        matching_function_calls = dict([(search_term, {}) for search_term in search_terms])
+        split_names = dict([(search_term, {}) for search_term in search_terms])
+
+        if not self.gene_function_calls_initiated:
+            self.init_functions()
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        for search_term in search_terms:
+            self.progress.new('Search function')
+            self.progress.update('Searching for term "%s"' % search_term)
+            response = contigs_db.db._exec('''select gene_callers_id, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
+
+            matching_gene_caller_ids[search_term] = set([m[0] for m in response])
+            matching_function_calls[search_term] = list(set([m[1] for m in response]))
+            split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
+
+            self.progress.end()
+
+            if len(matching_gene_caller_ids):
+                self.run.info('Matches', '%d unique gene calls contained the search term "%s"' % (len(matching_gene_caller_ids[search_term]), search_term))
+                if verbose:
+                    self.run.warning('\n'.join(matching_function_calls[search_term][0:25]), header="Matching names for '%s' (up to 25)" % search_term, raw = True, lc = 'cyan')
+            else:
+                self.run.info('Matches', 'No matches found the search term "%s"' % (search_term), mc = 'red')
+
+        contigs_db.disconnect()
+        self.progress.end()
+
+        return split_names
 
 
 class ProfileSuperclass(object):
