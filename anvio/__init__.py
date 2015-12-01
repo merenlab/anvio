@@ -199,6 +199,11 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the profile database and quit."}
                 ),
+    'search-terms': (
+            ['--search-terms'],
+            {'metavar': 'SEARCH_TERMS',
+             'help': "Search terms. Multiple of them can be declared separated by comma."}
+                ),
     'list-contigs': (
             ['--list-contigs'],
             {'default': False,
@@ -396,6 +401,12 @@ D = {
              'action': 'store_true',
              'help': "Don't do anything real. Test everything, and stop right before wherever the developer\
                       said 'well, this is enough testing', and decided to print out results."}
+                ),
+    'verbose': (
+            ['--verbose'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Be verbose, print more messages whenever possible."}
                 ),
     'debug': (
             ['--debug'],
