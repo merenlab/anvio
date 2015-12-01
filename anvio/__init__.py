@@ -628,7 +628,13 @@ D = {
              'help': "When declared the summary output will be generated as quickly as possible, with minimum amount\
                       of essential information about bins."}
                 ),
-
+    'only-complete-links': (
+            ['--only-complete-links'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this\
+                      flag if you want to perform oligotyping-like analyses on matching reads."}
+                ),
 }
 
 # two functions that works with the dictionary above.

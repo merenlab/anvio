@@ -31,6 +31,7 @@ if __name__ == '__main__':
                         help = 'Sorted and indexed BAM file to analyze.')
 
     parser.add_argument(*anvio.A('contigs-and-positions'), **anvio.K('contigs-and-positions'))
+    parser.add_argument(*anvio.A('only-complete-links'), **anvio.K('only-complete-links'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 

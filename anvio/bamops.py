@@ -63,7 +63,7 @@ class LinkMersData:
         self.run = run
         self.progress = progress
 
-    def append(self, contig_name, positions, keep_only_reads_covering_all_positions = True):
+    def append(self, contig_name, positions, only_complete_links = False):
         data = []
 
         self.progress.new('Processing "%s"' % (contig_name))
@@ -96,7 +96,7 @@ class LinkMersData:
 
         self.run.info('data', '%d entries identified mapping at least one of the nucleotide positions for "%s"' % (len(data), contig_name))
 
-        if keep_only_reads_covering_all_positions:
+        if only_complete_links:
             num_positions = len(positions)
             num_hits_dict = Counter([d.read_unique_id for d in data])
             read_unique_ids_to_keep = set([read_unique_id for read_unique_id in num_hits_dict if num_hits_dict[read_unique_id] == num_positions])
@@ -122,6 +122,7 @@ class LinkMers:
         if args:
             filesnpaths.is_file_exists(args.input_file)
             self.input_file_path = args.input_file
+            self.only_complete_links = args.only_complete_links
 
             if args.list_contigs:
                 self.list_contigs()
@@ -171,7 +172,7 @@ class LinkMers:
 
         self.linkmers = LinkMersData(self.bam, self.run, self.progress)
         for contig_name, positions in self.contig_and_position_requests_list:
-            self.linkmers.append(contig_name, positions)
+            self.linkmers.append(contig_name, positions, self.only_complete_links)
 
         return self.linkmers.data
 
@@ -180,15 +181,18 @@ class LinkMers:
         filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        output_file.write('\t'.join(['entry_id', 'contig_name', 'pos_in_contig', 'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse', 'sequence']) + '\n')
+        output_file.write('\t'.join(['entry_id', 'request_id', 'contig_name', 'pos_in_contig', 'pos_in_read',\
+                                     'base', 'read_unique_id', 'read_X', 'reverse', 'sequence']) + '\n')
+        request_id = 0
         entry_id = 0
         for contig_name, positions, data in self.linkmers.data:
+            request_id += 1
             for d in data:
                 entry_id += 1
-                output_file.write('%.9d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
-                                % (entry_id, d.contig_name, d.pos_in_contig, \
-                                   d.pos_in_read, d.base, d.read_unique_id, \
-                                   d.read_X, d.reverse, d.sequence))
+                output_file.write('%.9d\t%.3d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
+                                % (entry_id, request_id, d.contig_name, d.pos_in_contig, \
+                                   d.pos_in_read, d.base, d.read_unique_id, d.read_X, \
+                                   d.reverse, d.sequence))
         output_file.close()
 
         self.run.info('output_file', output_file_path)
