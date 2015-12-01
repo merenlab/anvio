@@ -129,6 +129,9 @@ anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -
 INFO "Get linkmers from 204-6M.bam for contig 1720, position 600 and 661"
 anvi-report-linkmers -P contigs_and_positions_for_linkmers.txt -i test-output/204-6M.bam -o test-output/linkmers_for_contig_1720_pos_600_and_661.txt
 
+INFO "Search for functions to get split names with matching genes"
+anvi-search-functions-in-splits -c test-output/CONTIGS.db --search transporter,kinase -o test-output/transporter-hits.txt --verbose
+
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p test-output/204-MERGED/PROFILE.db \
