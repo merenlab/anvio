@@ -41,6 +41,7 @@ class LinkMerDatum:
         self.read_X = 'read-1' if is_read1 else 'read-2'
         self.read_unique_id = hashlib.sha224(read_id + self.read_X).hexdigest()
         self.contig_name = None
+        self.request_id = None
         self.pos_in_contig = None
         self.pos_in_read = None
         self.base = None
@@ -63,7 +64,7 @@ class LinkMersData:
         self.run = run
         self.progress = progress
 
-    def append(self, input_bam_path, contig_name, positions, only_complete_links = False):
+    def append(self, input_bam_path, request_id, contig_name, positions, only_complete_links = False):
         data = []
 
         try:
@@ -96,6 +97,7 @@ class LinkMersData:
             for pileupread in pileupcolumn.pileups:
                 if not pileupread.is_del:
                     L = LinkMerDatum(sample_id, pileupread.alignment.qname, pileupread.alignment.is_read1)
+                    L.request_id = request_id
                     L.contig_name = contig_name
                     L.pos_in_contig = pileupcolumn.pos
                     L.pos_in_read = pileupread.query_position
@@ -157,8 +159,11 @@ class LinkMers:
             filesnpaths.is_file_exists(args.contigs_and_positions)
             filesnpaths.is_file_tab_delimited(args.contigs_and_positions, expected_number_of_fields = 2)
 
+            request_id = 0
             f = open(args.contigs_and_positions)
             for line in f.readlines():
+                request_id += 1
+
                 contig_name, positions = line.split('\t')
 
                 try:
@@ -166,7 +171,7 @@ class LinkMers:
                 except ValueError:
                     raise ConfigError, 'Positions for contig "%s" does not seem to be comma-separated integers...' % contig_name
 
-                self.contig_and_position_requests_list.append((contig_name, set(positions)),)
+                self.contig_and_position_requests_list.append((request_id, contig_name, set(positions)),)
 
         self.linkmers = None
 
@@ -177,8 +182,8 @@ class LinkMers:
         self.linkmers = LinkMersData(self.run, self.progress)
 
         for input_file in self.input_file_paths:
-            for contig_name, positions in self.contig_and_position_requests_list:
-                self.linkmers.append(input_file, contig_name, positions, self.only_complete_links)
+            for request_id, contig_name, positions in self.contig_and_position_requests_list:
+                self.linkmers.append(input_file, request_id, contig_name, positions, self.only_complete_links)
 
         return self.linkmers.data
 
@@ -190,14 +195,12 @@ class LinkMers:
         output_file.write('\t'.join(['entry_id', 'sample_id', 'request_id', 'contig_name', 'pos_in_contig',\
                                      'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse',\
                                      'sequence']) + '\n')
-        request_id = 0
         entry_id = 0
         for contig_name, positions, data in self.linkmers.data:
-            request_id += 1
             for d in data:
                 entry_id += 1
                 output_file.write('%.9d\t%s\t%.3d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
-                                % (entry_id, d.sample_id, request_id, d.contig_name,\
+                                % (entry_id, d.sample_id, d.request_id, d.contig_name,\
                                    d.pos_in_contig, d.pos_in_read, d.base, d.read_unique_id,\
                                    d.read_X, d.reverse, d.sequence))
         output_file.close()
