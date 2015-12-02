@@ -1,4 +1,4 @@
-#!/Users/tobiaspaczian/anaconda/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8
 """Entry point to the interactive interface.
 
@@ -155,7 +155,9 @@ def check_user():
                 args.fasta_file = basepath + 'fastaFile'
                 args.view_data = basepath + 'dataFile'
                 args.title = user['project']
-    
+                #args.profile_db = basepath + 'profile.db'
+                #args.samples_information_db =  basepath + 'samples.db'
+                
                 global d
                 d = interactive.InputHandler(args)
                 return True
@@ -201,7 +203,7 @@ def set_user_data():
     
 @route('/')
 def redirect_to_app():        
-    redirect('/app/index_tobi.html')
+    redirect('/app/index.html')
 
 
 @route('/token', method='POST')
@@ -262,7 +264,7 @@ def set_view_cookie():
         token = request.query.code or ""
         response.set_header('Set-Cookie', 'anvioView='+name+'|'+token+'; path=/;')
         
-        redirect('/app/index_tobi.html')
+        redirect('/app/index.html')
 
 @route('/project', method='POST')
 def set_project():
