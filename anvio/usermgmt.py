@@ -35,6 +35,9 @@ class UserMGMT:
         self.db_path = path + 'user.db'
         self.version = None
 
+        if not filesnpaths.is_file_exists(self.db_path):
+            new_database=True
+
         if new_database:
             filesnpaths.is_output_file_writable(self.db_path)
         else:
