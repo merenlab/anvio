@@ -32,7 +32,7 @@ def main(args):
     output_file_path = args.output_file if args.output_file else 'search_results.txt'
     filesnpaths.is_output_file_writable(output_file_path)
 
-    search_terms = [s.strip() for s in args.search_terms.split(',')]
+    search_terms = [s.strip() for s in args.search_terms.split(args.delimiter)]
 
     matching_split_names_dict = c.search_splits_for_gene_functions(search_terms, verbose = args.verbose)
 
@@ -62,6 +62,7 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
+    parser.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 

@@ -202,7 +202,13 @@ D = {
     'search-terms': (
             ['--search-terms'],
             {'metavar': 'SEARCH_TERMS',
-             'help': "Search terms. Multiple of them can be declared separated by comma."}
+             'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'delimiter': (
+            ['--delimiter'],
+            {'metavar': 'CHAR',
+             'default': ',', 
+             'help': "The delimiter to parse multiple input terms. The default is '%(default)s'."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
