@@ -93,7 +93,8 @@ args = parser.parse_args()
 port = args.port_number
 ip = args.ip_address
 
-port = utils.get_available_port_num(start = port, ip=ip)
+if not port:
+    port = utils.get_available_port_num(start = port, ip=ip)
 
 if not port:
     run.info_single('anvio failed to find a port number that is available :(', mc='red')
@@ -356,6 +357,9 @@ def receive_upload_file():
     else:
         open(basepath + 'dataFile', 'a').close()
 
+    # create a profile database
+    profiledb = dbops.ProfileDatabase.create();
+        
     redirect_to_app()
 
 # END CUSTOM
