@@ -15,6 +15,7 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/session.js"></script>
     <style>
       body {
       color: #333332;
@@ -51,34 +52,11 @@
     </style>
 
     <script>
-    $(document).ready(function(){
-	$('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
-	$("#loginForm").submit(function(event){ event.preventDefault(); });
-    });
-
-function performLogin () {
-    var formData = new FormData();
-    if (! (document.getElementById('login').value && document.getElementById('password').value)) {
-	alert('you must enter both password and login');
-	return;
-    }
-    formData.append('login', document.getElementById('login').value);
-    formData.append('password', document.getElementById('password').value);
-    $.ajax({
-    	url : '/login',
-	processData: false,
-	contentType: false,
-	type : 'POST',
-    	data : formData,
-    	success : function(data) {
-	    if (data[0]) {
-		window.location = "index_tobi.html";
-	    } else {
-		alert("login failed: "+data[1]);
-	    }
-    	}
-    });
-}
+      $(document).ready(function(){
+      $('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
+      $("#loginForm").submit(function(event){ event.preventDefault(); });
+      checkCookie();
+      });
     </script>
     
   </head>
