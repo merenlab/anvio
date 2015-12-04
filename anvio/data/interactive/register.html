@@ -38,7 +38,7 @@ function performRegistration() {
 	if (result.hasOwnProperty('ERROR')) {
 	    alert("Your registration failed: "+result.ERROR);
 	} else {
-	    document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully. You should have received a confirmation at the registered email address.</p><p>Click on the link in that email to confirm your account.</p></div>";
+	    document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully. You will received a confirmation at the registered email address shortly.</p><p>Click on the link in that email to confirm your account.</p></div>";
 		}
 	    }).fail(function(result){
 		if (result.hasOwnProperty('ERROR')) {
