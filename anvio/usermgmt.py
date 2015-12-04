@@ -154,7 +154,7 @@ class UserMGMT:
         mail = mailsetup.mailsetup()
         
         # these vars need to come from the config
-        anvioURL = "http://0.0.0.0:8080/";
+        anvioURL = "http://85.214.32.209/";
         messageSubject = "anvio account request"
         messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
 
