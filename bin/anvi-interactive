@@ -204,7 +204,7 @@ def set_user_data():
     
 @route('/')
 def redirect_to_app():        
-    redirect('/app/index.html')
+    redirect('/app/home.html')
 
 
 @route('/token', method='POST')
