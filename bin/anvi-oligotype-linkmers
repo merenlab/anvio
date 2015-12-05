@@ -8,6 +8,7 @@ from collections import Counter
 
 import anvio
 import anvio.utils as utils
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -20,6 +21,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
 
 
 def main(args):
@@ -55,9 +59,12 @@ def main(args):
         oligotype = hash_to_oligotype[unique_hash]
         d[request_id][sample_id][oligotype] += 1
 
+    run.warning('', header = "Oligotyping outputs per request", lc = 'cyan')
 
     for request_id in request_ids:
-        utils.store_dict_as_TAB_delimited_file(d[request_id], '%s.txt' % request_id)
+        output_file_path = 'oligotype-counts-%s.txt' % request_id
+        utils.store_dict_as_TAB_delimited_file(d[request_id], output_file_path)
+        run.info('Output', output_file_path)
 
 
 if __name__ == '__main__':
