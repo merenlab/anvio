@@ -39,7 +39,7 @@ class LinkMerDatum:
         self.read_id = read_id
         self.sample_id = sample_id
         self.read_X = 'read-1' if is_read1 else 'read-2'
-        self.read_unique_id = hashlib.sha224(read_id + self.read_X).hexdigest()
+        self.read_unique_id = hashlib.sha224(sample_id + read_id + self.read_X).hexdigest()
         self.contig_name = None
         self.request_id = None
         self.pos_in_contig = None
@@ -50,11 +50,11 @@ class LinkMerDatum:
 
 
     def __str__(self):
-        return 'Contig: %s, C_pos: %d, R_pos: %d, Base: %s, hash: %s' % (self.contig,
+        return 'Contig: %s, C_pos: %d, R_pos: %d, Base: %s, hash: %s' % (self.contig_name,
                                                                          self.pos_in_contig,
                                                                          self.pos_in_read,
                                                                          self.base,
-                                                                         self.read_id)
+                                                                         self.sequence)
 
 
 class LinkMersData:
@@ -360,3 +360,82 @@ class GetReadsFromBAM:
             self.output_file_path = 'short_reads.fa'
 
         filesnpaths.is_output_file_writable(self.output_file_path)
+
+
+class ReadsMappingToARange:
+    """Returns all reads from BAM that maps to a range in a contig"""
+    def __init__(self, run = run, progress = progress):
+        self.data = []
+
+        self.run = run
+        self.progress = progress
+
+    def process_range(self, input_bam_paths, contig_name, start, end):
+        if end <= start:
+            raise ConfigError, "The end of range cannot be equal or smaller than the start of it :/"
+
+        data = []
+
+        for input_bam_path in input_bam_paths:
+            try:
+                bam = pysam.Samfile(input_bam_path, 'rb')
+            except ValueError as e:
+                raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (input_bam_path, e)
+
+            try:
+                num_reads_mapped = bam.mapped
+            except ValueError:
+                self.progress.end()
+                raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+
+            sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
+
+            self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
+
+            self.run.info('input_bam_path', input_bam_path)
+            self.run.info('sample_id', sample_id)
+            self.run.info('total_reads_mapped', pp(int(num_reads_mapped)))
+            self.run.info('num_contigs_in_bam', pp(len(bam.references)))
+
+            self.progress.new('Processing "%s" in "%s"' % (contig_name, input_bam_path))
+            self.progress.update('Analyzing positions stretching %d nts ...' % (end - start))
+
+            read_ids = set([])
+
+            for pileupcolumn in bam.pileup(contig_name, start, end):
+                for pileupread in pileupcolumn.pileups:
+                    if not pileupread.is_del:
+                        L = LinkMerDatum(sample_id, pileupread.alignment.qname, pileupread.alignment.is_read1)
+                        L.contig_name = contig_name
+                        L.pos_in_contig = pileupcolumn.pos
+                        L.pos_in_read = pileupread.query_position
+                        L.base = pileupread.alignment.seq[pileupread.query_position]
+                        L.reverse = pileupread.alignment.is_reverse
+                        L.sequence = pileupread.alignment.query
+
+                        if not L.read_unique_id in read_ids:
+                            data.append(L)
+                            read_ids.add(L.read_unique_id)
+            
+            self.progress.end()
+
+        self.run.info('data', '%d reads identified mapping between positions %d and %d in "%s"' % (len(data), start, end, contig_name))
+
+        self.data.extend(data)
+
+
+    def report(self, output_file_path):
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        output_file = open(output_file_path, 'w')
+        entry_id = 0
+        for d in self.data:
+            entry_id += 1
+            output_file.write('>%.9d|sample_id:%s|reverse:%s|contig_name:%s\n' % (entry_id, d.sample_id, d.reverse, d.contig_name))
+            output_file.write('%s\n' % (d.sequence))
+        output_file.close()
+
+        self.run.info('output_file', output_file_path)
+
+
+
