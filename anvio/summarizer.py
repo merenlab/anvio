@@ -329,8 +329,7 @@ class Bin:
 
         self.compute_basic_stats()
 
-        if self.summary.a_meta['taxonomy_source']:
-            self.set_taxon_calls()
+        self.set_taxon_calls()
 
         if self.summary.gene_coverages_dict:
             self.store_gene_coverages_matrix()
@@ -646,7 +645,13 @@ class Bin:
 
     def set_taxon_calls(self):
         self.progress.update('Filling in taxonomy info ...')
+
+        self.bin_info_dict['taxon_calls'] = []
+        self.bin_info_dict['taxon'] = 'Unknown'
  
+        if not self.summary.a_meta['taxonomy_source']:
+            return
+
         taxon_calls_counter = Counter()
         for split_id in self.split_ids:
             taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]['t_species']] += 1
