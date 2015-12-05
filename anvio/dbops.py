@@ -11,6 +11,7 @@ import random
 import hashlib
 import datetime
 import operator
+import textwrap
 from itertools import chain
 from collections import Counter
 
@@ -287,7 +288,7 @@ class ContigsSuperclass(object):
         self.gene_function_calls_initiated = True
 
 
-    def search_splits_for_gene_functions(self, search_terms, verbose = False):
+    def search_splits_for_gene_functions(self, search_terms, verbose = False, full_report = False):
         if not isinstance(search_terms, list):
             raise ConfigError, "Search terms must be of type 'list'"
 
@@ -304,6 +305,7 @@ class ContigsSuperclass(object):
         matching_gene_caller_ids = dict([(search_term, {}) for search_term in search_terms])
         matching_function_calls = dict([(search_term, {}) for search_term in search_terms])
         split_names = dict([(search_term, {}) for search_term in search_terms])
+        full_report = []
 
         if not self.gene_function_calls_initiated:
             self.init_functions()
@@ -313,10 +315,12 @@ class ContigsSuperclass(object):
         for search_term in search_terms:
             self.progress.new('Search function')
             self.progress.update('Searching for term "%s"' % search_term)
-            response = contigs_db.db._exec('''select gene_callers_id, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
+            response = contigs_db.db._exec('''select gene_callers_id, source, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
+
+            full_report.extend([(r[0], r[1], r[2], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
-            matching_function_calls[search_term] = list(set([m[1] for m in response]))
+            matching_function_calls[search_term] = list(set([m[2] for m in response]))
             split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
 
             self.progress.end()
@@ -331,7 +335,83 @@ class ContigsSuperclass(object):
         contigs_db.disconnect()
         self.progress.end()
 
-        return split_names
+        return split_names, full_report
+
+
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary = True):
+        if not isinstance(gene_caller_ids_list, list):
+            raise ConfigError, "Gene caller's ids must be of type 'list'"
+
+        try:
+            gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
+        except:
+            raise ConfigError, "List of IDs for gene calls contains non-integer values :/"
+
+        if not len(self.contig_sequences):
+            self.init_contig_sequences()
+
+        sequences_dict = {}
+
+        self.progress.new('Getting sequences')
+        self.progress.update('...')
+        for gene_callers_id in gene_caller_ids_list:
+            gene_call = self.genes_in_contigs_dict[gene_callers_id]
+
+            contig_name = gene_call['contig']
+            start, stop = gene_call['start'] - 1, gene_call['stop']
+            direction = gene_call['direction']
+            sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
+
+            if direction == 'r' and reverse_complement_if_necessary:
+                sequence = utils.rev_comp(sequence)
+                rev_compd = "True"
+            else:
+                rev_compd = "False"
+
+            sequences_dict[gene_callers_id] = {'sequence': sequence,
+                                               'contig': contig_name,
+                                               'start': start,
+                                               'stop': stop,
+                                               'direction': direction,
+                                               'rev_compd': rev_compd,
+                                               'length': stop - start}
+
+        self.progress.end()
+
+        return (gene_caller_ids_list, sequences_dict)
+
+
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list, output_file_path, wrap = 120):
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if type(wrap) != int:
+            raise ConfigError, '"wrap" has to be an integer instance'
+        if wrap == 0:
+            wrap = None
+        if wrap and wrap <= 20:
+            raise ConfigError, 'Value for wrap must be larger than 20. Yes. Rules.'
+
+        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
+
+        output = open(output_file_path, 'w')
+
+        self.progress.new('Storing sequences')
+        self.progress.update('...')
+        for gene_callers_id in gene_caller_ids_list:
+            entry = sequences_dict[gene_callers_id]
+            header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+            sequence = entry['sequence']
+
+            if wrap:
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens = False)
+
+            output.write('>%s\n' % header)
+            output.write('%s\n' % sequence)
+
+        output.close()
+
+        self.progress.end()
+        self.run.info('Output', output_file_path)
 
 
 class ProfileSuperclass(object):
