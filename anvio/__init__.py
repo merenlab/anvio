@@ -204,11 +204,40 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
+    'gene-caller-ids': (
+            ['--gene-caller-ids'],
+            {'metavar': 'GENE_CALLER_IDS',
+             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'gene-caller-id': (
+            ['--gene-caller-id'],
+            {'metavar': 'GENE_CALLER_ID',
+             'type': int,
+             'help': "A single gene id."}
+                ),
     'delimiter': (
             ['--delimiter'],
             {'metavar': 'CHAR',
              'default': ',', 
              'help': "The delimiter to parse multiple input terms. The default is '%(default)s'."}
+                ),
+    'wrap': (
+            ['--wrap'],
+            {'metavar': 'WRAP',
+             'default': 120,
+             'type': int,
+             'help': "When to wrap sequences when storing them in a FASTA file. The default is\
+                      '%(default)d'. A value of '0' would be equivalent to 'do not wrap'."}
+                ),
+    'leeway': (
+            ['--leeway'],
+            {'metavar': 'LEEWAY_NTs',
+             'default': 100,
+             'type': int,
+             'help': "The minimum number of nucleotides for a given short read mapping into\
+                      the gene context for it to be reported. You must consider the length of\
+                      your short reads, as well as the length of the gene you are targeting.\
+                      The default is %(default)d nts."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
@@ -612,6 +641,12 @@ D = {
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
+                ),
+    'full-report': (
+            ['--full-report'],
+            {'metavar': 'FILE_NAME',
+             'default': None,
+             'help': "Optional output file with a fuller description of findings."}
                 ),
     'show-states': (
             ['--show-states'],
