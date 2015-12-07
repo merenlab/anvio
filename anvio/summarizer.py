@@ -318,16 +318,14 @@ class Bin:
 
         self.store_contigs_fasta()
 
-        if self.summary.completeness_data_available:
-            self.access_completeness_scores()
+        self.access_completeness_scores()
 
         if self.summary.non_single_copy_gene_hmm_data_available:
             self.summarize_hmm_hits()
 
         self.compute_basic_stats()
 
-        if self.summary.a_meta['genes_annotation_source']:
-            self.set_taxon_calls()
+        self.set_taxon_calls()
 
         if self.summary.gene_coverages_dict:
             self.store_gene_coverages_matrix()
@@ -372,15 +370,18 @@ class Bin:
     def access_completeness_scores(self):
         self.progress.update('Accessing completeness scores ...')
 
+        # set up for the average completeness / redundancy scores:
+        for k in ['percent_redundancy', 'percent_complete']:
+            self.bin_info_dict[k] = None
+
+        if not self.summary.completeness_data_available:
+            return
+
         completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
 
         self.bin_info_dict['completeness'] = completeness
 
         num_sources = len(completeness)
-
-        # set up for the average completeness / redundancy scores:
-        for k in ['percent_redundancy', 'percent_complete']:
-            self.bin_info_dict[k] = 0.0
 
         # go through all single-copy gene reporting sources
         for c in completeness.values():
@@ -601,6 +602,12 @@ class Bin:
 
     def set_taxon_calls(self):
         self.progress.update('Filling in taxonomy info ...')
+
+        self.bin_info_dict['taxon_calls'] = []
+        self.bin_info_dict['taxon'] = 'Unknown'
+
+        if not self.summary.a_meta['genes_annotation_source']:
+            return
 
         taxon_calls_counter = Counter()
         for split_id in self.split_ids:
