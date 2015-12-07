@@ -370,12 +370,15 @@ class Bin:
     def access_completeness_scores(self):
         self.progress.update('Accessing completeness scores ...')
 
-        # set up for the average completeness / redundancy scores:
-        for k in ['percent_redundancy', 'percent_complete']:
-            self.bin_info_dict[k] = None
 
         if not self.summary.completeness_data_available:
+            for k in ['percent_redundancy', 'percent_complete']:
+                self.bin_info_dict[k] = None
             return
+
+        # set up for the average completeness / redundancy scores:
+        for k in ['percent_redundancy', 'percent_complete']:
+            self.bin_info_dict[k] = 0.0
 
         completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
 
