@@ -172,7 +172,7 @@ class UserMGMT:
 
         if user:
             # check if the user has a project set
-            user = self.get_project(user)
+            user = self.get_user_projects(user)
         
         return user
 
@@ -187,7 +187,7 @@ class UserMGMT:
 
         if user:
             # check if the user has a project set
-            user = self.get_project(user)
+            user = self.get_user_projects(user)
             return (True, user)
         else:
             return (False, 'invalid token')
@@ -244,7 +244,7 @@ class UserMGMT:
         self.conn.commit()
 
         # check if the user has a project set
-        user = self.get_project(user)
+        user = self.get_user_projects(user)
 
         # set the user token
         user["token"] = token
@@ -291,7 +291,20 @@ class UserMGMT:
         else:
             return (False, 'You already have a project of that name')
 
-    def get_project(self, user):
+    def get_project(self, user, projectname):
+        if not user:
+            raise ConfigError, "You must pass a user to retrieve a project"
+
+        if not projectname:
+            raise ConfigError, "You must pass a project name"
+
+        p = (user, projectname, )
+        response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
+        project = response.fetchone()
+
+        return project
+        
+    def get_user_projects(self, user):
         if not user:
             raise ConfigError, "You must pass a user to retrieve their current project"
 
@@ -308,10 +321,15 @@ class UserMGMT:
         p = (user['login'], )
         response = self.cursor.execute("SELECT name FROM projects WHERE user=?", p)
         projects = response.fetchall()
-        pnames = []
+        ps = []
         for row in projects:
-            pnames.append(row['name'])
-        user['project_names'] = pnames
+            ps.append({ "name": row['name'], "views": []})
+            p = (row['name'], )
+            response = self.cursor.execute("SELECT name, public, token FROM views WHERE project=?", p)
+            views = response.fetchall()
+            for r in views:
+                ps[len(ps) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token']});
+        user['projects'] = ps
         
         return user
 
@@ -361,6 +379,9 @@ class UserMGMT:
             self.cursor.execute("UPDATE users SET project=? WHERE login=?", p)
             p = (login, pname, )
             self.cursor.execute("DELETE FROM projects WHERE user=? AND name=? ", p)
+            self.conn.commit()
+            p = (pname, )
+            self.cursor.execute("DELETE FROM views WHERE project=? ", p)
             self.conn.commit()
 
             if os.path.exists(path):
@@ -420,7 +441,7 @@ class UserMGMT:
         return True
 
 
-    def delete_view(self, vname, login):
+    def delete_view(self, login, vname):
         # get the user
         user = self.get_user_for_login(login)
 

@@ -44,9 +44,12 @@
     </style>
 
     <script>
-    $(document).ready(function(){
-    checkCookie();
-    });
+      $(document).ready(function(){
+      $("#uploadDataForm").submit(function(event){ event.preventDefault(); });
+      $("#uploadAdditionalDataForm").submit(function(event){ event.preventDefault(); });
+      $("#shareProjectForm").submit(function(event){ event.preventDefault(); });
+      checkCookie();
+      });
     </script>
     
   </head>
@@ -78,7 +81,7 @@
             <input type="file" style="display: none;" id="fastaFileSelect" onchange="uploadFileSelected('fasta');">
             <input type="file" style="display: none;" id="dataFileSelect" onchange="uploadFileSelected('data');">
 	    
-	    <div class="col-md-12">To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</div>
+	    <p>To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</p>
 	    
 	    <form class="form-horizontal" id="uploadDataForm">
 	      <div class="form-group">
@@ -91,7 +94,7 @@
 		<label class="col-sm-2 control-label" for="treeFileName">tree file</label>
 		<div class="col-sm-10">
 		  <div class="input-group">
-		    <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#treeFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button"  onclick="$('#treeFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
@@ -99,7 +102,7 @@
 		<label class="col-sm-2 control-label" for="fastaFileName">fasta file</label>
 		<div class="col-sm-10">
 		  <div class="input-group">
-		    <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#fastaFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#fastaFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
@@ -107,7 +110,7 @@
 		<label class="col-sm-2 control-label" for="dataFileName">data file</label>
 		<div class="col-sm-10">
 		  <div class="input-group">
-		    <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" onclick="$('#dataFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#dataFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
@@ -116,6 +119,40 @@
 	  
           <div class="modal-footer">
             <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="uploadFiles();">Upload</button>
+            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPLOAD ADDITIONAL DATA -->
+    <div class="modal fade" id="modUploadAdditionalData">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+            <h4 class="modal-title">Upload additional data</h4>
+          </div>
+	  
+          <div class="modal-body">
+            <input type="file" style="display: none;" id="additionalFileSelect" onchange="uploadFileSelected('additional');">
+	    
+	    <p>Upload additional display data.</p>
+	    
+	    <form class="form-horizontal" id="uploadAdditionalDataForm">
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="additionalFileName">data file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="additionalFileName" placeholder="data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#additionalFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	    </form>
+	  </div>
+	  
+          <div class="modal-footer">
+            <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="uploadAdditional();">Upload</button>
             <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
           </div>
         </div>
@@ -132,9 +169,9 @@
           </div>
 	  
           <div class="modal-body">
-	    <div class="col-md-12">You can share your project with other users by link or you can make it publicly accessible to all users.</div>
+	    <p>You can share your project with other users by link or you can make it publicly accessible to all users.</p>
 	    
-	    <form class="form-horizontal" id="uploadDataForm">
+	    <form class="form-horizontal" id="shareProjectForm">
 	      <div class="form-group">
 		<label class="col-sm-2 control-label" for="projectName">name</label>
 		<div class="col-sm-10">
@@ -167,11 +204,7 @@
             <h4 class="modal-title">Project settings</h4>
           </div>
 	  
-          <div class="modal-body">
-	    <div class="col-md-12">These are your current project settings</div>
-	    
-	    <div class="col-md-12" id="projectSettingsContent"></div>
-	  </div>
+          <div class="modal-body" id="projectSettingsContent"></div>
           <div class="modal-footer">
             <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
           </div>

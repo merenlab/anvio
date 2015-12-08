@@ -156,6 +156,7 @@ def check_user():
                 args.fasta_file = basepath + 'fastaFile'
                 args.view_data = basepath + 'dataFile'
                 args.title = user['project']
+                args.read_only = False
                 #args.profile_db = basepath + 'profile.db'
                 #args.samples_information_db =  basepath + 'samples.db'
                 
@@ -301,6 +302,9 @@ def share_project():
     if not request.forms.get('name'):
         return '{ "ERROR": "no name specified for the share" }'
     
+    if not request.forms.get('project'):
+        return '{ "ERROR": "no project specified for the share" }'
+
     if not re.match("^[A-Za-z0-9_-]+$", request.forms.get('name')):
         return '{ "ERROR": "the share name contains invalid characters" }'
     
@@ -311,12 +315,32 @@ def share_project():
     if not retval[1]['project']:
         return '{ "ERROR": "no project selected" }'
         
-    share = userdb.create_view(retval[1]['login'], request.forms.get('name'), retval[1]['project'], request.forms.get('public'))
+    share = userdb.create_view(retval[1]['login'], request.forms.get('name'), request.forms.get('project'), request.forms.get('public'))
     if share[0]:
-        return '{ "token": "'+share[1]+'" }'
+        return '{ "token": "'+share[1]+'", "project": "'+request.forms.get('project')+'", "name": "'+request.forms.get('name')+'", "public": "'+request.forms.get('public')+'"}'
     else:
         return '{ "ERROR": "'+share[1]+'" }'
 
+
+@route('/share', method='DELETE')
+def delete_share():
+    set_default_headers(response)
+    if not request.forms.get('name'):
+        return '{ "ERROR": "no name specified for the share to delete" }'
+    
+    if not request.forms.get('project'):
+        return '{ "ERROR": "no project specified for the share to delete" }'
+    
+    retval = get_user()
+    if not retval[0]:
+        return '{ "ERROR": "no user logged in" }'
+        
+    share = userdb.delete_view(retval[1]['login'], request.forms.get('name'))
+    if share[0]:
+        return '{ "OK": "view deleted", "project": "'+request.forms.get('project')+'", "view": "'+request.forms.get('project')+'" }'
+    else:
+        return '{ "ERROR": "'+share[1]+'" }'
+    
     
 @route('/upload', method='POST')
 def receive_upload_file():
@@ -362,6 +386,48 @@ def receive_upload_file():
         
     redirect_to_app()
 
+
+@route('/uploadMore', method='POST')
+def receive_additional_upload_file():
+    set_default_headers(response)
+    if not request.files.get('additionalFile'):
+        return '{ "ERROR": "you did not upload a file" }'
+
+    if not request.forms.get('project'):
+        return '{ "ERROR": "you did not specify a project" }'
+
+    retval = get_user()
+    if not retval[0]:
+        return '{ "ERROR": "you need to be logged in to upload additional data" }'
+    
+    user = retval[1]
+
+    if not retval[0]:
+        return '{ "ERROR": "'+retval[1]+'" }'
+
+    project = userdb.get_project(user['login'], request.forms.get('project'))
+
+    basepath = 'userdata/'+user['path']+'/'+project['path']+'/'
+
+    # get next free additional data number
+    f = []
+    for (dirpath, dirnames, filenames) in os.walk(basepath):
+        f.extend(filenames)
+        break
+    
+    dnum = 1
+    for fn in f:
+        try:
+            if fn == int(fn):
+                if int(fn) >= dnum:
+                    dnum = int(fn) + 1
+        except Exception:
+            pass
+    
+    request.files.get('additionalFile').save(basepath + str(dnum))
+        
+    return '{ "OK": "file added" }'
+    
 # END CUSTOM
 
 @route('/app/:filename#.*#')

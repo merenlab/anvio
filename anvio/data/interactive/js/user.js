@@ -20,6 +20,8 @@
 // user section on anvio user.html
 function showUserData (user) {
 
+    window.user = user;
+
     // username and logout button
     var html = [];
     html.push('<div style="padding-top: 2px; float: right;">');
@@ -33,16 +35,16 @@ function showUserData (user) {
 
     // get all projects the user has access to
     html.push('<h3>Your Projects</h3>');
-    if (user.project_names.length) {
-	html.push('<ul class="list-group col-sm-6">');
-	for (var i=0; i<user.project_names.length; i++) {
+    if (user.projects.length) {
+	html.push('<ul class="list-group col-sm-8">');
+	for (var i=0; i<user.projects.length; i++) {
 	    html.push('<li class="list-group-item">');
-	    html.push('<a href="#" onclick="setActiveProject(\''+user.project_names[i]+'\');" title="view project">'+user.project_names[i]+'</a>');
-	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="share project" onclick="$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>');
-	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="delete project" onclick="deleteProject(\''+user.project_names[i]+'\')"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>');
-	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="add data" onclick="addDataToProject(\''+user.project_names[i]+'\')"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span></button>');
-
-	    html.push('</button>');
+	    html.push('<a href="#" onclick="setActiveProject(\''+i+'\');" title="view project">'+user.projects[i].name+'</a>');
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-danger btn-sm" title="delete project" onclick="deleteProject(\''+i+'\')"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>');
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="add data" onclick="addDataToProject(\''+i+'\')"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span></button>');
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="share project" onclick="selectedProject=\''+i+'\';$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>');
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="project settings" onclick="showProjectSettings(\''+i+'\');"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>');
+	    
 	    html.push('</li>');
 	}
 	html.push('</ul>');
@@ -61,17 +63,57 @@ function showUserData (user) {
 }
 
 /* Project Management */
-function addDataToProject (project) {
+function showProjectSettings (index) {
+    var project = user.projects[index];
 
+    var html = "";
+    if (project.views.length) {
+	html = "<p>This project has been shared.</p>";
+	for (var i=0; i<project.views.length; i++) {
+	    var baseURL = window.location.origin + '/project?name='+project.views[i].name;
+	    var code = project.views[i]['public'] ? '' : '&code='+project.views[i].token;
+	    html += "<p style='margin-bottom: 20px;'>"+(project.views[i]['public'] ? 'public ' : '')+'share link: <a href="'+baseURL+code+'" target=_blank>'+baseURL+code+'</a><button type="button" style="margin-left: 5px; float: right; position: relative; bottom: 7px;" class="btn btn-danger btn-sm" title="remove view" onclick="removeProjectView(\''+index+'\', \''+i+'\');"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button></p>';
+	}
+    } else {
+	html = "<p>This project has not been shared</p>"
+    }
+    
+    document.getElementById('projectSettingsContent').innerHTML = html;
+    $('#modProjectSettings').modal('show');
+    
 };
 
-function setActiveProject(p, view, token) {
-    if (view) {
-	window.location(window.location.origin+'/project?name=p'+(token ? '&code='+token : ''));
+function removeProjectView (pindex, vindex) {
+    if (confirm("Really delete this share? This cannot be undone!")) {
+	var formData = new FormData();
+	formData.append('project', user.projects[pindex].name);
+	formData.append('name', user.projects[pindex].views[vindex].name);
+	$.ajax({
+	    url : '/share',
+	    type : 'DELETE',
+	    data : formData,
+	    processData: false,
+	    contentType: false,
+	    success : function(data) {
+		if (data.OK) {
+		    document.location.reload(true);
+		} else {
+		    alert(data.ERROR);
+		}
+	    }
+	});
     }
+};
+
+function addDataToProject (index) {
+    window.selectedProject = index;
+    $('#modUploadAdditionalData').modal('show');
+};
+
+function setActiveProject(index) {
     $.removeCookie('anvioView', { path: '/' });
     var formData = new FormData();
-    formData.append('project', p);
+    formData.append('project', user.projects[index].name);
     $.ajax({
 	url : '/project',
 	type : 'POST',
@@ -84,10 +126,10 @@ function setActiveProject(p, view, token) {
     });
 }
 
-function deleteProject() {
+function deleteProject(index) {
     if (confirm("Really delete this project? This cannot be undone!")) {
 	var formData = new FormData();
-	formData.append('project', document.title);
+	formData.append('project', user.projects[index].name);
 	$.ajax({
 	    url : '/project',
 	    type : 'DELETE',
@@ -102,16 +144,16 @@ function deleteProject() {
 }
 
 function shareProject() {
+    var index = selectedProject;
     var name = document.getElementById('projectName').value;
     var isPublic = document.getElementById('projectPublic').checked;
     if (! name.match(/^\w+$/)) {
-	aler('The project name may only contain word characters');
+	alert('The project name may only contain word characters without spaces.');
     } else {
 	$('#modShareProject').modal('hide');
-	session.project.view = name;
-	session.project.isPublic = isPublic;
 	var formData = new FormData();
 	formData.append('name', name);
+	formData.append('project', user.projects[index].name);
 	formData.append('public', isPublic ? 1 : 0);
 	$.ajax({
 	    url : '/share',
@@ -124,11 +166,15 @@ function shareProject() {
 		if (data.hasOwnProperty('ERROR')) {
 		    toastr.error(data.ERROR, 'share project failed');
 		} else {
-		    var baseURL = window.location.origin + '/project?name='+session.project.view;
-		    var code = session.project.isPublic ? '' : '&code='+data.token;
-		    var msg = 'Your project has been shared.<br>It is now available via the following link:<br><br><a href="'+baseURL+code+'" target=_blank>'+baseURL+code+'</a>';
-		    document.getElementById('projectSettingsContent').innerHTML = msg;
-		    $('#modProjectSettings').modal('show');
+		    var which = 0;
+		    for (var i=0; i<user.projects.length; i++) {
+			if (user.projects[i].name = data['project']) {
+			    user.projects[i].views.push({ "name": data["name"], "token": data["token"], "public": data["public"] });
+			    which = i;
+			    break;
+			}
+		    }
+		    showProjectSettings(which);
 		}
 	    }
 	});
@@ -179,6 +225,50 @@ function uploadFiles () {
 	    document.body.removeChild(uploadProgress);
 	    uploadProgress = null;
             document.location.reload(true);
+	}
+    });
+}
+
+function uploadAdditional () {
+    var index = window.selectedProject;
+    var formData = new FormData();
+    if ($('#additionalFileSelect')[0].files.length) {
+	formData.append('additionalFile', $('#additionalFileSelect')[0].files[0]);
+	formData.append('project', user.projects[index].name);
+    } else {
+	alert('You must provide a file');
+	return;
+    }
+    $('#modUploadAdditionalData').modal('hide');
+    
+    uploadProgress = document.createElement('div');
+    uploadProgress.setAttribute('style', 'position: absolute; right: 0px; width: 400px; bottom: 0px; border: 1px solid lightgray; border-bottom: none; height: 25px; background-color: white;');
+    uploadProgress.innerHTML = '<div class="progress" style="margin: 5px; margin-bottom: 0px;">\
+  <div id="uploadProgressBar" class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em;">\
+    0%\
+  </div>\
+</div>';
+    document.body.appendChild(uploadProgress);
+    
+    $.ajax({
+	url : '/uploadMore',
+	xhr: function() {
+	    var xhr = new window.XMLHttpRequest();
+	    xhr.upload.addEventListener("progress", dataFileUploadProgress, false);
+	    return xhr;
+	},
+	type : 'POST',
+	data : formData,
+	processData: false,
+	contentType: false,
+	success : function(data) {
+	    document.body.removeChild(uploadProgress);
+	    uploadProgress = null;
+            if (data.hasOwnAttribute('OK')) {
+		alert(data.OK);
+	    } else {
+		alert(data.ERROR);
+	    }
 	}
     });
 }
