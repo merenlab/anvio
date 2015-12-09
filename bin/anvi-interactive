@@ -157,8 +157,11 @@ def check_user():
                 args.view_data = basepath + 'dataFile'
                 args.title = user['project']
                 args.read_only = False
-                #args.profile_db = basepath + 'profile.db'
-                #args.samples_information_db =  basepath + 'samples.db'
+                args.profile_db = basepath + 'profile.db'
+                args.additional_layers = None
+                addFile = basepath + 'additionalFile'
+                if os.path.isfile(addFile):
+                    args.additional_layers = addFile
                 
                 global d
                 d = interactive.InputHandler(args)
@@ -382,7 +385,8 @@ def receive_upload_file():
         open(basepath + 'dataFile', 'a').close()
 
     # create a profile database
-    profiledb = dbops.ProfileDatabase.create();
+    profile = dbops.ProfileDatabase(basepath + 'profile.db')
+    profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None});
         
     redirect_to_app()
 
@@ -408,23 +412,8 @@ def receive_additional_upload_file():
     project = userdb.get_project(user['login'], request.forms.get('project'))
 
     basepath = 'userdata/'+user['path']+'/'+project['path']+'/'
-
-    # get next free additional data number
-    f = []
-    for (dirpath, dirnames, filenames) in os.walk(basepath):
-        f.extend(filenames)
-        break
     
-    dnum = 1
-    for fn in f:
-        try:
-            if fn == int(fn):
-                if int(fn) >= dnum:
-                    dnum = int(fn) + 1
-        except Exception:
-            pass
-    
-    request.files.get('additionalFile').save(basepath + str(dnum))
+    request.files.get('additionalFile').save(basepath + 'additionalFile')
         
     return '{ "OK": "file added" }'
     
