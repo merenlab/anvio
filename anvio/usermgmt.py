@@ -12,6 +12,7 @@ import random
 import hashlib
 import shutil
 import smtplib
+import copy
 
 import anvio
 import anvio.interactive as interactive
@@ -506,7 +507,7 @@ class UserMGMT:
     # REQUEST SECTION
     ######################################
 
-    def check_user(request):
+    def check_user(self, request):
         # check if we have a cookie
         if request.get_cookie('anvioSession'):
 
@@ -516,7 +517,7 @@ class UserMGMT:
                 user = retval[1]
                 if user.has_key('project_path'):
                     basepath = 'userdata/' + user['path'] + '/' + user['project_path'] + '/'
-                    args = self.orig_args
+                    args = copy.deepcopy(self.orig_args)
                     args.tree = basepath + 'treeFile'
                     args.fasta_file = basepath + 'fastaFile'
                     args.view_data = basepath + 'dataFile'
@@ -538,7 +539,7 @@ class UserMGMT:
             return [ False ]
 
 
-    def check_view(request):
+    def check_view(self, request):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
             retval = userdb.get_view(p[0], p[1])
@@ -560,15 +561,15 @@ class UserMGMT:
             return [ False ]
 
 
-    def set_user_data(request, d):
-        retval = check_view(request)
+    def set_user_data(self, request, data):
+        retval = self.check_view(request)
         if retval[0]:
             return retval[1]
-        retval = check_user(request)
+        retval = self.check_user(request)
         if retval[0]:
             return retval[1]
 
-        return d
+        return data
 
         
 def dict_factory(cursor, row):

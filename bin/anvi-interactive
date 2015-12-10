@@ -138,55 +138,55 @@ def redirect_to_app():
 ###############################
 
 # initialize usermanagement
-userdb = usermgmt.UserMGMT(os.getcwd()+'/', '1.0', None, copy.deepcopy(args));
+userdb = usermgmt.UserMGMT(os.getcwd()+'/', '1.0', None, None, copy.deepcopy(args));
 
 @route('/token', method='POST')
 def get_user_by_token():
-    return multiroutes.get_user_by_token(request, userdb)
+    return multiroutes.get_user_by_token(request, userdb, response)
 
 @route('/requestAccount', method='POST')
 def request_account():
-    return multiroutes.request_account(request, userdb)
+    return multiroutes.request_account(request, userdb, response)
 
 @route('/confirm', method='GET')
 def accept_user():
-    return multiroutes.accept_user(request, userdb)
+    return multiroutes.accept_user(request, userdb, response)
 
 @route('/login', method='POST')
 def login_to_app():
-    return multiroutes.login_to_app(request, userdb)
+    return multiroutes.login_to_app(request, userdb, response)
 
 @route('/logout', method='POST')
 def logout_from_app():
-    return multiroutes.logout_from_app(request, userdb)
+    return multiroutes.logout_from_app(request, userdb, response)
 
 @route('/project', method='GET')
 def set_view_cookie():
-    multiroutes.set_view_cookier(request, userdb)
+    multiroutes.set_view_cookier(request, userdb, response)
 
 @route('/project', method='POST')
 def set_project():
-    return multiroutes.set_project(request, userdb)
+    return multiroutes.set_project(request, userdb, response)
 
 @route('/project', method='DELETE')
 def delete_project():
-    return multiroutes.delete_project(request, userdb)
+    return multiroutes.delete_project(request, userdb, response)
 
 @route('/share', method='POST')
 def share_project():
-    return multiroutes.share_project(request, userdb)
+    return multiroutes.share_project(request, userdb, response)
 
 @route('/share', method='DELETE')
 def delete_share():
-    return multiroutes.delete_share(request, userdb)
+    return multiroutes.delete_share(request, userdb, response)
     
 @route('/upload', method='POST')
 def receive_upload_file():
-    return multiroutes.receive_upload_file(request, userdb)
+    return multiroutes.receive_upload_file(request, userdb, response)
 
 @route('/uploadMore', method='POST')
 def receive_additional_upload_file():
-    return multiroutes.receive_additional_upload_file(request, userdb)
+    return multiroutes.receive_additional_upload_file(request, userdb, response)
 
 ###############################
 # END OF MULTIUSER ROUTES
@@ -200,7 +200,9 @@ def send_static(filename):
 @route('/data/<name>')
 def send_data(name):
     set_default_headers(response)
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     
     if name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
@@ -229,20 +231,25 @@ def send_data(name):
     elif name == "samples_information_default_layer_order":
         return json.dumps(d.samples_information_default_layer_order)
 
-
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_view_data(args, d, request, response, view_id)
 
 @route('/tree/<tree_id>')
 def get_tree(tree_id):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_tree(args, d, request, response, tree_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.charts(d, split_name)
 
 state_for_charts = {}
@@ -250,7 +257,7 @@ state_for_charts = {}
 @route('/data/charts/set_state', method='POST')
 def set_state():
     statekey = 'anon'
-    retval = get_user()
+    retval = multiroutes.get_user(request, userdb, response)
     if retval[0]:
         statekey = retval[1]['login']
         
@@ -261,7 +268,7 @@ def set_state():
 def get_parent_state():
     set_default_headers(response)
     statekey = 'anon'
-    retval = get_user()
+    retval = multiroutes.get_user(request, userdb, response)
     if retval[0]:
         statekey = retval[1]['login']
         
@@ -269,57 +276,79 @@ def get_parent_state():
 
 @route('/data/contig/<split_name>')
 def get_split_info(split_name):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_split_info(args, d, request, response, split_name)
 
 @route('/data/collections')
 def collections():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_collections(args, d, request, response)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_collection_dict(args, d, request, response, collection_source)
 
 @route('/summary/<collection_id>/:filename#.*#')
 def send_summary_static(collection_id, filename):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.send_summary_static(args, d, request, response, collection_id, filename)
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.gen_summary(args, d, request, response, collection_id)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.store_collections_dict(args, d, request, response)
 
 @route('/data/completeness', method='POST')
 def completeness():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.completeness(d, request)
 
 @route('/state/autoload')
 def state_autoload():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.state_autoload(d, response)
 
 @route('/state/all')
 def state_all():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.state_all(d, response)
 
 @route('/state/get', method='POST')
 def get_state():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.get_state(d, request, response)
 
 @route('/state/save', method='POST')
 def save_state():
-    d = set_user_data(request, d)
+    if args.multiuser:
+        global d
+        d = userdb.set_user_data(request, d)
     return routes.save_state(args, d, request, response)
 
 #######################################################################################################################
