@@ -482,6 +482,12 @@ D = {
                       connects to the server. If you have other plans, and want to start the server\
                       without calling the browser, this is the flag you need."}
                 ),
+    'multiuser': (
+            ['--multiuser'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Setting this flag to true will enable multiuser support."}
+                ),
     'skip-store-in-db': (
             ['--skip-store-in-db'],
             {'default': False,
