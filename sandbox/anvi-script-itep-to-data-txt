@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""This is a simple script to convert ITEP output into a matrix.
+
+   Essentially it takes an ITEP flat clusters file, and generates
+   the `data.txt` file mentioned in this article:
+
+        http://merenlab.org/2015/11/14/pangenomics/
+"""
+
+import sys
+import argparse
+
+import anvio.terminal as terminal 
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(itep_clusters_path, output_file_path):
+    filesnpaths.is_file_exists(itep_clusters_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    itep_clusters = {}
+    genomes_found = set([])
+
+    progress.new("Reading ITEP clusters")
+    progress.update('...')
+
+    for line in (l.strip() for l in open(itep_clusters_path).readlines()):
+        try:
+            _, cluster_id, genome_identifier = line.split('\t')
+        except:
+            progress.end()
+            raise ConfigError, "This input file does not seem to be an ITEP output\
+                                this script is expecting (i.e., there aren't three\
+                                TAB-delimted columsn in this file)."
+
+        genome_name = genome_identifier.split('.peg')[0]
+        genomes_found.add(genome_name)
+
+        if not itep_clusters.has_key(cluster_id):
+            itep_clusters[cluster_id] = {}
+
+        if not itep_clusters[cluster_id].has_key(genome_name):
+            itep_clusters[cluster_id][genome_name] = 0
+
+        itep_clusters[cluster_id][genome_name] += 1
+
+    progress.end()
+
+    run.info("Num genomes", len(genomes_found))
+    run.info("Num protein clusters", len(itep_clusters))
+
+    progress.new("Creating the output file")
+    progress.update('...')
+
+    genomes_found = sorted(list(genomes_found))
+    output_file = open(output_file_path, 'w')
+    output_file.write('\t'.join(['contig'] + genomes_found) + '\n')
+
+    cluster_ids_sorted = [t[1] for t in sorted([(sum(itep_clusters[cid].values()), cid) for cid in itep_clusters], reverse=True)]
+
+    for cluster_id in cluster_ids_sorted:
+        values_dict = itep_clusters[cluster_id]
+        values = [str(values_dict[g]) if values_dict.has_key(g) else '0' for g in genomes_found]
+        output_file.write('\t'.join([cluster_id] + values) + '\n')
+    
+    output_file.close()
+    progress.end()
+
+    run.info("Data file is generated", output_file_path)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to convert ITEP output into data.txt')
+    parser.add_argument('itep_clusters', metavar = 'ITEP_CLUSTERS',
+                        help = 'This is the ITEP output file you should find in\
+                        "flatclusters" directory')
+    parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE',
+                        help = 'Where to store the information. The default is\
+                                "%(default)s".', default = 'data.txt')
+    args = parser.parse_args()
+
+    try:
+        main(args.itep_clusters, args.output_file)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)

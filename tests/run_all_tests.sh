@@ -32,26 +32,26 @@ done
 INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
-INFO "Populating the genes tables in the contigs database using 'myrast_gui' parser ..."
-anvi-populate-genes-table -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
+INFO "Populating taxonomy for splits table in the database using 'myrast_gui' parser ..."
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_gui/* -p myrast_gui
 
-INFO "Populating the genes tables in the contigs database using 'myrast_cmdline_dont_use' parser ..."
-anvi-populate-genes-table -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
+INFO "Re-populating taxonomy for splits table in the database using 'myrast_cmdline_dont_use' parser ..."
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i myrast_cmdline/svr_assign_to_dna_using_figfams.txt -p myrast_cmdline_dont_use
 
-INFO "Populating the genes tables in the database using 'myrast_cmdline' parser ..."
-anvi-populate-genes-table -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
+INFO "Re-populating taxonomy for splits table in the database using 'myrast_cmdline' parser ..."
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -p myrast_cmdline -i myrast_cmdline/svr_call_pegs.txt myrast_cmdline/svr_assign_using_figfams.txt
 
-INFO "Exporting a standart matrix file from genes tables that were populated by 'myrast_cmdline' parser ..."
-anvi-export-genes-table -c test-output/CONTIGS.db -o test-output/functions_and_taxonomy_sample_matrix.txt
+INFO "Re-populating taxonomy for splits table in the database using the recovered matrix file with 'default_matrix' parser ..."
+anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i gene_calls_sample_matrix.txt
 
-INFO "Re-populating the genes tables in the contigs database using the recovered matrix file with 'default_matrix' parser ..."
-anvi-populate-genes-table -c test-output/CONTIGS.db -p default_matrix -i test-output/functions_and_taxonomy_sample_matrix.txt
-
-INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
+INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db
 
-INFO "Populating search tables in the latest contigs database using a mock HMM collection from an external directory ..."
+INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory ..."
 anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
+
+INFO "Importing gene function calls using 'interproscan' parser ..."
+anvi-import-functional-annotation-of-genes -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
@@ -128,6 +128,9 @@ anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -
 
 INFO "Get linkmers from 204-6M.bam for contig 1720, position 600 and 661"
 anvi-report-linkmers -P contigs_and_positions_for_linkmers.txt -i test-output/204-6M.bam -o test-output/linkmers_for_contig_1720_pos_600_and_661.txt
+
+INFO "Search for functions to get split names with matching genes"
+anvi-search-functions-in-splits -c test-output/CONTIGS.db --search transporter,kinase -o test-output/transporter-hits.txt --verbose
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.

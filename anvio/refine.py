@@ -49,18 +49,27 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 
-        self.clustering_configs = constants.clustering_configs['merged']
         self.database_paths = {'CONTIGS.db': self.contigs_db_path,
                                'PROFILE.db': self.profile_db_path}
+        self.is_merged = None
         self.split_names_of_interest = set([])
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        self.is_merged = int(profile_db.meta['merged'])
+        profile_db.disconnect()
+
+        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'single']
 
 
     def init(self):
-        # get split names
+        self.progress.new('Initializing')
+
+        self.progress.update('Getting split names')
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.bins = d.keys()
         for split_names in d.values():
             self.split_names_of_interest.update(split_names)
+        self.progress.end()
 
         # if the user updates the refinement of a single bin or bins, there shouldn't be multiple copies
         # of that stored in the database. so everytime 'store_refined_bins' function is called,
@@ -86,8 +95,10 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.init()
 
         clusterings = self.cluster_splits_of_interest()
+        default_clustering = constants.merged_default if self.is_merged else constants.single_default
 
-        d = interactive.InputHandler(self.args, external_clustering = {'clusterings': clusterings, 'default_clustering': 'tnf-cov'})
+        d = interactive.InputHandler(self.args, external_clustering = {'clusterings': clusterings,
+                                                                        'default_clustering': default_clustering})
 
         # set a more appropriate title
         bins = sorted(list(self.bins))

@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Takes an anvi'o profile database and returns a quick text summary
+of bins and collections found in it."""
+
+import sys
+
+import anvio
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    profile_db = dbops.ProfileDatabase(args.profile_db)
+
+    progress.new('Accessing to the collections table')
+    progress.update('...')
+    collections_info_table = profile_db.db.get_table_as_dict(t.collections_info_table_name)
+    progress.end()
+
+    profile_db.disconnect()
+
+    for source in collections_info_table:
+        run.warning('', header = 'Collection: "%s"' % source, lc = 'green')
+        run.info('Collection ID', source)
+        run.info('Number of bins', collections_info_table[source]['num_clusters'])
+        run.info('Number of splits described', collections_info_table[source]['num_splits'])
+        run.info('Bin IDs', ', '.join(sorted(collections_info_table[source]['cluster_ids'].split(','))), nl_after = 2)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='A script to display collections stored in a profile database.')
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)

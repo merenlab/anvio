@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""Return short reads from BAM files mapping to gene."""
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.bamops import ReadsMappingToARange
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+def main(args):
+    c = ContigsSuperclass(args)
+
+    if args.gene_caller_id not in c.genes_in_contigs_dict:
+        raise ConfigError, "The gene id you provided does not seem to be in the contigs\
+                            database."
+
+    gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
+    mapping_range_start = gene_call['start'] + args.leeway
+    mapping_range_stop = gene_call['stop'] - args.leeway
+
+    gene_length = gene_call['stop'] - gene_call['start']
+    run.info('Contig', gene_call['contig'])
+    run.info('Gene id', args.gene_caller_id)
+    run.info('Gene length', gene_length)
+    run.info('Leeway', args.leeway)
+    run.info('Mapping range start in contig', mapping_range_start)
+    run.info('Mapping range end in contig', mapping_range_stop)
+    run.info('Actual length of mapping window', mapping_range_stop - mapping_range_start)
+
+
+    r = ReadsMappingToARange()
+    r.process_range(args.input_files, gene_call['contig'], mapping_range_start, mapping_range_stop)
+    r.report(args.output_file)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Access reads in contigs and positions in a BAM file')
+
+    parser.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
+                        help = 'Sorted and indexed BAM files to analyze. It is essential that all BAM files must be\
+                                the result of mappings against the same contigs.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
+    parser.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id', {'required': True}))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    parser.add_argument(*anvio.A('leeway'), **anvio.K('leeway'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
+  

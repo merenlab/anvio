@@ -52,6 +52,7 @@ class Table(object):
         self.splits_info = None
         self.contigs_info = None
         self.split_length = None
+        self.genes_are_called = None
 
         self.run = run
         self.progress = progress
@@ -63,9 +64,11 @@ class Table(object):
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
             # and contigs db calls.
             self.split_length = database.get_meta_value('split_length')
+            self.genes_are_called = database.get_meta_value('genes_are_called')
             self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
             self.splits_info  = database.get_table_as_dict(t.splits_info_table_name)
             self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.splits_info, self.contigs_info)
+            self.gene_calls_dict = None
 
         database.disconnect()
 
@@ -89,30 +92,50 @@ class Table(object):
         database.disconnect()
 
 
-    def export_contigs_in_db_into_FASTA_file(self):
+    def export_sequences_table_in_db_into_FASTA_file(self, table = t.contig_sequences_table_name, output_file_path = None):
         if self.db_type != 'contigs':
             return None
 
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+        else:
+            output_file_path = os.path.join(filesnpaths.get_temp_directory_path(), 'sequences.fa')
+
         database = db.DB(self.db_path, self.version)
-        contig_sequences_table = database.get_table_as_dict(t.contig_sequences_table_name)
+
+        if table not in database.get_table_names():
+            raise ConfigError, 'Trying to export sequences into a FASTA file, but the table\
+                                "%s" does not seem to be in this database :/' % (table)
+
+        if 'sequence' not in database.get_table_structure(table):
+            raise ConfigError, "You requested to store sequences in table '%s' into a FASTA\
+                                file, however this table does not seem to be a table that\
+                                stores sequence information :(" % table
+
+        sequences_table = database.get_table_as_dict(table)
         database.disconnect()
 
-        self.progress.new('Exporting contigs into a FASTA file')
+        if not len([sequences_table]):
+            raise ConfigError, "There are no sequences to report in table '%s'." % (table)
+
+        self.progress.new('Exporting %d sequences into a FASTA file' % len(sequences_table))
         self.progress.update('...')
-        contigs_fasta_path = os.path.join(filesnpaths.get_temp_directory_path(), 'contigs.fa')
-        contigs_fasta = u.FastaOutput(contigs_fasta_path)
-        for contig in contig_sequences_table:
-            contigs_fasta.write_id(contig)
-            contigs_fasta.write_seq(contig_sequences_table[contig]['sequence'], split=False)
+
+        sequences_fasta = u.FastaOutput(output_file_path)
+
+        for seq_id in sequences_table:
+            sequences_fasta.write_id(seq_id)
+            sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
 
         self.progress.end()
-        self.run.info('FASTA for contigs', contigs_fasta_path)
+        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table)))
+        self.run.info('FASTA', output_file_path)
 
-        return contigs_fasta_path
+        return output_file_path
 
 
     def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
-        # FIXME: this shoudl be in db.py
+        # FIXME: this should be in db.py
         # removes rows from each table in 'tables_to_remove' where 'table_column' equals 'value'
         database = db.DB(self.db_path, self.version)
 
@@ -124,4 +147,17 @@ class Table(object):
 
         database.disconnect()
 
+
+    def init_gene_calls_dict(self):
+        if self.db_type != 'contigs':
+            return None
+
+        self.progress.new('Initializing the dictionary for gene calls')
+        self.progress.update('...')
+
+        database = db.DB(self.db_path, self.version)
+        self.gene_calls_dict = database.get_table_as_dict(t.genes_in_contigs_table_name)
+        database.disconnect()
+
+        self.progress.end()
 

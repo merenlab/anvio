@@ -26,52 +26,20 @@ progress = terminal.Progress()
 
 
 class HMMSearch:
-    def __init__(self, progress = progress, run = run):
+    def __init__(self, protein_sequences_fasta, progress = progress, run = run):
         self.progress = progress
         self.run = run
 
-        # hmm_scan_hits and proteins_in_contigs are the files to access later on for
-        # parsing:
+        filesnpaths.is_file_fasta_formatted(protein_sequences_fasta)
+
+        self.protein_sequences_fasta = protein_sequences_fasta
+
+        # hmm_scan_hits is the file to access later on for parsing:
         self.hmm_scan_output = None
         self.hmm_scan_hits = None
         self.genes_in_contigs = None
-        self.proteins_in_contigs = None
 
         self.tmp_dirs = []
-
-
-    def run_prodigal(self, fasta_file_path):
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        self.tmp_dirs.append(tmp_dir)
-
-        self.genes_in_contigs = os.path.join(tmp_dir, 'contigs.genes')
-        self.proteins_in_contigs = os.path.join(tmp_dir, 'contigs.proteins')
-
-        log_file_path = os.path.join(tmp_dir, '00_log.txt')
-
-        self.run.warning('', header = 'Finding ORFs in contigs', lc = 'green')
-        self.run.info('Genes', self.genes_in_contigs)
-        self.run.info('Proteins', self.proteins_in_contigs)
-        self.run.info('Log file', log_file_path)
-
-        self.progress.new('Processing')
-        self.progress.update('Identifying ORFs in contigs ...')
-        cmd_line = ('prodigal -i "%s" -o "%s" -a "%s" -p meta >> "%s" 2>&1' % (fasta_file_path,
-                                                                               self.genes_in_contigs,
-                                                                               self.proteins_in_contigs,
-                                                                               log_file_path))
-        with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
-
-        if not os.path.exists(self.proteins_in_contigs):
-            raise ConfigError, "Something went wrong with prodigal, and it failed to generate the\
-                                expected output :/ Fortunately, this log file should tell you what\
-                                might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path
-
-        self.progress.end()
-
-        return self.proteins_in_contigs
 
 
     def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag = "--cut_ga"):
@@ -121,7 +89,7 @@ class HMMSearch:
                                                                               cut_off_flag,
                                                                               self.hmm_scan_hits_shitty,
                                                                               hmm_file_path,
-                                                                              self.proteins_in_contigs,
+                                                                              self.protein_sequences_fasta,
                                                                               log_file_path))
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
         utils.run_command(cmd_line)
@@ -163,28 +131,23 @@ class SequencesForHMMHits:
 
         # take care of contigs db related stuff and move on:
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
-        self.search_info_table = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
-        self.search_table_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        self.search_table_contigs = contigs_db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+        self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
+        self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
         self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
 
-        missing_sources = [s for s in self.sources if s not in self.search_info_table]
+        missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             raise ConfigError, 'Some of the requested sources were not found in the contigs database :/\
                                 Here is a list of the ones that are missing: %s' % ', '.join(missing_sources)
 
         if len(self.sources):
-            self.search_table_splits = utils.get_filtered_dict(self.search_table_splits, 'source', self.sources)
-            self.search_table_contigs = utils.get_filtered_dict(self.search_table_contigs, 'source', self.sources)
+            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
+            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
         else:
-            self.sources = self.search_info_table.keys()
-
-        # create a map of all unique gene ids to contigs table entry ids for fast access:
-        self.unique_id_to_contig_entry_id = {}
-        for entry_id in self.search_table_contigs:
-            unique_id = self.search_table_contigs[entry_id]['gene_unique_identifier']
-            self.unique_id_to_contig_entry_id[unique_id] = entry_id
+            self.sources = self.hmm_hits_info.keys()
 
 
     def get_hmm_sequences_dict_for_splits(self, splits_dict):
@@ -202,34 +165,37 @@ class SequencesForHMMHits:
         for s in splits_dict.values():
             split_names.update(s)
 
-        hits = utils.get_filtered_dict(self.search_table_splits, 'split', split_names)
+        hits_in_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'split', split_names)
 
         split_name_to_bin_id = {}
         for bin_id in splits_dict:
             for split_name in splits_dict[bin_id]:
                 split_name_to_bin_id[split_name] = bin_id
 
-        if not hits:
+        if not hits_in_splits:
             return {}
 
         hmm_sequences_dict_for_splits = {}
 
         unique_ids_taken_care_of = set([])
-        for entry in hits.values():
-            split_name = entry['split']
-            source = entry['source']
-            gene_name = entry['gene_name']
-            e_value = entry['e_value']
-            gene_unique_id = entry['gene_unique_identifier']
+        for split_entry in hits_in_splits.values():
+            hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
+
+            split_name = split_entry['split']
+            source = hmm_hit['source']
+            gene_name = hmm_hit['gene_name']
+            e_value = hmm_hit['e_value']
+            gene_unique_id = hmm_hit['gene_unique_identifier']
 
             if gene_unique_id in unique_ids_taken_care_of:
                 continue
             else:
                 unique_ids_taken_care_of.add(gene_unique_id)
 
-            contig_entry = self.search_table_contigs[self.unique_id_to_contig_entry_id[gene_unique_id]]
-            contig_name = contig_entry['contig']
-            start, stop = contig_entry['start'], contig_entry['stop']
+            gene_call = self.genes_in_contigs[hmm_hit['gene_callers_id']]
+
+            contig_name = gene_call['contig']
+            start, stop = gene_call['start'], gene_call['stop']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
             hmm_sequences_dict_for_splits[gene_unique_id] = {'sequence': sequence,
@@ -237,7 +203,7 @@ class SequencesForHMMHits:
                                                              'bin_id': split_name_to_bin_id[split_name],
                                                              'gene_name': gene_name,
                                                              'e_value': e_value,
-                                                             'contig': contig_entry['contig'],
+                                                             'contig': contig_name,
                                                              'start': start,
                                                              'stop': stop,
                                                              'length': stop - start}
@@ -268,5 +234,3 @@ class SequencesForHMMHits:
 
             f.write('>%s\n' % header)
             f.write('%s\n' % sequence)
-
-

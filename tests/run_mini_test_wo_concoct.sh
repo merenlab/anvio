@@ -50,10 +50,17 @@ done
 
 INFO "Merging profiles ..."
 # merge samples
-anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db
+anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db --skip-concoct-binning
 
-INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'CONCOCT'
+INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
+anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
+                       -p test-output/204-MERGED/PROFILE.db \
+                       -c test-output/CONTIGS.db \
+                       --source-identifier 'SPLITS_IMPORTED' \
+                       --colors example_files_for_external_binning_results/example_colors_file.txt
+
+INFO "Summarizing 'SPLITS_IMPORTED' results ..."
+anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'SPLITS_IMPORTED'
 
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db

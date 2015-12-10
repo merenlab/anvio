@@ -66,6 +66,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
+        self.samples_information_default_layer_order = {}
 
 
         self.external_clustering = external_clustering
@@ -77,12 +78,17 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
             self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
+            self.samples_information_default_layer_order = samples_information_db.get_samples_information_default_layer_order()
+            samples_information_db.disconnect()
 
         if self.contigs_db_path:
             self.completeness = completeness.Completeness(self.contigs_db_path)
             self.collections.populate_sources_dict(self.contigs_db_path, anvio.__contigs__version__)
         else:
             self.completeness = None
+
+        if not args.skip_init_functions:
+            self.init_functions()
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
@@ -178,6 +184,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
+        self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
         self.p_meta['default_clustering'] = 'default'
         self.p_meta['available_clusterings'] = ['default']
@@ -214,7 +221,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # create a new, empty profile database for ad hoc operations
         if not os.path.exists(self.profile_db_path):
             profile_db = ProfileDatabase(self.profile_db_path)
-            profile_db.create({'db_type': 'profile', 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
+            profile_db.create({'db_type': 'profile', 'merged': True, 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
@@ -340,9 +347,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database
 
         if splits_in_tree_but_not_in_view_data:
+            num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
+            example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
             raise ConfigError, 'Some split names found in your tree are missing in your view data. Hard to\
-                                know what cuased this, but here is a couple of them that: %s'\
-                                    % ', '.join(splits_in_tree_but_not_in_view_data[0:5])
+                                know what cuased this, but essentially your tree and your view does not\
+                                seem to be compatible. Here is a couple of splits that appear in the tree\
+                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view)
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
@@ -402,26 +412,30 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             # (1) set the header line with the first entry:
             json_header = ['contigs']
 
-            # (2) then add contigs db stuff, if exists
+            # (2) add taxonomy, if exitsts:
+            if len(self.splits_taxonomy_dict):
+                json_header.extend(['taxonomy'])
+
+            # (3) then add split summaries from contigs db, if exists
             if len(self.genes_in_splits_summary_dict):
                 json_header.extend(self.genes_in_splits_summary_headers[1:])
 
-            # (3) then add length and GC content
+            # (4) then add length and GC content
             basic_info_headers = ['length', 'gc_content']
             json_header.extend(basic_info_headers)
 
-            # (4) then add the view!
+            # (5) then add the view!
             json_header.extend(view_headers)
 
-            # (5) then add 'additional' headers as the outer ring:
+            # (6) then add 'additional' headers as the outer ring:
             if additional_layer_headers:
                 json_header.extend(additional_layer_headers)
 
-            # (6) finally add hmm search results
+            # (7) finally add hmm search results
             if self.hmm_searches_header:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
-            # (7) and finalize it (yay):
+            # (8) and finalize it (yay):
             json_object.append(json_header)
 
             for split_name in view_dict:
@@ -429,26 +443,30 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 json_entry = [split_name]
 
                 # (2)
+                if self.splits_taxonomy_dict:
+                    json_entry.extend([self.splits_taxonomy_dict[split_name]['t_species']])
+
+                # (3)
                 if self.genes_in_splits_summary_dict:
                     json_entry.extend([self.genes_in_splits_summary_dict[split_name][header] for header in self.genes_in_splits_summary_headers[1:]])
 
-                # (3)
+                # (4)
                 json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
-                # (4) adding essential data for the view
+                # (5) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (5) adding additional layers
+                # (6) adding additional layers
                 json_entry.extend([additional_layers_dict[split_name][header] if additional_layers_dict.has_key(split_name) else None for header in additional_layer_headers])
 
-                # (6) adding hmm stuff
+                # (7) adding hmm stuff
                 if self.hmm_searches_dict:
                     if self.split_hmm_layers:
                         json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
                         json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if self.hmm_searches_dict.has_key(split_name) else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
 
-                # (7) send it along!
+                # (8) send it along!
                 json_object.append(json_entry)
 
             self.views[view] = json_object

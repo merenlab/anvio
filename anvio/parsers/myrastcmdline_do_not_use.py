@@ -25,7 +25,7 @@ from anvio.parsers.base import Parser
 
 class MyRastCMDLine_DO_NOT_USE(Parser):
 
-    def __init__(self, input_file_paths, genes_table_structure):
+    def __init__(self, input_file_paths, splits_taxonomy_table_structure):
         files_expected = {'svr_output': 'svr_assign_to_dna_using_figfams.txt'}
 
         files_structure = {'svr_output': 
@@ -33,7 +33,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
                                  'col_mapping': [str, int, str, str, str],
                                  'indexing_field': 2}}
 
-        self.genes_table_structure = genes_table_structure
+        self.splits_taxonomy_table_structure = splits_taxonomy_table_structure
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
 
 
@@ -46,7 +46,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
             prot = 'prot_%.12d' % counter
             counter += 1
 
-            for field in self.genes_table_structure:
+            for field in self.splits_taxonomy_table_structure:
                 entry[field] = None
 
             start, stop = [t for t in key.split('_')[-2:]]

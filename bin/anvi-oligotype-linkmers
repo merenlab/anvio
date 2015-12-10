@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+"""Oligotyping analysis of the linkmer reports."""
+
+import sys
+from collections import Counter
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+def main(args):
+    filesnpaths.is_file_tab_delimited(args.input_file)
+
+    report = utils.get_TAB_delimited_file_as_dictionary(args.input_file)
+
+
+    # take care of unique hashes
+    hash_to_oligotype = {}
+    unique_hashes = set([entry['read_unique_id'] for entry in report.values()])
+    for unique_hash in unique_hashes:
+        hash_to_oligotype[unique_hash] = []
+
+    for entry in report.values():
+        hash_to_oligotype[entry['read_unique_id']].append((entry['pos_in_contig'], entry['base']),)
+
+    for unique_hash in unique_hashes:
+        hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
+
+    d = {}
+
+    request_ids = sorted(list(set([entry['request_id'] for entry in report.values()])))
+    samples = sorted(list(set([entry['sample_id'] for entry in report.values()])))
+
+    for request_id in request_ids:
+        d[request_id] = {}
+        for sample_id in samples:
+            d[request_id][sample_id] = Counter()
+
+    for entry in report.values():
+        request_id, sample_id, unique_hash = entry['request_id'], entry['sample_id'], entry['read_unique_id']
+        oligotype = hash_to_oligotype[unique_hash]
+        d[request_id][sample_id][oligotype] += 1
+
+    run.warning('', header = "Oligotyping outputs per request", lc = 'cyan')
+
+    for request_id in request_ids:
+        output_file_path = 'oligotype-counts-%s.txt' % request_id
+        utils.store_dict_as_TAB_delimited_file(d[request_id], output_file_path)
+        run.info('Output', output_file_path)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Takes an anvi'o linkmers report, generates an oligotyping output")
+
+    parser.add_argument('-i', '--input-file', metavar = 'LINKMER_REPORT', required = True,
+                        help = 'Output file of `anvi-report-linkmers`.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
+  

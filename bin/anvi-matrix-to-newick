@@ -25,6 +25,7 @@ parser.add_argument('input_matrix', metavar = 'PATH', default = None,
                     help = 'Input matrix')
 
 parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
 
 args = parser.parse_args()
 
@@ -33,6 +34,6 @@ if not args.output_file:
 
 run.info('Input matrix file', args.input_matrix)
 progress.new('Analyzing input file')
-clustering.get_newick_tree_data(args.input_matrix, args.output_file, progress = progress)
+clustering.get_newick_tree_data(args.input_matrix, args.output_file, transpose = args.transpose, progress = progress)
 progress.end()
 run.info('Output newick', args.output_file)

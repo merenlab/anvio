@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Searches for a given function name, reports back split names"""
+
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    c = ContigsSuperclass(args)
+
+    output_file_path = args.output_file if args.output_file else 'search_results.txt'
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    if args.full_report:
+        filesnpaths.is_output_file_writable(args.full_report)
+
+    search_terms = [s.strip() for s in args.search_terms.split(args.delimiter)]
+
+    matching_split_names_dict, full_report = c.search_splits_for_gene_functions(search_terms, verbose = args.verbose)
+
+    all_split_names = set([])
+
+    for split_names in matching_split_names_dict.values():
+        all_split_names.update(split_names)
+
+    results_dict = {}
+
+    for split_name in all_split_names:
+        results_dict[split_name] = dict([(s + '_hits', '') for s in search_terms])
+
+        for search_term in search_terms:
+            if split_name in matching_split_names_dict[search_term]:
+                results_dict[split_name][search_term + '_hits'] = search_term
+
+    utils.store_dict_as_TAB_delimited_file(results_dict, output_file_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
+
+    if args.full_report:
+        report = open(args.full_report, 'w')
+
+        report.write('\t'.join(['gene_callers_id', 'source', 'function', 'search_term', 'split_name']) + '\n')
+
+        for entry in full_report:
+            report.write('\t'.join([str(item) for item in entry]) + '\n')
+        report.close() 
+
+        run.info('Full report', args.full_report)
+
+    run.info('Additional metadata compatible output', output_file_path)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='A script to generate summaries for a given list of splts')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
+    parser.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))
+    parser.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
