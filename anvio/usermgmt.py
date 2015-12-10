@@ -14,6 +14,7 @@ import shutil
 import smtplib
 
 import anvio
+import anvio.interactive as interactive
 import anvio.filesnpaths as filesnpaths
 import anvio.mailsetup as mailsetup
 
@@ -30,10 +31,11 @@ __email__ = "tobiaspaczian@googlemail.com"
 __status__ = "Development"
 
 class UserMGMT:
-    def __init__(self, path, client_version, new_database=False, ignore_version=False):
+    def __init__(self, path, client_version, new_database=False, ignore_version=False, orig_args={}):
         self.path = path
         self.db_path = path + 'user.db'
         self.version = None
+        self.orig_args = orig_args
 
         if not filesnpaths.is_file_exists(self.db_path):
             new_database=True
@@ -119,6 +121,9 @@ class UserMGMT:
         self.conn.close()
 
 
+    ######################################
+    # USERS
+    ######################################
     def create_user(self, firstname, lastname, email, login, password):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
@@ -268,6 +273,10 @@ class UserMGMT:
 
         return (True, None)
 
+    ######################################
+    # PROJECTS
+    ######################################
+    
     def create_project(self, login, pname):
         if not login:
             raise ConfigError, "You must pass a login to create a project"
@@ -393,7 +402,9 @@ class UserMGMT:
         else:
             return (False, 'the user does not own this project')
 
-
+    ######################################
+    # VIEWS
+    ######################################
     def get_view(self, vname, token=None):
         # get the view
         p = (vname, )
@@ -491,7 +502,75 @@ class UserMGMT:
         
         return (True, token)
 
+    ######################################
+    # REQUEST SECTION
+    ######################################
 
+    def check_user(request):
+        # check if we have a cookie
+        if request.get_cookie('anvioSession'):
+
+            # we have a cookie, check if it is valid
+            retval = self.get_user_for_token(request.get_cookie('anvioSession'))
+            if retval[0]:
+                user = retval[1]
+                if user.has_key('project_path'):
+                    basepath = 'userdata/' + user['path'] + '/' + user['project_path'] + '/'
+                    args = self.orig_args
+                    args.tree = basepath + 'treeFile'
+                    args.fasta_file = basepath + 'fastaFile'
+                    args.view_data = basepath + 'dataFile'
+                    args.title = user['project']
+                    args.read_only = False
+                    args.profile_db = basepath + 'profile.db'
+                    args.additional_layers = None
+                    addFile = basepath + 'additionalFile'
+                    if os.path.isfile(addFile):
+                        args.additional_layers = addFile
+                    
+                    d = interactive.InputHandler(args)
+                    return [ True, d ]
+                else:
+                    return [ False ]
+            else:
+                return [ False ]
+        else:
+            return [ False ]
+
+
+    def check_view(request):
+        if request.get_cookie('anvioView'):
+            p = request.get_cookie('anvioView').split('|')
+            retval = userdb.get_view(p[0], p[1])
+            if retval[0]:
+                args = self.orig_args
+                basepath = 'userdata/' + retval[1]['path'] + '/'
+                args.tree = basepath + 'treeFile'
+                args.fasta_file = basepath + 'fastaFile'
+                args.view_data = basepath + 'dataFile'
+                args.title = retval[1]['project']
+                args.read_only = True
+
+                d = interactive.InputHandler(args)
+
+                return [ True, d ]
+            else:
+                return [ False ]
+        else:
+            return [ False ]
+
+
+    def set_user_data(request, d):
+        retval = check_view(request)
+        if retval[0]:
+            return retval[1]
+        retval = check_user(request)
+        if retval[0]:
+            return retval[1]
+
+        return d
+
+        
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
