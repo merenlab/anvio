@@ -9,7 +9,7 @@
 import os
 import json
 import anvio
-import anvio.dbops
+import anvio.dbops as dbops
 
 from bottle import redirect
 
@@ -20,7 +20,7 @@ def set_default_headers(response):
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     
 
-def get_user(request, userdb):
+def get_user(request, userdb, response):
     # check if we have a cookie
     if request.get_cookie('anvioSession'):
 
@@ -28,7 +28,7 @@ def get_user(request, userdb):
         return userdb.get_user_for_token(request.get_cookie('anvioSession'))
 
     
-def get_user_by_token(response, userdb):
+def get_user_by_token(request, userdb, response):
     set_default_headers(response)
     retval = userdb.get_user_for_token(request.forms.get('token'))
         
@@ -40,7 +40,7 @@ def get_user_by_token(response, userdb):
     return json.dumps(retval)
 
 
-def request_account(response, userdb):
+def request_account(request, userdb, response):
     set_default_headers(response)
     retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'))
 
@@ -51,7 +51,7 @@ def request_account(response, userdb):
         return '{ "ERROR": "'+retval[1]+'" }'
 
 
-def accept_user(response, userdb):
+def accept_user(request, userdb, response):
     retval = userdb.accept_user(request.query.login, request.query.code)
     if retval[0]:
         redirect('/app/accountOK.html')
@@ -61,7 +61,7 @@ def accept_user(response, userdb):
     return retval[1]
 
 
-def login_to_app(response, userdb):
+def login_to_app(request, userdb, response):
     set_default_headers(response)
     retval = userdb.login_user(request.forms.get('login'), request.forms.get('password'))
     if retval[0]:
@@ -70,12 +70,12 @@ def login_to_app(response, userdb):
     return json.dumps(retval)
 
 
-def logout_from_app(response, userdb):
+def logout_from_app(request, userdb, response):
     userdb.logout_user(request.forms.get('login'))
     return 'OK'
 
 
-def set_view_cookie(response, userdb):
+def set_view_cookie(request, userdb, response):
     if request.query.name:
         name = request.query.name
         token = request.query.code or ""
@@ -84,33 +84,33 @@ def set_view_cookie(response, userdb):
         redirect('/app/index.html')
         
 
-def set_project(response, userdb):
+def set_project(request, userdb, response):
     set_default_headers(response)
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if retval[0]:
         if request.forms.get('project'):
             userdb.set_project(retval[1]['login'], request.forms.get('project'))
-            redirect_to_app()
+            redirect('/app/index.html')
         else:
             return '{ "ERROR": "You need to specify a project name" }'
     else:
         return '{ "ERROR": "' + retval[1] + '" }'
 
 
-def delete_project(response, userdb):
+def delete_project(request, userdb, response):
     set_default_headers(response)
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if retval[0]:
         if request.forms.get('project'):
             userdb.delete_project(retval[1]['login'], request.forms.get('project'))
-            redirect_to_app()
+            redirect('/app/index.html')
         else:
             return '{ "ERROR": "You need to specify a project name" }'
     else:
         return '{ "ERROR": "' + retval[1] + '" }'
     
 
-def share_project(response, userdb):
+def share_project(request, userdb, response):
     set_default_headers(response)
     if not request.forms.get('name'):
         return '{ "ERROR": "no name specified for the share" }'
@@ -121,7 +121,7 @@ def share_project(response, userdb):
     if not re.match("^[A-Za-z0-9_-]+$", request.forms.get('name')):
         return '{ "ERROR": "the share name contains invalid characters" }'
     
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if not retval[0]:
         return '{ "ERROR": "no user logged in" }'
 
@@ -135,7 +135,7 @@ def share_project(response, userdb):
         return '{ "ERROR": "'+share[1]+'" }'
 
     
-def delete_share(response, userdb):
+def delete_share(request, userdb, response):
     set_default_headers(response)
     if not request.forms.get('name'):
         return '{ "ERROR": "no name specified for the share to delete" }'
@@ -143,7 +143,7 @@ def delete_share(response, userdb):
     if not request.forms.get('project'):
         return '{ "ERROR": "no project specified for the share to delete" }'
     
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if not retval[0]:
         return '{ "ERROR": "no user logged in" }'
         
@@ -154,10 +154,10 @@ def delete_share(response, userdb):
         return '{ "ERROR": "'+share[1]+'" }'
     
     
-def receive_upload_file(response, userdb):
+def receive_upload_file(request, userdb, response):
     set_default_headers(response)
 
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if not retval[0]:
         return '{ "ERROR": "you need to be logged in to create a project" }'
     
@@ -196,10 +196,10 @@ def receive_upload_file(response, userdb):
     profile = dbops.ProfileDatabase(basepath + 'profile.db')
     profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None});
         
-    redirect_to_app()
+    redirect('/app/index.html')
 
 
-def receive_additional_upload_file(response, userdb):
+def receive_additional_upload_file(request, userdb, response):
     set_default_headers(response)
     if not request.files.get('additionalFile'):
         return '{ "ERROR": "you did not upload a file" }'
@@ -207,7 +207,7 @@ def receive_additional_upload_file(response, userdb):
     if not request.forms.get('project'):
         return '{ "ERROR": "you did not specify a project" }'
 
-    retval = get_user(response, userdb)
+    retval = get_user(request, userdb, response)
     if not retval[0]:
         return '{ "ERROR": "you need to be logged in to upload additional data" }'
     
