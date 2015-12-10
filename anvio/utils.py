@@ -5,7 +5,6 @@
 import os
 import sys
 import time
-import json
 import copy
 import socket
 import textwrap
@@ -173,6 +172,18 @@ def run_command(cmdline):
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
 
+def get_command_output_from_shell(cmd_line):
+    ret_code = 0
+
+    try:
+        out_bytes = subprocess.check_output(cmd_line.split(), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        out_bytes = e.output
+        ret_code  = e.returncode
+
+    return out_bytes, ret_code
+
+
 def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = []):
     filesnpaths.is_output_file_writable(output_path)
 
@@ -199,7 +210,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = 
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers = None, file_obj = None):
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
 
@@ -207,6 +218,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers, file_obj = None):
         f = open(output_path, 'w')
     else:
         f = file_obj
+
+    if not headers:
+        headers = ['key'] + sorted(d.values()[0].keys())
 
     f.write('%s\n' % '\t'.join(headers))
 
@@ -250,6 +264,21 @@ def HTMLColorToRGB(colorstring, scaled = True):
         return (r, g, b)
 
 
+def transpose_tab_delimited_file(input_file_path, output_file_path):
+    filesnpaths.is_file_exists(input_file_path)
+    filesnpaths.is_file_tab_delimited(input_file_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path).readlines()]
+
+    output_file = open(output_file_path, 'w')
+    for entry in zip(*file_content):
+        output_file.write('\t'.join(entry) + '\n')
+    output_file.close()
+
+    return output_file_path
+
+
 def get_random_colors_dict(keys):
     # FIXME: someone's gotta implement this
     # keys   : set(1, 2, 3, ..)
@@ -264,9 +293,14 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path).readline().strip('\n').split('\t')[1:]
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = []):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = [], transpose = False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
+
+    if transpose:
+        transposed_file_path = filesnpaths.get_temp_file_path()
+        transpose_tab_delimited_file(file_path, transposed_file_path)
+        file_path = transposed_file_path
 
     rows_to_return = set(rows_to_return)
     vectors = []
@@ -305,6 +339,12 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         vectors.append(vector)
 
         id_counter += 1
+
+    input_matrix.close()
+
+    if transpose:
+        # remove clutter
+        os.remove(file_path)
 
     sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.iteritems()])
 
@@ -560,7 +600,17 @@ def is_ascii_only(text):
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
                                         column_mapping = None, indexing_field = 0, assign_none_for_missing = False,\
-                                        separator = '\t', no_header = False, ascii_only = False):
+                                        separator = '\t', no_header = False, ascii_only = False, only_expected_fields = False):
+    """Takes a file path, returns a dictionary."""
+
+    if expected_fields and not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
+        raise ConfigError, "'expected_fields' variable must be a list (or a set)."
+
+        raise ConfigError, "'only_expected_fields' variable guarantees that there are no more fields present\
+                            in the input file but the ones requested with 'expected_fields' variable. If you\
+                            need to use this flag, you must also be explicit abou twhat fields you expect to\
+                            find in the file."
+
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
@@ -620,7 +670,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                     raise ConfigError, "Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i]
                 except ValueError:
                     raise ConfigError, "Mapping funciton '%s' did not like the value '%s' in column number %d\
-                                        of the matrix :/" % (column_mapping[i], line_fields[i], i + 1)
+                                        of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path)
             line_fields = updated_line_fields 
 
         if indexing_field == -1:

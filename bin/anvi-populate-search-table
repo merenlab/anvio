@@ -45,7 +45,7 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    search_tables = dbops.TablesForSearches(args.contigs_db)
+    search_tables = dbops.TablesForHMMHits(args.contigs_db)
     search_tables.debug = args.debug
     search_tables.populate_search_tables(sources)
 

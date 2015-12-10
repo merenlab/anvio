@@ -41,7 +41,8 @@ contig_genes = {}
 genes = {}
 
 db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
-search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_contigs_table_name)
+search_contigs_dict = db.db.get_table_as_dict(t.hmm_hits_table_name)
+genes_in_contigs_dict = db.db.get_table_as_dict(t.genes_in_contigs_table_name)
 search_info_dict = db.db.get_table_as_dict(t.hmm_hits_info_table_name)
 contig_lengths_table = db.db.get_table_as_dict(t.contigs_info_table_name)
 contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_lengths_table])
@@ -65,7 +66,8 @@ if args.source:
 hits_output = open(args.contigs_db + '.hits', 'w')
 hits_output.write('source\tcontig\tgene\te_value\n')
 for entry in search_contigs_dict.values():
-    hits_output.write('%s\t%s\t%s\t%.4g\n' % (entry['source'], entry['contig'], entry['gene_name'], entry['e_value'] ))
+    contig_name = genes_in_contigs_dict[entry['gene_callers_id']]['contig']
+    hits_output.write('%s\t%s\t%s\t%.4g\n' % (entry['source'], contig_name, entry['gene_name'], entry['e_value'] ))
 hits_output.close()
 
 genes_output = open(args.contigs_db + '.genes', 'w')

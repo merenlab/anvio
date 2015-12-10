@@ -1,301 +1,301 @@
-contig	first_letters	random_property	numeric_property
-cathetus	c	x	0.01
-centrist	c	y	0.02
-cascaded	c		0.03
-crocking	c	x	0.04
-cinchona	c	y	0.05
-couchant	c		0.06
-creviced	c	x	0.07
-clovered	c	y	0.08
-contempt	c		0.09
-cicatrix	c	x	0.1
-chenopod	c	y	0.11
-clarinet	c		0.12
-calibred	c	x	0.13
-castalia	c	y	0.14
-carabine	c	x	0.15
-caesuras	c	y	0.16
-celature	c		0.17
-chambord	c	x	0.18
-comanche	c	y	0.19
-caviling	c		0.2
-cynewulf	c	x	0.21
-caftaned	c	y	0.22
-confetti	c		0.23
-colonize	c	x	0.24
-chekiang	c	y	0.25
-couloirs	c	x	0.26
-cultured	c	y	0.27
-carouser	c		0.28
-conflict	c	x	0.29
-cavaedia	c	y	0.3
-chilopod	c		0.31
-callosal	c	x	0.32
-censured	c	y	0.33
-cloudlet	c		0.34
-cinquain	c	x	0.35
-colorful	c	y	0.36
-corroded	c	x	0.37
-coinable	c	y	0.38
-covertly	c		0.39
-cindylou	c	x	0.4
-cudgeled	c	y	0.41
-comprize	c		0.42
-claimant	c	x	0.43
-cesarean	c	y	0.44
-cotquean	c		0.45
-corneous	c	x	0.46
-craftily	c	y	0.47
-carboyed	c	x	0.48
-cachucha	c	y	0.49
-calebite	c		0.5
-canonize	c	x	0.51
-culinary	c	y	0.52
-colonial	c		0.53
-cheribon	c	x	0.54
-chivying	c	y	0.55
-carneous	c		0.56
-congener	c	x	0.57
-converse	c	y	0.58
-cuxhaven	c	x	0.59
-chondrus	c	y	0.6
-codpiece	c		0.61
-cerastes	c	x	0.62
-cancroid	c	y	0.63
-cavatina	c		0.64
-cyrtosis	c	x	0.65
-clymenus	c	y	0.66
-canoness	c		0.67
-coevally	c	x	0.68
-costumer	c	y	0.69
-caterina	c	x	0.7
-cityless	c	y	0.71
-challahs	c		0.72
-caseless	c	x	0.73
-caingang	c	y	0.74
-childbed	c		0.75
-chorioid	c	x	0.76
-cymatium	c	y	0.77
-conquian	c		0.78
-copperas	c	x	0.79
-canceled	c	y	0.8
-chartist	c	x	0.81
-carboloy	c	y	0.82
-combated	c		0.83
-charring	c	x	0.84
-caracara	c	y	0.85
-churlish	c		0.86
-crippler	c	x	0.87
-canelike	c	y	0.88
-catchall	c		0.89
-cerotype	c	x	0.9
-charango	c	y	0.91
-cutpurse	c	x	0.92
-claymore	c	y	0.93
-crankpin	c		0.94
-consuelo	c	x	0.95
-czarevna	c	y	0.96
-chellean	c		0.97
-cotillon	c	x	0.98
-calfless	c	y	0.99
-campania	c		1
-especial	e	x	1.01
-everyday	e	y	1.02
-etherize	e	x	1.03
-eubuleus	e	y	1.04
-eateries	e		1.05
-eulachan	e	x	1.06
-enginery	e	y	1.07
-eloquent	e		1.08
-employe	e	x	1.09
-embitter	e	y	1.1
-expiable	e		1.11
-eumolpus	e	x	1.12
-edgeways	e	y	1.13
-estocada	e	x	1.14
-eastmost	e	y	1.15
-enfacing	e		1.16
-enchased	e	x	1.17
-exoergic	e	y	1.18
-exterior	e		1.19
-eutrophy	e	x	1.2
-etruscan	e	y	1.21
-egestion	e		1.22
-einstein	e	x	1.23
-estampie	e	y	1.24
-exequial	e	x	1.25
-edgebone	e	y	1.26
-excusing	e		1.27
-eckhardt	e	x	1.28
-environs	e	y	1.29
-encaenia	e		1.3
-epilepsy	e	x	1.31
-embracer	e	y	1.32
-eurasian	e		1.33
-enplaned	e	x	1.34
-ecaudate	e	y	1.35
-eatonton	e	x	1.36
-esoteric	e	y	1.37
-estivate	e		1.38
-expiator	e	x	1.39
-euctemon	e	y	1.4
-eyeglass	e		1.41
-euplotes	e	x	1.42
-erenburg	e	y	1.43
-excircle	e		1.44
-ecumenic	e	x	1.45
-exorable	e	y	1.46
-enuresis	e	x	1.47
-ennobler	e	y	1.48
-eskimoan	e		1.49
-elmhurst	e	x	1.5
-tovarish	t	y	1.51
-tucotuco	t		1.52
-trimodal	t	x	1.53
-terrapin	t	y	1.54
-trioxide	t		1.55
-turanian	t	x	1.56
-trimeter	t	y	1.57
-terentia	t	x	1.58
-toadfish	t	y	1.59
-tenpenny	t		1.6
-teetotum	t	x	1.61
-tautonym	t	y	1.62
-toboggan	t		1.63
-titicaca	t	x	1.64
-teammate	t	y	1.65
-toponymy	t		1.66
-torchier	t	x	1.67
-tortoise	t	y	1.68
-teosinte	t	x	1.69
-trousers	t	y	1.7
-thallium	t		1.71
-trotting	t	x	1.72
-tressier	t	y	1.73
-thiazine	t		1.74
-traditor	t	x	1.75
-tigereye	t	y	1.76
-trevally	t		1.77
-tomentum	t	x	1.78
-thalloid	t	y	1.79
-thankful	t	x	1.8
-tyrtaeus	t	y	1.81
-tegyrius	t		1.82
-tiresome	t	x	1.83
-tallness	t	y	1.84
-tristram	t		1.85
-triolein	t	x	1.86
-tuskless	t	y	1.87
-tailrace	t		1.88
-tinnient	t	x	1.89
-tetrapod	t	y	1.9
-twelvemo	t	x	1.91
-tragopan	t	y	1.92
-tripping	t		1.93
-tabbying	t	x	1.94
-traviata	t	y	1.95
-thrombin	t		1.96
-trecento	t	x	1.97
-technics	t	y	1.98
-tinnitus	t		1.99
-tetracyn	t	x	2
-belittle	b	y	2.01
-broidery	b	x	2.02
-bluebell	b	y	2.03
-bushnell	b		2.04
-backyard	b	x	2.05
-biblical	b	y	2.06
-blazonry	b		2.07
-bughouse	b	x	2.08
-beyrouth	b	y	2.09
-bouncing	b		2.1
-bokharan	b	x	2.11
-bagpiped	b	y	2.12
-bewrayer	b	x	2.13
-bohemian	b	y	2.14
-brickish	b		2.15
-blooding	b	x	2.16
-biunique	b	y	2.17
-bedeguar	b		2.18
-baetylus	b	x	2.19
-bourrit	b	y	2.2
-bandsman	b		2.21
-beltline	b	x	2.22
-betjeman	b	y	2.23
-bergamot	b	x	2.24
-bandaged	b	y	2.25
-bearbush	b		2.26
-boskiest	b	x	2.27
-beadlike	b	y	2.28
-bohuslav	b		2.29
-begabled	b	x	2.3
-burliest	b	y	2.31
-bicepses	b		2.32
-birdseed	b	x	2.33
-breviate	b	y	2.34
-buddhism	b	x	2.35
-bisector	b	y	2.36
-busywork	b		2.37
-blueness	b	x	2.38
-bimodule	b	y	2.39
-boatload	b		2.4
-brackish	b	x	2.41
-belabour	b	y	2.42
-bustling	b		2.43
-busyness	b	x	2.44
-brandish	b	y	2.45
-betiding	b	x	2.46
-banausic	b	y	2.47
-burnable	b		2.48
-backward	b	x	2.49
-bevatron	b	y	2.5
-basanite	b		2.51
-bouffant	b	x	2.52
-boscobel	b	y	2.53
-bloodier	b		2.54
-banterer	b	x	2.55
-bitxynia	b	y	2.56
-bithynia	b	x	2.57
-balkiest	b	y	2.58
-bogalusa	b		2.59
-bushveld	b	x	2.6
-barrable	b	y	2.61
-billfish	b		2.62
-bacteria	b	x	2.63
-bergre	b	y	2.64
-bearable	b		2.65
-bonhomie	b	x	2.66
-borating	b	y	2.67
-baptized	b	x	2.68
-backwind	b	y	2.69
-biologic	b		2.7
-benzoate	b	x	2.71
-bookless	b	y	2.72
-barrater	b		2.73
-billings	b	x	2.74
-bareness	b	y	2.75
-bulfinch	b		2.76
-bravoing	b	x	2.77
-backrest	b	y	2.78
-bidarkee	b	x	2.79
-bullpout	b	y	2.8
-beamiest	b		2.81
-bigamous	b	x	2.82
-blackboy	b	y	2.83
-biocycle	b		2.84
-boweries	b	x	2.85
-ballarat	b	y	2.86
-banneret	b		2.87
-boughpot	b	x	2.88
-balconet	b	y	2.89
-bulkiest	b	x	2.9
-balinese	b	y	2.91
-beryline	b		2.92
-blantyre	b	x	2.93
-brucella	b	y	2.94
-bassetts	b		2.95
-bastogne	b	x	2.96
-berkeley	b	y	2.97
-bacterin	b		2.98
-bluejack	b	x	2.99
-batangas	b	y	3
+contig	categorical_1	categorical_2	numerical	bars_main!A;B;C
+backrest	b	y	2.78	278;23;1
+backward	b	x	2.49	249;52;2
+backwind	b	y	2.69	269;32;3
+backyard	b	x	2.05	205;96;4
+bacteria	b	x	2.63	263;38;5
+bacterin	b		2.98	298;3;6
+baetylus	b	x	2.19	219;82;7
+bagpiped	b	y	2.12	212;89;8
+balconet	b	y	2.89	289;12;9
+balinese	b	y	2.91	291;10;10
+balkiest	b	y	2.58	258;43;11
+ballarat	b	y	2.86	286;15;12
+banausic	b	y	2.47	247;54;13
+bandaged	b	y	2.25	225;76;14
+bandsman	b		2.21	221;80;15
+banneret	b		2.87	287;14;16
+banterer	b	x	2.55	255;46;17
+baptized	b	x	2.68	268;33;18
+bareness	b	y	2.75	275;26;19
+barrable	b	y	2.61	261;40;20
+barrater	b		2.73	273;28;21
+basanite	b		2.51	251;50;22
+bassetts	b		2.95	295;6;23
+bastogne	b	x	2.96	296;5;24
+batangas	b	y	3	300;1;25
+beadlike	b	y	2.28	228;73;26
+beamiest	b		2.81	281;20;27
+bearable	b		2.65	265;36;28
+bearbush	b		2.26	226;75;29
+bedeguar	b		2.18	218;83;30
+begabled	b	x	2.3	230;71;31
+belabour	b	y	2.42	242;59;32
+belittle	b	y	2.01	201;100;33
+beltline	b	x	2.22	222;79;34
+benzoate	b	x	2.71	271;30;35
+bergamot	b	x	2.24	224;77;36
+bergre	b	y	2.64	264;37;37
+berkeley	b	y	2.97	297;4;38
+beryline	b		2.92	292;9;39
+betiding	b	x	2.46	246;55;40
+betjeman	b	y	2.23	223;78;41
+bevatron	b	y	2.5	250;51;42
+bewrayer	b	x	2.13	213;88;43
+beyrouth	b	y	2.09	209;92;44
+biblical	b	y	2.06	206;95;45
+bicepses	b		2.32	232;69;46
+bidarkee	b	x	2.79	279;22;47
+bigamous	b	x	2.82	282;19;48
+billfish	b		2.62	262;39;49
+billings	b	x	2.74	274;27;50
+bimodule	b	y	2.39	239;62;51
+biocycle	b		2.84	284;17;52
+biologic	b		2.7	270;31;53
+birdseed	b	x	2.33	233;68;54
+bisector	b	y	2.36	236;65;55
+bithynia	b	x	2.57	257;44;56
+bitxynia	b	y	2.56	256;45;57
+biunique	b	y	2.17	217;84;58
+blackboy	b	y	2.83	283;18;59
+blantyre	b	x	2.93	293;8;60
+blazonry	b		2.07	207;94;61
+bloodier	b		2.54	254;47;62
+blooding	b	x	2.16	216;85;63
+bluebell	b	y	2.03	203;98;64
+bluejack	b	x	2.99	299;2;65
+blueness	b	x	2.38	238;63;66
+boatload	b		2.4	240;61;67
+bogalusa	b		2.59	259;42;68
+bohemian	b	y	2.14	214;87;69
+bohuslav	b		2.29	229;72;70
+bokharan	b	x	2.11	211;90;71
+bonhomie	b	x	2.66	266;35;72
+bookless	b	y	2.72	272;29;73
+borating	b	y	2.67	267;34;74
+boscobel	b	y	2.53	253;48;75
+boskiest	b	x	2.27	227;74;76
+bouffant	b	x	2.52	252;49;77
+boughpot	b	x	2.88	288;13;78
+bouncing	b		2.1	210;91;79
+bourrit	b	y	2.2	220;81;80
+boweries	b	x	2.85	285;16;81
+brackish	b	x	2.41	241;60;82
+brandish	b	y	2.45	245;56;83
+bravoing	b	x	2.77	277;24;84
+breviate	b	y	2.34	234;67;85
+brickish	b		2.15	215;86;86
+broidery	b	x	2.02	202;99;87
+brucella	b	y	2.94	294;7;88
+buddhism	b	x	2.35	235;66;89
+bughouse	b	x	2.08	208;93;90
+bulfinch	b		2.76	276;25;91
+bulkiest	b	x	2.9	290;11;92
+bullpout	b	y	2.8	280;21;93
+burliest	b	y	2.31	231;70;94
+burnable	b		2.48	248;53;95
+bushnell	b		2.04	204;97;96
+bushveld	b	x	2.6	260;41;97
+bustling	b		2.43	243;58;98
+busyness	b	x	2.44	244;57;99
+busywork	b		2.37	237;64;100
+cachucha	c	y	0.49	49;252;101
+caesuras	c	y	0.16	16;285;102
+caftaned	c	y	0.22	22;279;103
+caingang	c	y	0.74	74;227;104
+calebite	c		0.5	50;251;105
+calfless	c	y	0.99	99;202;106
+calibred	c	x	0.13	13;288;107
+callosal	c	x	0.32	32;269;108
+campania	c		1	100;201;109
+canceled	c	y	0.8	80;221;110
+cancroid	c	y	0.63	63;238;111
+canelike	c	y	0.88	88;213;112
+canoness	c		0.67	67;234;113
+canonize	c	x	0.51	51;250;114
+carabine	c	x	0.15	15;286;115
+caracara	c	y	0.85	85;216;116
+carboloy	c	y	0.82	82;219;117
+carboyed	c	x	0.48	48;253;118
+carneous	c		0.56	56;245;119
+carouser	c		0.28	28;273;120
+cascaded	c		0.03	3;298;121
+caseless	c	x	0.73	73;228;122
+castalia	c	y	0.14	14;287;123
+catchall	c		0.89	89;212;124
+caterina	c	x	0.7	70;231;125
+cathetus	c	x	0.01	1;300;126
+cavaedia	c	y	0.3	30;271;127
+cavatina	c		0.64	64;237;128
+caviling	c		0.2	20;281;129
+celature	c		0.17	17;284;130
+censured	c	y	0.33	33;268;131
+centrist	c	y	0.02	2;299;132
+cerastes	c	x	0.62	62;239;133
+cerotype	c	x	0.9	90;211;134
+cesarean	c	y	0.44	44;257;135
+challahs	c		0.72	72;229;136
+chambord	c	x	0.18	18;283;137
+charango	c	y	0.91	91;210;138
+charring	c	x	0.84	84;217;139
+chartist	c	x	0.81	81;220;140
+chekiang	c	y	0.25	25;276;141
+chellean	c		0.97	97;204;142
+chenopod	c	y	0.11	11;290;143
+cheribon	c	x	0.54	54;247;144
+childbed	c		0.75	75;226;145
+chilopod	c		0.31	31;270;146
+chivying	c	y	0.55	55;246;147
+chondrus	c	y	0.6	60;241;148
+chorioid	c	x	0.76	76;225;149
+churlish	c		0.86	86;215;150
+cicatrix	c	x	0.1	10;291;151
+cinchona	c	y	0.05	5;296;152
+cindylou	c	x	0.4	40;261;153
+cinquain	c	x	0.35	35;266;154
+cityless	c	y	0.71	71;230;155
+claimant	c	x	0.43	43;258;156
+clarinet	c		0.12	12;289;157
+claymore	c	y	0.93	93;208;158
+cloudlet	c		0.34	34;267;159
+clovered	c	y	0.08	8;293;160
+clymenus	c	y	0.66	66;235;161
+codpiece	c		0.61	61;240;162
+coevally	c	x	0.68	68;233;163
+coinable	c	y	0.38	38;263;164
+colonial	c		0.53	53;248;165
+colonize	c	x	0.24	24;277;166
+colorful	c	y	0.36	36;265;167
+comanche	c	y	0.19	19;282;168
+combated	c		0.83	83;218;169
+comprize	c		0.42	42;259;170
+confetti	c		0.23	23;278;171
+conflict	c	x	0.29	29;272;172
+congener	c	x	0.57	57;244;173
+conquian	c		0.78	78;223;174
+consuelo	c	x	0.95	95;206;175
+contempt	c		0.09	9;292;176
+converse	c	y	0.58	58;243;177
+copperas	c	x	0.79	79;222;178
+corneous	c	x	0.46	46;255;179
+corroded	c	x	0.37	37;264;180
+costumer	c	y	0.69	69;232;181
+cotillon	c	x	0.98	98;203;182
+cotquean	c		0.45	45;256;183
+couchant	c		0.06	6;295;184
+couloirs	c	x	0.26	26;275;185
+covertly	c		0.39	39;262;186
+craftily	c	y	0.47	47;254;187
+crankpin	c		0.94	94;207;188
+creviced	c	x	0.07	7;294;189
+crippler	c	x	0.87	87;214;190
+crocking	c	x	0.04	4;297;191
+cudgeled	c	y	0.41	41;260;192
+culinary	c	y	0.52	52;249;193
+cultured	c	y	0.27	27;274;194
+cutpurse	c	x	0.92	92;209;195
+cuxhaven	c	x	0.59	59;242;196
+cymatium	c	y	0.77	77;224;197
+cynewulf	c	x	0.21	21;280;198
+cyrtosis	c	x	0.65	65;236;199
+czarevna	c	y	0.96	96;205;200
+eastmost	e	y	1.15	115;186;201
+eateries	e		1.05	105;196;202
+eatonton	e	x	1.36	136;165;203
+ecaudate	e	y	1.35	135;166;204
+eckhardt	e	x	1.28	128;173;205
+ecumenic	e	x	1.45	145;156;206
+edgebone	e	y	1.26	126;175;207
+edgeways	e	y	1.13	113;188;208
+egestion	e		1.22	122;179;209
+einstein	e	x	1.23	123;178;210
+elmhurst	e	x	1.5	150;151;211
+eloquent	e		1.08	108;193;212
+embitter	e	y	1.1	110;191;213
+embracer	e	y	1.32	132;169;214
+employe	e	x	1.09	109;192;215
+encaenia	e		1.3	130;171;216
+enchased	e	x	1.17	117;184;217
+enfacing	e		1.16	116;185;218
+enginery	e	y	1.07	107;194;219
+ennobler	e	y	1.48	148;153;220
+enplaned	e	x	1.34	134;167;221
+enuresis	e	x	1.47	147;154;222
+environs	e	y	1.29	129;172;223
+epilepsy	e	x	1.31	131;170;224
+erenburg	e	y	1.43	143;158;225
+eskimoan	e		1.49	149;152;226
+esoteric	e	y	1.37	137;164;227
+especial	e	x	1.01	101;200;228
+estampie	e	y	1.24	124;177;229
+estivate	e		1.38	138;163;230
+estocada	e	x	1.14	114;187;231
+etherize	e	x	1.03	103;198;232
+etruscan	e	y	1.21	121;180;233
+eubuleus	e	y	1.04	104;197;234
+euctemon	e	y	1.4	140;161;235
+eulachan	e	x	1.06	106;195;236
+eumolpus	e	x	1.12	112;189;237
+euplotes	e	x	1.42	142;159;238
+eurasian	e		1.33	133;168;239
+eutrophy	e	x	1.2	120;181;240
+everyday	e	y	1.02	102;199;241
+excircle	e		1.44	144;157;242
+excusing	e		1.27	127;174;243
+exequial	e	x	1.25	125;176;244
+exoergic	e	y	1.18	118;183;245
+exorable	e	y	1.46	146;155;246
+expiable	e		1.11	111;190;247
+expiator	e	x	1.39	139;162;248
+exterior	e		1.19	119;182;249
+eyeglass	e		1.41	141;160;250
+tabbying	t	x	1.94	194;107;251
+tailrace	t		1.88	188;113;252
+tallness	t	y	1.84	184;117;253
+tautonym	t	y	1.62	162;139;254
+teammate	t	y	1.65	165;136;255
+technics	t	y	1.98	198;103;256
+teetotum	t	x	1.61	161;140;257
+tegyrius	t		1.82	182;119;258
+tenpenny	t		1.6	160;141;259
+teosinte	t	x	1.69	169;132;260
+terentia	t	x	1.58	158;143;261
+terrapin	t	y	1.54	154;147;262
+tetracyn	t	x	2	200;101;263
+tetrapod	t	y	1.9	190;111;264
+thallium	t		1.71	171;130;265
+thalloid	t	y	1.79	179;122;266
+thankful	t	x	1.8	180;121;267
+thiazine	t		1.74	174;127;268
+thrombin	t		1.96	196;105;269
+tigereye	t	y	1.76	176;125;270
+tinnient	t	x	1.89	189;112;271
+tinnitus	t		1.99	199;102;272
+tiresome	t	x	1.83	183;118;273
+titicaca	t	x	1.64	164;137;274
+toadfish	t	y	1.59	159;142;275
+toboggan	t		1.63	163;138;276
+tomentum	t	x	1.78	178;123;277
+toponymy	t		1.66	166;135;278
+torchier	t	x	1.67	167;134;279
+tortoise	t	y	1.68	168;133;280
+tovarish	t	y	1.51	151;150;281
+traditor	t	x	1.75	175;126;282
+tragopan	t	y	1.92	192;109;283
+traviata	t	y	1.95	195;106;284
+trecento	t	x	1.97	197;104;285
+tressier	t	y	1.73	173;128;286
+trevally	t		1.77	177;124;287
+trimeter	t	y	1.57	157;144;288
+trimodal	t	x	1.53	153;148;289
+triolein	t	x	1.86	186;115;290
+trioxide	t		1.55	155;146;291
+tripping	t		1.93	193;108;292
+tristram	t		1.85	185;116;293
+trotting	t	x	1.72	172;129;294
+trousers	t	y	1.7	170;131;295
+tucotuco	t		1.52	152;149;296
+turanian	t	x	1.56	156;145;297
+tuskless	t	y	1.87	187;114;298
+twelvemo	t	x	1.91	191;110;299
+tyrtaeus	t	y	1.81	181;120;300

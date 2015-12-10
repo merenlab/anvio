@@ -4,9 +4,10 @@
 import sys
 
 import anvio
-import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
 
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
@@ -25,22 +26,18 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):
-    # make sure we have the parser
-    if not args.parser:
-        raise ConfigError, "You need to choose a parser :/ See the '--help' menu."
-
-    if args.parser not in parser_modules['genes']:
-        raise ConfigError, "Error: I don't know what to do with '%s'. You must use one of the available parsers\
+def get_genes_dict(args):
+    if args.parser not in parser_modules['taxonomy']:
+        raise ConfigError, "Anvi'o does not know what to do with '%s'. You must use one of the available parsers\
                             to make sense of genes (well, open reading frames) found in your contigs (please see\
                             the documentation for a more detailed explanation): %s"\
-                                                 % (args.parser, ', '.join(parser_modules['genes']))
+                                                 % (args.parser, ', '.join(parser_modules['taxonomy']))
     if not args.input_files:
         raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
                             parser you chose. Please see the documentation for details."
 
 
-    parser = parser_modules['genes'][args.parser](args.input_files, t.genes_contigs_table_structure)
+    parser = parser_modules['taxonomy'][args.parser](args.input_files, t.splits_taxonomy_table_structure)
     genes_dict = parser.get_annotations_dict()
 
     if not len(genes_dict):
@@ -49,28 +46,47 @@ def main(args):
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
                             you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
 
+    return genes_dict
 
-    tables_for_genes = dbops.TablesForGenes(args.contigs_db, run, progress)
-    tables_for_genes.create(genes_dict, args.parser)
+
+def main(args):
+    # make sure we have the parser
+    if args.parser:
+        genes_dict = get_genes_dict(args)
+    else:
+        if len(args.input_files) != 1:
+            raise ConfigError, "When you are using a simple gene calls matrix file to import taxonomy, you can't use more than\
+                                one file as an input."
+
+        input_matrix = args.input_files[0]
+        genes_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix, 
+                                                                expected_fields = ['gene_id', 'contig', 'direction', 'start',
+                                                                                   'stop', 't_phylum', 't_order', 't_class',
+                                                                                   't_family', 't_genus', 't_species'],
+                                                                column_mapping  = [str, str, str, int, int, str, str, str, str, str, str],
+                                                                only_expected_fields = True)
+
+    tables_for_splits_taxonomy = dbops.TableForSplitsTaxonomy(args.contigs_db, run, progress)
+    tables_for_splits_taxonomy.create(genes_dict, args.parser)
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Create and store information into a anvio contigs database using\
+    parser = argparse.ArgumentParser(description='AnalyzegeneanCreate and store information into a anvio contigs database using\
                                                   available parsers for various gene contigs resources.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
-    parser.add_argument('-p', '--parser', default = 'default_matrix',
+    parser.add_argument('-p', '--parser', default = None,
                         help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
                                 It is OK if you do not select a parser, but in that case there will be no additional\
                                 contigs available except the identification of single-copy genes in your contigs\
                                 for later use. Using a parser will not prevent the analysis of single-copy genes,\
                                 but make anvio more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
-                                regarding parsers.' % (len(parser_modules['genes']), parser_modules['genes'].keys()))
-    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None,
+                                regarding parsers.' % (len(parser_modules['taxonomy']), parser_modules['taxonomy'].keys()))
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')
 

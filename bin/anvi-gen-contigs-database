@@ -30,13 +30,15 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-fasta'), **anvio.K('contigs-fasta'))
     parser.add_argument(*anvio.A('split-length'), **anvio.K('split-length'))
     parser.add_argument(*anvio.A('kmer-size'), **anvio.K('kmer-size'))
+    parser.add_argument(*anvio.A('skip-gene-calling'), **anvio.K('skip-gene-calling'))
     parser.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'CONTIGS.db'}))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
 
     try:
         a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False)
-        a.create(args.contigs_fasta, args.split_length, args.kmer_size)
+        a.create(args.contigs_fasta, args.split_length, args.kmer_size, args.skip_gene_calling, args.debug)
     except ConfigError, e:
         print e
         sys.exit(-1)

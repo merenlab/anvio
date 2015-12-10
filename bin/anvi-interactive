@@ -10,7 +10,6 @@ import sys
 import json
 import argparse
 import webbrowser
-import datetime
 import random
 
 from multiprocessing import Process
@@ -18,11 +17,10 @@ from bottle import route, static_file, redirect, request, BaseRequest, response
 from bottle import run as run_server
 
 import anvio
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.interactive as interactive
+import anvio.bottleroutes as routes
 
 # CUSTOM
 import anvio.usermgmt as usermgmt
@@ -83,6 +81,7 @@ groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
 groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
@@ -452,10 +451,13 @@ def send_data(name):
         return json.dumps(d.samples_order_dict)
     elif name == "samples_information":
         return json.dumps(d.samples_information_dict)
+    elif name == "samples_information_default_layer_order":
+        return json.dumps(d.samples_information_default_layer_order)
 
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
+<<<<<<< HEAD
     set_user_data()
     return json.dumps(d.views[view_id])
 
@@ -549,6 +551,17 @@ def charts(split_name):
         data['genes'].append(p)
 
     return json.dumps(data)
+=======
+    return routes.get_view_data(args, d, request, response, view_id)
+
+@route('/tree/<tree_id>')
+def get_tree(tree_id):
+    return routes.get_tree(args, d, request, response, tree_id)
+
+@route('/data/charts/<split_name>')
+def charts(split_name):
+    return routes.charts(d, split_name)
+>>>>>>> 73949413cf62892ffdce1afc6f0b9021b86b5c9f
 
 state_for_charts = {}
 
@@ -573,6 +586,7 @@ def get_parent_state():
     return state_for_charts[statekey]
 
 @route('/data/contig/<split_name>')
+<<<<<<< HEAD
 def split_info(split_name):
     set_default_headers(response)
     set_user_data()
@@ -729,6 +743,50 @@ def save_state():
 
     return json.dumps({'status_code': '1'})
 
+=======
+def get_split_info(split_name):
+    return routes.get_split_info(args, d, request, response, split_name)
+
+@route('/data/collections')
+def collections():
+    return routes.get_collections(args, d, request, response)
+
+@route('/data/collection/<collection_source>')
+def get_collection_dict(collection_source):
+    return routes.get_collection_dict(args, d, request, response, collection_source)
+
+@route('/summary/<collection_id>/:filename#.*#')
+def send_summary_static(collection_id, filename):
+    return routes.send_summary_static(args, d, request, response, collection_id, filename)
+
+@route('/summarize/<collection_id>')
+def gen_summary(collection_id):
+    return routes.gen_summary(args, d, request, response, collection_id)
+
+@route('/store_collection', method='POST')
+def store_collections_dict():
+    return routes.store_collections_dict(args, d, request, response)
+
+@route('/data/completeness', method='POST')
+def completeness():
+    return routes.completeness(d, request)
+
+@route('/state/autoload')
+def state_autoload():
+    return routes.state_autoload(d, response)
+
+@route('/state/all')
+def state_all():
+    return routes.state_all(d, response)
+
+@route('/state/get', method='POST')
+def get_state():
+    return routes.get_state(d, request, response)
+
+@route('/state/save', method='POST')
+def save_state():
+    return routes.save_state(args, d, request, response)
+>>>>>>> 73949413cf62892ffdce1afc6f0b9021b86b5c9f
 
 #######################################################################################################################
 # bottle callbacks end

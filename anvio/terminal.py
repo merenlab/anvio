@@ -146,7 +146,7 @@ class Run:
             self.info_file_obj = open(info_file_path, 'w')
 
 
-    def info(self, key, value, quiet = False, display_only = False, lc = 'cyan', mc = 'yellow'):
+    def info(self, key, value, quiet = False, display_only = False, nl_before = 0, nl_after = 0, lc = 'cyan', mc = 'yellow'):
         if not display_only:
             self.info_dict[key] = value
 
@@ -160,7 +160,9 @@ class Run:
 
         label = constants.get_pretty_name(key)
 
-        info_line = "%s %s: %s\n" % (c(label, lc), '.' * (self.width - len(label)), c(str(value), mc))
+        info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                         '.' * (self.width - len(label)),
+                                         c(str(value), mc), '\n' * nl_after)
 
         if self.info_file_obj:
             self.info_file_obj.write(info_line)

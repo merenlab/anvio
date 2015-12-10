@@ -84,11 +84,15 @@ function drawLegend(top, left, line_end) {
             return; // skip if not stack bar
 
         var pindex = i;
-        var names = getLayerName(pindex).split(';');
+        var layer_name = getLayerName(pindex);
+        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
         var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
 
+        var pretty_name = getLayerName(pindex);
+        pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
+
         legends.push({
-            'name': getLayerName(pindex),
+            'name': pretty_name,
             'source': 'stack_bar_colors',
             'key': pindex,
             'item_names': names,
@@ -112,11 +116,12 @@ function drawLegend(top, left, line_end) {
 
     for (sample in samples_stack_bar_colors)
     {
-        var names = sample.split(';');
+        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
         var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
         legends.push({
-            'name': sample,
+            'name': pretty_name,
             'source': 'samples_stack_bar_colors',
             'key': sample,
             'item_names': names,
@@ -1581,7 +1586,10 @@ function draw_tree(settings) {
     for (var i = 1; i < settings['layer-order'].length; i++)
     {
         var pindex = settings['layer-order'][i];
-        empty_tooltip += '<tr><td>' + layerdata[0][pindex] + '</td><td>n/a</td></tr>';
+        var layer_title = layerdata[0][pindex];
+        if (layer_title.indexOf('!') > -1)
+            layer_title = layer_title.split('!')[0];
+        empty_tooltip += '<tr><td>' + layer_title + '</td><td>n/a</td></tr>';
     }
 
     $('#tooltip_content').html(empty_tooltip);
@@ -1611,7 +1619,11 @@ function draw_tree(settings) {
             }
             else
             {
-                title.push('<td>' + layerdata[0][pindex] + '</td><td>' + layerdata[index][pindex] + '</td>');
+                var layer_title = layerdata[0][pindex];
+                if (layer_title.indexOf('!') > -1)
+                    layer_title = layer_title.split('!')[0];
+
+                title.push('<td>' + layer_title + '</td><td>' + layerdata[index][pindex] + '</td>');
             }
         }
 
@@ -2317,6 +2329,10 @@ function draw_tree(settings) {
                     layer_title = layer_title.replace(/_/g, " ");
                 }
 
+                if (layer_title.indexOf('!') > -1 )
+                {
+                    layer_title = layer_title.split('!')[0];
+                }
 
                 drawFixedWidthText('layer_labels', {
                         'x': 10,

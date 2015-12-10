@@ -198,6 +198,8 @@ def is_file_json_formatted(file_path):
 
 
 def is_file_fasta_formatted(file_path):
+    is_file_exists(file_path)
+
     try:
         f = u.SequenceSource(file_path)
     except u.FastaLibError, e:

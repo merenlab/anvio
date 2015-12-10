@@ -27,11 +27,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Access reads in contigs and positions in a BAM file')
 
-    parser.add_argument('-i', '--input-file', metavar = 'INPUT_BAM', required = True,
-                        help = 'Sorted and indexed BAM file to analyze.')
+    parser.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
+                        help = 'Sorted and indexed BAM files to analyze. It is essential that all BAM files must be\
+                                the result of mappings against the same contigs.')
 
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('contigs-and-positions'), **anvio.K('contigs-and-positions'))
+    parser.add_argument(*anvio.A('only-complete-links'), **anvio.K('only-complete-links'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 
     args = parser.parse_args()

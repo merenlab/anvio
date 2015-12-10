@@ -1,0 +1,14 @@
+This is how this file was generated:
+
+    1. Get protein sequences:
+
+        $ anvi-get-protein-sequences -c test-output/CONTIGS.db -o protein_sequences.fa
+
+    2. Download interpro
+
+        $ wget -c ftp://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.15-54.0/interproscan-5.15-54.0-64-bit.tar.gz
+        $ tar -zxvf interproscan-5.15-54.0-64-bit.tar.gz
+        $ cd interproscan-5.15-54.0
+        $ ./interproscan.sh -i protein_sequences.fa -f tsv -o example_interpro_output.tsv
+
+

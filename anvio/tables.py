@@ -10,9 +10,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "3"
-profile_db_version = "6"
-samples_info_db_version = "1"
+contigs_db_version = "4"
+profile_db_version = "7"
+samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
 
 
@@ -23,41 +23,61 @@ auxiliary_hdf5_db_version = "1"
 ####################################################################################################
 
 
-contig_sequences_table_name          = 'contig_sequences'
-contig_sequences_table_structure     = ['contig', 'sequence']
-contig_sequences_table_types         = [  'str' ,   'str'   ]
+contig_sequences_table_name            = 'contig_sequences'
+contig_sequences_table_structure       = ['contig', 'sequence']
+contig_sequences_table_types           = [  'str' ,   'str'   ]
 
-contigs_info_table_name              = 'contigs_basic_info'
-contigs_info_table_structure         = ['contig', 'length' , 'gc_content', 'num_splits']
-contigs_info_table_types             = [  'str' , 'numeric',   'numeric' ,   'numeric' ]
+contigs_info_table_name                = 'contigs_basic_info'
+contigs_info_table_structure           = ['contig', 'length' , 'gc_content', 'num_splits']
+contigs_info_table_types               = [  'str' , 'numeric',   'numeric' ,   'numeric' ]
 
-splits_info_table_name               = 'splits_basic_info'
-splits_info_table_structure          = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
-splits_info_table_types              = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
+splits_info_table_name                 = 'splits_basic_info'
+splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,  'end'  , 'length' , 'gc_content', 'gc_content_parent', 'parent' ]
+splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
-genes_contigs_table_name             = 'genes_in_contigs'
-genes_contigs_table_structure        = ['prot', 'contig', 'start', 'stop'   , 'direction', 'figfam', 'function', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-genes_contigs_table_types            = ['text',  'text' ,'numeric','numeric',   'text'   ,  'text' ,   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-genes_splits_summary_table_name      = 'genes_in_splits_summary'
-genes_splits_summary_table_structure = ['split', 'taxonomy', 'num_genes', 'avg_gene_length', 'ratio_coding', 'ratio_hypothetical', 'ratio_with_tax', 'tax_accuracy']
-genes_splits_summary_table_types     = [ 'text',   'text'  ,  'numeric' ,     'numeric'    ,   'numeric'   ,      'numeric'      ,     'numeric'   ,   'numeric'   ]
+# following tables deal with open reading frames found in contis by a gene caller (such as prodigal), and their functional annotations and stuff.
 
-genes_splits_table_name              = 'genes_in_splits'
-genes_splits_table_structure         = ['entry_id', 'split', 'prot', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-genes_splits_table_types             = [ 'numeric',  'text', 'text',    'numeric'    ,    'numeric'   ,       'numeric'      ]
+genes_in_contigs_table_name             = 'genes_in_contigs'
+genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
+genes_in_contigs_table_types            = [     'numeric'   ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
 
-hmm_hits_info_table_name             = 'hmm_hits_info'
-hmm_hits_info_table_structure        = ['source', 'ref' , 'search_type', 'genes']
-hmm_hits_info_table_types            = [ 'text' , 'text',    'text'    , 'text' ]
+genes_in_splits_table_name             = 'genes_in_splits'
+genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-hmm_hits_contigs_table_name          = 'hmm_hits_in_contigs'
-hmm_hits_contigs_table_structure     = ['entry_id', 'source', 'gene_unique_identifier', 'contig', 'start' , 'stop'  , 'gene_name', 'gene_id', 'e_value']
-hmm_hits_contigs_table_types         = [ 'numeric',  'text' ,          'text'         ,  'text' ,'numeric','numeric',   'text'   ,  'text'  , 'numeric']
+genes_in_splits_summary_table_name     = 'genes_in_splits_summary'
+genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
+genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
 
-hmm_hits_splits_table_name           = 'hmm_hits_in_splits'
-hmm_hits_splits_table_structure      = ['entry_id', 'source', 'gene_unique_identifier', 'gene_name', 'split', 'percentage_in_split', 'e_value']
-hmm_hits_splits_table_types          = [ 'numeric',  'text' ,          'text'         ,   'text'   ,  'text',       'numeric'      , 'numeric']
+gene_protein_sequences_table_name      = 'gene_protein_sequences'
+gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
+gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
+
+gene_function_calls_table_name         = 'gene_functions'
+gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
+gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'   ,   'text'  , 'numeric']
+
+# tables for taxonomy at the split-level
+
+splits_taxonomy_table_name             = 'splits_taxonomy'
+splits_taxonomy_table_structure        = ['split', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+splits_taxonomy_table_types            = [ 'str' ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+
+
+# the followitn three tables keep hmm hits. they require the gene calls to be made.
+
+hmm_hits_info_table_name               = 'hmm_hits_info'
+hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'genes']
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #           This one here is the id that apperas in gene_calls table
+                                                                                         #         /
+hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
+hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
+hmm_hits_table_types                   = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,     'text'   , 'numeric']
+
+hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
+hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
+hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
 
 ####################################################################################################
@@ -78,6 +98,14 @@ variable_positions_table_name        = 'variable_positions'
 variable_positions_table_structure   = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'coverage', 'n2n1ratio', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
 variable_positions_table_types       = [ 'numeric',    'text'  ,    'text'   , 'numeric',  'numeric',  'numeric' ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
+gene_coverages_table_name            = 'gene_coverages'
+gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
+gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
+
+views_table_name                     = 'views'
+views_table_structure                = ['view_id', 'target_table']
+views_table_types                    = [  'str'  ,      'str'    ]
+
 # notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
 # for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
@@ -93,8 +121,8 @@ atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'  
 ####################################################################################################
 
 collections_info_table_name          = 'collections_info'
-collections_info_table_structure     = ['source', 'num_splits', 'num_clusters']
-collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ]
+collections_info_table_structure     = ['source', 'num_splits', 'num_clusters', 'cluster_ids']
+collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ,     'text'   ]
 
 collections_colors_table_name        = 'collections_colors'
 collections_colors_table_structure   = ['entry_id', 'source', 'cluster_id', 'htmlcolor']
@@ -107,21 +135,6 @@ collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text
 collections_splits_table_name        = 'collections_of_splits'
 collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
 collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
-
-
-####################################################################################################
-#
-#     TABLE DESCRIPTIONS FOR THE SAMPLES DATABASE
-#
-####################################################################################################
-
-gene_coverages_table_name            = 'gene_coverages'
-gene_coverages_table_structure       = ['entry_id', 'prot', 'sample_id', 'mean_coverage']
-gene_coverages_table_types           = [ 'numeric', 'text',   'text'   ,    'numeric'   ]
-
-views_table_name                     = 'views'
-views_table_structure                = ['view_id', 'target_table']
-views_table_types                    = [  'str'  ,      'str'    ]
 
 
 ####################################################################################################

@@ -2,7 +2,7 @@
  * Javascript library to visualize anvi'o charts
  *
  *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen, Gökmen Göksel
+ *  Credits: Özcan Esen, Gökmen Göksel, Tobias Paczian.
  *  Copyright 2015, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/meren/anvio>).
@@ -37,7 +37,8 @@ GeneParser = (function() {
     _ref = this.data;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       gene = _ref[_i];
-      if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split < start && gene.stop_in_split > stop) {
+      
+      if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split <= start && gene.stop_in_split >= stop) {
         _data.push(gene);
       }
     }
@@ -112,9 +113,17 @@ function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
 
-    var layers_ordered = state['layer-order'];
+    var layers_ordered;
 
-    layers_ordered = layers_ordered.filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+    if (state['current-view'] == "single"){
+        // if we are working with a non-merged single profile, we need to do some ugly hacks here,
+        // simply because the sample name does not appear among 'layers' found in the state variable.
+        layers_ordered = layers;
+        state['layers'][layers[0]] = state['layers']['mean_coverage'];
+    } else {
+        // this is the usual path for merged profiles:
+        layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+    }
 
     var visible_layers = 0;
     for (i in layers_ordered)
@@ -273,13 +282,52 @@ function removeGeneChart() {
   }
 }
 
+function get_gene_functions_table_html(gene){
+    functions_table_html = '<h2>Gene Call</h2>';
+    functions_table_html += '<table class="table table-striped" style="width: 600px; text-align: center;">';
+    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>% in split</th></thead>';
+    functions_table_html += '<tbody>';
+    functions_table_html += '<tr><td>' + gene.gene_callers_id
+                          + '</td><td>' + gene.source
+                          + '</td><td>' + gene.length
+                          + '</td><td>' + gene.direction
+                          + '</td><td>' + gene.start_in_contig
+                          + '</td><td>' + gene.stop_in_contig
+                          + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
+                          + '</td></tr></tbody></table>';
+
+    if(!gene.functions)
+        return functions_table_html;
+
+    functions_table_html += '<h2>Annotation</h2>';
+    functions_table_html += '<table class="table table-striped">';
+    functions_table_html += '<thead><th>Source</th><th>Hit</th><th>Score</th></thead>';
+    functions_table_html += '<tbody>';
+
+    for (function_source in gene.functions){
+        functions_table_html += '<tr>';
+
+        functions_table_html += '<td><b>' + function_source + '</b></td>';
+        if (gene.functions[function_source]) {
+            functions_table_html += '<td>' + gene.functions[function_source][0] + '</td>';
+            functions_table_html += '<td><em>' + gene.functions[function_source][1] + '</em></td>';
+        } else {
+            functions_table_html += '<td>&nbsp;</td>';
+            functions_table_html += '<td>&nbsp;</td>';
+        }
+
+        functions_table_html += '</tr>';
+    }
+
+    functions_table_html += '</tbody></table>';
+
+    return functions_table_html;
+}
+
 function drawArrows(_start, _stop) {
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
-
-    console.log("Start/Stop:", _start, _stop);
-    console.log("Filtered genes:", genes);
 
     removeGeneChart();
 
@@ -312,17 +360,16 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      color = (gene.function !== null ? 'green' : 'gray');
+      color = (gene.functions !== null ? 'green' : 'gray');
 
       // M10 15 l20 0
       path = paths.append('svg:path')
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
            .attr('stroke', color)
-           .attr('stroke-width', 5)
+           .attr('stroke-width', 6)
            .attr('marker-end', function() {
 
-             if ((gene.percentage_in_split == 100) &&
-                 (gene.direction == 'r' && gene.start_in_split > _start) ||
+             if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
                    return 'url(#arrow_' + color + ')';
                  }
@@ -332,10 +379,10 @@ function drawArrows(_start, _stop) {
            .attr('transform', function() {
                return gene.direction == 'r' ? "translate(" + (2*start+stop) + ", 0), scale(-1, 1)" : "";
              })
-           .append('svg:title')
-             .text(gene.function + '');
+           .attr('data-content', get_gene_functions_table_html(gene) + '')
+	    .attr('data-toggle', 'popover');
     });
-
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "placement": "top"});
 }
 
 

@@ -106,6 +106,14 @@ D = {
                       for clustering approaches, you are welcome to experiment (but maybe you should leave\
                       it as is for your first set of analyses)."}
                 ),
+    'skip-gene-calling': (
+            ['--skip-gene-calling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, generating an anvi'o contigs database includes the identification of open reading\
+                      frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
+                      process. If you prefer, you can later import your own gene calling results into the database."}
+                ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],
             {'metavar': 'FASTA',
@@ -190,6 +198,46 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "List available HMM sources in the profile database and quit."}
+                ),
+    'search-terms': (
+            ['--search-terms'],
+            {'metavar': 'SEARCH_TERMS',
+             'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'gene-caller-ids': (
+            ['--gene-caller-ids'],
+            {'metavar': 'GENE_CALLER_IDS',
+             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'gene-caller-id': (
+            ['--gene-caller-id'],
+            {'metavar': 'GENE_CALLER_ID',
+             'type': int,
+             'help': "A single gene id."}
+                ),
+    'delimiter': (
+            ['--delimiter'],
+            {'metavar': 'CHAR',
+             'default': ',', 
+             'help': "The delimiter to parse multiple input terms. The default is '%(default)s'."}
+                ),
+    'wrap': (
+            ['--wrap'],
+            {'metavar': 'WRAP',
+             'default': 120,
+             'type': int,
+             'help': "When to wrap sequences when storing them in a FASTA file. The default is\
+                      '%(default)d'. A value of '0' would be equivalent to 'do not wrap'."}
+                ),
+    'leeway': (
+            ['--leeway'],
+            {'metavar': 'LEEWAY_NTs',
+             'default': 100,
+             'type': int,
+             'help': "The minimum number of nucleotides for a given short read mapping into\
+                      the gene context for it to be reported. You must consider the length of\
+                      your short reads, as well as the length of the gene you are targeting.\
+                      The default is %(default)d nts."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
@@ -328,6 +376,12 @@ D = {
                       of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
                       (as well as for some beautiful visualizations)."}
                 ),
+    'transpose': (
+            ['--transpose'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Transpose the input matrix file before clustering."}
+                ),
     'skip-check-names': (
             ['--skip-check-names'],
             {'default': False,
@@ -382,6 +436,12 @@ D = {
              'action': 'store_true',
              'help': "Don't do anything real. Test everything, and stop right before wherever the developer\
                       said 'well, this is enough testing', and decided to print out results."}
+                ),
+    'verbose': (
+            ['--verbose'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Be verbose, print more messages whenever possible."}
                 ),
     'debug': (
             ['--debug'],
@@ -582,11 +642,39 @@ D = {
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
                 ),
+    'full-report': (
+            ['--full-report'],
+            {'metavar': 'FILE_NAME',
+             'default': None,
+             'help': "Optional output file with a fuller description of findings."}
+                ),
     'show-states': (
             ['--show-states'],
             {'default': False,
              'action': 'store_true',
-             'help': "When declared program will print all available states and exit."}
+             'help': "When declared the program will print all available states and exit."}
+                ),
+    'skip-init-functions': (
+            ['--skip-init-functions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, function calls for genes will not be initialized (therefore will be missing from all\
+                      relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
+                      processing time for large datasets."}
+                ),
+    'quick-summary': (
+            ['--quick-summary'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared the summary output will be generated as quickly as possible, with minimum amount\
+                      of essential information about bins."}
+                ),
+    'only-complete-links': (
+            ['--only-complete-links'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this\
+                      flag if you want to perform oligotyping-like analyses on matching reads."}
                 ),
 }
 

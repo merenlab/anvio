@@ -8,30 +8,36 @@ all available collections in a given contigs database.
 
 import argparse
 
-import anvio.terminal as terminal 
-import anvio.dbops as dbops
+import anvio
 import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal 
+import anvio.filesnpaths as filesnpaths
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description='A simple script to generate info from search tables')
-parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
-                    help = 'Contigs database to read from.')
-parser.add_argument('-o', '--output', metavar = "OUTPUT_FILE.txt", default="COLLECTIONS.txt",
-                    help = 'Output file name.')
+parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': "COLLECTIONS.txt"}))
 
 args = parser.parse_args()
+
+filesnpaths.is_file_exists(args.output_file)
 
 contigs = set([])
 contig_lengths = {}
 
 db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
-collections_splits_table = db.db.get_table_as_dict(t.collections_splits_table_name)
-collections_info_table = db.db.get_table_as_dict(t.collections_info_table_name)
 contigs_info_table = db.db.get_table_as_dict(t.contigs_info_table_name)
 contig_lengths = dict([(c, contigs_info_table[c]['length']) for c in contigs_info_table])
+db.disconnect()
+
+db = dbops.ProfileDatabase(args.profile_db, quiet=False)
+collections_splits_table = db.db.get_table_as_dict(t.collections_splits_table_name)
+collections_info_table = db.db.get_table_as_dict(t.collections_info_table_name)
 db.disconnect()
 
 sources = collections_info_table.keys()
@@ -48,7 +54,7 @@ for entry in collections_splits_table.values():
         splits[split] = {source: cluster_id}
 
 
-output = open(args.output, 'w')
+output = open(args.output_file, 'w')
 output.write('split\t%s\n' % '\t'.join(sources))
 for split in splits.keys():
     line = [split]
@@ -60,4 +66,4 @@ for split in splits.keys():
     output.write('\t'.join(line) + '\n')
 output.close()
 
-run.info('Collections matrix', args.output)
+run.info('Collections matrix', args.output_file)

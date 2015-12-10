@@ -84,22 +84,33 @@ class Contig:
 
     def analyze_coverage(self, bam, progress):
         contig_coverage = []
+        num_splits = len(self.splits)
+        counter = 1
+
         for split in self.splits:
-            progress.update('Coverage (split: %d of %d)' % (split.order, len(self.splits)))
+            progress.update('Coverage (split: %d of %d)' % (counter, num_splits))
+
             split.coverage = Coverage()
             split.coverage.run(bam, split)
             contig_coverage.extend(split.coverage.c)
+
+            counter += 1
 
         self.coverage.process_c(contig_coverage)
 
 
     def analyze_auxiliary(self, bam, progress):
+        num_splits = len(self.splits)
+        counter = 1
+
         for split in self.splits:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
-                                 % (split.order, len(self.splits), self.coverage.mean, split.coverage.mean))
+                                 % (counter, num_splits, self.coverage.mean, split.coverage.mean))
 
             split.auxiliary = Auxiliary(split, bam, min_coverage = self.min_coverage_for_variability,
                                         report_variability_full = self.report_variability_full)
+
+            counter += 1
 
 
 class Split:
