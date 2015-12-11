@@ -184,6 +184,7 @@ def send_static(filename):
 @route('/data/<name>')
 def send_data(name):
     set_default_headers(response)
+    global d
     d = userdb.set_user_data(request, d)
     
     if name == "clusterings":
@@ -215,16 +216,19 @@ def send_data(name):
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_view_data(args, d, request, response, view_id)
 
 @route('/tree/<tree_id>')
 def get_tree(tree_id):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_tree(args, d, request, response, tree_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.charts(d, split_name)
 
@@ -252,56 +256,67 @@ def get_parent_state():
 
 @route('/data/contig/<split_name>')
 def get_split_info(split_name):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_split_info(args, d, request, response, split_name)
 
 @route('/data/collections')
 def collections():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_collections(args, d, request, response)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_collection_dict(args, d, request, response, collection_source)
 
 @route('/summary/<collection_id>/:filename#.*#')
 def send_summary_static(collection_id, filename):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.send_summary_static(args, d, request, response, collection_id, filename)
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
+    global d
     d = userdb.set_user_data(request, d)
     return routes.gen_summary(args, d, request, response, collection_id)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.store_collections_dict(args, d, request, response)
 
 @route('/data/completeness', method='POST')
 def completeness():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.completeness(d, request)
 
 @route('/state/autoload')
 def state_autoload():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.state_autoload(d, response)
 
 @route('/state/all')
 def state_all():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.state_all(d, response)
 
 @route('/state/get', method='POST')
 def get_state():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.get_state(d, request, response)
 
 @route('/state/save', method='POST')
 def save_state():
+    global d
     d = userdb.set_user_data(request, d)
     return routes.save_state(args, d, request, response)
 
@@ -320,7 +335,7 @@ try:
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
     server_process.start()
 
-    run.info_single('webserver started.' % port, 'green', nl_before = 1, nl_after=1)
+    run.info_single('webserver started on port %d.' % port, 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
     run.warning('webserver is being terminated.', header='Please wait...')
