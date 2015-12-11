@@ -6,7 +6,9 @@ import os
 import sys
 import time
 import copy
+import email
 import socket
+import smtplib
 import textwrap
 import subprocess
 import multiprocessing
@@ -782,4 +784,65 @@ def get_missing_programs_for_hmm_analysis():
             missing_programs.append(p)
     return missing_programs
 
+
+class Mailer:
+    def __init__(self, from_address='admin@localhost', smtp_server_addr='localhost', smtp_server_port=25, init_tls=False,
+                 username = None, password = None):
+        self.from_address = from_address
+        self.smtp_server_addr = smtp_server_addr
+        self.smtp_server_port = smtp_server_port
+        self.init_tls = init_tls
+        self.username = username
+        self.password = password
+
+        self.server = None
+
+        self.test()
+
+
+    def test(self):
+        self.connect()
+        self.disconnect()
+
+
+    def connect(self):
+        try:
+           self.server = smtplib.SMTP(self.smtp_server_addr, self.smtp_server_port)
+
+           if self.init_tls:
+               self.server.ehlo()
+               self.server.starttls()
+               self.server.ehlo()
+
+           if self.username:
+               self.server.login(self.username, self.password)
+
+        except Exception as e:
+            raise ConfigError, "Something went wrong while trying to connect to the server to send an e-mail :(\
+                                This is what we know about the problem: %s" % e
+
+
+    def disconnect(self):
+        if self.server:
+            self.server.quit()
+
+        self.server = None
+
+
+    def send(self, to, subject, content):
+        self.connect()
+
+        msg = email.MIMEText(content)
+        msg['To'] = to
+        msg['Subject'] = subject
+        msg['From'] = self.from_address
+        msg['Reply-to'] = self.from_address
+
+        try:
+            self.server.sendmail(self.from_address, [to], msg.as_string())
+        except Exception as e:
+            raise ConfigError, "Something went wrong while trying to connet send your e-mail :(\
+                                This is what we know about the problem: %s" % e
+
+        self.disconnect()
 
