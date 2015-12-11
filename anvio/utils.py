@@ -6,12 +6,13 @@ import os
 import sys
 import time
 import copy
-import email
 import socket
 import smtplib
 import textwrap
 import subprocess
 import multiprocessing
+
+from email.mime.text import MIMEText
 
 import anvio
 import anvio.fastalib as u
@@ -797,7 +798,7 @@ class Mailer:
 
         self.server = None
 
-        self.test()
+        #self.test()
 
 
     def test(self):
@@ -812,7 +813,6 @@ class Mailer:
            if self.init_tls:
                self.server.ehlo()
                self.server.starttls()
-               self.server.ehlo()
 
            if self.username:
                self.server.login(self.username, self.password)
@@ -832,7 +832,7 @@ class Mailer:
     def send(self, to, subject, content):
         self.connect()
 
-        msg = email.MIMEText(content)
+        msg = MIMEText(content)
         msg['To'] = to
         msg['Subject'] = subject
         msg['From'] = self.from_address

@@ -32,11 +32,13 @@ __email__ = "tobiaspaczian@googlemail.com"
 __status__ = "Development"
 
 class UserMGMT:
-    def __init__(self, path, client_version, new_database=False, ignore_version=False, orig_args={}):
+    def __init__(self, path, client_version, new_database=False, ignore_version=False, mailer = None, orig_args={}):
         self.path = path
         self.db_path = path + 'user.db'
         self.version = None
         self.orig_args = orig_args
+
+        self.mailer = mailer
 
         if not filesnpaths.is_file_exists(self.db_path):
             new_database=True
@@ -156,16 +158,12 @@ class UserMGMT:
         self.conn.commit()
 
         # send the user a mail to verify the email account
-
-        mail = mailsetup.mailsetup()
-        
-        # these vars need to come from the config
-        anvioURL = "http://85.214.32.209/";
+        anvioURL = "http://%s/" % self.orig_args.ip_address if self.orig_args.ip_address else "localhost";
         messageSubject = "anvio account request"
         messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
 
-        mail.sendEmail(email, messageSubject, messageText)
-
+        self.mailer.send(email, messageSubject, messageText)
+        
         return (True, "User request created")
 
     def get_user_for_login(self, login):
