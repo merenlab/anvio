@@ -81,7 +81,12 @@ groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+groupF.add_argument(*anvio.A('from-address'), **anvio.K('from-address'))
+groupF.add_argument(*anvio.A('smtp-server-addr'), **anvio.K('smtp-server-addr'))
+groupF.add_argument(*anvio.A('smtp-server-port'), **anvio.K('smtp-server-port'))
+groupF.add_argument(*anvio.A('init-tls'), **anvio.K('init-tls'))
+groupF.add_argument(*anvio.A('username'), **anvio.K('username'))
+groupF.add_argument(*anvio.A('password'), **anvio.K('password'))
 
 args = parser.parse_args()
 
@@ -112,7 +117,8 @@ except SamplesError, e:
     sys.exit(-4)
 
 # initialize usermanagement
-userdb = usermgmt.UserMGMT(os.getcwd()+'/', '1.0', None, None, copy.deepcopy(args));
+mailer = utils.Mailer(args.from_address, args.smtp_server_addr, args.smtp_server_port, args.init_tls, args.username, args.password)
+userdb = usermgmt.UserMGMT(os.getcwd()+'/', '1.0', None, None, mailer, copy.deepcopy(args));
         
 #######################################################################################################################
 # bottle callbacks start
