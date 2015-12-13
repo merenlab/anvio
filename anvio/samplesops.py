@@ -46,7 +46,6 @@ class SamplesInformation:
         self.sample_names_in_samples_information_file = filesnpaths.is_proper_samples_information_file(samples_information_path)
 
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
-        self.samples_information_default_layer_order = open(samples_information_path).readline().strip().split('\t')[1:]
  
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict))
 
@@ -136,6 +135,12 @@ class SamplesInformation:
         self.sanity_check()
 
         self.sample_names = self.sample_names_in_samples_information_file or self.sample_names_in_samples_order_file
+
+        if samples_information_path:
+            self.samples_information_default_layer_order = open(samples_information_path).readline().strip().split('\t')[1:]
+        else:
+            self.samples_information_default_layer_order = self.sample_names
+
 
     def sanity_check(self):
         if self.samples_information_dict and self.samples_order_dict:
