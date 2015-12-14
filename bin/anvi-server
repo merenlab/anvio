@@ -191,8 +191,11 @@ def send_static(filename):
 def send_data(name):
     set_default_headers(response)
     global d
-    d = userdb.set_user_data(request, d)
-    
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+        
     if name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
     elif name == "views":
@@ -223,19 +226,28 @@ def send_data(name):
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_view_data(args, d, request, response, view_id)
 
 @route('/tree/<tree_id>')
 def get_tree(tree_id):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_tree(args, d, request, response, tree_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.charts(d, split_name)
 
 state_for_charts = {}
@@ -263,67 +275,100 @@ def get_parent_state():
 @route('/data/contig/<split_name>')
 def get_split_info(split_name):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_split_info(args, d, request, response, split_name)
 
 @route('/data/collections')
 def collections():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_collections(args, d, request, response)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_collection_dict(args, d, request, response, collection_source)
 
 @route('/summary/<collection_id>/:filename#.*#')
 def send_summary_static(collection_id, filename):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.send_summary_static(args, d, request, response, collection_id, filename)
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.gen_summary(args, d, request, response, collection_id)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.store_collections_dict(args, d, request, response)
 
 @route('/data/completeness', method='POST')
 def completeness():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.completeness(d, request)
 
 @route('/state/autoload')
 def state_autoload():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.state_autoload(d, response)
 
 @route('/state/all')
 def state_all():
     global d
-    d = userdb.set_user_data(request, d)
-    return routes.state_all(d, response)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+        return routes.state_all(d, response)
 
 @route('/state/get', method='POST')
 def get_state():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.get_state(d, request, response)
 
 @route('/state/save', method='POST')
 def save_state():
     global d
-    d = userdb.set_user_data(request, d)
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
     return routes.save_state(args, d, request, response)
 
 #######################################################################################################################

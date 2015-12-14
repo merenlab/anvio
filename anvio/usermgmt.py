@@ -528,7 +528,7 @@ class UserMGMT:
                         args.additional_layers = addFile
                     
                     d = interactive.InputHandler(args)
-                    return [ True, d ]
+                    return [ True, d, args ]
                 else:
                     return [ False ]
             else:
@@ -552,7 +552,7 @@ class UserMGMT:
 
                 d = interactive.InputHandler(args)
 
-                return [ True, d ]
+                return [ True, d, args ]
             else:
                 return [ False ]
         else:
@@ -565,9 +565,9 @@ class UserMGMT:
             return retval[1]
         retval = self.check_user(request)
         if retval[0]:
-            return retval[1]
+            return [ retval[1], retval[2] ]
 
-        return data
+        return [ data, self.orig_args ]
 
         
 def dict_factory(cursor, row):
