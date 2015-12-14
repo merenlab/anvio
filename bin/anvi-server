@@ -1,0 +1,394 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Entry point to the server interface.
+
+This takes care of the multiuser server bottle calls."""
+
+import os
+import sys
+import json
+import argparse
+import webbrowser
+import random
+
+from multiprocessing import Process
+from bottle import route, static_file, redirect, request, BaseRequest, response
+from bottle import run as run_server
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+import anvio.bottleroutes as routes
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
+
+import anvio.usermgmt as usermgmt
+import anvio.bottleroutes_multi as multiroutes
+import copy
+
+__author__ = "Tobias Paczian"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Tobias Paczian"
+__email__ = "tobiaspaczian@googlemail.com"
+__status__ = "Development"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+# get the absolute path for static directory under anvio
+static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
+
+# setup the command line user interface
+parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
+
+groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
+                                                      anvi'o databases. The default use assumes you have your\
+                                                      profile and contigs database, however, it is also possible\
+                                                      to start the interface using ad hoc input files. See 'MANUAL\
+                                                      INPUT' section for required parameters.")
+groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
+                                                     without anvi'o databases.")
+groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
+groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                       the interface.")
+groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                   nice to have).")
+groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+
+groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
+groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
+groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
+groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
+groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
+groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
+groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
+groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
+groupD.add_argument(*anvio.A('state'), **anvio.K('state'))
+groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
+groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
+groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupF.add_argument(*anvio.A('from-address'), **anvio.K('from-address'))
+groupF.add_argument(*anvio.A('smtp-server-addr'), **anvio.K('smtp-server-addr'))
+groupF.add_argument(*anvio.A('smtp-server-port'), **anvio.K('smtp-server-port'))
+groupF.add_argument(*anvio.A('init-tls'), **anvio.K('init-tls'))
+groupF.add_argument(*anvio.A('username'), **anvio.K('username'))
+groupF.add_argument(*anvio.A('password'), **anvio.K('password'))
+
+args = parser.parse_args()
+
+port = args.port_number
+ip = args.ip_address
+
+# only get a port if it was not passed as a parameter
+if not port:
+    port = utils.get_available_port_num(start = port, ip=ip)
+
+if not port:
+    run.info_single('anvio failed to find a port number that is available :(', mc='red')
+    sys.exit(-1)
+
+try:
+    d = interactive.InputHandler(args)
+except ConfigError, e:
+    print e
+    sys.exit(-1)
+except FilesNPathsError, e:
+    print e
+    sys.exit(-2)
+except DictIOError, e:
+    print e
+    sys.exit(-3)
+except SamplesError, e:
+    print e
+    sys.exit(-4)
+
+# initialize usermanagement
+mailer = utils.Mailer(args.from_address, args.smtp_server_addr, args.smtp_server_port, args.init_tls, args.username, args.password)
+userdb = usermgmt.UserMGMT(os.getcwd()+'/', '1.0', None, None, mailer, copy.deepcopy(args));
+        
+#######################################################################################################################
+# bottle callbacks start
+#######################################################################################################################
+
+def set_default_headers(response):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+    
+@route('/')
+def redirect_to_app():
+    redirect('/app/home.html')
+
+@route('/token', method='POST')
+def get_user_by_token():
+    return multiroutes.get_user_by_token(request, userdb, response)
+
+@route('/requestAccount', method='POST')
+def request_account():
+    return multiroutes.request_account(request, userdb, response)
+
+@route('/confirm', method='GET')
+def accept_user():
+    return multiroutes.accept_user(request, userdb, response)
+
+@route('/login', method='POST')
+def login_to_app():
+    return multiroutes.login_to_app(request, userdb, response)
+
+@route('/logout', method='POST')
+def logout_from_app():
+    return multiroutes.logout_from_app(request, userdb, response)
+
+@route('/project', method='GET')
+def set_view_cookie():
+    multiroutes.set_view_cookier(request, userdb, response)
+
+@route('/project', method='POST')
+def set_project():
+    return multiroutes.set_project(request, userdb, response)
+
+@route('/project', method='DELETE')
+def delete_project():
+    return multiroutes.delete_project(request, userdb, response)
+
+@route('/share', method='POST')
+def share_project():
+    return multiroutes.share_project(request, userdb, response)
+
+@route('/share', method='DELETE')
+def delete_share():
+    return multiroutes.delete_share(request, userdb, response)
+    
+@route('/upload', method='POST')
+def receive_upload_file():
+    return multiroutes.receive_upload_file(request, userdb, response)
+
+@route('/uploadMore', method='POST')
+def receive_additional_upload_file():
+    return multiroutes.receive_additional_upload_file(request, userdb, response)
+
+@route('/app/:filename#.*#')
+def send_static(filename):
+    set_default_headers(response)
+    return static_file(filename, root=static_dir)
+
+@route('/data/<name>')
+def send_data(name):
+    set_default_headers(response)
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+        
+    if name == "clusterings":
+        return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
+    elif name == "views":
+        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        return json.dumps((d.default_view, available_views), )
+    elif name == "default_view":
+        return json.dumps(d.views[d.default_view])
+    elif name == "contig_lengths":
+        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
+        return json.dumps(split_lengths)
+    elif name == "title":
+        return json.dumps(d.title)
+    elif name == "mode":
+        return json.dumps("full")
+    elif name == "read_only":
+        return json.dumps(args.read_only)
+    elif name == "bin_prefix":
+        return json.dumps("Bin_")
+    elif name == "session_id":
+        return json.dumps(1)
+    elif name == "samples_order":
+        return json.dumps(d.samples_order_dict)
+    elif name == "samples_information":
+        return json.dumps(d.samples_information_dict)
+    elif name == "samples_information_default_layer_order":
+        return json.dumps(d.samples_information_default_layer_order)
+
+@route('/data/view/<view_id>')
+def get_view_data(view_id):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_view_data(args, d, request, response, view_id)
+
+@route('/tree/<tree_id>')
+def get_tree(tree_id):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_tree(args, d, request, response, tree_id)
+
+@route('/data/charts/<split_name>')
+def charts(split_name):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.charts(d, split_name)
+
+state_for_charts = {}
+
+@route('/data/charts/set_state', method='POST')
+def set_state():
+    statekey = 'anon'
+    retval = multiroutes.get_user(request, userdb, response)
+    if retval[0]:
+        statekey = retval[1]['login']
+        
+    global state_for_charts
+    state_for_charts[statekey] = request.forms.get('state')
+
+@route('/data/charts/get_state')
+def get_parent_state():
+    set_default_headers(response)
+    statekey = 'anon'
+    retval = multiroutes.get_user(request, userdb, response)
+    if retval[0]:
+        statekey = retval[1]['login']
+        
+    return state_for_charts[statekey]
+
+@route('/data/contig/<split_name>')
+def get_split_info(split_name):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_split_info(args, d, request, response, split_name)
+
+@route('/data/collections')
+def collections():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_collections(args, d, request, response)
+
+@route('/data/collection/<collection_source>')
+def get_collection_dict(collection_source):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_collection_dict(args, d, request, response, collection_source)
+
+@route('/summary/<collection_id>/:filename#.*#')
+def send_summary_static(collection_id, filename):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.send_summary_static(args, d, request, response, collection_id, filename)
+
+@route('/summarize/<collection_id>')
+def gen_summary(collection_id):
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.gen_summary(args, d, request, response, collection_id)
+
+@route('/store_collection', method='POST')
+def store_collections_dict():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.store_collections_dict(args, d, request, response)
+
+@route('/data/completeness', method='POST')
+def completeness():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.completeness(d, request)
+
+@route('/state/autoload')
+def state_autoload():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.state_autoload(d, response)
+
+@route('/state/all')
+def state_all():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.state_all(d, response)
+
+@route('/state/get', method='POST')
+def get_state():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.get_state(d, request, response)
+
+@route('/state/save', method='POST')
+def save_state():
+    global d
+    global args
+    retval = userdb.set_user_data(request, d)
+    d = retval[0]
+    args = retval[1]
+    return routes.save_state(args, d, request, response)
+
+#######################################################################################################################
+# bottle callbacks end
+#######################################################################################################################
+
+# increase maximum size of form data to 100 MB
+BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
+
+if args.dry_run:
+    run.info_single('Dry run, eh? Bye!', 'red', nl_before = 1, nl_after=1)
+    sys.exit()
+
+try:
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
+    server_process.start()
+
+    run.info_single('webserver started on port %d.' % port, 'green', nl_before = 1, nl_after=1)
+    server_process.join()
+except KeyboardInterrupt:
+    run.warning('webserver is being terminated.', header='Please wait...')
+    server_process.terminate()
+    sys.exit(0)

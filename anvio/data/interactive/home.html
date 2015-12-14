@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+
+    <title>anvio home</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+
+    <link rel="icon" type="image/png" href="images/logo.png">
+    
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/session.js"></script>
+    <style>
+      body {
+      color: #333332;
+      font-family: "PT Serif",serif;
+      }
+      .header {
+      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
+      height: 90px;
+      border-bottom: 1px solid lightgray;
+      text-align: center;
+      }
+
+      .carousel-indicators {
+      bottom: -40px;
+      }
+
+      .carousel-indicators .active {
+      background-color: gray;
+      }
+
+      .carousel-indicators li {
+      border: 1px solid gray;
+      }
+
+      .navbar {
+      padding-top: 20px;
+      margin-bottom: 0px;
+      }
+
+      .item img {
+      margin-left: auto;
+      margin-right: auto;
+      }
+    </style>
+
+    <script>
+      $(document).ready(function(){
+      $('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
+      $("#loginForm").submit(function(event){ event.preventDefault(); });
+      checkCookie();
+      });
+    </script>
+    
+  </head>
+
+  <body>
+
+    <div class="header">
+      <nav class="navbar">
+	<div class="container-fluid">
+	  <div class="navbar-header">
+	    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+	    </button>
+	    <a class="navbar-brand" href="http://merenlab.org/projects/anvio/" target=_blank>Merenlab</a>
+	  </div>
+	  
+	  <div class="collapse navbar-collapse" id="navbar-collapse">
+	    <form class="navbar-form navbar-right" role="login">
+              <div class="form-group">
+		<input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">
+		<input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">
+		<button type="button" class="btn btn-default btn-sm" onclick="performLogin();">login</button>
+              </div>
+	    </form>
+	    <ul class="nav navbar-nav navbar-right">
+              <li><a href="register.html">Register</a></li>
+	      <li><a href="http://merenlab.org/projects/anvio/" target=_blank>Help</a></li>
+	    </ul>
+	  </div>
+	</div>
+      </nav>
+      
+      
+    </div>
+    
+    <div class="jumbotron" style="background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);">
+      <div class="container" style="color: white;">
+	<img src="images/logo-white.png" style="width: 150px; margin-right: 30px; float: left;"><h1>Welcome to anvi'o</h1>
+	<p style="opacity: 0.5;">The analysis and visualization platform for 'omics data.</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div id="carousel" class="carousel slide col-sm-6" data-ride="carousel" data-interval="8000">
+	<ol class="carousel-indicators">
+	  <li data-target="#carousel" data-slide-to="0" class="active"></li>
+	  <li data-target="#carousel" data-slide-to="1"></li>
+	  <li data-target="#carousel" data-slide-to="3"></li>
+	  <li data-target="#carousel" data-slide-to="4"></li>
+	  <li data-target="#carousel" data-slide-to="5"></li>
+	</ol>
+	
+	<div class="carousel-inner" role="listbox">
+
+	  <div class="item active">
+	    <img src="images/carousel1.png" style="height: 300px;">
+	  </div>
+
+	  <div class="item">
+	    <img src="images/carousel2.png" style="height: 300px;">
+	  </div>	
+
+	  <div class="item">
+	    <img src="images/carousel3.png" style="height: 300px;">
+	  </div>	
+
+	  <div class="item">
+	    <img src="images/carousel4.png" style="height: 240px; margin-top: 30px; margin-bottom: 30px;">
+	  </div>	
+
+	  <div class="item">
+	    <img src="images/carousel5.png" style="height: 300px;">
+	  </div>	
+
+	</div>
+	
+	<a class="left carousel-control" href="#carousel" role="button" data-slide="prev" style="background-image: none;">
+	  <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+	  <span class="sr-only">Previous</span>
+	</a>
+	<a class="right carousel-control" href="#carousel" role="button" data-slide="next" style="background-image: none;">
+	  <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+	  <span class="sr-only">Next</span>
+	</a>
+      </div>
+
+      <div class="col-sm-6">
+	<h3>Upload your data to get publication quality images</h3>
+	<p>Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o Some introductory text about anvi'o </p>
+      </div>
+
+    </div>
+
+    <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2015 Meren.</div>
+
+  </body>
+</html>
