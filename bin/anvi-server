@@ -351,7 +351,7 @@ def state_all():
     retval = userdb.set_user_data(request, d)
     d = retval[0]
     args = retval[1]
-        return routes.state_all(d, response)
+    return routes.state_all(d, response)
 
 @route('/state/get', method='POST')
 def get_state():
