@@ -676,36 +676,24 @@ D = {
              'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this\
                       flag if you want to perform oligotyping-like analyses on matching reads."}
                 ),
-    'from-address': (
-            ['--from-address'],
-            {'type': str,
-             'help': "e-mail address used as sender when user requests are sent."}
+    'users-data-dir': (
+            ['-U', '--users-data-dir'],
+            {'metavar': 'USERS_DATA_DIR',
+             'type': str,
+             'help': "Input directory where the user database is read and stored by the server. A new database will be\
+                      created if no directory is found."}
                 ),
-    'smtp-server-addr': (
-            ['--smtp-server-addr'],
-            {'type': str,
-             'help': "The address of the smtp server for outgoing emails."}
-                ),
-    'smtp-server-port': (
-            ['--smtp-server-port'],
-            {'type': str,
-             'help': "The port number the smtp server should listen to."}
-                ),
-    'init-tls': (
-            ['--init-tls'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Use tls for smtp server connection?"}
-                ),
-    'username': (
-            ['--username'],
-            {'type': str,
-             'help': "Username for the smtp server."}
-                ),
-    'password': (
-            ['--password'],
-            {'type': str,
-             'help': "Password for the smtp server."}
+    'smtp-config-file': (
+            ['-E', '--smtp-config-file'],
+            {'metavar': 'SMTP_CONFIG_INI',
+             'type': str,
+             'help': "The configuration file for SMTP server to send e-mails. The input file should be formatted as an INI\
+                      file that starts with the header '[SMTP]', and should describe values of each of these variables in\
+                      the following lines: 'from_address' (the e-mail address that should appear in the 'From' section of\
+                      e-mails sent by the server), 'server_address' (the address of the SMTP server to connect), 'server_port'\
+                      (the port number to connect), 'init_tls' (whether to initialize TLS protocol), 'username' (the username\
+                      for the server to login, if necessary), 'password' (the password associated with the username for login,\
+                      if the password is not blank)."}
                 ),
 }
 
