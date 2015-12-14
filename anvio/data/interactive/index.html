@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Viewer</title>
+    <title>anvi'o interactive</title>
     <meta charset="utf-8" />
     <meta http-equiv="cache-control" content="max-age=0" />
     <meta http-equiv="cache-control" content="no-cache" />
@@ -40,18 +40,26 @@
     <script type="text/javascript" src="js/multiple.js"></script>
     <script type="text/javascript" src="js/search.js"></script>
     <script type="text/javascript" src="js/sample.js"></script>
-
+    <script type="text/javascript" src="js/session.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
+    <script>
+      $(document).ready(function(){
+        checkCookie();
+      });
+    </script>
+
 </head>
 
 <body>
     <div id="wrapper">
-        <div id="fixed-navbar-div">
+      <div style="width: 490px; border-right: 1px solid #d3d3d3; padding-left: 10px;" id="multiUser">
+      </div>
+      <div id="fixed-navbar-div">
             <div role="tabpanel" style="margin: 0px;">
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
@@ -417,7 +425,7 @@
                 <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></button>                
                 <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></button>
                 <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
-                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>                                
+                <button type="button" style="width: 25%" class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></button>
             </div>
         </div>
         
@@ -425,7 +433,6 @@
             <g id="viewport"></g>
         </svg>
     </div>
-
 
     <!-- DIALOGS SECTION -->
 
@@ -480,7 +487,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- LOAD COLLECTION -->
     <div class="modal fade" id="modLoadCollection">
         <div class="modal-dialog">

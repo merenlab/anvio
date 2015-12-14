@@ -130,6 +130,54 @@ $(document).ready(function() {
         }
     });
 
+    initData();
+
+    // initialize colorpicker for search result highlight color.
+    $('#picker_highlight').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    $('#grid_color').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            redrawBins();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    document.body.addEventListener('click', function() {
+        $('#control_contextmenu').hide();
+    }, false);
+
+    $("li[role='presentation']").click(function (e) {
+        if ($(this).hasClass('disabled')) {
+            e.preventDefault();
+            return false;
+        }  
+    });
+
+}); // document ready
+
+function initData () {
     var timestamp = new Date().getTime(); 
 
     $.when(    
@@ -202,7 +250,7 @@ $(document).ready(function() {
         function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, sampleInformationDefaultLayerOrderResponse, stateAutoloadResponse) 
         {
             unique_session_id = sessionIdResponse[0];
-            ping_timer = setInterval(checkBackgroundProcess, 5000);
+//            ping_timer = setInterval(checkBackgroundProcess, 5000);
 
             if (!$.browser.chrome)
             {
@@ -265,10 +313,8 @@ $(document).ready(function() {
 
             available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
-
-            for (order_index in available_orders)
+            for (order in samples_order_dict)
             {
-                order = available_orders[order_index];
                 var order_name = order;
                 if (samples_order_dict[order]['newick'] != '')
                     order_name += " (tree)";
@@ -296,51 +342,7 @@ $(document).ready(function() {
         toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
         console.log(arguments);
     }); // promise
-
-    // initialize colorpicker for search result highlight color.
-    $('#picker_highlight').colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'dark',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
-
-            if (!bySetColor) $(el).val(hex);
-        }
-    }).keyup(function() {
-        $(this).colpickSetColor(this.value);
-    });
-
-    $('#grid_color').colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'dark',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
-
-            if (!bySetColor) $(el).val(hex);
-        },
-        onHide: function() {
-            redrawBins();
-        }
-    }).keyup(function() {
-        $(this).colpickSetColor(this.value);
-    });
-
-    document.body.addEventListener('click', function() {
-        $('#control_contextmenu').hide();
-    }, false);
-
-    $("li[role='presentation']").click(function (e) {
-        if ($(this).hasClass('disabled')) {
-            e.preventDefault();
-            return false;
-        }  
-    });
-
-}); // document ready
+}
 
 function onViewChange() {
     var defer = $.Deferred();
@@ -478,13 +480,13 @@ function buildLayersTable(order, settings)
         short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
-        if (typeof settings !== 'undefined' && settings.hasOwnProperty(layer_id)) {
+        if (typeof settings !== 'undefined') {
             var view_settings = settings[layer_id];
             var hasViewSettings = true;
         }
 
         var hasLayerSettings = false;
-        if (typeof layers !== 'undefined' && layers.hasOwnProperty(layer_id))
+        if (typeof layers[layer_id] !== 'undefined')
         {
             var layer_settings = layers[layer_id];
             hasLayerSettings = true;
