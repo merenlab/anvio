@@ -11,6 +11,7 @@ import smtplib
 import textwrap
 import subprocess
 import multiprocessing
+import ConfigParser
 
 from email.mime.text import MIMEText
 
@@ -18,7 +19,7 @@ import anvio
 import anvio.fastalib as u
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Progress
+from anvio.terminal import Run, Progress
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
 from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
@@ -786,19 +787,86 @@ def get_missing_programs_for_hmm_analysis():
     return missing_programs
 
 
+def RepresentsInt(s):
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+
 class Mailer:
-    def __init__(self, from_address='admin@localhost', smtp_server_addr='localhost', smtp_server_port=25, init_tls=False,
-                 username = None, password = None):
+    def __init__(self, from_address='admin@localhost', server_address='localhost', server_port=25,
+                 init_tls=False, username = None, password = None, run = Run(verbose = False),
+                 progress = Progress(verbose=False)):
         self.from_address = from_address
-        self.smtp_server_addr = smtp_server_addr
-        self.smtp_server_port = smtp_server_port
+        self.server_address = server_address
+        self.server_port = server_port
         self.init_tls = init_tls
         self.username = username
         self.password = password
 
         self.server = None
+        self.config_ini_path = None
 
-        #self.test()
+        self.run = run
+        self.progress = progress
+
+        self.config_template = {
+                'SMTP': {
+                        'from_address'   : {'mandatory': True, 'test': lambda x: str(x)},
+                        'server_address' : {'mandatory': True, 'test': lambda x: str(x)},
+                        'server_port'    : {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0, 'required': 'an integer'},
+                        'init_tls'       : {'mandatory': True, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
+                        'username'       : {'mandatory': True, 'test': lambda x: str(x)},
+                        'password'       : {'mandatory': True, 'test': lambda x: str(x)},
+                    },
+            }
+
+
+    def init_from_config(self, config_ini_path):
+        def get_option(self, config, section, option, cast):
+            try:
+                return cast(config.get(section, option).strip())
+            except ConfigParser.NoOptionError:
+                return None
+
+        filesnpaths.is_file_exists(config_ini_path)
+
+        self.config_ini_path = config_ini_path
+
+        config = ConfigParser.ConfigParser()
+
+        try:
+            config.read(self.config_ini_path)
+        except Exception, e:
+            raise ConfigError, "Well, the file '%s' does not seem to be a config file at all :/ Here\
+                                is what the parser had to complain about it: %s" % (self.config_ini_path, e)
+
+        section = 'SMTP'
+
+        if section not in config.sections():
+            raise ConfigError, "The config file '%s' does not seem to have an 'SMTP' section, which\
+                                is essential for Mailer class to learn server and authentication\
+                                settings. Please check the documentation to create a proper config\
+                                file." % self.config_ini_path
+
+
+        for option, value in config.items(section):
+            if option not in self.config_template[section].keys():
+                raise ConfigError, 'Unknown option, "%s", under section "%s".' % (option, section)
+            if self.config_template[section][option].has_key('test') and not self.config_template[section][option]['test'](value):
+                if self.config_template[section][option].has_key('required'):
+                    r = self.config_template[section][option]['required']
+                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".\
+                                        What is expected is %s.' % (value, option, section, r)
+                else:
+                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section)
+
+        self.run.warning('', header="SMTP Configuration is read", lc = 'cyan')
+        for option, value in config.items(section):
+            self.run.info(option, value if option != 'password' else '*' * len(value))
+            setattr(self, option, value)
 
 
     def test(self):
@@ -807,8 +875,11 @@ class Mailer:
 
 
     def connect(self):
+        if not self.server_address or not self.server_port:
+            raise ConfigError, "SMTP server has not been configured to send e-mails :/"
+
         try:
-           self.server = smtplib.SMTP(self.smtp_server_addr, self.smtp_server_port)
+           self.server = smtplib.SMTP(self.server_address, self.server_port)
 
            if self.init_tls:
                self.server.ehlo()
@@ -818,8 +889,8 @@ class Mailer:
                self.server.login(self.username, self.password)
 
         except Exception as e:
-            raise ConfigError, "Something went wrong while trying to connect to the server to send an e-mail :(\
-                                This is what we know about the problem: %s" % e
+            raise ConfigError, "Something went wrong while connecting to the SMTP server :/ This is what we\
+                                know about the problem: %s" % e
 
 
     def disconnect(self):
@@ -830,8 +901,11 @@ class Mailer:
 
 
     def send(self, to, subject, content):
+        self.progress.new('E-mail')
+        self.progress.update('Establishing a connection ..')
         self.connect()
 
+        self.progress.update('Preparing the package ..')
         msg = MIMEText(content)
         msg['To'] = to
         msg['Subject'] = subject
@@ -839,10 +913,17 @@ class Mailer:
         msg['Reply-to'] = self.from_address
 
         try:
+            self.progress.update('Sending the e-mail to "%s" ..' % to)
             self.server.sendmail(self.from_address, [to], msg.as_string())
         except Exception as e:
+            self.progress.end()
             raise ConfigError, "Something went wrong while trying to connet send your e-mail :(\
                                 This is what we know about the problem: %s" % e
 
+        
+        self.progress.update('Disconnecting ..')
         self.disconnect()
+        self.progress.end()
+
+        self.run.info('E-mail', 'Successfully sent to "%s"' % to)
 
