@@ -289,7 +289,7 @@ class UserMGMT:
 
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
-        path = self.users_data_dir + 'userdata/' + user["path"] + '/' + ppath
+        path = self.users_data_dir + '/userdata/' + user["path"] + '/' + ppath
 
         if not os.path.exists(path):
             os.makedirs(path)
@@ -377,7 +377,7 @@ class UserMGMT:
 
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
-        path = self.users_data_dir + 'userdata/'+ user["path"] + '/' + ppath
+        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + ppath
         
         p = (login, pname, )
         response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
@@ -515,7 +515,7 @@ class UserMGMT:
             if retval[0]:
                 user = retval[1]
                 if user.has_key('project_path'):
-                    basepath = 'userdata/' + user['path'] + '/' + user['project_path'] + '/'
+                    basepath = self.users_data_dir + '/userdata/' + user['path'] + '/' + user['project_path'] + '/'
                     args = copy.deepcopy(self.args)
                     args.tree = basepath + 'treeFile'
                     args.fasta_file = basepath + 'fastaFile'
@@ -544,7 +544,7 @@ class UserMGMT:
             retval = userdb.get_view(p[0], p[1])
             if retval[0]:
                 args = self.args
-                basepath = 'userdata/' + retval[1]['path'] + '/'
+                basepath = self.users_data_dir + '/userdata/' + retval[1]['path'] + '/'
                 args.tree = basepath + 'treeFile'
                 args.fasta_file = basepath + 'fastaFile'
                 args.view_data = basepath + 'dataFile'
