@@ -593,10 +593,13 @@ class VariabilityNetwork:
         self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
 
         if self.samples_information_dict:
-            if not set(self.samples_information_dict.keys()).issubset(set(self.samples)):
+            samples_missing_in_information_dict = [s for s in self.samples if s not in self.samples_information_dict]
+            if len(samples_missing_in_information_dict):
                 raise ConfigError, "The sample names you provided in the samples information data is not a subset of\
                                     sample names found in the variable positions data :/ Essentially, every sample name\
-                                    appears in the variability data must be present in the samples information data."
+                                    appears in the variability data must be present in the samples information data,\
+                                    however, you are missing these ones from your samples information: %s."\
+                                                % (', '.join(samples_missing_in_information_dict))
 
         self.unique_variable_positions = set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()])
         self.run.info('unique_variable_positions', '%d found.' % (len(self.unique_variable_positions)))
