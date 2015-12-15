@@ -87,7 +87,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         else:
             self.completeness = None
 
-        if not args.skip_init_functions:
+        if 'skip_init_functions' in args and not args.skip_init_functions:
             self.init_functions()
 
         # make sure we are not dealing with apples and oranges here.

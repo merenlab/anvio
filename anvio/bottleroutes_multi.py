@@ -180,7 +180,7 @@ def receive_upload_file(request, userdb, response):
     if not retval[0]:
         return '{ "ERROR": "'+retval[1]+'" }'
     
-    basepath = 'userdata/'+user['path']+'/'+project['path']+'/'
+    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['path']+'/'
     
     request.files.get('treeFile').save(basepath + 'treeFile')
     if request.files.get('fastaFile'):
@@ -218,7 +218,7 @@ def receive_additional_upload_file(request, userdb, response):
 
     project = userdb.get_project(user['login'], request.forms.get('project'))
 
-    basepath = 'userdata/'+user['path']+'/'+project['path']+'/'
+    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['path']+'/'
     
     request.files.get('additionalFile').save(basepath + 'additionalFile')
         
