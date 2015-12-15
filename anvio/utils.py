@@ -547,7 +547,6 @@ def is_this_name_OK_for_database(variable_name, content, allowed_chars = allowed
                             characters ('_', '-')." % variable_name
 
 
-
 def check_contig_names(contig_names, dont_raise = False):
     all_characters_in_contig_names = set(''.join(contig_names))
     characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
@@ -591,6 +590,132 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
 
     output.close()
     return True
+
+def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict = None,
+                               unit_mapping_dict = None, project = None, sample_size=8, unit_size=2,
+                               skip_sample_labels = False, skip_unit_labels = False):
+    """A function that generates an XML network description file for Gephi.
+    
+       Two minimum required inputs are `units`, and `samples_dict`.
+       
+       Simply, `samples_dict` is a dictionary that shows the distribution of `units` and their
+       frequencies across samples. Here is an example `units` variable (which is a type of `list`):
+
+            units = ['unit_1', 'unit_2', ... 'unit_n']
+
+       and a corresponding `samples_dict` would look like this:
+
+            samples_dict = {'sample_1': {'unit_1': 0.5,
+                                        'unit_2': 0.2,
+                                         ...,
+                                         'unit_n': 0.1
+                                        },
+                            'sample_2': { (...)
+                                            },
+                            (...),
+                            'sample_n': { (...)
+                                            }
+                        }
+    """
+
+    filesnpaths.is_output_file_writable(output_file)
+
+    output = open(output_file, 'w')
+
+    samples = sorted(samples_dict.keys())
+    sample_mapping_categories = sorted([k for k in sample_mapping_dict.keys() if k != 'colors']) if sample_mapping_dict else None
+    unit_mapping_categories = sorted([k for k in unit_mapping_dict.keys() if k not in ['colors', 'labels']]) if unit_mapping_dict else None
+    
+    output.write('''<?xml version="1.0" encoding="UTF-8"?>\n''')
+    output.write('''<gexf xmlns:viz="http:///www.gexf.net/1.1draft/viz" xmlns="http://www.gexf.net/1.2draft" version="1.2">\n''')
+    output.write('''<meta lastmodifieddate="2010-01-01+23:42">\n''')
+    output.write('''    <creator>Oligotyping pipeline</creator>\n''')
+    if project:
+        output.write('''    <creator>Network description for %s</creator>\n''' % (project))
+    output.write('''</meta>\n''')
+    output.write('''<graph type="static" defaultedgetype="undirected">\n\n''')
+
+    if sample_mapping_dict:
+        output.write('''<attributes class="node" type="static">\n''')
+        for i in range(0, len(sample_mapping_categories)):
+            category = sample_mapping_categories[i]
+            output.write('''    <attribute id="%d" title="%s" type="string" />\n''' % (i, category))
+        output.write('''</attributes>\n\n''')
+
+    # FIXME: IDK what the hell is this one about:
+    if unit_mapping_dict:
+        output.write('''<attributes class="edge">\n''')
+        for i in range(0, len(unit_mapping_categories)):
+            category = unit_mapping_categories[i]
+            output.write('''    <attribute id="%d" title="%s" type="string" />\n''' % (i, category))
+        output.write('''</attributes>\n\n''')
+
+    output.write('''<nodes>\n''')
+    for sample in samples:
+        if skip_sample_labels:
+            output.write('''    <node id="%s">\n''' % (sample))
+        else:
+            output.write('''    <node id="%s" label="%s">\n''' % (sample, sample))
+        output.write('''        <viz:size value="%d"/>\n''' % sample_size)
+        if sample_mapping_dict and sample_mapping_dict.has_key('colors'):
+            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
+                                             HTMLColorToRGB(sample_mapping_dict['colors'][sample], scaled = False))
+
+        if sample_mapping_categories:
+            output.write('''        <attvalues>\n''')
+            for i in range(0, len(sample_mapping_categories)):
+                category = sample_mapping_categories[i]
+                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, sample_mapping_dict[category][sample]))
+            output.write('''        </attvalues>\n''')
+
+        output.write('''    </node>\n''')
+
+    for unit in units:
+        if skip_unit_labels:
+            output.write('''    <node id="%s">\n''' % (unit))
+        else:
+            if unit_mapping_dict and unit_mapping_dict.has_key('labels'):
+                output.write('''    <node id="%s" label="%s">\n''' % (unit, unit_mapping_dict['labels'][unit]))
+            else:
+                output.write('''    <node id="%s">\n''' % (unit))
+        output.write('''        <viz:size value="%d" />\n''' % unit_size)
+
+        if unit_mapping_categories:
+            output.write('''        <attvalues>\n''')
+            for i in range(0, len(unit_mapping_categories)):
+                category = unit_mapping_categories[i]
+                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
+            output.write('''        </attvalues>\n''')
+
+        output.write('''    </node>\n''')
+
+    output.write('''</nodes>\n''')
+    
+    edge_id = 0
+    output.write('''<edges>\n''')
+    for sample in samples:
+        for i in range(0, len(units)):
+            unit = units[i]
+            if samples_dict[sample][unit] > 0.0:
+                if unit_mapping_dict:
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f">\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
+                    if unit_mapping_categories:
+                        output.write('''        <attvalues>\n''')
+                        for i in range(0, len(unit_mapping_categories)):
+                            category = unit_mapping_categories[i]
+                            output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, unit_mapping_dict[category][unit]))
+                        output.write('''        </attvalues>\n''')
+                    output.write('''    </edge>\n''')
+                else:
+                    output.write('''    <edge id="%d" source="%s" target="%s" weight="%f" />\n''' % (edge_id, unit, sample, samples_dict[sample][unit]))
+
+
+                edge_id += 1
+    output.write('''</edges>\n''')
+    output.write('''</graph>\n''')
+    output.write('''</gexf>\n''')
+    
+    output.close()
 
 
 def is_ascii_only(text):
