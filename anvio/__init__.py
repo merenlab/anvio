@@ -330,7 +330,18 @@ D = {
                       criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
                       Please refer to the user documentation if this is confusing."}
                 ),
-
+    'max-num-unique-positions': (
+            ['-n', '--max-num-unique-positions'],
+            {'metavar': 'NUM_POSITIONS',
+             'default': 0,
+             'type': int,
+             'help': "Maximum number of unique positions to be used in the network. This may be one way to avoid extremely\
+                      large network descriptions that would defeat the purpose of a quick visualization. If there are more\
+                      unique positions in the variability profile, the program will randomly select a subset of them to match\
+                      the `max-num-unique-positions`. The default is %(default)d, which means all positions should be reported.\
+                      Remember that the number of nodes in the network will also depend on the number of samples described in\
+                      the variability profile."}
+                ),
     'min-coverage-in-each-sample': (
             ['--min-coverage-in-each-sample'],
             {'metavar': 'INT',
