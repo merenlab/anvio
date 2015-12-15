@@ -216,7 +216,7 @@ class UserMGMT:
             self.conn.commit()
 
             # create the user directory
-            path = self.users_data_dir + 'userdata/' + row['path']
+            path = self.users_data_dir + '/userdata/' + row['path']
             if not os.path.exists(path):
                 os.makedirs(path)
 
