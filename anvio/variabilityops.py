@@ -20,6 +20,7 @@ import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.samplesops import SamplesInformation
 
 
 __author__ = "A. Murat Eren"
@@ -551,15 +552,24 @@ class VariabilityNetwork:
         self.progress = p
 
         self.samples = None
+        self.samples_information_dict = None
         self.variable_positions_table = None
 
         A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
         null = lambda x: x
         self.input_file_path = A('input_file', null)
+        self.samples_information_path = A('samples_information', null)
         self.max_num_unique_positions = A('max_num_unique_positions', int)
         self.output_file_path = A('output_file', null)
 
         filesnpaths.is_output_file_writable(self.output_file_path)
+
+        if self.samples_information_path:
+            filesnpaths.is_file_tab_delimited(self.samples_information_path)
+            self.samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_path)
+            num_attributes = len(self.samples_information_dict.values()[0])
+
+            self.run.info('samples_information', '%d attributes read for %d samples' % (num_attributes, len(self.samples_information_dict)))
 
         if self.input_file_path:
             filesnpaths.is_file_tab_delimited(self.input_file_path)
@@ -579,9 +589,14 @@ class VariabilityNetwork:
         if self.max_num_unique_positions < 0:
             raise ConfigError, "Max number of unique positions cannot be less than 0.. Obviously :/"
 
-
         self.samples = sorted(list(set([e['sample_id'] for e in self.variable_positions_table.values()])))
         self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
+
+        if self.samples_information_dict:
+            if not set(self.samples_information_dict.keys()).issubset(set(self.samples)):
+                raise ConfigError, "The sample names you provided in the samples information data is not a subset of\
+                                    sample names found in the variable positions data :/ Essentially, every sample name\
+                                    appears in the variability data must be present in the samples information data."
 
         self.unique_variable_positions = set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()])
         self.run.info('unique_variable_positions', '%d found.' % (len(self.unique_variable_positions)))
@@ -608,7 +623,7 @@ class VariabilityNetwork:
 
 
         self.progress.update('Generating the network file')
-        utils.gen_gexf_network_file(sorted(list(self.unique_variable_positions)), samples_dict, self.output_file_path)
+        utils.gen_gexf_network_file(sorted(list(self.unique_variable_positions)), samples_dict, self.output_file_path, sample_mapping_dict = self.samples_information_dict)
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)
