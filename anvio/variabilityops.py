@@ -541,3 +541,74 @@ class VariablePositionsEngine:
         self.run.info('Num entries reported', pp(len(self.variable_positions_table)))
         self.run.info('Output File', self.args.output_file) 
         self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
+
+
+class VariabilityNetwork:
+    def __init__(self, args = {}, p=progress, r=run):
+        self.args = args
+
+        self.run = r
+        self.progress = p
+
+        self.samples = None
+        self.variable_positions_table = None
+
+        A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
+        null = lambda x: x
+        self.input_file_path = A('input_file', null)
+        self.max_num_unique_positions = A('max_num_unique_positions', int)
+        self.output_file_path = A('output_file', null)
+
+        filesnpaths.is_output_file_writable(self.output_file_path)
+
+        if self.input_file_path:
+            filesnpaths.is_file_tab_delimited(self.input_file_path)
+            self.progress.new('Reading the input file')
+            self.progress.update('...')
+            self.variable_positions_table = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
+            self.progress.end()
+
+            self.run.info('input_file', '%d entries read' % len(self.variable_positions_table))
+
+
+    def generate(self):
+        if not self.variable_positions_table:
+            raise ConfigError, "There is nothing to report. Either the input file you provided was empty, or you\
+                                haven't filled in the variable positions data into the class."
+
+        if self.max_num_unique_positions < 0:
+            raise ConfigError, "Max number of unique positions cannot be less than 0.. Obviously :/"
+
+
+        self.samples = sorted(list(set([e['sample_id'] for e in self.variable_positions_table.values()])))
+        self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
+
+        self.unique_variable_positions = set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()])
+        self.run.info('unique_variable_positions', '%d found.' % (len(self.unique_variable_positions)))
+
+        if self.max_num_unique_positions and len(self.unique_variable_positions) > self.max_num_unique_positions:
+            self.unique_variable_positions = set(random.sample(self.unique_variable_positions, self.max_num_unique_positions))
+            self.run.info('unique_variable_positions', 'Unique positions are subsampled to %d' % self.max_num_unique_positions, mc = 'red')
+
+        self.progress.new('Samples dict')
+        self.progress.update('Creating an empty one ...')
+        samples_dict = {}
+        for sample_name in self.samples:
+            samples_dict[sample_name] = {}
+            for unique_variable_position in self.unique_variable_positions:
+                samples_dict[sample_name][unique_variable_position] = 0
+
+        self.progress.update('Updating the dictionary with data')
+        for entry in self.variable_positions_table.values():
+            sample_id = entry['sample_id']
+            pos = entry['unique_pos_identifier']
+            frequency = entry['n2n1ratio']
+
+            samples_dict[sample_id][pos] = float(frequency)
+
+
+        self.progress.update('Generating the network file')
+        utils.gen_gexf_network_file(sorted(list(self.unique_variable_positions)), samples_dict, self.output_file_path)
+        self.progress.end()
+
+        self.run.info('network_description', self.output_file_path)
