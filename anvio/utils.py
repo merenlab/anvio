@@ -623,9 +623,16 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict 
     output = open(output_file, 'w')
 
     samples = sorted(samples_dict.keys())
-    sample_mapping_categories = sorted([k for k in sample_mapping_dict.keys() if k != 'colors']) if sample_mapping_dict else None
+    sample_mapping_categories = sorted([k for k in sample_mapping_dict.values()[0].keys() if k != 'colors']) if sample_mapping_dict else None
     unit_mapping_categories = sorted([k for k in unit_mapping_dict.keys() if k not in ['colors', 'labels']]) if unit_mapping_dict else None
-    
+
+    sample_mapping_category_types = []
+    for category in sample_mapping_categories:
+        if RepresentsFloat(sample_mapping_dict.values()[0][category]):
+            sample_mapping_category_types.append('double')
+        else:
+            sample_mapping_category_types.append('string')
+
     output.write('''<?xml version="1.0" encoding="UTF-8"?>\n''')
     output.write('''<gexf xmlns:viz="http:///www.gexf.net/1.1draft/viz" xmlns="http://www.gexf.net/1.2draft" version="1.2">\n''')
     output.write('''<meta lastmodifieddate="2010-01-01+23:42">\n''')
@@ -639,7 +646,8 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict 
         output.write('''<attributes class="node" type="static">\n''')
         for i in range(0, len(sample_mapping_categories)):
             category = sample_mapping_categories[i]
-            output.write('''    <attribute id="%d" title="%s" type="string" />\n''' % (i, category))
+            category_type = sample_mapping_category_types[i]
+            output.write('''    <attribute id="%d" title="%s" type="%s" />\n''' % (i, category, category_type))
         output.write('''</attributes>\n\n''')
 
     # FIXME: IDK what the hell is this one about:
@@ -656,16 +664,18 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict 
             output.write('''    <node id="%s">\n''' % (sample))
         else:
             output.write('''    <node id="%s" label="%s">\n''' % (sample, sample))
+
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
-        if sample_mapping_dict and sample_mapping_dict.has_key('colors'):
+
+        if sample_mapping_dict and sample_mapping_dict[sample].has_key('colors'):
             output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
-                                             HTMLColorToRGB(sample_mapping_dict['colors'][sample], scaled = False))
+                                             HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled = False))
 
         if sample_mapping_categories:
             output.write('''        <attvalues>\n''')
             for i in range(0, len(sample_mapping_categories)):
                 category = sample_mapping_categories[i]
-                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, sample_mapping_dict[category][sample]))
+                output.write('''            <attvalue id="%d" value="%s"/>\n''' % (i, sample_mapping_dict[sample][category]))
             output.write('''        </attvalues>\n''')
 
         output.write('''    </node>\n''')
@@ -915,6 +925,14 @@ def get_missing_programs_for_hmm_analysis():
 def RepresentsInt(s):
     try: 
         int(s)
+        return True
+    except ValueError:
+        return False
+
+
+def RepresentsFloat(s):
+    try: 
+        float(s)
         return True
     except ValueError:
         return False
