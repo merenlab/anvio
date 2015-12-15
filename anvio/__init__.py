@@ -67,10 +67,10 @@ D = {
     'samples-information': (
             ['-D', '--samples-information'],
             {'metavar': 'TAB_DELIM_FILE',
-             'help': "A TAB-delimited file with information about samples in your dataset (which also correspond)\
-                      to 'view layers'. Each row in this file must correspond to a sample name. Each column must\
-                      contain a unique attribute. Please refer to the documentation to learn more about the \
-                      structure and purpose of this file."}
+             'help': "A TAB-delimited file with information about samples in your dataset. Each row in this\
+                      file must correspond to a sample name. Each column must contain a unique attribute.\
+                      Please refer to the documentation to learn more about the structure and purpose of\
+                      this file."}
                 ),
     'samples-order': (
             ['-R', '--samples-order'],
