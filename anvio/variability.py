@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 
-"""Module to make sense of variability (SNPs) across nucleotide positions"""
+"""Classes to make sense of single nucleotide variation"""
 
 from __future__ import division
 from collections import Counter
@@ -17,12 +17,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 class VariablityTestFactory:
-    # an experimental class to make sense whether the nucleotide variation in a column
-    # is meaningful beyond sequencing errors, given the coverage of that position.
+    """an experimental class to make sense whether the nucleotide variation in a column
+       is meaningful beyond sequencing errors, given the coverage of that position."""
     def __init__(self, params = {'b': 3, 'm': 1.45, 'c': 0.05}):
         self.params = params
         self.coverage_upper_limit = 500
@@ -50,6 +49,8 @@ class VariablityTestFactory:
 
 
 class ColumnProfile:
+    """A class to report raw variability information for a given nucleotide position"""
+
     def __init__(self, column, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
         self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'consensus': None,
                         'coverage': coverage if coverage else len(column),
