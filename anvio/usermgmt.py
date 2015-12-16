@@ -230,20 +230,37 @@ class UserMGMT:
         password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
 
         # crypt password
-        password = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
+        cpassword = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
 
-        login = user.login
+        login = user['login']
         
         # update the user entry in the DB
-        p = (password, login)
+        p = (cpassword, login)
         response = self.cursor.execute("UPDATE users SET password=? WHERE login=?", p)
         self.conn.commit()
 
         # send the user a mail with the new password
+        email = user['email']
         messageSubject = "anvio password reset"
         messageText = "You have requested your password for your anvi'o account to be reset.\n\nYour new password is:\n\n"+password+"\n\nPlease log into anvi'o with these credentials and change your password.";
 
         self.mailer.send(email, messageSubject, messageText)
+
+        return True
+
+    def change_password(self, user, password):
+        if not user:
+            raise ConfigError, "You must pass a user to change a password"
+
+        # crypt password
+        cpassword = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
+
+        login = user['login']
+        
+        # update the user entry in the DB
+        p = (cpassword, login)
+        response = self.cursor.execute("UPDATE users SET password=? WHERE login=?", p)
+        self.conn.commit()
 
         return True
         
