@@ -114,6 +114,18 @@ def get_user_by_token():
 def request_account():
     return multiroutes.request_account(request, userdb, response)
 
+@route('/resetPassword', method='POST')
+def reset_password():
+    return multiroutes.request_account(request, userdb, response)
+
+@route('/checkAvailability', method='POST')
+def check_availability():
+    return multiroutes.check_availability(request, userdb, response)
+
+@route('/updateUser')
+def update_user():
+    return multiroutes.update_user(request, userdb, response)
+
 @route('/confirm', method='GET')
 def accept_user():
     return multiroutes.accept_user(request, userdb, response)

@@ -60,6 +60,39 @@ def accept_user(request, userdb, response):
     
     return retval[1]
 
+# TODO
+def reset_password(request, userdb, response):
+    if request.forms.get('email'):
+        user = userdb.get_user_for_email(request.forms.get('email'))
+        if user:
+            userdb.reset_password(user)
+            return '{ "OK": "password reset" }'
+        else:
+            return '{ "ERROR": "email address not found" }'
+    else:
+        return '{ "ERROR":"you need to pass an email address" }'
+
+
+def check_availability(request, userdb, response):
+    if request.forms.get('email'):
+        user = userdb.get_user_for_email(request.forms.get('email'))
+        if user:
+            return '{ "email": "this email is already taken" }'
+        else:
+            return '{ "email": "ok" }'
+    elif request.forms.get('login'):
+        user = userdb.get_user_for_login(request.forms.get('login'))
+        if user:
+            return '{ "login": "this login is already taken" }'
+        else:
+            return '{ "login": "ok" }'
+
+        
+def update_user(request, userdb, response):
+    return True
+
+
+###
 
 def login_to_app(request, userdb, response):
     set_default_headers(response)
@@ -223,3 +256,6 @@ def receive_additional_upload_file(request, userdb, response):
     request.files.get('additionalFile').save(basepath + 'additionalFile')
         
     return '{ "OK": "file added" }'
+
+def admin_page(request, userdb, response):
+    return True
