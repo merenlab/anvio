@@ -27,7 +27,7 @@ function showUserData (user) {
     html.push('<div style="padding-top: 2px; float: right;">');
     html.push('<img src="images/user.png" style="width: 32px; border-radius: 3px; margin-right: 5px;">');
     html.push('<span>logged in as '+user.firstname+' '+user.lastname+' ('+user.login+')</span>');
-    html.push('<button type="button" style="margin-left: 5px;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button>');
+    html.push('<button type="button" style="margin-left: 5px;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button><div style="font-size: 11px;"><a href="change.html">change password</a></div>');
     html.push('</div>');
 
     // divider

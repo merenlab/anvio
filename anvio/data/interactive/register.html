@@ -23,18 +23,71 @@
 function checkMatch() {
     if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
 	alert('passwords do not match');
+	document.getElementById('inputPassword').value = '';
+	document.getElementById('inputRepeatPassword').value = '';
+	$('#inputPassword').focus();
     }
 }
+
+function checkAvailability(which) {
+    var params = {
+	//	"response": grecaptcha.getResponse()
+    };
+    if (which == 'email') {
+	params['email'] = document.getElementById('inputEmail').value;
+    } else {
+	params['login'] = document.getElementById('inputLogin').value;
+    }
+    jQuery.post("/checkAvailability", params, function (result) {
+	if (result.hasOwnProperty('email')) {
+	    if (result.email == 'ok') {
+		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-success';
+	    } else {
+		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-error';
+		alert(result.email);
+	    }
+	} else if (result.hasOwnProperty('login')) {
+	    if (result.login == 'ok') {
+		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-success';
+	    } else {
+		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-error';
+		alert(result.login);
+	    }
+	}
+    }).fail(function(result){
+	
+    });
+}
+
 function performRegistration() {
+    // first check if all required fields are filled out
+    var required = [ 'Email', 'Firstname', 'Lastname', 'Login', 'Password' ];
+    for (var i=0; i<required.length; i++) {
+	if (! document.getElementById('input'+required[i]).value) {
+	    $('#input'+required[i]).focus();
+	    alert(required[i]+' is a required field');
+	    return;
+	}
+    }
+
+    // check if email has the required format
+    if (! document.getElementById('inputEmail').value.match(/\@/)) {
+	alert('invalid email address');
+	return;
+    }
+    
+    // perform the submission
     document.getElementById('submit').setAttribute('disabled', 'disabled');
     jQuery.post("/requestAccount", {
 	"email": document.getElementById('inputEmail').value,
 	"firstname": document.getElementById('inputFirstname').value,
 	"lastname": document.getElementById('inputLastname').value,
 	"login": document.getElementById('inputLogin').value,
+	"affiliation": document.getElementById('inputAffilitation').value,
 	"password": document.getElementById('inputPassword').value,
 //	"response": grecaptcha.getResponse()
-    }, function (result) {
+      }, function (result) {
+      document.getElementById('submit').removeAttribute('disabled');
 	if (result.hasOwnProperty('ERROR')) {
 	    alert("Your registration failed: "+result.ERROR);
 	} else {
@@ -94,9 +147,15 @@ function performRegistration() {
 	</div>
       </div>
       <div class="form-group">
+	<label class="control-label col-sm-4" for="inputAffiliation">Affiliation</label>
+	<div class="col-sm-4">
+	  <input type="text" id="inputAffiliation" placeholder="affiliation" class="form-control">
+	</div>
+      </div>
+      <div class="form-group">
 	<label class="control-label col-sm-4" for="inputLogin">Login</label>
 	<div class="col-sm-4">
-	  <input type="text" id="inputLogin" placeholder="login" class="form-control">
+	  <input type="text" id="inputLogin" placeholder="login" class="form-control" onblur="checkAvailability('login');">
 	</div>
       </div>
       <div class="form-group">
@@ -114,7 +173,7 @@ function performRegistration() {
       <div class="form-group">
 	<label class="control-label col-sm-4" for="inputEmail">eMail</label>
 	<div class="col-sm-4">
-	  <input type="text" id="inputEmail" placeholder="you@provider.com" class="form-control">
+	  <input type="text" id="inputEmail" placeholder="you@provider.com" class="form-control" onblur="checkAvailability('email');">
 	</div>
       </div>
       <div id="recap"></div>
