@@ -76,6 +76,8 @@ function checkCookie () {
 			window.location = 'user.html';
 		    } else if (document.title == 'anvio user home') {
 			showUserData(data[1]);
+		    } else if (document.title == 'anvio change password') {
+			window.user = data[1];
 		    } else {
 			showUserOptions(data[1]);
 		    }

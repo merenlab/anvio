@@ -23,6 +23,9 @@
 function checkMatch() {
     if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
 	alert('passwords do not match');
+	document.getElementById('inputPassword').value = '';
+	document.getElementById('inputRepeatPassword').value = '';
+	$('#inputPassword').focus();
     }
 }
 
@@ -36,11 +39,6 @@ function checkAvailability(which) {
 	params['login'] = document.getElementById('inputLogin').value;
     }
     jQuery.post("/checkAvailability", params, function (result) {
-	try {
-	    result = JSON.parse(result);
-	} catch (e) {
-
-	}
 	if (result.hasOwnProperty('email')) {
 	    if (result.email == 'ok') {
 		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-success';
