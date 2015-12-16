@@ -125,7 +125,7 @@ class Prodigal:
         hit_id = 0
         while fasta.next():
             gene_calls_dict[hit_id] = self.parser(fasta.id)
-            protein_sequences_dict[hit_id] = fasta.seq
+            protein_sequences_dict[hit_id] = fasta.seq.replace('*', '')
             hit_id += 1
 
         fasta.close()
