@@ -1,0 +1,106 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+
+    <title>anvio change password</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+
+    <link rel="icon" type="image/png" href="images/logo.png">
+    
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/session.js"></script>
+    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
+    <script>
+    $(document).ready(function(){
+	checkCookie();
+	  $("#changePasswordForm").submit(function(event){ event.preventDefault(); });
+//	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
+      });
+function changePassword() {
+    if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
+	alert('passwords do not match');
+	document.getElementById('inputPassword').value = '';
+	document.getElementById('inputRepeatPassword').value = '';
+	$('#inputPassword').focus();
+	return;
+    }
+
+    document.getElementById('submit').setAttribute('disabled', 'disabled');
+    jQuery.post("/changePassword", {
+	"login": user.login,
+	"password": document.getElementById('inputPassword').value,
+//	"response": grecaptcha.getResponse()
+    }, function (result) {
+	document.getElementById('submit').removeAttribute('disabled');
+	if (result.hasOwnProperty('ERROR')) {
+	    alert("Resetting password failed: "+result.ERROR);
+	} else {
+	    document.getElementById('main').innerHTML = "<h3>Password Change Successful</h3><div class='alert alert-success col-sm-6'><p>Your password has successfully been changed.</p></div><div style='clear: both;'></div><br><button class='btn' type='button' onclick='window.location=\"home.html\";'>go to home page</button>";
+	}
+      }).fail(function(result){
+	  document.getElementById('submit').removeAttribute('disabled');	  
+	  if (result.hasOwnProperty('ERROR')) {
+	      alert("Changing your password failed: "+result.ERROR);
+	  } else {
+	      alert('An error occurred during password change');
+	  }
+      });
+
+}
+    </script>
+    <style>
+      body {
+      color: #333332;
+      font-family: "PT Serif",serif;
+      }
+      .header {
+      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
+      height: 90px;
+      font-size: 30px;
+      border-bottom: 1px solid lightgray;
+      text-align: center;
+      }
+      .header img {
+      height: 80px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      }
+    </style>
+
+  </head>
+
+  <body>
+
+    <div class="header">
+      <img src="images/logo.png"> anvi'o account registration
+    </div>
+    
+
+    <div class="container" id="main">
+    <h3>Change your Password</h3>
+    <form class="form-horizontal" id="changePasswordForm">
+      <div class="form-group">
+	<label class="control-label col-sm-4" for="inputPassword">password</label>
+	<div class="col-sm-4">
+	  <input type="password" id="inputPassword" placeholder="new password" class="form-control">
+	</div>
+      </div>
+      <div class="form-group">
+	<label class="control-label col-sm-4" for="inputRepeatPassword">repeat password</label>
+	<div class="col-sm-4">
+	  <input type="password" id="inputRepeatPassword" placeholder="repeat new password" class="form-control">
+	</div>
+      </div>
+      <div id="recap"></div>
+      <button type="button" class="btn" onclick="changePassword();" id="submit">change password</button>
+    </form>
+</div>
+  </body>
+</html>

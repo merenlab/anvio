@@ -49,13 +49,20 @@
       margin-left: auto;
       margin-right: auto;
       }
+
+      .jumbotron {
+      //background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
+      background-image: url('images/snowflakes.gif');
+      background-size: 100%;
+      }
     </style>
 
     <script>
-      $(document).ready(function(){
+      $(window).load(function(){
       $('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
       $("#loginForm").submit(function(event){ event.preventDefault(); });
       checkCookie();
+      carouselImages();
       });
     </script>
     
@@ -82,6 +89,7 @@
 		<input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">
 		<input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">
 		<button type="button" class="btn btn-default btn-sm" onclick="performLogin();">login</button>
+		<div style="clear: both; text-align: left; font-size: 11px;"><a style="" href="forgot.html">forgot password?</a></div>
               </div>
 	    </form>
 	    <ul class="nav navbar-nav navbar-right">
@@ -95,7 +103,7 @@
       
     </div>
     
-    <div class="jumbotron" style="background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);">
+    <div class="jumbotron">
       <div class="container" style="color: white;">
 	<img src="images/logo-white.png" style="width: 150px; margin-right: 30px; float: left;"><h1>Welcome to anvi'o</h1>
 	<p style="opacity: 0.5;">The analysis and visualization platform for 'omics data.</p>
@@ -115,23 +123,23 @@
 	<div class="carousel-inner" role="listbox">
 
 	  <div class="item active">
-	    <img src="images/carousel1.png" style="height: 300px;">
+	    <img src="images/carousel1.png" class="carouselImage">
 	  </div>
 
 	  <div class="item">
-	    <img src="images/carousel2.png" style="height: 300px;">
+	    <img src="images/carousel2.png" class="carouselImage">
 	  </div>	
 
 	  <div class="item">
-	    <img src="images/carousel3.png" style="height: 300px;">
+	    <img src="images/carousel3.png" class="carouselImage">
 	  </div>	
 
 	  <div class="item">
-	    <img src="images/carousel4.png" style="height: 240px; margin-top: 30px; margin-bottom: 30px;">
+	    <img src="images/carousel4.png" class="carouselImage">
 	  </div>	
 
 	  <div class="item">
-	    <img src="images/carousel5.png" style="height: 300px;">
+	    <img src="images/carousel5.png"  class="carouselImage">
 	  </div>	
 
 	</div>
