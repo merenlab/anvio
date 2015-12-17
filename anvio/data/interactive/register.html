@@ -15,119 +15,22 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
-    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
+
+    <link rel="stylesheet" href="css/server.css" />
+    <script type="text/javascript" src="js/register.js"></script>
     <script>
       $(document).ready(function(){
-//	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
+      initContent();
       });
-function checkMatch() {
-    if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
-	alert('passwords do not match');
-	document.getElementById('inputPassword').value = '';
-	document.getElementById('inputRepeatPassword').value = '';
-	$('#inputPassword').focus();
-    }
-}
-
-function checkAvailability(which) {
-    var params = {
-	//	"response": grecaptcha.getResponse()
-    };
-    if (which == 'email') {
-	params['email'] = document.getElementById('inputEmail').value;
-    } else {
-	params['login'] = document.getElementById('inputLogin').value;
-    }
-    jQuery.post("/checkAvailability", params, function (result) {
-	if (result.hasOwnProperty('email')) {
-	    if (result.email == 'ok') {
-		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-success';
-	    } else {
-		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-error';
-		alert(result.email);
-	    }
-	} else if (result.hasOwnProperty('login')) {
-	    if (result.login == 'ok') {
-		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-success';
-	    } else {
-		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-error';
-		alert(result.login);
-	    }
-	}
-    }).fail(function(result){
-	
-    });
-}
-
-function performRegistration() {
-    // first check if all required fields are filled out
-    var required = [ 'Email', 'Firstname', 'Lastname', 'Login', 'Password' ];
-    for (var i=0; i<required.length; i++) {
-	if (! document.getElementById('input'+required[i]).value) {
-	    $('#input'+required[i]).focus();
-	    alert(required[i]+' is a required field');
-	    return;
-	}
-    }
-
-    // check if email has the required format
-    if (! document.getElementById('inputEmail').value.match(/\@/)) {
-	alert('invalid email address');
-	return;
-    }
-    
-    // perform the submission
-    document.getElementById('submit').setAttribute('disabled', 'disabled');
-    jQuery.post("/requestAccount", {
-	"email": document.getElementById('inputEmail').value,
-	"firstname": document.getElementById('inputFirstname').value,
-	"lastname": document.getElementById('inputLastname').value,
-	"login": document.getElementById('inputLogin').value,
-	"affiliation": document.getElementById('inputAffilitation').value,
-	"password": document.getElementById('inputPassword').value,
-//	"response": grecaptcha.getResponse()
-      }, function (result) {
-      document.getElementById('submit').removeAttribute('disabled');
-	if (result.hasOwnProperty('ERROR')) {
-	    alert("Your registration failed: "+result.ERROR);
-	} else {
-	    document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully. You will received a confirmation at the registered email address shortly.</p><p>Click on the link in that email to confirm your account.</p></div>";
-		}
-	    }).fail(function(result){
-		if (result.hasOwnProperty('ERROR')) {
-		    alert("Your registration failed: "+result.ERROR);
-		} else {
-		    alert('An error occured during your registration');
-		}
-	    });
-
-}
     </script>
-    <style>
-      body {
-      color: #333332;
-      font-family: "PT Serif",serif;
-      }
-      .header {
-      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
-      height: 90px;
-      font-size: 30px;
-      border-bottom: 1px solid lightgray;
-      text-align: center;
-      }
-      .header img {
-      height: 80px;
-      margin-top: 5px;
-      margin-bottom: 5px;
-      }
-    </style>
 
+    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
   </head>
 
   <body>
 
     <div class="header">
-      <img src="images/logo.png"> anvi'o account registration
+      <img src="images/logo.png"><span>anvi'o registration page</span>
     </div>
     
 

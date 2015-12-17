@@ -40,9 +40,20 @@ def get_user_by_token(request, userdb, response):
     return json.dumps(retval)
 
 
+def impersonate(request, userdb, response):
+    set_default_headers(response)
+    retval = get_user(request, userdb, response)
+    if retval[0]:
+        if retval[1]['clearance'] == 'admin':
+            imperson = userdb.get_user_for_login(request.forms.get('login'))
+            if imperson:
+                response.set_header('Set-Cookie', 'anvioSession='+imperson["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
+                return json.dumps(imperson);
+
+
 def request_account(request, userdb, response):
     set_default_headers(response)
-    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'))
+    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), )
 
     set_default_headers(response)
     if retval[0]:
@@ -269,5 +280,32 @@ def receive_additional_upload_file(request, userdb, response):
         
     return '{ "OK": "file added" }'
 
-def admin_page(request, userdb, response):
-    return True
+def admin_data(request, userdb, response):
+    set_default_headers(response)
+    retval = get_user(request, userdb, response)
+    if retval[0]:
+        if retval[1]['clearance'] == 'admin':
+            filterhash = {}
+            fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date' ]
+            for field in fields:
+                if field in request.query:
+                    filterhash[field] = request.query[field]
+
+            offset = 0
+            limit = 25
+            order = 'lastname'
+            direction = 'ASC'
+            if 'offset' in request.query:
+                offset = request.query['offset'] 
+            if 'limit' in request.query:
+                limit = request.query['limit']
+            if 'order' in request.query:
+                order = request.query['order'] 
+            if 'direction' in request.query:
+                direction = request.query['direction'] 
+                                
+            return json.dumps(userdb.user_list(offset, limit, order, direction, filterhash))
+        else:
+            return '{ "ERROR": "You need to be an administrator to view this data" }'
+    else:
+        return '{ "ERROR": "' + retval[1] + '" }'
