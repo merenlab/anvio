@@ -17,12 +17,12 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-function adminContent() {
+function initContent() {
     var content = document.getElementById('content');
     var html = [];
     if (user.clearance == 'admin') {
-	html.push('<h1>Welcome back, master '+user.lastname+'</h1><p>I am awaiting your command.</p>');
-    } else{
+	html.push('<h3>Welcome back, master '+user.lastname+'</h3><p>I am awaiting your command.</p>');
+    } else {
 	html.push('<div class="alert alert-danger col-sm-6" role="alert">You are not authorized to view this page.</div>');
     }
     content.innerHTML = html.join('\n');

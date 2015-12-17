@@ -3,13 +3,13 @@ body {
     font-family: "PT Serif",serif;
 }
 .header {
-    background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
+    background: rgba(0, 0, 0, 0) url('../images/fractal.jpg') repeat;
     height: 90px;
     border-bottom: 1px solid lightgray;
     text-align: center;
 }
 
-.header > span {
+.header span {
     font-size: 30px;
 }
 
@@ -17,12 +17,7 @@ body {
     height: 80px;
     margin-top: 5px;
     margin-bottom: 5px;
-    position: relative;
-    right: 100px;
-}
-.header span {
-    position: relative;
-    right: 90px;
+    margin-right: 10px;
 }
 
 .carousel-indicators {
@@ -49,6 +44,6 @@ body {
 
 .jumbotron {
     //background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
-    background-image: url('images/snowflakes.gif');
+    background-image: url('../images/snowflakes.gif');
     background-size: 100%;
 }

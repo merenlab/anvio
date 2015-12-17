@@ -25,7 +25,7 @@ function initContent () {
     $('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
     $("#loginForm").submit(function(event){ event.preventDefault(); });
     if (user) {
-	window.location = 'home.html';
+	window.location = 'user.html';
     }
 };
 
