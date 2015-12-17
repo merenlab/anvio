@@ -206,6 +206,15 @@ class UserMGMT:
         user = response.fetchone()
 
         if user:
+            # check if the user has a token
+            if not user['token']:
+                token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+                token = user['login'] + token
+                p = (token, user['login'], )
+                self.cursor.execute("UPDATE users SET token=? WHERE login=?", p)
+                self.conn.commit()
+                user['token'] = token
+                
             # check if the user has a project set
             user = self.get_user_projects(user)
         
@@ -344,6 +353,26 @@ class UserMGMT:
         self.conn.commit()
 
         return (True, None)
+
+    def user_list(self, offset=0, limit=25, order='lastname', dir='ASC', filter={}):
+        filterwords = []
+        for field in filter.keys():
+            filterwords.append(field+" LIKE '"+filter[field].replace("\\","\\\\").replace("'", "\'")+"'")
+
+        where_phrase = ""
+        if len(filterwords):
+            where_phrase = " WHERE "+" AND ".join(filterwords)
+
+        select = "SELECT * FROM users"+where_phrase+" ORDER BY "+order+" "+dir+" LIMIT "+str(limit)+" OFFSET "+str(offset)
+        response = self.cursor.execute(select)
+        table = response.fetchall()
+
+        for row in table:
+            del row['password']
+            del row['path']
+            del row['token']
+        
+        return table
 
     ######################################
     # PROJECTS
