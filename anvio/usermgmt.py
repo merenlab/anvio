@@ -13,6 +13,9 @@ import random
 import hashlib
 import shutil
 
+import time
+from datetime import date
+
 import anvio
 import anvio.terminal as terminal
 import anvio.interactive as interactive
@@ -86,7 +89,7 @@ class UserMGMT:
         cursor = conn.cursor()
 
         cursor.execute("CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT)")
-        cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT)")
+        cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT)")
         cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT)")
         cursor.execute("CREATE TABLE views (name TEXT PRIMARY KEY, project TEXT, public INTEGER, token TEXT)")
         cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
@@ -128,7 +131,7 @@ class UserMGMT:
     ######################################
     # USERS
     ######################################
-    def create_user(self, firstname, lastname, email, login, password):
+    def create_user(self, firstname, lastname, email, login, password, affiliation, ip, clearance="user"):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
             return (False, "You must pass a firstname, lastname, email login and password to create a user")
@@ -148,7 +151,7 @@ class UserMGMT:
 
         if row:
             return (False, "Email '%s' is already taken." % email)
-
+        
         # calculate path
         path = hashlib.md5(login).hexdigest()
 
@@ -161,9 +164,12 @@ class UserMGMT:
         # set accepted to 'false'
         accepted = 0
 
+        # get the current date
+        entrydate = date.fromtimestamp(time.time()).isoformat()
+        
         # create the user entry in the DB
-        p = (firstname, lastname, email, login, password, path, token, accepted, )
-        response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", p)
+        p = (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, entrydate, )
+        response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
         self.conn.commit()
 
         # send the user a mail to verify the email account
