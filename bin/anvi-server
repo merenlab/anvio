@@ -106,6 +106,10 @@ def set_default_headers(response):
 def redirect_to_app():
     redirect('/app/home.html')
 
+@route('/impersonate', method='POST')
+def impersonate():
+    return multiroutes.impersonate(request, userdb, response)
+
 @route('/token', method='POST')
 def get_user_by_token():
     return multiroutes.get_user_by_token(request, userdb, response)
@@ -165,6 +169,10 @@ def receive_upload_file():
 @route('/uploadMore', method='POST')
 def receive_additional_upload_file():
     return multiroutes.receive_additional_upload_file(request, userdb, response)
+
+@route('/adminData', method='GET')
+def admin_data():
+    return multiroutes.admin_data(request, userdb, response)
 
 @route('/app/:filename#.*#')
 def send_static(filename):
