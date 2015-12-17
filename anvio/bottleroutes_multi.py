@@ -42,7 +42,7 @@ def get_user_by_token(request, userdb, response):
 
 def request_account(request, userdb, response):
     set_default_headers(response)
-    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'))
+    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), )
 
     set_default_headers(response)
     if retval[0]:
@@ -269,5 +269,5 @@ def receive_additional_upload_file(request, userdb, response):
         
     return '{ "OK": "file added" }'
 
-def admin_page(request, userdb, response):
+def admin_data(request, userdb, response):
     return True
