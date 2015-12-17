@@ -15,54 +15,13 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
-    <style>
-      body {
-      color: #333332;
-      font-family: "PT Serif",serif;
-      }
-      .header {
-      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
-      height: 90px;
-      border-bottom: 1px solid lightgray;
-      text-align: center;
-      }
-
-      .carousel-indicators {
-      bottom: -40px;
-      }
-
-      .carousel-indicators .active {
-      background-color: gray;
-      }
-
-      .carousel-indicators li {
-      border: 1px solid gray;
-      }
-
-      .navbar {
-      padding-top: 20px;
-      margin-bottom: 0px;
-      }
-
-      .item img {
-      margin-left: auto;
-      margin-right: auto;
-      }
-
-      .jumbotron {
-      //background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
-      background-image: url('images/snowflakes.gif');
-      background-size: 100%;
-      }
-    </style>
-
+    <script type="text/javascript" src="js/home.js"></script>
     <script>
-      $(window).load(function(){
-      $('#password').on('keypress', function(e) { e=e||window.event;if(e.keyCode==13){performLogin();}});
-      $("#loginForm").submit(function(event){ event.preventDefault(); });
+      $(document).ready(function(){
       checkCookie();
-      carouselImages();
       });
     </script>
     

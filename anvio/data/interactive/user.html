@@ -14,34 +14,10 @@
     
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/user.js"></script>
-    <style>
-      body {
-      color: #333332;
-      font-family: "PT Serif",serif;
-      }
-      .header {
-      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
-      height: 90px;
-      font-size: 30px;
-      border-bottom: 1px solid lightgray;
-      text-align: center;
-      }
-
-      .header img {
-      height: 80px;
-      margin-top: 5px;
-      margin-bottom: 5px;
-      position: relative;
-      right: 100px;
-      }
-      .header span {
-      position: relative;
-      right: 90px;
-      }
-    </style>
 
     <script>
       $(document).ready(function(){
@@ -57,10 +33,7 @@
   <body>
 
     <div class="header">
-      <nav class="navbar">
-	<div class="container-fluid">
-	  <img src="images/logo.png"><span>anvi'o user home</span>
-      </nav>
+      <img src="images/logo.png"><span>anvi'o user home</span>
     </div>
 
     <div class="container" id="content"></div>
