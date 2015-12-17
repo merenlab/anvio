@@ -44,7 +44,7 @@ function performLogin () {
 
 function performLogout () {
     var formData = new FormData();
-    formData.append('login', session.user.login);
+    formData.append('login', user.login);
     $.ajax({
     	url : '/logout',
 	processData: false,

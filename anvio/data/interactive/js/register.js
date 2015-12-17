@@ -19,7 +19,7 @@
 
 function initContent () {
     //	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
-});
+};
 
 function checkMatch() {
     if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {

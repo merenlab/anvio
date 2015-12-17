@@ -18,9 +18,7 @@
  */
 
 // user section on anvio user.html
-function showUserData (user) {
-
-    window.user = user;
+function initContent () {
 
     // username and logout button
     var html = [];

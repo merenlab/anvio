@@ -20,7 +20,7 @@
 function initContent () {
     $("#changePasswordForm").submit(function(event){ event.preventDefault(); });
     //	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
-});
+};
 
 function changePassword() {
     if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
