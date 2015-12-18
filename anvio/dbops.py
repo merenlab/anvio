@@ -992,9 +992,9 @@ class SamplesInformationDatabase:
         self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
 
         # store samples described into the self table
-        self.db.set_meta_value('samples', ','.join(samples.sample_names))
+        self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
         self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
-        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order))
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
 
         self.disconnect()
 

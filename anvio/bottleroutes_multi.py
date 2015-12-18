@@ -250,7 +250,11 @@ def receive_upload_file(request, userdb, response):
 
     # create a profile database
     profile = dbops.ProfileDatabase(basepath + 'profile.db')
-    profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None});
+    profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None})
+
+    # create a samples database
+    sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
+    samplesdb = sample.create()
         
     redirect('/app/index.html')
 

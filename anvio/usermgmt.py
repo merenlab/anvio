@@ -624,6 +624,7 @@ class UserMGMT:
                     args.title = user['project']
                     args.read_only = False
                     args.profile_db = basepath + 'profile.db'
+                    args.samples_db = basepath + 'samples.db'
                     args.additional_layers = None
                     addFile = basepath + 'additionalFile'
                     if os.path.isfile(addFile):
