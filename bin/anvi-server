@@ -144,7 +144,7 @@ def logout_from_app():
 
 @route('/project', method='GET')
 def set_view_cookie():
-    multiroutes.set_view_cookier(request, userdb, response)
+    multiroutes.set_view_cookie(request, userdb, response)
 
 @route('/project', method='POST')
 def set_project():
