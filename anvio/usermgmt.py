@@ -363,7 +363,7 @@ class UserMGMT:
         if len(filterwords):
             where_phrase = " WHERE "+" AND ".join(filterwords)
 
-        select = "SELECT * FROM users"+where_phrase+" ORDER BY "+order+" "+dir+" LIMIT "+str(limit)+" OFFSET "+str(offset)
+        select = "SELECT users.*, COUNT(projects.name) AS projects FROM users LEFT OUTER JOIN projects ON users.login=projects.user"+where_phrase+" GROUP BY users.login ORDER BY "+order+" "+dir+" LIMIT "+str(limit)+" OFFSET "+str(offset)
         response = self.cursor.execute(select)
         table = response.fetchall()
 
@@ -371,8 +371,14 @@ class UserMGMT:
             del row['password']
             del row['path']
             del row['token']
+
+        select = "SELECT COUNT(*) AS num FROM users "+where_phrase
+        response = self.cursor.execute(select)
+        count = response.fetchone()
+
+        data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
         
-        return table
+        return data
 
     ######################################
     # PROJECTS
@@ -624,6 +630,7 @@ class UserMGMT:
                     args.title = user['project']
                     args.read_only = False
                     args.profile_db = basepath + 'profile.db'
+                    args.samples_db = basepath + 'samples.db'
                     args.additional_layers = None
                     addFile = basepath + 'additionalFile'
                     if os.path.isfile(addFile):
