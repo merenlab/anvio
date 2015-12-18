@@ -2,16 +2,83 @@
 source 00.sh
 set -e
 
+get_random_string() {
+    echo `python -c 'import string; import random; print "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(30))'`
+}
+
+add_user() {
+cat << EOF | sqlite3 test-output/users-data/USERS.db
+INSERT INTO "users" VALUES("$1","$2",'$3',"$1@email",'n7YtL2o4bGG6Q',"$4","`get_random_string`",1,NULL,'Some Affiliation','127.0.0.1','user','2015-12-18');
+EOF
+
+mkdir test-output/users-data/userdata/$4
+
+echo "New user: $1 (password: 'test') ..."
+}
+
+add_project() {
+proj_dir=`get_random_string`
+cp -r anvi_server_files/mock_project_directory_01 test-output/users-data/userdata/$2/$proj_dir
+
+cat << EOF | sqlite3 test-output/users-data/USERS.db
+INSERT INTO "projects" VALUES("$3", "$proj_dir", "$1");
+EOF
+
+echo "* New project, $3, for user $1 has been created ..."
+}
+
+gen_mock_databases() {
+cat << EOF | sqlite3 test-output/users-data/USERS.db
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT);
+INSERT INTO "self" VALUES('version','1');
+CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT);
+CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT);
+CREATE TABLE views (name TEXT PRIMARY KEY, project TEXT, public INTEGER, token TEXT);
+COMMIT;
+EOF
+
+mkdir test-output/users-data/userdata
+
+INFO "Adding users"
+add_user "meren" "A. Murat" "Eren" "merens_dir"
+add_user "tobi" "Tobias" "Paczian" "tobis_dir"
+add_user "ozcan" "Özcan" "Esen" "ozcans_dir"
+add_user "tdelmont" "Tom" "Delmont" "toms_dir"
+
+INFO "Adding projects"
+add_project "meren" "merens_dir" "m_proj_01"
+add_project "meren" "merens_dir" "m_proj_02"
+add_project "tobi" "tobis_dir" "t_proj_01"
+add_project "ozcan" "ozcans_dir" "o_proj_01"
+add_project "ozcan" "ozcans_dir" "o_proj_02"
+add_project "ozcan" "ozcans_dir" "o_proj_03"
+add_project "ozcan" "ozcans_dir" "o_proj_04"
+
+INFO "Giving user 'tobi' admin credentials"
+cat << EOF | sqlite3 test-output/users-data/USERS.db
+UPDATE users SET clearance='admin' WHERE login='tobi';
+EOF
+}
+
+
+
+
 cd sandbox
+
+echo $x
 
 if [ $# -eq 0  ]
 then
       echo "\
 
-        No arguments supplied. If you want to start a new server with an emptry
-        users database, call this script with parameter 'new', if you want to
-        continue with a previously generated users database, use 'continue' as a
-        parameter
+        No arguments supplied. You must call this script with one argument: 'new',
+        'mock', or 'continue':
+
+        'new'     : starts the server with an empty users database.
+        'mock'    : starts the server from scratch but with some mock users.
+        'continue': starts the server with the previously generated data.
         "
         exit -1
 fi
@@ -19,7 +86,7 @@ fi
 if [ $# -gt 1  ]
 then
       echo "
-        This scripts expect only one argument ('new' or 'continue').
+        This scripts expect only one argument ('new','continue', or 'mock').
         "
         exit -1
 fi
@@ -30,14 +97,22 @@ then
     INFO "Creating an empty output directory ..."
     rm -rf test-output
     mkdir test-output
+    mkdir test-output/users-data
+elif [ $1 = "mock" ]
+then
+    INFO "Creating an empty output directory with mock users and data..."
+    rm -rf test-output
+    mkdir test-output
+    mkdir test-output/users-data
+    gen_mock_databases
 elif [ $1 = "continue"  ]
 then
     if [ ! -d "test-output/users-data"  ]
     then
       echo "
         You asked to continue with the previously generated users directory,
-        but none found... Please re-run this script with parameter 'new' to
-        create one.
+        but none found... Please re-run this script with parameter 'new' or
+        'mock' to create one.
         "
         exit -1
     else
@@ -45,7 +120,7 @@ then
     fi
 else
       echo "
-        Unknown parameter $1 :/ Try 'new' or 'continue'
+        Unknown parameter $1 :/ Try 'new','continue', or 'mock'.
         "
         exit -1
 fi
