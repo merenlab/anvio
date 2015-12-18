@@ -6,12 +6,12 @@
     anvi-interactive, or anvi-refine.
 """
 
-import os
+import re
 import json
-import anvio
+from bottle import redirect
+
 import anvio.dbops as dbops
 
-from bottle import redirect
 
 def set_default_headers(response):
     response.set_header('Content-Type', 'application/json')
