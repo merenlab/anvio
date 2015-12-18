@@ -13,6 +13,9 @@ import random
 import hashlib
 import shutil
 
+import time
+from datetime import date
+
 import anvio
 import anvio.terminal as terminal
 import anvio.interactive as interactive
@@ -86,7 +89,7 @@ class UserMGMT:
         cursor = conn.cursor()
 
         cursor.execute("CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT)")
-        cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT)")
+        cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT)")
         cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT)")
         cursor.execute("CREATE TABLE views (name TEXT PRIMARY KEY, project TEXT, public INTEGER, token TEXT)")
         cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
@@ -128,7 +131,7 @@ class UserMGMT:
     ######################################
     # USERS
     ######################################
-    def create_user(self, firstname, lastname, email, login, password):
+    def create_user(self, firstname, lastname, email, login, password, affiliation, ip, clearance="user"):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
             return (False, "You must pass a firstname, lastname, email login and password to create a user")
@@ -148,7 +151,7 @@ class UserMGMT:
 
         if row:
             return (False, "Email '%s' is already taken." % email)
-
+        
         # calculate path
         path = hashlib.md5(login).hexdigest()
 
@@ -161,9 +164,12 @@ class UserMGMT:
         # set accepted to 'false'
         accepted = 0
 
+        # get the current date
+        entrydate = date.fromtimestamp(time.time()).isoformat()
+        
         # create the user entry in the DB
-        p = (firstname, lastname, email, login, password, path, token, accepted, )
-        response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", p)
+        p = (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, entrydate, )
+        response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
         self.conn.commit()
 
         # send the user a mail to verify the email account
@@ -200,6 +206,15 @@ class UserMGMT:
         user = response.fetchone()
 
         if user:
+            # check if the user has a token
+            if not user['token']:
+                token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+                token = user['login'] + token
+                p = (token, user['login'], )
+                self.cursor.execute("UPDATE users SET token=? WHERE login=?", p)
+                self.conn.commit()
+                user['token'] = token
+                
             # check if the user has a project set
             user = self.get_user_projects(user)
         
@@ -338,6 +353,32 @@ class UserMGMT:
         self.conn.commit()
 
         return (True, None)
+
+    def user_list(self, offset=0, limit=25, order='lastname', dir='ASC', filter={}):
+        filterwords = []
+        for field in filter.keys():
+            filterwords.append(field+" LIKE '"+filter[field].replace("\\","\\\\").replace("'", "\'")+"'")
+
+        where_phrase = ""
+        if len(filterwords):
+            where_phrase = " WHERE "+" AND ".join(filterwords)
+
+        select = "SELECT users.*, COUNT(projects.name) AS projects FROM users LEFT OUTER JOIN projects ON users.login=projects.user"+where_phrase+" GROUP BY users.login ORDER BY "+order+" "+dir+" LIMIT "+str(limit)+" OFFSET "+str(offset)
+        response = self.cursor.execute(select)
+        table = response.fetchall()
+
+        for row in table:
+            del row['password']
+            del row['path']
+            del row['token']
+
+        select = "SELECT COUNT(*) AS num FROM users "+where_phrase
+        response = self.cursor.execute(select)
+        count = response.fetchone()
+
+        data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
+        
+        return data
 
     ######################################
     # PROJECTS
@@ -589,6 +630,7 @@ class UserMGMT:
                     args.title = user['project']
                     args.read_only = False
                     args.profile_db = basepath + 'profile.db'
+                    args.samples_db = basepath + 'samples.db'
                     args.additional_layers = None
                     addFile = basepath + 'additionalFile'
                     if os.path.isfile(addFile):

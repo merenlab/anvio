@@ -15,60 +15,23 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
-    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
+    
+    <link rel="stylesheet" href="css/server.css" />
+    <script type="text/javascript" src="js/session.js"></script>
+    <script type="text/javascript" src="js/forgot.js"></script>
     <script>
       $(document).ready(function(){
-      $("#resetPasswordForm").submit(function(event){ event.preventDefault(); });
-//	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
+      initContent();
       });
-function resetPassword() {
-    document.getElementById('submit').setAttribute('disabled', 'disabled');
-    jQuery.post("/resetPassword", {
-	"email": document.getElementById('inputEmail').value,
-//	"response": grecaptcha.getResponse()
-    }, function (result) {
-	document.getElementById('submit').removeAttribute('disabled');
-	if (result.hasOwnProperty('ERROR')) {
-	    alert("Resetting password failed: "+result.ERROR);
-	} else {
-	    document.getElementById('main').innerHTML = "<h3>Password Reset Successful</h3><div class='alert alert-success col-sm-6'><p>Your password has successfully been reset. You will received your new credentials at the registered email address shortly.</p></div><div style='clear: both;'></div><br><button class='btn' type='button' onclick='window.location=\"home.html\";'>go to home page</button>";
-	}
-      }).fail(function(result){
-	  document.getElementById('submit').removeAttribute('disabled');	  
-	  if (result.hasOwnProperty('ERROR')) {
-	      alert("Resetting your password failed: "+result.ERROR);
-	  } else {
-	      alert('An error occurred during password reset');
-	  }
-      });
-
-}
     </script>
-    <style>
-      body {
-      color: #333332;
-      font-family: "PT Serif",serif;
-      }
-      .header {
-      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
-      height: 90px;
-      font-size: 30px;
-      border-bottom: 1px solid lightgray;
-      text-align: center;
-      }
-      .header img {
-      height: 80px;
-      margin-top: 5px;
-      margin-bottom: 5px;
-      }
-    </style>
 
+    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
   </head>
 
   <body>
 
     <div class="header">
-      <img src="images/logo.png"> anvi'o account registration
+      <img src="images/logo.png"><span>anvi'o forgot password page</span>
     </div>
     
 

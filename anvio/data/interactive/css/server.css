@@ -1,0 +1,49 @@
+body {
+    color: #333332;
+    font-family: "PT Serif",serif;
+}
+.header {
+    background: rgba(0, 0, 0, 0) url('../images/fractal.jpg') repeat;
+    height: 90px;
+    border-bottom: 1px solid lightgray;
+    text-align: center;
+}
+
+.header span {
+    font-size: 30px;
+}
+
+.header img {
+    height: 80px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-right: 10px;
+}
+
+.carousel-indicators {
+    bottom: -40px;
+}
+
+.carousel-indicators .active {
+    background-color: gray;
+}
+
+.carousel-indicators li {
+    border: 1px solid gray;
+}
+
+.navbar {
+    padding-top: 20px;
+    margin-bottom: 0px;
+}
+
+.item img {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.jumbotron {
+    //background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
+    background-image: url('../images/snowflakes.gif');
+    background-size: 100%;
+}

@@ -15,71 +15,23 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
-    <!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
+    <script type="text/javascript" src="js/change.js"></script>
     <script>
-    $(document).ready(function(){
-	checkCookie();
-	  $("#changePasswordForm").submit(function(event){ event.preventDefault(); });
-//	  grecaptcha.render('recap', { 'sitekey' : '6Lf1FL4SAAAAAO3ToArzXm_cu6qvzIvZF4zviX2z' });
+      $(document).ready(function(){
+      checkCookie();
       });
-function changePassword() {
-    if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
-	alert('passwords do not match');
-	document.getElementById('inputPassword').value = '';
-	document.getElementById('inputRepeatPassword').value = '';
-	$('#inputPassword').focus();
-	return;
-    }
-
-    document.getElementById('submit').setAttribute('disabled', 'disabled');
-    jQuery.post("/changePassword", {
-	"login": user.login,
-	"password": document.getElementById('inputPassword').value,
-//	"response": grecaptcha.getResponse()
-    }, function (result) {
-	document.getElementById('submit').removeAttribute('disabled');
-	if (result.hasOwnProperty('ERROR')) {
-	    alert("Resetting password failed: "+result.ERROR);
-	} else {
-	    document.getElementById('main').innerHTML = "<h3>Password Change Successful</h3><div class='alert alert-success col-sm-6'><p>Your password has successfully been changed.</p></div><div style='clear: both;'></div><br><button class='btn' type='button' onclick='window.location=\"home.html\";'>go to home page</button>";
-	}
-      }).fail(function(result){
-	  document.getElementById('submit').removeAttribute('disabled');	  
-	  if (result.hasOwnProperty('ERROR')) {
-	      alert("Changing your password failed: "+result.ERROR);
-	  } else {
-	      alert('An error occurred during password change');
-	  }
-      });
-
-}
     </script>
-    <style>
-      body {
-      color: #333332;
-      font-family: "PT Serif",serif;
-      }
-      .header {
-      background: rgba(0, 0, 0, 0) url('images/fractal.jpg') repeat;
-      height: 90px;
-      font-size: 30px;
-      border-bottom: 1px solid lightgray;
-      text-align: center;
-      }
-      .header img {
-      height: 80px;
-      margin-top: 5px;
-      margin-bottom: 5px;
-      }
-    </style>
-
+    
+<!-- <script type="text/javascript" src="https://www.google.com/recaptcha/api.js"></script> -->
   </head>
 
   <body>
 
     <div class="header">
-      <img src="images/logo.png"> anvi'o account registration
+      <img src="images/logo.png"><span>anvi'o change password page</span>
     </div>
     
 
