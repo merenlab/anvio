@@ -307,8 +307,8 @@
                   {% for source in collection|lookup:bin|lookup:"completeness" %}
                   <tr>
                     <td><a href="{{ collection|lookup:bin|lookup:'files'|lookup:source }}">{{ source|humanize }}</a></td>
-                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
-                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_redundancy"|humanize_n }}%</td>
+                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_f }}%</td>
+                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_redundancy"|humanize_f }}%</td>
                   </tr>
                   {% endfor %}
                 </tbody>

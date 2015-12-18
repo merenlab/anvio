@@ -99,6 +99,13 @@ def humanize(s):
 def sumvals(d):
     return sum(d.values())
 
+@register.filter(name='humanize_f')
+def humanize_f(n):
+    if isinstance(n, str):
+        return n
+
+    return "%.2f" % n
+
 @register.filter(name='humanize_n')
 def humanize_n(n):
     if isinstance(n, str):
