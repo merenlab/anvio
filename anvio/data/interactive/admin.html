@@ -2,7 +2,7 @@
 <html>
   <head>
 
-    <title>anvio account confirmation</title>
+    <title>anvio admin page</title>
     <meta charset="utf-8" />
     <meta http-equiv="cache-control" content="max-age=0" />
     <meta http-equiv="cache-control" content="no-cache" />
@@ -17,23 +17,25 @@
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
 
     <link rel="stylesheet" href="css/server.css" />
-
+    <script type="text/javascript" src="js/session.js"></script>
+    <script type="text/javascript" src="js/admin.js"></script>
+    <script>
+      $(document).ready(function(){
+      checkCookie();
+      });
+    </script>
+    
   </head>
 
   <body>
 
     <div class="header">
-      <img src="images/logo.png"><span>anvi'o account confirmation page</span>
+      <img src="images/logo.png"><span>anvi'o admin page</span>
     </div>
-    
 
-    <div class="container">
-      <h3>Account Confirmation</h3>
-      
-      <div class="alert alert-danger col-sm-6" role="alert">
-	The link you are using to confirm the account is invalid.
-      </div>
-      
-    </div>
+    <div class="container" id="content"></div>
+    
+    <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2015 Meren.</div>
+    
   </body>
 </html>
