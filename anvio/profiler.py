@@ -118,6 +118,7 @@ class BAMProfiler:
         self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
         self.gene_calls_present_in_contigs_db = int(contigs_db.meta['genes_are_called'])
         self.contig_names_in_contigs_db = set(contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
         contigs_db.disconnect()
 
         self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.contigs_db_hash)
@@ -460,7 +461,7 @@ class BAMProfiler:
         contigs_longer_than_M = set(self.contig_names) # for fast access
         self.split_names = set([])
         self.contig_name_to_splits = {}
-        for split_name in self.splits_in_contigs_db:
+        for split_name in sorted(self.splits_in_contigs_db.keys()):
             parent = self.splits_in_contigs_db[split_name]['parent']
 
             if parent not in contigs_longer_than_M:
@@ -524,7 +525,8 @@ class BAMProfiler:
             # populate contig with empty split objects and 
             for split_name in self.contig_name_to_splits[contig_name]:
                 s = self.splits_in_contigs_db[split_name]
-                split = contigops.Split(split_name, contig_name, s['order_in_parent'], s['start'], s['end'])
+                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+                split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
             # analyze coverage for each split
