@@ -58,6 +58,7 @@ def gen_split_name(parent_name, order):
 class Contig:
     def __init__(self, name):
         self.name = name
+        self.sequence = None
         self.parent = None
         self.splits = []
         self.length = 0
@@ -114,8 +115,9 @@ class Contig:
 
 
 class Split:
-    def __init__(self, name, parent, order, start = 0, end = 0):
+    def __init__(self, name, sequence, parent, order, start = 0, end = 0):
         self.name = name
+        self.sequence = sequence
         self.parent = parent
         self.end = end
         self.order = order
