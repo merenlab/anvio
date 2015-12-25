@@ -168,10 +168,13 @@ class Auxiliary:
 
             column = ''.join([pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip])
 
+            pos_in_split = pileupcolumn.pos - self.split.start
+            consensus_base_in_contig = self.split.sequence[pos_in_split]
+
             cp = ColumnProfile(column,
                                coverage = coverage,
                                split_name = self.split.name,
-                               pos = pileupcolumn.pos - self.split.start,
+                               pos = pos_in_split,
                                test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
             if cp['n2n1ratio']:
