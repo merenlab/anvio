@@ -475,8 +475,8 @@ D = {
             {'metavar': 'INT',
              'default': 8080,
              'type': int,
-             'help': "Port number to use for communication; the default (%(default)d) should be OK\
-                      for almost everyone."}
+             'help': "Port number to use for communication. If nothing is declared, anvi'o will try to find\
+                      a suitable port number."}
                 ),
     'read-only': (
             ['--read-only'],
