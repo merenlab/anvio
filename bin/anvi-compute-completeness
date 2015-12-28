@@ -36,35 +36,38 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    completeness = Completeness(args.contigs_db, args.source)
+    completeness = Completeness(args.contigs_db, args.completeness_source)
 
-    if args.list_sources:
+    if args.list_completeness_sources:
         run.info('Available singlecopy sources', ', '.join(completeness.sources))
         sys.exit()
-
-    splits_in_users_list = set([s.strip() for s in open(args.splits_txt).readlines() if s.strip() and not s.startswith('#')])
 
     contigs_db = dbops.ContigsDatabase(args.contigs_db)
     splits_in_db = set(contigs_db.db.get_table_as_dict(t.splits_info_table_name).keys())
     contigs_db.disconnect()
 
-    common_splits = splits_in_db.intersection(splits_in_users_list)
+    if args.splits_of_interest:
+        splits_in_users_list = set([s.strip() for s in open(args.splits_of_interest).readlines() if s.strip() and not s.startswith('#')])
 
-    if len(common_splits) != len(splits_in_users_list):
-        if not len(common_splits):
-            run.warning('None of the split names you provided in %s matched split names in the database...' % args.splits_txt)
-            sys.exit()
-        else:
-            run.warning('Only %d of %d split names you listed in "%s" matched split names in the database...'\
-                                            % (len(common_splits), len(splits_in_users_list), args.splits_txt))
+        splits_of_interest = splits_in_db.intersection(splits_in_users_list)
+
+        if len(splits_of_interest) != len(splits_in_users_list):
+            if not len(splits_of_interest):
+                run.warning('None of the split names you provided in %s matched split names in the database...' % args.splits_of_interest)
+                sys.exit()
+            else:
+                run.warning('Only %d of %d split names you listed in "%s" matched split names in the database...'\
+                                                % (len(splits_of_interest), len(splits_in_users_list), args.splits_of_interest))
+    else:
+        splits_of_interest = splits_in_db
 
     try:
-        results = completeness.get_info_for_splits(common_splits, min_e_value = args.min_e_value)
+        results = completeness.get_info_for_splits(splits_of_interest, min_e_value = args.min_e_value)
     except ConfigError, e:
         print e
         sys.exit(-1)
 
-    run.warning('', header = 'Completeness for %d splits (p < %g)' % (len(splits_in_users_list), args.min_e_value))
+    run.warning('', header = 'Completeness for %d splits (p < %g)' % (len(splits_of_interest), args.min_e_value))
     for source in completeness.sources:
         run.info(source, '%.2f%% complete, %.2f%% redundant' % (results[source]['percent_complete'], results[source]['percent_redundancy']))
 
