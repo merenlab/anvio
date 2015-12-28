@@ -241,6 +241,14 @@ if args.dry_run:
     sys.exit()
 
 try:
+    if os.getuid() and port < 1024:
+        run.warning("Running the server through the port number %d requires root priviliges,\
+                     which your user does not seem to have. This may result in permission\
+                     issues. That being said, anvi'o does not know anything about your system\
+                     configuraiton, so if you have set things up properly, please ignore this\
+                     note and accept our apologies. Otherwise, be prepared for a failed attempt\
+                     to get this server running :)" % port)
+
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
     server_process.start()
 

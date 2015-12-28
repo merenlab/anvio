@@ -67,7 +67,11 @@ if not port:
     port = utils.get_available_port_num(start=8080, ip=ip)
 
 if not port:
-    run.info_single('anvio failed to find a port number that is available :(', mc='red')
+    run.info_single("Anvi'o failed to find a port number that is available :(", mc='red', nl_after = 1)
+    sys.exit(-1)
+
+if utils.is_port_in_use(port):
+    run.info_single('It seems another application is already using the port number %d :/' % port, mc='red', nl_after = 1)
     sys.exit(-1)
 
 try:
@@ -361,12 +365,20 @@ if args.dry_run:
     sys.exit()
 
 try:
+    if os.getuid() and port < 1024:
+        run.warning("Running the server through the port number %d requires root priviliges,\
+                     which your user does not seem to have. This may result in permission\
+                     issues. That being said, anvi'o does not know anything about your system\
+                     configuraiton, so if you have set things up properly, please ignore this\
+                     note and accept our apologies. Otherwise, be prepared for a failed attempt\
+                     to get this server running :)" % port)
+
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
     server_process.start()
 
-    run.info_single('webserver started on port %d.' % port, 'green', nl_before = 1, nl_after=1)
+    run.info_single("Anvi'o is serving on port %d." % port, 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
-    run.warning('webserver is being terminated.', header='Please wait...')
+    run.warning("The server is being terminated.", header='Please wait...')
     server_process.terminate()
     sys.exit(0)
