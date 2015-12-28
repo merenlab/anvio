@@ -125,18 +125,23 @@ else
         exit -1
 fi
 
-if [ ! -f "smtp_config.ini"  ]
-then
-    echo "
-        SMTP config file is missing! Please go into the sandbox/ directory,
-        create a copy of 'smtp_config_sample.ini' as 'smtp_config.ini' and
-        edit this copy according to your SMTP settings.
-        "
-fi
-
-
 INFO "Anvo'o version ..."
 anvi-profile --version
 
 INFO "Running anvi'o server ..."
-anvi-server -E smtp_config.ini -U test-output/users-data
+if [ ! -f "smtp_config.ini"  ]
+then
+    echo "
+        SMTP config file is missing! Therefore this script will run the server
+        without an SMTP setup. If you would like to run *with* SMTP support,
+        please go into the sandbox/ directory, create a copy of the file
+        'smtp_config_sample.ini' as 'smtp_config.ini' and edit this copy
+        according to your SMTP settings before re-running this script.
+        "
+
+    anvi-server -U test-output/users-data
+else
+    anvi-server -E smtp_config.ini -U test-output/users-data
+fi
+
+
