@@ -24,8 +24,8 @@ class Prodigal:
 
         self.parser = None
         self.installed_prodigal_version = None
-        self.ok_prodigal_versions = {'v2.6.2': self.__parser_1}
-        self.ok_prodigal_versions = {'v2.60': self.__parser_1}
+        self.ok_prodigal_versions = {'v2.6.2': self.__parser_1,
+                                     'v2.60': self.__parser_1}
 
         self.check_version()
 
