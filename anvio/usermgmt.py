@@ -172,14 +172,19 @@ class UserMGMT:
         response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
         self.conn.commit()
 
-        # send the user a mail to verify the email account
         anvioURL = "http://%s/" % self.args.ip_address if self.args.ip_address else "localhost";
-        messageSubject = "anvio account request"
-        messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
+        if self.mailer:
+            # send the user a mail to verify the email account
+            messageSubject = "anvio account request"
+            messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
 
-        self.mailer.send(email, messageSubject, messageText)
-        
-        return (True, "User request created")
+            self.mailer.send(email, messageSubject, messageText)
+            return (True, "User request created")
+        else:
+            # because there is no SMTP configuration, we will just go ahead and validate the user.
+            # FIXME: this should be optional, i.e., --validate-users-automatically.
+            self.run.info_single('A new user, "%s", has been created (and validated automatically).' % login)
+            return self.accept_user(login, token)
 
 
     def get_user_for_email(self, email):

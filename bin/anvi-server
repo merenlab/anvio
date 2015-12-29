@@ -75,12 +75,17 @@ if utils.is_port_in_use(port):
     sys.exit(-1)
 
 try:
+    if args.smtp_config_file:
+        mailer = utils.Mailer(run = run, progress = progress)
+        mailer.init_from_config(args.smtp_config_file)
+        mailer.test()
+    else:
+        run.warning("You are running the server without any SMTP support. Some things\
+                     are clearly not going to work (i.e., the serrver's ability to send\
+                     confirmation e-mails), but all other funcitons should be alright!")
+        mailer = None
+
     # initialize usermanagement
-    mailer = utils.Mailer(run = run, progress = progress)
-    mailer.init_from_config(args.smtp_config_file)
-
-    mailer.test()
-
     userdb = usermgmt.UserMGMT(copy.deepcopy(args), '1', mailer = mailer)
 except ConfigError, e:
     print e
