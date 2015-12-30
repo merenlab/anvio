@@ -627,11 +627,12 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict 
     unit_mapping_categories = sorted([k for k in unit_mapping_dict.keys() if k not in ['colors', 'labels']]) if unit_mapping_dict else None
 
     sample_mapping_category_types = []
-    for category in sample_mapping_categories:
-        if RepresentsFloat(sample_mapping_dict.values()[0][category]):
-            sample_mapping_category_types.append('double')
-        else:
-            sample_mapping_category_types.append('string')
+    if sample_mapping_dict:
+        for category in sample_mapping_categories:
+            if RepresentsFloat(sample_mapping_dict.values()[0][category]):
+                sample_mapping_category_types.append('double')
+            else:
+                sample_mapping_category_types.append('string')
 
     output.write('''<?xml version="1.0" encoding="UTF-8"?>\n''')
     output.write('''<gexf xmlns:viz="http:///www.gexf.net/1.1draft/viz" xmlns="http://www.gexf.net/1.2draft" version="1.2">\n''')
