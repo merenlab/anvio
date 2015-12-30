@@ -794,7 +794,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                 raise ConfigError, "The input file conitans non-ascii characters at line number %d. Those lines\
                                     either should be removed, or edited." % (line_counter + 2)
 
-        line_fields = line.strip('\n').split(separator)
+        line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
         if column_mapping:
             updated_line_fields = []
