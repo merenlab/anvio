@@ -2218,7 +2218,19 @@ function draw_tree(settings) {
         if (isParent || isCategorical)
         {
             var layer_items = categorical_layers_ordered[layer_index];
-            layer_items.push(null);
+
+            // This algorithm finds changing points in the categorical layer
+            // to draw sequential items with single object, so we have to add
+            // a dummy item to the end in order to detect last group.
+            // I have used 'null', but if the last group is already 'null', algorithm skips
+            // that group since there is no change, so we have to check the last item
+            // and if it is 'null' we have to add something different.
+
+            if (layer_items[layer_items.length-1] == null) {
+                layer_items.push(-1);
+            } else {
+                layer_items.push(null)
+            }
 
             var prev_value = layer_items[0];
             var prev_start = 0;
