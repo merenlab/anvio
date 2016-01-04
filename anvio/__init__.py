@@ -706,6 +706,13 @@ D = {
                       for the server to login, if necessary), 'password' (the password associated with the username for login,\
                       if the password is not blank)."}
                 ),
+    'validate-users-automatically': (
+            ['--validate-users-automatically'],
+            {'default': True,
+             'action': 'store_true',
+             'help': "If this is true, users will not receive a link via email to confirm their account but instead be validated\
+                      automatically if there is no smtp configuration."}
+                ),
 }
 
 # two functions that works with the dictionary above.
