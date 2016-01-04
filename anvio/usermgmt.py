@@ -342,12 +342,15 @@ class UserMGMT:
 
         return { 'status': 'ok', 'message': "New password set", 'data': None }
         
-    def accept_user(self, user, token):
-        if not user:
-            return { 'status': 'error', 'message': "You must pass a user to accept", 'data': None }
+    def accept_user(self, login = None, token = None):
+        if not login:
+            return { 'status': 'error', 'message': "You must pass a login to accept a user", 'data': None }
 
         if not token:
             return { 'status': 'error', 'message': "You must pass a token to accept a user", 'data': None }
+
+        # get user from the database
+        user = self.get_user_for_login(login, True)
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -356,7 +359,7 @@ class UserMGMT:
                 return user
         
         if user['token'] == token:
-            self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", p)
+            self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", login)
             self.conn.commit()
 
             # create the user directory
@@ -406,6 +409,7 @@ class UserMGMT:
         user["token"] = token
 
         return { 'status': 'ok', 'message': "Login successful", 'data': user }
+
 
     def logout_user(self, login):
         if not login:
