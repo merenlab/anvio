@@ -78,7 +78,7 @@ class ContigsSuperclass(object):
         try:
             self.contigs_db_path = args.contigs_db
         except:
-            self.run.warning('ContigsSuperclass class called with args without contigs_db member')
+            # ContigsSuperclass class called with args without contigs_db member..
             return
 
         if not self.contigs_db_path:
