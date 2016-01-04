@@ -220,7 +220,7 @@ class UserMGMT:
             self.mailer.send(email, messageSubject, messageText)
             return { 'status': 'ok', 'message': "User request created", 'data': None }
         else:
-            if self.args.validate-users-automatically:
+            if self.args.validate_users_automatically:
                 # because there is no SMTP configuration, we will just go ahead and validate the user.
                 self.run.info_single('A new user, "%s", has been created (and validated automatically).' % login)
                 return self.accept_user(login, token)
