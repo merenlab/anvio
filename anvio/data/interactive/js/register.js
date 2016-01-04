@@ -40,19 +40,19 @@ function checkAvailability(which) {
 	params['login'] = document.getElementById('inputLogin').value;
     }
     jQuery.post("/checkAvailability", params, function (result) {
-	if (result.hasOwnProperty('email')) {
-	    if (result.email == 'ok') {
+	if (result.data == 'email') {
+	    if (result.status == 'ok') {
 		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-success';
 	    } else {
 		document.getElementById('inputEmail').parentNode.parentNode.className = 'form-group has-error';
-		alert(result.email);
+		alert(result.message);
 	    }
-	} else if (result.hasOwnProperty('login')) {
-	    if (result.login == 'ok') {
+	} else if (result.data == 'login') {
+	    if (result.status == 'ok') {
 		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-success';
 	    } else {
 		document.getElementById('inputLogin').parentNode.parentNode.className = 'form-group has-error';
-		alert(result.login);
+		alert(result.message);
 	    }
 	}
     }).fail(function(result){
@@ -89,14 +89,14 @@ function performRegistration() {
 //	"response": grecaptcha.getResponse()
       }, function (result) {
 	  document.getElementById('submit').removeAttribute('disabled');
-	  if (result.hasOwnProperty('ERROR')) {
-	      alert("Your registration failed: "+result.ERROR);
+	  if (result.status == 'error') {
+	      alert("Your registration failed: "+result.message);
 	  } else {
 	      document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully. You will received a confirmation at the registered email address shortly.</p><p>Click on the link in that email to confirm your account.</p></div>";
 	  }
       }).fail(function(result){
-	  if (result.hasOwnProperty('ERROR')) {
-	      alert("Your registration failed: "+result.ERROR);
+	  if (result.status == 'error') {
+	      alert("Your registration failed: "+result.message);
 	  } else {
 	      alert('An error occured during your registration');
 	  }
