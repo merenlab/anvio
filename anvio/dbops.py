@@ -951,6 +951,11 @@ class SamplesInformationDatabase:
 
 
     def create(self, samples_information_path = None, samples_order_path = None):
+        if not samples_information_path and not samples_order_path:
+            raise ConfigError, "You must declare at least one of the input files to create a samples information\
+                                database. Neither samples information, nor samples order file has been passed to\
+                                the class :("
+
         if os.path.exists(self.db_path):
             raise ConfigError, "Anvi'o will not overwrite an existing samples information database. Please choose a\
                                 different name or remove the existing database ('%s') first." % (self.db_path)
