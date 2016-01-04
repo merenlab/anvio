@@ -29,15 +29,15 @@ function resetPassword() {
 	//	"response": grecaptcha.getResponse()
     }, function (result) {
 	document.getElementById('submit').removeAttribute('disabled');
-	if (result.hasOwnProperty('ERROR')) {
-	    alert("Resetting password failed: "+result.ERROR);
+	if (result.status == 'error') {
+	    alert("Resetting password failed: "+result.message);
 	} else {
 	    document.getElementById('main').innerHTML = "<h3>Password Reset Successful</h3><div class='alert alert-success col-sm-6'><p>Your password has successfully been reset. You will received your new credentials at the registered email address shortly.</p></div><div style='clear: both;'></div><br><button class='btn' type='button' onclick='window.location=\"home.html\";'>go to home page</button>";
 	}
     }).fail(function(result){
 	document.getElementById('submit').removeAttribute('disabled');	  
-	if (result.hasOwnProperty('ERROR')) {
-	    alert("Resetting your password failed: "+result.ERROR);
+	if (result.status == 'error') {
+	    alert("Resetting your password failed: "+result.message);
 	} else {
 	    alert('An error occurred during password reset');
 	}

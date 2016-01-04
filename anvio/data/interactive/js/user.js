@@ -93,10 +93,10 @@ function removeProjectView (pindex, vindex) {
 	    processData: false,
 	    contentType: false,
 	    success : function(data) {
-		if (data.OK) {
+		if (data.status == 'ok') {
 		    document.location.reload(true);
 		} else {
-		    alert(data.ERROR);
+		    toastr.error(data.message);
 		}
 	    }
 	});
@@ -119,7 +119,11 @@ function setActiveProject(index) {
 	processData: false,
 	contentType: false,
 	success : function(data) {
-	    window.location = 'index.html';
+	    if (data.status == 'ok') {
+		window.location = 'index.html';
+	    } else {
+		toastr.error(data.message);
+	    }
 	}
     });
 }
@@ -135,7 +139,11 @@ function deleteProject(index) {
 	    processData: false,
 	    contentType: false,
 	    success : function(data) {
-		document.location.reload(true);
+		if (data.status == 'ok') {
+		    document.location.reload(true);
+		} else {
+		    toastr.error(data.message);
+		}
 	    }
 	});
     }
@@ -161,9 +169,10 @@ function shareProject() {
 	    contentType: false,
 	    complete : function(jqXHR) {
 		var data = JSON.parse(jqXHR.responseText);
-		if (data.hasOwnProperty('ERROR')) {
-		    toastr.error(data.ERROR, 'share project failed');
+		if (data.status == 'error') {
+		    toastr.error(data.message, 'share project failed');
 		} else {
+		    data = data.data;
 		    var which = 0;
 		    for (var i=0; i<user.projects.length; i++) {
 			if (user.projects[i].name = data['project']) {
@@ -262,11 +271,7 @@ function uploadAdditional () {
 	success : function(data) {
 	    document.body.removeChild(uploadProgress);
 	    uploadProgress = null;
-            if (data.hasOwnAttribute('OK')) {
-		alert(data.OK);
-	    } else {
-		alert(data.ERROR);
-	    }
+	    alert(data.message);
 	}
     });
 }

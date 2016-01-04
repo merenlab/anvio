@@ -6,7 +6,6 @@
     anvi-interactive, or anvi-refine.
 """
 
-import re
 import json
 from bottle import redirect
 
@@ -27,108 +26,79 @@ def get_user(request, userdb, response):
         # we have a cookie, check if it is valid
         return userdb.get_user_for_token(request.get_cookie('anvioSession'))
 
+    else:
+        return False
     
 def get_user_by_token(request, userdb, response):
     set_default_headers(response)
-    retval = userdb.get_user_for_token(request.forms.get('token'))
-        
-    if retval[0]:
-        del retval[1]['password']
-        del retval[1]['path']
-        del retval[1]['accepted']
-        
-    return json.dumps(retval)
+    return json.dumps(userdb.get_user_for_token(request.forms.get('token')))
 
 
 def impersonate(request, userdb, response):
     set_default_headers(response)
     retval = get_user(request, userdb, response)
-    if retval[0]:
-        if retval[1]['clearance'] == 'admin':
+    if retval:
+        if retval['data']['clearance'] == 'admin':
             imperson = userdb.get_user_for_login(request.forms.get('login'))
-            if imperson:
-                response.set_header('Set-Cookie', 'anvioSession='+imperson["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
-                return json.dumps(imperson);
+            if imperson['status'] == 'ok':
+                response.set_header('Set-Cookie', 'anvioSession='+imperson['data']["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
+            return json.dumps(imperson)
 
 
 def request_account(request, userdb, response):
     set_default_headers(response)
-    retval = userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), )
-
-    set_default_headers(response)
-    if retval[0]:
-        return '{ "OK": "'+retval[1]+'" }'
-    else:
-        return '{ "ERROR": "'+retval[1]+'" }'
+    return json.dumps(userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), ))
 
 
 def accept_user(request, userdb, response):
     retval = userdb.accept_user(request.query.login, request.query.code)
-    if retval[0]:
+    if retval['status'] == 'ok':
         redirect('/app/accountOK.html')
     else:
         redirect('/app/accountBAD.html')
-    
-    return retval[1]
 
 
 def reset_password(request, userdb, response):
     set_default_headers(response)
-    if request.forms.get('email'):
-        user = userdb.get_user_for_email(request.forms.get('email'))
-        if user:
-            userdb.reset_password(user)
-            return '{ "OK": "password reset" }'
-        else:
-            return '{ "ERROR": "email address not found" }'
-    else:
-        return '{ "ERROR":"you need to pass an email address" }'
+    return json.dumps(userdb.get_user_for_email(request.forms.get('email')))
 
 
 def check_availability(request, userdb, response):
     set_default_headers(response)
     if request.forms.get('email'):
         user = userdb.get_user_for_email(request.forms.get('email'))
-        if user:
-            return '{ "email": "this email is already taken" }'
+        if user['status'] == 'ok':
+            return '{ "status": "error", "data": "email", "message": "this email is already taken" }'
         else:
-            return '{ "email": "ok" }'
+            return '{ "status": "ok", "message": null, "data": "email" }'
     elif request.forms.get('login'):
         user = userdb.get_user_for_login(request.forms.get('login'))
-        if user:
-            return '{ "login": "this login is already taken" }'
+        if user['status'] == 'ok':
+            return '{ "status": "error", "message": "this login is already taken", "data": "login" }'
         else:
-            return '{ "login": "ok" }'
+            return '{ "status": "ok", "message": null, "data": "login" }'
 
         
 def change_password(request, userdb, response):
     set_default_headers(response)
-    if request.forms.get('login'):
-        user = userdb.get_user_for_login(request.forms.get('login'))
-        if user:
-            if request.forms.get('password'):
-                userdb.change_password(user, request.forms.get('password'))
-                return '{ "OK": "password changed" }'
-            else:
-                return '{ "ERROR": "you must pass a password" }'
-        else:
-            return '{ "ERROR": "user not found" }'
+    user = userdb.get_user_for_login(request.forms.get('login'))
+    if user['status'] == 'ok':
+        return json.dumps(userdb.change_password(user, request.forms.get('password')))
     else:
-        return '{ "ERROR": "you must provide a login" }'
+        return json.dumps(user)
 
     
 def login_to_app(request, userdb, response):
     set_default_headers(response)
     retval = userdb.login_user(request.forms.get('login'), request.forms.get('password'))
-    if retval[0]:
-        response.set_header('Set-Cookie', 'anvioSession='+retval[1]["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
+    if retval['status'] == 'ok':
+        response.set_header('Set-Cookie', 'anvioSession='+retval['data']["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
         
     return json.dumps(retval)
 
 
 def logout_from_app(request, userdb, response):
-    userdb.logout_user(request.forms.get('login'))
-    return 'OK'
+    return json.dumps(userdb.logout_user(request.forms.get('login')))
 
 
 def set_view_cookie(request, userdb, response):
@@ -142,101 +112,48 @@ def set_view_cookie(request, userdb, response):
 
 def set_project(request, userdb, response):
     set_default_headers(response)
-    retval = get_user(request, userdb, response)
-    if retval[0]:
-        if request.forms.get('project'):
-            userdb.set_project(retval[1]['login'], request.forms.get('project'))
-            redirect('/app/index.html')
-        else:
-            return '{ "ERROR": "You need to specify a project name" }'
-    else:
-        return '{ "ERROR": "' + retval[1] + '" }'
+    return json.dumps(userdb.set_project(get_user(request, userdb, response), request.forms.get('project')))
 
 
 def delete_project(request, userdb, response):
     set_default_headers(response)
-    retval = get_user(request, userdb, response)
-    if retval[0]:
-        if request.forms.get('project'):
-            userdb.delete_project(retval[1]['login'], request.forms.get('project'))
-            redirect('/app/index.html')
-        else:
-            return '{ "ERROR": "You need to specify a project name" }'
-    else:
-        return '{ "ERROR": "' + retval[1] + '" }'
-    
+    return json.dumps(userdb.delete_project(get_user(request, userdb, response), request.forms.get('project')))
 
 def share_project(request, userdb, response):
     set_default_headers(response)
-    if not request.forms.get('name'):
-        return '{ "ERROR": "no name specified for the share" }'
-    
-    if not request.forms.get('project'):
-        return '{ "ERROR": "no project specified for the share" }'
-
-    if not re.match("^[A-Za-z0-9_-]+$", request.forms.get('name')):
-        return '{ "ERROR": "the share name contains invalid characters" }'
-    
-    retval = get_user(request, userdb, response)
-    if not retval[0]:
-        return '{ "ERROR": "no user logged in" }'
-
-    if not retval[1]['project']:
-        return '{ "ERROR": "no project selected" }'
-        
-    share = userdb.create_view(retval[1]['login'], request.forms.get('name'), request.forms.get('project'), request.forms.get('public'))
-    if share[0]:
-        return '{ "token": "'+share[1]+'", "project": "'+request.forms.get('project')+'", "name": "'+request.forms.get('name')+'", "public": "'+request.forms.get('public')+'"}'
-    else:
-        return '{ "ERROR": "'+share[1]+'" }'
+    return json.dumps(share = userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
 
     
 def delete_share(request, userdb, response):
     set_default_headers(response)
-    if not request.forms.get('name'):
-        return '{ "ERROR": "no name specified for the share to delete" }'
-    
-    if not request.forms.get('project'):
-        return '{ "ERROR": "no project specified for the share to delete" }'
-    
-    retval = get_user(request, userdb, response)
-    if not retval[0]:
-        return '{ "ERROR": "no user logged in" }'
-        
-    share = userdb.delete_view(retval[1]['login'], request.forms.get('name'))
-    if share[0]:
-        return '{ "OK": "view deleted", "project": "'+request.forms.get('project')+'", "view": "'+request.forms.get('project')+'" }'
-    else:
-        return '{ "ERROR": "'+share[1]+'" }'
+    return json.dumps(userdb.delete_view(get_user(request, userdb, response), request.forms.get('name')))
     
     
 def receive_upload_file(request, userdb, response):
     set_default_headers(response)
-
-    retval = get_user(request, userdb, response)
-    if not retval[0]:
-        return '{ "ERROR": "you need to be logged in to create a project" }'
+    user = get_user(request, userdb, response)
+    if not user:
+        return '{ "status": "error", "message": "you need to be logged in to create a project", "data": null }'
     
     if not request.forms.get('title'):
-        return '{ "ERROR": "a title is required to create a project" }'
+        return '{ "status": "error", "message": "a title is required to create a project", "data": null }'
 
     if not request.files.get('treeFile'):
-        return '{ "ERROR": "you need to upload a tree file" }'
+        return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
     
-    user = retval[1]
-    retval = userdb.create_project(user['login'], request.forms.get('title'))
+    retval = userdb.create_project(user['data'], request.forms.get('title'))
 
-    if not retval[0]:
-        return '{ "ERROR": "'+retval[1]+'" }'
+    if not retval['status'] == 'ok':
+        return json.dumps(retval)
 
-    project = retval[1]
+    project = retval['data']
 
-    retval = userdb.set_project(user['login'], project['name'])
+    retval = userdb.set_project(user['data'], project['name'])
 
-    if not retval[0]:
-        return '{ "ERROR": "'+retval[1]+'" }'
+    if not retval['status'] == 'ok':
+        return json.dumps(retval)
     
-    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['path']+'/'
+    basepath = userdb.users_data_dir + '/userdata/'+user['data']['path']+'/'+project['path']+'/'
     
     request.files.get('treeFile').save(basepath + 'treeFile')
     if request.files.get('fastaFile'):
@@ -262,33 +179,30 @@ def receive_upload_file(request, userdb, response):
 def receive_additional_upload_file(request, userdb, response):
     set_default_headers(response)
     if not request.files.get('additionalFile'):
-        return '{ "ERROR": "you did not upload a file" }'
+        return '{ "status": "error", "message": "you did not upload a file", "data": null }'
 
     if not request.forms.get('project'):
-        return '{ "ERROR": "you did not specify a project" }'
+        return '{ "status": "error", "message": "you did not specify a project", "data": null }'
 
-    retval = get_user(request, userdb, response)
-    if not retval[0]:
-        return '{ "ERROR": "you need to be logged in to upload additional data" }'
+    user = get_user(request, userdb, response)
+    if not user:
+        return '{ "status": "error", "message": "you need to be logged in to upload additional data", "data": null }'
     
-    user = retval[1]
+    user = user[data]
 
-    if not retval[0]:
-        return '{ "ERROR": "'+retval[1]+'" }'
-
-    project = userdb.get_project(user['login'], request.forms.get('project'))
+    project = userdb.get_project(user, request.forms.get('project'))
 
     basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['path']+'/'
     
     request.files.get('additionalFile').save(basepath + 'additionalFile')
         
-    return '{ "OK": "file added" }'
+    return '{ "status": "ok", "message": "file added", "data": null }'
 
 def admin_data(request, userdb, response):
     set_default_headers(response)
-    retval = get_user(request, userdb, response)
-    if retval[0]:
-        if retval[1]['clearance'] == 'admin':
+    user = get_user(request, userdb, response)
+    if user['status'] == 'ok':
+        if user['data']['clearance'] == 'admin':
             filterhash = {}
             fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date' ]
             for field in fields:
@@ -310,6 +224,6 @@ def admin_data(request, userdb, response):
                                 
             return json.dumps(userdb.user_list(offset, limit, order, direction, filterhash))
         else:
-            return '{ "ERROR": "You need to be an administrator to view this data" }'
+            return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
     else:
-        return '{ "ERROR": "' + retval[1] + '" }'
+        return json.dumps(user)

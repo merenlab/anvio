@@ -81,6 +81,11 @@ function updateTable(key, value) {
 	contentType: false,
 	complete : function(jqXHR) {
 	    var r = JSON.parse(jqXHR.responseText);
+	    if (r.status == 'error') {
+		alert(r.message);
+		return;
+	    }
+	    r = r.data;
 	    var data = r.data;
 	    table.total = parseInt(r.total);
 	    var html = [];

@@ -33,10 +33,10 @@ function performLogin () {
 	type : 'POST',
     	data : formData,
     	success : function(data) {
-	    if (data[0]) {
+	    if (data.status == 'ok') {
 		window.location = 'user.html';
 	    } else {
-		alert("login failed");
+		alert(data.message);
 	    }
     	}
     });
@@ -70,8 +70,8 @@ function checkCookie () {
 	    type : 'POST',
     	    data : formData,
     	    success : function(data) {
-		if (data[0]) {
-		    window.user = data[1];
+		if (data.status == 'ok') {
+		    window.user = data.data;
 		    initContent();
 		}
     	    }
