@@ -53,6 +53,7 @@ groupA.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number', {'default': None}))
 groupC.add_argument(*anvio.A('smtp-config-file'), **anvio.K('smtp-config-file'))
+groupC.add_argument(*anvio.A('validate-users-automatically'), **anvio.K('validate-users-automatically'))
 
 args = parser.parse_args()
 

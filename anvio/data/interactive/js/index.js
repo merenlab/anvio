@@ -21,7 +21,7 @@ function initContent () {
     var html = '<div style="padding-top: 2px;">';
     html += '<button type="button" style="margin-right: 5px; float: right;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button>';
     html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="project management" onclick="window.location=\'user.html\';"><span class="glyphicon glyphicon-home" aria-hidden="true"></span></button>';
-    html += '<img src="images/user.png" style="width: 20px; position:  relative; top: 1px; order-radius: 3px; margin-left: 10px;"><span style="margin-left: 10px; position: relative; top: 2px;">logged in as '+user.firstname+' '+user.lastname+' ('+session.user.login+')</span>';
+    html += '<img src="images/user.png" style="width: 20px; position:  relative; top: 1px; order-radius: 3px; margin-left: 10px;"><span style="margin-left: 10px; position: relative; top: 2px;">logged in as '+user.firstname+' '+user.lastname+' ('+user.login+')</span>';
     html += '</div>';
     document.getElementById('multiUser').innerHTML = html;
 };
