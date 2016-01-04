@@ -121,7 +121,7 @@ def delete_project(request, userdb, response):
 
 def share_project(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(share = userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
+    return json.dumps(userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
 
     
 def delete_share(request, userdb, response):
