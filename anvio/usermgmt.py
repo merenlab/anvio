@@ -667,7 +667,7 @@ class UserMGMT:
             return { 'status': 'error', 'message': "view name already taken", 'data': None }
 
         # check if the project is owned by the user
-        p = (pname, login)
+        p = (pname, user['login'])
         response = self.cursor.execute("SELECT * FROM projects WHERE name=? AND user=?", p)
         row = response.fetchone()
         if not row:
