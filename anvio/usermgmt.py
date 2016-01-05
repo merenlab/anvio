@@ -720,6 +720,37 @@ class UserMGMT:
         else:
             return [ False ]
 
+    def check_view(self, request):
+        if request.get_cookie('anvioView'):
+            p = request.get_cookie('anvioView').split('|')
+            retval = self.get_view(p[0], p[1])
+            if retval[0]:
+                args = self.args
+                basepath = self.users_data_dir + '/userdata/' + retval[1]['path'] + '/'
+                args.tree = basepath + 'treeFile'
+                args.fasta_file = basepath + 'fastaFile'
+                args.view_data = basepath + 'dataFile'
+                args.title = retval[1]['project']
+                args.read_only = True
+
+                d = interactive.InputHandler(args)
+
+                return [ True, d, args ]
+            else:
+                return [ False ]
+        else:
+            return [ False ]
+
+
+    def set_user_data(self, request, data):
+        retval = self.check_view(request)
+        if retval[0]:
+            return retval[1]
+        retval = self.check_user(request)
+        if retval[0]:
+            return [ retval[1], retval[2] ]
+
+        return [ data, self.orig_args ]
         
 def dict_factory(cursor, row):
     d = {}
