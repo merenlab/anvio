@@ -203,6 +203,12 @@ function uploadFiles () {
     if ($('#dataFileSelect')[0].files.length) {
 	formData.append('dataFile', $('#dataFileSelect')[0].files[0]);
     }
+    if ($('#samplesOrderFileSelect')[0].files.length) {
+	formData.append('samplesOrderFile', $('#samplesOrderFileSelect')[0].files[0]);
+    }
+    if ($('#samplesInformationFileSelect')[0].files.length) {
+	formData.append('samplesInformationFile', $('#samplesInformationFileSelect')[0].files[0]);
+    }
     if ($('#uploadTitle')[0].value) {
 	formData.append('title', $('#uploadTitle')[0].value);
     }
