@@ -25,7 +25,11 @@ def get_user(request, userdb, response):
     if request.get_cookie('anvioSession'):
 
         # we have a cookie, check if it is valid
-        return userdb.get_user_for_token(request.get_cookie('anvioSession'))
+        user = userdb.get_user_for_token(request.get_cookie('anvioSession'))
+        if user['status'] == 'ok':
+            return user
+        else:
+            return False
 
     else:
         return False
@@ -133,6 +137,8 @@ def delete_share(request, userdb, response):
 def receive_upload_file(request, userdb, response):
     set_default_headers(response)
     user = get_user(request, userdb, response)
+
+    # check mandatory values
     if not user:
         return '{ "status": "error", "message": "you need to be logged in to create a project", "data": null }'
     
@@ -141,7 +147,8 @@ def receive_upload_file(request, userdb, response):
 
     if not request.files.get('treeFile'):
         return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
-    
+
+    # create the project
     retval = userdb.create_project(user['data'], request.forms.get('title'))
 
     if not retval['status'] == 'ok':
@@ -149,11 +156,13 @@ def receive_upload_file(request, userdb, response):
 
     project = retval['data']
 
+    # set user project to the new one
     retval = userdb.set_project(user['data'], project['name'])
 
     if not retval['status'] == 'ok':
         return json.dumps(retval)
-    
+
+    # save the uploaded files to the project directory
     basepath = userdb.users_data_dir + '/userdata/'+user['data']['path']+'/'+project['path']+'/'
     
     request.files.get('treeFile').save(basepath + 'treeFile')
@@ -166,13 +175,28 @@ def receive_upload_file(request, userdb, response):
     else:
         open(basepath + 'dataFile', 'a').close()
 
+    # check if we have samples information
+    createSamplesDB = False
+    samplesOrderPath = None
+    if request.files.get('samplesOrderFile'):
+        request.files.get('samplesOrderFile').save(basepath + 'samplesOrderFile')
+        samplesOrderPath = basepath + 'samplesOrderFile'
+        createSamplesDB = True
+
+    samplesInfoPath = None
+    if request.files.get('samplesInformationFile'):
+        request.files.get('samplesInformationFile').save(basepath + 'samplesInformationFile')
+        samplesInfoPath = basepath + 'samplesInformationFile'
+        createSamplesDB = True
+                
     # create a profile database
     profile = dbops.ProfileDatabase(basepath + 'profile.db')
     profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None})
 
-    # create a samples database
-    sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
-    samplesdb = sample.create()
+    # create a samples database if needed
+    if createSamplesDB:
+        sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
+        samplesdb = sample.create(samplesInfoPath, samplesOrderPath)
         
     redirect('/app/index.html')
 
