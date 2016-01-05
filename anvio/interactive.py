@@ -114,6 +114,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.p_meta['available_clusterings'] = self.clusterings.keys()
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
+        if not self.state and 'default' in self.states_table.states:
+            self.state = 'default'
+
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
                 raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
