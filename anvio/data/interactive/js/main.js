@@ -263,7 +263,7 @@ function initData () {
 	    var defaultViewResponse = [ response.defaultView ];
 	    var modeResponse = [ response.mode ];
 	    var readOnlyResponse = [ response.readOnly ];
-	    var prefixResponse = [ response.prefix ];
+	    var prefixResponse = [ response.binPrefix ];
 	    var sessionIdResponse = [ response.sessionId ];
 	    var samplesOrderResponse = [ response.samplesOrder ];
 	    var sampleInformationResponse = [ response.sampleInformation ];
