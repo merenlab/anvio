@@ -282,7 +282,7 @@ class UserMGMT:
             
             return { 'status': 'ok', 'message': None, 'data': user }
         else:
-            return { 'status': 'ok', 'message': "invalid token", 'data': None }
+            return { 'status': 'error', 'message': "invalid token", 'data': None }
 
 
     def reset_password(self, user):
@@ -510,9 +510,9 @@ class UserMGMT:
 
     def set_project(self, user, pname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a user to set the project", 'data': None }
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a project name to set the project", 'data': None }
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -535,9 +535,9 @@ class UserMGMT:
 
     def delete_project(self, user, pname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a project name to delete a project", 'data': None }
 
         if user.has_key('status'):
             if user['status'] == 'ok':
