@@ -7,6 +7,7 @@
 """
 
 import json
+import os
 from bottle import redirect
 
 import anvio.dbops as dbops
@@ -121,7 +122,7 @@ def delete_project(request, userdb, response):
 
 def share_project(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(share = userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
+    return json.dumps(userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
 
     
 def delete_share(request, userdb, response):
@@ -188,12 +189,15 @@ def receive_additional_upload_file(request, userdb, response):
     if not user:
         return '{ "status": "error", "message": "you need to be logged in to upload additional data", "data": null }'
     
-    user = user[data]
+    user = user['data']
 
     project = userdb.get_project(user, request.forms.get('project'))
 
-    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['path']+'/'
-    
+    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['data']['path']+'/'
+
+    if os.path.isfile(basepath + 'additionalFile'):
+        os.remove(basepath + 'additionalFile')
+        
     request.files.get('additionalFile').save(basepath + 'additionalFile')
         
     return '{ "status": "ok", "message": "file added", "data": null }'

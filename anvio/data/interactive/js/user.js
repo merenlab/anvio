@@ -176,7 +176,7 @@ function shareProject() {
 		    var which = 0;
 		    for (var i=0; i<user.projects.length; i++) {
 			if (user.projects[i].name = data['project']) {
-			    user.projects[i].views.push({ "name": data["name"], "token": data["token"], "public": data["public"] });
+			    user.projects[i].views.push({ "name": data["name"], "token": data["token"], "public": data["public"] == "0" ? false : true });
 			    which = i;
 			    break;
 			}
@@ -246,6 +246,11 @@ function uploadAdditional () {
 	alert('You must provide a file');
 	return;
     }
+
+    if (! confirm("WARNING: If you already provided additional data it will be overwritten.\nDo you still want to proceed?")) {
+	return false;
+    }
+    
     $('#modUploadAdditionalData').modal('hide');
     
     uploadProgress = document.createElement('div');
@@ -271,7 +276,11 @@ function uploadAdditional () {
 	success : function(data) {
 	    document.body.removeChild(uploadProgress);
 	    uploadProgress = null;
-	    alert(data.message);
+	    if (data.status == 'ok') {
+		toastr.info(data.message);
+	    } else {
+		toastr.error(data.message);
+	    }
 	}
     });
 }
