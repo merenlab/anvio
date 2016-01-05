@@ -236,9 +236,11 @@ class UserMGMT:
         response = self.cursor.execute("SELECT * FROM users WHERE email=?", p)
         user = response.fetchone()
 
-        if user:
-            # check if the user has a project set
-            user = self.complete_user(user)
+        if not user:
+            return { 'status': 'error', 'message': 'No user has been found for email address "%s"' % email, 'data': None }
+
+        # check if the user has a project set
+        user = self.complete_user(user)
         
         return { 'status': 'ok', 'message': None, 'data': user }
     
