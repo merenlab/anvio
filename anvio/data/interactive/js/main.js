@@ -1581,7 +1581,11 @@ function showSaveStateWindow()
             }
 
             $('#modSaveState').modal('show');
-            $('#saveState_list').trigger('change');
+            if ($('#saveState_list').val() === null) {
+                $('#saveState_name').val('default');
+            } else {
+                $('#saveState_list').trigger('change');
+            }
         }
     });
 }
