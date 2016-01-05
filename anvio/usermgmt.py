@@ -43,6 +43,7 @@ class UserMGMT:
     def __init__(self, args, client_version, ignore_version=False, mailer = None,
                  run = run, progress = progress):
         self.args = args
+        self.orig_args = copy.deepcopy(args)
         self.run = run
         self.progress = progress
 
