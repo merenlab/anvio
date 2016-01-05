@@ -130,8 +130,6 @@ def send_static(filename):
 def send_data(name):
     set_default_headers(response)
     if name == "init":
-        available_views = dict(zip(d.views.keys(), d.views.keys()))
-        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
         return json.dumps( { "title": d.title,
                              "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
                              "views": (d.default_view, dict(zip(d.views.keys(), d.views.keys()))),
