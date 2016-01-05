@@ -180,77 +180,100 @@ $(document).ready(function() {
 function initData () {
     var timestamp = new Date().getTime(); 
 
-    $.when(    
-        $.ajax({
+    $.when(
+	$.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/title?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/clusterings?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/views?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/contig_lengths?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/default_view?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/mode?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/read_only?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/bin_prefix?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/session_id?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/samples_order?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/samples_information?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/samples_information_default_layer_order?timestamp=' + timestamp,
-        }),
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/state/autoload?timestamp=' + timestamp,
-        }))
+            url: '/data/init?timestamp=' + timestamp,
+        })
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/title?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/clusterings?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/views?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/contig_lengths?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/default_view?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/mode?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/read_only?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/bin_prefix?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/session_id?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/samples_order?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/samples_information?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/data/samples_information_default_layer_order?timestamp=' + timestamp,
+        // }),
+        // $.ajax({
+        //     type: 'GET',
+        //     cache: false,
+        //     url: '/state/autoload?timestamp=' + timestamp,
+        // })
+    )
     .then(
-        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, sampleInformationDefaultLayerOrderResponse, stateAutoloadResponse) 
+//        function (titleResponse, clusteringsResponse, viewsResponse, contigLengthsResponse, defaultViewResponse, modeResponse, readOnlyResponse, prefixResponse, sessionIdResponse, samplesOrderResponse, sampleInformationResponse, sampleInformationDefaultLayerOrderResponse, stateAutoloadResponse) 
+	function (response)
         {
+	    var titleResponse = [ response.title ];
+	    var clusteringsResponse = [ response.clusterings ];
+	    var viewsResponse = [ response.views ];
+	    var contigLengthsResponse = [ response.contigLengths ];
+	    var defaultViewResponse = [ response.defaultView ];
+	    var modeResponse = [ response.mode ];
+	    var readOnlyResponse = [ response.readOnly ];
+	    var prefixResponse = [ response.prefix ];
+	    var sessionIdResponse = [ response.sessionId ];
+	    var samplesOrderResponse = [ response.samplesOrder ];
+	    var sampleInformationResponse = [ response.sampleInformation ];
+	    var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
+	    var stateAutoloadResponse = [ response.stateAutoload ];
             unique_session_id = sessionIdResponse[0];
-//            ping_timer = setInterval(checkBackgroundProcess, 5000);
+
+	    if (! response.noPing) {
+		ping_timer = setInterval(checkBackgroundProcess, 5000);
+	    }
 
             if (!$.browser.chrome)
             {

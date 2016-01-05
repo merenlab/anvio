@@ -196,8 +196,25 @@ def send_data(name):
     retval = userdb.set_user_data(request, d)
     d = retval[0]
     args = retval[1]
-        
-    if name == "clusterings":
+
+    if name == "init":
+        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
+        return json.dumps( { "title": d.title,
+                             "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
+                             "views": (d.default_view, available_views),
+                             "contigLengths": split_lengths,
+                             "defaultView": d.views[d.default_view],
+                             "mode": "full",
+                             "readOnly": args.read_only,
+                             "binPrefix": "Bin_",
+                             "sessionId": 1,
+                             "samplesOrder": d.samples_order_dict,
+                             "sampleInformation": d.samples_information_dict,
+                             "sampleInformationDefaultLayerOrder": d.samples_information_default_layer_order,
+                             "stateAutoload": d.state,
+                             "noPing": True } )
+    elif name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
     elif name == "views":
         available_views = dict(zip(d.views.keys(), d.views.keys()))

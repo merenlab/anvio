@@ -362,7 +362,8 @@ class UserMGMT:
                 return user
         
         if user['token'] == token:
-            self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", login)
+            p = (login, )
+            self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", p)
             self.conn.commit()
 
             # create the user directory
@@ -713,7 +714,7 @@ class UserMGMT:
                     addFile = basepath + 'additionalFile'
                     if os.path.isfile(addFile):
                         args.additional_layers = addFile
-                    
+
                     d = interactive.InputHandler(args)
                     return [ True, d, args ]
                 else:
