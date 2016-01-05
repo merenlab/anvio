@@ -13,10 +13,11 @@
     <link rel="icon" type="image/png" href="images/logo.png">
     
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/user.js"></script>
 
@@ -54,6 +55,8 @@
             <input type="file" style="display: none;" id="treeFileSelect" onchange="uploadFileSelected('tree');">
             <input type="file" style="display: none;" id="fastaFileSelect" onchange="uploadFileSelected('fasta');">
             <input type="file" style="display: none;" id="dataFileSelect" onchange="uploadFileSelected('data');">
+            <input type="file" style="display: none;" id="samplesOrderFileSelect" onchange="uploadFileSelected('samplesOrder');">
+            <input type="file" style="display: none;" id="samplesInformationFileSelect" onchange="uploadFileSelected('samplesInformation');">
 	    
 	    <p>To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</p>
 	    
@@ -85,6 +88,22 @@
 		<div class="col-sm-10">
 		  <div class="input-group">
 		    <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#dataFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="samplesOrderFileName">samples order file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="samplesOrderFileName" placeholder="samples order file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesOrderFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="samplesInformationFileName">samples information file</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <input type="text" readonly id="samplesInformationFileName" placeholder="samples information file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesInformationFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
