@@ -282,7 +282,7 @@ class UserMGMT:
             
             return { 'status': 'ok', 'message': None, 'data': user }
         else:
-            return { 'status': 'ok', 'message': "invalid token", 'data': None }
+            return { 'status': 'error', 'message': "invalid token", 'data': None }
 
 
     def reset_password(self, user):
@@ -480,7 +480,7 @@ class UserMGMT:
 
         if not os.path.exists(path):
             os.makedirs(path)
-            p = (pname, ppath, login, )
+            p = (pname, ppath, user['login'], )
             response = self.cursor.execute("INSERT INTO projects (name, path, user) VALUES (?, ?, ?)", p)
             self.conn.commit()
             return { 'status': 'ok', 'message': None, 'data': { "name": pname, "path": ppath, "user": user['login'] } }
@@ -501,7 +501,7 @@ class UserMGMT:
             else:
                 return user
         
-        p = (user, projectname, )
+        p = (user['login'], projectname, )
         response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
         project = response.fetchone()
 
@@ -510,9 +510,9 @@ class UserMGMT:
 
     def set_project(self, user, pname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a user to set the project", 'data': None }
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a project name to set the project", 'data': None }
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -535,9 +535,9 @@ class UserMGMT:
 
     def delete_project(self, user, pname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to create a project", 'data': None }
+            return { 'status': 'error', 'message': "You must pass a project name to delete a project", 'data': None }
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -681,7 +681,7 @@ class UserMGMT:
         response = self.cursor.execute("INSERT INTO views (name, project, public, token) values (?, ?, ?, ?)", p)
         self.conn.commit()
 
-        return { 'status': 'ok', 'message': None, 'data': token }
+        return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'name': vname, 'token': token, 'public': public } }
     
 
     ######################################
@@ -720,11 +720,10 @@ class UserMGMT:
         else:
             return [ False ]
 
-
     def check_view(self, request):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
-            retval = userdb.get_view(p[0], p[1])
+            retval = self.get_view(p[0], p[1])
             if retval[0]:
                 args = self.args
                 basepath = self.users_data_dir + '/userdata/' + retval[1]['path'] + '/'
@@ -752,7 +751,6 @@ class UserMGMT:
             return [ retval[1], retval[2] ]
 
         return [ data, self.orig_args ]
-
         
 def dict_factory(cursor, row):
     d = {}
