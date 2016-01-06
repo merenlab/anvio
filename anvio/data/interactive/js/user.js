@@ -68,8 +68,8 @@ function showProjectSettings (index) {
     if (project.views.length) {
 	html = "<p>This project has been shared.</p>";
 	for (var i=0; i<project.views.length; i++) {
-	    var baseURL = window.location.origin + '/project?name='+project.views[i].name;
-	    var code = project.views[i]['public'] ? '' : '&code='+project.views[i].token;
+	    var baseURL = window.location.origin + '/' + (project.views[i]['public'] ? 'public' : 'private') + '/'+project.views[i]['user'] + '/' + project.views[i].name;
+	    var code = project.views[i]['public'] ? '' : '?code='+project.views[i].token;
 	    html += "<p style='margin-bottom: 20px;'>"+(project.views[i]['public'] ? 'public ' : '')+'share link: <a href="'+baseURL+code+'" target=_blank>'+baseURL+code+'</a><button type="button" style="margin-left: 5px; float: right; position: relative; bottom: 7px;" class="btn btn-danger btn-sm" title="remove view" onclick="removeProjectView(\''+index+'\', \''+i+'\');"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button></p>';
 	}
     } else {
@@ -154,7 +154,7 @@ function shareProject() {
     var name = document.getElementById('projectName').value;
     var isPublic = document.getElementById('projectPublic').checked;
     if (! name.match(/^\w+$/)) {
-	alert('The project name may only contain word characters without spaces.');
+	toastr.error('The project name may only contain word characters without spaces.');
     } else {
 	$('#modShareProject').modal('hide');
 	var formData = new FormData();
@@ -176,7 +176,7 @@ function shareProject() {
 		    var which = 0;
 		    for (var i=0; i<user.projects.length; i++) {
 			if (user.projects[i].name = data['project']) {
-			    user.projects[i].views.push({ "name": data["name"], "token": data["token"], "public": data["public"] == "0" ? false : true });
+			    user.projects[i].views.push({ "name": data["name"], "user": data["user"], "token": data["token"], "public": data["public"] == "0" ? false : true });
 			    which = i;
 			    break;
 			}

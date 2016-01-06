@@ -106,13 +106,17 @@ def logout_from_app(request, userdb, response):
     return json.dumps(userdb.logout_user(request.forms.get('login')))
 
 
-def set_view_cookie(request, userdb, response):
-    if request.query.name:
-        name = request.query.name
-        token = request.query.code or ""
-        response.set_header('Set-Cookie', 'anvioView='+name+'|'+token+'; path=/;')
+def set_view_cookie(request, userdb, response, login, name, private):
+    if private:
+        if not request.query.code:
+            redirect('/app/error.html?err=401')
+            return
+        else:
+            response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'|'+request.query.code+'; path=/;')
+    else:
+        response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'; path=/;')
         
-        redirect('/app/index.html')
+    redirect('/app/index.html')
         
 
 def set_project(request, userdb, response):
