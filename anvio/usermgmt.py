@@ -15,7 +15,7 @@ import shutil
 import re
 
 import time
-from datetime import date
+from datetime import date, datetime
 
 import anvio
 import anvio.terminal as terminal
@@ -63,7 +63,7 @@ class UsersDB:
     def create(self, client_version):
         self.connect()
         self.cursor.execute("CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT)")
-        self.cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT)")
+        self.cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT, visit TEXT)")
         self.cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT)")
         self.cursor.execute("CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT)")
         self.cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
@@ -281,13 +281,17 @@ class UserMGMT:
         else:
             return { 'status': 'error', 'message': "User not found for login %s" % login, 'data': None }
 
-    def get_user_for_token(self, token):
+    def get_user_for_token(self, token, record = False):
         if not token:
             return { 'status': 'error', 'message': "You must pass a token to retrieve a user entry", 'data': None }
 
         user = self.users_db.fetchone("SELECT * FROM users WHERE token=?", (token, ))
 
         if user:
+            # if record is true, remeber the login time
+            if record:
+                self.users_db.execute("UPDATE users SET visit=? WHERE login=?", (datetime.fromtimestamp(time.time()).isoformat(), user['login'], ))
+                
             # check if the user has a project set
             user = self.complete_user(user)
             
