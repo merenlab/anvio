@@ -188,10 +188,6 @@ def receive_upload_file(request, userdb, response):
         request.files.get('samplesInformationFile').save(basepath + 'samplesInformationFile')
         samplesInfoPath = basepath + 'samplesInformationFile'
         createSamplesDB = True
-                
-    # create a profile database
-    profile = dbops.ProfileDatabase(basepath + 'profile.db')
-    profiledb = profile.create({"db_type": "profile", "contigs_db_hash": None})
 
     # create a samples database if needed
     if createSamplesDB:
