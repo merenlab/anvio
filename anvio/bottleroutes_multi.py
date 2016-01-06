@@ -192,8 +192,8 @@ def receive_upload_file(request, userdb, response):
     # create a samples database if needed
     if createSamplesDB:
         sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
-        samplesdb = sample.create(samplesInfoPath, samplesOrderPath)
-        
+        sample.create(samplesInfoPath, samplesOrderPath)
+
     redirect('/app/index.html')
 
 
