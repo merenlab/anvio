@@ -65,7 +65,7 @@ class UsersDB:
         self.cursor.execute("CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT)")
         self.cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT)")
         self.cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT)")
-        self.cursor.execute("CREATE TABLE views (name TEXT PRIMARY KEY, project TEXT, public INTEGER, token TEXT)")
+        self.cursor.execute("CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT)")
         self.cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
         self.disconnect()
 
@@ -102,26 +102,30 @@ class UsersDB:
 
 
     def fetchone(self, query, variable_tuple = None):
-        return self.execute(query, variable_tuple, fetchall = False)
+        return self.execute(query, variable_tuple, fetch = "one")
 
 
     def fetchall(self, query, variable_tuple = None):
-        return self.execute(query, variable_tuple, fetchall = True)
+        return self.execute(query, variable_tuple, fetch = "all")
 
 
-    def execute(self, query, variable_tuple = None, fetchall = False):
+    def execute(self, query, variable_tuple = None, fetch = "none"):
         self.connect()
 
+        ret_val = True
+        
         if variable_tuple:
             response = self.cursor.execute(query, variable_tuple)
         else:
             response = self.cursor.execute(query)
 
-        if fetchall:
+        if fetch == "all":
             ret_val = response.fetchall()
-        else:
+        elif fetch == "one":
             ret_val = response.fetchone()
-
+        else:
+            self.conn.commit()
+            
         self.disconnect()
 
         return ret_val
@@ -135,7 +139,6 @@ class UsersDB:
 
 
     def disconnect(self):
-        self.conn.commit()
         self.conn.close()
 
 
@@ -183,9 +186,9 @@ class UserMGMT:
         user_projects = []
         for project in projects:
             user_projects.append({ "name": project['name'], "views": []})
-            views = self.users_db.fetchall("SELECT name, public, token FROM views WHERE project=?", (project['name'], ))
+            views = self.users_db.fetchall("SELECT name, public, token, user FROM views WHERE project=?", (project['name'], ))
             for r in views:
-                user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token']});
+                user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token'], "user": r["user"]});
         user['projects'] = user_projects
 
         # remove sensitive data
@@ -553,15 +556,15 @@ class UserMGMT:
     ######################################
     # VIEWS
     ######################################
-    def get_view(self, vname, token=None):
+    def get_view(self, login, vname, token=None):
         # get the view
-        view = self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, ))
+        view = self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (login, vname, ))
 
         if not view:
             return { 'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None }
 
         # get the project for this view
-        project = self.users_db.execute("SELECT * FROM projects WHERE name=?", (view['project'], ))
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE name=?", (view['project'], ))
 
         if project:           
             # create the path and add it to the return structure
@@ -609,10 +612,10 @@ class UserMGMT:
                 return user
         
         # get the view
-        if not self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, )):
-            return { 'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None }
+        if not self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (user['login'], vname, )):
+            return { 'status': 'error', 'message': "a view with name %s does not exist for this user" % vname, 'data': None }
 
-        self.users_db.execute("DELETE FROM views WHERE name=?", (vname, ))
+        self.users_db.execute("DELETE FROM views WHERE user=? AND name=?", (user['login'], vname, ))
 
         return { 'status': 'ok', 'message': "view deleted", 'data': None }
 
@@ -632,20 +635,20 @@ class UserMGMT:
             return { 'status': 'error', 'message': "Name contains invalid characters. Only letters, digits, dash and underscore are allowed.", 'data': None }
 
         # check if the view name is unique
-        if self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, )):
-            return { 'status': 'error', 'message': "view name already taken", 'data': None }
+        if self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (user['login'], vname, )):
+            return { 'status': 'error', 'message': "you already have a view of that name", 'data': None }
 
         # check if the project is owned by the user
         if not self.users_db.fetchone("SELECT * FROM projects WHERE name=? AND user=?", (pname, user['login'])):
-            return { 'status': 'error', 'message': "The user does not own this project", 'data': None }
+            return { 'status': 'error', 'message': "You do not own this project", 'data': None }
 
         # create a token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
         
         # create the db entry
-        self.users_db.execute("INSERT INTO views (name, project, public, token) values (?, ?, ?, ?)", (vname, pname, public, token, ))
+        self.users_db.execute("INSERT INTO views (name, user, project, public, token) values (?, ?, ?, ?, ?)", (vname, user['login'], pname, public, token, ))
 
-        return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'name': vname, 'token': token, 'public': public } }
+        return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'user': user['login'], 'name': vname, 'token': token, 'public': public } }
     
 
     ######################################
@@ -680,45 +683,60 @@ class UserMGMT:
                         args.samples_information_db = samples_information_db_path
 
                     d = interactive.InputHandler(args)
-                    return [ True, d, args ]
+                    return { "status": "ok", "message": None, "data": { "args": args, "d": d } }
                 else:
-                    return [ False ]
+                    return { "status": "error", "message": "user has no project", "data": None }
             else:
-                return [ False ]
+                return { "status": "error", "message": "session invalid, please relog", "data": None }
         else:
-            return [ False ]
+            return { "status": "ok", "message": "no cookie", "data": None }
 
     def check_view(self, request):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
-            retval = self.get_view(p[0], p[1])
-            if retval[0]:
+            p3 = None
+            if len(p) > 2:
+                p3 = p[3]
+            view = self.get_view(p[0], p[1], p3)
+            if view["status"] == "error":
+                return view
+            else:
+                view = view["data"]
                 args = self.args
-                basepath = self.users_data_dir + '/userdata/' + retval[1]['path'] + '/'
+                basepath = self.users_data_dir + '/userdata/' + view['path'] + '/'
                 args.tree = basepath + 'treeFile'
                 args.fasta_file = basepath + 'fastaFile'
                 args.view_data = basepath + 'dataFile'
-                args.title = retval[1]['project']
+                args.title = view['project']
                 args.read_only = True
+                args.profile_db = basepath + 'profile.db'
+                args.samples_db = basepath + 'samples.db'
+                args.additional_layers = None
+                addFile = basepath + 'additionalFile'
+                if os.path.isfile(addFile):
+                    args.additional_layers = addFile
+
+                samples_information_db_path = os.path.join(basepath, 'samples.db')
+                if os.path.exists(samples_information_db_path):
+                    args.samples_information_db = samples_information_db_path
 
                 d = interactive.InputHandler(args)
 
-                return [ True, d, args ]
-            else:
-                return [ False ]
+                return { "status": "ok", "message": None, "data": { "args": args, "d": d } }
         else:
-            return [ False ]
+            return { "status": "ok", "message": "no cookie", "data": None }
 
 
-    def set_user_data(self, request, data):
+    def set_user_data(self, request):
         retval = self.check_view(request)
-        if retval[0]:
-            return retval[1]
-        retval = self.check_user(request)
-        if retval[0]:
-            return [ retval[1], retval[2] ]
+        if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
+            return retval
 
-        return [ data, self.orig_args ]
+        retval = self.check_user(request)
+        if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
+            return retval
+
+        return { "status": "error", "message": "data not available", "data": None }
         
 def dict_factory(cursor, row):
     d = {}
