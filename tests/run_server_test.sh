@@ -35,7 +35,7 @@ CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT);
 INSERT INTO "self" VALUES('version','1');
 CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT);
 CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT);
-CREATE TABLE views (name TEXT PRIMARY KEY, project TEXT, public INTEGER, token TEXT);
+CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT);
 COMMIT;
 EOF
 

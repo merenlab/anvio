@@ -152,9 +152,13 @@ def login_to_app():
 def logout_from_app():
     return multiroutes.logout_from_app(request, userdb, response)
 
-@route('/project', method='GET')
-def set_view_cookie():
-    multiroutes.set_view_cookie(request, userdb, response)
+@route('/private/<login>/<project>', method='GET')
+def set_view_cookie(login, project):
+    multiroutes.set_view_cookie(request, userdb, response, login, project, True)
+
+@route('/public/<login>/<project>', method='GET')
+def set_view_cookie(login, project):
+    multiroutes.set_view_cookie(request, userdb, response, login, project, False)
 
 @route('/project', method='POST')
 def set_project():
@@ -191,11 +195,14 @@ def send_static(filename):
 
 @route('/data/<name>')
 def send_data(name):
-    d = {}
     set_default_headers(response)
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
+
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    
+    d = retval["data"]["d"]
+    args = retval["data"]["args"]
 
     if name == "init":
         available_views = dict(zip(d.views.keys(), d.views.keys()))
@@ -214,56 +221,30 @@ def send_data(name):
                              "sampleInformationDefaultLayerOrder": d.samples_information_default_layer_order,
                              "stateAutoload": d.state,
                              "noPing": True } )
-    elif name == "clusterings":
-        return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
-    elif name == "views":
-        available_views = dict(zip(d.views.keys(), d.views.keys()))
-        return json.dumps((d.default_view, available_views), )
-    elif name == "default_view":
-        return json.dumps(d.views[d.default_view])
-    elif name == "contig_lengths":
-        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
-        return json.dumps(split_lengths)
-    elif name == "title":
-        return json.dumps(d.title)
-    elif name == "mode":
-        return json.dumps("full")
-    elif name == "read_only":
-        return json.dumps(args.read_only)
-    elif name == "bin_prefix":
-        return json.dumps("Bin_")
-    elif name == "session_id":
-        return json.dumps(1)
-    elif name == "samples_order":
-        return json.dumps(d.samples_order_dict)
-    elif name == "samples_information":
-        return json.dumps(d.samples_information_dict)
-    elif name == "samples_information_default_layer_order":
-        return json.dumps(d.samples_information_default_layer_order)
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_view_data(args, d, request, response, view_id)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_view_data(retval["data"]["args"], retval["data"]["d"], request, response, view_id)
 
 @route('/tree/<tree_id>')
 def get_tree(tree_id):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_tree(args, d, request, response, tree_id)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_tree(retval["data"]["args"], retval["data"]["d"], request, response, tree_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.charts(d, split_name)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.charts(retval["data"]["d"], split_name)
 
 state_for_charts = {}
 
@@ -279,7 +260,6 @@ def set_state():
 
 @route('/data/charts/get_state')
 def get_parent_state():
-    d = {}
     set_default_headers(response)
     statekey = 'anon'
     retval = multiroutes.get_user(request, userdb, response)
@@ -290,91 +270,91 @@ def get_parent_state():
 
 @route('/data/contig/<split_name>')
 def get_split_info(split_name):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_split_info(args, d, request, response, split_name)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_split_info(retval["data"]["args"], retval["data"]["d"], request, response, split_name)
 
 @route('/data/collections')
 def collections():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_collections(args, d, request, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_collections(retval["data"]["args"], retval["data"]["d"], request, response)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_collection_dict(args, d, request, response, collection_source)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_collection_dict(retval["data"]["args"], retval["data"]["d"], request, response, collection_source)
 
 @route('/summary/<collection_id>/:filename#.*#')
 def send_summary_static(collection_id, filename):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.send_summary_static(args, d, request, response, collection_id, filename)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.send_summary_static(retval["data"]["args"], retval["data"]["d"], request, response, collection_id, filename)
 
 @route('/summarize/<collection_id>')
 def gen_summary(collection_id):
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.gen_summary(args, d, request, response, collection_id)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.gen_summary(retval["data"]["args"], retval["data"]["d"], request, response, collection_id)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.store_collections_dict(args, d, request, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.store_collections_dict(retval["data"]["args"], retval["data"]["d"], request, response)
 
 @route('/data/completeness', method='POST')
 def completeness():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.completeness(d, request)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.completeness(retval["data"]["d"], request)
 
 @route('/state/autoload')
 def state_autoload():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.state_autoload(d, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.state_autoload(retval["data"]["d"], response)
 
 @route('/state/all')
 def state_all():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.state_all(d, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.state_all(retval["data"]["d"], response)
 
 @route('/state/get', method='POST')
 def get_state():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.get_state(d, request, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.get_state(retval["data"]["d"], request, response)
 
 @route('/state/save', method='POST')
 def save_state():
-    d = {}
-    retval = userdb.set_user_data(request, d)
-    d = retval[0]
-    args = retval[1]
-    return routes.save_state(args, d, request, response)
+    retval = userdb.set_user_data(request)
+    if retval["status"] == "error":
+        return json.dumps(retval)
+    else:
+        return routes.save_state(retval["data"]["args"], retval["data"]["d"], request, response)
 
 #######################################################################################################################
 # bottle callbacks end
