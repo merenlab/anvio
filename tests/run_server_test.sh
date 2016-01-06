@@ -8,7 +8,7 @@ get_random_string() {
 
 add_user() {
 cat << EOF | sqlite3 test-output/users-data/USERS.db
-INSERT INTO "users" VALUES("$1","$2",'$3',"$1@email",'n7YtL2o4bGG6Q',"$4","`get_random_string`",1,NULL,'Some Affiliation','127.0.0.1','user','2015-12-18');
+INSERT INTO "users" VALUES("$1","$2",'$3',"$1@email",'n7YtL2o4bGG6Q',"$4","`get_random_string`",1,NULL,'Some Affiliation','127.0.0.1','user','2015-12-18',NULL);
 EOF
 
 mkdir test-output/users-data/userdata/$4
@@ -33,7 +33,7 @@ PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT);
 INSERT INTO "self" VALUES('version','1');
-CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT);
+CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT, visit TEXT);
 CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT);
 CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT);
 COMMIT;

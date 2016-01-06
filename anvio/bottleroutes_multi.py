@@ -36,7 +36,7 @@ def get_user(request, userdb, response):
     
 def get_user_by_token(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(userdb.get_user_for_token(request.forms.get('token')))
+    return json.dumps(userdb.get_user_for_token(request.forms.get('token'), True))
 
 
 def impersonate(request, userdb, response):
