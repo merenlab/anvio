@@ -238,7 +238,7 @@ if args.dry_run:
     sys.exit()
 
 try:
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
     webbrowser.open_new("http://%s:%d" % (ip, port))
     run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
