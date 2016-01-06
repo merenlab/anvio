@@ -264,7 +264,7 @@ try:
                      note and accept our apologies. Otherwise, be prepared for a failed attempt\
                      to get this server running :)" % port)
 
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
 
     if not args.server_only:
