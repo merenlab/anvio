@@ -79,16 +79,11 @@ class UsersDB:
 
 
     def remove_meta_key_value_pair(self, key):
-        p = (key, )
-        self.cursor.execute("DELETE FROM self WHERE key=?", p)
-        self.conn.commit()
+        self.execute("DELETE FROM self WHERE key=?", (key, ))
 
 
     def get_meta_value(self, key):
-        self.connect()
-        p = (key, )
-        response = self.cursor.execute("SELECT value FROM self WHERE key=?", p)
-        row = response.fetchone()
+        row = self.fetchone("SELECT value FROM self WHERE key=?", (key, ))
         
         if not row:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
@@ -102,8 +97,6 @@ class UsersDB:
             val = int(val)
         except ValueError:
             pass
-
-        self.disconnect()
 
         return val
 
@@ -175,9 +168,7 @@ class UserMGMT:
             raise ConfigError, "complete_user called without user"
 
         if user['project']:
-            p = (user['login'], user['project'], )
-            response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
-            project = response.fetchone()
+            project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], user['project'], ))
 
             if project:
                 user['project'] = project['name']
@@ -189,15 +180,13 @@ class UserMGMT:
         # get all user project names
         projects = self.users_db.fetchall("SELECT name FROM projects WHERE user=?", (user['login'], ))
 
-        ps = []
-        for row in projects:
-            ps.append({ "name": row['name'], "views": []})
-            p = (row['name'], )
-            response = self.cursor.execute("SELECT name, public, token FROM views WHERE project=?", p)
-            views = response.fetchall()
+        user_projects = []
+        for project in projects:
+            user_projects.append({ "name": project['name'], "views": []})
+            views = self.users_db.fetchall("SELECT name, public, token FROM views WHERE project=?", (project['name'], ))
             for r in views:
-                ps[len(ps) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token']});
-        user['projects'] = ps
+                user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token']});
+        user['projects'] = user_projects
 
         # remove sensitive data
         if not internal:
@@ -212,19 +201,11 @@ class UserMGMT:
             return { 'status': 'error', 'message': "You must pass a firstname, lastname, email login and password to create a user", 'data': None }
 
         # check if the login name is already taken
-        p = (login, )
-        response = self.cursor.execute('SELECT login FROM users WHERE login=?', p)
-        row = response.fetchone()
-
-        if row:
+        if self.users_db.fetchone('SELECT login FROM users WHERE login=?', (login, )):
             return { 'status': 'error', 'message': "Login '%s' is already taken." % login, 'data': None }
 
         # check if the email is already taken
-        p = (email, )
-        response = self.cursor.execute('SELECT email FROM users WHERE email=?', p)
-        row = response.fetchone()
-
-        if row:
+        if self.users_db.fetchone('SELECT email FROM users WHERE email=?', (email, )):
             return { 'status': 'error', 'message': "Email '%s' is already taken." % email, 'data': None }
         
         # calculate path
@@ -244,8 +225,7 @@ class UserMGMT:
         
         # create the user entry in the DB
         p = (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, entrydate, )
-        response = self.cursor.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
-        self.conn.commit()
+        self.users_db.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
 
         anvioURL = "http://%s/" % self.args.ip_address if self.args.ip_address else "localhost";
         if self.mailer:
@@ -268,9 +248,7 @@ class UserMGMT:
         if not email:
             return { 'status': 'error', 'message': "You must pass an email to retrieve a user entry", 'data': None }
 
-        p = (email, )
-        response = self.cursor.execute("SELECT * FROM users WHERE email=?", p)
-        user = response.fetchone()
+        user = self.users_db.fetchone("SELECT * FROM users WHERE email=?", (email, ))
 
         if not user:
             return { 'status': 'error', 'message': 'No user has been found for email address "%s"' % email, 'data': None }
@@ -290,10 +268,8 @@ class UserMGMT:
         if user:
             # check if the user has a token
             if not user['token']:
-                token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
-                token = user['login'] + token
-                self.users_db.execute("UPDATE users SET token=? WHERE login=?", (token, user['login'], ))
-                user['token'] = token
+                user['token'] = user['login'] + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+                self.users_db.execute("UPDATE users SET token=? WHERE login=?", (user['token'], user['login'], ))
                 
             # check if the user has a project set
             user = self.complete_user(user, internal)
@@ -333,12 +309,8 @@ class UserMGMT:
         # crypt password
         cpassword = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
 
-        login = user['login']
-        
         # update the user entry in the DB
-        p = (cpassword, login)
-        response = self.cursor.execute("UPDATE users SET password=? WHERE login=?", p)
-        self.conn.commit()
+        self.users_db.execute("UPDATE users SET password=? WHERE login=?", (cpassword, user['login'], ))
 
         # send the user a mail with the new password
         email = user['email']
@@ -365,15 +337,12 @@ class UserMGMT:
         # crypt password
         cpassword = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
 
-        login = user['login']
-        
         # update the user entry in the DB
-        p = (cpassword, login)
-        response = self.cursor.execute("UPDATE users SET password=? WHERE login=?", p)
-        self.conn.commit()
+        self.users_db.execute("UPDATE users SET password=? WHERE login=?", (cpassword, user['login'], ))
 
         return { 'status': 'ok', 'message': "New password set", 'data': None }
-        
+
+
     def accept_user(self, login = None, token = None):
         if not login:
             return { 'status': 'error', 'message': "You must pass a login to accept a user", 'data': None }
@@ -391,9 +360,7 @@ class UserMGMT:
                 return user
         
         if user['token'] == token:
-            p = (login, )
-            self.cursor.execute("UPDATE users SET accepted=1 WHERE login=?", p)
-            self.conn.commit()
+            self.users_db.execute("UPDATE users SET accepted=1 WHERE login=?", (login, ))
 
             # create the user directory
             path = self.users_data_dir + '/userdata/' + user['path']
@@ -431,9 +398,7 @@ class UserMGMT:
         # generate a new token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
         token = login + token
-        p = (token, login, )
-        self.cursor.execute("UPDATE users SET token=? WHERE login=?", p)
-        self.conn.commit()
+        self.users_db.execute("UPDATE users SET token=? WHERE login=?", (token, login, ))
 
         # check if the user has a project set
         user = self.complete_user(user)
@@ -459,9 +424,7 @@ class UserMGMT:
             return { 'status': 'error', 'message': "user not found", 'data': None }
 
         # remove the token from the DB
-        p = (login, )
-        self.cursor.execute("UPDATE users SET token='' WHERE login=?", p)
-        self.conn.commit()
+        self.users_db.execute("UPDATE users SET token='' WHERE login=?", (login, ))
 
         return { 'status': 'ok', 'message': "User %s logged out" % login, 'data': None }
 
@@ -474,7 +437,8 @@ class UserMGMT:
         if len(filterwords):
             where_phrase = " WHERE "+" AND ".join(filterwords)
 
-        query = "SELECT users.*, COUNT(projects.name) AS projects FROM users LEFT OUTER JOIN projects ON users.login=projects.user"+where_phrase+" GROUP BY users.login ORDER BY "+order+" "+dir+" LIMIT "+str(limit)+" OFFSET "+str(offset)
+        query = "SELECT users.*, COUNT(projects.name) AS projects FROM users LEFT OUTER JOIN projects ON users.login=projects.user" \
+                 + where_phrase + " GROUP BY users.login ORDER BY " + order + " " + dir + " LIMIT " + str(limit) + " OFFSET " + str(offset)
         table = self.users_db.fetchall(query)
 
         for row in table:
@@ -482,9 +446,7 @@ class UserMGMT:
             del row['path']
             del row['token']
 
-        select = "SELECT COUNT(*) AS num FROM users "+where_phrase
-        response = self.cursor.execute(select)
-        count = response.fetchone()
+        count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM users " + where_phrase)
 
         data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
         
@@ -512,9 +474,7 @@ class UserMGMT:
 
         if not os.path.exists(path):
             os.makedirs(path)
-            p = (pname, ppath, user['login'], )
-            response = self.cursor.execute("INSERT INTO projects (name, path, user) VALUES (?, ?, ?)", p)
-            self.conn.commit()
+            self.users_db.execute("INSERT INTO projects (name, path, user) VALUES (?, ?, ?)", (pname, ppath, user['login'], ))
             return { 'status': 'ok', 'message': None, 'data': { "name": pname, "path": ppath, "user": user['login'] } }
         else:
             return { 'status': 'error', 'message': "You already have a project of that name", 'data': None }
@@ -533,9 +493,7 @@ class UserMGMT:
             else:
                 return user
         
-        p = (user['login'], projectname, )
-        response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
-        project = response.fetchone()
+        project = self.users_db.execute("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
 
         return { 'status': 'ok', 'message': None, 'data': project }
         
@@ -552,14 +510,10 @@ class UserMGMT:
             else:
                 return user
 
-        p = (user['login'], pname, )
-        response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
-        row = response.fetchone()
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
         
-        if row:
-            p = (pname, user['login'], )
-            self.cursor.execute("UPDATE users SET project=? WHERE login=?", p)
-            self.conn.commit()
+        if project:
+            self.users_db.execute("UPDATE users SET project=? WHERE login=?", (pname, user['login'], ))
             return { 'status': 'ok', 'message': "project set", 'data': None }
         else:
             return { 'status': 'ok', 'message': "the user does not own this project", 'data': None }
@@ -581,19 +535,12 @@ class UserMGMT:
         ppath = hashlib.md5(pname).hexdigest()
         path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + ppath
         
-        p = (user['login'], pname, )
-        response = self.cursor.execute("SELECT * FROM projects WHERE user=? AND name=?", p)
-        row = response.fetchone()
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
         
-        if row:
-            p = (None, user['login'], )
-            self.cursor.execute("UPDATE users SET project=? WHERE login=?", p)
-            p = (user['login'], pname, )
-            self.cursor.execute("DELETE FROM projects WHERE user=? AND name=? ", p)
-            self.conn.commit()
-            p = (pname, )
-            self.cursor.execute("DELETE FROM views WHERE project=? ", p)
-            self.conn.commit()
+        if project:
+            self.users_db.execute("UPDATE users SET project=? WHERE login=?", (None, user['login'], ))
+            self.users_db.execute("DELETE FROM projects WHERE user=? AND name=? ", (user['login'], pname, ))
+            self.users_db.execute("DELETE FROM views WHERE project=? ", (pname, ))
 
             if os.path.exists(path):
                 shutil.rmtree(path, ignore_errors=True)
@@ -608,22 +555,20 @@ class UserMGMT:
     ######################################
     def get_view(self, vname, token=None):
         # get the view
-        p = (vname, )
-        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
-        view = response.fetchone()
+        view = self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, ))
+
         if not view:
             return { 'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None }
 
         # get the project for this view
-        p = (view['project'], )
-        response = self.cursor.execute("SELECT * FROM projects WHERE name=?", p)
-        row = response.fetchone()
-        if row:           
+        project = self.users_db.execute("SELECT * FROM projects WHERE name=?", (view['project'], ))
+
+        if project:           
             # create the path and add it to the return structure
-            path = row['path']
+            path = project['path']
             
             # get the user of the project
-            user = self.get_user_for_login(row['user'])
+            user = self.get_user_for_login(project['user'])
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -635,9 +580,7 @@ class UserMGMT:
             view['path'] = user['path'] + '/' + path
         else:
             # the project is gone, clean up this reference
-            p = (vname, )
-            response = self.cursor.execute("DELETE FROM views WHERE name=?", p)
-            self.conn.commit()
+            self.users_db.execute("DELETE FROM views WHERE name=?", (vname, ))
 
             return { 'status': 'error', 'message': "the project for this view no longer exists", 'data': None }
 
@@ -666,16 +609,13 @@ class UserMGMT:
                 return user
         
         # get the view
-        p = (vname, )
-        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
-        row = response.fetchone()
-        if not row:
+        if not self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, )):
             return { 'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None }
 
-        response = self.cursor.execute("DELETE FROM views WHERE name=?", p)
-        self.conn.commit()
+        self.users_db.execute("DELETE FROM views WHERE name=?", (vname, ))
 
         return { 'status': 'ok', 'message': "view deleted", 'data': None }
+
 
     def create_view(self, user, vname, pname, public=1):
         if not user:
@@ -692,26 +632,18 @@ class UserMGMT:
             return { 'status': 'error', 'message': "Name contains invalid characters. Only letters, digits, dash and underscore are allowed.", 'data': None }
 
         # check if the view name is unique
-        p = (vname, )
-        response = self.cursor.execute("SELECT * FROM views WHERE name=?", p)
-        row = response.fetchone()
-        if row:
+        if self.users_db.fetchone("SELECT * FROM views WHERE name=?", (vname, )):
             return { 'status': 'error', 'message': "view name already taken", 'data': None }
 
         # check if the project is owned by the user
-        p = (pname, user['login'])
-        response = self.cursor.execute("SELECT * FROM projects WHERE name=? AND user=?", p)
-        row = response.fetchone()
-        if not row:
+        if not self.users_db.fetchone("SELECT * FROM projects WHERE name=? AND user=?", (pname, user['login'])):
             return { 'status': 'error', 'message': "The user does not own this project", 'data': None }
 
         # create a token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
         
         # create the db entry
-        p = (vname, pname, public, token, )
-        response = self.cursor.execute("INSERT INTO views (name, project, public, token) values (?, ?, ?, ?)", p)
-        self.conn.commit()
+        self.users_db.execute("INSERT INTO views (name, project, public, token) values (?, ?, ?, ?)", (vname, pname, public, token, ))
 
         return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'name': vname, 'token': token, 'public': public } }
     
