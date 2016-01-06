@@ -138,7 +138,7 @@ class SamplesInformation:
         self.sample_names = self.sample_names_in_samples_information_file or self.sample_names_in_samples_order_file
 
     def sanity_check(self):
-        if self.samples_information_dict and self.samples_order_dict:
+        if self.sample_names_in_samples_information_file and self.sample_names_in_samples_order_file:
             if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
                 raise SamplesError, 'OK. Samples described in the information file and order file are not identical :/\
                                      Here are the %d sample names in the information file: "%s", versus the %d sample\
