@@ -715,6 +715,10 @@ class UserMGMT:
                     if os.path.isfile(addFile):
                         args.additional_layers = addFile
 
+                    samples_information_db_path = os.path.join(basepath, 'samples.db')
+                    if os.path.exists(samples_information_db_path):
+                        args.samples_information_db = samples_information_db_path
+
                     d = interactive.InputHandler(args)
                     return [ True, d, args ]
                 else:
