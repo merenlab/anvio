@@ -15,7 +15,7 @@ import shutil
 import re
 
 import time
-from datetime import date
+from datetime import date, datetime
 
 import anvio
 import anvio.terminal as terminal
@@ -63,8 +63,9 @@ class UsersDB:
     def create(self, client_version):
         self.connect()
         self.cursor.execute("CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT)")
-        self.cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT)")
-        self.cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT)")
+        self.cursor.execute("CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT, visit TEXT)")
+        self.cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT, description TEXT)")
+        self.cursor.execute("CREATE TABLE metadata (project INTEGER, attribute TEXT, value TEXT)")
         self.cursor.execute("CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT)")
         self.cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
         self.disconnect()
@@ -166,7 +167,7 @@ class UserMGMT:
     ######################################
 
     # adds project information and removes sensitive data from the user struct
-    def complete_user(self, user, internal=False):
+    def complete_user(self, user, internal=False, verbose=False):
         if not user:
             raise ConfigError, "complete_user called without user"
 
@@ -180,16 +181,21 @@ class UserMGMT:
                 user['project'] = None
                 user['project_path'] = None
 
-        # get all user project names
-        projects = self.users_db.fetchall("SELECT name FROM projects WHERE user=?", (user['login'], ))
+        if verbose:
+            # get all user project names
+            projects = self.users_db.fetchall("SELECT name, description, rowid FROM projects WHERE user=?", (user['login'], ))
 
-        user_projects = []
-        for project in projects:
-            user_projects.append({ "name": project['name'], "views": []})
-            views = self.users_db.fetchall("SELECT name, public, token, user FROM views WHERE project=?", (project['name'], ))
-            for r in views:
-                user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token'], "user": r["user"]});
-        user['projects'] = user_projects
+            user_projects = []
+            for project in projects:
+                user_projects.append({ "name": project['name'], "description": project["description"], "views": [], "metadata": {} })
+                views = self.users_db.fetchall("SELECT name, public, token, user FROM views WHERE project=?", (project['name'], ))
+                for r in views:
+                    user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token'], "user": r["user"]})
+                metadata = self.users_db.fetchall("SELECT attribute, value FROM metadata WHERE project=?", (project['rowid'], ))
+                for r in metadata:
+                    user_projects[len(user_projects) - 1]["metadata"][r["attribute"]] = r["value"]
+                    
+            user['projects'] = user_projects
 
         # remove sensitive data
         if not internal:
@@ -281,15 +287,19 @@ class UserMGMT:
         else:
             return { 'status': 'error', 'message': "User not found for login %s" % login, 'data': None }
 
-    def get_user_for_token(self, token):
+    def get_user_for_token(self, token, record = False):
         if not token:
             return { 'status': 'error', 'message': "You must pass a token to retrieve a user entry", 'data': None }
 
         user = self.users_db.fetchone("SELECT * FROM users WHERE token=?", (token, ))
 
         if user:
+            # if record is true, remeber the login time and return verbose userdata
+            if record:
+                self.users_db.execute("UPDATE users SET visit=? WHERE login=?", (datetime.fromtimestamp(time.time()).isoformat(), user['login'], ))
+                
             # check if the user has a project set
-            user = self.complete_user(user)
+            user = self.complete_user(user, False, record)
             
             return { 'status': 'ok', 'message': None, 'data': user }
         else:
@@ -459,7 +469,7 @@ class UserMGMT:
     # PROJECTS
     ######################################
     
-    def create_project(self, user, pname):
+    def create_project(self, user, pname, description = ""):
         if not user:
             return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
         if not pname:
@@ -477,7 +487,7 @@ class UserMGMT:
 
         if not os.path.exists(path):
             os.makedirs(path)
-            self.users_db.execute("INSERT INTO projects (name, path, user) VALUES (?, ?, ?)", (pname, ppath, user['login'], ))
+            self.users_db.execute("INSERT INTO projects (name, path, user, description) VALUES (?, ?, ?, ?)", (pname, ppath, user['login'], description, ))
             return { 'status': 'ok', 'message': None, 'data': { "name": pname, "path": ppath, "user": user['login'] } }
         else:
             return { 'status': 'error', 'message': "You already have a project of that name", 'data': None }
@@ -551,8 +561,28 @@ class UserMGMT:
             return { 'status': 'ok', 'message': "project deleted", 'data': None }
         else:
             return { 'status': 'error', 'message': "the user does not own this project", 'data': None }
-        
 
+
+    def update_project(self, user, params):
+        if not user:
+            return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
+
+        if user.has_key('status'):
+            if user['status'] == 'ok':
+                user = user['data']
+            else:
+                return user
+
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], params['project'], ))
+        
+        if project:
+            self.users_db.execute("UPDATE projects SET description=? WHERE name=?", (params['description'], params['project'], ))
+
+            return { 'status': 'ok', 'message': "project updated", 'data': params }
+        else:
+            return { 'status': 'error', 'message': 'project not found', 'data': None }
+
+            
     ######################################
     # VIEWS
     ######################################
