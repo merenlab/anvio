@@ -21,7 +21,7 @@ proj_dir=`get_random_string`
 cp -r anvi_server_files/mock_project_directory_01 test-output/users-data/userdata/$2/$proj_dir
 
 cat << EOF | sqlite3 test-output/users-data/USERS.db
-INSERT INTO "projects" VALUES("$3", "$proj_dir", "$1");
+INSERT INTO "projects" VALUES("$3", "$proj_dir", "$1", "$4");
 EOF
 
 echo "* New project, $3, for user $1 has been created ..."
@@ -34,7 +34,8 @@ BEGIN TRANSACTION;
 CREATE TABLE self (key TEXT PRIMARY KEY, value TEXT);
 INSERT INTO "self" VALUES('version','1');
 CREATE TABLE users (login TEXT PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, path TEXT, token TEXT, accepted INTEGER, project TEXT, affiliation TEXT, ip TEXT, clearance TEXT, date TEXT, visit TEXT);
-CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT);
+CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT, description TEXT);
+CREATE TABLE metadata (project INTEGER, attribute TEXT, value TEXT);
 CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT);
 COMMIT;
 EOF
@@ -48,13 +49,13 @@ add_user "ozcan" "Özcan" "Esen" "ozcans_dir"
 add_user "tdelmont" "Tom" "Delmont" "toms_dir"
 
 INFO "Adding projects"
-add_project "meren" "merens_dir" "m_proj_01"
-add_project "meren" "merens_dir" "m_proj_02"
-add_project "tobi" "tobis_dir" "t_proj_01"
-add_project "ozcan" "ozcans_dir" "o_proj_01"
-add_project "ozcan" "ozcans_dir" "o_proj_02"
-add_project "ozcan" "ozcans_dir" "o_proj_03"
-add_project "ozcan" "ozcans_dir" "o_proj_04"
+add_project "meren" "merens_dir" "m_proj_01" "description_a"
+add_project "meren" "merens_dir" "m_proj_02" "description_b"
+add_project "tobi" "tobis_dir" "t_proj_01" "description_c"
+add_project "ozcan" "ozcans_dir" "o_proj_01" "description_d"
+add_project "ozcan" "ozcans_dir" "o_proj_02" "description_e"
+add_project "ozcan" "ozcans_dir" "o_proj_03" "description_f"
+add_project "ozcan" "ozcans_dir" "o_proj_04" "description_g"
 
 INFO "Giving user 'tobi' admin credentials"
 cat << EOF | sqlite3 test-output/users-data/USERS.db
