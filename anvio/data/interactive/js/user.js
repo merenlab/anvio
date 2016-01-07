@@ -19,7 +19,25 @@
 
 // user section on anvio user.html
 function initContent () {
+    var formData = new FormData();
+    formData.append('token', user.token);
+    formData.append('verbose', true);
+    $.ajax({
+    	url : '/token',
+	processData: false,
+	contentType: false,
+	type : 'POST',
+    	data : formData,
+    	success : function(data) {
+	    if (data.status == 'ok') {
+		window.user = data.data;
+		showUserdata();
+	    }
+    	}
+    });
+}
 
+function showUserdata () {
     // username and logout button
     var html = [];
     html.push('<div style="padding-top: 2px; float: right;">');
@@ -33,7 +51,7 @@ function initContent () {
 
     // get all projects the user has access to
     html.push('<h3>Your Projects</h3>');
-    if (user.projects.length) {
+    if (user.projects && user.projects.length) {
 	html.push('<ul class="list-group col-sm-8">');
 	for (var i=0; i<user.projects.length; i++) {
 	    html.push('<li class="list-group-item">');
@@ -64,21 +82,62 @@ function initContent () {
 function showProjectSettings (index) {
     var project = user.projects[index];
 
-    var html = "";
+    var html = "<h4 style='margin-top: 0px;'>"+project.name+"</h4><p><button class='btn btn-default btn-sm' title='edit description' style='float: right;' onclick='editProjectDescription("+index+");' id='projectDescriptionButton'><span class='glyphicon glyphicon-pencil' aria-hidden='true'></span></button><div id='projectDescription'>"+project.description+"</div></p>";
+    html += "<h4 style='margin-top: 0px;'>Statistics</h4>";
+    var k = Object.keys(project.metadata);
+    if (k.length) {
+	html += "<table class='table table-condensed'>";
+	k = k.sort();
+	for (var i=0; i<k.length; i++) {
+	    html += "<tr><th>"+k[i]+"</th><td>"+project.metadata[k[i]]+"</td></tr>";
+	}
+	html += "</table>";
+    } else {
+	html += "<p>No statistics available</p>";
+    }
+    html += "<h4 style='margin-top: 0px;'>Sharing</h4>";
     if (project.views.length) {
-	html = "<p>This project has been shared.</p>";
+	html += "<p>This project has been shared.</p>";
 	for (var i=0; i<project.views.length; i++) {
 	    var baseURL = window.location.origin + '/' + (project.views[i]['public'] ? 'public' : 'private') + '/'+project.views[i]['user'] + '/' + project.views[i].name;
 	    var code = project.views[i]['public'] ? '' : '?code='+project.views[i].token;
 	    html += "<p style='margin-bottom: 20px;'>"+(project.views[i]['public'] ? 'public ' : '')+'share link: <a href="'+baseURL+code+'" target=_blank>'+baseURL+code+'</a><button type="button" style="margin-left: 5px; float: right; position: relative; bottom: 7px;" class="btn btn-danger btn-sm" title="remove view" onclick="removeProjectView(\''+index+'\', \''+i+'\');"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button></p>';
 	}
     } else {
-	html = "<p>This project has not been shared</p>"
+	html += "<p>This project has not been shared</p>"
     }
     
     document.getElementById('projectSettingsContent').innerHTML = html;
     $('#modProjectSettings').modal('show');
     
+};
+
+function editProjectDescription (index) {
+    var project = user.projects[index];
+    var btn = document.getElementById('projectDescriptionButton');
+    if (btn.getAttribute('title') == 'edit description') {
+	btn.setAttribute('title', 'save changes');
+	btn.innerHTML = "<span class='glyphicon glyphicon-ok' aria-hidden='true'></span>";
+	document.getElementById('projectDescription').innerHTML = "<textarea id='newProjectDescription' style='height: 100px; width: 500px;'>"+project.description+"</textarea>";
+    } else {
+	btn.setAttribute('disabled', 'disabled');
+	$('#modProjectSettings').modal('hide');
+	$.ajax({
+	    url : '/project',
+	    type : 'PUT',
+	    data : '{ "project": "'+project.name.replace(/"/g, "\\\"")+'", "description": "'+document.getElementById('newProjectDescription').value.replace(/"/g, "\\\"").replace(/[\x00-\x1F\x7F-\x9F]/g, " ")+'"}',
+	    processData: false,
+	    contentType: false,
+	    success : function(data) {
+		if (data.status == 'ok') {
+		    alert('description updated');
+		    document.location.reload(true);
+		} else {
+		    toastr.error(data.message);
+		}
+	    }
+	});
+    }
 };
 
 function removeProjectView (pindex, vindex) {
@@ -154,7 +213,7 @@ function shareProject() {
     var name = document.getElementById('projectName').value;
     var isPublic = document.getElementById('projectPublic').checked;
     if (! name.match(/^\w+$/)) {
-	toastr.error('The project name may only contain word characters without spaces.');
+	toastr.error('The view name may only contain word characters without spaces.');
     } else {
 	$('#modShareProject').modal('hide');
 	var formData = new FormData();
@@ -175,7 +234,7 @@ function shareProject() {
 		    data = data.data;
 		    var which = 0;
 		    for (var i=0; i<user.projects.length; i++) {
-			if (user.projects[i].name = data['project']) {
+			if (user.projects[i].name == data['project']) {
 			    user.projects[i].views.push({ "name": data["name"], "user": data["user"], "token": data["token"], "public": data["public"] == "0" ? false : true });
 			    which = i;
 			    break;
@@ -211,6 +270,9 @@ function uploadFiles () {
     }
     if ($('#uploadTitle')[0].value) {
 	formData.append('title', $('#uploadTitle')[0].value);
+    }
+    if ($('#uploadDescription')[0].value) {
+	formData.append('description', $('#uploadDescription')[0].value);
     }
     $('#modUploadData').modal('hide');
     
