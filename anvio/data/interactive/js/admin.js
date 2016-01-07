@@ -94,7 +94,7 @@ function updateTable(key, value) {
 	    html.push("<div style='margin-bottom: 3px; text-align: center;'>"+(r.offset>0 ? "<button class='btn btn-xs btn-default pull-left' onclick='updateTable(\"offset\", \"--\");'><span class='glyphicon glyphicon-fast-backward'></span></button><button class='btn btn-xs btn-default pull-left' onclick='updateTable(\"offset\", \"-\");'><span class='glyphicon glyphicon-step-backward'></span></button>" : "")+"showing row "+(parseInt(r.offset) + 1)+" to "+(parseInt(r.limit) - parseInt(r.offset) < parseInt(r.total) ? parseInt(r.limit) : parseInt(r.total))+" of "+r.total+(parseInt(r.offset) + parseInt(r.limit) < parseInt(r.total) ? "<button class='btn btn-xs btn-default pull-right' onclick='updateTable(\"offset\", \"++\");'><span class='glyphicon glyphicon-fast-forward'></span></button><button class='btn btn-xs btn-default pull-right' onclick='updateTable(\"offset\", \"+\");'><span class='glyphicon glyphicon-step-forward'></span></button>" : "")+"</div>");
 
 	    // generic columns
-	    var columns = [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance' ];
+	    var columns = [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit' ];
 
 	    // start table
 	    html.push('<table class="table table-condensed table-bordered table-striped table-hover"><thead><tr>');
