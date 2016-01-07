@@ -36,7 +36,7 @@ def get_user(request, userdb, response):
     
 def get_user_by_token(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(userdb.get_user_for_token(request.forms.get('token'), True))
+    return json.dumps(userdb.get_user_for_token(request.forms.get('token'), request.forms.get('verbose')))
 
 
 def impersonate(request, userdb, response):
@@ -128,6 +128,12 @@ def delete_project(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.delete_project(get_user(request, userdb, response), request.forms.get('project')))
 
+
+def update_project(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps(userdb.update_project(get_user(request, userdb, response), json.loads(request.body.readline())))
+
+
 def share_project(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
@@ -153,7 +159,7 @@ def receive_upload_file(request, userdb, response):
         return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
 
     # create the project
-    retval = userdb.create_project(user['data'], request.forms.get('title'))
+    retval = userdb.create_project(user['data'], request.forms.get('title'), request.forms.get('description'))
 
     if not retval['status'] == 'ok':
         return json.dumps(retval)

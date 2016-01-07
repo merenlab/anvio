@@ -164,6 +164,10 @@ def set_view_cookie(login, project):
 def set_project():
     return multiroutes.set_project(request, userdb, response)
 
+@route('/project', method='PUT')
+def update_project():
+    return multiroutes.update_project(request, userdb, response)
+
 @route('/project', method='DELETE')
 def delete_project():
     return multiroutes.delete_project(request, userdb, response)
