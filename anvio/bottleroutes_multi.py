@@ -238,7 +238,7 @@ def admin_data(request, userdb, response):
     if user['status'] == 'ok':
         if user['data']['clearance'] == 'admin':
             filterhash = {}
-            fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date' ]
+            fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date', 'visit' ]
             for field in fields:
                 if field in request.query:
                     filterhash[field] = request.query[field]
