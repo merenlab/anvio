@@ -465,6 +465,13 @@ class UserMGMT:
         
         return { 'status': 'ok', 'message': None, 'data': data }
 
+    def delete_user(self, user):
+        if user.has_key('status'):
+            if user['status'] == 'ok':
+                user = user['data']
+            else:
+                return user
+
     ######################################
     # PROJECTS
     ######################################
@@ -582,7 +589,64 @@ class UserMGMT:
         else:
             return { 'status': 'error', 'message': 'project not found', 'data': None }
 
-            
+
+    def project_list(self, offset=0, limit=25, order='name', dir='ASC', filter={}):
+        filterwords = []
+        for field in filter.keys():
+            filterwords.append(field+" LIKE '"+filter[field].replace("\\","\\\\").replace("'", "\'")+"'")
+
+        where_phrase = ""
+        if len(filterwords):
+            where_phrase = " WHERE "+" AND ".join(filterwords)
+
+        query = "SELECT name, user, description FROM projects" \
+                 + where_phrase + " ORDER BY " + order + " " + dir + " LIMIT " + str(limit) + " OFFSET " + str(offset)
+        table = self.users_db.fetchall(query)
+
+        count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM projects" + where_phrase)
+
+        data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
+        
+        return { 'status': 'ok', 'message': None, 'data': data }
+
+
+    def project_admin_details(self, projectname, login):
+        if not projectname:
+            return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
+
+        # get base project data
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (login, projectname, ))
+        if not project:
+            return { 'status': 'error', 'message': 'project not found', 'data': None }
+
+        # get user data for the project
+        user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (login, ))
+        if not user:
+            return { 'status': 'error', 'message': 'user not found', 'data': None }
+        del user['password']
+
+        # get views for the project
+        views = self.users_db.fetchall("SELECT name, public, token FROM views WHERE project=?", (projectname, ))
+
+        # examine files of the project
+        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
+        filenames = [ "data", "fasta", "tree", "additionalData", "samplesInformation", "samplesOrder" ]
+        dataFiles = {}
+        for fn in filenames:
+            fullfn = path+fn+"File"
+            if os.access(fullfn, os.R_OK):
+                with open(fullfn, 'r') as content_file:
+                    content = content_file.read()
+                    dataFiles[fn] = content
+            else:
+                dataFiles[fn] = None
+        
+        # construct return structure
+        projectData = { "name": project['name'], "description": project['description'], "user": user, "views": views, "files": dataFiles }
+
+        return { 'status': 'ok', 'message': None, 'data': projectData }
+        
+      
     ######################################
     # VIEWS
     ######################################
