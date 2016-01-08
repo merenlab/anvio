@@ -261,3 +261,46 @@ def admin_data(request, userdb, response):
             return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
     else:
         return json.dumps(user)
+
+    
+def admin_project_data(request, userdb, response):
+    set_default_headers(response)
+    user = get_user(request, userdb, response)
+    if user['status'] == 'ok':
+        if user['data']['clearance'] == 'admin':
+            filterhash = {}
+            fields = [ 'name', 'user', 'description', 'views', 'metadata' ]
+            for field in fields:
+                if field in request.query:
+                    filterhash[field] = request.query[field]
+
+            offset = 0
+            limit = 25
+            order = 'name'
+            direction = 'ASC'
+            if 'offset' in request.query:
+                offset = request.query['offset'] 
+            if 'limit' in request.query:
+                limit = request.query['limit']
+            if 'order' in request.query:
+                order = request.query['order'] 
+            if 'direction' in request.query:
+                direction = request.query['direction'] 
+                                
+            return json.dumps(userdb.project_list(offset, limit, order, direction, filterhash))
+        else:
+            return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
+    else:
+        return json.dumps(user)
+
+
+def admin_project_details(request, userdb, response):
+    set_default_headers(response)
+    user = get_user(request, userdb, response)
+    if user['status'] == 'ok':
+        if user['data']['clearance'] == 'admin':
+            return json.dumps(userdb.project_admin_details(request.query['project'], request.query['user']))
+        else:
+            return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
+    else:
+        return json.dumps(user)
