@@ -192,6 +192,14 @@ def receive_additional_upload_file():
 def admin_data():
     return multiroutes.admin_data(request, userdb, response)
 
+@route('/adminProjectData', method='GET')
+def admin_project_data():
+    return multiroutes.admin_project_data(request, userdb, response)
+
+@route('/adminProjectDetails', method='GET')
+def admin_project_details():
+    return multiroutes.admin_project_details(request, userdb, response)
+
 @route('/app/:filename#.*#')
 def send_static(filename):
     set_default_headers(response)

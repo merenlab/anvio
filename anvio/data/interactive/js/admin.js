@@ -18,19 +18,24 @@
  */
 
 function initContent() {
-    window.table = { "limit": 25, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {} };
+    window.tables = { "user": { "limit": 5, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {}, "url": "/adminData", "columns": [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit', 'impersonate' ], "special": { "column": "impersonate", "code": '<button class="btn btn-default btn-xs" onclick="impersonate(\'$$\');">impersonate</button>', "data": 'login' }, "response": null},
+		      "project": { "limit": 5, "offset": 0, "order": "user", "dir": "ASC", "filter": {}, "url": "/adminProjectData", "columns": [ 'name', 'user', 'description', 'details' ], "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="getProjectDetails(\'$$\');">show details</button>', "data": 'name' }, "response": null } };
     var content = document.getElementById('content');
     var html = [];
     if (user && user.clearance == 'admin') {
-	html.push('<h3>Welcome back, master '+user.lastname+'</h3><p>I am awaiting your command.</p><h3>User Table</h3><div id="usertable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
-	updateTable();
+	html.push('<h3>Welcome back '+user.firstname+'</h3><h4 align="center">Users</h4><div id="usertable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
+	html.push('<h4 align="center">Projects</h4><div id="projecttable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
+	html.push('<div id="projectDetails"></div>');
+	content.innerHTML = html.join('\n');
+	updateTable('user').then(function(){updateTable('project');});
     } else {
 	html.push('<div class="alert alert-danger col-sm-6" role="alert" style="margin-top: 100px;">You are not authorized to view this page.</div>');
+	content.innerHTML = html.join('\n');
     }
-    content.innerHTML = html.join('\n');
 }
 
-function updateTable(key, value) {
+function updateTable(id, key, value) {
+    var table = tables[id];
     if (key) {
 	if (key == 'offset') {
 	    if (value == '-') {
@@ -74,12 +79,14 @@ function updateTable(key, value) {
 	filter = "";
     }
 
-    $.ajax({
-	url : '/adminData?limit='+table.limit+'&offset='+table.offset+'&order='+table.order+'&direction='+table.dir+filter,
+    return $.ajax({
+	url : table.url+'?limit='+table.limit+'&offset='+table.offset+'&order='+table.order+'&direction='+table.dir+filter,
 	type : 'GET',
+	index: id,
 	processData: false,
 	contentType: false,
 	complete : function(jqXHR) {
+	    var table = tables[this.index];
 	    var r = JSON.parse(jqXHR.responseText);
 	    if (r.status == 'error') {
 		alert(r.message);
@@ -87,41 +94,51 @@ function updateTable(key, value) {
 	    }
 	    r = r.data;
 	    var data = r.data;
+	    table.response = data;
 	    table.total = parseInt(r.total);
 	    var html = [];
 
 	    // table control structure
-	    html.push("<div style='margin-bottom: 3px; text-align: center;'>"+(r.offset>0 ? "<button class='btn btn-xs btn-default pull-left' onclick='updateTable(\"offset\", \"--\");'><span class='glyphicon glyphicon-fast-backward'></span></button><button class='btn btn-xs btn-default pull-left' onclick='updateTable(\"offset\", \"-\");'><span class='glyphicon glyphicon-step-backward'></span></button>" : "")+"showing row "+(parseInt(r.offset) + 1)+" to "+(parseInt(r.limit) - parseInt(r.offset) < parseInt(r.total) ? parseInt(r.limit) : parseInt(r.total))+" of "+r.total+(parseInt(r.offset) + parseInt(r.limit) < parseInt(r.total) ? "<button class='btn btn-xs btn-default pull-right' onclick='updateTable(\"offset\", \"++\");'><span class='glyphicon glyphicon-fast-forward'></span></button><button class='btn btn-xs btn-default pull-right' onclick='updateTable(\"offset\", \"+\");'><span class='glyphicon glyphicon-step-forward'></span></button>" : "")+"</div>");
+	    html.push("<div style='margin-bottom: 3px; text-align: center;'>"+(r.offset>0 ? "<button class='btn btn-xs btn-default pull-left' onclick='updateTable(\""+this.index+"\", \"offset\", \"--\");'><span class='glyphicon glyphicon-fast-backward'></span></button><button class='btn btn-xs btn-default pull-left' onclick='updateTable(\""+this.index+"\", \"offset\", \"-\");'><span class='glyphicon glyphicon-step-backward'></span></button>" : "")+"showing row "+(parseInt(r.offset) + 1)+" to "+(parseInt(r.limit) - parseInt(r.offset) < parseInt(r.total) ? parseInt(r.limit) : parseInt(r.total))+" of "+r.total+(parseInt(r.offset) + parseInt(r.limit) < parseInt(r.total) ? "<button class='btn btn-xs btn-default pull-right' onclick='updateTable(\""+this.index+"\", \"offset\", \"++\");'><span class='glyphicon glyphicon-fast-forward'></span></button><button class='btn btn-xs btn-default pull-right' onclick='updateTable(\""+this.index+"\", \"offset\", \"+\");'><span class='glyphicon glyphicon-step-forward'></span></button>" : "")+"</div>");
 
 	    // generic columns
-	    var columns = [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit' ];
+	    var columns = table.columns;
 
 	    // start table
 	    html.push('<table class="table table-condensed table-bordered table-striped table-hover"><thead><tr>');
 
 	    // header
 	    for (var i=0; i<columns.length; i++) {
-		html.push('<th><span onclick="this.style.display=\'none\';this.nextSibling.style.display=\'\';this.nextSibling.focus()" style="cursor: pointer;" title="click to filter">'+columns[i]+'</span><input type="text" style="display: none; font-weight: normal; padding: 0px;" class="col-md-10" value="'+(table.filter.hasOwnProperty(columns[i]) ? table.filter[columns[i]] : "")+'" onkeypress="checkTableFilter(event)"><span class="glyphicon glyphicon-triangle-top pull-right" onclick="updateTable(\'orderasc\', \''+columns[i]+'\')" style="cursor: pointer;"></span><span class="glyphicon glyphicon-triangle-bottom pull-right" onclick="updateTable(\'orderdesc\', \''+columns[i]+'\')" style="cursor: pointer;"></th>')
+		if (table.special.column == columns[i]) {
+		    html.push('<th>'+columns[i]+'</th>');
+		} else {
+		    html.push('<th><span onclick="this.style.display=\'none\';this.nextSibling.style.display=\'\';this.nextSibling.focus()" style="cursor: pointer;" title="click to filter">'+columns[i]+'</span><input type="text" style="display: none; font-weight: normal; padding: 0px;" class="col-md-10" value="'+(table.filter.hasOwnProperty(columns[i]) ? table.filter[columns[i]] : "")+'" onkeypress="checkTableFilter(event, \''+this.index+'\')"><span class="glyphicon glyphicon-triangle-top pull-right" onclick="updateTable(\''+this.index+'\', \'orderasc\', \''+columns[i]+'\')" style="cursor: pointer;"></span><span class="glyphicon glyphicon-triangle-bottom pull-right" onclick="updateTable(\''+this.index+'\', \'orderdesc\', \''+columns[i]+'\')" style="cursor: pointer;"></th>')
+		}
 	    }
-	    html.push('<th>impersonate</th></tr></thead><tbody>');
+	    html.push('</tr></thead><tbody>');
 
 	    // rows
 	    for (var i=0; i<data.length; i++) {
 		html.push('<tr>');
 		for (var h=0; h<columns.length; h++) {
-		    html.push('<td>'+data[i][columns[h]]+'</td>');
+		    if (table.special.column == columns[h]) {
+			html.push('<td>'+table.special.code.replace(/\$\$/g, data[i][table.special.data])+'</td>');
+		    } else {
+			html.push('<td>'+data[i][columns[h]]+'</td>');
+		    }
 		}
-		html.push('<td><button class="btn btn-default btn-xs" onclick="impersonate(\''+data[i].login+'\');">impersonate</button></td></tr>');
+		html.push('</tr>');
 	    }
 	    html.push('</tbody></table>');
 
 	    // update the DOM
-	    document.getElementById('usertable').innerHTML = html.join('');
+	    document.getElementById(this.index+'table').innerHTML = html.join('');
 	}
     });
 }
 
-function checkTableFilter (event) {
+function checkTableFilter (event, index) {
+    var table = tables[index];
     event = event || window.event;
     var input = event.target;
     var text = event.target.previousSibling;
@@ -131,7 +148,7 @@ function checkTableFilter (event) {
 	} else {
 	    delete table.filter[text.innerHTML];
 	}
-	updateTable();
+	updateTable(index);
     } else if (event.keyCode == 27 || event.keyCode == 9) {
 	input.style.display = 'none';
 	text.style.display = '';
@@ -151,4 +168,80 @@ function impersonate(login) {
 	    window.location = 'user.html';
 	}
     });
+}
+
+function getProjectDetails(projectname) {
+    var project = null;
+    var projects = tables['project'].response;
+    for (var i=0; i<projects.length; i++) {
+	if (projects[i].name == projectname) {
+	    project = projects[i];
+	    break;
+	}
+    }
+    if (project) {
+	$.ajax({
+	url : '/adminProjectDetails?project='+project.name+'&user='+project.user,
+	type : 'GET',
+	processData: false,
+	contentType: false,
+	complete : function(jqXHR) {
+	    var result = JSON.parse(jqXHR.responseText);
+	    if (result.status == 'ok') {
+		projectData = result.data;
+		showProjectDetails();
+	    } else {
+		toastr.error(result.message);
+	    }
+	}
+	});
+    } else {
+	toastr.error('invalid project link');
+    }
+}
+
+function showProjectDetails() {
+    var html = [];
+    html.push('<div class="panel panel-primary"><div class="panel-heading"><h4 class="panel-title">Project Details</h4></div><div class="panel-body">');
+    // project base data
+    html.push('<h4 style="margin-top: 0px;">Project '+projectData.name+'</h4>');
+    html.push('<p>'+projectData.description+'</p>');
+
+    // project user
+    html.push('<h4><span class="glyphicon glyphicon-user" style="margin-right: 10px;"></span>Owner</h4><p><b>'+projectData.user.firstname+' '+projectData.user.lastname+'</b></p><table class="table table-condensed col-sm-8">');
+    var fields = [ 'login', 'email', 'affiliation', 'visit', 'project' ];
+    for (var i=0; i<fields.length; i++) {
+	html.push('<tr><th>'+fields[i]+'</th><td>'+projectData.user[fields[i]]+'</td></tr>');
+    }
+    html.push('</table>');
+
+    // project views
+    html.push('<h4><span class="glyphicon glyphicon-share" style="margin-right: 10px;"></span>Views</h4>');
+    if (projectData.views.length) {
+	html.push('<ul class="list-group col-sm-8">');
+	for (var i=0; i<projectData.views.length; i++) {
+	    var li = window.location.origin+"/";
+	    if (projectData.views[i]['public']) {
+		li += 'public/'+projectData.user.login+'/'+projectData.views[i].name;
+	    } else {
+		li += 'private/'+projectData.user.login+'/'+projectData.views[i].name + '?code=' + projectData.views[i].token;
+	    }
+	    html.push('<li class="list-group-item"><a href="'+li+'" target=_blank>'+li+'</a></li>');
+	}
+	html.push('</ul><div style="clear: both;"></div>');
+    } else {
+	html.push('<p>This project is not shared</p>');
+    }
+
+    // project files
+    html.push('<h4><span class="glyphicon glyphicon-list-alt" style="margin-right: 10px;"></span>Files</h4><ul class="list-group col-sm-8">');
+    fields = Object.keys(projectData.files).sort();
+    for (var i=0; i<fields.length; i++) {
+	html.push('<li class="list-group-item"><a href="#" onclick="w = window.open();w.document.body.innerHTML=projectData.files.'+fields[i]+'">'+fields[i]+'</a></li>');
+    }
+    html.push('</ul>');
+    
+    html.push('</div></div>');
+
+    document.getElementById('projectDetails').innerHTML = html.join("\n");
 }
