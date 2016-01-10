@@ -2,11 +2,14 @@ body {
     color: #333332;
     font-family: "PT Serif",serif;
 }
+
 .header {
     background: rgba(0, 0, 0, 0) url('../images/fractal.jpg') repeat;
-    height: 90px;
+    height: 130px;
     border-bottom: 1px solid lightgray;
-    text-align: center;
+    text-align: left;
+    padding: 20px;
+    padding-left: 30px;
 }
 
 .header span {
