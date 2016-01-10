@@ -72,7 +72,7 @@ function showUserdata () {
     html.push('<div style="clear: both; margin-top: 15px;"></div>');
     
     // upload button
-    html.push('<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="upload data files" onclick="$(\'#modUploadData\').modal(\'show\');"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> upload new project</button>');
+    html.push('<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="upload data files" onclick="$(\'#modUploadData\').modal(\'show\');"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> New Project</button>');
     
     document.getElementById('content').innerHTML = html.join('');
 

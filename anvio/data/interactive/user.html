@@ -35,7 +35,7 @@
   <body>
 
     <div class="header">
-      <img src="images/logo.png"><span>anvi'o user home</span>
+      <img src="images/logo.png"><span>Home</span>
     </div>
 
     <div class="container" id="content"></div>
@@ -48,7 +48,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-            <h4 class="modal-title">Upload data</h4>
+            <h4 class="modal-title">New Project</h4>
           </div>
 	  
           <div class="modal-body">
@@ -58,58 +58,62 @@
             <input type="file" style="display: none;" id="samplesOrderFileSelect" onchange="uploadFileSelected('samplesOrder');">
             <input type="file" style="display: none;" id="samplesInformationFileSelect" onchange="uploadFileSelected('samplesInformation');">
 	    
-	    <p>To visualize your data you must at least provide a newick tree file. A fasta file and additional data are optional.</p>
+	    <p style="padding: 20px;">Please provide a name and description for your project.</p>
 	    
 	    <form class="form-horizontal" id="uploadDataForm">
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="uploadTitle">title</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="uploadTitle">Project name</label>
+		<div class="col-sm-9">
 		  <input type="text" id="uploadTitle" placeholder="choose a title" class="form-control">
 		</div>
 	      </div>
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="uploadDescription">description</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="uploadDescription">Description</label>
+		<div class="col-sm-9">
 		  <textarea id="uploadDescription" placeholder="describe your project" class="form-control"></textarea>
 		</div>
 	      </div>
+
+	    <p style="padding: 20px;">Please upload essential data files for visualization ('*' identifies mandatory files).</p>
+
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="treeFileName">tree file</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="treeFileName">Tree</label>
+		<div class="col-sm-9">
 		  <div class="input-group">
-		    <input type="text" readonly id="treeFileName" placeholder="newick tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button"  onclick="$('#treeFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="treeFileName" placeholder="Newick-formatted tree file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button"  onclick="$('#treeFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="fastaFileName">fasta file</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="dataFileName">Data</label>
+		<div class="col-sm-9">
 		  <div class="input-group">
-		    <input type="text" readonly id="fastaFileName" placeholder="fasta file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#fastaFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="dataFileName" placeholder="TAB-delimited data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#dataFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="dataFileName">data file</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="fastaFileName">FASTA</label>
+		<div class="col-sm-9">
 		  <div class="input-group">
-		    <input type="text" readonly id="dataFileName" placeholder="additional data file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#dataFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="fastaFileName" placeholder="FASTA file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#fastaFileSelect').click();">...</button></span>
+		  </div>
+		</div>
+	      </div>
+	    <p style="padding: 20px;">Formatting of the following two files are explained <a href="http://merenlab.org/2015/11/10/samples-db/#the-samples-information-file-format">here</a>.</p>
+	      <div class="form-group">
+		<label class="col-sm-3 control-label" for="samplesOrderFileName">Samples order</label>
+		<div class="col-sm-9">
+		  <div class="input-group">
+		    <input type="text" readonly id="samplesOrderFileName" placeholder="TAB-delimited samples order file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesOrderFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
 	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="samplesOrderFileName">samples order file</label>
-		<div class="col-sm-10">
+		<label class="col-sm-3 control-label" for="samplesInformationFileName">Samples info</label>
+		<div class="col-sm-9">
 		  <div class="input-group">
-		    <input type="text" readonly id="samplesOrderFileName" placeholder="samples order file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesOrderFileSelect').click();">...</button></span>
-		  </div>
-		</div>
-	      </div>
-	      <div class="form-group">
-		<label class="col-sm-2 control-label" for="samplesInformationFileName">samples information file</label>
-		<div class="col-sm-10">
-		  <div class="input-group">
-		    <input type="text" readonly id="samplesInformationFileName" placeholder="samples information file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesInformationFileSelect').click();">...</button></span>
+		    <input type="text" readonly id="samplesInformationFileName" placeholder="TAB-delimited samples information file" class="form-control"><span class="input-group-btn"><button class="btn btn-default" type="button" onclick="$('#samplesInformationFileSelect').click();">...</button></span>
 		  </div>
 		</div>
 	      </div>
