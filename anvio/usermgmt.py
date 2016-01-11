@@ -623,7 +623,7 @@ class UserMGMT:
                 return user
 
         if uname:
-            if user.clearance == 'admin':
+            if user['clearance'] == 'admin':
                 user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (uname, ))
                 if not user:
                     return { 'status': 'error', 'message': "user not found", 'data': None }
