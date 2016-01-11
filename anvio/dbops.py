@@ -537,7 +537,7 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
-            d[e['sample_id']]['variability'][e['pos']] = e['n2n1ratio']
+            d[e['sample_id']]['variability'][e['pos']] = e['departure_from_consensus']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
 
         return d
