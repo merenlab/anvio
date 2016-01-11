@@ -18,14 +18,14 @@
  */
 
 function initContent() {
-    window.tables = { "user": { "limit": 5, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {}, "url": "/adminData", "columns": [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit', 'impersonate' ], "special": { "column": "impersonate", "code": '<button class="btn btn-default btn-xs" onclick="impersonate(\'$$\');">impersonate</button>', "data": 'login' }, "response": null},
+    window.tables = { "user": { "limit": 5, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {}, "url": "/adminData", "columns": [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit', 'details' ], "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="showUserDetails(\'$$\');">show details</button>', "data": 'login' }, "response": null},
 		      "project": { "limit": 5, "offset": 0, "order": "user", "dir": "ASC", "filter": {}, "url": "/adminProjectData", "columns": [ 'name', 'user', 'description', 'details' ], "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="getProjectDetails(\'$$\');">show details</button>', "data": 'name' }, "response": null } };
     var content = document.getElementById('content');
     var html = [];
     if (user && user.clearance == 'admin') {
 	html.push('<h3>Welcome back '+user.firstname+'</h3><h4 align="center">Users</h4><div id="usertable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
 	html.push('<h4 align="center">Projects</h4><div id="projecttable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
-	html.push('<div id="projectDetails"></div>');
+	html.push('<div id="details"></div>');
 	content.innerHTML = html.join('\n');
 	updateTable('user').then(function(){updateTable('project');});
     } else {
@@ -170,13 +170,17 @@ function impersonate(login) {
     });
 }
 
-function getProjectDetails(projectname) {
+function getProjectDetails(projectname, user) {
     var project = null;
     var projects = tables['project'].response;
-    for (var i=0; i<projects.length; i++) {
-	if (projects[i].name == projectname) {
-	    project = projects[i];
-	    break;
+    if (user) {
+	project = { 'name': projectname, 'user': user };
+    } else {
+	for (var i=0; i<projects.length; i++) {
+	    if (projects[i].name == projectname) {
+		project = projects[i];
+		break;
+	    }
 	}
     }
     if (project) {
@@ -204,6 +208,7 @@ function showProjectDetails() {
     var html = [];
     html.push('<div class="panel panel-primary"><div class="panel-heading"><h4 class="panel-title">Project Details</h4></div><div class="panel-body">');
     // project base data
+    html.push('<button style="float: right;" class="btn btn-sm btn-danger" onclick="deleteProject(\''+projectData.name+'\', \''+projectData.user.login+'\')"><span class="glyphicon glyphicon-trash"></span></button>');
     html.push('<h4 style="margin-top: 0px;">Project '+projectData.name+'</h4>');
     html.push('<p>'+projectData.description+'</p>');
 
@@ -243,5 +248,102 @@ function showProjectDetails() {
     
     html.push('</div></div>');
 
-    document.getElementById('projectDetails').innerHTML = html.join("\n");
+    document.getElementById('details').innerHTML = html.join("\n");
+}
+
+function deleteProject(project, user) {
+    if (confirm("Really delete this project? This cannot be undone!")) {
+	var formData = new FormData();
+	formData.append('project', project);
+	formData.append('user', user);
+	$.ajax({
+	    url : '/project',
+	    type : 'DELETE',
+	    data : formData,
+	    processData: false,
+	    contentType: false,
+	    success : function(data) {
+		if (data.status == 'ok') {
+		    document.location.reload(true);
+		} else {
+		    toastr.error(data.message);
+		}
+	    }
+	});
+    }
+}
+
+function showUserDetails(login) {
+    var user = null;
+    for (var i=0; i<tables.user.response.length; i++) {
+	if (tables.user.response[i]['login'] == login) {
+	    user = tables.user.response[i];
+	    break;
+	}
+    }
+    if (! user) {
+	toastr.error('data error selecting user');
+    }
+
+    var html = [];
+    html.push('<div class="panel panel-primary"><div class="panel-heading"><h4 class="panel-title">User Details</h4></div><div class="panel-body">');
+
+    html.push('<button class="btn btn-danger btn-sm" style="float: right; margin-left: 10px;" onclick="deleteUser(\''+user.login+'\')"><span class="glyphicon glyphicon-trash"></span></button>');
+    html.push('<button class="btn btn-default btn-sm" style="float: right; margin-left: 10px;" onclick="impersonate(\''+user.login+'\')">impersonate</button>');
+    html.push('<h4>'+user.firstname+' '+user.lastname+'</h4>');
+    html.push('<table class="table col-sm-8">');
+    html.push('<tr><th>login</th><td>'+user.login+'</td></tr>');
+    html.push('<tr><th>email</th><td>'+user.email+'</td></tr>');
+    html.push('<tr><th>affiliation</th><td>'+user.affiliation+'</td></tr>');
+    html.push('<tr><th>entry date</th><td>'+user.date+'</td></tr>');
+    html.push('<tr><th>last visit</th><td>'+user.visit+'</td></tr>');
+    html.push('<tr><th>clearance</th><td><select id="clearanceSelect"><option'+(user.clearance=='admin' ? ' selected' : '')+'>admin</option><option'+(user.clearance=='user' ? ' selected' : '')+'>user</option></select><button class="btn btn-sm btn-default" style="margin-left: 10px;" onclick="changeClearance(\''+login+'\', this.previousSibling.options[this.previousSibling.selectedIndex].value);">change</button></td></tr>');
+    html.push('<tr><th>current project</th><td>'+(user.project ? '<a href="#" onclick="getProjectDetails(\''+user.project+'\', \''+user.login+'\');">'+user.project+'</a>' : '- none -')+'</td></tr>');
+    html.push('<tr><th># of projects</th><td>'+user.projects+'</td></tr>');
+    html.push('<tr><th>registration ip</th><td>'+user.ip+'</td></tr>');
+    html.push('</div></div>');
+
+    document.getElementById('details').innerHTML = html.join("\n");
+}
+
+function deleteUser(user) {
+    var retval = prompt("Really delete this user? Type 'CONFIRM' to proceed.")
+    if (retval && retval == "CONFIRM") {
+	var formData = new FormData();
+	formData.append('user', user);
+	$.ajax({
+	    url : '/user',
+	    type : 'DELETE',
+	    data : formData,
+	    processData: false,
+	    contentType: false,
+	    success : function(data) {
+		if (data.status == 'ok') {
+		    document.location.reload(true);
+		} else {
+		    toastr.error(data.message);
+		}
+	    }
+	});
+    }
+}
+
+function changeClearance(user, clearance) {
+    var formData = new FormData();
+    formData.append('user', user);
+    formData.append('clearance', clearance);
+    $.ajax({
+	url : '/clearance',
+	type : 'POST',
+	data : formData,
+	processData: false,
+	contentType: false,
+	success : function(data) {
+	    if (data.status == 'ok') {
+		document.location.reload(true);
+	    } else {
+		toastr.error(data.message);
+	    }
+	}
+    });
 }
