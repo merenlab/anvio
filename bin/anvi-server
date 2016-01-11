@@ -116,6 +116,14 @@ def set_default_headers(response):
 def redirect_to_app():
     redirect('/app/home.html')
 
+@route('/user', method='DELETE')
+def delete_user():
+    return multiroutes.delete_user(request, userdb, response)
+
+@route('/clearance', method='POST')
+def change_clearance():
+    return multiroutes.change_clearance(request, userdb, response)
+    
 @route('/impersonate', method='POST')
 def impersonate():
     return multiroutes.impersonate(request, userdb, response)

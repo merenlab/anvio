@@ -356,6 +356,37 @@ class UserMGMT:
         return { 'status': 'ok', 'message': "New password set", 'data': None }
 
 
+    def change_clearance(self, login, clearance, user):
+        if not user:
+            return { 'status': 'error', 'message': "You must pass a user to change clearance", 'data': None }
+
+        if not login:
+            return { 'status': 'error', 'message': "You must pass a user to change clearance for", 'data': None }
+
+        if not clearance:
+            return { 'status': 'error', 'message': "You must pass clearance to change to", 'data': None }
+
+        valid_clearance = { "admin": True,
+                            "user": True }
+
+        if not valid_clearance[clearance]:
+            return { 'status': 'error', 'message': "invalid clearance selected", 'data': None }
+        
+        if user.has_key('status'):
+            if user['status'] == 'ok':
+                user = user['data']
+            else:
+                return user
+
+        if not user['clearance'] == 'admin':
+            return { 'status': 'error', 'message': "You must be an admin to change clearance", 'data': None }
+            
+        # update the user entry in the DB
+        self.users_db.execute("UPDATE users SET clearance=? WHERE login=?", (clearance, login, ))
+
+        return { 'status': 'ok', 'message': "New clearance set", 'data': None }
+
+
     def accept_user(self, login = None, token = None):
         if not login:
             return { 'status': 'error', 'message': "You must pass a login to accept a user", 'data': None }
@@ -465,13 +496,53 @@ class UserMGMT:
         
         return { 'status': 'ok', 'message': None, 'data': data }
 
-    def delete_user(self, user):
+    def delete_user(self, login, user):
         if user.has_key('status'):
             if user['status'] == 'ok':
                 user = user['data']
             else:
                 return user
 
+        if not login:
+            return { 'status': 'error', 'message': "You must pass a user to delete", 'data': None }
+
+        if not user['clearance'] == 'admin':
+            return { 'status': 'error', 'message': "You must be an administrator to delete a user", 'data': None }
+
+        # get the user entry from the db
+        user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (login, ))
+
+        if not user:
+            return { 'status': 'error', 'message': "user not found", 'data': None }
+        
+        # delete the user directory
+        if not user["path"]:
+            return { 'status': 'error', 'message': "user path not found", 'data': None }
+            
+        shutil.rmtree(self.users_data_dir + '/userdata/'+ user["path"], ignore_errors=True)
+
+        # get all project rowids for this user
+        projects = self.users_db.fetchall("SELECT rowid FROM projects WHERE user=?", (user['login'], ))
+
+        if len(projects):
+            # delete all metadata
+            selectString = "";
+            for p in projects:
+                selectString = selectString + str(p['rowid'])
+                
+            self.users_db.execute("DELETE FROM metadata WHERE project IN ("+selectString+")")
+
+            # delete all views
+            self.users_db.execute("DELETE FROM views WHERE user=?", (user['login'], ))
+
+            # delete all projects
+            self.users_db.execute("DELETE FROM projects WHERE user=?", (user['login'], ))
+
+        # delete the user entry
+        self.users_db.execute("DELETE FROM users WHERE login=?", (user['login'], ))
+
+        return { 'status': 'ok', 'message': 'user deleted', 'data': None }
+        
     ######################################
     # PROJECTS
     ######################################
@@ -539,7 +610,7 @@ class UserMGMT:
             return { 'status': 'ok', 'message': "the user does not own this project", 'data': None }
 
 
-    def delete_project(self, user, pname):
+    def delete_project(self, user, pname, uname):
         if not user:
             return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
         if not pname:
@@ -550,7 +621,15 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
+        if uname:
+            if user['clearance'] == 'admin':
+                user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (uname, ))
+                if not user:
+                    return { 'status': 'error', 'message': "user not found", 'data': None }
+            else:
+                return { 'status': 'error', 'message': "Only admins may delete other users projects", 'data': None }
+            
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
         path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + ppath
@@ -558,7 +637,9 @@ class UserMGMT:
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
         
         if project:
-            self.users_db.execute("UPDATE users SET project=? WHERE login=?", (None, user['login'], ))
+            if user['project'] == project['name']:
+                self.users_db.execute("UPDATE users SET project=? WHERE login=?", (None, user['login'], ))
+                
             self.users_db.execute("DELETE FROM projects WHERE user=? AND name=? ", (user['login'], pname, ))
             self.users_db.execute("DELETE FROM views WHERE project=? ", (pname, ))
 
