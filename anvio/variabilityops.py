@@ -20,7 +20,6 @@ import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.samplesops import SamplesInformation
 
 
 __author__ = "A. Murat Eren"
@@ -246,8 +245,8 @@ class VariablePositionsEngine:
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
 
         if self.min_ratio:
-            self.run.info('Min n2/n1 ratio', self.min_ratio)
-            self.filter('n2/n1', lambda x: x['n2n1ratio'] < self.min_ratio)
+            self.run.info('Min departure from consensus ratio', self.min_ratio)
+            self.filter('n2/n1', lambda x: x['departure_from_consensus'] < self.min_ratio)
 
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
@@ -510,7 +509,7 @@ class VariablePositionsEngine:
                 base_at_pos = parent_seq[split_info['start'] + pos]
                 for sample in splits_to_consider[split][pos]:
                     self.variable_positions_table[next_available_entry_id] = {'parent': split_info['parent'],
-                                                                              'n2n1ratio': 0,
+                                                                              'departure_from_consensus': 0,
                                                                               'consensus': base_at_pos,
                                                                               'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                                               'pos': pos,
@@ -620,7 +619,7 @@ class VariabilityNetwork:
         for entry in self.variable_positions_table.values():
             sample_id = entry['sample_id']
             pos = entry['unique_pos_identifier']
-            frequency = entry['n2n1ratio']
+            frequency = entry['departure_from_consensus']
 
             samples_dict[sample_id][pos] = float(frequency)
 

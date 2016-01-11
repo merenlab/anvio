@@ -172,13 +172,14 @@ class Auxiliary:
             consensus_base_in_contig = self.split.sequence[pos_in_split]
 
             cp = ColumnProfile(column,
+                               consensus = consensus_base_in_contig,
                                coverage = coverage,
                                split_name = self.split.name,
                                pos = pos_in_split,
                                test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
-            if cp['n2n1ratio']:
-                ratios.append((cp['n2n1ratio'], cp['coverage']), )
+            if cp['departure_from_consensus']:
+                ratios.append((cp['departure_from_consensus'], cp['coverage']), )
                 self.column_profile[pileupcolumn.pos] = cp
 
         # variation density = number of SNPs per kb
@@ -187,7 +188,7 @@ class Auxiliary:
         for i in range(self.split.start, self.split.end):
             if self.column_profile.has_key(i):
                 self.rep_seq += self.column_profile[i]['consensus']
-                self.v.append(self.column_profile[i]['n2n1ratio'])
+                self.v.append(self.column_profile[i]['departure_from_consensus'])
                 self.competing_nucleotides[self.column_profile[i]['pos']] = self.column_profile[i]['competing_nts']
             else:
                 self.rep_seq += 'N'
