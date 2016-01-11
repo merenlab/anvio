@@ -50,6 +50,11 @@ def impersonate(request, userdb, response):
             return json.dumps(imperson)
 
 
+def change_clearance(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps(userdb.change_clearance(request.forms.get('user'), request.forms.get('clearance'), get_user(request, userdb, response)))
+
+    
 def request_account(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), ))
@@ -62,7 +67,15 @@ def accept_user(request, userdb, response):
     else:
         redirect('/app/accountBAD.html')
 
-
+        
+def delete_user(request, userdb, response):
+    set_default_headers(response)
+    user = get_user(request, userdb, response)
+    if user:
+        return json.dumps(userdb.delete_user(request.forms.get('user'), user))
+    else:
+        return '{ "status": "error", "data": null, "message": "you must be logged in as an admin to delete a user" }'
+    
 def reset_password(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.get_user_for_email(request.forms.get('email')))
@@ -126,7 +139,7 @@ def set_project(request, userdb, response):
 
 def delete_project(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(userdb.delete_project(get_user(request, userdb, response), request.forms.get('project')))
+    return json.dumps(userdb.delete_project(get_user(request, userdb, response), request.forms.get('project'), request.forms.get('user')))
 
 
 def update_project(request, userdb, response):
