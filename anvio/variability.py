@@ -51,39 +51,34 @@ class VariablityTestFactory:
 class ColumnProfile:
     """A class to report raw variability information for a given nucleotide position"""
 
-    def __init__(self, column, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
-        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'consensus': None,
+    def __init__(self, column, consensus, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
+        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'consensus': consensus,
                         'coverage': coverage if coverage else len(column),
-                        'n2n1ratio': 0, 'competing_nts': None}
+                        'departure_from_consensus': 0, 'competing_nts': None}
 
         nt_counts = Counter(column)
         for nt in nucleotides:
-            self.profile[nt] = nt_counts[nt] if nt_counts.has_key(nt) else 0
+            self.profile[nt] = nt_counts[nt]
 
-        competing_two = nt_counts.most_common(2)
-        if len(competing_two) == 1:
+        nts_sorted = nt_counts.most_common()
+        if len(nts_sorted) == 1:
             # no variation.
-            self.profile['consensus'] = competing_two[0][0]
             return
 
-        n1_tuple, n2_tuple = competing_two
-        competing_nts = n1_tuple[0] + n2_tuple[0]
+        # competing nts are simply the most frequent two nucleotides in the column.
+        # clearly, the `consensus` nucleotide (which is the observed nucleotide in
+        # the contig for this particular `pos`) may not be one of these. but here,
+        # we don't care about that.
+        self.profile['competing_nts'] = ''.join(sorted(nts_sorted[0][0] + nts_sorted[1][0]))
 
-        if n1_tuple[0] == 'N':
-            return
-
-        self.profile['consensus'] = n1_tuple[0]
-
-        if n2_tuple[0] == 'N':
-            return
-
-        n2n1ratio = n2_tuple[1] / n1_tuple[1]
+        # here we quantify the ratio of frequencies of non-consensus-nts observed in this column
+        # to the overall overage, and that is our `departure_from_consensus`:
+        total_frequency_of_all_bases_but_the_conensus = sum([tpl[1] for tpl in nts_sorted if tpl[0] != consensus])
+        departure_from_consensus = total_frequency_of_all_bases_but_the_conensus / coverage
 
         if test_class:
-            if n2n1ratio > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
-                self.profile['competing_nts'] = competing_nts
-                self.profile['n2n1ratio'] = n2n1ratio
+            if departure_from_consensus > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
+                self.profile['departure_from_consensus'] = departure_from_consensus
         else:
             # if there is no test class, just report everything.
-            self.profile['competing_nts'] = competing_nts
-            self.profile['n2n1ratio'] = n2n1ratio
+            self.profile['departure_from_consensus'] = departure_from_consensus
