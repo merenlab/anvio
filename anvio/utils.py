@@ -584,8 +584,8 @@ def is_ascii_only(text):
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
-                                        column_mapping = None, indexing_field = 0, assign_none_for_missing = False,\
-                                        separator = '\t', no_header = False, ascii_only = False):
+                                        column_mapping = None, indexing_field = 0, separator = '\t', no_header = False, \
+                                        ascii_only = False, assign_none_for_missing = False, none_value = None):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
@@ -680,7 +680,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                                         as the entry %s does not appear to be in the file." % (file_path, entry)
                 else:
                     for key in keys:
-                        dict_to_append[entry][key] = None
+                        dict_to_append[entry][key] = none_value
             else:
                 for key in keys:
                     dict_to_append[entry][key] = d[entry][key]
