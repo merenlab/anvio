@@ -62,7 +62,7 @@ function checkAvailability(which) {
 
 function performRegistration() {
     // first check if all required fields are filled out
-    var required = [ 'Email', 'Firstname', 'Lastname', 'Login', 'Password' ];
+    var required = [ 'Email', 'Firstname', 'Lastname', 'Login', 'Password', 'RepeatPassword' ];
     for (var i=0; i<required.length; i++) {
 	if (! document.getElementById('input'+required[i]).value) {
 	    $('#input'+required[i]).focus();
@@ -74,6 +74,12 @@ function performRegistration() {
     // check if email has the required format
     if (! document.getElementById('inputEmail').value.match(/\@/)) {
 	alert('invalid email address');
+	return;
+    }
+
+    // check if password and password repeat match
+    if (document.getElementById('inputPassword').value !== document.getElementById('inputRepeatPassword').value) {
+	alert('password and repeat password do not match');
 	return;
     }
     
