@@ -42,7 +42,7 @@ def main(args):
         raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.profile_db
 
     if args.output_dir:
-        filesnpaths.gen_output_dir(args.output_dir)
+        filesnpaths.gen_output_directory(args.output_dir)
     else:
         args.output_dir = os.path.dirname(os.path.abspath(args.profile_db))
 

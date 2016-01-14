@@ -401,11 +401,12 @@ function drawSamplesLayers(settings) {
 
         samples_layer_boundaries.push([start,end]);
     }
-
-    var backgrounds_done = false;
     var gradient_done = false;
 
     var sample_xy = {};
+
+    var samples_start = -1;
+    var samples_end = -1;
 
     for (var j = 0; j < settings['layer-order'].length; j++) {
         var layer_index = j+1;
@@ -419,6 +420,11 @@ function drawSamplesLayers(settings) {
 
         if (!(sample_name in samples_information_dict)) // skip if not sample
             continue;
+
+        // update start once
+        if (samples_start == -1)
+            samples_start = layer_index;
+        samples_end = layer_index;
 
         if(!gradient_done)
         {
@@ -461,41 +467,6 @@ function drawSamplesLayers(settings) {
                     // bar
                     var size = ratio * samples_layer_settings['height'];
                     var color = samples_layer_settings['color'];
-
-                    if (!backgrounds_done)
-                    {
-                        var start = samples_layer_boundaries[i][0];
-                        var end   = samples_layer_boundaries[i][1];
-
-                        drawPhylogramRectangle('samples',
-                            'samples_background',
-                            layer_boundaries[layer_index][0],
-                            0 - end + (end - start) / 2,
-                            end - start,
-                            total_radius - layer_boundaries[layer_index][0],
-                            samples_layer_settings['color'],
-                            0.2,
-                            false);
-                    }
-                }
-                
-                if (!backgrounds_done)
-                {
-                    drawText('samples', {
-                        'x': total_radius + 20,
-                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-                    }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color']);
-                    
-                    drawText('samples', {
-                        'x': total_radius + 10,
-                        'y': 0 - samples_layer_boundaries[i][1]
-                    }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-before-edge');
-
-                    drawText('samples', {
-                        'x': total_radius + 10,
-                        'y': 0 - samples_layer_boundaries[i][0]
-                    }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-after-edge');
-
                 }
 
                 var start = layer_boundaries[layer_index][0];
@@ -539,18 +510,9 @@ function drawSamplesLayers(settings) {
 
                     offset = offset + size;
                 }
-
-                if (!backgrounds_done)
-                {
-                    drawText('samples', {
-                        'x': total_radius + 20,
-                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-                    }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
-                }
             }
             else
             {
-
                 // categorical
                 var value = _samples_information_dict[sample_name][samples_layer_name];
 
@@ -574,19 +536,67 @@ function drawSamplesLayers(settings) {
 
                 rect.setAttribute('sample-name', sample_name);
                 rect.setAttribute('layer-name', samples_layer_name);
-                
-                if (!backgrounds_done)
-                {
-                    drawText('samples', {
-                        'x': total_radius + 20,
-                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-                    }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color']);
-                }
             }
         }
-
-        backgrounds_done = true;
     }
+
+    // draw sample backgrounds and titles.
+    for (var i=0; i < settings['samples-layer-order'].length; i++)
+    {
+        var samples_layer_name     = settings['samples-layer-order'][i];
+        var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+        var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
+
+        if (samples_layer_settings['data-type'] == 'numeric')
+        {
+            if (samples_layer_settings['type'] != 'intensity')
+            {
+                var start = samples_layer_boundaries[i][0];
+                var end   = samples_layer_boundaries[i][1];
+
+                drawPhylogramRectangle('samples',
+                    'samples_background',
+                    layer_boundaries[samples_start][0],
+                    0 - end + (end - start) / 2,
+                    end - start,
+                    layer_boundaries[samples_end][1] - layer_boundaries[samples_start][0],
+                    samples_layer_settings['color'],
+                    0.2,
+                    false);
+            }
+
+            drawText('samples', {
+                'x': layer_boundaries[samples_end][1] + 20,
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color']);
+
+            drawText('samples', {
+                'x': layer_boundaries[samples_end][1] + 20,
+                'y': 0 - samples_layer_boundaries[i][1]
+            }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-before-edge');
+
+            drawText('samples', {
+                'x': layer_boundaries[samples_end][1] + 20,
+                'y': 0 - samples_layer_boundaries[i][0]
+            }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-after-edge');
+
+        }
+        else if (samples_layer_settings['data-type'] == 'stack-bar')
+        {
+            drawText('samples', {
+                'x': layer_boundaries[samples_end][1] + 20,
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+            }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
+        }
+        else
+        {
+            drawText('samples', {
+                'x': layer_boundaries[samples_end][1] + 20,
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
+            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color']);   
+        }
+    }
+
 
     drawSamplesTree(settings, sample_xy);
 }
