@@ -72,10 +72,19 @@ function checkCookie () {
     	    success : function(data) {
 		if (data.status == 'ok') {
 		    window.user = data.data;
-		    initContent();
+		} else {
+		    try {
+			noUser();
+		    } catch (e) {
+			// ignore if the noUser function is not implemented on this page
+		    }
 		}
+		initContent();
     	    }
 	});
+    } else {
+	user = null;
+	initContent();
     }
 }
 
