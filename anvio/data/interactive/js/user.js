@@ -37,6 +37,10 @@ function initContent () {
     });
 }
 
+function noUser() {
+    window.location = 'home.html';
+}
+
 function showUserdata () {
     // username and logout button
     var html = [];
@@ -106,6 +110,12 @@ function showProjectSettings (index) {
     } else {
 	html += "<p>This project has not been shared</p>"
     }
+    html += "<h4 style='margin-top: 0px'>Files</h4><table class='table'><tr><th>type</th><th>size</th><th>created</th><th>view</th></tr>";
+    var fnames = Object.keys(project.files).sort();
+    for (var i=0; i<fnames.length; i++) {
+	html += "<tr><td>"+fnames[i]+"</td><td>"+project.files[fnames[i]].size.byteSize()+"</td><td>"+project.files[fnames[i]].created+"</td><td><button class='btn btn-sm btn-default' onclick='$(\"#pfc"+i+"\").toggle();'><span class='glyphicon glyphicon-list-alt'></span></button></td></tr><tr style='display: none;' id='pfc"+i+"'><td colspan=4><pre style='white-space: pre-wrap'>"+project.files[fnames[i]].top+"...</pre></td></tr>";
+    }
+    html += "</table>";
     
     document.getElementById('projectSettingsContent').innerHTML = html;
     $('#modProjectSettings').modal('show');
@@ -164,6 +174,16 @@ function removeProjectView (pindex, vindex) {
 
 function addDataToProject (index) {
     window.selectedProject = index;
+    var html = '';
+    var fileNames = ['additionalFile', 'dataFile', 'treeFile', 'fastaFile', 'samplesOrderFile', 'samplesInformationFile'];
+    for (var i=0; i<fileNames.length; i++) {
+	html += '<option value="'+fileNames[i]+'">'+ fileNames[i];
+	if (user.projects[index].files[fileNames[i]]) {
+	    html += ' (replace version from '+user.projects[index].files[fileNames[i]].created+')';
+	}
+	html += '</option>';
+    }
+    document.getElementById('additionalFileType').innerHTML = html;
     $('#modUploadAdditionalData').modal('show');
 };
 
@@ -308,15 +328,12 @@ function uploadAdditional () {
     var index = window.selectedProject;
     var formData = new FormData();
     if ($('#additionalFileSelect')[0].files.length) {
-	formData.append('additionalFile', $('#additionalFileSelect')[0].files[0]);
+	formData.append('uploadFile', $('#additionalFileSelect')[0].files[0]);
 	formData.append('project', user.projects[index].name);
+	formData.append('type', $('#additionalFileType')[0].options[$('#additionalFileType')[0].selectedIndex].value);
     } else {
 	alert('You must provide a file');
 	return;
-    }
-
-    if (! confirm("WARNING: If you already provided additional data it will be overwritten.\nDo you still want to proceed?")) {
-	return false;
     }
     
     $('#modUploadAdditionalData').modal('hide');
@@ -364,3 +381,41 @@ function dataFileUploadProgress (event) {
 function uploadFileSelected (which) {
     $('#'+which+'FileName')[0].value = $('#'+which+'FileSelect')[0].files[0].name || "";
 }
+
+Number.prototype.byteSize = function() {
+    var size = this;
+    var magnitude = "B";
+    if (size > 999) {
+	size = size / 1024;
+	magnitude = "KB";
+    }
+    if (size > 999) {
+	size = size / 1024;
+	magnitude = "MB";
+    }
+    if (size > 999) {
+	size = size / 1024;
+	magnitude = "GB";
+    }
+    if (size > 999) {
+	size = size / 1024;
+	magnitude = "TB";
+    }
+    if (size > 999) {
+	size = size / 1024;
+	magnitude = "PB";
+    }
+    size = size.toFixed(1);
+    
+    size += '';
+    var x = size.split('.');
+    var x1 = x[0];
+    var x2 = x.length > 1 ? '.' + x[1] : '';
+    var rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+	x1 = x1.replace(rgx, '$1' + ',' + '$2');
+    }
+    size =  x1 + x2;
+    
+    return size + " " + magnitude;
+};

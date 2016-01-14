@@ -222,7 +222,7 @@ def receive_upload_file(request, userdb, response):
 
 def receive_additional_upload_file(request, userdb, response):
     set_default_headers(response)
-    if not request.files.get('additionalFile'):
+    if not request.files.get('uploadFile'):
         return '{ "status": "error", "message": "you did not upload a file", "data": null }'
 
     if not request.forms.get('project'):
@@ -236,19 +236,32 @@ def receive_additional_upload_file(request, userdb, response):
 
     project = userdb.get_project(user, request.forms.get('project'))
 
+    if not project['status'] == 'ok':
+        return json.dumps(project)
+    
     basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['data']['path']+'/'
 
-    if os.path.isfile(basepath + 'additionalFile'):
-        os.remove(basepath + 'additionalFile')
+    fileType = 'additionalFile'
+    validFileType = { 'additionalFile': True, 'dataFile': True, 'treeFile': True, 'fastaFile': True, 'samplesOrderFile': True, 'samplesInformationFile': True }
+    if request.forms.get('type'):
+        fileType = request.forms.get('type')
+        if not validFileType[fileType]:
+            return '{ "status": "error", "message": "Invalid file type selected for upload", "data": null }'
+
+    message = 'added'
+    filePath = basepath + fileType
+    if os.path.isfile(filePath):
+        os.remove(filePath)
+        message = 'updated'
         
-    request.files.get('additionalFile').save(basepath + 'additionalFile')
+    request.files.get('uploadFile').save(filePath)
         
-    return '{ "status": "ok", "message": "file added", "data": null }'
+    return '{ "status": "ok", "message": "file '+message+'", "data": null }'
 
 def admin_data(request, userdb, response):
     set_default_headers(response)
     user = get_user(request, userdb, response)
-    if user['status'] == 'ok':
+    if user and user['status'] == 'ok':
         if user['data']['clearance'] == 'admin':
             filterhash = {}
             fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date', 'visit' ]
@@ -273,7 +286,7 @@ def admin_data(request, userdb, response):
         else:
             return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
     else:
-        return json.dumps(user)
+        return '{ "status": "error", "message": "You need to be logged in to view this data", "data": null }'
 
     
 def admin_project_data(request, userdb, response):

@@ -46,7 +46,7 @@ body {
 }
 
 .jumbotron {
-    //background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
-    background-image: url('../images/snowflakes.gif');
+    background-image: linear-gradient(to bottom, #223d7c 0px, #225499 100%);
+    //background-image: url('../images/snowflakes.gif');
     background-size: 100%;
 }

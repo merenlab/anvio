@@ -183,18 +183,30 @@ class UserMGMT:
 
         if verbose:
             # get all user project names
-            projects = self.users_db.fetchall("SELECT name, description, rowid FROM projects WHERE user=?", (user['login'], ))
+            projects = self.users_db.fetchall("SELECT name, description, path, rowid FROM projects WHERE user=?", (user['login'], ))
 
             user_projects = []
             for project in projects:
-                user_projects.append({ "name": project['name'], "description": project["description"], "views": [], "metadata": {} })
+                user_projects.append({ "name": project['name'], "description": project["description"], "views": [], "metadata": {}, "files": {} })
                 views = self.users_db.fetchall("SELECT name, public, token, user FROM views WHERE project=?", (project['name'], ))
                 for r in views:
                     user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token'], "user": r["user"]})
                 metadata = self.users_db.fetchall("SELECT attribute, value FROM metadata WHERE project=?", (project['rowid'], ))
                 for r in metadata:
                     user_projects[len(user_projects) - 1]["metadata"][r["attribute"]] = r["value"]
-                    
+
+                # get information on the project files
+                fileNames = ['additionalFile', 'dataFile', 'treeFile', 'fastaFile', 'samplesOrderFile', 'samplesInformationFile']
+                path = self.users_data_dir + '/userdata/' + user["path"] + '/' + project['path'] + '/'
+                for fn in fileNames:
+                    fname = path + fn
+                    if os.path.isfile(fname):
+                        stats = os.stat(fname)
+                        head = ""
+                        with open(fname) as cfile:
+                            head = cfile.read(1024)
+                        user_projects[len(user_projects) - 1]['files'][fn] = { 'top': head, 'size': stats.st_size, 'created': datetime.fromtimestamp(stats.st_mtime).isoformat() }
+                
             user['projects'] = user_projects
 
         # remove sensitive data
@@ -577,16 +589,19 @@ class UserMGMT:
 
         if not projectname:
             return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
-
+        
         if user.has_key('status'):
             if user['status'] == 'ok':
                 user = user['data']
             else:
                 return user
         
-        project = self.users_db.execute("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
 
-        return { 'status': 'ok', 'message': None, 'data': project }
+        if project:
+            return { 'status': 'ok', 'message': None, 'data': project }
+        else:
+            return { 'status': 'error', 'message': "project not found", 'data': None }
         
 
     def set_project(self, user, pname):
