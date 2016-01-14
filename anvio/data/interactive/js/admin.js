@@ -34,6 +34,10 @@ function initContent() {
     }
 }
 
+function noUser() {
+    window.location = 'home.html';
+}
+
 function updateTable(id, key, value) {
     var table = tables[id];
     if (key) {
