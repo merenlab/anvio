@@ -134,15 +134,23 @@
         <div class="modal-content">
           <div class="modal-header">
             <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-            <h4 class="modal-title">Upload additional data</h4>
+            <h4 class="modal-title">Upload additional / replacement data</h4>
           </div>
 	  
           <div class="modal-body">
             <input type="file" style="display: none;" id="additionalFileSelect" onchange="uploadFileSelected('additional');">
 	    
-	    <p>Upload additional display data.</p>
+	    <p>Select the type of data you want to add / replace and the file to upload. Note that existing files in your project will be overwritten. This cannot be undone.</p>
 	    
 	    <form class="form-horizontal" id="uploadAdditionalDataForm">
+	      <div class="form-group">
+		<label class="col-sm-2 control-label" for="additionalFileType">file type</label>
+		<div class="col-sm-10">
+		  <div class="input-group">
+		    <select id="additionalFileType"></select>
+		  </div>
+		</div>
+	      </div>
 	      <div class="form-group">
 		<label class="col-sm-2 control-label" for="additionalFileName">data file</label>
 		<div class="col-sm-10">
