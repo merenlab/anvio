@@ -103,7 +103,7 @@ class AnvioTestCase(unittest.TestCase):
         self.browser.find_element_by_xpath('//button[@title="delete project"]').click()
         WebDriverWait(self.browser, 5).until(EC.alert_is_present())
         Alert(self.browser).accept()
-        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
+        WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
 
         basePath = os.getcwd() + "/sandbox/files_for_manual_interactive/"
         self.browser.find_element_by_xpath('//button[@title="upload data files"]').click()
@@ -117,7 +117,26 @@ class AnvioTestCase(unittest.TestCase):
         self.browser.find_element_by_id('samplesInformationFileSelect').send_keys(basePath+'samples-information.txt')
         self.browser.find_element_by_id('uploadFiles').click()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 't_proj_01')))
-        self.assertTrue(self.browser.find_element_by_link_text('t_proj_01'))        
+        self.assertTrue(self.browser.find_element_by_link_text('t_proj_01'))
         
+        
+    def testAddAdditionalDataFile(self):
+        self.browser.get('http://'+self.URL)
+        self.browser.find_element_by_id('login').send_keys('tobi')
+        self.browser.find_element_by_id('password').send_keys('test')
+        self.browser.find_element_by_id('loginButton').click()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@title="add data"]')))
+        self.browser.find_element_by_xpath('//button[@title="add data"]').click()
+        WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.ID, 'additionalFileType')))
+
+        basePath = os.getcwd() + "/sandbox/files_for_manual_interactive/"
+        self.browser.find_element_by_id('additionalFileSelect').send_keys(basePath+'additional_view_data.txt')
+        self.browser.find_element_by_id('uploadAdditional').click()
+        WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="project settings"]')))
+        self.browser.find_element_by_xpath('//button[@title="project settings"]').click()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'pfc3')))
+        self.assertTrue(self.browser.find_element_by_id('pfc3'))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
