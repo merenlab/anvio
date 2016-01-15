@@ -363,6 +363,7 @@ function uploadAdditional () {
 	    uploadProgress = null;
 	    if (data.status == 'ok') {
 		toastr.info(data.message);
+		document.location.reload(true);
 	    } else {
 		toastr.error(data.message);
 	    }
