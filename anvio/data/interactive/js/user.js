@@ -113,7 +113,7 @@ function showProjectSettings (index) {
     html += "<h4 style='margin-top: 0px'>Files</h4><table class='table'><tr><th>type</th><th>size</th><th>created</th><th>view</th></tr>";
     var fnames = Object.keys(project.files).sort();
     for (var i=0; i<fnames.length; i++) {
-	html += "<tr><td>"+fnames[i]+"</td><td>"+project.files[fnames[i]].size.byteSize()+"</td><td>"+project.files[fnames[i]].created+"</td><td><button class='btn btn-sm btn-default' onclick='$(\"#pfc"+i+"\").toggle();'><span class='glyphicon glyphicon-list-alt'></span></button></td></tr><tr style='display: none;' id='pfc"+i+"'><td colspan=4><pre style='white-space: pre-wrap'>"+project.files[fnames[i]].top+"...</pre></td></tr>";
+	html += "<tr><td>"+fnames[i]+"</td><td>"+project.files[fnames[i]].size.byteSize()+"</td><td>"+project.files[fnames[i]].created+"</td><td><button class='btn btn-sm btn-default' onclick='$(\"#pfc"+i+"\").toggle();'><span class='glyphicon glyphicon-list-alt'></span></button></td></tr><tr style='display: none;' id='pfc"+i+"'><td colspan=4><pre style='white-space: pre-wrap'>"+project.files[fnames[i]].top+(project.files[fnames[i]].size > 1024 ? "..." : "")+"</pre></td></tr>";
     }
     html += "</table>";
     
@@ -363,6 +363,7 @@ function uploadAdditional () {
 	    uploadProgress = null;
 	    if (data.status == 'ok') {
 		toastr.info(data.message);
+		document.location.reload(true);
 	    } else {
 		toastr.error(data.message);
 	    }
@@ -379,7 +380,43 @@ function dataFileUploadProgress (event) {
 }
 
 function uploadFileSelected (which) {
-    $('#'+which+'FileName')[0].value = $('#'+which+'FileSelect')[0].files[0].name || "";
+    // validate file contents
+    var fileReader = new FileReader();
+    var file = $('#'+which+'FileSelect')[0].files[0];
+    fileReader.onerror = function (error) {
+	toastr.error('the file could not be opened');
+    }
+    fileReader.onload = function(e) {
+	var fileContent = e.target.result;
+	if (which == 'tree') {
+	    if (isNewickTree(fileContent)) {
+		toastr.info('valid newick tree file');
+		$('#'+which+'FileName')[0].value = file.name;
+	    } else {
+		toastr.error('file is not in newick tree format');
+		$('#'+which+'FileName')[0].value = "";
+	    }
+	} else if (which == 'data') {
+	    if (isTabDelimitedFile(fileContent)) {
+		toastr.info('valid data file');
+		$('#'+which+'FileName')[0].value = file.name;
+	    } else {
+		toastr.error('invalid data file');
+		$('#'+which+'FileName')[0].value = "";
+	    }
+	} else if (which == 'fasta') {
+	    if (isFastaFile(fileContent)) {
+		toastr.info('valid FASTA file');
+		$('#'+which+'FileName')[0].value = file.name;
+	    } else {
+		toastr.error('invalid FASTA file');
+		$('#'+which+'FileName')[0].value = "";
+	    }
+	} else {
+	    $('#'+which+'FileName')[0].value = file.name;
+	}
+    }
+    fileReader.readAsText(file);
 }
 
 Number.prototype.byteSize = function() {
@@ -418,4 +455,107 @@ Number.prototype.byteSize = function() {
     size =  x1 + x2;
     
     return size + " " + magnitude;
+};
+
+function isTabDelimitedFile (string) {
+    try {
+	var lines = string.split(/\n/);
+	if (! lines.length) {
+	    lines = string.split(/\r/);
+	}
+	if (! lines.length) {
+	    return false;
+	}
+	var numcols = lines[0].split(/\t/).length;
+	if (numcols < 2) {
+	    toastr.error('data files must have at least two columns');
+	    return false;
+	}
+	for (var i=1; i<lines.length - 1; i++) {
+	    var nc = lines[i].split(/\t/).length;
+	    if (nc != numcols) {
+		toastr.error('invalid number of columns in line '+(i+1)+' ('+nc+'), should be '+numcols);
+		return false;
+	    }
+	}
+	return true;
+    } catch (error) {
+	return false;
+    }
+}
+
+function isFastaFile (string) {
+    try {
+	var lines = string.split(/\n/);
+	if (! lines.length) {
+	    lines = string.split(/\r/);
+	}
+	if (! lines.length) {
+	    return false;
+	}
+	for (var i=0; i<lines.length; i++) {
+	    if (i==0) {
+		if (! lines[i].match(/^>[\w\d\s]+$/)) {
+		    toastr.error('no identifier in line 1');
+		    return false;
+		}
+	    } else {
+		if (! (lines[i].match(/^[acgturykmswbdhvnxACGTURYKMSWBDHVNX\*\-\n\r\s]*$/) || lines[i].match(/^>[\w\d\s]+$/))) {
+		    toastr.error('invalid FASTA in line '+(i+1)+':\n"'+lines[i]+'"');
+		    return false;
+		}
+		if (lines[i].match(/^>[\w\d\s]+$/) && lines[i - 1].match(/^>[\w\d\s]+$/)) {
+		    toastr.error('no sequence for ID '+lines[i-1]+' in line '+(i+1));
+		    return false;
+		}
+	    }
+	}
+	return true;
+    } catch (error) {
+	return false;
+    }
+}
+
+function isNewickTree (string) {
+    var parents = [];
+    var tree = {};
+    try {
+	if (string.match(/^\(/)) {
+	    var items = string.split(/\s*(;|\(|\)|,|:)\s*/);
+	    for (var i=0; i<items.length; i++) {
+		switch (items[i]) {
+		case '(':
+		    var subtree = {};
+		    tree.children = [subtree];
+		    parents.push(tree);
+		    tree = subtree;
+		    break;
+		case ',':
+		    var subtree = {};
+		    parents[parents.length-1].children.push(subtree);
+		    tree = subtree;
+		    break;
+		case ')':
+		    tree = parents.pop();
+		    break;
+		case ':':
+		    break;
+		default:
+		    var x = items[i-1];
+		    if (x == ')' || x == '(' || x == ',') {
+			tree.name = items[i];
+		    } else if (x == ':') {
+			tree.value = parseFloat(items[i]);
+		    }
+		}
+	    }
+	}
+    } catch (error) {
+	// this is not newick format
+    }
+    if (tree.hasOwnProperty('name') && tree.hasOwnProperty('children')) {
+	return true;
+    } else {
+	return false;
+    }
 };
