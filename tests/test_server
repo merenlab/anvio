@@ -135,7 +135,7 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="project settings"]')))
         self.browser.find_element_by_xpath('//button[@title="project settings"]').click()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'pfc3')))
-        self.assertTrue(self.browser.find_element_by_id('pfc3'))        
+        self.assertTrue(self.browser.find_element_by_id('pfc3'))
 
 
 if __name__ == '__main__':
