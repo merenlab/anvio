@@ -1,5 +1,5 @@
 #!/bin/bash
-source 00.sh
+source ../00.sh
 set -e
 
 get_random_string() {
@@ -66,7 +66,7 @@ EOF
 
 
 
-cd sandbox
+cd ../sandbox
 
 echo $x
 
@@ -135,14 +135,14 @@ then
     echo "
         SMTP config file is missing! Therefore this script will run the server
         without an SMTP setup. If you would like to run *with* SMTP support,
-        please go into the sandbox/ directory, create a copy of the file
+        please go into the ../sandbox/ directory, create a copy of the file
         'smtp_config_sample.ini' as 'smtp_config.ini' and edit this copy
         according to your SMTP settings before re-running this script.
         "
 
-    anvi-server -U test-output/users-data
+    anvi-server -U test-output/users-data -P 8080
 else
-    anvi-server -E smtp_config.ini -U test-output/users-data
+    anvi-server -E smtp_config.ini -U test-output/users-data -P 8080
 fi
 
 
