@@ -44,7 +44,7 @@ then
     ../misc/bowtie_batch_single_fasta.sh test-output/short_reads.fa test-output/SNV-testing test-output/single_contig
     
     INFO "Generating anvi'o contigs database ..."
-    anvi-gen-contigs-database -f single_contig.fa -o test-output/single_contig.db -L 500
+    anvi-gen-contigs-database -f single_contig.fa -o test-output/single_contig.db -L 60
     
     INFO "Profiling the BAM file ..."
     anvi-profile -i test-output/SNV-testing.bam -c test-output/single_contig.db -o test-output/SNV-testing -M 0 --cluster
