@@ -159,7 +159,8 @@ class Auxiliary:
         ratios = []
 
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
-            if pileupcolumn.pos < self.split.start or pileupcolumn.pos >= self.split.end:
+            pos_in_contig = pileupcolumn.pos
+            if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
                 continue
 
             coverage = pileupcolumn.n
@@ -168,7 +169,7 @@ class Auxiliary:
 
             column = ''.join([pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip])
 
-            pos_in_split = pileupcolumn.pos - self.split.start
+            pos_in_split = pos_in_contig - self.split.start
             consensus_base_in_contig = self.split.sequence[pos_in_split]
 
             cp = ColumnProfile(column,
@@ -180,7 +181,8 @@ class Auxiliary:
 
             if cp['departure_from_consensus']:
                 ratios.append((cp['departure_from_consensus'], cp['coverage']), )
-                self.column_profile[pileupcolumn.pos] = cp
+                cp['pos_in_contig'] = pos_in_contig
+                self.column_profile[pos_in_contig] = cp
 
         # variation density = number of SNPs per kb
         self.variation_density = len(ratios) * 1000.0 / self.split.length
