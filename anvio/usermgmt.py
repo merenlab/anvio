@@ -855,12 +855,14 @@ class UserMGMT:
         args.title = title
         args.read_only = read_only
 
-        F = lambda f: os.path.join(base_path, f) if os.path.exists(os.path.join(base_path, f)) else None
+        J = lambda f: os.path.join(base_path, f)
+        F = lambda f: J(f) if os.path.exists(J(f)) else None
+
         args.tree       = F('treeFile')
         args.fasta_file = F('fastaFile')
         args.view_data  = F('dataFile')
-        args.profile_db = F('profile.db')
         args.samples_db = F('samples.db')
+        args.profile_db = J('profile.db')
 
         args.samples_information_db = F('samples.db')
         args.additional_layers      = F('additionalFile')
