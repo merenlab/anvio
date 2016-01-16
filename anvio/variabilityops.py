@@ -531,10 +531,6 @@ class VariablePositionsEngine:
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
-        # FIXME: THIS HAS TO GO INTO THE TABLE THIS WAY
-        for e in self.variable_positions_table:
-            self.variable_positions_table[e]['competing_nts'] = ''.join(sorted(self.variable_positions_table[e]['competing_nts']))
-
         utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, self.args.output_file, new_structure)
         self.progress.end()
 
