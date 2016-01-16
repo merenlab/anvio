@@ -63,6 +63,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.split_names_ordered = None
         self.additional_layers = None
+        self.auxiliary_data_available = False
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
@@ -168,9 +169,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                 existing database, as anvi'o will generate an empty one for your if there is no\
                                 profile database."
 
-        if (not self.fasta_file) or (not self.view_data_path) or (not self.tree):
+        if (not self.view_data_path) or (not self.tree):
             raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
-                                each of '-f', '-d', and '-t' parameters. Please see the help menu for more info."
+                                each of the '-d', and '-t' parameters. Please see the documentation for help."
 
         if self.view:
             raise ConfigError, "You can't use '--view' parameter when you are running the interactive interface\
@@ -182,9 +183,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.show_states:
             raise ConfigError, "Sorry, there are no states to show in manual mode :/"
 
+        filesnpaths.is_file_exists(self.tree)
+        filesnpaths.is_proper_newick(self.tree)
 
         view_data_path = os.path.abspath(self.view_data_path)
-        self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file)
+        self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
         self.p_meta['merged'] = True
@@ -212,14 +215,25 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # we assume that the sample names are the header of the view data, so we might as well set it up: 
         self.p_meta['samples'] = self.views[self.default_view]['header']
 
-        filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
-        self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
-
-        # setup a mock splits_basic_info dict
+        # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
+        # otherwise we will leave them empty
         self.splits_basic_info = {}
-        for split_id in self.split_names_ordered:
-            self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
-                                                'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
+        self.split_sequences = None
+        if self.p_meta['splits_fasta']:
+            filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
+            self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+
+            names_missing_in_FASTA = set(self.split_names_ordered) - set(self.split_sequences.keys())
+            num_names_missing_in_FASTA = len(names_missing_in_FASTA)
+            if num_names_missing_in_FASTA:
+                raise ConfigError, 'Some of the names in your view data does not have corresponding entries in the\
+                                    FASTA file you provided. Here is an example to one of those %d names that occur\
+                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop())
+
+            # setup a mock splits_basic_info dict
+            for split_id in self.split_names_ordered:
+                self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
+                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
         # create a new, empty profile database for ad hoc operations
         if not os.path.exists(self.profile_db_path):
@@ -344,10 +358,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         splits_in_tree = set(self.split_names_ordered)
         splits_in_view_data = set(self.views[self.default_view]['dict'].keys())
-        splits_in_database = set(self.split_sequences)
+        splits_in_database = set(self.split_sequences) if self.split_sequences else None
 
         splits_in_tree_but_not_in_view_data = splits_in_tree - splits_in_view_data
-        splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database
+        splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database if splits_in_database else set([])
 
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
@@ -423,9 +437,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             if len(self.genes_in_splits_summary_dict):
                 json_header.extend(self.genes_in_splits_summary_headers[1:])
 
-            # (4) then add length and GC content
-            basic_info_headers = ['length', 'gc_content']
-            json_header.extend(basic_info_headers)
+            # (4) then add length and GC content IF we have sequences available
+            if self.splits_basic_info:
+                basic_info_headers = ['length', 'gc_content']
+                json_header.extend(basic_info_headers)
 
             # (5) then add the view!
             json_header.extend(view_headers)
@@ -454,7 +469,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                     json_entry.extend([self.genes_in_splits_summary_dict[split_name][header] for header in self.genes_in_splits_summary_headers[1:]])
 
                 # (4)
-                json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
+                if self.splits_basic_info:
+                    json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
                 # (5) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
