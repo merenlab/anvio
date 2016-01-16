@@ -217,6 +217,11 @@ def receive_upload_file(request, userdb, response):
         sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
         sample.create(samplesInfoPath, samplesOrderPath)
 
+    # all files are uploaded, do a sanity check
+    retval = userdb.get_the_interactive_object(basepath, read_only = False)
+    if not retval['status'] == 'ok':
+        return json.dumps(retval)
+
     redirect('/app/index.html')
 
 
