@@ -103,7 +103,6 @@ class AnvioTestCase(unittest.TestCase):
         self.browser.find_element_by_id('uploadTitle').send_keys('test_project_minimal')
         self.browser.find_element_by_id('uploadDescription').send_keys('description of test project')
         self.browser.find_element_by_id('treeFileSelect').send_keys(basePath+'tree.txt')
-        self.browser.find_element_by_id('fastaFileSelect').send_keys(basePath+'fasta.fa')
         self.browser.find_element_by_id('dataFileSelect').send_keys(basePath+'view_data.txt')
         self.browser.find_element_by_id('uploadFiles').click()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 'test_project_minimal')))
