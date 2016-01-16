@@ -187,16 +187,14 @@ def receive_upload_file(request, userdb, response):
 
     # save the uploaded files to the project directory
     basepath = userdb.users_data_dir + '/userdata/'+user['data']['path']+'/'+project['path']+'/'
-    
+
+
+    # tree and data fiels are mandatory
     request.files.get('treeFile').save(basepath + 'treeFile')
+    request.files.get('dataFile').save(basepath + 'dataFile')
+
     if request.files.get('fastaFile'):
         request.files.get('fastaFile').save(basepath + 'fastaFile')
-    else:
-        open(basepath + 'fastaFile', 'a').close()
-    if request.files.get('dataFile'):
-        request.files.get('dataFile').save(basepath + 'dataFile')
-    else:
-        open(basepath + 'dataFile', 'a').close()
 
     # check if we have samples information
     createSamplesDB = False
