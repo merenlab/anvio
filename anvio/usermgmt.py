@@ -144,6 +144,7 @@ class UsersDB:
         self.conn.close()
 
 
+
 class UserMGMT:
     def __init__(self, args, client_version, ignore_version=False, mailer = None, run = run, progress = progress):
         self.args = args
@@ -346,6 +347,7 @@ class UserMGMT:
         self.mailer.send(email, messageSubject, messageText)
 
         return { 'status': 'ok', 'message': "User password reset, message sent to %s" % email, 'data': None }
+
 
     def change_password(self, user, password):
         if not user:
@@ -747,6 +749,7 @@ class UserMGMT:
     ######################################
     # VIEWS
     ######################################
+
     def get_view(self, login, vname, token=None):
         # get the view
         view = self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (login, vname, ))
@@ -840,11 +843,34 @@ class UserMGMT:
         self.users_db.execute("INSERT INTO views (name, user, project, public, token) values (?, ?, ?, ?, ?)", (vname, user['login'], pname, public, token, ))
 
         return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'user': user['login'], 'name': vname, 'token': token, 'public': public } }
-    
+
 
     ######################################
     # REQUEST SECTION
     ######################################
+
+    def get_the_interactive_object(self, base_path, title = "Unknown Title", read_only = True):
+        """Helper function to get an interactive object that is ready to be launched"""
+        args = copy.deepcopy(self.args)
+        args.title = title
+        args.read_only = read_only
+
+        F = lambda f: os.path.join(base_path, f) if os.path.exists(os.path.join(base_path, f)) else None
+        args.tree       = F('treeFile')
+        args.fasta_file = F('fastaFile')
+        args.view_data  = F('dataFile')
+        args.profile_db = F('profile.db')
+        args.samples_db = F('samples.db')
+
+        args.samples_information_db = F('samples.db')
+        args.additional_layers      = F('additionalFile')
+
+        try:
+            d = interactive.InputHandler(args)
+            return { "status": "ok", "message": None, "data": {"d": d, "args": args}}
+        except Exception, e:
+            return { "status": "error", "message": e.e, "data": None }
+
 
     def check_user(self, request):
         # check if we have a cookie
@@ -855,32 +881,16 @@ class UserMGMT:
             if retval['status'] == 'ok':
                 user = retval['data']
                 if user.has_key('project_path'):
-                    basepath = self.users_data_dir + '/userdata/' + user['path'] + '/' + user['project_path'] + '/'
-                    args = copy.deepcopy(self.args)
-                    args.tree = basepath + 'treeFile'
-                    args.fasta_file = basepath + 'fastaFile'
-                    args.view_data = basepath + 'dataFile'
-                    args.title = user['project']
-                    args.read_only = False
-                    args.profile_db = basepath + 'profile.db'
-                    args.samples_db = basepath + 'samples.db'
-                    args.additional_layers = None
-                    addFile = basepath + 'additionalFile'
-                    if os.path.isfile(addFile):
-                        args.additional_layers = addFile
+                    basepath = os.path.join(self.users_data_dir, 'userdata', user['path'], user['project_path'])
 
-                    samples_information_db_path = os.path.join(basepath, 'samples.db')
-                    if os.path.exists(samples_information_db_path):
-                        args.samples_information_db = samples_information_db_path
-
-                    d = interactive.InputHandler(args)
-                    return { "status": "ok", "message": None, "data": { "args": args, "d": d } }
+                    return self.get_the_interactive_object(basepath, title = user['project'], read_only = False)
                 else:
                     return { "status": "error", "message": "user has no project", "data": None }
             else:
                 return { "status": "error", "message": "session invalid, please relog", "data": None }
         else:
             return { "status": "ok", "message": "no cookie", "data": None }
+
 
     def check_view(self, request):
         if request.get_cookie('anvioView'):
@@ -893,27 +903,9 @@ class UserMGMT:
                 return view
             else:
                 view = view["data"]
-                args = self.args
-                basepath = self.users_data_dir + '/userdata/' + view['path'] + '/'
-                args.tree = basepath + 'treeFile'
-                args.fasta_file = basepath + 'fastaFile'
-                args.view_data = basepath + 'dataFile'
-                args.title = view['project']
-                args.read_only = True
-                args.profile_db = basepath + 'profile.db'
-                args.samples_db = basepath + 'samples.db'
-                args.additional_layers = None
-                addFile = basepath + 'additionalFile'
-                if os.path.isfile(addFile):
-                    args.additional_layers = addFile
+                basepath = os.path.join(self.users_data_dir, 'userdata', view['path'])
 
-                samples_information_db_path = os.path.join(basepath, 'samples.db')
-                if os.path.exists(samples_information_db_path):
-                    args.samples_information_db = samples_information_db_path
-
-                d = interactive.InputHandler(args)
-
-                return { "status": "ok", "message": None, "data": { "args": args, "d": d } }
+                return self.get_the_interactive_object(basepath, title = view['project'], read_only = True)
         else:
             return { "status": "ok", "message": "no cookie", "data": None }
 
