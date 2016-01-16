@@ -1136,7 +1136,7 @@ class TableForVariability(Table):
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
         profile_db.disconnect()
 
 
