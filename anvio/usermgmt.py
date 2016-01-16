@@ -67,8 +67,9 @@ class UsersDB:
         self.cursor.execute("CREATE TABLE projects (name TEXT PRIMARY KEY, path TEXT, user TEXT, description TEXT)")
         self.cursor.execute("CREATE TABLE metadata (project INTEGER, attribute TEXT, value TEXT)")
         self.cursor.execute("CREATE TABLE views (name TEXT, user TEXT, project TEXT, public INTEGER, token TEXT)")
-        self.cursor.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
         self.disconnect()
+
+        self.execute("INSERT INTO self VALUES(?,?)", ('version', client_version,))
 
 
     def get_version(self):
@@ -84,8 +85,8 @@ class UsersDB:
 
 
     def get_meta_value(self, key):
-        row = self.fetchone("SELECT value FROM self WHERE key=?", (key, ))
-        
+        row = self.execute("SELECT value FROM self WHERE key=?", (key, ), fetch = 'one')
+
         if not row:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
 
