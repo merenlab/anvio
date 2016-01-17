@@ -7,7 +7,6 @@ import pysam
 import shutil
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.dictio as dictio
@@ -35,14 +34,13 @@ __status__ = "Development"
 pp = terminal.pretty_print
 
 
-class BAMProfiler:
+class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
     def __init__(self, args = None):
         self.args = None
         self.input_file_path = None 
         self.contigs_db_path = None
         self.serialized_profile_path = None 
-        self.split_length = None
         self.output_directory = None 
         self.list_contigs_and_exit = None 
         self.min_contig_length = 10000 
@@ -77,19 +75,22 @@ class BAMProfiler:
                 self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                                if c.strip() and not c.startswith('#')])
 
+        self.progress = terminal.Progress()
+        self.run = terminal.Run(width=35)
+
+        # Initialize contigs db
+        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
+        self.init_contig_sequences()
+        self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
         self.bam = None
         self.contigs = {}
-        self.genes_in_contigs = {}
-        self.contig_names_in_contigs_db = None
 
         self.database_paths = {'CONTIGS.db': self.contigs_db_path}
 
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['single']
-
-        self.progress = terminal.Progress()
-        self.run = terminal.Run(width=35)
 
         self.atomic_contig_split_data = contigops.AtomicContigSplitData(self.progress)
 
@@ -112,16 +113,7 @@ class BAMProfiler:
         self.progress.update('Creating the output directory ...')
         filesnpaths.gen_output_directory(self.output_directory, self.progress, delete_if_exists = self.overwrite_output_destinations)
 
-        self.progress.update('Initializing the contigs database ...')
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.split_length = int(contigs_db.meta['split_length'])
-        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        self.gene_calls_present_in_contigs_db = int(contigs_db.meta['genes_are_called'])
-        self.contig_names_in_contigs_db = set(contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True).keys())
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
-        contigs_db.disconnect()
-
-        self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.contigs_db_hash)
+        self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
@@ -134,8 +126,8 @@ class BAMProfiler:
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'report_variability_full': self.report_variability_full,
-                       'contigs_db_hash': self.contigs_db_hash,
-                       'gene_coverages_computed': self.gene_calls_present_in_contigs_db}
+                       'contigs_db_hash': self.a_meta['contigs_db_hash'],
+                       'gene_coverages_computed': self.a_meta['genes_are_called']}
         profile_db.create(meta_values)
 
         self.progress.end()
@@ -152,22 +144,15 @@ class BAMProfiler:
 
         self.init_dirs_and_dbs()
 
-        # we will set up things here so the information in the contigs_db
-        # can be utilized directly from within the contigs for loop. contig to
-        # gene associations will be stored in self.genes_in_contigs dictionary for
-        # fast access.
-        if self.contigs_db_path:
-            self.populate_genes_in_contigs_dict()
-
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
         self.run.info('profile_db', self.profile_db_path, display_only = True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
-        self.run.info('contigs_db_hash', self.contigs_db_hash)
+        self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
-        self.run.info('split_length', self.split_length)
+        self.run.info('split_length', self.a_meta['split_length'])
         self.run.info('min_contig_length', self.min_contig_length)
         self.run.info('min_mean_coverage', self.min_mean_coverage)
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
@@ -208,25 +193,6 @@ class BAMProfiler:
         self.run.quit()
 
 
-    def populate_genes_in_contigs_dict(self):
-        self.progress.new('Contigs')
-        self.progress.update('Reading genes in contigs table')
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        genes_in_contigs_table = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-        contigs_db.disconnect()
-
-        self.progress.update('Populating ORFs dictionary for each contig ...')
-        for gene in genes_in_contigs_table:
-            e = genes_in_contigs_table[gene]
-            if self.genes_in_contigs.has_key(e['contig']):
-                self.genes_in_contigs[e['contig']].add((gene, e['start'], e['stop']), )
-            else:
-                self.genes_in_contigs[e['contig']] = set([(gene, e['start'], e['stop']), ])
-
-        self.progress.end()
-        self.run.info('contigs_db', "%d genes processed successfully." % len(genes_in_contigs_table), display_only = True)
-
-
     def generate_variabile_positions_table(self):
         variable_positions_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
@@ -254,8 +220,8 @@ class BAMProfiler:
             # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
-            if self.genes_in_contigs.has_key(contig):
-                gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.genes_in_contigs[contig])
+            if self.contig_name_to_genes.has_key(contig):
+                gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
 
         gene_coverages_table.store()
         self.progress.end()
@@ -264,7 +230,7 @@ class BAMProfiler:
 
     def store_split_coverages(self):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.contigs_db_hash, create_new = True)
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new = True)
 
         self.progress.new('Storing split coverages')
 
@@ -303,14 +269,14 @@ class BAMProfiler:
 
 
     def check_contigs_without_any_gene_calls(self, contig_names):
-        if not self.gene_calls_present_in_contigs_db:
+        if not self.a_meta['genes_are_called']:
             self.run.warning("The contigs database '%s' does not contain any gene calls. Which means the profiling step\
                               will not be able to characterize 'gene coverages'. If you are OK with this, anvi'o will be\
                               OK with it as well." % (self.contigs_db_path))
             return
 
         contig_names = set(contig_names)
-        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.genes_in_contigs]
+        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.contig_name_to_genes]
 
         if len(contigs_without_any_gene_calls):
             import random
@@ -453,16 +419,11 @@ class BAMProfiler:
                                     prior to mapping, which is described here: %s"\
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
 
-        # finally, compute contig splits.
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.splits_in_contigs_db = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
-        contigs_db.disconnect()
-
         contigs_longer_than_M = set(self.contig_names) # for fast access
         self.split_names = set([])
         self.contig_name_to_splits = {}
-        for split_name in sorted(self.splits_in_contigs_db.keys()):
-            parent = self.splits_in_contigs_db[split_name]['parent']
+        for split_name in sorted(self.splits_basic_info.keys()):
+            parent = self.splits_basic_info[split_name]['parent']
 
             if parent not in contigs_longer_than_M:
                 continue
@@ -513,7 +474,7 @@ class BAMProfiler:
 
             contig = contigops.Contig(contig_name)
             contig.length = self.contig_lenghts[i]
-            contig.split_length = self.split_length
+            contig.split_length = self.a_meta['split_length']
             contig.min_coverage_for_variability = self.min_coverage_for_variability
             contig.report_variability_full = self.report_variability_full
 
@@ -524,7 +485,7 @@ class BAMProfiler:
 
             # populate contig with empty split objects and 
             for split_name in self.contig_name_to_splits[contig_name]:
-                s = self.splits_in_contigs_db[split_name]
+                s = self.splits_basic_info[split_name]
                 split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)

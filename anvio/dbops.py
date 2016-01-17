@@ -54,28 +54,31 @@ class ContigsSuperclass(object):
         self.progress = p
 
         self.a_meta = {}
+
+        self.splits_basic_info = {}
         self.splits_taxonomy_dict = {}
+        self.split_sequences = {}
+        self.contigs_basic_info = {}
+        self.contig_sequences = {}
 
         self.genes_in_contigs_dict = {}
+        self.contig_name_to_genes = {}
         self.genes_in_splits = {}
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
-        self.contigs_basic_info = {}
-        self.split_sequences = {}
-        self.contig_sequences = {}
-        self.hmm_sources_info = {}
-
-        self.singlecopy_gene_hmm_sources = set([])
-        self.non_singlecopy_gene_hmm_sources = set([])
 
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
         self.gene_function_calls_initiated = False
 
+        self.hmm_sources_info = {}
         self.hmm_searches_dict = {}   # <--- upon initiation, this dict only keeps hmm hits for non-singlecopy
         self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
+
+        self.singlecopy_gene_hmm_sources = set([])
+        self.non_singlecopy_gene_hmm_sources = set([])
 
         try:
             self.contigs_db_path = args.contigs_db
@@ -95,7 +98,7 @@ class ContigsSuperclass(object):
         self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
-        for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs']:
+        for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
             self.a_meta[key] = int(self.a_meta[key])
 
         self.progress.update('Reading contigs basic info')
@@ -106,6 +109,14 @@ class ContigsSuperclass(object):
 
         self.progress.update('Reading genes in contigs table')
         self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
+        self.progress.update('Populating contig name to gene IDs dict')
+        for gene_unique_id in self.genes_in_contigs_dict:
+            e = self.genes_in_contigs_dict[gene_unique_id]
+            if self.contig_name_to_genes.has_key(e['contig']):
+                self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
+            else:
+                self.contig_name_to_genes[e['contig']] = set([(gene_unique_id, e['start'], e['stop']), ])
 
         self.progress.update('Reading genes in splits table')
         self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
