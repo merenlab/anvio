@@ -69,6 +69,12 @@ class ContigsSuperclass(object):
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
+        # the following two dicts require initialization:
+        self.nt_positions_info_dicts_initiated = False
+        self.nt_positions_in_complete_genes = {} # each nt position that falls into a complete gene call
+        self.nt_positions_in_partial_genes = {} # nt positions in contigs that are in impartial gene calls
+        self.nt_positions_third_base_in_codons = {} # whether a nt position **in a complete gene** is synonymous (i.e., the third base in a codon). 
+
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
         self.gene_function_calls_initiated = False
@@ -264,6 +270,58 @@ class ContigsSuperclass(object):
                 self.hmm_searches_dict[e['split']][source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
         self.progress.end()
+
+
+    def get_nt_position_info(self, contig_name, pos_in_contig):
+        if not self.nt_positions_info_dicts_initiated:
+            self.init_nt_position_info_dicts()
+
+        in_partial_gene_call = 1 if pos_in_contig in self.nt_positions_in_partial_genes[contig_name] else 0
+        in_complete_gene_call = 1 if not in_partial_gene_call and pos_in_contig in self.nt_positions_in_complete_genes[contig_name] else 0
+        is_third_base = 1 if in_complete_gene_call and pos_in_contig in self.nt_positions_third_base_in_codons[contig_name] else 0
+
+        return (in_partial_gene_call, in_complete_gene_call, is_third_base)
+
+
+    def init_nt_position_info_dicts(self):
+        """This function initializes following three variables:
+
+                - self.nt_positions_in_partial_genes
+                - self.nt_positions_in_complete_genes
+                - self.nt_positions_third_base_in_codons
+
+        """
+
+        self.progress.new('Initializing nt positional info (whether a nt position is within a gene and/or represents a silent position)')
+        self.progress.update('...')
+
+        for contig_name in self.contigs_basic_info.keys():
+            self.nt_positions_in_partial_genes[contig_name] = set([])
+            self.nt_positions_in_complete_genes[contig_name] = set([])
+            self.nt_positions_third_base_in_codons[contig_name] = set([])
+            for gene_unique_id, start, stop in self.contig_name_to_genes[contig_name]:
+                gene_call = self.genes_in_contigs_dict[gene_unique_id]
+
+                RANGE = range(start, stop)
+
+                # if the gene call is a partial one, meaning the gene was cut at the beginning or
+                # at the end of the contig, we are not going to try to make sense of synonymous /
+                # non-synonmous bases in that. the clients who wish to use these variables must also
+                # be careful about the difference
+                if gene_call['partial']:
+                    self.nt_positions_in_partial_genes[contig_name].update(RANGE)
+                    continue
+
+                self.nt_positions_in_complete_genes[contig_name].update(RANGE)
+
+                if gene_call['direction'] == 'f':
+                    self.nt_positions_third_base_in_codons[contig_name].update(range(start + 2, stop, 3))
+                elif gene_call['direction'] == 'r':
+                    self.nt_positions_third_base_in_codons[contig_name].update(range(stop - 3, start - 1, -3))
+
+        self.progress.end()
+
+        self.nt_positions_info_dicts_initiated = True
 
 
     def init_functions(self):
@@ -1149,7 +1207,7 @@ class TableForVariability(Table):
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
         profile_db.disconnect()
 
 
