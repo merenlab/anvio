@@ -506,13 +506,15 @@ class VariablePositionsEngine:
 
             for pos in splits_to_consider[split]:
                 parent_seq = self.contig_sequences[split_info['parent']]['sequence']
-                base_at_pos = parent_seq[split_info['start'] + pos]
+                pos_in_contig = split_info['start'] + pos
+                base_at_pos = parent_seq[pos_in_contig]
                 for sample in splits_to_consider[split][pos]:
                     self.variable_positions_table[next_available_entry_id] = {'parent': split_info['parent'],
                                                                               'departure_from_consensus': 0,
                                                                               'consensus': base_at_pos,
                                                                               'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                                               'pos': pos,
+                                                                              'pos_in_contig': pos_in_contig, 
                                                                               'coverage': split_coverage_across_samples[sample][pos],
                                                                               'sample_id': sample,
                                                                               'competing_nts': base_at_pos + base_at_pos,
