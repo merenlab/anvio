@@ -209,10 +209,12 @@ function initData () {
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
+            $('.menuItemInspect').addClass('menu-disabled');
         }
 
         if(!sequencesAvailable){
             toastr.info("No sequence data is available. Some menu items will be disabled.");
+            $('.menuItemSequence').addClass('menu-disabled');
         }
 
 	    if (! response.noPing) {

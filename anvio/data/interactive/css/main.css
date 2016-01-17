@@ -269,3 +269,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     background: url("../images/logo.png") no-repeat 0 0;
     background-size: 100%;
 }
+
+.menu-disabled {
+    pointer-events:none;
+    opacity:0.4;
+}
