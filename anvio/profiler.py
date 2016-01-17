@@ -81,6 +81,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
         self.init_contig_sequences()
+        self.init_nt_position_info_dicts()
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         self.bam = None
@@ -200,7 +201,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for contig in self.contigs.values():
             for split in contig.splits:
                 for column_profile in split.column_profiles.values():
+                    # let's figure out more about this particular variable position
+                    pos_in_contig = column_profile['pos_in_contig']
+
+                    column_profile['in_partial_gene_call'], \
+                    column_profile['in_complete_gene_call'],\
+                    column_profile['is_third_base'] = self.get_nt_position_info(contig.name, pos_in_contig)
+
                     column_profile['sample_id'] = self.sample_id
+
                     variable_positions_table.append(column_profile)
 
         variable_positions_table.store()
