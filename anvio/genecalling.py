@@ -54,7 +54,7 @@ class Prodigal:
                                 version %s is failing to make sense of it.' % (self.installed_prodigal_version)
 
         hit['direction'] = 'f' if fields[6] == '1' else 'r'
-        hit['start'] = int(fields[2])
+        hit['start'] = int(fields[2]) - 1
         hit['stop'] = int(fields[4])
         hit['contig'] = '_'.join(fields[0].split('_')[:-1])
 

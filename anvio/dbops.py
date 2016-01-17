@@ -371,7 +371,7 @@ class ContigsSuperclass(object):
             gene_call = self.genes_in_contigs_dict[gene_callers_id]
 
             contig_name = gene_call['contig']
-            start, stop = gene_call['start'] - 1, gene_call['stop']
+            start, stop = gene_call['start'], gene_call['stop']
             direction = gene_call['direction']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
