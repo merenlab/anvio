@@ -54,9 +54,10 @@ class ContigsSuperclass(object):
         self.progress = p
 
         self.a_meta = {}
+        self.splits_taxonomy_dict = {}
+
         self.genes_in_contigs_dict = {}
         self.genes_in_splits = {}
-        self.splits_taxonomy_dict = {}
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
@@ -65,6 +66,7 @@ class ContigsSuperclass(object):
         self.split_sequences = {}
         self.contig_sequences = {}
         self.hmm_sources_info = {}
+
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
 
@@ -143,7 +145,7 @@ class ContigsSuperclass(object):
         self.progress.end()
 
         contigs_db.disconnect()
-        run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
+        self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
     def init_contig_sequences(self, min_contig_length = 0):
@@ -478,8 +480,8 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         if self.auxiliary_data_available:
-            run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_data_path, anvio.__hdf5__version__))
-        run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
+            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_data_path, anvio.__hdf5__version__))
+        self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
     def init_gene_coverages_dict(self):
