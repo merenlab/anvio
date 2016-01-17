@@ -36,7 +36,7 @@ progress = terminal.Progress()
 run = terminal.Run(width = 60)
 
 
-class VariablePositionsEngine:
+class VariablePositionsEngine(dbops.ContigsSuperclass):
     """This is the main class to make sense and report variability for a given set of splits,
        or a bin in a collection, across multiple or all samples. The user can scrutinize the
        nature of the variable positions to be reported dramatically given the ecology and/or
@@ -76,6 +76,11 @@ class VariablePositionsEngine:
         self.unique_pos_id_to_entry_id = {}
         self.contig_sequences = None
         self.input_file_path = None
+
+        # Initialize the contigs super
+        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
+        self.init_nt_position_info_dicts()
+        self.init_contig_sequences()
 
 
     def init(self):
@@ -152,18 +157,9 @@ class VariablePositionsEngine:
             self.progress.update('Accessing auxiliary data file ...')
             auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
             if not os.path.exists(auxiliary_data_file_path):
-                raise ConfigError, "Anvi'o needs the aixiliary data file to run this program with '--quince-more' flag.\
+                raise ConfigError, "Anvi'o needs the aixiliary data file to run this program with '--quince-mode' flag.\
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, db_hash)
-
-        self.progress.update('Reading splits info table ...')
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.splits_info_table = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
-        self.num_splits_in_db = len(self.splits_info_table)
-        if self.quince_mode:
-            self.progress.update('Reading contig sequences table ...')
-            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-        contigs_db.disconnect()
 
         self.progress.end()
 
@@ -222,7 +218,7 @@ class VariablePositionsEngine:
 
     def process_variable_positions_table(self):
         self.run.info('Variability table', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.variable_positions_table)), pp(self.num_splits_in_db), pp(len(self.sample_ids))))
+                % (pp(len(self.variable_positions_table)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
 
         self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
         if self.samples_of_interest:
@@ -318,7 +314,7 @@ class VariablePositionsEngine:
         for entry_id in self.variable_positions_table:
             v = self.variable_positions_table[entry_id]
             v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
-            v['parent'] = self.splits_info_table[v['split_name']]['parent']
+            v['parent'] = self.splits_basic_info[v['split_name']]['parent']
 
         self.progress.end()
 
@@ -469,7 +465,7 @@ class VariablePositionsEngine:
         self.progress.new('Recovering base frequencies for all')
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
-        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_info_table.keys())
+        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = max(self.variable_positions_table.keys()) + 1
 
         self.progress.update('creating a dicts to track missing base frequencies for each sample / split / pos')
@@ -502,19 +498,26 @@ class VariablePositionsEngine:
 
             split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
-            split_info = self.splits_info_table[split]
+            split_info = self.splits_basic_info[split]
+            parent_name = split_info['parent']
 
             for pos in splits_to_consider[split]:
-                parent_seq = self.contig_sequences[split_info['parent']]['sequence']
+                parent_seq = self.contig_sequences[parent_name]['sequence']
                 pos_in_contig = split_info['start'] + pos
                 base_at_pos = parent_seq[pos_in_contig]
+
+                in_partial_gene_call, in_complete_gene_call, is_third_base = self.get_nt_position_info(parent_name, pos_in_contig)
+
                 for sample in splits_to_consider[split][pos]:
-                    self.variable_positions_table[next_available_entry_id] = {'parent': split_info['parent'],
+                    self.variable_positions_table[next_available_entry_id] = {'parent': parent_name,
                                                                               'departure_from_consensus': 0,
                                                                               'consensus': base_at_pos,
                                                                               'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                                               'pos': pos,
                                                                               'pos_in_contig': pos_in_contig, 
+                                                                              'in_partial_gene_call': in_partial_gene_call,
+                                                                              'in_complete_gene_call': in_complete_gene_call,
+                                                                              'is_third_base': is_third_base,
                                                                               'coverage': split_coverage_across_samples[sample][pos],
                                                                               'sample_id': sample,
                                                                               'competing_nts': base_at_pos + base_at_pos,
