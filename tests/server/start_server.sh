@@ -47,6 +47,7 @@ add_user "meren" "A. Murat" "Eren" "merens_dir"
 add_user "tobi" "Tobias" "Paczian" "tobis_dir"
 add_user "ozcan" "Özcan" "Esen" "ozcans_dir"
 add_user "tdelmont" "Tom" "Delmont" "toms_dir"
+add_user "testuser" "test" "user" "test_dir"
 
 INFO "Adding projects"
 add_project "meren" "merens_dir" "m_proj_01" "description_a"
@@ -56,6 +57,7 @@ add_project "ozcan" "ozcans_dir" "o_proj_01" "description_d"
 add_project "ozcan" "ozcans_dir" "o_proj_02" "description_e"
 add_project "ozcan" "ozcans_dir" "o_proj_03" "description_f"
 add_project "ozcan" "ozcans_dir" "o_proj_04" "description_g"
+add_project "testuser" "test_dir" "test_proj_01" "description_h"
 
 INFO "Giving user 'tobi' admin credentials"
 cat << EOF | sqlite3 test-output/users-data/USERS.db

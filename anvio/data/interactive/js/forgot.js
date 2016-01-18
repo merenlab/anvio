@@ -37,7 +37,7 @@ function resetPassword() {
     }).fail(function(result){
 	document.getElementById('submit').removeAttribute('disabled');	  
 	if (result.status == 'error') {
-	    alert("Resetting your password failed: "+result.message);
+	    alert("Resetting password failed: "+result.message);
 	} else {
 	    alert('An error occurred during password reset');
 	}
