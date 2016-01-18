@@ -161,11 +161,11 @@ def logout_from_app():
     return multiroutes.logout_from_app(request, userdb, response)
 
 @route('/private/<login>/<project>', method='GET')
-def set_view_cookie(login, project):
+def set_view_cookie_private(login, project):
     multiroutes.set_view_cookie(request, userdb, response, login, project, True)
 
 @route('/public/<login>/<project>', method='GET')
-def set_view_cookie(login, project):
+def set_view_cookie_public(login, project):
     multiroutes.set_view_cookie(request, userdb, response, login, project, False)
 
 @route('/project', method='POST')

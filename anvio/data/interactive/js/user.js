@@ -60,7 +60,7 @@ function showUserdata () {
 	for (var i=0; i<user.projects.length; i++) {
 	    html.push('<li class="list-group-item">');
 	    html.push('<a href="#" onclick="setActiveProject(\''+i+'\');" title="view project">'+user.projects[i].name+'</a>');
-	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-danger btn-sm" title="delete project" onclick="deleteProject(\''+i+'\')"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>');
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-danger btn-sm" title="delete project" onclick="deleteProject(\''+i+'\')" id="projectDelete'+i+'"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>');
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="add data" onclick="addDataToProject(\''+i+'\')"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span></button>');
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="share project" onclick="selectedProject=\''+i+'\';$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>');
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="project settings" onclick="showProjectSettings(\''+i+'\');"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>');
@@ -273,7 +273,7 @@ function uploadFiles () {
     if ($('#treeFileSelect')[0].files.length) {
 	formData.append('treeFile', $('#treeFileSelect')[0].files[0]);
     } else {
-	alert('You must provide a tree file');
+	toastr.error('You must provide a tree file');
 	return;
     }
     if ($('#fastaFileSelect')[0].files.length) {
@@ -281,6 +281,9 @@ function uploadFiles () {
     }
     if ($('#dataFileSelect')[0].files.length) {
 	formData.append('dataFile', $('#dataFileSelect')[0].files[0]);
+    } else {
+	toastr.error("You must provide a data file");
+	return;
     }
     if ($('#samplesOrderFileSelect')[0].files.length) {
 	formData.append('samplesOrderFile', $('#samplesOrderFileSelect')[0].files[0]);
@@ -290,6 +293,9 @@ function uploadFiles () {
     }
     if ($('#uploadTitle')[0].value) {
 	formData.append('title', $('#uploadTitle')[0].value);
+    } else {
+	toastr.error("You must provide a project name");
+	return;
     }
     if ($('#uploadDescription')[0].value) {
 	formData.append('description', $('#uploadDescription')[0].value);
@@ -319,7 +325,12 @@ function uploadFiles () {
 	success : function(data) {
 	    document.body.removeChild(uploadProgress);
 	    uploadProgress = null;
-            document.location.reload(true);
+	    if (data.hasOwnProperty('status') && data.status == 'ok') {
+		toastr.info(data.message);
+		document.location.reload(true);
+	    } else {
+		toastr.error(data.message);
+	    }
 	}
     });
 }

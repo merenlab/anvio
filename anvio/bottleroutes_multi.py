@@ -171,6 +171,9 @@ def receive_upload_file(request, userdb, response):
     if not request.files.get('treeFile'):
         return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
 
+    if not request.files.get('dataFile'):
+        return '{ "status": "error", "message": "you need to upload a data file", "data": null }'
+
     # create the project
     retval = userdb.create_project(user['data'], request.forms.get('title'), request.forms.get('description'))
 
@@ -218,9 +221,13 @@ def receive_upload_file(request, userdb, response):
     # all files are uploaded, do a sanity check
     retval = userdb.get_the_interactive_object(basepath, read_only = False)
     if not retval['status'] == 'ok':
+        # if the files are not ok, the project needs to be deleted
+        userdb.delete_project(user['data'], project['name'])
+
+        # return the error to the ui
         return json.dumps(retval)
 
-    redirect('/app/index.html')
+    return '{ "status": "ok", "message": "project created", "data": null }'
 
 
 def receive_additional_upload_file(request, userdb, response):
