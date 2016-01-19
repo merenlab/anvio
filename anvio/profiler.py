@@ -206,7 +206,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     column_profile['in_partial_gene_call'], \
                     column_profile['in_complete_gene_call'],\
-                    column_profile['is_third_base'] = self.get_nt_position_info(contig.name, pos_in_contig)
+                    column_profile['pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
 
                     column_profile['sample_id'] = self.sample_id
 

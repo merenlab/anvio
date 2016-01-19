@@ -506,7 +506,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
                 pos_in_contig = split_info['start'] + pos
                 base_at_pos = parent_seq[pos_in_contig]
 
-                in_partial_gene_call, in_complete_gene_call, is_third_base = self.get_nt_position_info(parent_name, pos_in_contig)
+                in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(parent_name, pos_in_contig)
 
                 for sample in splits_to_consider[split][pos]:
                     self.variable_positions_table[next_available_entry_id] = {'parent': parent_name,
@@ -517,7 +517,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
                                                                               'pos_in_contig': pos_in_contig, 
                                                                               'in_partial_gene_call': in_partial_gene_call,
                                                                               'in_complete_gene_call': in_complete_gene_call,
-                                                                              'is_third_base': is_third_base,
+                                                                              'pos_in_codon': pos_in_codon,
                                                                               'coverage': split_coverage_across_samples[sample][pos],
                                                                               'sample_id': sample,
                                                                               'competing_nts': base_at_pos + base_at_pos,
