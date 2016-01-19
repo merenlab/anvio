@@ -628,7 +628,7 @@ class UserMGMT:
             return { 'status': 'ok', 'message': "the user does not own this project", 'data': None }
 
 
-    def delete_project(self, user, pname, uname):
+    def delete_project(self, user, pname, uname=None):
         if not user:
             return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
         if not pname:
