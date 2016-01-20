@@ -15,7 +15,28 @@ try:
     absolute = os.path.join(os.path.dirname(os.path.realpath(__file__)))
     template_dir = os.path.join(absolute, 'data/static/template')
     html_content_dir = os.path.join(absolute, 'data/static/content')
-    settings.configure(DEBUG=True, TEMPLATE_DEBUG=True, DEFAULT_CHARSET='utf-8', TEMPLATE_DIRS = (template_dir,))
+    local_settings = {
+        'DEBUG': True,
+        'TEMPLATE_DEBUG': True,
+        'DEFAULT_CHARSET': 'utf-8'
+    }
+
+    try:
+        # Django 1.10+ will use TEMPLATES variable instead of TEMPLATE_DIRS.
+        from django.template.backends.django import DjangoTemplates
+        local_settings.update({
+            'TEMPLATES': [
+                {
+                    'BACKEND': 'django.template.backends.django.DjangoTemplates',
+                    'DIRS': (template_dir,),
+                    'APP_DIRS': False,
+                }
+            ]
+        })
+    except ImportError:
+        local_settings.update({'TEMPLATE_DIRS': (template_dir,)})
+
+    settings.configure(**local_settings)
 
     try:
         import django
