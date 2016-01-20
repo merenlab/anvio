@@ -38,7 +38,13 @@ class AnvioTestCase(unittest.TestCase):
         self.browser.find_element_by_id('password').send_keys('test')
         self.browser.find_element_by_id('loginButton').click()
 
-    def testRegisterNewUser(self):
+    def loginAdmin(self):
+        self.browser.get('http://'+self.URL)
+        self.browser.find_element_by_id('login').send_keys('tobi')
+        self.browser.find_element_by_id('password').send_keys('test')
+        self.browser.find_element_by_id('loginButton').click()
+
+    def test01RegisterNewUser(self):
         self.browser.get('http://'+self.URL)
         self.browser.find_element_by_link_text('Register').click()
         WebDriverWait(self.browser, 5).until(EC.title_is('anvio account registration'))
@@ -53,12 +59,12 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//div[@class="alert alert-success col-sm-6"]')))
         self.assertTrue(self.browser.find_element_by_xpath('//div[@class="alert alert-success col-sm-6"]'))
 
-    def testLogin(self):
+    def test02Login(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.title_is('anvio user home'))
         self.assertIn('anvio user home', self.browser.title)
 
-    def testForgotPasswordInvalid(self):
+    def test03ForgotPasswordInvalid(self):
         self.browser.get('http://'+self.URL)
         self.browser.find_element_by_link_text('forgot password?').click()
         WebDriverWait(self.browser, 5).until(EC.title_is('anvio forgot password'))
@@ -67,7 +73,7 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.alert_is_present())
         self.assertEqual('Resetting password failed: No user has been found for email address "invalid@email.com"', Alert(self.browser).text)
         
-    def testForgotPasswordValid(self):
+    def test04ForgotPasswordValid(self):
         self.browser.get('http://'+self.URL)
         self.browser.find_element_by_link_text('forgot password?').click()
         WebDriverWait(self.browser, 5).until(EC.title_is('anvio forgot password'))
@@ -76,7 +82,7 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//div[@class="alert alert-success col-sm-6"]')))
         self.assertTrue(self.browser.find_element_by_xpath('//div[@class="alert alert-success col-sm-6"]'))
 
-    def testCreateNewProjectWithAllFiles(self):
+    def test05CreateNewProjectWithAllFiles(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
 
@@ -93,7 +99,7 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 'test_project_with_all_files')))
         self.assertTrue(self.browser.find_element_by_link_text('test_project_with_all_files'))
 
-    def testCreateNewProjectWithMinimalInput(self):
+    def test06CreateNewProjectWithMinimalInput(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
 
@@ -107,14 +113,14 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 'test_project_minimal')))
         self.assertTrue(self.browser.find_element_by_link_text('test_project_minimal'))
  
-    def testSelectProject(self):
+    def test07SelectProject(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 'test_project_with_all_files')))
         self.browser.find_element_by_link_text('test_project_with_all_files').click()
         WebDriverWait(self.browser, 5).until(EC.title_is('test_project_with_all_files'))
         self.assertIn('test_project_with_all_files', self.browser.title)
 
-    def testShareProject(self):
+    def test08ShareProject(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@title="share project"]')))
         self.browser.find_element_by_xpath('//button[@title="share project"]').click()
@@ -124,7 +130,7 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.ID, 'projectDescription')))
         self.assertTrue(self.browser.find_element_by_id('projectDescription'))
 
-    def testAddAdditionalDataFile(self):
+    def test09AddAdditionalDataFile(self):
         self.login()
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@title="add data"]')))
         self.browser.find_element_by_xpath('//button[@title="add data"]').click()
@@ -137,19 +143,28 @@ class AnvioTestCase(unittest.TestCase):
         WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'pfc3')))
         self.assertTrue(self.browser.find_element_by_id('pfc3'))
 
-    def testDeleteProject(self):
-        # self.login()
-        # WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'projectDelete0')))
-        # self.browser.find_element_by_id('projectDelete0').click()
-        # WebDriverWait(self.browser, 5).until(EC.alert_is_present())
-        # Alert(self.browser).accept()
-        # WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
-        # self.browser.find_element_by_link_text('forgot password?').click()
-        pass
+    def test10DeleteProject(self):
+        self.login()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'projectDelete0')))
+        self.browser.find_element_by_id('projectDelete0').click()
+        WebDriverWait(self.browser, 5).until(EC.alert_is_present())
+        Alert(self.browser).accept()
+        WebDriverWait(self.browser, 5).until(EC.visibility_of_element_located((By.XPATH, '//button[@title="upload data files"]')))
+        self.assertFalse(len(self.browser.find_elements_by_link_text('test_proj_01')))
 
-    def testDeleteUser(self):
-        pass
-
+    def test11DeleteUser(self):
+        self.loginAdmin()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.LINK_TEXT, 'admin page')))
+        self.browser.find_element_by_link_text('admin page').click()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@onclick="showUserDetails(\'testuser2\');"]')))
+        self.browser.find_element_by_xpath('//button[@onclick="showUserDetails(\'testuser2\');"]').click()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '//button[@onclick="deleteUser(\'testuser2\')"]')))
+        self.browser.find_element_by_xpath('//button[@onclick="deleteUser(\'testuser2\')"]').click()
+        WebDriverWait(self.browser, 5).until(EC.alert_is_present())
+        Alert(self.browser).send_keys('CONFIRM')
+        Alert(self.browser).accept()
+        WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.ID, 'usertable')))
+        self.assertFalse(len(self.browser.find_elements_by_xpath('//button[@onclick="showUserDetails(\'testuser2\');"]')))
 
 if __name__ == '__main__':
     unittest.main(verbosity=3)
