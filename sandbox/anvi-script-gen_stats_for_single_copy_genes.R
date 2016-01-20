@@ -13,7 +13,11 @@ option_list <- list(
         make_option(c("--e_value"), default=1e-0,
                 help = "e-value to retain hits [default \"%default\"]"),
         make_option(c("--output_prefix"),
-                help = "Output file name *prefix* (without the extension)")
+                help = "Output file name *prefix* (without the extension)"),
+        make_option(c("--alphabetical_order"), action = "store_true", default = FALSE,
+                help = "Order genes based on name, instead of frequency"),
+        make_option(c("--no_colors"), action = "store_true", default = FALSE,
+                help = "Order genes based on name, instead of frequency")
         )
 
 parser <- OptionParser(usage = "./self hits_file genes_file", option_list=option_list,
@@ -39,6 +43,19 @@ if(invalid(options$output_prefix)){
 } else {
     output_prefix <- paste(options$output_prefix, '_e_', e_value, '_', sep='')
 }
+
+if(options$alphabetical_order){
+    order_genes_by_frequency <- FALSE
+} else {
+    order_genes_by_frequency <- TRUE
+}
+
+if(options$no_colors){
+    no_colors <- TRUE
+} else {
+    no_colors <- FALSE
+}
+
 
 # check if the input file is accessible
 if(file.access(hits) == -1){
@@ -83,25 +100,12 @@ for(source in c('Alneberg_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_
     num_genomes <- as.character(frequencies[1, ]$num)
     percent_agrees <- frequencies[1, ]$freq * 100 / sum(frequencies$freq)
 
-
-    if(num_genomes == "0"){
-        if(nrow(frequencies) == 1){
-            num_genomes <- as.character(0)
-            percent_agrees <- 100
-        } else {
-            num_genomes <- as.character(frequencies[2, ]$num)
-            percent_agrees <- frequencies[2, ]$freq * 100 / sum(frequencies$freq)
-    	}
-	}
-    
     text = sprintf("%s:\n%.2f%% of %d genes\noccur %s times", source, percent_agrees, nrow(x), num_genomes)
     p <- ggplot() + annotate("text", x = 1, y = 1, size=7, label = text) + theme(line = element_blank(),
             text = element_blank(),
             line = element_blank(),
             title = element_blank())
 
-
-    
     q <- ggplot(x, aes(x=factor(0), y=count))
     q <- q + geom_violin()
     q <- q + geom_jitter(position = position_jitter(width = .2, height = 0), alpha=0.3)
@@ -111,10 +115,18 @@ for(source in c('Alneberg_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_
     q <- q + theme(axis.ticks.x = element_blank())
     q <- q + coord_cartesian(ylim = c(0, ifelse (max(x$count) > 0, max(x$count), 1)))
     q <- q + labs(x='', y='')
-    #q <- q + scale_y_sqrt()
 
-    r <- ggplot(x, aes(x=reorder(gene, -count), y=as.integer(count), fill=count))
-    r <- r + geom_bar(stat='identity', width=.9)
+    # Draw bars
+    if(order_genes_by_frequency)
+        r <- ggplot(x, aes(x=reorder(gene, -count), y=as.integer(count)))
+    else
+        r <- ggplot(x, aes(x=gene, y=as.integer(count)))
+
+    if(no_colors)
+        r <- r + geom_bar(stat='identity', width=.9)
+    else
+        r <- r + geom_bar(aes(fill=count), stat='identity', width=.9)
+
     r <- r + theme_bw()
     r <- r + expand_limits(y=0)
     r <- r + coord_cartesian(ylim = c(0, ifelse (max(x$count) > 0, max(x$count), 1)))
