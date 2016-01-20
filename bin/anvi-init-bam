@@ -7,8 +7,10 @@ import pysam
 
 import anvio
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.errors import FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -33,10 +35,8 @@ def init_bam_file(input_file_path, output_file_path = None, already_sorted = Fal
         else:
             output_file_path = input_file_path + '-sorted'
 
-        output_directory = os.path.dirname(output_file_path)
-
-        if not os.access(output_directory, os.W_OK):
-            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+        filesnpaths.is_file_exists(input_file_path)
+        filesnpaths.is_output_file_writable(output_file_path)
 
         if not already_sorted:
             progress.new('SORT')
@@ -78,3 +78,6 @@ if __name__ == '__main__':
     except ConfigError, e:
         print e
         sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
