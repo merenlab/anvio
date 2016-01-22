@@ -386,6 +386,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('font-size', font_size);
+    text.setAttribute('font-family', 'monospace');
 
     switch (align) {
         case 'left':
@@ -2152,6 +2153,7 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
+
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
                                 if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
@@ -2159,7 +2161,28 @@ function draw_tree(settings) {
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            if (layers[pindex]['type'] == 'color') 
+                            {
+                                categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            }
+                            else // text
+                            {
+
+                                var align = 'left';
+                                var new_angle = q.angle * 180.0 / Math.PI;
+                                if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
+                                    align = 'right';
+                                    new_angle += 180.0;
+                                }
+
+                                var offset_xy = [];
+                                offset_xy['x'] = Math.cos(q.angle) * layer_boundaries[layer_index][0];
+                                offset_xy['y'] = Math.sin(q.angle) * layer_boundaries[layer_index][0];
+
+                                var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
+
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align);
+                            }
                         }
                         else if (isParent)
                         {

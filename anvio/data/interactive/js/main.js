@@ -576,11 +576,13 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var type = layer_settings['type'];
             }
             else
             {
                 var height = '30';
                 var margin = '15';
+                var type = 'color';
 
                 if (!(layer_id in categorical_data_colors))
                 {
@@ -592,7 +594,12 @@ function buildLayersTable(order, settings)
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
-                '<td>n/a</td>' +
+                '<td style="width: 50px;">' +
+                '    <select id="type{id}" style="width: 50px;" class="type">' +
+                '        <option value="color"{option-type-color}>Color</option>' +
+                '        <option value="text"{option-type-text}>Text</option>' +
+                '    </select>' +
+                '</td>' +
                 '<td>n/a</td>' +
                 '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
@@ -603,6 +610,8 @@ function buildLayersTable(order, settings)
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
