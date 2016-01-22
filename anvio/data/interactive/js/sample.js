@@ -546,6 +546,8 @@ function drawSamplesLayers(settings) {
         var samples_layer_name     = settings['samples-layer-order'][i];
         var samples_layer_settings = settings['samples-layers'][samples_layer_name];
         var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
+        var min = samples_layer_min[samples_layer_name];
+        var max = samples_layer_max[samples_layer_name];
 
         if (samples_layer_settings['data-type'] == 'numeric')
         {
