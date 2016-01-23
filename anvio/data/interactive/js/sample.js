@@ -36,7 +36,7 @@ $(document).ready(function() {
         var samples_new_order;
 
         // get new sample order
-        if (organization['basic'] != "")
+        if (organization['basic'] != null && organization['basic'] != "")
         {
             samples_new_order = organization['basic'].split(',');
         }
