@@ -51,10 +51,13 @@ function drawLegend(top, left, line_end) {
     var legends = [];
    
     $.each(layer_types, function (i, _) {
-        if (layer_types[i] != 2)
+        var pindex = i;
+        if (layer_types[pindex] != 2)
             return; // skip if not categorical
 
-        var pindex = i;
+        if (layers[pindex]['type'] == 'text')
+            return; // skip if type is text
+
         var categorical_stats = {};
 
         for (var name in categorical_data_colors[pindex]) {
