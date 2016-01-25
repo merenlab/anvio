@@ -593,6 +593,7 @@ function buildLayersTable(order, settings)
                         _unique_items.push(layerdata[_pos][layer_id]);
 
                     if (_unique_items.length > 11) {
+                        height = '160';
                         type = 'text';
                         break;
                     }
