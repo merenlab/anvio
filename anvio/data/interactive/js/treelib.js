@@ -381,7 +381,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawRotatedText(svg_id, p, string, angle, align, font_size) {
+function drawRotatedText(svg_id, p, string, angle, align, font_size, color) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline:middle');
@@ -390,6 +390,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('font-size', font_size);
     text.setAttribute('font-family', 'monospace');
+    text.setAttribute('fill', color);
 
     switch (align) {
         case 'left':
@@ -1977,6 +1978,25 @@ function draw_tree(settings) {
                 false);
         }
         
+        if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') // background for text layer
+        {
+            var color = layers[pindex]['color-start'];
+
+            var _min = Math.toRadians(settings['angle-min']);
+            var _max = Math.toRadians(settings['angle-max']);
+
+            drawPie('layer_background_' + layer_index,
+                'all',
+                _min,
+                _max,
+                layer_boundaries[layer_index][0],
+                layer_boundaries[layer_index][1],
+                (_max - _min > Math.PI) ? 1:0, // large arc flag
+                color,
+                1,
+                false);
+        }
+
         if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
         {
             var color = layers[pindex]['color'];
@@ -2170,7 +2190,6 @@ function draw_tree(settings) {
                             }
                             else // text
                             {
-
                                 var align = 'left';
                                 var new_angle = q.angle * 180.0 / Math.PI;
                                 if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
@@ -2184,7 +2203,7 @@ function draw_tree(settings) {
 
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
-                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align);
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, '12px', layers[pindex]['color']);
                             }
                         }
                         else if (isParent)
