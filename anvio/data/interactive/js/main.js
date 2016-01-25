@@ -577,9 +577,13 @@ function buildLayersTable(order, settings)
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
                 var type = layer_settings['type'];
+                var color = layer_settings['color'];
+                var color_start = layer_settings['color-start'];
             }
             else
             {
+                var color = "#000000";
+                var color_start = "#FFFFFF";
                 var height = '30';
                 var margin = '15';
                 var type = 'color';
@@ -608,9 +612,9 @@ function buildLayersTable(order, settings)
             var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td>n/a</td>' +
+                '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                 '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
                 '        <option value="color"{option-type-color}>Color</option>' +
                 '        <option value="text"{option-type-text}>Text</option>' +
                 '    </select>' +
@@ -628,6 +632,10 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
 
