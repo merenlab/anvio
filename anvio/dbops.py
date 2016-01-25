@@ -119,12 +119,11 @@ class ContigsSuperclass(object):
         self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
 
         self.progress.update('Populating contig name to gene IDs dict')
+        for contig_name in self.contigs_basic_info:
+            self.contig_name_to_genes[contig_name] = set([])
         for gene_unique_id in self.genes_in_contigs_dict:
             e = self.genes_in_contigs_dict[gene_unique_id]
-            if self.contig_name_to_genes.has_key(e['contig']):
-                self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
-            else:
-                self.contig_name_to_genes[e['contig']] = set([(gene_unique_id, e['start'], e['stop']), ])
+            self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
         self.progress.update('Reading genes in splits table')
         self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
