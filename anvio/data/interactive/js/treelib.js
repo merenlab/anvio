@@ -1907,6 +1907,7 @@ function draw_tree(settings) {
     }
 
     margin = parseFloat(settings['layer-margin']);
+    var layer_fonts = {};
 
     // calculate layer boundries
     for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -1924,6 +1925,10 @@ function draw_tree(settings) {
         }
         
         layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
+
+        // calculate per layer font size
+        var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
+        layer_fonts[layer_index] = (layer_perimeter / leaf_count) + 'px';
 
         createBin('tree_bin', 'layer_background_' + layer_index);
         createBin('tree_bin', 'layer_' + layer_index);
@@ -2203,7 +2208,7 @@ function draw_tree(settings) {
 
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
-                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, '12px', layers[pindex]['color']);
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color']);
                             }
                         }
                         else if (isParent)
