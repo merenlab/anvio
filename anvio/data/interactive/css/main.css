@@ -1,6 +1,6 @@
-* {
-   font-size: 12px;
-   line-height: 1.428;
+*:not(text) {
+    font-size: 12px;
+    line-height: 1.428;
 }
 
 h4 {
