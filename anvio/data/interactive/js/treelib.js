@@ -381,7 +381,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawRotatedText(svg_id, p, string, angle, align, font_size, color) {
+function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxLength) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline:middle');
@@ -417,6 +417,14 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, color) {
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
+
+    // trim long text
+    for (var x=0; x < string.length; x++){
+        if (text.getSubStringLength(0, x + 1) >= maxLength){
+            text.textContent = string.substring(0, x);
+            break;
+        }
+    }
 }
 
 function drawStraightGuideLine(svg_id, id, xy, max_x)  {
@@ -2208,7 +2216,7 @@ function draw_tree(settings) {
 
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
-                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color']);
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
                             }
                         }
                         else if (isParent)

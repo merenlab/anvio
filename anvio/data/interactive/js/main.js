@@ -583,7 +583,7 @@ function buildLayersTable(order, settings)
             else
             {
                 var color = "#000000";
-                var color_start = "#FFFFFF";
+                var color_start = "#B3B3B3";
                 var height = '30';
                 var margin = '15';
                 var type = 'color';
