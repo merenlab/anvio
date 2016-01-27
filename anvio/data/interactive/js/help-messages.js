@@ -42,6 +42,7 @@ var help_contents = {
     'search-clear': "Clear search highlights from the tree",
     'search-append': "Append matching splits the to the active bin (see which bin is active from the Bins tab)",
     'search-remove': "Remove matching splits from the acrive bin",
+    'max-font-size': "Maximum font size for the text layer",
     '': "",
     '': "",
 }

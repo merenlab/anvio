@@ -1938,7 +1938,7 @@ function draw_tree(settings) {
 
         // calculate per layer font size
         var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
-        var layer_font = Math.min((layer_perimeter / leaf_count), '18');
+        var layer_font = Math.min((layer_perimeter / leaf_count), parseFloat(settings['max-font-size']));
         layer_fonts[layer_index] = layer_font;
 
         // calculate new layer height if text layer heigth is 0
