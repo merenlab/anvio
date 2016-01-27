@@ -412,9 +412,8 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxL
         text.setAttribute('transform', 'rotate(' + angle + ' ' + p['x'] + ' ' + p['y'] + ')');
     }
 
-    var textNode = document.createTextNode(string)
+    var textNode = document.createTextNode(string);
     text.appendChild(textNode);
-
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
 
@@ -1940,7 +1939,7 @@ function draw_tree(settings) {
         // calculate per layer font size
         var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
         var layer_font = Math.min((layer_perimeter / leaf_count), '18');
-        layer_fonts[layer_index] = layer_font + 'px';
+        layer_fonts[layer_index] = layer_font;
 
         // calculate new layer height if text layer heigth is 0
         if (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text' && parseFloat(layers[pindex]['height'])==0)
@@ -1954,8 +1953,10 @@ function draw_tree(settings) {
                     longest_text_len = layerdata[_pos][pindex].length;
                 }
             }
-            // 0.6 is a constant(?) rate between height & width in monospace fonts.
-            layers[pindex]['height'] = Math.ceil(longest_text_len * 0.6 * layer_font) + 1;
+            // make background bit longer than text
+            longest_text_len += 2;
+
+            layers[pindex]['height'] = Math.ceil(longest_text_len * MONOSPACE_FONT_ASPECT_RATIO * layer_font) + 1;
             $('#height' + pindex).val(layers[pindex]['height']);
         }
 
@@ -2234,9 +2235,9 @@ function draw_tree(settings) {
                                 }
 
                                 var offset_xy = [];
-                                offset_xy['x'] = Math.cos(q.angle) * layer_boundaries[layer_index][0];
-                                offset_xy['y'] = Math.sin(q.angle) * layer_boundaries[layer_index][0];
-
+                                var _radius = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
+                                offset_xy['x'] = Math.cos(q.angle) * _radius;
+                                offset_xy['y'] = Math.sin(q.angle) * _radius;
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
                                 drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
