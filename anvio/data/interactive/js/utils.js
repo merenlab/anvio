@@ -288,11 +288,14 @@ function togglePickerStart(selectbox, togglePicker)
         $(tr).find('.picker_start').css('visibility', 'visible');
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'visible');
+            $(tr).find('.input-height').css('visibility', 'hidden');
         }
     } else { 
         $(tr).find('.picker_start').css('visibility', 'hidden');
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'hidden');
+            $(tr).find('.input-height').css('visibility', 'visible');
+            $(tr).find('.input-height').val('30');
         }
     }  
 }

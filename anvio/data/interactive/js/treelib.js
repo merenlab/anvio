@@ -1929,14 +1929,37 @@ function draw_tree(settings) {
         }
         else
         {
-            var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
+            var layer_margin = margin;
         }
-        
-        layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
+
+        if (!(layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') && parseFloat(layers[pindex]['height'])==0)
+        {
+            layer_margin = 0;
+        }
 
         // calculate per layer font size
         var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
-        layer_fonts[layer_index] = (layer_perimeter / leaf_count) + 'px';
+        var layer_font = Math.min((layer_perimeter / leaf_count), '18');
+        layer_fonts[layer_index] = layer_font + 'px';
+
+        // calculate new layer height if text layer heigth is 0
+        if (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text' && parseFloat(layers[pindex]['height'])==0)
+        {
+            // find longest item.
+            var longest_text_len = 0;
+            for (var _pos = 1; _pos < layerdata.length; _pos++)
+            {
+                if (layerdata[_pos][pindex].length > longest_text_len)
+                {
+                    longest_text_len = layerdata[_pos][pindex].length;
+                }
+            }
+            // 0.6 is a constant(?) rate between height & width in monospace fonts.
+            layers[pindex]['height'] = Math.ceil(longest_text_len * 0.6 * layer_font) + 1;
+            $('#height' + pindex).val(layers[pindex]['height']);
+        }
+
+        layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
 
         createBin('tree_bin', 'layer_background_' + layer_index);
         createBin('tree_bin', 'layer_' + layer_index);

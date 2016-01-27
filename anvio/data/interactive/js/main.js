@@ -407,6 +407,9 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
+
+            if (layers[layer_id]["type"] === 'text')
+                layers[layer_id]["height"] = '0';
         }
     );    
 }
@@ -597,7 +600,7 @@ function buildLayersTable(order, settings)
                         _unique_items.push(layerdata[_pos][layer_id]);
 
                     if (_unique_items.length > 11) {
-                        height = '160';
+                        height = '0';
                         type = 'text';
                         break;
                     }
@@ -620,7 +623,7 @@ function buildLayersTable(order, settings)
                 '    </select>' +
                 '</td>' +
                 '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
@@ -636,6 +639,7 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{color-start}', 'g'), color_start)
                                .replace(new RegExp('{color-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
 
