@@ -39,6 +39,8 @@ __status__ = "Development"
 progress = Progress()
 progress.verbose = False
 
+run = Run()
+run.verbose = False
 
 def rev_comp(seq):
     return seq.translate(complements)[::-1]
@@ -439,8 +441,80 @@ def concatenate_files(dest_file, file_list):
     return dest_file
 
 
-def get_split_start_stops(contig_length, split_length):
-    """Returns split start stop locations for a given contig length"""
+def get_split_start_stops(contig_length, split_length, gene_start_stops = None):
+    """Wrapper funciton for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
+    if gene_start_stops:
+        return get_split_start_stops_with_gene_calls(contig_length, split_length, gene_start_stops)
+    else:
+        return get_split_start_stops_without_gene_calls(contig_length, split_length)
+
+
+def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_start_stops):
+    """Here we have a contig of `contig_length`, and a desired split length of `split_length`. also
+       we know where genes start and stop in this contigs. we would like to split this contig into
+       smaller pieces, i.e. sizes of `splits_length`, but in such a way that that splits do not
+       break contigs in the middle of a gene."""
+
+    # if the contig is too short, return it back.
+    if contig_length < 2 * split_length:
+        return [(0, contig_length)]
+
+    non_coding_positions_in_contig = set(range(0, contig_length))
+
+    # trim from the beginning and the end. we don't want to end up creating very short pieces 
+    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(0, int(split_length / 2))))
+    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
+
+    # remove positions that code for genes
+    for start, stop in gene_start_stops:
+        start = start - 5
+        stop = stop + 5
+        non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(start, stop)))
+
+    # what would be our break points in an ideal world? compute an initial list of break
+    # points based on the length of the contig and desired split size:
+    optimal_number_of_splits = int(contig_length / split_length)
+    optimal_split_length = contig_length / optimal_number_of_splits
+    optimal_break_points = range(optimal_split_length, contig_length - optimal_split_length, optimal_split_length)
+
+    #print sorted(list(non_coding_positions_in_contig))
+    # now we will identify the very bad break points that we can't find a way to split around
+    bad_break_points = set([])
+    for i in range(0, len(optimal_break_points)):
+        break_point = optimal_break_points[i]
+
+        if break_point not in non_coding_positions_in_contig:
+            # optimal break point hits a gene. we shall search towards both directions
+            # to find a better break point:
+            new_break_point = None
+            for s in range(0, split_length / 2):
+                if break_point + s in non_coding_positions_in_contig:
+                    new_break_point = break_point + s
+                    break
+                if break_point - s in non_coding_positions_in_contig:
+                    new_break_point = break_point - s
+                    break
+
+            if not new_break_point:
+                # nope. we failed. this is a bad bad break point.
+                bad_break_points.add(break_point)
+            else:
+                # we are satisfied with the new one we found for now. it may be a shitty one,
+                # but we will learn about that later. for now, let's replace the previous
+                # optimal break pont with this one.
+                optimal_break_points[i] = new_break_point
+
+    # remove all the bad breakpoints from our 'optimal' break points:
+    optimal_break_points = [p for p in optimal_break_points if p not in bad_break_points]
+
+    # create start/stop positions from these break points
+    chunks = zip([0] + optimal_break_points[:-1], optimal_break_points) + [(optimal_break_points[-1], contig_length)]
+
+    return chunks
+
+
+def get_split_start_stops_without_gene_calls(contig_length, split_length):
+    """Returns split start stop locations for a given contig length."""
     num_chunks = contig_length / split_length
 
     if num_chunks < 2:
