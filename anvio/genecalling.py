@@ -90,7 +90,7 @@ class Prodigal:
 
            Returns a gene calls dict, and protein sequences dict.
         """
-        gene_calls_dict = {} # each entry must contain {'contig', 'start', stop, 'direcion', 'partial'} items.
+        gene_calls_dict = {} # each entry must contain {'contig', 'start', stop, 'direction', 'partial'} items.
         protein_sequences_dict = {}
 
         self.genes_in_contigs = os.path.join(output_dir, 'contigs.genes')
