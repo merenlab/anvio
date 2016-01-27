@@ -31,6 +31,7 @@ var zoomBox = {};
 var drawing_zoom = false;
 
 var LINE_COLOR='#888888';
+var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 
 var scale = 0;
 
