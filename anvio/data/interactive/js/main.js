@@ -603,6 +603,8 @@ function buildLayersTable(order, settings)
                     if (_unique_items.length > 11) {
                         height = '0';
                         type = 'text';
+                        // we have at least one text layer, we can show max font size input
+                        $('.max-font-size-input').show();
                         break;
                     }
                 }
@@ -799,7 +801,7 @@ function serializeSettings(use_layer_names) {
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
-
+    state['max-font-size'] = $('#max_font_size').val();
 
     // sync views object and layers table
     syncViews();
@@ -1800,6 +1802,9 @@ function loadState()
             if (state.hasOwnProperty('tree-radius')) {
                 $('#tree-radius-container').show();
                 $('#tree-radius').val(state['tree-radius']);
+            }
+            if (state.hasOwnProperty('max-font-size')) {
+                $('#max_font_size').val(state['max-font-size']);
             }
             if (state.hasOwnProperty('layer-margin'))
                 $('#layer-margin').val(state['layer-margin']);

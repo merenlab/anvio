@@ -289,6 +289,7 @@ function togglePickerStart(selectbox, togglePicker)
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'visible');
             $(tr).find('.input-height').css('visibility', 'hidden');
+            $('.max-font-size-input').show();
         }
     } else { 
         $(tr).find('.picker_start').css('visibility', 'hidden');
