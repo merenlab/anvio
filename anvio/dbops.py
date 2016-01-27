@@ -900,11 +900,11 @@ class ContigsDatabase:
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
         self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
-        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
         self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
+        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
         self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
-        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
+        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
@@ -913,10 +913,28 @@ class ContigsDatabase:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        # first things first: do the gene calling on contigs
+        # first things first: do the gene calling on contigs. this part is important. we are doing the
+        # gene calling first. so we understand wher genes start and end. this information will guide the
+        # arrangement of the breakpoint of splits
+        contig_name_to_gene_start_stops = {}
         if not skip_gene_calling:
+            # temporarily disconnect to perform gene calls
+            self.db.disconnect()
+
             gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug = debug)
             gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
+
+            # reconnect and learn about what's done
+            self.db = db.DB(self.db_path, anvio.__contigs__version__)
+
+            genes_in_contigs_dict = self.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
+            for gene_unique_id in genes_in_contigs_dict:
+                e = genes_in_contigs_dict[gene_unique_id]
+                if not contig_name_to_gene_start_stops.has_key(e['contig']):
+                    contig_name_to_gene_start_stops[e['contig']] = set([])
+
+                contig_name_to_gene_start_stops[e['contig']].add((e['start'], e['stop']), )
 
         # lets process and store the FASTA file.
         fasta = u.SequenceSource(contigs_fasta)
@@ -928,27 +946,32 @@ class ContigsDatabase:
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
-        self.progress.new('Computing k-mer frequencies')
+        self.progress.new('Identifying splits, computing k-mer frequencies, ...')
         while fasta.next():
-            self.progress.update('processing contig %d' % fasta.pos)
-            contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(fasta.id, fasta.seq)
+            self.progress.update('Contig %d ...' % fasta.pos)
 
-            contig_kmer_freq = contigs_kmer_table.get_kmer_freq(fasta.seq)
+            contig_name = fasta.id
+            contig_sequence = fasta.seq
+
+            gene_start_stops = contig_name_to_gene_start_stops[contig_name] if contig_name in contig_name_to_gene_start_stops else set([])
+            contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, gene_start_stops)
+
+            contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
             for order in range(0, len(split_start_stops)):
                 start, end = split_start_stops[order]
-                split_name = contigops.gen_split_name(fasta.id, order)
+                split_name = contigops.gen_split_name(contig_name, order)
 
                 # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
                 # holds kmer values for splits only. in one table, each split has a kmer value of their
                 # contigs (to not lose the genomic context while clustering based on kmers), in the other
                 # one each split holds its own kmer value.
-                contigs_kmer_table.append(split_name, fasta.seq[start:end], kmer_freq = contig_kmer_freq)
-                splits_kmer_table.append(split_name, fasta.seq[start:end])
+                contigs_kmer_table.append(split_name, contig_sequence[start:end], kmer_freq = contig_kmer_freq)
+                splits_kmer_table.append(split_name, contig_sequence[start:end])
 
-                splits_info_table.append(split_name, fasta.seq[start:end], order, start, end, contig_gc_content, fasta.id)
+                splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
 
-            db_entries_contig_sequences.append((fasta.id, fasta.seq), )
+            db_entries_contig_sequences.append((contig_name, contig_sequence), )
         self.progress.end()
 
         self.db.set_meta_value('kmer_size', kmer_size)
@@ -1117,12 +1140,12 @@ class InfoTableForContigs:
         self.split_length = split_length
 
 
-    def append(self, seq_id, sequence):
+    def append(self, seq_id, sequence, gene_start_stops = None):
         sequence_length = len(sequence)
         gc_content = utils.get_GC_content_for_sequence(sequence)
 
         # how many splits will there be?
-        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length)
+        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
 
         self.total_nts += sequence_length
         self.total_contigs += 1
