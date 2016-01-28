@@ -257,7 +257,7 @@ def receive_additional_upload_file(request, userdb, response):
         fileType = request.forms.get('type')
         if not validFileType[fileType]:
             return '{ "status": "error", "message": "Invalid file type selected for upload", "data": null }'
-
+        
     message = 'added'
     filePath = basepath + fileType
     if os.path.isfile(filePath):
@@ -265,7 +265,25 @@ def receive_additional_upload_file(request, userdb, response):
         message = 'updated'
         
     request.files.get('uploadFile').save(filePath)
-        
+
+    # check if this is a samples order or samples info file in which case the samples.db needs to be
+    # created / updated
+    if fileType == 'samplesOrderFile' or fileType == 'samplesInformationFile':
+        # if there was a previous samples.db, it needs to be removed
+        samplesDBPath = basepath + 'samples.db'
+        if os.path.isfile(samplesDBPath):
+            os.remove(samplesDBPath)
+
+        # create a new samples.db
+        sample = dbops.SamplesInformationDatabase(samplesDBPath)
+        samplesInfoPath = None
+        samplesOrderPath = None
+        if os.path.isfile(basepath + 'samplesInformationFile'):
+            samplesInfoPath = basepath + 'samplesInformationFile'
+        if os.path.isfile(basepath + 'samplesOrderFile'):
+            samplesOrderPath = basepath + 'samplesOrderFile'
+        sample.create(samplesInfoPath, samplesOrderPath)
+            
     return '{ "status": "ok", "message": "file '+message+'", "data": null }'
 
 def admin_data(request, userdb, response):
