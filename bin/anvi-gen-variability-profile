@@ -7,7 +7,7 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError
-from anvio.variabilityops import VariablePositionsEngine
+from anvio.variabilityops import VariableNtPositionsEngine
 
 
 __author__ = "A. Murat Eren"
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        variable_positions = VariablePositionsEngine(args)
-        variable_positions.init()
-        variable_positions.report()
+        variable_nt_positions = VariableNtPositionsEngine(args)
+        variable_nt_positions.init()
+        variable_nt_positions.report()
     except ConfigError, e:
         print e

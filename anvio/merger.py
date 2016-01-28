@@ -217,21 +217,21 @@ class MultipleRuns:
                                       your best bet is to profile everything (with of course using the same parameters)\
                                       from scratch :/" % runinfo_variable
 
-    def merge_variable_positions_tables(self):
-        self.is_all_samples_have_it('variable_positions_table')
+    def merge_variable_nts_tables(self):
+        self.is_all_samples_have_it('variable_nts_table')
 
-        variable_positions_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         for runinfo in self.input_runinfo_dicts.values():
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
-            sample_variable_positions_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_positions_table_name, tables.variable_positions_table_structure)
+            sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
             sample_profile_db.disconnect()
 
-            for tpl in sample_variable_positions_table:
-                entry = tuple([variable_positions_table.next_id(tables.variable_positions_table_name)] + list(tpl[1:]))
-                variable_positions_table.db_entries.append(entry)
+            for tpl in sample_variable_nts_table:
+                entry = tuple([variable_nts_table.next_id(tables.variable_nts_table_name)] + list(tpl[1:]))
+                variable_nts_table.db_entries.append(entry)
 
-        variable_positions_table.store()
+        variable_nts_table.store()
 
 
     def merge_gene_coverages_tables(self):
@@ -358,7 +358,7 @@ class MultipleRuns:
         self.progress.end()
 
         self.progress.new('Merging variable positions tables')
-        self.merge_variable_positions_tables()
+        self.merge_variable_nts_tables()
         self.progress.end()
 
         # critical part:

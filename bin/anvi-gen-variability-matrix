@@ -78,8 +78,8 @@ class ContigVariability:
     def populate_positions_dict(self):
         '''We take a split, and create a record of each variable position in it.'''
         counter = Counter()
-        for variable_positions_in_layer in [s['competing_nucleotides'].keys() for s in self.split_data.values()]:
-            for pos in variable_positions_in_layer:
+        for variable_nt_positions_in_layer in [s['competing_nucleotides'].keys() for s in self.split_data.values()]:
+            for pos in variable_nt_positions_in_layer:
                 counter[pos] += 1
 
         # initiate a null dict only with the information regarding how many times

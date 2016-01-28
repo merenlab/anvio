@@ -34,8 +34,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        variable_positions = VariabilityNetwork(args)
-        variable_positions.generate()
+        variable_nt_positions = VariabilityNetwork(args)
+        variable_nt_positions.generate()
     except ConfigError, e:
         print e
         sys.exit(-1)
