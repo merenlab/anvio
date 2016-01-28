@@ -96,8 +96,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.atomic_contig_split_data = contigops.AtomicContigSplitData(self.progress)
 
         # following variable will be populated during the profiling, and its content will eventually
-        # be stored in t.variable_positions_table_name
-        self.variable_positions_table_entries = []
+        # be stored in t.variable_nts_table_name
+        self.variable_nts_table_entries = []
 
 
     def init_dirs_and_dbs(self):
@@ -195,7 +195,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def generate_variabile_positions_table(self):
-        variable_positions_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         self.progress.new('Storing variability information')
         for contig in self.contigs.values():
@@ -210,11 +210,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     column_profile['sample_id'] = self.sample_id
 
-                    variable_positions_table.append(column_profile)
+                    variable_nts_table.append(column_profile)
 
-        variable_positions_table.store()
+        variable_nts_table.store()
         self.progress.end()
-        self.run.info('variable_positions_table', True, quiet = True)
+        self.run.info('variable_nts_table', True, quiet = True)
 
 
     def generate_gene_coverages_table(self):

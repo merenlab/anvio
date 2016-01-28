@@ -36,7 +36,7 @@ progress = terminal.Progress()
 run = terminal.Run(width = 60)
 
 
-class VariablePositionsEngine(dbops.ContigsSuperclass):
+class VariableNtPositionsEngine(dbops.ContigsSuperclass):
     """This is the main class to make sense and report variability for a given set of splits,
        or a bin in a collection, across multiple or all samples. The user can scrutinize the
        nature of the variable positions to be reported dramatically given the ecology and/or
@@ -69,7 +69,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
 
-        self.variable_positions_table = {} 
+        self.variable_nts_table = {} 
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
         self.split_name_position_dict = {}
@@ -149,7 +149,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
         self.progress.update('Reading variable positions table ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.sample_ids = profile_db.samples # we set this now, but we will overwrite it with args.samples_of_interest if necessary
-        self.variable_positions_table = profile_db.db.get_table_as_dict(t.variable_positions_table_name)
+        self.variable_nts_table = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
         db_hash = profile_db.meta['contigs_db_hash']
         profile_db.disconnect()
 
@@ -163,7 +163,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.progress.end()
 
-        self.process_variable_positions_table()
+        self.process_variable_nts_table()
 
         self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
 
@@ -179,25 +179,25 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
     def filter(self, filter_name, test_func):
         self.progress.new('Filtering based on "%s"' % filter_name)
-        num_entries_before_filter = len(self.variable_positions_table)
+        num_entries_before_filter = len(self.variable_nts_table)
 
         entry_ids_to_remove, counter = set([]), 0
 
-        for entry_id in self.variable_positions_table:
+        for entry_id in self.variable_nts_table:
             if counter % 1000 == 0:
                 self.progress.update('identifying entries to remove :: %s' % pp(counter))
 
             counter += 1
 
-            if test_func(self.variable_positions_table[entry_id]):
+            if test_func(self.variable_nts_table[entry_id]):
                 entry_ids_to_remove.add(entry_id)
                 continue
 
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+            self.variable_nts_table.pop(entry_id)
 
-        num_entries_after_filter = len(self.variable_positions_table)
+        num_entries_after_filter = len(self.variable_nts_table)
 
         self.progress.end()
 
@@ -210,15 +210,15 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
 
     def check_if_variable_table_is_empty(self):
-        if not len(self.variable_positions_table):
+        if not len(self.variable_nts_table):
             self.progress.end()
             self.run.info_single('No variable positions left to work with. Quitting.', 'red', 1, 1)
             sys.exit()
 
 
-    def process_variable_positions_table(self):
+    def process_variable_nts_table(self):
         self.run.info('Variability table', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.variable_positions_table)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
+                % (pp(len(self.variable_nts_table)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
 
         self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
         if self.samples_of_interest:
@@ -237,15 +237,15 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
             self.filter('splits of interest', lambda x: x['split_name'] not in self.splits_of_interest)
 
         # let's report the number of positions reported in each sample before filtering any futrher:
-        num_positions_each_sample = Counter([v['sample_id'] for v in self.variable_positions_table.values()])
+        num_positions_each_sample = Counter([v['sample_id'] for v in self.variable_nts_table.values()])
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
 
         if self.min_ratio:
             self.run.info('Min departure from consensus ratio', self.min_ratio)
             self.filter('n2/n1', lambda x: x['departure_from_consensus'] < self.min_ratio)
 
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             v['unique_position_id'] = '_'.join([v['split_name'], str(v['pos'])])
 
         if self.min_occurrence == 1:
@@ -258,8 +258,8 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.progress.update('counting occurrences of each position across samples ...')
         unique_position_id_occurrences = {}
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             if unique_position_id_occurrences.has_key(v['unique_position_id']):
                 unique_position_id_occurrences[v['unique_position_id']] += 1
             else:
@@ -267,14 +267,14 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.progress.update('identifying entries that occurr in less than %d samples ...' % (self.min_occurrence))
         entry_ids_to_remove = set([])
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+            self.variable_nts_table.pop(entry_id)
 
         self.progress.end()
 
@@ -296,8 +296,8 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.unique_pos_id_to_entry_id = {}
 
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             u = v['unique_position_id']
             if u in self.unique_pos_id_to_entry_id:
                 self.unique_pos_id_to_entry_id[u].add(entry_id)
@@ -311,8 +311,8 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
         self.progress.new('Further processing')
         self.progress.update('re-setting unique identifiers to track split/position pairs across samples')
 
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
             v['parent'] = self.splits_basic_info[v['split_name']]['parent']
 
@@ -333,7 +333,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.run.info('Min scatter', self.min_scatter)
 
-        num_entries_before_filter = len(self.variable_positions_table)
+        num_entries_before_filter = len(self.variable_nts_table)
 
         # we need the unique pos_id to entry id dict filled for this function:
         self.gen_unique_pos_identifier_to_entry_id_dict()
@@ -356,9 +356,9 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+            self.variable_nts_table.pop(entry_id)
 
-        num_entries_after_filter = len(self.variable_positions_table)
+        num_entries_after_filter = len(self.variable_nts_table)
 
         self.progress.end()
 
@@ -379,7 +379,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
         self.run.info('Min coverage in all samples', '%dX' % self.min_coverage_in_each_sample)
 
-        num_entries_before_filter = len(self.variable_positions_table)
+        num_entries_before_filter = len(self.variable_nts_table)
 
         # we need to make sure we have an up-to-date dictionary for unque position to entry id conversion:
         self.gen_unique_pos_identifier_to_entry_id_dict()
@@ -392,16 +392,16 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
         for unique_pos_id in self.unique_pos_id_to_entry_id:
             entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
 
-            min_coverage_in_a_sample = min([self.variable_positions_table[entry_id]['coverage'] for entry_id in entry_ids])
+            min_coverage_in_a_sample = min([self.variable_nts_table[entry_id]['coverage'] for entry_id in entry_ids])
 
             if min_coverage_in_a_sample < self.min_coverage_in_each_sample:
                 entry_ids_to_remove.update(entry_ids)
 
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
         for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+            self.variable_nts_table.pop(entry_id)
 
-        num_entries_after_filter = len(self.variable_positions_table)
+        num_entries_after_filter = len(self.variable_nts_table)
 
         self.progress.end()
 
@@ -416,12 +416,12 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
     def filter_based_on_num_positions_from_each_split(self):
         self.run.info('Num positions to keep from each split (-n)', self.num_positions_from_each_split)
 
-        num_entries_before_filter = len(self.variable_positions_table)
+        num_entries_before_filter = len(self.variable_nts_table)
 
         self.progress.new('Filtering based on -n')
 
         self.progress.update('Generating splits and positions tuples ...')
-        splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in self.variable_positions_table.values()])
+        splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in self.variable_nts_table.values()])
         unique_positions_to_remove = set([])
 
         self.progress.update('Generating positions in splits dictionary ...')
@@ -440,13 +440,13 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
                     unique_positions_to_remove.add(pos)
 
         self.progress.update('Identifying entry ids to remove ...')
-        entry_ids_to_remove = set([entry_id for entry_id in self.variable_positions_table if self.variable_positions_table[entry_id]['unique_pos_identifier'] in unique_positions_to_remove])
+        entry_ids_to_remove = set([entry_id for entry_id in self.variable_nts_table if self.variable_nts_table[entry_id]['unique_pos_identifier'] in unique_positions_to_remove])
 
         self.progress.update('Removing %d positions ...' % len(unique_positions_to_remove))
         for entry_id in entry_ids_to_remove:
-            self.variable_positions_table.pop(entry_id)
+            self.variable_nts_table.pop(entry_id)
 
-        num_entries_after_filter = len(self.variable_positions_table)
+        num_entries_after_filter = len(self.variable_nts_table)
 
         self.progress.end()
 
@@ -459,14 +459,14 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
 
 
     def recover_base_frequencies_for_all_samples(self):
-        """this function populates variable_positions_table dict with entries from samples that have no
+        """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
 
         self.progress.new('Recovering base frequencies for all')
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
-        next_available_entry_id = max(self.variable_positions_table.keys()) + 1
+        next_available_entry_id = max(self.variable_nts_table.keys()) + 1
 
         self.progress.update('creating a dicts to track missing base frequencies for each sample / split / pos')
         split_pos_to_unique_pos_identifier = {}
@@ -476,8 +476,8 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
             split_pos_to_unique_pos_identifier[split_name] = {}
 
         self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
-        for entry_id in self.variable_positions_table:
-            v = self.variable_positions_table[entry_id]
+        for entry_id in self.variable_nts_table:
+            v = self.variable_nts_table[entry_id]
             p = v['pos']
             d = splits_to_consider[v['split_name']]
             u = split_pos_to_unique_pos_identifier[v['split_name']]
@@ -509,7 +509,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
                 in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(parent_name, pos_in_contig)
 
                 for sample in splits_to_consider[split][pos]:
-                    self.variable_positions_table[next_available_entry_id] = {'parent': parent_name,
+                    self.variable_nts_table[next_available_entry_id] = {'parent': parent_name,
                                                                               'departure_from_consensus': 0,
                                                                               'consensus': base_at_pos,
                                                                               'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
@@ -524,7 +524,7 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
                                                                               'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
                                                                               'unique_position_id': '%s_%d' % (split, pos),
                                                                               'split_name': split}
-                    self.variable_positions_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                    self.variable_nts_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
 
         self.progress.end()
@@ -532,16 +532,16 @@ class VariablePositionsEngine(dbops.ContigsSuperclass):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_positions_table_structure[0]] + ['unique_pos_identifier'] + t.variable_positions_table_structure[1:] + ['parent']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + t.variable_nts_table_structure[1:] + ['parent']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
-        utils.store_dict_as_TAB_delimited_file(self.variable_positions_table, self.args.output_file, new_structure)
+        utils.store_dict_as_TAB_delimited_file(self.variable_nts_table, self.args.output_file, new_structure)
         self.progress.end()
 
-        self.run.info('Num entries reported', pp(len(self.variable_positions_table)))
+        self.run.info('Num entries reported', pp(len(self.variable_nts_table)))
         self.run.info('Output File', self.args.output_file) 
-        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()]))))
+        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.variable_nts_table.values()]))))
 
 
 class VariabilityNetwork:
@@ -553,7 +553,7 @@ class VariabilityNetwork:
 
         self.samples = None
         self.samples_information_dict = None
-        self.variable_positions_table = None
+        self.variable_nts_table = None
 
         A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
         null = lambda x: x
@@ -575,21 +575,21 @@ class VariabilityNetwork:
             filesnpaths.is_file_tab_delimited(self.input_file_path)
             self.progress.new('Reading the input file')
             self.progress.update('...')
-            self.variable_positions_table = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
+            self.variable_nts_table = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
             self.progress.end()
 
-            self.run.info('input_file', '%d entries read' % len(self.variable_positions_table))
+            self.run.info('input_file', '%d entries read' % len(self.variable_nts_table))
 
 
     def generate(self):
-        if not self.variable_positions_table:
+        if not self.variable_nts_table:
             raise ConfigError, "There is nothing to report. Either the input file you provided was empty, or you\
                                 haven't filled in the variable positions data into the class."
 
         if self.max_num_unique_positions < 0:
             raise ConfigError, "Max number of unique positions cannot be less than 0.. Obviously :/"
 
-        self.samples = sorted(list(set([e['sample_id'] for e in self.variable_positions_table.values()])))
+        self.samples = sorted(list(set([e['sample_id'] for e in self.variable_nts_table.values()])))
         self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
 
         if self.samples_information_dict:
@@ -601,23 +601,23 @@ class VariabilityNetwork:
                                     however, you are missing these ones from your samples information: %s."\
                                                 % (', '.join(samples_missing_in_information_dict))
 
-        self.unique_variable_positions = set([e['unique_pos_identifier'] for e in self.variable_positions_table.values()])
-        self.run.info('unique_variable_positions', '%d found.' % (len(self.unique_variable_positions)))
+        self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in self.variable_nts_table.values()])
+        self.run.info('unique_variable_nt_positions', '%d found.' % (len(self.unique_variable_nt_positions)))
 
-        if self.max_num_unique_positions and len(self.unique_variable_positions) > self.max_num_unique_positions:
-            self.unique_variable_positions = set(random.sample(self.unique_variable_positions, self.max_num_unique_positions))
-            self.run.info('unique_variable_positions', 'Unique positions are subsampled to %d' % self.max_num_unique_positions, mc = 'red')
+        if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
+            self.unique_variable_nt_positions = set(random.sample(self.unique_variable_nt_positions, self.max_num_unique_positions))
+            self.run.info('unique_variable_nt_positions', 'Unique positions are subsampled to %d' % self.max_num_unique_positions, mc = 'red')
 
         self.progress.new('Samples dict')
         self.progress.update('Creating an empty one ...')
         samples_dict = {}
         for sample_name in self.samples:
             samples_dict[sample_name] = {}
-            for unique_variable_position in self.unique_variable_positions:
+            for unique_variable_position in self.unique_variable_nt_positions:
                 samples_dict[sample_name][unique_variable_position] = 0
 
         self.progress.update('Updating the dictionary with data')
-        for entry in self.variable_positions_table.values():
+        for entry in self.variable_nts_table.values():
             sample_id = entry['sample_id']
             pos = entry['unique_pos_identifier']
             frequency = entry['departure_from_consensus']
@@ -626,7 +626,7 @@ class VariabilityNetwork:
 
 
         self.progress.update('Generating the network file')
-        utils.gen_gexf_network_file(sorted(list(self.unique_variable_positions)), samples_dict, self.output_file_path, sample_mapping_dict = self.samples_information_dict)
+        utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict = self.samples_information_dict)
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)

@@ -615,7 +615,7 @@ class ProfileSuperclass(object):
                                 in the right database?" % split_name
 
         profile_db = ProfileDatabase(self.profile_db_path)
-        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_positions_table_name, '''split_name = "%s"''' % split_name, error_if_no_data = False).values()
+        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data = False).values()
         profile_db.disconnect()
 
         if return_raw_results:
@@ -786,7 +786,7 @@ class ProfileDatabase:
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
-        self.db.create_table(t.variable_positions_table_name, t.variable_positions_table_structure, t.variable_positions_table_types)
+        self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
@@ -1237,11 +1237,11 @@ class TableForVariability(Table):
 
         self.num_entries = 0
         self.db_entries = []
-        self.set_next_available_id(t.variable_positions_table_name)
+        self.set_next_available_id(t.variable_nts_table_name)
 
 
     def append(self, profile):
-        db_entry = tuple([self.next_id(t.variable_positions_table_name)] + [profile[h] for h in t.variable_positions_table_structure[1:]])
+        db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
         if self.num_entries % 100 == 0:
@@ -1250,7 +1250,7 @@ class TableForVariability(Table):
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_positions_table_name, self.db_entries)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
         profile_db.disconnect()
 
 
