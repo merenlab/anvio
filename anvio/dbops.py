@@ -625,10 +625,11 @@ class ProfileSuperclass(object):
         d = {}
 
         for sample_name in self.p_meta['samples']:
-            d[sample_name] = {'variability': {}, 'competing_nucleotides': {}}
+            d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
-            d[e['sample_id']]['variability'][e['pos']] = e['departure_from_consensus']
+            d[e['sample_id']]
+            d[e['sample_id']]['variability'][e['pos_in_codon']][e['pos']] = e['departure_from_consensus']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
 
         return d

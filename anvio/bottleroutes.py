@@ -8,6 +8,7 @@
 
 import os
 import json
+import copy
 import datetime
 
 from bottle import static_file
@@ -115,18 +116,26 @@ def charts(d, split_name):
     data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
 
     ## get the variability information dict for split:
+    progress.new('Variability')
+    progress.update('Collecting info for "%s"' % split_name)
     split_variability_info_dict = d.get_variability_information_for_split(split_name)
 
+    zeros_for_all_positions = [0] * d.splits_basic_info[split_name]['length']
     for layer in layers:
+        progress.update('Formatting variability data: "%s"' % layer)
         data['layers'].append(layer)
         data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
 
-        # we get a nice dict back, but here we convert it into a shitty list...
-        l = [0] * d.splits_basic_info[split_name]['length']
+        # FIXME: we get a nice dict back, but here we convert it into a shitty list... this is one of the
+        #        most inefficient piece of code in the entire platform, and it is very embarrassing to
+        #        have it this way here, but fortunately no one really reads the code :/
         vd = split_variability_info_dict[layer]['variability']
-        for pos in vd:
-            l[pos] = vd[pos]
-        data['variability'].append(l)
+        for pos_in_codon in range(0, 4):
+            l = copy.deepcopy(zeros_for_all_positions)
+            progress.append(' %d ..' % pos_in_codon)
+            for pos in vd[pos_in_codon]:
+                l[pos] = vd[pos_in_codon][pos]
+            data['variability'].append(l)
 
     levels_occupied = {1: []}
     for entry_id in d.split_to_genes_in_splits_ids[split_name]:
@@ -164,6 +173,8 @@ def charts(d, split_name):
             p['level'] = level + 1
 
         data['genes'].append(p)
+
+    progress.end()
 
     return json.dumps(data)
 
