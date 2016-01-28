@@ -18,6 +18,9 @@
  */
 
 function initContent () {
+    if (!user)
+        return;
+
     var html = '<div style="padding-top: 10px;">';
     html += '<button type="button" style="margin-right: 5px; float: right;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button>';
     html += '<button type="button" style="margin-right: 5px;" class="btn btn-default btn-sm" title="project management" onclick="window.location=\'user.html\';"><span class="glyphicon glyphicon-home" aria-hidden="true"></span></button>';
