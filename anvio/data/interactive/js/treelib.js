@@ -1937,7 +1937,15 @@ function draw_tree(settings) {
         }
 
         // calculate per layer font size
-        var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
+        if (settings['tree-type'] == 'circlephylogram')
+        {
+            var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
+        }
+        else
+        {
+            var layer_perimeter = tree_max_y;
+        }
+
         var layer_font = Math.min((layer_perimeter / leaf_count), parseFloat(settings['max-font-size']));
         layer_fonts[layer_index] = layer_font;
 
@@ -2000,8 +2008,11 @@ function draw_tree(settings) {
                 true);
         }
 
-        if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
+        // draw backgrounds
+        if (settings['tree-type']=='phylogram' && ((layer_types[pindex] == 3 && layers[pindex]['type'] == 'bar') || (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text')))
         {
+            // if phylogram and
+            // (numerical (3) and bar type) or (categorical (2) and text type)
             var color = layers[pindex]['color'];
 
             drawPhylogramRectangle('layer_background_' + layer_index,
@@ -2014,28 +2025,11 @@ function draw_tree(settings) {
                 0.3,
                 false);
         }
-        
-        if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') // background for text layer
+
+        if (settings['tree-type']=='circlephylogram' && ((layer_types[pindex] == 3 && layers[pindex]['type'] == 'bar') || (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text')))
         {
-            var color = layers[pindex]['color-start'];
-
-            var _min = Math.toRadians(settings['angle-min']);
-            var _max = Math.toRadians(settings['angle-max']);
-
-            drawPie('layer_background_' + layer_index,
-                'all',
-                _min,
-                _max,
-                layer_boundaries[layer_index][0],
-                layer_boundaries[layer_index][1],
-                (_max - _min > Math.PI) ? 1:0, // large arc flag
-                color,
-                1,
-                false);
-        }
-
-        if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
-        {
+            // if circlephylogram and
+            // (numerical (3) and bar type) or (categorical (2) and text type)
             var color = layers[pindex]['color'];
 
             var _min = Math.toRadians(settings['angle-min']);
@@ -2130,7 +2124,21 @@ function draw_tree(settings) {
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            if (layers[pindex]['type'] == 'color') 
+                            {
+                                categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            }
+                            else // text
+                            {
+                                var _offsetx = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
+                                var offset_xy = [];
+                                offset_xy['x'] = _offsetx;
+                                offset_xy['y'] = q.xy['y'];
+                                var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
+
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
+                                
+                            }
                         }
                         else if (isParent)
                         {
