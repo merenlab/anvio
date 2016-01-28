@@ -897,10 +897,10 @@ class UserMGMT:
     def check_view(self, request):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
-            p3 = None
+            p2 = None
             if len(p) > 2:
-                p3 = p[3]
-            view = self.get_view(p[0], p[1], p3)
+                p2 = p[2]
+            view = self.get_view(p[0], p[1], p2)
             if view["status"] == "error":
                 return view
             else:
