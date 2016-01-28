@@ -275,14 +275,15 @@ def receive_additional_upload_file(request, userdb, response):
             os.remove(samplesDBPath)
 
         # create a new samples.db
-        sample = dbops.SamplesInformationDatabase(samplesDBPath)
         samplesInfoPath = None
         samplesOrderPath = None
         if os.path.isfile(basepath + 'samplesInformationFile'):
             samplesInfoPath = basepath + 'samplesInformationFile'
         if os.path.isfile(basepath + 'samplesOrderFile'):
             samplesOrderPath = basepath + 'samplesOrderFile'
-        sample.create(samplesInfoPath, samplesOrderPath)
+        if samplesInfoPath and samplesOrderPath:
+            sample = dbops.SamplesInformationDatabase(samplesDBPath)
+            sample.create(samplesInfoPath, samplesOrderPath)
             
     return '{ "status": "ok", "message": "file '+message+'", "data": null }'
 
