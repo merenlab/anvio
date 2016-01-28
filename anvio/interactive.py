@@ -359,9 +359,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         splits_in_tree = set(self.split_names_ordered)
         splits_in_view_data = set(self.views[self.default_view]['dict'].keys())
         splits_in_database = set(self.split_sequences) if self.split_sequences else None
+        splits_in_additional_view = set(self.views['user_view']['dict'].keys()) if self.additional_view_path else None
 
         splits_in_tree_but_not_in_view_data = splits_in_tree - splits_in_view_data
         splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database if splits_in_database else set([])
+        splits_in_additional_view_but_not_in_tree = splits_in_additional_view - splits_in_tree if splits_in_additional_view else set([])
 
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
@@ -396,6 +398,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                             view data file: '%s'. And there were %d of them in total. You\
                             are warned!" % (one_example, num_all))
 
+        if splits_in_additional_view_but_not_in_tree:
+            raise ConfigError, "There are some split names in your additional view data file ('%s') that are missing from\
+                                split names characterized in the database. There are in fact %d of them. For instance,\
+                                here is a random split name that is in your additional view data, yet not in the database:\
+                                '%s'. This is not going to work for anvi'o :/" \
+                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop())
 
     def prune_view_dicts(self):
         self.progress.new('Pruning view dicts')
