@@ -33,14 +33,22 @@
   </head>
 
   <body>
-
-    <div class="header">
-      <img src="images/logo.png"><span>Home</span>
-    </div>
-
+        <div class="header">
+          <nav class="navbar">
+	        <div class="container-fluid">
+	          <div class="navbar-header">
+	            <span class="glyphicon glyphicon-picture"></span> <a href="#" target=_blank>Gallery</a> /
+                <span class="glyphicon glyphicon-align-right"></span>  <a href="#" target=_blank>Data Types</a> /
+                <span class="glyphicon glyphicon-heart-empty"></span> <a href="http://merenlab.org/projects/anvio/" target=_blank>Anvi'o Project</a> /
+                <span class="glyphicon glyphicon-home"></span> User Home</a>
+	          </div>
+	        </div>
+          </nav>
+        </div>
+        
     <div class="container" id="content"></div>
     
-    <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2015 Meren.</div>
+    <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2015 Anvi'o Project.</div>
 
     <!-- UPLOAD DATA -->
     <div class="modal fade" id="modUploadData">
@@ -194,7 +202,7 @@
 		<div class="col-sm-10">
 		  <input type="checkbox" id="projectPublic" checked class="form-control">
 		</div>
-	      </div>
+	      <ediv>
 	    </form>
 	  </div>
 	  

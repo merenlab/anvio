@@ -28,101 +28,97 @@
   </head>
 
   <body>
+    <div class="index-page">
+        <div class="header">
+          <nav class="navbar">
+	    <div class="container-fluid">
+	      <div class="navbar-header">
+	        <span class="glyphicon glyphicon-picture"></span> <a href="#" target=_blank>Gallery</a> /
+            <span class="glyphicon glyphicon-align-right"></span>  <a href="#" target=_blank>Data Types</a> /
+            <span class="glyphicon glyphicon-heart-empty"></span> <a href="http://merenlab.org/projects/anvio/" target=_blank>Anvi'o Project</a>
+	      </div>
+	      
+	      <div class="collapse navbar-collapse" id="navbar-collapse">
+	        <form class="navbar-form navbar-right" role="login">
+                  <div class="form-group">
+	    	<input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">
+	    	<input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">
+	    	<button type="button" class="btn btn-default btn-sm" onclick="performLogin();" id="loginButton">login</button>
+	    	<div style="clear: both; text-align: left; font-size: 11px;"><a style="" href="forgot.html">forgot password?</a></div>
+                  </div>
+	        </form>
+	        <ul class="nav navbar-nav navbar-right">
+                  <li><a href="register.html">Register</a></li>
+	          <li><a href="http://merenlab.org/projects/anvio/" target=_blank>Help</a></li>
+	        </ul>
+	      </div>
+	    </div>
+          </nav>
+          
+          
+        </div>
+        
+        <div class="jumbotron">
+          <div class="container" style="color: white;">
+	    <img src="images/logo-white.png" style="width: 150px; margin-right: 30px; float: left;"><h1>Welcome to anvi'server</h1>
+	    <p style="opacity: 0.5;">An interactive tree visualization platfrom.</p>
+          </div>
+        </div>
 
-    <div class="header">
-      <nav class="navbar">
-	<div class="container-fluid">
-	  <div class="navbar-header">
-	    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
-              <span class="sr-only">Toggle navigation</span>
-              <span class="icon-bar"></span>
-              <span class="icon-bar"></span>
-              <span class="icon-bar"></span>
-	    </button>
-	    <a class="navbar-brand" href="http://merenlab.org/projects/anvio/" target=_blank>Merenlab</a>
-	  </div>
-	  
-	  <div class="collapse navbar-collapse" id="navbar-collapse">
-	    <form class="navbar-form navbar-right" role="login">
-              <div class="form-group">
-		<input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">
-		<input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">
-		<button type="button" class="btn btn-default btn-sm" onclick="performLogin();" id="loginButton">login</button>
-		<div style="clear: both; text-align: left; font-size: 11px;"><a style="" href="forgot.html">forgot password?</a></div>
-              </div>
-	    </form>
-	    <ul class="nav navbar-nav navbar-right">
-              <li><a href="register.html">Register</a></li>
-	      <li><a href="http://merenlab.org/projects/anvio/" target=_blank>Help</a></li>
-	    </ul>
-	  </div>
-	</div>
-      </nav>
-      
-      
+        <div class="container">
+          <div id="carousel" class="carousel slide col-sm-6" data-ride="carousel" data-interval="8000">
+	    <ol class="carousel-indicators">
+	      <li data-target="#carousel" data-slide-to="0" class="active"></li>
+	      <li data-target="#carousel" data-slide-to="1"></li>
+	      <li data-target="#carousel" data-slide-to="3"></li>
+	      <li data-target="#carousel" data-slide-to="4"></li>
+	      <li data-target="#carousel" data-slide-to="5"></li>
+	    </ol>
+	    
+	    <div class="carousel-inner" role="listbox">
+
+	      <div class="item active">
+	        <img src="images/carousel1.png" class="carouselImage">
+	      </div>
+
+	      <div class="item">
+	        <img src="images/carousel2.png" class="carouselImage">
+	      </div>	
+
+	      <div class="item">
+	        <img src="images/carousel3.png" class="carouselImage">
+	      </div>	
+
+	      <div class="item">
+	        <img src="images/carousel4.png" class="carouselImage">
+	      </div>	
+
+	      <div class="item">
+	        <img src="images/carousel5.png"  class="carouselImage">
+	      </div>	
+
+	    </div>
+	    
+	    <a class="left carousel-control" href="#carousel" role="button" data-slide="prev" style="background-image: none;">
+	      <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+	      <span class="sr-only">Previous</span>
+	    </a>
+	    <a class="right carousel-control" href="#carousel" role="button" data-slide="next" style="background-image: none;">
+	      <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+	      <span class="sr-only">Next</span>
+	    </a>
+          </div>
+
+          <div class="col-sm-6">
+	    <h3>What is anvi'server?</h3>
+	    <p>Anvi'server is an open-source work environment for data visualization. Anvi'server is a part of a larger project, <a href="https://peerj.com/articles/1319/">anvi'o</a>. Anvi'o is an an advanced analysis and visualization platform for 'omics data. We designed anvi'o mainly for microbiologists who routinely use high-throughput sequncing to study microbial life in complex environments. It uses an extensible visualization approach to distill multiple dimensions of information about each contig into a single display, offering a dynamic and unified work environment for data exploration, manipulation, and reporting. When we realized that the interactive interface of anvi'o can be useful for ad hoc visualization tasks, we decided to create anvi'server. Anvi'server is open source, and a part of the <a href="http://github.com/meren/anvio">anvi'o codebase</a>.</p>
+	    <h3>Upload, Analyze, Share</h3>
+	    <p>Using this platform you can create an account, and uplaad your data files to create publication-quality figures in minutes using anvi'o's highly-configurable interface options, and you can share your visualizations privately with your colleagues, or make them publicly available in a read-only format.</p>
+          </div>
+
+        </div>
+
+        <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2016 Anvi'o Project.</div>
     </div>
-    
-    <div class="jumbotron">
-      <div class="container" style="color: white;">
-	<img src="images/logo-white.png" style="width: 150px; margin-right: 30px; float: left;"><h1>Welcome to anvi'o</h1>
-	<p style="opacity: 0.5;">The analysis and visualization platform for 'omics data.</p>
-      </div>
-    </div>
-
-    <div class="container">
-      <div id="carousel" class="carousel slide col-sm-6" data-ride="carousel" data-interval="8000">
-	<ol class="carousel-indicators">
-	  <li data-target="#carousel" data-slide-to="0" class="active"></li>
-	  <li data-target="#carousel" data-slide-to="1"></li>
-	  <li data-target="#carousel" data-slide-to="3"></li>
-	  <li data-target="#carousel" data-slide-to="4"></li>
-	  <li data-target="#carousel" data-slide-to="5"></li>
-	</ol>
-	
-	<div class="carousel-inner" role="listbox">
-
-	  <div class="item active">
-	    <img src="images/carousel1.png" class="carouselImage">
-	  </div>
-
-	  <div class="item">
-	    <img src="images/carousel2.png" class="carouselImage">
-	  </div>	
-
-	  <div class="item">
-	    <img src="images/carousel3.png" class="carouselImage">
-	  </div>	
-
-	  <div class="item">
-	    <img src="images/carousel4.png" class="carouselImage">
-	  </div>	
-
-	  <div class="item">
-	    <img src="images/carousel5.png"  class="carouselImage">
-	  </div>	
-
-	</div>
-	
-	<a class="left carousel-control" href="#carousel" role="button" data-slide="prev" style="background-image: none;">
-	  <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
-	  <span class="sr-only">Previous</span>
-	</a>
-	<a class="right carousel-control" href="#carousel" role="button" data-slide="next" style="background-image: none;">
-	  <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
-	  <span class="sr-only">Next</span>
-	</a>
-      </div>
-
-      <div class="col-sm-6">
-	<h3>integrate 'omics data into metagenomic assemblies</h3>
-	<p>anvi’o is an advanced analysis and visualization platform that offers automated and human-guided characterization of microbial genomes in metagenomic assemblies, with interactive interfaces that can link ‘omics data from multiple sources into a single, intuitive display. Its extensible visualization approach distills multiple dimensions of information about each contig, offering a dynamic and unified work environment for data exploration, manipulation, and reporting.</p>
-	<h3>upload - analyze - share</h3>
-	<p>The anvi'o platform allows you to create your private account where you can upload and analyze your data. Produce publication quality images in minutes and share your results with colleagues or make them publically available.</p>
-      </div>
-
-    </div>
-
-    <div style="position: absolute; bottom: 15px; text-align: left; margin-left: 50px;">© 2015 Meren.</div>
-
   </body>
 </html>
