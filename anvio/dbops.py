@@ -839,7 +839,15 @@ class ContigsDatabase:
             self.db = None
 
 
-    def create(self, contigs_fasta, split_length, kmer_size = 4, skip_gene_calling = False, debug = False):
+    def create(self, args):
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        contigs_fasta = A('contigs_fasta')
+        split_length = A('split_length')
+        kmer_size = A('kmer_size')
+        skip_gene_calling = A('skip_gene_calling')
+        skip_mindful_splitting = A('skip_mindful_splitting')
+        debug = A('debug')
+ 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
 
         # just take a quick look at the first defline to make sure this FASTA file complies with anvi'o's
@@ -888,6 +896,9 @@ class ContigsDatabase:
         if kmer_size < 2 or kmer_size > 8:
             raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!)."
+
+        if skip_gene_calling:
+            skip_mindful_splitting = True
 
         self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database = True)
 
@@ -955,7 +966,11 @@ class ContigsDatabase:
             contig_sequence = fasta.seq
 
             gene_start_stops = contig_name_to_gene_start_stops[contig_name] if contig_name in contig_name_to_gene_start_stops else set([])
-            contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, gene_start_stops)
+
+            if skip_mindful_splitting:
+                contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, set([]))
+            else:
+                contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, gene_start_stops)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
@@ -990,6 +1005,7 @@ class ContigsDatabase:
         self.db.set_meta_value('taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
+        self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('creation_date', time.time())
         self.disconnect()
 
