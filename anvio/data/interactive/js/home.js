@@ -52,3 +52,19 @@ function carouselImages() {
 	}
     });
 }
+
+function loginForm() {
+    return '\
+<form class="navbar-form navbar-right" role="login">\
+  <div class="form-group">\
+    <input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">\
+    <input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">\
+    <button type="button" class="btn btn-default btn-sm" onclick="performLogin();" id="loginButton">login</button>\
+    <div style="clear: both; text-align: left; font-size: 11px;"><a style="" href="forgot.html">forgot password?</a></div>\
+  </div>\
+</form>\
+<ul class="nav navbar-nav navbar-right">\
+  <li><a href="register.html">Register</a></li>\
+  <li><a href="http://merenlab.org/projects/anvio/" target=_blank>Help</a></li>\
+</ul>';
+}

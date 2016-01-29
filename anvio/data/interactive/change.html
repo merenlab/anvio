@@ -19,9 +19,11 @@
     <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/change.js"></script>
+    <script type="text/javascript" src="js/header.js"></script>
     <script>
       $(document).ready(function(){
       checkCookie();
+      showHeader({"title": "Change Password", "icon": "edit"});
       });
     </script>
     
@@ -30,8 +32,7 @@
 
   <body>
 
-    <div class="header">
-      <img src="images/logo.png"><span>anvi'o change password page</span>
+    <div class="header" id="header">
     </div>
     
 

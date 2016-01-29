@@ -19,8 +19,10 @@
     <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/home.js"></script>
+    <script type="text/javascript" src="js/header.js"></script>
     <script>
       $(document).ready(function(){
+      showHeader(null, loginForm());
       checkCookie();
       });
     </script>
@@ -29,34 +31,8 @@
 
   <body>
     <div class="index-page">
-        <div class="header">
-          <nav class="navbar">
-	    <div class="container-fluid">
-	      <div class="navbar-header">
-	        <span class="glyphicon glyphicon-picture"></span> <a href="#" target=_blank>Gallery</a> /
-            <span class="glyphicon glyphicon-align-right"></span>  <a href="#" target=_blank>Data Types</a> /
-            <span class="glyphicon glyphicon-heart-empty"></span> <a href="http://merenlab.org/projects/anvio/" target=_blank>Anvi'o Project</a>
-	      </div>
-	      
-	      <div class="collapse navbar-collapse" id="navbar-collapse">
-	        <form class="navbar-form navbar-right" role="login">
-                  <div class="form-group">
-	    	<input type="text" class="form-control input-sm" placeholder="Login" style="width: 100px;" id="login">
-	    	<input type="password" class="form-control input-sm" placeholder="Password" style="width: 100px;" id="password">
-	    	<button type="button" class="btn btn-default btn-sm" onclick="performLogin();" id="loginButton">login</button>
-	    	<div style="clear: both; text-align: left; font-size: 11px;"><a style="" href="forgot.html">forgot password?</a></div>
-                  </div>
-	        </form>
-	        <ul class="nav navbar-nav navbar-right">
-                  <li><a href="register.html">Register</a></li>
-	          <li><a href="http://merenlab.org/projects/anvio/" target=_blank>Help</a></li>
-	        </ul>
-	      </div>
-	    </div>
-          </nav>
-          
-          
-        </div>
+      <div class="header" id="header">
+      </div>
         
         <div class="jumbotron">
           <div class="container" style="color: white;">
