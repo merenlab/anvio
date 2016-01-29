@@ -17,21 +17,17 @@
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
 
     <link rel="stylesheet" href="css/server.css" />
+    <script type="text/javascript" src="js/header.js"></script>
+    <script>
+      $(document).ready(function(){
+      showHeader({"title": "Nope :(", "icon": "user"});
+      });
+    </script>
 
   </head>
 
   <body>
-        <div class="header">
-          <nav class="navbar">
-	        <div class="container-fluid">
-	          <div class="navbar-header">
-	            <span class="glyphicon glyphicon-picture"></span> <a href="#" target=_blank>Gallery</a> /
-                <span class="glyphicon glyphicon-align-right"></span>  <a href="#" target=_blank>Data Types</a> /
-                <span class="glyphicon glyphicon-heart-empty"></span> <a href="http://merenlab.org/projects/anvio/" target=_blank>Anvi'o Project</a> /
-                <span class="glyphicon glyphicon-user"></span> Nope :(</a>
-	          </div>
-	        </div>
-          </nav>
+        <div class="header" id="header">
         </div>
  
     <div class="container">
