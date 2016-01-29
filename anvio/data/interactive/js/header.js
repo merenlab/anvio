@@ -16,10 +16,11 @@ function showHeader (currentPage, more) {
 	menu.push('<span class="glyphicon glyphicon-'+currentPage.icon+'"></span> '+currentPage.title);
     }
     html.push(menu.join(' / '));
+    html.push('</div>')
     if (more) {
 	html.push(more);
     }
-    html.push('</div></div></nav>');
+    html.push('</div></nav>');
     
     document.getElementById('header').innerHTML = html.join("\n");
 }
