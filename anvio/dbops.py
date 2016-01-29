@@ -958,6 +958,8 @@ class ContigsDatabase:
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
+        recovered_split_lengths = []
+
         self.progress.new('Identifying splits, computing k-mer frequencies, ...')
         while fasta.next():
             self.progress.update('Contig %d ...' % fasta.pos)
@@ -971,6 +973,9 @@ class ContigsDatabase:
                 contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, set([]))
             else:
                 contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, gene_start_stops)
+
+            if len(split_start_stops) > 1:
+                recovered_split_lengths.extend([s[1] - s[0] for s in split_start_stops])
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
@@ -1016,7 +1021,12 @@ class ContigsDatabase:
         self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet = self.quiet)
         self.run.info('Number of splits', splits_info_table.total_splits, quiet = self.quiet)
         self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
-        self.run.info('Split length', split_length, quiet = self.quiet)
+        self.run.info('Gene calling step skipped', skip_gene_calling, quiet = self.quiet)
+        self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet = self.quiet)
+        self.run.info('Desired split length (what the user wanted)', split_length, quiet = self.quiet)
+        self.run.info("Average split length (wnat anvi'o gave back)", '%.2f' \
+                                    % (numpy.mean(recovered_split_lengths)) if recovered_split_lengths \
+                                                            else "(Anvi'o did not create any splits)", quiet = self.quiet)
 
 
     def disconnect(self):
