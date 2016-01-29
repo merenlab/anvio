@@ -6,8 +6,6 @@ function showHeader (currentPage, more) {
 	{ "icon": "align-right", "title": "Data Types", "newpage": true, "href": "#" },
 	{ "icon": "heart-empty", "title": "Anvi\'o Project", "newpage": true, "href": "http://merenlab.org/projects/anvio/" },
     ];
-
-    menuitems.push(currentPage);
     
     html.push('<nav class="navbar"><div class="container-fluid"><div class="navbar-header">');
     var menu = [];
