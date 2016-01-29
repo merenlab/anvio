@@ -280,14 +280,24 @@ function clearMinMax(selectbox)
     $(tr).find('.input-max').val('0').prop('disabled', true);     
 }
 
-function togglePickerStart(selectbox)
+function togglePickerStart(selectbox, togglePicker)
 {
     var tr = $(selectbox).parent().parent();
 
-    if(selectbox.value=='intensity') {  
-        $(tr).find('.picker_start').css('visibility', 'visible'); 
+    if(selectbox.value=='intensity' || selectbox.value=='text') {  
+        $(tr).find('.picker_start').css('visibility', 'visible');
+        if (togglePicker) {
+            $(tr).find('.picker_end').css('visibility', 'visible');
+            $(tr).find('.input-height').css('visibility', 'hidden');
+            $('.max-font-size-input').show();
+        }
     } else { 
         $(tr).find('.picker_start').css('visibility', 'hidden');
+        if (togglePicker) {
+            $(tr).find('.picker_end').css('visibility', 'hidden');
+            $(tr).find('.input-height').css('visibility', 'visible');
+            $(tr).find('.input-height').val('30');
+        }
     }  
 }
 
