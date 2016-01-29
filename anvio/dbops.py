@@ -960,7 +960,7 @@ class ContigsDatabase:
 
         recovered_split_lengths = []
 
-        self.progress.new('Identifying splits, computing k-mer frequencies, ...')
+        self.progress.new('Identifying splits, and computing k-mer frequencies')
         while fasta.next():
             self.progress.update('Contig %d ...' % fasta.pos)
 
