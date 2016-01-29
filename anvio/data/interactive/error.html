@@ -17,10 +17,12 @@
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
 
     <script type="text/javascript" src="js/error.js"></script>
+    <script type="text/javascript" src="js/header.js"></script>
 
     <script>
       $(document).ready(function(){
-	  showError();
+      showError();
+      showHeader({"title": "Error", "icon": "remove"});
       });
     </script>
 
@@ -30,8 +32,7 @@
 
   <body>
 
-    <div class="header">
-      <img src="images/logo.png"><span>anvi'o error</span>
+    <div class="header" id="header">
     </div>
     
 

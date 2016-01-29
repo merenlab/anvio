@@ -18,9 +18,11 @@
 
     <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/register.js"></script>
+    <script type="text/javascript" src="js/header.js"></script>
     <script>
       $(document).ready(function(){
       initContent();
+      showHeader({"title": "New User", "icon": "pencil"});
       });
     </script>
 
@@ -28,17 +30,7 @@
   </head>
 
   <body>
-        <div class="header">
-          <nav class="navbar">
-	        <div class="container-fluid">
-	          <div class="navbar-header">
-	            <span class="glyphicon glyphicon-picture"></span> <a href="#" target=_blank>Gallery</a> /
-                <span class="glyphicon glyphicon-align-right"></span>  <a href="#" target=_blank>Data Types</a> /
-                <span class="glyphicon glyphicon-heart-empty"></span> <a href="http://merenlab.org/projects/anvio/" target=_blank>Anvi'o Project</a> /
-                <span class="glyphicon glyphicon-pencil"></span> New User</a>
-	          </div>
-	        </div>
-          </nav>
+        <div class="header" id="header">
         </div>
  
     <div class="container" id="main">
