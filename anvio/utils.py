@@ -474,10 +474,10 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     # what would be our break points in an ideal world? compute an initial list of break
     # points based on the length of the contig and desired split size:
     optimal_number_of_splits = int(contig_length / split_length)
-    optimal_split_length = contig_length / optimal_number_of_splits
-    optimal_break_points = range(optimal_split_length, contig_length - optimal_split_length, optimal_split_length)
 
-    #print sorted(list(non_coding_positions_in_contig))
+    optimal_split_length = contig_length / optimal_number_of_splits
+    optimal_break_points = range(optimal_split_length, contig_length - optimal_split_length + 1, optimal_split_length)
+
     # now we will identify the very bad break points that we can't find a way to split around
     bad_break_points = set([])
     for i in range(0, len(optimal_break_points)):
@@ -506,6 +506,11 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
 
     # remove all the bad breakpoints from our 'optimal' break points:
     optimal_break_points = [p for p in optimal_break_points if p not in bad_break_points]
+
+    if not len(optimal_break_points):
+        # we have nothing left to work with after removal of the crappy break points. we will
+        # keep this bad boy the way it is.
+        return [(0, contig_length)]
 
     # create start/stop positions from these break points
     chunks = zip([0] + optimal_break_points[:-1], optimal_break_points) + [(optimal_break_points[-1], contig_length)]
