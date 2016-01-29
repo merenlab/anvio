@@ -114,6 +114,18 @@ D = {
                       frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
                       process. If you prefer, you can later import your own gene calling results into the database."}
                 ),
+    'skip-mindful-splitting': (
+            ['--skip-mindful-splitting'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o attempts to prevent soft-splitting large contigs by cutting prper gene calles\
+                      to make sure a single gene is not broken into multiple splits. This requires a careful\
+                      examination of where genes start and end, and to find best locations to split contigs with respect\
+                      to this informtion. So, when the user asks for a split size of, say, 1,000, it serves as a\
+                      mere suggestion. When this flag is used, anvi'o does what the user wants and creates splits at\
+                      desired lengths (although some functionality may become unavailable for the projects that rely on\
+                      a contigs database that is initiated this way)."}
+                ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],
             {'metavar': 'FASTA',
