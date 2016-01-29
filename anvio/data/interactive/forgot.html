@@ -19,9 +19,11 @@
     <link rel="stylesheet" href="css/server.css" />
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/forgot.js"></script>
+    <script type="text/javascript" src="js/header.js"></script>
     <script>
       $(document).ready(function(){
       initContent();
+      showHeader({"title": "Reset Password", "icon": "refresh"});
       });
     </script>
 
@@ -30,8 +32,7 @@
 
   <body>
 
-    <div class="header">
-      <img src="images/logo.png"><span>anvi'o forgot password page</span>
+    <div class="header" id="header">
     </div>
     
 
