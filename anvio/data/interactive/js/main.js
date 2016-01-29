@@ -31,6 +31,7 @@ var zoomBox = {};
 var drawing_zoom = false;
 
 var LINE_COLOR='#888888';
+var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 
 var scale = 0;
 
@@ -407,6 +408,9 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
+
+            if (layers[layer_id]["type"] === 'text')
+                layers[layer_id]["height"] = '0';
         }
     );    
 }
@@ -576,11 +580,34 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var type = layer_settings['type'];
+                var color = layer_settings['color'];
+                var color_start = layer_settings['color-start'];
             }
             else
             {
+                var color = "#000000";
+                var color_start = "#B3B3B3";
                 var height = '30';
                 var margin = '15';
+                var type = 'color';
+
+                // set default categorical layer type to 'text' 
+                // if there are more than 11 unique values
+                var _unique_items = [];
+                for (var _pos = 1; _pos < layerdata.length; _pos++)
+                {
+                    if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
+                        _unique_items.push(layerdata[_pos][layer_id]);
+
+                    if (_unique_items.length > 11) {
+                        height = '0';
+                        type = 'text';
+                        // we have at least one text layer, we can show max font size input
+                        $('.max-font-size-input').show();
+                        break;
+                    }
+                }
 
                 if (!(layer_id in categorical_data_colors))
                 {
@@ -591,10 +618,15 @@ function buildLayersTable(order, settings)
             var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
+                '<td style="width: 50px;">' +
+                '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
+                '        <option value="color"{option-type-color}>Color</option>' +
+                '        <option value="text"{option-type-text}>Text</option>' +
+                '    </select>' +
+                '</td>' +
                 '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
                 '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
@@ -603,7 +635,14 @@ function buildLayersTable(order, settings)
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{short-name}', 'g'), short_name)
+                               .replace(new RegExp('{color}', 'g'), color)
+                               .replace(new RegExp('{color-start}', 'g'), color_start)
+                               .replace(new RegExp('{color-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                               .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
 
@@ -762,7 +801,7 @@ function serializeSettings(use_layer_names) {
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
-
+    state['max-font-size'] = $('#max_font_size').val();
 
     // sync views object and layers table
     syncViews();
@@ -1763,6 +1802,9 @@ function loadState()
             if (state.hasOwnProperty('tree-radius')) {
                 $('#tree-radius-container').show();
                 $('#tree-radius').val(state['tree-radius']);
+            }
+            if (state.hasOwnProperty('max-font-size')) {
+                $('#max_font_size').val(state['max-font-size']);
             }
             if (state.hasOwnProperty('layer-margin'))
                 $('#layer-margin').val(state['layer-margin']);

@@ -51,10 +51,13 @@ function drawLegend(top, left, line_end) {
     var legends = [];
    
     $.each(layer_types, function (i, _) {
-        if (layer_types[i] != 2)
+        var pindex = i;
+        if (layer_types[pindex] != 2)
             return; // skip if not categorical
 
-        var pindex = i;
+        if (layers[pindex]['type'] == 'text')
+            return; // skip if type is text
+
         var categorical_stats = {};
 
         for (var name in categorical_data_colors[pindex]) {
@@ -378,7 +381,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawRotatedText(svg_id, p, string, angle, align, font_size) {
+function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxLength) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline:middle');
@@ -386,6 +389,8 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('font-size', font_size);
+    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('fill', color);
 
     switch (align) {
         case 'left':
@@ -407,11 +412,18 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size) {
         text.setAttribute('transform', 'rotate(' + angle + ' ' + p['x'] + ' ' + p['y'] + ')');
     }
 
-    var textNode = document.createTextNode(string)
+    var textNode = document.createTextNode(string);
     text.appendChild(textNode);
-
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
+
+    // trim long text
+    for (var x=0; x < string.length; x++){
+        if (text.getSubStringLength(0, x + 1) >= maxLength){
+            text.textContent = string.substring(0, x);
+            break;
+        }
+    }
 }
 
 function drawStraightGuideLine(svg_id, id, xy, max_x)  {
@@ -1902,6 +1914,7 @@ function draw_tree(settings) {
     }
 
     margin = parseFloat(settings['layer-margin']);
+    var layer_fonts = {};
 
     // calculate layer boundries
     for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -1915,9 +1928,46 @@ function draw_tree(settings) {
         }
         else
         {
-            var layer_margin = (parseFloat(layers[pindex]['height'])==0) ? 0 : margin;
+            var layer_margin = margin;
         }
-        
+
+        if (!(layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') && parseFloat(layers[pindex]['height'])==0)
+        {
+            layer_margin = 0;
+        }
+
+        // calculate per layer font size
+        if (settings['tree-type'] == 'circlephylogram')
+        {
+            var layer_perimeter = ((angle_max - angle_min) / 360) * (2 * Math.PI * (layer_boundaries[i][1] + layer_margin));
+        }
+        else
+        {
+            var layer_perimeter = tree_max_y;
+        }
+
+        var layer_font = Math.min((layer_perimeter / leaf_count), parseFloat(settings['max-font-size']));
+        layer_fonts[layer_index] = layer_font;
+
+        // calculate new layer height if text layer heigth is 0
+        if (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text' && parseFloat(layers[pindex]['height'])==0)
+        {
+            // find longest item.
+            var longest_text_len = 0;
+            for (var _pos = 1; _pos < layerdata.length; _pos++)
+            {
+                if (layerdata[_pos][pindex].length > longest_text_len)
+                {
+                    longest_text_len = layerdata[_pos][pindex].length;
+                }
+            }
+            // make background bit longer than text
+            longest_text_len += 2;
+
+            layers[pindex]['height'] = Math.ceil(longest_text_len * MONOSPACE_FONT_ASPECT_RATIO * layer_font) + 1;
+            $('#height' + pindex).val(layers[pindex]['height']);
+        }
+
         layer_boundaries.push( [ layer_boundaries[i][1] + layer_margin, layer_boundaries[i][1] + layer_margin + parseFloat(layers[pindex]['height']) ] );
 
         createBin('tree_bin', 'layer_background_' + layer_index);
@@ -1958,8 +2008,11 @@ function draw_tree(settings) {
                 true);
         }
 
-        if (settings['tree-type']=='phylogram' && layer_types[pindex] == 3) // draw numerical bar backgroung for phylogram
+        // draw backgrounds
+        if (settings['tree-type']=='phylogram' && ((layer_types[pindex] == 3 && layers[pindex]['type'] == 'bar') || (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text')))
         {
+            // if phylogram and
+            // (numerical (3) and bar type) or (categorical (2) and text type)
             var color = layers[pindex]['color'];
 
             drawPhylogramRectangle('layer_background_' + layer_index,
@@ -1972,9 +2025,11 @@ function draw_tree(settings) {
                 0.3,
                 false);
         }
-        
-        if (settings['tree-type']=='circlephylogram' && layer_types[pindex] == 3 && layers[pindex]['type'] != 'intensity')
+
+        if (settings['tree-type']=='circlephylogram' && ((layer_types[pindex] == 3 && layers[pindex]['type'] == 'bar') || (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text')))
         {
+            // if circlephylogram and
+            // (numerical (3) and bar type) or (categorical (2) and text type)
             var color = layers[pindex]['color'];
 
             var _min = Math.toRadians(settings['angle-min']);
@@ -2069,7 +2124,21 @@ function draw_tree(settings) {
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            if (layers[pindex]['type'] == 'color') 
+                            {
+                                categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            }
+                            else // text
+                            {
+                                var _offsetx = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
+                                var offset_xy = [];
+                                offset_xy['x'] = _offsetx;
+                                offset_xy['y'] = q.xy['y'];
+                                var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
+
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
+                                
+                            }
                         }
                         else if (isParent)
                         {
@@ -2152,6 +2221,7 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
+
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
                                 if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
@@ -2159,7 +2229,27 @@ function draw_tree(settings) {
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
                             }
 
-                            categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            if (layers[pindex]['type'] == 'color') 
+                            {
+                                categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
+                            }
+                            else // text
+                            {
+                                var align = 'left';
+                                var new_angle = q.angle * 180.0 / Math.PI;
+                                if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
+                                    align = 'right';
+                                    new_angle += 180.0;
+                                }
+
+                                var offset_xy = [];
+                                var _radius = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
+                                offset_xy['x'] = Math.cos(q.angle) * _radius;
+                                offset_xy['y'] = Math.sin(q.angle) * _radius;
+                                var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
+
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
+                            }
                         }
                         else if (isParent)
                         {
