@@ -2,6 +2,6 @@
 
 [Coverage PROFILE.db::mean_coverage_contigs]
 
-[Coverage_N PROFILE.db::mean_coverage_contigs]
+[Coverage_N PROFILE.db::mean_coverage_Q1Q3_contigs]
 normalize = False
 log = True
