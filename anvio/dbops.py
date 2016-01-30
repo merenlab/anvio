@@ -1024,9 +1024,9 @@ class ContigsDatabase:
         self.run.info('Gene calling step skipped', skip_gene_calling, quiet = self.quiet)
         self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet = self.quiet)
         self.run.info('Desired split length (what the user wanted)', split_length, quiet = self.quiet)
-        self.run.info("Average split length (wnat anvi'o gave back)", '%.2f' \
-                                    % (numpy.mean(recovered_split_lengths)) if recovered_split_lengths \
-                                                            else "(Anvi'o did not create any splits)", quiet = self.quiet)
+        self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
+                                                                        if recovered_split_lengths \
+                                                                            else "(Anvi'o did not create any splits)", quiet = self.quiet)
 
 
     def disconnect(self):
