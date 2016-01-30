@@ -72,7 +72,7 @@ class Contig:
     def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
-             'normalized_coverage': self.coverage.normalized,
+             'mean_coverage_Q1Q3': self.coverage.mean_Q1Q3,
              'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
@@ -130,7 +130,7 @@ class Split:
     def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
-             'normalized_coverage': self.coverage.normalized,
+             'mean_coverage_Q1Q3': self.coverage.mean_Q1Q3,
              'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,

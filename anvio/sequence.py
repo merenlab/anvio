@@ -3,6 +3,7 @@
 '''Primitive classes for basic DNA sequence properties.'''
 
 import numpy
+import collections
 
 import anvio
 
@@ -51,7 +52,7 @@ class Coverage:
         self.mean = 0.0
         self.median = 0.0
         self.portion_covered = 0.0
-        self.normalized = 0.0
+        self.mean_Q1Q3 = 0.0
 
 
     def run(self, bam, split):
@@ -73,10 +74,18 @@ class Coverage:
             self.process_c(self.c)
 
     def process_c(self, c):
-        self.min = numpy.min(c)
-        self.max = numpy.max(c)
+        c = numpy.asarray(c)
+        self.min = numpy.amin(c)
+        self.max = numpy.amax(c)
         self.median = numpy.median(c)
         self.mean = numpy.mean(c)
         self.std = numpy.std(c)
-        self.portion_covered = 1 - (float(c.count(0)) / len(c))
-        self.normalized = self.mean * self.portion_covered
+        self.portion_covered = 1 - (float(collections.Counter(c)[0]) / len(c))
+
+        if c.size < 4:
+            self.mean_Q1Q3 = self.mean
+        else:
+            c.sort()
+            Q = int(c.size * 0.25)
+            Q1Q3 = c[Q:-Q]
+            self.mean_Q1Q3 = numpy.mean(Q1Q3)
