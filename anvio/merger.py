@@ -382,7 +382,7 @@ class MultipleRuns:
 
 
     def get_normalized_coverage_of_split(self, target, sample_id, split_name):
-        return self.atomic_data_for_each_run[target][sample_id][split_name]['normalized_coverage'] * self.normalization_multiplier[sample_id]
+        return self.atomic_data_for_each_run[target][sample_id][split_name]['mean_coverage_Q1Q3'] * self.normalization_multiplier[sample_id]
 
 
     def get_max_normalized_ratio_of_split(self, target, split_name):
