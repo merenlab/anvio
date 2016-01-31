@@ -84,7 +84,7 @@ def completeness(d, request):
     return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
 
 
-def charts(d, split_name):
+def charts(d, split_name, show_outlier_SNVs = False):
     data = {'layers': [],
              'index': None,
              'total': None,
@@ -93,7 +93,8 @@ def charts(d, split_name):
              'competing_nucleotides': [],
              'previous_contig_name': None,
              'next_contig_name': None,
-             'genes': []}
+             'genes': [],
+             'outlier_SNVs_shown': show_outlier_SNVs}
 
     if split_name not in d.split_names:
         return data
@@ -118,7 +119,7 @@ def charts(d, split_name):
     ## get the variability information dict for split:
     progress.new('Variability')
     progress.update('Collecting info for "%s"' % split_name)
-    split_variability_info_dict = d.get_variability_information_for_split(split_name)
+    split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers = show_outlier_SNVs)
 
     zeros_for_all_positions = [0] * d.splits_basic_info[split_name]['length']
     for layer in layers:
