@@ -108,7 +108,10 @@ class Contig:
             progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
                                  % (counter, num_splits, self.coverage.mean, split.coverage.mean))
 
-            split.auxiliary = Auxiliary(split, bam, min_coverage = self.min_coverage_for_variability,
+            split.auxiliary = Auxiliary(split,
+                                        bam,
+                                        parent_outlier_positions = self.coverage.outlier_positions,
+                                        min_coverage = self.min_coverage_for_variability,
                                         report_variability_full = self.report_variability_full)
 
             counter += 1
@@ -142,15 +145,16 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, min_coverage = 10, report_variability_full = False):
-        self.rep_seq = ''
-        self.min_coverage = min_coverage
-        self.report_variability_full = report_variability_full 
-        self.split = split
-        self.column_profile = self.split.column_profiles
-        self.variation_density = 0.0
+    def __init__(self, split, bam, parent_outlier_positions, min_coverage = 10, report_variability_full = False):
         self.v = []
+        self.rep_seq = ''
+        self.split = split
+        self.variation_density = 0.0
+        self.parent_outlier_positions = parent_outlier_positions
         self.competing_nucleotides = {}
+        self.min_coverage = min_coverage
+        self.column_profile = self.split.column_profiles
+        self.report_variability_full = report_variability_full 
 
         self.run(bam)
 
@@ -182,6 +186,8 @@ class Auxiliary:
             if cp['departure_from_consensus']:
                 ratios.append((cp['departure_from_consensus'], cp['coverage']), )
                 cp['pos_in_contig'] = pos_in_contig
+                cp['cov_outlier_in_split'] = pos_in_split in self.split.coverage.outlier_positions
+                cp['cov_outlier_in_contig'] = pos_in_contig in self.parent_outlier_positions
                 self.column_profile[pos_in_contig] = cp
 
         # variation density = number of SNPs per kb
