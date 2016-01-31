@@ -196,6 +196,17 @@ D = {
                       searches that were performed against non-singlecopy gene HMM profiles into\
                       their own layer. Please see the documentation for details."}
                 ),
+    'show-outlier-snvs': (
+            ['--show-outlier-SNVs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "During profiling, anvi'o marks positions of single-nucleotide variations (SNVs)\
+                      that originate from places in contigs where coverage values are a bit 'sketchy'.\
+                      By default, when you inspect a split in applicable projects, the interface does\
+                      not show SNVs marked as outlier. Decleration of this flag changes that behavior,\
+                      and tells anvi'o to show anything and everything reported (There may or may not\
+                      be some historical data on this here: https://github.com/meren/anvio/issues/309)."}
+                ),
     'hmm-sources': (
             ['--hmm-sources'],
             {'metavar': 'SOURCE NAME',

@@ -70,6 +70,7 @@ groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'
 groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
 groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
 groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
+groupD.add_argument(*anvio.A('show-outlier-snvs'), **anvio.K('show-outlier-snvs'))
 groupD.add_argument(*anvio.A('state'), **anvio.K('state'))
 groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
 groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
@@ -192,7 +193,7 @@ def get_tree(tree_id):
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
-    return routes.charts(d, split_name)
+    return routes.charts(d, split_name, show_outlier_SNVs = args.show_outlier_SNVs)
 
 state_for_charts = {}
 
