@@ -133,12 +133,12 @@ def get_list_of_outliers(values, threshold=1.5):
 
     median = numpy.median(values, axis=0)
 
-    if not median:
-        return [True] * values.size
-
     diff = numpy.sum((values - median) ** 2, axis=-1)
     diff = numpy.sqrt(diff)
     median_absolute_deviation = numpy.median(diff)
+
+    if not median_absolute_deviation:
+        return [True] * values.size
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
 
