@@ -95,8 +95,8 @@ states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 variable_nts_table_name              = 'variable_nucleotide_positions'
-variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'in_partial_gene_call', 'in_complete_gene_call', 'pos_in_codon', 'coverage', 'departure_from_consensus', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
-variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'      ,       'numeric'        ,    'numeric'  , 'numeric' ,          'numeric'        ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
+variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'in_partial_gene_call', 'in_complete_gene_call', 'pos_in_codon', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_consensus', 'competing_nts', 'consensus',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
+variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,       'numeric'       ,       'numeric'        ,    'numeric'  , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
 gene_coverages_table_name            = 'gene_coverages'
 gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
