@@ -510,20 +510,22 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
                 for sample in splits_to_consider[split][pos]:
                     self.variable_nts_table[next_available_entry_id] = {'parent': parent_name,
-                                                                              'departure_from_consensus': 0,
-                                                                              'consensus': base_at_pos,
-                                                                              'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
-                                                                              'pos': pos,
-                                                                              'pos_in_contig': pos_in_contig, 
-                                                                              'in_partial_gene_call': in_partial_gene_call,
-                                                                              'in_complete_gene_call': in_complete_gene_call,
-                                                                              'pos_in_codon': pos_in_codon,
-                                                                              'coverage': split_coverage_across_samples[sample][pos],
-                                                                              'sample_id': sample,
-                                                                              'competing_nts': base_at_pos + base_at_pos,
-                                                                              'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
-                                                                              'unique_position_id': '%s_%d' % (split, pos),
-                                                                              'split_name': split}
+                                                                        'departure_from_consensus': 0,
+                                                                        'consensus': base_at_pos,
+                                                                        'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
+                                                                        'pos': pos,
+                                                                        'pos_in_contig': pos_in_contig,
+                                                                        'in_partial_gene_call': in_partial_gene_call,
+                                                                        'in_complete_gene_call': in_complete_gene_call,
+                                                                        'pos_in_codon': pos_in_codon,
+                                                                        'coverage': split_coverage_across_samples[sample][pos],
+                                                                        'sample_id': sample,
+                                                                        'cov_outlier_in_split': 0,
+                                                                        'cov_outlier_in_contig': 0,
+                                                                        'competing_nts': base_at_pos + base_at_pos,
+                                                                        'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
+                                                                        'unique_position_id': '%s_%d' % (split, pos),
+                                                                        'split_name': split}
                     self.variable_nts_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
 
