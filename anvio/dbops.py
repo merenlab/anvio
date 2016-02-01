@@ -71,12 +71,8 @@ class ContigsSuperclass(object):
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
         # the following two dicts require initialization:
-        self.nt_positions_info_dicts_initiated = False
-        self.nt_positions_in_complete_genes = {} # each nt position that falls into a complete gene call
-        self.nt_positions_in_partial_genes = {} # nt positions in contigs that are in impartial gene calls
-        self.nt_positions_first_base_in_codons = {}
-        self.nt_positions_second_base_in_codons = {}
-        self.nt_positions_third_base_in_codons = {}
+        self.nt_positions_info_dict = {}
+        self.nt_positions_info_dict_initiated = False
 
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
@@ -275,37 +271,56 @@ class ContigsSuperclass(object):
 
 
     def get_nt_position_info(self, contig_name, pos_in_contig):
-        if not self.nt_positions_info_dicts_initiated:
-            self.init_nt_position_info_dicts()
+        """This function returns a tuple with three items for each nucleotide position.
+        
+            (in_partial_gene_call, in_complete_gene_call, pos_in_codon)
+        
+        See `init_nt_position_info_dict` for more info."""
 
-        in_partial_gene_call = 1 if pos_in_contig in self.nt_positions_in_partial_genes[contig_name] else 0
-        in_complete_gene_call = 1 if not in_partial_gene_call and pos_in_contig in self.nt_positions_in_complete_genes[contig_name] else 0
+        if not self.nt_positions_info_dict_initiated:
+            self.init_nt_position_info_dict()
 
-        if in_complete_gene_call:
-            if pos_in_contig in self.nt_positions_first_base_in_codons[contig_name]:
-                pos_in_codon = 1
-            elif pos_in_contig in self.nt_positions_second_base_in_codons[contig_name]:
-                pos_in_codon = 2
-            else:
-                pos_in_codon = 3
-        else:
-            pos_in_codon = 0
+        if not self.nt_positions_info_dict.has_key(contig_name):
+            return (0, 0, 0)
 
-        return (in_partial_gene_call, in_complete_gene_call, pos_in_codon)
+        if pos_in_contig not in self.nt_positions_info_dict[contig_name]:
+            return (0, 0, 0)
+
+        position_info = self.nt_positions_info_dict[contig_name][pos_in_contig]
+
+        if position_info == 8:
+            return (1, 0, 0)
+        if position_info == 4:
+            return (0, 1, 1)
+        if position_info == 2:
+            return (0, 1, 2)
+        if position_info == 1:
+            return (0, 1, 3)
 
 
-    def init_nt_position_info_dicts(self):
-        """This function initializes following three variables:
+    def init_nt_position_info_dict(self):
+        """This function initializes information for each nucleotide position. Every
+           nucleotide position is represented by four bits:
 
-                - self.nt_positions_in_partial_genes
-                - self.nt_positions_in_complete_genes
-                - self.nt_positions_first_base_in_codons
-                - self.nt_positions_second_base_in_codons
-                - self.nt_positions_third_base_in_codons
+            0000
+            ||||
+            ||| \
+            |||   Third codon?
+            || \
+            ||   Second codon?
+            | \
+            |   First codon?
+             \
+               Whether the position in a partial gene call
+
+        8: int('1000', 2); nt position is in a partial gene call
+        4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
+        2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
+        1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
 
         """
 
-        self.progress.new('Initializing nucleotide positional info')
+        self.progress.new('Initializing nucleotide positional info dictionary')
         self.progress.update('...')
 
         contig_names = self.contigs_basic_info.keys()
@@ -322,40 +337,34 @@ class ContigsSuperclass(object):
                                                                                         pp(self.contigs_basic_info[contig_name]['length']),
                                                                                         pp(len(genes_in_contig))))
 
-            self.nt_positions_in_partial_genes[contig_name] = set([])
-            self.nt_positions_in_complete_genes[contig_name] = set([])
-
-            self.nt_positions_first_base_in_codons[contig_name] = set([])
-            self.nt_positions_second_base_in_codons[contig_name] = set([])
-            self.nt_positions_third_base_in_codons[contig_name] = set([])
+            self.nt_positions_info_dict[contig_name] = {}
 
             for gene_unique_id, start, stop in genes_in_contig:
                 gene_call = self.genes_in_contigs_dict[gene_unique_id]
-
-                RANGE = range(start, stop)
 
                 # if the gene call is a partial one, meaning the gene was cut at the beginning or
                 # at the end of the contig, we are not going to try to make sense of synonymous /
                 # non-synonmous bases in that. the clients who wish to use these variables must also
                 # be careful about the difference
                 if gene_call['partial']:
-                    self.nt_positions_in_partial_genes[contig_name].update(RANGE)
+                    for nt_position in range(start, stop):
+                        self.nt_positions_info_dict[contig_name][nt_position] = 8
                     continue
 
-                self.nt_positions_in_complete_genes[contig_name].update(RANGE)
-
                 if gene_call['direction'] == 'f':
-                    self.nt_positions_first_base_in_codons[contig_name].update(range(start + 0, stop, 3))
-                    self.nt_positions_second_base_in_codons[contig_name].update(range(start + 1, stop, 3))
-                    self.nt_positions_third_base_in_codons[contig_name].update(range(start + 2, stop, 3))
+                    for nt_position in range(start, stop, 3):
+                        self.nt_positions_info_dict[contig_name][nt_position] = 4
+                        self.nt_positions_info_dict[contig_name][nt_position + 1] = 2
+                        self.nt_positions_info_dict[contig_name][nt_position + 2] = 1
                 elif gene_call['direction'] == 'r':
-                    self.nt_positions_first_base_in_codons[contig_name].update(range(stop - 1, start - 1, -3))
-                    self.nt_positions_second_base_in_codons[contig_name].update(range(stop - 2, start - 1, -3))
-                    self.nt_positions_third_base_in_codons[contig_name].update(range(stop - 3, start - 1, -3))
+                    for nt_position in range(stop - 1, start - 1, -3):
+                        self.nt_positions_info_dict[contig_name][nt_position] = 4
+                        self.nt_positions_info_dict[contig_name][nt_position - 1] = 2
+                        self.nt_positions_info_dict[contig_name][nt_position - 2] = 1
 
         self.progress.end()
 
-        self.nt_positions_info_dicts_initiated = True
+        self.nt_positions_info_dict_initiated = True
 
 
     def init_functions(self):
