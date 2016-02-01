@@ -466,7 +466,7 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
 
     # remove positions that code for genes
-    for start, stop in gene_start_stops:
+    for gene_unique_id, start, stop in gene_start_stops:
         start = start - 5
         stop = stop + 5
         non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(start, stop)))
