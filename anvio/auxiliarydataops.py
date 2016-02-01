@@ -54,7 +54,7 @@ class HDF5_IO(object):
                 raise HDF5Error, "The database at '%s' does not have the hash the client requested."
 
 
-    def add_integer_list(self, path, l):
+    def add_integer_list(self, path, l, data_type = 'uint16'):
         """Add an array into the the HDF5 file.
         
             >>> h = HDF5_IO('test.h5')
@@ -63,7 +63,7 @@ class HDF5_IO(object):
             >>> h.close()
         """
 
-        new_data_obj = self.fp.create_dataset(path, (len(l),), dtype=np.dtype('uint16'))
+        new_data_obj = self.fp.create_dataset(path, (len(l),), dtype=np.dtype(data_type))
         new_data_obj[...] = np.array(l)
 
 
@@ -108,3 +108,27 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
             d[sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
 
         return d
+
+
+class AuxiliaryDataForNtPositions(HDF5_IO):
+    """A class to handle HDF5 operations to store and access split coverages"""
+    def __init__(self, file_path, db_hash, create_new = False, run=run, progress=progress, quiet = False):
+        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new)
+
+        self.quiet = quiet
+
+
+    def is_known_contig(self, contig_name):
+        path = '/data/nt_position_info/%s' % contig_name
+        return self.path_exists(path)
+
+
+    def append(self, contig_name, position_info_list):
+        self.add_integer_list('/data/nt_position_info/%s' % contig_name, position_info_list, data_type = 'uint8')
+
+
+    def get(self, contig_name):
+        if not self.is_known_contig(contig_name):
+            return []
+
+        return self.get_integer_list('/data/nt_position_info/%s' % contig_name)
