@@ -305,9 +305,14 @@ class ContigsSuperclass(object):
         """
 
         self.progress.new('Initializing nt positional info (whether a nt position is within a gene and which base is it in a codon)')
-        self.progress.update('...')
 
-        for contig_name in self.contigs_basic_info.keys():
+        contig_names = self.contigs_basic_info.keys()
+        num_contigs = len(contig_names)
+
+        for i in range(0, len(contig_names)):
+            contig_name = contig_names[i]
+            self.progress.update('Analyzing "%s" (%d of %d)' % (contig_name, i + 1, num_contigs))
+
             self.nt_positions_in_partial_genes[contig_name] = set([])
             self.nt_positions_in_complete_genes[contig_name] = set([])
 
