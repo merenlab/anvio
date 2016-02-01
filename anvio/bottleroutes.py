@@ -99,7 +99,7 @@ def charts(d, split_name, show_outlier_SNVs = False):
     if split_name not in d.split_names:
         return data
 
-    if not d.auxiliary_data_available:
+    if not d.auxiliary_profile_data_available:
         return data
 
     index_of_split = d.split_names_ordered.index(split_name)

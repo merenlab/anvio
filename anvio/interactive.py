@@ -63,7 +63,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.split_names_ordered = None
         self.additional_layers = None
-        self.auxiliary_data_available = False
+        self.auxiliary_profile_data_available = False
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
@@ -337,7 +337,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.title = self.p_meta['sample_id'].replace('-', ' ').replace('_', ' ')
 
         # do we have auxiliary data available?
-        if not self.auxiliary_data_available:
+        if not self.auxiliary_profile_data_available:
             summary_cp_available = os.path.exists(os.path.join(os.path.dirname(self.profile_db_path), 'SUMMARY.cp'))
             self.run.warning("Auxiliary data is not available; which means you will not be able to perform\
                               certain operations (i.e., the inspect menu in the interactive interface will\

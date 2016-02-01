@@ -584,14 +584,14 @@ class ProfileSuperclass(object):
         self.progress.update('Accessing the auxiliary data file')
         auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
         if not os.path.exists(auxiliary_data_path):
-            self.auxiliary_data_available = False
+            self.auxiliary_profile_data_available = False
         else:
-            self.auxiliary_data_available = True
+            self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
 
-        if self.auxiliary_data_available:
+        if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_data_path, anvio.__hdf5__version__))
         self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 

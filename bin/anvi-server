@@ -241,7 +241,7 @@ def send_data(name):
                              "sampleInformationDefaultLayerOrder": d.samples_information_default_layer_order,
                              "stateAutoload": d.state,
                              "noPing": True,
-                             "inspectionAvailable": d.auxiliary_data_available,
+                             "inspectionAvailable": d.auxiliary_profile_data_available,
                              "sequencesAvailable": True if d.split_sequences else False})
 
 @route('/data/view/<view_id>')
