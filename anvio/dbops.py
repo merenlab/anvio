@@ -46,6 +46,7 @@ __status__ = "Development"
 
 run = terminal.Run()
 progress = terminal.Progress()
+pp = terminal.pretty_print
 
 
 class ContigsSuperclass(object):
@@ -304,14 +305,22 @@ class ContigsSuperclass(object):
 
         """
 
-        self.progress.new('Initializing nt positional info (whether a nt position is within a gene and which base is it in a codon)')
+        self.progress.new('Initializing nucleotide positional info')
+        self.progress.update('...')
 
         contig_names = self.contigs_basic_info.keys()
-        num_contigs = len(contig_names)
+        num_contigs = pp(len(contig_names))
 
         for i in range(0, len(contig_names)):
             contig_name = contig_names[i]
-            self.progress.update('Analyzing "%s" (%d of %d)' % (contig_name, i + 1, num_contigs))
+            genes_in_contig = self.contig_name_to_genes[contig_name]
+
+            if len(genes_in_contig) > 100:
+                self.progress.update('Analyzing "%s" (%s of %s): %s nts w/ %s genes' % (contig_name,
+                                                                                        pp(i + 1),
+                                                                                        num_contigs,
+                                                                                        pp(self.contigs_basic_info[contig_name]['length']),
+                                                                                        pp(len(genes_in_contig))))
 
             self.nt_positions_in_partial_genes[contig_name] = set([])
             self.nt_positions_in_complete_genes[contig_name] = set([])
@@ -320,7 +329,7 @@ class ContigsSuperclass(object):
             self.nt_positions_second_base_in_codons[contig_name] = set([])
             self.nt_positions_third_base_in_codons[contig_name] = set([])
 
-            for gene_unique_id, start, stop in self.contig_name_to_genes[contig_name]:
+            for gene_unique_id, start, stop in genes_in_contig:
                 gene_call = self.genes_in_contigs_dict[gene_unique_id]
 
                 RANGE = range(start, stop)
