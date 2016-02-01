@@ -215,9 +215,9 @@ class LinkMers:
         self.progress.end()
 
         self.contig_names = self.bam.references
-        self.contig_lenghts = self.bam.lengths
+        self.contig_lengths = self.bam.lengths
 
-        for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
+        for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse = True):
             print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
 
