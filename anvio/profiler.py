@@ -78,6 +78,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
 
+        if self.list_contigs_and_exit:
+            self.list_contigs()
+            sys.exit()
+
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
         self.init_contig_sequences()
@@ -103,8 +107,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
             raise ConfigError, "You can not run profiling without a contigs database. You can create\
-                                      one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
-                                      tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
+                                one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
+                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
                                                                    ok_if_exists = self.overwrite_output_destinations)
@@ -138,10 +142,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.check_args()
 
         self.set_sample_id()
-
-        if self.list_contigs_and_exit:
-            self.list_contigs()
-            sys.exit()
 
         self.init_dirs_and_dbs()
 
