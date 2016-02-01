@@ -50,6 +50,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contigs_shall_be_clustered = False
         self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
         self.overwrite_output_destinations = False
+        self.skip_SNV_profiling = False
 
         if args:
             self.args = args
@@ -67,6 +68,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.sample_id = args.sample_name
             self.report_variability_full = args.report_variability_full
             self.overwrite_output_destinations = args.overwrite_output_destinations
+            self.skip_SNV_profiling = args.skip_SNV_profiling
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
@@ -122,17 +124,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         meta_values = {'db_type': 'profile',
+                       'anvio': __version__,
                        'sample_id': self.sample_id,
                        'samples': self.sample_id,
                        'merged': False,
                        'contigs_clustered': self.contigs_shall_be_clustered,
-                       'min_coverage_for_variability': self.min_coverage_for_variability,
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
+                       'SNVs_profiled': not self.skip_SNV_profiling,
+                       'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
                        'gene_coverages_computed': self.a_meta['genes_are_called']}
         profile_db.create(meta_values)
+
+        if self.skip_SNV_profiling:
+            self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
 
         self.progress.end()
 
@@ -157,7 +164,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('min_mean_coverage', self.min_mean_coverage)
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
+        self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('report_variability_full', self.report_variability_full)
+        self.run.info('gene_coverages_computed', self.a_meta['genes_are_called'])
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -194,6 +203,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def generate_variabile_positions_table(self):
+        if self.skip_SNV_profiling:
+            # there is nothing to generate really..
+            self.run.info('variable_nts_table', False, quiet = True)
+            return
+
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
         self.progress.new('Storing variability information')
@@ -484,6 +498,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.length = self.contig_lengths[i]
             contig.split_length = self.a_meta['split_length']
             contig.min_coverage_for_variability = self.min_coverage_for_variability
+            contig.skip_SNV_profiling = self.skip_SNV_profiling
             contig.report_variability_full = self.report_variability_full
 
             self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
@@ -509,7 +524,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 continue
 
-            contig.analyze_auxiliary(self.bam, self.progress)
+            if not self.skip_SNV_profiling:
+                contig.analyze_auxiliary(self.bam, self.progress)
 
             self.progress.end()
 

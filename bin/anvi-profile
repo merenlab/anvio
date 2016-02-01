@@ -42,6 +42,7 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
     groupM.add_argument(*anvio.A('report-variability-full'), **anvio.K('report-variability-full'))
+    groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
     groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))

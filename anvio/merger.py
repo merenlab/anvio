@@ -147,12 +147,14 @@ class MultipleRuns:
                      ('split_length', 'Split length (-L)'),
                      ('min_contig_length', 'Minimum contig length (-M)'),
                      ('min_mean_coverage', 'Minimum mean coverage (-C)'),
-                     ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)')]:
+                     ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)'),
+                     ('report_variability_full', 'Report full variability (--report-variability-full)'),
+                     ('skip_SNV_profiling', 'Skip SNV profiling parameter (--skip-SNV-profiling)')]:
             v = set([r[k] for r in self.input_runinfo_dicts.values()])
             if len(v) > 1:
-                raise ConfigError, "%s is not identical for all runs to be merged, which is a \
-                                          deal breaker. You need to profile all runs to be merged with\
-                                          identical parameters :/" % p
+                raise ConfigError, "%s is not identical for all profiles to be merged, which is a \
+                                    deal breaker. All profiles that are going to be merged must be\
+                                    run with identical flags and parameters :/" % p
 
             # so we carry over this information into the runinfo dict for merged runs:
             self.run.info(k, v.pop())
@@ -315,7 +317,11 @@ class MultipleRuns:
         self.min_contig_length = self.input_runinfo_dicts.values()[0]['min_contig_length']
         self.num_contigs = self.input_runinfo_dicts.values()[0]['num_contigs']
         self.num_splits = self.input_runinfo_dicts.values()[0]['num_splits']
+        self.total_reads_mapped = self.input_runinfo_dicts.values()[0]['total_reads_mapped']
         self.min_coverage_for_variability = self.input_runinfo_dicts.values()[0]['min_coverage_for_variability']
+        self.report_variability_full = self.input_runinfo_dicts.values()[0]['report_variability_full']
+        self.gene_coverages_computed = self.input_runinfo_dicts.values()[0]['gene_coverages_computed']
+        self.SNVs_profiled = not self.input_runinfo_dicts.values()[0]['skip_SNV_profiling']
         self.total_length = self.input_runinfo_dicts.values()[0]['total_length']
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -325,11 +331,15 @@ class MultipleRuns:
                        'contigs_clustered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
-                       'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'SNVs_profiled': self.SNVs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
-                       'contigs_db_hash': self.contigs_db_hash}
+                       'total_reads_mapped': self.total_reads_mapped,
+                       'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'report_variability_full': self.report_variability_full,
+                       'contigs_db_hash': self.contigs_db_hash,
+                       'gene_coverages_computed': self.gene_coverages_computed}
         profile_db.create(meta_values)
 
         # get view data information for both contigs and splits:
@@ -357,9 +367,12 @@ class MultipleRuns:
         self.merge_split_coverage_data()
         self.progress.end()
 
-        self.progress.new('Merging variable positions tables')
-        self.merge_variable_nts_tables()
-        self.progress.end()
+        if self.SNVs_profiled:
+            self.progress.new('Merging variable positions tables')
+            self.merge_variable_nts_tables()
+            self.progress.end()
+        else:
+            self.run.warning("SNVs were not profiled, variable positions tables will be empty in the merged profile database.")
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
@@ -453,6 +466,12 @@ class MultipleRuns:
 
                 if target == 'splits':
                     views_table.append(essential_field, target_table)
+
+        # if SNVs were not profiled, remove all entries from variability tables:
+        if not self.SNVs_profiled:
+            views_table.remove('variability', 'variability_splits')
+            profile_db.db._exec('''DELETE FROM variability_splits''')
+            profile_db.db._exec('''DELETE FROM variability_contigs''')
 
         profile_db.disconnect()
         self.progress.end()
