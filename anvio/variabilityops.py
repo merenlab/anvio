@@ -79,7 +79,6 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
         # Initialize the contigs super
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
-        self.init_nt_position_info_dicts()
         self.init_contig_sequences()
 
 
