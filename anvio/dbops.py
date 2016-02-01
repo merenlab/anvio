@@ -70,9 +70,8 @@ class ContigsSuperclass(object):
         self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
-        # the following two dicts require initialization:
-        self.nt_positions_info_dict = {}
-        self.nt_positions_info_dict_initiated = False
+        self.auxiliary_contigs_data_available = False
+        self.nt_positions_info = None
 
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
@@ -160,6 +159,18 @@ class ContigsSuperclass(object):
         self.progress.end()
 
         contigs_db.disconnect()
+
+        self.progress.update('Accessing the auxiliary data file')
+        auxiliary_contigs_data_path = ''.join(self.contigs_db_path[:-3]) + '.h5'
+        if os.path.exists(auxiliary_contigs_data_path):
+            self.auxiliary_contigs_data_available = True
+            self.nt_positions_info = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, self.a_meta['contigs_db_hash'])
+
+        self.progress.end()
+
+        if self.auxiliary_contigs_data_available:
+            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_contigs_data_path, anvio.__hdf5__version__))
+
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
@@ -277,17 +288,17 @@ class ContigsSuperclass(object):
         
         See `init_nt_position_info_dict` for more info."""
 
-        if not self.nt_positions_info_dict_initiated:
-            self.init_nt_position_info_dict()
+        if not self.nt_positions_info:
+            raise ConfigError, "get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
+                                Anvi'o needs an adult :("
 
-        if not self.nt_positions_info_dict.has_key(contig_name):
+        if not self.nt_positions_info.is_known_contig(contig_name):
             return (0, 0, 0)
 
-        if pos_in_contig not in self.nt_positions_info_dict[contig_name]:
+        position_info = self.nt_positions_info.get(contig_name)[pos_in_contig]
+
+        if not position_info:
             return (0, 0, 0)
-
-        position_info = self.nt_positions_info_dict[contig_name][pos_in_contig]
-
         if position_info == 8:
             return (1, 0, 0)
         if position_info == 4:
@@ -296,75 +307,6 @@ class ContigsSuperclass(object):
             return (0, 1, 2)
         if position_info == 1:
             return (0, 1, 3)
-
-
-    def init_nt_position_info_dict(self):
-        """This function initializes information for each nucleotide position. Every
-           nucleotide position is represented by four bits:
-
-            0000
-            ||||
-            ||| \
-            |||   Third codon?
-            || \
-            ||   Second codon?
-            | \
-            |   First codon?
-             \
-               Whether the position in a partial gene call
-
-        8: int('1000', 2); nt position is in a partial gene call
-        4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
-        2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
-        1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
-
-        """
-
-        self.progress.new('Initializing nucleotide positional info dictionary')
-        self.progress.update('...')
-
-        contig_names = self.contigs_basic_info.keys()
-        num_contigs = pp(len(contig_names))
-
-        for i in range(0, len(contig_names)):
-            contig_name = contig_names[i]
-            genes_in_contig = self.contig_name_to_genes[contig_name]
-
-            if len(genes_in_contig) > 100:
-                self.progress.update('Analyzing "%s" (%s of %s): %s nts w/ %s genes' % (contig_name,
-                                                                                        pp(i + 1),
-                                                                                        num_contigs,
-                                                                                        pp(self.contigs_basic_info[contig_name]['length']),
-                                                                                        pp(len(genes_in_contig))))
-
-            self.nt_positions_info_dict[contig_name] = {}
-
-            for gene_unique_id, start, stop in genes_in_contig:
-                gene_call = self.genes_in_contigs_dict[gene_unique_id]
-
-                # if the gene call is a partial one, meaning the gene was cut at the beginning or
-                # at the end of the contig, we are not going to try to make sense of synonymous /
-                # non-synonmous bases in that. the clients who wish to use these variables must also
-                # be careful about the difference
-                if gene_call['partial']:
-                    for nt_position in range(start, stop):
-                        self.nt_positions_info_dict[contig_name][nt_position] = 8
-                    continue
-
-                if gene_call['direction'] == 'f':
-                    for nt_position in range(start, stop, 3):
-                        self.nt_positions_info_dict[contig_name][nt_position] = 4
-                        self.nt_positions_info_dict[contig_name][nt_position + 1] = 2
-                        self.nt_positions_info_dict[contig_name][nt_position + 2] = 1
-                elif gene_call['direction'] == 'r':
-                    for nt_position in range(stop - 1, start - 1, -3):
-                        self.nt_positions_info_dict[contig_name][nt_position] = 4
-                        self.nt_positions_info_dict[contig_name][nt_position - 1] = 2
-                        self.nt_positions_info_dict[contig_name][nt_position - 2] = 1
-
-        self.progress.end()
-
-        self.nt_positions_info_dict_initiated = True
 
 
     def init_functions(self):
@@ -946,13 +888,15 @@ class ContigsDatabase:
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
         # this will be the unique information that will be passed downstream whenever this db is used:
-        self.db.set_meta_value('contigs_db_hash', '%08x' % random.randrange(16**8))
+        contigs_db_hash = '%08x' % random.randrange(16**8)
+        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
+        genes_in_contigs_dict = {}
         contig_name_to_gene_start_stops = {}
         if not skip_gene_calling:
             # temporarily disconnect to perform gene calls
@@ -971,39 +915,54 @@ class ContigsDatabase:
                 if not contig_name_to_gene_start_stops.has_key(e['contig']):
                     contig_name_to_gene_start_stops[e['contig']] = set([])
 
-                contig_name_to_gene_start_stops[e['contig']].add((e['start'], e['stop']), )
+                contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
-        # lets process and store the FASTA file.
+
+        # here we will process each item in the contigs fasta file.
         fasta = u.SequenceSource(contigs_fasta)
         db_entries_contig_sequences = []
 
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
 
+        # create an instance from AuxiliaryDataForNtPositions to store information
+        # about each nt position while looping over contigs
+        auxiliary_contigs_data_path = ''.join(self.db_path[:-3]) + '.h5'
+        nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new = True)
+
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
         recovered_split_lengths = []
 
-        self.progress.new('Identifying splits, and computing k-mer frequencies')
+        # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
+        self.progress.new('South Loop')
         while fasta.next():
-            self.progress.update('Contig %d ...' % fasta.pos)
-
             contig_name = fasta.id
             contig_sequence = fasta.seq
 
-            gene_start_stops = contig_name_to_gene_start_stops[contig_name] if contig_name in contig_name_to_gene_start_stops else set([])
+            self.progress.update('Contig "%d" ' % fasta.pos)
 
+            genes_in_contig = contig_name_to_gene_start_stops[contig_name] if contig_name in contig_name_to_gene_start_stops else set([])
+
+            self.progress.append('has %d genes, ' % len(genes_in_contig))
             if skip_mindful_splitting:
                 contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, set([]))
             else:
-                contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, gene_start_stops)
+                contig_length, split_start_stops, contig_gc_content = contigs_info_table.append(contig_name, contig_sequence, genes_in_contig)
 
+            # let's keep an eye on the returned split lengths
             if len(split_start_stops) > 1:
                 recovered_split_lengths.extend([s[1] - s[0] for s in split_start_stops])
 
+            self.progress.append('and %d nts. Now computing: auxiliary ... ' % contig_length)
+            if genes_in_contig:
+                nt_position_info_list = self.compress_nt_position_info(contig_length, genes_in_contig, genes_in_contigs_dict)
+                nt_positions_auxiliary.append(contig_name, nt_position_info_list)
+
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
+            self.progress.append('k-mers ...')
             for order in range(0, len(split_start_stops)):
                 start, end = split_start_stops[order]
                 split_name = contigops.gen_split_name(contig_name, order)
@@ -1018,6 +977,7 @@ class ContigsDatabase:
                 splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
 
             db_entries_contig_sequences.append((contig_name, contig_sequence), )
+        nt_positions_auxiliary.close()
         self.progress.end()
 
         self.db.set_meta_value('kmer_size', kmer_size)
@@ -1052,6 +1012,57 @@ class ContigsDatabase:
         self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
                                                                         if recovered_split_lengths \
                                                                             else "(Anvi'o did not create any splits)", quiet = self.quiet)
+
+
+    def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
+        """This function compresses information regarding each nucleotide position in a given contig
+           into a small int. Every nucleotide position is represented by four bits depending on whether
+           they occur in a complete opoen reading frame, and which base they correspond to in a codon.
+
+                0000
+                ||||
+                ||| \
+                |||   Third codon?
+                || \
+                ||   Second codon?
+                | \
+                |   First codon?
+                 \
+                   Whether the position in a partial gene call
+
+           8: int('1000', 2); nt position is in a partial gene call
+           4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
+           2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
+           1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
+        """
+
+        # first we create a list of zeros for each position of the contig
+        nt_position_info_list = [0] * contig_length
+
+        for gene_unique_id, start, stop in genes_in_contig:
+            gene_call = genes_in_contigs_dict[gene_unique_id]
+
+            # if the gene call is a partial one, meaning the gene was cut at the beginning or
+            # at the end of the contig, we are not going to try to make sense of synonymous /
+            # non-synonmous bases in that. the clients who wish to use these variables must also
+            # be careful about the difference
+            if gene_call['partial']:
+                for nt_position in range(start, stop):
+                    nt_position_info_list[nt_position] = 8
+                continue
+
+            if gene_call['direction'] == 'f':
+                for nt_position in range(start, stop, 3):
+                    nt_position_info_list[nt_position] = 4
+                    nt_position_info_list[nt_position + 1] = 2
+                    nt_position_info_list[nt_position + 2] = 1
+            elif gene_call['direction'] == 'r':
+                for nt_position in range(stop - 1, start - 1, -3):
+                    nt_position_info_list[nt_position] = 4
+                    nt_position_info_list[nt_position - 1] = 2
+                    nt_position_info_list[nt_position - 2] = 1
+
+        return nt_position_info_list
 
 
     def disconnect(self):
