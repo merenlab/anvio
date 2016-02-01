@@ -85,7 +85,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
         self.init_contig_sequences()
-        self.init_nt_position_info_dict()
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         self.bam = None
