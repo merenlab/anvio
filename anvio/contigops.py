@@ -66,6 +66,7 @@ class Contig:
         self.coverage = Coverage()
 
         self.min_coverage_for_variability = 10
+        self.skip_SNV_profiling = False
         self.report_variability_full = False
 
 
@@ -77,7 +78,7 @@ class Contig:
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,
-             'variability': sum(s.auxiliary.variation_density for s in self.splits),
+             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None,
              '__parent__': None}
 
         return d
@@ -129,6 +130,7 @@ class Split:
         self.explicit_length = 0
         self.abundance = 0.0
         self.column_profiles = {}
+        self.auxiliary = None
 
     def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
@@ -138,7 +140,7 @@ class Split:
              'relative_abundance': 1.0,
              'portion_covered': self.coverage.portion_covered,
              'abundance': self.abundance,
-             'variability': self.auxiliary.variation_density,
+             'variability': self.auxiliary.variation_density if self.auxiliary else None,
              '__parent__': self.parent}
 
         return d

@@ -114,6 +114,14 @@ D = {
                       frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
                       process. If you prefer, you can later import your own gene calling results into the database."}
                 ),
+    'skip-SNV-profiling': (
+            ['--skip-SNV-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o characterizes single-nucleotide variation in each sample. The use of this flag\
+                      will instruct profiler to skip that step. Please remember that parameters and flags must be\
+                      identical between different profiles using the same contigs database for them to merge properly."}
+                ),
     'skip-mindful-splitting': (
             ['--skip-mindful-splitting'],
             {'default': False,

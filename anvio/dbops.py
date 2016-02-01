@@ -102,8 +102,6 @@ class ContigsSuperclass(object):
         self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
-        for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
-            self.a_meta[key] = int(self.a_meta[key])
 
         self.progress.update('Reading contigs basic info')
         self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
@@ -510,9 +508,6 @@ class ProfileSuperclass(object):
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
-        for key in ['merged', 'contigs_clustered', 'min_contig_length', 'total_length', 'num_splits', 'num_contigs']:
-            self.p_meta[key] = int(self.p_meta[key])
-
         if self.p_meta['contigs_clustered']:
             self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
             self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
@@ -726,6 +721,13 @@ class ProfileDatabase:
             self.db = db.DB(self.db_path, anvio.__profile__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in ['min_contig_length', 'SNVs_profiled', 'min_coverage_for_variability', 'merged', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length', 'total_reads_mapped']:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
             self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
@@ -791,6 +793,9 @@ class ContigsDatabase:
             self.db = db.DB(self.db_path, anvio.__contigs__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
+                self.meta[key] = int(self.meta[key])
 
             if 'creation_date' not in self.meta:
                 raise ConfigError, "The contigs database ('%s') seems to be corrupted :/ This happens if the process that\
@@ -1284,6 +1289,10 @@ class TableForViews(Table):
 
     def append(self, view_id, target_table):
         self.db_entries.append((view_id, target_table),)
+
+
+    def remove(self, view_id, target_table):
+        self.db_entries.remove((view_id, target_table), )
 
 
     def store(self):

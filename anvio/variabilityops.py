@@ -147,6 +147,12 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
         self.progress.update('Reading variable positions table ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
+        if not profile_db.meta['SNVs_profiled']:
+            self.progress.end()
+            raise ConfigError, "Well well well. It seems SNVs were not characterized for this profile database.\
+                                Sorry, there is nothing to report here!"
+
         self.sample_ids = profile_db.samples # we set this now, but we will overwrite it with args.samples_of_interest if necessary
         self.variable_nts_table = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
         db_hash = profile_db.meta['contigs_db_hash']
