@@ -83,7 +83,7 @@ class CONCOCT:
         splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
         contigs_db.disconnect()
 
-        self.progress.update('computing split lenghts ...')
+        self.progress.update('computing split lengths ...')
         for split_name in splits_basic_info:
             self.lengths[split_name] = splits_basic_info[split_name]['length']
 

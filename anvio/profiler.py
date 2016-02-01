@@ -344,11 +344,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.progress.end()
 
             self.contig_names = self.bam.references
-            self.contig_lenghts = self.bam.lengths
+            self.contig_lengths = self.bam.lengths
 
             utils.check_contig_names(self.contig_names)
 
-            for tpl in sorted(zip(self.contig_lenghts, self.contig_names), reverse = True):
+            for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse = True):
                 print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
         else:
@@ -375,7 +375,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.end()
 
         self.contig_names = self.bam.references
-        self.contig_lenghts = self.bam.lengths
+        self.contig_lengths = self.bam.lengths
 
         utils.check_contig_names(self.contig_names)
 
@@ -394,7 +394,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.contig_names_of_interest:
             indexes = [self.contig_names.index(r) for r in self.contig_names_of_interest if r in self.contig_names]
             self.contig_names = [self.contig_names[i] for i in indexes]
-            self.contig_lenghts = [self.contig_lenghts[i] for i in indexes]
+            self.contig_lengths = [self.contig_lengths[i] for i in indexes]
             self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
 
         # it brings good karma to let the user know what the hell is wrong with their data:
@@ -403,16 +403,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # check for the -M parameter.
         contigs_longer_than_M = set()
         for i in range(0, len(self.contig_names)):
-            if self.contig_lenghts[i] >= self.min_contig_length:
+            if self.contig_lengths[i] >= self.min_contig_length:
                 contigs_longer_than_M.add(i)
 
         if not len(contigs_longer_than_M):
             raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
-            self.contig_lenghts = [self.contig_lenghts[i] for i in contigs_longer_than_M]
+            self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
             self.num_contigs = len(self.contig_names)    # we will store these two
-            self.total_length = sum(self.contig_lenghts) # into the db in a second.
+            self.total_length = sum(self.contig_lengths) # into the db in a second.
 
 
         # let's see whether the user screwed up to follow the simple instructions
@@ -481,7 +481,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig_name = self.contig_names[i]
 
             contig = contigops.Contig(contig_name)
-            contig.length = self.contig_lenghts[i]
+            contig.length = self.contig_lengths[i]
             contig.split_length = self.a_meta['split_length']
             contig.min_coverage_for_variability = self.min_coverage_for_variability
             contig.report_variability_full = self.report_variability_full
