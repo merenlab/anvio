@@ -3,7 +3,6 @@
 #include <string.h>
 #include "structmember.h"
 
-
 typedef struct {
     PyObject_HEAD
     PyObject *column;
@@ -11,7 +10,7 @@ typedef struct {
     int coverage;
     int pos;
     PyObject *split_name;
-    int sample_id;
+    PyObject *sample_id;
     PyObject *test_class;
     PyObject *profile;
 } ColumnProfile;
@@ -77,7 +76,7 @@ ColumnProfile_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
         self->coverage = 0;
         self->pos = 0;
-        self->sample_id = 0;
+        self->sample_id = Py_None;
     }
 
     return (PyObject *)self;
@@ -106,17 +105,17 @@ int compare ( const void *pa, const void *pb )
 static int
 ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *column=NULL, *consensus=NULL, *split_name=NULL, *test_class=Py_None, *tmp;
+    PyObject *column=NULL, *consensus=NULL, *split_name=NULL, *test_class=Py_None, *sample_id=Py_None, *tmp;
 
     static char *kwlist[] = {"column", "consensus", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOiiOiO", kwlist, 
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOiiOOO", kwlist, 
                                       &column,
                                       &consensus,
                                       &self->coverage,
                                       &self->pos,
                                       &split_name, 
-                                      &self->sample_id,
+                                      &sample_id,
                                       &test_class))
         return -1; 
 
@@ -148,68 +147,62 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
         Py_XDECREF(tmp);
     }
 
-    PyDict_SetItemString(self->profile, "sample_id", PyInt_FromLong(self->sample_id));
+    PyDict_SetItemString(self->profile, "sample_id", self->sample_id);
     PyDict_SetItemString(self->profile, "split_name", self->split_name);
     PyDict_SetItemString(self->profile, "pos", PyInt_FromLong(self->pos));
-    PyDict_SetItemString(self->profile, "consensus", Py_None);
     PyDict_SetItemString(self->profile, "coverage", (self->coverage != 0) ? PyInt_FromLong(self->coverage) : PyInt_FromLong(PyString_Size(self->column)));
     PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(0));
     PyDict_SetItemString(self->profile, "competing_nts", Py_None);
+    PyDict_SetItemString(self->profile, "consensus", self->consensus);
 
-    const char nucleotides[6] = "ATCGN";
+    const char _nucleotides[6] = "ATCGN";
+    const char nucleotides[6] = "ACGNT";
     const char * _column = PyString_AsString(self->column);
+    const char * _consensus = PyString_AsString(self->consensus);
 
     int i;
-    int nucleotides_arr[5][2];
+    int nt_counts[5][2];
     char np[2] = "";
     char competing_nts[3] = "";
     double departure_from_consensus;
+    double total_frequency_of_all_bases_but_the_conensus = 0;
     double minratio;
 
     for (i=0; i<5; i++){
         int cc = count_chars(_column, nucleotides[i]); 
-        nucleotides_arr[i][0] = cc;    
-        nucleotides_arr[i][1] = i;
-        np[0] = nucleotides[(int)nucleotides_arr[i][1]];
+        if (nucleotides[i] != *_consensus) {
+            total_frequency_of_all_bases_but_the_conensus += cc;
+        }        
+        nt_counts[i][0] = cc;
+        nt_counts[i][1] = i;
+        np[0] = _nucleotides[(int)nt_counts[i][1]];
         PyDict_SetItemString(self->profile, np, PyInt_FromLong(cc));
     }
 
-    qsort(nucleotides_arr, 5, sizeof nucleotides_arr[0], compare);
+    qsort(nt_counts, 5, sizeof nt_counts[0], compare);
 
-    np[0] = nucleotides[(int)nucleotides_arr[4][1]];
-
-    if (!nucleotides_arr[3][0]) {
-        PyDict_SetItemString(self->profile, "consensus", PyString_FromString(np));
-        return 0;
+    if ((int)nt_counts[3][1] > (int)nt_counts[4][1]) {
+        competing_nts[1] = nucleotides[(int)nt_counts[3][1]];
+        competing_nts[0] = nucleotides[(int)nt_counts[4][1]];
+    } else {
+        competing_nts[0] = nucleotides[(int)nt_counts[3][1]];
+        competing_nts[1] = nucleotides[(int)nt_counts[4][1]];        
     }
 
-    competing_nts[0] = nucleotides[(int)nucleotides_arr[4][1]];
-    competing_nts[1] = nucleotides[(int)nucleotides_arr[3][1]];
+    PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));    
 
-    if (nucleotides_arr[4][1] == 4) {
-        return 0;
-    }
-
-    PyDict_SetItemString(self->profile, "consensus", PyString_FromString(np));
-
-    if (nucleotides_arr[3][1] == 4) {
-        return 0;
-    }
-
-    departure_from_consensus = ((double)nucleotides_arr[3][0] / (double)nucleotides_arr[4][0]);
+    departure_from_consensus = (total_frequency_of_all_bases_but_the_conensus / self->coverage);
     PyObject *min_acceptable_ratio_given_coverage = PyObject_CallMethod(self->test_class, "min_acceptable_ratio_given_coverage", "I", self->coverage);
     minratio = PyFloat_AsDouble(min_acceptable_ratio_given_coverage);
 
     if (test_class != Py_None) {
         if (departure_from_consensus > minratio){
-            PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));
-            PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));        
+            PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));    
         }
     }
 
     else {
-        PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));
-        PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));   
+        PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus)); 
     }
 
     return 0;
@@ -227,7 +220,7 @@ static PyMemberDef ColumnProfile_members[] = {
      "pos"},          
     {"split_name", T_OBJECT_EX, offsetof(ColumnProfile, split_name), 0,
      "split_name"},
-    {"sample_id", T_INT, offsetof(ColumnProfile, sample_id), 0,
+    {"sample_id", T_OBJECT_EX, offsetof(ColumnProfile, sample_id), 0,
      "sample_id"},
     {"test_class", T_OBJECT_EX, offsetof(ColumnProfile, test_class), 0,
      "test_class"},          
