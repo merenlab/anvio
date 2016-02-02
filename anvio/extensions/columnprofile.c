@@ -155,7 +155,6 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     PyDict_SetItemString(self->profile, "competing_nts", Py_None);
     PyDict_SetItemString(self->profile, "consensus", self->consensus);
 
-    const char _nucleotides[6] = "ATCGN";
     const char nucleotides[6] = "ACGNT";
     const char * _column = PyString_AsString(self->column);
     const char * _consensus = PyString_AsString(self->consensus);
@@ -175,7 +174,7 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
         }        
         nt_counts[i][0] = cc;
         nt_counts[i][1] = i;
-        np[0] = _nucleotides[(int)nt_counts[i][1]];
+        np[0] = nucleotides[(int)nt_counts[i][1]];
         PyDict_SetItemString(self->profile, np, PyInt_FromLong(cc));
     }
 
