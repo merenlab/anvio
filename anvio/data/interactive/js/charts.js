@@ -23,6 +23,7 @@ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || 
 var layers;
 var coverage;
 var variability;
+var maxVariability = 0;
 var geneParser;
 var contextSvg;
 
@@ -71,7 +72,25 @@ function loadAll() {
 
             layers = contig_data.layers;
             coverage = contig_data.coverage;
-            variability = contig_data.variability;
+	    variability = [];
+	    for (var i=0; i<coverage.length; i++) {
+		variability[i] = [];
+		for (var l=0; l<4; l++) {
+		    variability[i][l] = [];
+		    for (var h=0; h<coverage[i].length; h++) {
+			if (contig_data.variability[i][l].hasOwnProperty(h)) {
+			    variability[i][l].push(contig_data.variability[i][l][h]);
+			    if (contig_data.variability[i][l][h] > maxVariability) {
+				maxVariability = contig_data.variability[i][l][h];
+			    }
+			} else {
+			    variability[i][l].push(0);
+			}
+		    }
+		}
+	    }
+	    console.log(maxVariability);
+	    console.log(variability);
             competing_nucleotides = contig_data.competing_nucleotides;
             previous_contig_name = contig_data.previous_contig_name;
             next_contig_name = contig_data.next_contig_name;
@@ -150,7 +169,6 @@ function createCharts(state){
     $('#chart-container').css("width", (width + 150) + "px");
     
     var charts = [];
-    var maxVariability = 0;
     
     var layersCount = layers.length;
     
@@ -158,18 +176,6 @@ function createCharts(state){
         for (var prop in d) {
             if (d.hasOwnProperty(prop)) {
                 d[prop] = parseFloat(d[prop]);
-            }
-        }
-    });
-
-    variability.forEach(function(d) {
-        for (var prop in d) {
-            if (d.hasOwnProperty(prop)) {
-                d[prop] = parseFloat(d[prop]);
-                
-                if (d[prop] > maxVariability) {
-                    maxVariability = d[prop];
-                }
             }
         }
     });
@@ -184,7 +190,10 @@ function createCharts(state){
         charts.push(new Chart({
                         name: layers[layer_index],
                         coverage: coverage[layer_index],
-                        variability: variability[layer_index],
+                        variability_a: variability[layer_index][0],
+                        variability_b: variability[layer_index][1],
+                        variability_c: variability[layer_index][2],
+                        variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         id: j++,
                         width: width,
@@ -405,7 +414,10 @@ function get_comp_nt_color(nts){
 
 function Chart(options){
     this.coverage = options.coverage;
-    this.variability = options.variability;
+    this.variability_a = options.variability_a;
+    this.variability_b = options.variability_b;
+    this.variability_c = options.variability_c;
+    this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.width = options.width;
     this.height = options.height;
@@ -418,7 +430,7 @@ function Chart(options){
     this.color = options.color;
     
     var localName = this.name;
-    var num_data_points = this.variability.length;
+    var num_data_points = this.variability_a.length;
     
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
@@ -474,9 +486,30 @@ function Chart(options){
                               .attr("d", this.area);
                                     
     this.lineContainer.append("path")
-                              .data([this.variability])
+                              .data([this.variability_a])
                               .attr("class", "line")
                               .style("stroke", '#000000')
+                              .style("stroke-width", "1")
+                              .attr("d", this.line);
+
+    this.lineContainer.append("path")
+                              .data([this.variability_b])
+                              .attr("class", "line")
+                              .style("stroke", '#ff0000')
+                              .style("stroke-width", "1")
+                              .attr("d", this.line);
+
+    this.lineContainer.append("path")
+                              .data([this.variability_c])
+                              .attr("class", "line")
+                              .style("stroke", '#0000ff')
+                              .style("stroke-width", "1")
+                              .attr("d", this.line);
+
+    this.lineContainer.append("path")
+                              .data([this.variability_d])
+                              .attr("class", "line")
+                              .style("stroke", '#00ff00')
                               .style("stroke-width", "1")
                               .attr("d", this.line);
 
@@ -529,7 +562,10 @@ function Chart(options){
 Chart.prototype.showOnly = function(b){
         this.xScale.domain(b); var xS = this.xScale;
         this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
-        this.lineContainer.select("path").data([this.variability]).attr("d", this.line);
+        this.lineContainer.select("path").data([this.variability_a]).attr("d", this.line);
+        this.lineContainer.select("path").data([this.variability_b]).attr("d", this.line);
+        this.lineContainer.select("path").data([this.variability_c]).attr("d", this.line);
+        this.lineContainer.select("path").data([this.variability_d]).attr("d", this.line);
         this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
         this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
