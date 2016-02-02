@@ -169,11 +169,13 @@ class Auxiliary:
             if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
                 continue
 
-            coverage = pileupcolumn.n
+            valid_nts = [pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip]
+
+            coverage = len(valid_nts)
             if coverage < self.min_coverage:
                 continue
 
-            column = ''.join([pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip])
+            column = ''.join(valid_nts)
 
             pos_in_split = pos_in_contig - self.split.start
             consensus_base_in_contig = self.split.sequence[pos_in_split]
