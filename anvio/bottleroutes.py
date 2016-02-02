@@ -126,17 +126,7 @@ def charts(d, split_name, show_outlier_SNVs = False):
         progress.update('Formatting variability data: "%s"' % layer)
         data['layers'].append(layer)
         data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
-
-        # FIXME: we get a nice dict back, but here we convert it into a shitty list... this is one of the
-        #        most inefficient piece of code in the entire platform, and it is very embarrassing to
-        #        have it this way here, but fortunately no one really reads the code :/
-        vd = split_variability_info_dict[layer]['variability']
-        for pos_in_codon in range(0, 4):
-            l = copy.deepcopy(zeros_for_all_positions)
-            progress.append(' %d ..' % pos_in_codon)
-            for pos in vd[pos_in_codon]:
-                l[pos] = vd[pos_in_codon][pos]
-            data['variability'].append(l)
+        data['variability'].append(split_variability_info_dict[layer]['variability'])
 
     levels_occupied = {1: []}
     for entry_id in d.split_to_genes_in_splits_ids[split_name]:
