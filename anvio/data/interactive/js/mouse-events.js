@@ -296,14 +296,15 @@ function mouseMoveHandler(event) {
         for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
             var layer_name = last_settings['samples-layer-order'][i];
+            var pretty_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
 
             if (layer_name == layer_name_hover)
             {
-                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
+                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
             }
             else
             {
-                message += '<tr><td>' + layer_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
+                message += '<tr><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
             }
         }
 
