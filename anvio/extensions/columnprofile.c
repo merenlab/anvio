@@ -7,6 +7,7 @@
 typedef struct {
     PyObject_HEAD
     PyObject *column;
+    PyObject *consensus;
     int coverage;
     int pos;
     PyObject *split_name;
@@ -20,6 +21,7 @@ ColumnProfile_dealloc(ColumnProfile* self)
 {
 
     Py_XDECREF(self->column);
+    Py_XDECREF(self->consensus);
     Py_XDECREF(self->split_name);
     Py_XDECREF(self->test_class);
     Py_XDECREF(self->profile);
@@ -37,6 +39,13 @@ ColumnProfile_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self != NULL) {
         self->column = PyString_FromString("");
         if (self->column == NULL)
+          {
+            Py_DECREF(self);
+            return NULL;
+          }
+
+        self->consensus = PyString_FromString("");
+        if (self->consensus == NULL)
           {
             Py_DECREF(self);
             return NULL;
@@ -97,12 +106,13 @@ int compare ( const void *pa, const void *pb )
 static int
 ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *column=NULL, *split_name=NULL, *test_class=Py_None, *tmp;
+    PyObject *column=NULL, *consensus=NULL, *split_name=NULL, *test_class=Py_None, *tmp;
 
-    static char *kwlist[] = {"column", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
+    static char *kwlist[] = {"column", "consensus", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OiiOiO", kwlist, 
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOiiOiO", kwlist, 
                                       &column,
+                                      &consensus,
                                       &self->coverage,
                                       &self->pos,
                                       &split_name, 
@@ -114,6 +124,13 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
         tmp = self->column;
         Py_INCREF(column);
         self->column = column;
+        Py_XDECREF(tmp);
+    }
+
+    if (consensus) {
+        tmp = self->consensus;
+        Py_INCREF(consensus);
+        self->consensus = consensus;
         Py_XDECREF(tmp);
     }
 
@@ -136,7 +153,7 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     PyDict_SetItemString(self->profile, "pos", PyInt_FromLong(self->pos));
     PyDict_SetItemString(self->profile, "consensus", Py_None);
     PyDict_SetItemString(self->profile, "coverage", (self->coverage != 0) ? PyInt_FromLong(self->coverage) : PyInt_FromLong(PyString_Size(self->column)));
-    PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(0));
+    PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(0));
     PyDict_SetItemString(self->profile, "competing_nts", Py_None);
 
     const char nucleotides[6] = "ATCGN";
@@ -146,7 +163,7 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     int nucleotides_arr[5][2];
     char np[2] = "";
     char competing_nts[3] = "";
-    double n2n1ratio;
+    double departure_from_consensus;
     double minratio;
 
     for (i=0; i<5; i++){
@@ -179,19 +196,19 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
         return 0;
     }
 
-    n2n1ratio = ((double)nucleotides_arr[3][0] / (double)nucleotides_arr[4][0]);
+    departure_from_consensus = ((double)nucleotides_arr[3][0] / (double)nucleotides_arr[4][0]);
     PyObject *min_acceptable_ratio_given_coverage = PyObject_CallMethod(self->test_class, "min_acceptable_ratio_given_coverage", "I", self->coverage);
     minratio = PyFloat_AsDouble(min_acceptable_ratio_given_coverage);
 
     if (test_class != Py_None) {
-        if (n2n1ratio > minratio){
-            PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(n2n1ratio));
+        if (departure_from_consensus > minratio){
+            PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));
             PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));        
         }
     }
 
     else {
-        PyDict_SetItemString(self->profile, "n2n1ratio", PyFloat_FromDouble(n2n1ratio));
+        PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));
         PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));   
     }
 
@@ -202,6 +219,8 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 static PyMemberDef ColumnProfile_members[] = {
     {"column", T_OBJECT_EX, offsetof(ColumnProfile, column), 0,
      "column"},
+    {"consensus", T_OBJECT_EX, offsetof(ColumnProfile, consensus), 0,
+     "consensus"},
     {"coverage", T_INT, offsetof(ColumnProfile, coverage), 0,
      "coverage"},
     {"pos", T_INT, offsetof(ColumnProfile, pos), 0,
