@@ -121,7 +121,6 @@ def charts(d, split_name, show_outlier_SNVs = False):
     progress.update('Collecting info for "%s"' % split_name)
     split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers = show_outlier_SNVs)
 
-    zeros_for_all_positions = [0] * d.splits_basic_info[split_name]['length']
     for layer in layers:
         progress.update('Formatting variability data: "%s"' % layer)
         data['layers'].append(layer)
