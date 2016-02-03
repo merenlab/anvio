@@ -89,8 +89,6 @@ function loadAll() {
 		    }
 		}
 	    }
-	    console.log(maxVariability);
-	    console.log(variability);
             competing_nucleotides = contig_data.competing_nucleotides;
             previous_contig_name = contig_data.previous_contig_name;
             next_contig_name = contig_data.next_contig_name;
@@ -486,32 +484,39 @@ function Chart(options){
                               .attr("d", this.area);
                                     
     this.lineContainer.append("path")
-                              .data([this.variability_a])
-                              .attr("class", "line")
-                              .style("stroke", '#000000')
-                              .style("stroke-width", "1")
-                              .attr("d", this.line);
+        .data([this.variability_a])
+        .attr("class", "line")
+	.attr("name", "black")
+        .style("stroke", '#000000')
+        .style("stroke-width", "1")
+        .attr("d", this.line);
 
     this.lineContainer.append("path")
-                              .data([this.variability_b])
-                              .attr("class", "line")
-                              .style("stroke", '#ff0000')
-                              .style("stroke-width", "1")
-                              .attr("d", this.line);
+        .data([this.variability_b])
+        .attr("class", "line")
+        .attr("name", "red")
+        .style("stroke", '#ff0000')
+        .style("fill", '#ff0000')
+        .style("stroke-width", "1")
+        .attr("d", this.line);
 
     this.lineContainer.append("path")
-                              .data([this.variability_c])
-                              .attr("class", "line")
-                              .style("stroke", '#0000ff')
-                              .style("stroke-width", "1")
-                              .attr("d", this.line);
+        .data([this.variability_c])
+        .attr("class", "line")
+        .attr("name", "blue")
+        .style("stroke", '#0000ff')
+        .style("fill", '#0000ff')
+        .style("stroke-width", "1")
+        .attr("d", this.line);
 
     this.lineContainer.append("path")
-                              .data([this.variability_d])
-                              .attr("class", "line")
-                              .style("stroke", '#00ff00')
-                              .style("stroke-width", "1")
-                              .attr("d", this.line);
+        .data([this.variability_d])
+        .attr("class", "line")
+        .attr("name", "green")
+        .style("stroke", '#00ff00')
+        .style("fill", '#00ff00')
+        .style("stroke-width", "1")
+        .attr("d", this.line);
 
     this.textContainer.selectAll("text")
                             .data(d3.entries(this.competing_nucleotides))
@@ -560,13 +565,13 @@ function Chart(options){
 }
     
 Chart.prototype.showOnly = function(b){
-        this.xScale.domain(b); var xS = this.xScale;
-        this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
-        this.lineContainer.select("path").data([this.variability_a]).attr("d", this.line);
-        this.lineContainer.select("path").data([this.variability_b]).attr("d", this.line);
-        this.lineContainer.select("path").data([this.variability_c]).attr("d", this.line);
-        this.lineContainer.select("path").data([this.variability_d]).attr("d", this.line);
-        this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
-        this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
+    this.xScale.domain(b); var xS = this.xScale;
+    this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
+    this.lineContainer.select("[name=black]").data([this.variability_a]).attr("d", this.line);
+    this.lineContainer.select("[name=red]").data([this.variability_b]).attr("d", this.line);
+    this.lineContainer.select("[name=blue]").data([this.variability_c]).attr("d", this.line);
+    this.lineContainer.select("[name=green]").data([this.variability_d]).attr("d", this.line);
+    this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
+    this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
 
