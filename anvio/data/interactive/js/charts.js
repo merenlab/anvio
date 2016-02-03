@@ -105,12 +105,12 @@ function loadAll() {
             position = index + " of " + total;
 
             if(next_contig_name)
-                next_str = '<small><a href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
 
             if(previous_contig_name)
-                prev_str = '<small><a href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
 
-            document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small>" + prev_str + position + next_str + "</small>";
+            document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
             $.ajax({
               type: 'GET',
@@ -292,7 +292,7 @@ function removeGeneChart() {
 function get_gene_functions_table_html(gene){
     functions_table_html = '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 600px; text-align: center;">';
-    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>% in split</th></thead>';
+    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
     functions_table_html += '<tr><td>' + gene.gene_callers_id
                           + '</td><td>' + gene.source
@@ -300,6 +300,7 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.direction
                           + '</td><td>' + gene.start_in_contig
                           + '</td><td>' + gene.stop_in_contig
+                          + '</td><td>' + gene.complete_gene_call
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
@@ -482,41 +483,36 @@ function Chart(options){
                               .style("fill", this.color)
                               .style("fill-opacity", "0.5")
                               .attr("d", this.area);
-                                    
-    this.lineContainer.append("path")
-        .data([this.variability_a])
-        .attr("class", "line")
-	.attr("name", "black")
-        .style("stroke", '#000000')
-        .style("stroke-width", "1")
-        .attr("d", this.line);
 
     this.lineContainer.append("path")
         .data([this.variability_b])
         .attr("class", "line")
-        .attr("name", "red")
-        .style("stroke", '#ff0000')
-        .style("fill", '#ff0000')
-        .style("stroke-width", "1")
+        .attr("name", "first_pos")
+        .style("fill", '#990000')
         .attr("d", this.line);
 
     this.lineContainer.append("path")
         .data([this.variability_c])
         .attr("class", "line")
-        .attr("name", "blue")
-        .style("stroke", '#0000ff')
-        .style("fill", '#0000ff')
-        .style("stroke-width", "1")
+        .attr("name", "second_pos")
+        .style("fill", '#990000')
         .attr("d", this.line);
 
     this.lineContainer.append("path")
         .data([this.variability_d])
         .attr("class", "line")
-        .attr("name", "green")
-        .style("stroke", '#00ff00')
-        .style("fill", '#00ff00')
-        .style("stroke-width", "1")
+        .attr("name", "third_pos")
+        .style("fill", '#004400')
         .attr("d", this.line);
+
+    this.lineContainer.append("path")
+        .data([this.variability_a])
+        .attr("class", "line")
+        .attr("name", "outside_gene")
+        .style("stroke", '#666666')
+        .style("stroke-width", "0.2")
+        .attr("d", this.line);
+
 
     this.textContainer.selectAll("text")
                             .data(d3.entries(this.competing_nucleotides))
@@ -567,10 +563,10 @@ function Chart(options){
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
-    this.lineContainer.select("[name=black]").data([this.variability_a]).attr("d", this.line);
-    this.lineContainer.select("[name=red]").data([this.variability_b]).attr("d", this.line);
-    this.lineContainer.select("[name=blue]").data([this.variability_c]).attr("d", this.line);
-    this.lineContainer.select("[name=green]").data([this.variability_d]).attr("d", this.line);
+    this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.line);
+    this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
+    this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);
+    this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.line);
     this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
