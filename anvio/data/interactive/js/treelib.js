@@ -1956,7 +1956,7 @@ function draw_tree(settings) {
             var longest_text_len = 0;
             for (var _pos = 1; _pos < layerdata.length; _pos++)
             {
-                if (layerdata[_pos][pindex].length > longest_text_len)
+                if (layerdata[_pos][pindex] != null && layerdata[_pos][pindex].length > longest_text_len)
                 {
                     longest_text_len = layerdata[_pos][pindex].length;
                 }
