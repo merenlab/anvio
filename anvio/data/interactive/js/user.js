@@ -408,7 +408,7 @@ function uploadFileSelected (which) {
 		$('#'+which+'FileName')[0].value = "";
 	    }
 	} else if (which == 'data') {
-	    if (isTabDelimitedFile(fileContent)) {
+	    if (isDataFile(fileContent)) {
 		toastr.info('valid data file');
 		$('#'+which+'FileName')[0].value = file.name;
 	    } else {
@@ -421,6 +421,22 @@ function uploadFileSelected (which) {
 		$('#'+which+'FileName')[0].value = file.name;
 	    } else {
 		toastr.error('invalid FASTA file');
+		$('#'+which+'FileName')[0].value = "";
+	    }
+	} else if (which == 'samplesOrder') {
+	    if (isSamplesOrderFile(fileContent)) {
+		toastr.info('valid samples order file');
+		$('#'+which+'FileName')[0].value = file.name;
+	    } else {
+		toastr.error('invalid samples order file');
+		$('#'+which+'FileName')[0].value = "";
+	    }
+	} else if (which == 'samplesInformation') {
+	    if (isSamplesInfoFile(fileContent)) {
+		toastr.info('valid samples information file');
+		$('#'+which+'FileName')[0].value = file.name;
+	    } else {
+		toastr.error('invalid samples information file');
 		$('#'+which+'FileName')[0].value = "";
 	    }
 	} else {
@@ -468,29 +484,164 @@ Number.prototype.byteSize = function() {
     return size + " " + magnitude;
 };
 
-function isTabDelimitedFile (string) {
+function isSamplesInfoFile (string) {
     try {
 	var lines = string.split(/\n/);
 	if (! lines.length) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
+	    toastr.error('file contains no data');
 	    return false;
 	}
-	var numcols = lines[0].split(/\t/).length;
-	if (numcols < 2) {
-	    toastr.error('data files must have at least two columns');
+	if (lines.length < 2) {
+	    toastr.error('file contains only one line');
 	    return false;
 	}
-	for (var i=1; i<lines.length - 1; i++) {
-	    var nc = lines[i].split(/\t/).length;
-	    if (nc != numcols) {
-		toastr.error('invalid number of columns in line '+(i+1)+' ('+nc+'), should be '+numcols);
+	var header = lines[0].split(/\t/);
+	if (header.length < 2) {
+	    toastr.error('sample info file must have at least two columns');
+	    return false;
+	}
+	if (header[0] !== 'samples') {
+	    toastr.error('the cell A1 in the file must contain the string "samples"');
+	    return false;
+	}
+	for (var i=1; i<lines.length; i++) {
+	    if (i + 1 == lines.length && lines[i].length == 0) {
+		continue;
+	    }
+	    var cells = lines[i].split(/\t/);
+	    if (cells.length != header.length) {
+		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length);
 		return false;
 	    }
 	}
 	return true;
     } catch (error) {
+	toastr.error('could not read file');
+	return false;
+    }
+}
+
+function isSamplesOrderFile (string) {
+    try {
+	var lines = string.split(/\n/);
+	if (! lines.length) {
+	    lines = string.split(/\r/);
+	}
+	if (! lines.length) {
+	    toastr.error('file contains no data');
+	    return false;
+	}
+	if (lines.length < 2) {
+	    toastr.error('file contains only one line');
+	    return false;
+	}
+	var validHeaders = { 'attributes': true, 'basic': true, 'newick': true };
+	var headerPositions = {};
+	var headers = lines[0].split(/\t/);
+	if (headers.length > 3 || headers.length < 2) {
+	    toastr.error('header column must contain at least two and at most three columns');
+	    return false;
+	}
+	var hasAttributesColumn = false;
+	for (var i=0; i<headers.length; i++) {
+	    if (! validHeaders[headers[i]]) {
+		toastr.error('header column contains invalid term: '+headers[i]);
+		return false;
+	    } else {
+		if (headers[i] == 'attributes') {
+		    hasAttributesColumn = true;
+		}
+		headerPositions[i] = headers[i];
+	    }
+	}
+	if (! hasAttributesColumn) {
+	    toastr.error('header must contain an attributes column');
+	    return false;
+	}
+	for (var i=1; i<lines.length; i++) {
+	    if (i + 1 == lines.length && lines[i].length == 0) {
+		continue;
+	    }
+	    var cells = lines[i].split(/\t/);
+	    var containsInfo = false;
+	    for (var h=0; h<cells.length; h++) {
+		if (headerPositions[h] == 'attributes') {
+		    if (! cells[h].length) {
+			toastr.error('row '+(i+1)+' does not contain an attribute name');
+			return false;
+		    }
+		} else if (headerPositions[h] == 'basic') {
+		    if (cells[h].length) {
+			var basics = cells[h].split(/,/);
+			if (basics.length < 2) {
+			    toastr.error('basic cell in line '+(i+1)+' contains less than two items');
+			    return false;
+			}
+			containsInfo = true;
+		    }
+		} else if (headerPositions[h] == 'newick') {
+		    if (cells[h].length) {
+			if (! isNewickTree(cells[h])) {
+			    toastr.error('newick cell in line '+(i+1)+' is not valid newick format');
+			    return false;
+			}
+			containsInfo = true;
+		    }
+		}
+	    }
+	    if (! containsInfo) {
+		toastr.error('row '+(i+i)+' does not contain data');
+		return false;
+	    }
+	}
+	return true;
+    } catch (error) {
+	toastr.error('could not read file');
+	return false;
+    }
+}
+
+function isDataFile (string) {
+    try {
+	var lines = string.split(/\n/);
+	if (! lines.length) {
+	    lines = string.split(/\r/);
+	}
+	if (! lines.length) {
+	    toastr.error('file contains no data');
+	    return false;
+	}
+	var header = lines[0].split(/\t/);
+	if (header.length < 2) {
+	    toastr.error('data files must have at least two columns');
+	    return false;
+	}
+	if (header[0] !== 'contig') {
+	    toastr.error('the cell A1 in the file must contain the string "contig"');
+	    return false;
+	}
+	for (var i=1; i<lines.length; i++) {
+	    if (i + 1 == lines.length && lines[i].length == 0) {
+		continue;
+	    }
+	    var cells = lines[i].split(/\t/);
+	    for (var h=1; h<cells.length; h++) {
+		if (! isNumber(cells[h])) {
+		    toastr.error('The data in row '+(i+1)+' col '+(h+1)+' is '+cells[h]+' (should be a number)');
+		    return false;
+		}
+	    }
+	    if (cells.length != header.length) {
+		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length);
+		return false;
+	    }
+	}
+	return true;
+    } catch (error) {
+	toastr.error('could not read file');
 	return false;
     }
 }
@@ -502,6 +653,7 @@ function isFastaFile (string) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
+	    toastr.error('file contains no data');
 	    return false;
 	}
 	for (var i=0; i<lines.length; i++) {
@@ -523,6 +675,7 @@ function isFastaFile (string) {
 	}
 	return true;
     } catch (error) {
+	toastr.error('could not read file');
 	return false;
     }
 }
@@ -562,7 +715,8 @@ function isNewickTree (string) {
 	    }
 	}
     } catch (error) {
-	// this is not newick format
+	toastr.error('could not read file');
+	return false;
     }
     if (tree.hasOwnProperty('name') && tree.hasOwnProperty('children')) {
 	return true;
@@ -570,3 +724,8 @@ function isNewickTree (string) {
 	return false;
     }
 };
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
