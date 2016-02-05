@@ -251,7 +251,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
         for entry_id in self.variable_nts_table:
             v = self.variable_nts_table[entry_id]
-            v['unique_position_id'] = '_'.join([v['split_name'], str(v['pos'])])
+            v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
 
         if self.min_occurrence == 1:
             return
@@ -262,19 +262,19 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         self.progress.new('Processing positions further')
 
         self.progress.update('counting occurrences of each position across samples ...')
-        unique_position_id_occurrences = {}
+        unique_pos_identifier_str_occurrences = {}
         for entry_id in self.variable_nts_table:
             v = self.variable_nts_table[entry_id]
-            if unique_position_id_occurrences.has_key(v['unique_position_id']):
-                unique_position_id_occurrences[v['unique_position_id']] += 1
+            if unique_pos_identifier_str_occurrences.has_key(v['unique_pos_identifier_str']):
+                unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] += 1
             else:
-                unique_position_id_occurrences[v['unique_position_id']] = 1
+                unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] = 1
 
         self.progress.update('identifying entries that occurr in less than %d samples ...' % (self.min_occurrence))
         entry_ids_to_remove = set([])
         for entry_id in self.variable_nts_table:
             v = self.variable_nts_table[entry_id]
-            if not unique_position_id_occurrences[v['unique_position_id']] >= self.min_occurrence:
+            if not unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
         self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
@@ -286,13 +286,13 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         self.check_if_variable_table_is_empty()
 
 
-    def get_unique_pos_identification_number(self, unique_position_id):
-        if unique_position_id in self.split_name_position_dict:
-            return self.split_name_position_dict[unique_position_id]
+    def get_unique_pos_identification_number(self, unique_pos_identifier_str):
+        if unique_pos_identifier_str in self.split_name_position_dict:
+            return self.split_name_position_dict[unique_pos_identifier_str]
         else:
-            self.split_name_position_dict[unique_position_id] = self.unique_pos_identifier
+            self.split_name_position_dict[unique_pos_identifier_str] = self.unique_pos_identifier
             self.unique_pos_identifier += 1
-            return self.split_name_position_dict[unique_position_id]
+            return self.split_name_position_dict[unique_pos_identifier_str]
 
 
     def gen_unique_pos_identifier_to_entry_id_dict(self):
@@ -303,7 +303,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
         for entry_id in self.variable_nts_table:
             v = self.variable_nts_table[entry_id]
-            u = v['unique_position_id']
+            u = v['unique_pos_identifier_str']
             if u in self.unique_pos_id_to_entry_id:
                 self.unique_pos_id_to_entry_id[u].add(entry_id)
             else:
@@ -318,8 +318,8 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
 
         for entry_id in self.variable_nts_table:
             v = self.variable_nts_table[entry_id]
-            v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_position_id'])
-            v['parent'] = self.splits_basic_info[v['split_name']]['parent']
+            v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_pos_identifier_str'])
+            v['contig_name'] = self.splits_basic_info[v['split_name']]['parent']
 
         self.progress.end()
 
@@ -504,17 +504,17 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
             split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
             split_info = self.splits_basic_info[split]
-            parent_name = split_info['parent']
+            contig_name_name = split_info['parent']
 
             for pos in splits_to_consider[split]:
-                parent_seq = self.contig_sequences[parent_name]['sequence']
+                contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
                 pos_in_contig = split_info['start'] + pos
-                base_at_pos = parent_seq[pos_in_contig]
+                base_at_pos = contig_name_seq[pos_in_contig]
 
-                in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(parent_name, pos_in_contig)
+                in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
                 for sample in splits_to_consider[split][pos]:
-                    self.variable_nts_table[next_available_entry_id] = {'parent': parent_name,
+                    self.variable_nts_table[next_available_entry_id] = {'contig_name': contig_name_name,
                                                                         'departure_from_consensus': 0,
                                                                         'consensus': base_at_pos,
                                                                         'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
@@ -529,7 +529,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
                                                                         'cov_outlier_in_contig': 0,
                                                                         'competing_nts': base_at_pos + base_at_pos,
                                                                         'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
-                                                                        'unique_position_id': '%s_%d' % (split, pos),
+                                                                        'unique_pos_identifier_str': '%s_%d' % (split, pos),
                                                                         'split_name': split}
                     self.variable_nts_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
@@ -539,7 +539,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + t.variable_nts_table_structure[1:] + ['parent']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['contig_name', 'split_name', 'unique_pos_identifier_str']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
