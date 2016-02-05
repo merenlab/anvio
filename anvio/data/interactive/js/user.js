@@ -329,7 +329,7 @@ function uploadFiles () {
 		toastr.info(data.message);
 		document.location.reload(true);
 	    } else {
-		toastr.error(data.message);
+		toastr.error(data.message, null, {timeOut: 0, closeButton: true});
 	    }
 	}
     });
@@ -376,7 +376,7 @@ function uploadAdditional () {
 		toastr.info(data.message);
 		document.location.reload(true);
 	    } else {
-		toastr.error(data.message);
+		toastr.error(data.message, null, {timeOut: 0, closeButton: true});
 	    }
 	}
     });
@@ -491,20 +491,20 @@ function isSamplesInfoFile (string) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
-	    toastr.error('file contains no data');
+	    toastr.error('file contains no data', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	if (lines.length < 2) {
-	    toastr.error('file contains only one line');
+	    toastr.error('file contains only one line', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	var header = lines[0].split(/\t/);
 	if (header.length < 2) {
-	    toastr.error('sample info file must have at least two columns');
+	    toastr.error('sample info file must have at least two columns', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	if (header[0] !== 'samples') {
-	    toastr.error('the cell A1 in the file must contain the string "samples"');
+	    toastr.error('the cell A1 in the file must contain the string "samples"', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	for (var i=1; i<lines.length; i++) {
@@ -513,13 +513,13 @@ function isSamplesInfoFile (string) {
 	    }
 	    var cells = lines[i].split(/\t/);
 	    if (cells.length != header.length) {
-		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length);
+		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length, null, {timeOut: 0, closeButton: true});
 		return false;
 	    }
 	}
 	return true;
     } catch (error) {
-	toastr.error('could not read file');
+	toastr.error('could not read file', null, {timeOut: 0, closeButton: true});
 	return false;
     }
 }
@@ -531,24 +531,24 @@ function isSamplesOrderFile (string) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
-	    toastr.error('file contains no data');
+	    toastr.error('file contains no data', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	if (lines.length < 2) {
-	    toastr.error('file contains only one line');
+	    toastr.error('file contains only one line', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	var validHeaders = { 'attributes': true, 'basic': true, 'newick': true };
 	var headerPositions = {};
 	var headers = lines[0].split(/\t/);
 	if (headers.length > 3 || headers.length < 2) {
-	    toastr.error('header column must contain at least two and at most three columns');
+	    toastr.error('header column must contain at least two and at most three columns', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	var hasAttributesColumn = false;
 	for (var i=0; i<headers.length; i++) {
 	    if (! validHeaders[headers[i]]) {
-		toastr.error('header column contains invalid term: '+headers[i]);
+		toastr.error('header column contains invalid term: '+headers[i], null, {timeOut: 0, closeButton: true});
 		return false;
 	    } else {
 		if (headers[i] == 'attributes') {
@@ -558,7 +558,7 @@ function isSamplesOrderFile (string) {
 	    }
 	}
 	if (! hasAttributesColumn) {
-	    toastr.error('header must contain an attributes column');
+	    toastr.error('header must contain an attributes column', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	for (var i=1; i<lines.length; i++) {
@@ -570,14 +570,14 @@ function isSamplesOrderFile (string) {
 	    for (var h=0; h<cells.length; h++) {
 		if (headerPositions[h] == 'attributes') {
 		    if (! cells[h].length) {
-			toastr.error('row '+(i+1)+' does not contain an attribute name');
+			toastr.error('row '+(i+1)+' does not contain an attribute name', null, {timeOut: 0, closeButton: true});
 			return false;
 		    }
 		} else if (headerPositions[h] == 'basic') {
 		    if (cells[h].length) {
 			var basics = cells[h].split(/,/);
 			if (basics.length < 2) {
-			    toastr.error('basic cell in line '+(i+1)+' contains less than two items');
+			    toastr.error('basic cell in line '+(i+1)+' contains less than two items', null, {timeOut: 0, closeButton: true});
 			    return false;
 			}
 			containsInfo = true;
@@ -585,7 +585,7 @@ function isSamplesOrderFile (string) {
 		} else if (headerPositions[h] == 'newick') {
 		    if (cells[h].length) {
 			if (! isNewickTree(cells[h])) {
-			    toastr.error('newick cell in line '+(i+1)+' is not valid newick format');
+			    toastr.error('newick cell in line '+(i+1)+' is not valid newick format', null, {timeOut: 0, closeButton: true});
 			    return false;
 			}
 			containsInfo = true;
@@ -593,13 +593,13 @@ function isSamplesOrderFile (string) {
 		}
 	    }
 	    if (! containsInfo) {
-		toastr.error('row '+(i+i)+' does not contain data');
+		toastr.error('row '+(i+i)+' does not contain data', null, {timeOut: 0, closeButton: true});
 		return false;
 	    }
 	}
 	return true;
     } catch (error) {
-	toastr.error('could not read file');
+	toastr.error('could not read file', null, {timeOut: 0, closeButton: true});
 	return false;
     }
 }
@@ -611,16 +611,16 @@ function isDataFile (string) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
-	    toastr.error('file contains no data');
+	    toastr.error('file contains no data', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	var header = lines[0].split(/\t/);
 	if (header.length < 2) {
-	    toastr.error('data files must have at least two columns');
+	    toastr.error('data files must have at least two columns', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	if (header[0] !== 'contig') {
-	    toastr.error('the cell A1 in the file must contain the string "contig"');
+	    toastr.error('the cell A1 in the file must contain the string "contig"', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	for (var i=1; i<lines.length; i++) {
@@ -630,18 +630,18 @@ function isDataFile (string) {
 	    var cells = lines[i].split(/\t/);
 	    for (var h=1; h<cells.length; h++) {
 		if (! isNumber(cells[h])) {
-		    toastr.error('The data in row '+(i+1)+' col '+(h+1)+' is '+cells[h]+' (should be a number)');
+		    toastr.error('The data in row '+(i+1)+' col '+(h+1)+' is '+cells[h]+' (should be a number)', null, {timeOut: 0, closeButton: true});
 		    return false;
 		}
 	    }
 	    if (cells.length != header.length) {
-		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length);
+		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length, null, {timeOut: 0, closeButton: true});
 		return false;
 	    }
 	}
 	return true;
     } catch (error) {
-	toastr.error('could not read file');
+	toastr.error('could not read file', null, {timeOut: 0, closeButton: true});
 	return false;
     }
 }
@@ -653,29 +653,29 @@ function isFastaFile (string) {
 	    lines = string.split(/\r/);
 	}
 	if (! lines.length) {
-	    toastr.error('file contains no data');
+	    toastr.error('file contains no data', null, {timeOut: 0, closeButton: true});
 	    return false;
 	}
 	for (var i=0; i<lines.length; i++) {
 	    if (i==0) {
 		if (! lines[i].match(/^>[\w\d\s]+$/)) {
-		    toastr.error('no identifier in line 1');
+		    toastr.error('no identifier in line 1', null, {timeOut: 0, closeButton: true});
 		    return false;
 		}
 	    } else {
 		if (! (lines[i].match(/^[acgturykmswbdhvnxACGTURYKMSWBDHVNX\*\-\n\r\s]*$/) || lines[i].match(/^>[\w\d\s]+$/))) {
-		    toastr.error('invalid FASTA in line '+(i+1)+':\n"'+lines[i]+'"');
+		    toastr.error('invalid FASTA in line '+(i+1)+':\n"'+lines[i]+'"', null, {timeOut: 0, closeButton: true});
 		    return false;
 		}
 		if (lines[i].match(/^>[\w\d\s]+$/) && lines[i - 1].match(/^>[\w\d\s]+$/)) {
-		    toastr.error('no sequence for ID '+lines[i-1]+' in line '+(i+1));
+		    toastr.error('no sequence for ID '+lines[i-1]+' in line '+(i+1), null, {timeOut: 0, closeButton: true});
 		    return false;
 		}
 	    }
 	}
 	return true;
     } catch (error) {
-	toastr.error('could not read file');
+	toastr.error('could not read file', null, {timeOut: 0, closeButton: true});
 	return false;
     }
 }
@@ -715,7 +715,7 @@ function isNewickTree (string) {
 	    }
 	}
     } catch (error) {
-	toastr.error('could not read file');
+	toastr.error('could not read file', null, {timeOut: 0, closeButton: true});
 	return false;
     }
     if (tree.hasOwnProperty('name') && tree.hasOwnProperty('children')) {
