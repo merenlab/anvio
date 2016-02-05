@@ -593,19 +593,23 @@ function buildLayersTable(order, settings)
                 var type = 'color';
 
                 // set default categorical layer type to 'text' 
-                // if there are more than 11 unique values
-                var _unique_items = [];
-                for (var _pos = 1; _pos < layerdata.length; _pos++)
+                // if there are more than 11 unique values and leaf count is less than 300
+                // 301 because layerdata has one extra row for the titles
+                if (layerdata.length <= 301)
                 {
-                    if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
-                        _unique_items.push(layerdata[_pos][layer_id]);
+                    var _unique_items = [];
+                    for (var _pos = 1; _pos < layerdata.length; _pos++)
+                    {
+                        if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
+                            _unique_items.push(layerdata[_pos][layer_id]);
 
-                    if (_unique_items.length > 11) {
-                        height = '0';
-                        type = 'text';
-                        // we have at least one text layer, we can show max font size input
-                        $('.max-font-size-input').show();
-                        break;
+                        if (_unique_items.length > 11) {
+                            height = '0';
+                            type = 'text';
+                            // we have at least one text layer, we can show max font size input
+                            $('.max-font-size-input').show();
+                            break;
+                        }
                     }
                 }
 
