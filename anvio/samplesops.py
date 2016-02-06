@@ -46,7 +46,7 @@ class SamplesInformation:
         self.sample_names_in_samples_information_file = filesnpaths.is_proper_samples_information_file(samples_information_path)
 
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
-        self.samples_information_default_layer_order = open(samples_information_path).readline().strip().split('\t')[1:]
+        self.samples_information_default_layer_order = open(samples_information_path, 'rU').readline().strip().split('\t')[1:]
  
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict))
 

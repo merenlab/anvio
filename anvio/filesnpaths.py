@@ -39,7 +39,7 @@ def is_proper_newick(newick_data):
 def is_proper_samples_information_file(file_path):
     is_file_tab_delimited(file_path)
 
-    f = open(file_path)
+    f = open(file_path, 'rU')
 
     # quick checks for the header
     columns = f.readline().strip('\n').split('\t')
@@ -65,7 +65,7 @@ def is_proper_samples_information_file(file_path):
 def is_proper_samples_order_file(file_path):
     is_file_tab_delimited(file_path)
 
-    f = open(file_path)
+    f = open(file_path, 'rU')
 
     columns = f.readline().strip().split('\t')
 
@@ -159,7 +159,7 @@ def is_output_file_writable(file_path):
 
 def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields = None):
     is_file_exists(file_path)
-    f = open(file_path)
+    f = open(file_path, 'rU')
 
     while 1:
         line = f.readline().strip(' ')
@@ -189,7 +189,7 @@ def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields
 
 def is_file_json_formatted(file_path):
     try:
-        json.load(open(file_path))
+        json.load(open(file_path, 'rU'))
     except ValueError, e:
         raise FilesNPathsError, "File '%s' does seem to be a properly formatted JSON\
                             file ('%s', cries the library)." % (file_path, e)
@@ -245,7 +245,7 @@ def get_num_lines_in_file(file_path):
     if os.stat(file_path).st_size == 0:
         return 0
 
-    f = open(file_path, "r+")
+    f = open(file_path, "rU+")
     buf = mmap.mmap(f.fileno(), 0)
     num_lines = 0
     readline = buf.readline
