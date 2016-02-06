@@ -275,7 +275,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
-    file_content = [line.strip('\n').split('\t') for line in open(input_file_path).readlines()]
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'rU').readlines()]
 
     output_file = open(output_file_path, 'w')
     for entry in zip(*file_content):
@@ -294,9 +294,9 @@ def get_random_colors_dict(keys):
 
 def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     if include_first_column:
-        return open(file_path).readline().strip('\n').split('\t')
+        return open(file_path, 'rU').readline().strip('\n').split('\t')
     else:
-        return open(file_path).readline().strip('\n').split('\t')[1:]
+        return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
 def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = [], transpose = False):
@@ -313,7 +313,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_to_sample_dict = {}
     sample_to_id_dict = {}
 
-    input_matrix = open(file_path)
+    input_matrix = open(file_path, 'rU')
     columns = input_matrix.readline().strip().split('\t')[1:]
 
     fields_of_interest = []
@@ -434,7 +434,7 @@ def concatenate_files(dest_file, file_list):
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
-        for line in open(chunk_path):
+        for line in open(chunk_path, 'rU'):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
@@ -834,7 +834,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator = separator)
 
-    f = open(file_path)
+    f = open(file_path, 'rU')
 
     # learn the number of fields and reset the file:
     num_fields = len(f.readline().strip('\n').split(separator))
@@ -975,8 +975,8 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                     'kind.txt', 'reference.txt', 'genes.txt', and 'genes.hmm.gz'. %s does not seem\
                                     to be a proper source." % os.path.basename(source)
 
-        ref = open(os.path.join(source, 'reference.txt')).readlines()[0].strip()
-        kind = open(os.path.join(source, 'kind.txt')).readlines()[0].strip()
+        ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
+        kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
         if not PROPER(kind):
             raise ConfigError, "'kind.txt' defines the kind of search this database offers. This file must contain a single\
                                 word that is at least three characters long, and must not contain any characters but\
