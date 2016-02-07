@@ -10,7 +10,7 @@ import json
 import argparse
 
 from multiprocessing import Process
-from bottle import route, static_file, redirect, request, BaseRequest, response
+from bottle import route, static_file, redirect, request, BaseRequest, response, hook, HTTPResponse
 from bottle import run as run_server
 
 import anvio
@@ -111,6 +111,18 @@ def set_default_headers(response):
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+@hook('before_request')
+def validate_request():
+    if request.path == '/':
+        pass
+    elif request.path == '/favicon.ico':
+        pass
+    elif request.path.startswith('/app/'):
+        pass
+    else:
+        if ('X-Requested-With' not in request.headers) or (request.headers['X-Requested-With'] != 'XMLHttpRequest'):
+            raise HTTPResponse(status=500, body='This API endpoint is only available via XMLHTTPRequest.')
     
 @route('/')
 def redirect_to_app():
