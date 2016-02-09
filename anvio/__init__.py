@@ -30,8 +30,9 @@ D = {
     'serialized-profile': (
             ['-d', '--serialized-profile'],
             {'metavar': "PROFILE",
-             'help': "Serialized profile (PROFILE.cp). This file would be a result of a previous\
-                      anvi'o profiling run. It is faster, and can be used to refine previously obtained results."}
+             'help': "Serialized profile (PROFILE.cp). You can use anvi'o serialized profile files to re-do the\
+                      profiling much more quickly. This file is generated only if it is requested during the\
+                      initial profiling of the BAM file. See '--gen-serialized-profile' flag for details."}
                 ),
     'samples-information-db': (
             ['-s', '--samples-information-db'],
@@ -269,6 +270,14 @@ D = {
                       the gene context for it to be reported. You must consider the length of\
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
+                ),
+    'gen-serialized-profile': (
+            ['--gen-serialized-profile'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will store the profiling results in a serialized object that can be used for quick\
+                      re-profiling. However, this object can get very large, and take a lot of space on disk. It is essentially\
+                      useful for testing purposes, and for people who like to hack things."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
