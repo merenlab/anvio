@@ -51,6 +51,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
         self.overwrite_output_destinations = False
         self.skip_SNV_profiling = False
+        self.gen_serialized_profile = False
 
         if args:
             self.args = args
@@ -69,6 +70,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.report_variability_full = args.report_variability_full
             self.overwrite_output_destinations = args.overwrite_output_destinations
             self.skip_SNV_profiling = args.skip_SNV_profiling
+            self.gen_serialized_profile = args.gen_serialized_profile
 
             if args.contigs_of_interest:
                 if not os.path.exists(args.contigs_of_interest):
@@ -173,7 +175,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.input_file_path:
             self.init_profile_from_BAM()
             self.profile()
-            self.store_profile()
+            if self.gen_serialized_profile:
+                self.store_profile()
         else:
             self.init_serialized_profile()
 

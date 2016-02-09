@@ -28,7 +28,7 @@ if __name__ == '__main__':
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
 
-    groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but very useful if declared.')
+    groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but can be useful if/when declared.')
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
@@ -43,6 +43,7 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
     groupM.add_argument(*anvio.A('report-variability-full'), **anvio.K('report-variability-full'))
     groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
+    groupM.add_argument(*anvio.A('gen-serialized-profile'), **anvio.K('gen-serialized-profile'))
     groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
     groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
