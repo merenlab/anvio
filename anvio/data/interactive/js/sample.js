@@ -390,7 +390,7 @@ function drawSamplesLayers(settings) {
             samples_layer_min[samples_layer_name] = samples_layer_settings['min']['value'];
         }
 
-        var start = samples_layer_settings['margin'];
+        var start = (samples_layer_settings['height'] == 0) ? 0 : samples_layer_settings['margin'];
         var end   = start + samples_layer_settings['height'];
         
         if (i > 0)
@@ -437,6 +437,10 @@ function drawSamplesLayers(settings) {
             var samples_layer_name     = settings['samples-layer-order'][i];
             var samples_layer_settings = settings['samples-layers'][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
+
+            if (samples_layer_settings['height'] == 0) {
+                continue;
+            }
 
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
@@ -548,6 +552,10 @@ function drawSamplesLayers(settings) {
         var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
         var min = samples_layer_min[samples_layer_name];
         var max = samples_layer_max[samples_layer_name];
+
+        if (samples_layer_settings['height'] == 0) {
+            continue;
+        }
 
         if (samples_layer_settings['data-type'] == 'numeric')
         {
