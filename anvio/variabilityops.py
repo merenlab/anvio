@@ -56,7 +56,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
         null = lambda x: x
         self.bin_id = A('bin_id', null)
-        self.collection_id = A('collection_id', null)
+        self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
         self.min_ratio = A('min_ratio', float)
         self.min_occurrence = A('min_occurrence', int)
@@ -116,7 +116,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.update('Attempting to get our splits of interest sorted ..')
-        if self.collection_id:
+        if self.collection_name:
             # the user wants to go with the collection id path. fine. we will get our split names from
             # the profile database.
             if not self.bin_id:

@@ -89,22 +89,22 @@ def main(args):
 
 
     collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
-    collections.append(args.source_identifier, data, colors_dict)
+    collections.append(args.collection_name, data, colors_dict)
 
 
 def sanity_check(args):
-    if not args.source_identifier:
-        raise ConfigError, "You must define a source name for this collection."
+    if not args.collection_name:
+        raise ConfigError, "You must give a name for this collection."
 
     if not args.profile_db:
         raise ConfigError, "Anvi'o needs a profile database to add this collection to..."
 
     try:
-        utils.check_sample_id(args.source_identifier)
+        utils.check_sample_id(args.collection_name)
     except:
-        raise ConfigError, '"%s" is not a proper source name. A proper one should be a single word and not contain\
+        raise ConfigError, '"%s" is not a proper collection name. A proper one should be a single word and not contain\
                             ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                            any space characters, and the source ID shoudl not start with a digit.' % args.source_identifier
+                            any space characters, and the collection name should not start with a digit.' % args.collection_name
 
     dbops.is_profile_db(args.profile_db)
     if args.contigs_db:
@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('source-identifier'), **anvio.K('source-identifier', {'required': True}))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parser.add_argument(*anvio.A('colors'), **anvio.K('colors'))
     parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 

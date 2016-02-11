@@ -84,7 +84,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         if self.contigs_db_path:
             self.completeness = completeness.Completeness(self.contigs_db_path)
-            self.collections.populate_sources_dict(self.contigs_db_path, anvio.__contigs__version__)
+            self.collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
         else:
             self.completeness = None
 
@@ -244,7 +244,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
 
         # also populate collections, if there are any
-        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
 
         if self.title:
             self.title = self.title
@@ -261,7 +261,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # this stuff
         self.init_split_sequences(self.p_meta['min_contig_length'])
 
-        self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
 
         self.p_meta['self_path'] = self.profile_db_path
         self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(self.profile_db_path))
