@@ -241,7 +241,7 @@ class GetReadsFromBAM:
         self.input_bam_files = A('input_bams')
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
-        self.collection_id = A('collection_id')
+        self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.debug = A('debug')
@@ -262,7 +262,7 @@ class GetReadsFromBAM:
         for split_names in d.values():
             self.split_names_of_interest.update(split_names)
 
-        self.run.info('Collection ID', self.collection_id)
+        self.run.info('Collection ID', self.collection_name)
         self.run.info('Bin(s)', ', '.join(self.bins))
         self.run.info('Number of splits', pp(len(self.split_names_of_interest)))
 

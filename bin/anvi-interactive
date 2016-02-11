@@ -219,13 +219,13 @@ def collections():
 def get_collection_dict(collection_source):
     return routes.get_collection_dict(args, d, request, response, collection_source)
 
-@route('/summary/<collection_id>/:filename#.*#')
-def send_summary_static(collection_id, filename):
-    return routes.send_summary_static(args, d, request, response, collection_id, filename)
+@route('/summary/<collection_name>/:filename#.*#')
+def send_summary_static(collection_name, filename):
+    return routes.send_summary_static(args, d, request, response, collection_name, filename)
 
-@route('/summarize/<collection_id>')
-def gen_summary(collection_id):
-    return routes.gen_summary(args, d, request, response, collection_id)
+@route('/summarize/<collection_name>')
+def gen_summary(collection_name):
+    return routes.gen_summary(args, d, request, response, collection_name)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():

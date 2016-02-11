@@ -187,8 +187,8 @@ def store_collections_dict(args, d, request, response):
         run.info_single('The user to store 0 splits as a collection :/')
         return json.dumps("Error: There are no selections to store (you haven't selected anything).")
 
-    if source in d.collections.sources_dict:
-        e = d.collections.sources_dict[source]
+    if source in d.collections.collections_dict:
+        e = d.collections.collections_dict[source]
         if e['read_only']:
             run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
@@ -198,7 +198,7 @@ def store_collections_dict(args, d, request, response):
 
     collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
     collections.append(source, data, colors)
-    d.collections.populate_sources_dict(d.profile_db_path, anvio.__profile__version__)
+    d.collections.populate_collections_dict(d.profile_db_path, anvio.__profile__version__)
     msg = "New collection '%s' with %d bin%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
     run.info_single(msg)
     return json.dumps(msg)
@@ -213,11 +213,11 @@ def store_refined_bins(args, r, request, response):
     except RefineError, e:
         return json.dumps({'status': -1, 'message': e.clear_text()})
 
-    message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_id)
+    message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_name)
     return json.dumps({'status': 0, 'message': message})
 
 
-def gen_summary(args, d, request, response, collection_id):
+def gen_summary(args, d, request, response, collection_name):
     set_default_headers(response)
 
     if args.read_only:
@@ -226,7 +226,7 @@ def gen_summary(args, d, request, response, collection_id):
     if d.manual_mode:
         return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
 
-    run.info_single('A summary of collection "%s" has been requested.' % collection_id)
+    run.info_single('A summary of collection "%s" has been requested.' % collection_name)
 
     class Args:
         pass
@@ -234,11 +234,11 @@ def gen_summary(args, d, request, response, collection_id):
     summarizer_args = Args()
     summarizer_args.profile_db = d.profile_db_path
     summarizer_args.contigs_db = d.contigs_db_path
-    summarizer_args.collection_id = collection_id
+    summarizer_args.collection_name = collection_name
     summarizer_args.list_collections = None
     summarizer_args.debug = None
     summarizer_args.quick_summary = False
-    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_id)
+    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
 
     try:
         summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
@@ -248,14 +248,14 @@ def gen_summary(args, d, request, response, collection_id):
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
     
-    url = "http://%s:%d/summary/%s/index.html" % (args.ip_address, args.port_number, collection_id)
+    url = "http://%s:%d/summary/%s/index.html" % (args.ip_address, args.port_number, collection_name)
     return json.dumps({'url': url})
 
 
-def send_summary_static(args, d, request, response, collection_id, filename):
+def send_summary_static(args, d, request, response, collection_name, filename):
     set_default_headers(response)
 
-    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_id))
+    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_name))
 
 
 def get_collection_dict(args, d, request, response, collection_source):
@@ -266,7 +266,7 @@ def get_collection_dict(args, d, request, response, collection_source):
 
 
 def get_collections(args, d, request, response):
-    csd = d.collections.sources_dict
+    csd = d.collections.collections_dict
     run.info_single('Collection sources has been requested (info dict with %d item(s) has been returned).' % len(csd), cut_after = None)
     set_default_headers(response)
     return json.dumps(csd)

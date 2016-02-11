@@ -111,7 +111,7 @@ class CONCOCT:
         self.run.info('CONCOCT results in txt', output_file_path, display_only = True)
 
 
-    def store_clusters_in_db(self, source = 'CONCOCT'):
+    def store_clusters_in_db(self, collection_name = 'CONCOCT'):
        # convert id -> bin mapping dict into a bin -> ids dict
         data = {}
         colors = {}
@@ -125,7 +125,7 @@ class CONCOCT:
                 colors[bin_id] = '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]) # <- poor man's random color generator
 
         collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
-        collections.append(source, data, colors)
+        collections.append(collection_name, data, colors)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only = True)
 

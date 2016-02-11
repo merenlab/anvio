@@ -121,20 +121,20 @@ atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'  
 ####################################################################################################
 
 collections_info_table_name          = 'collections_info'
-collections_info_table_structure     = ['source', 'num_splits', 'num_clusters', 'cluster_ids']
-collections_info_table_types         = [ 'text' ,  'numeric'  ,   'numeric'   ,     'text'   ]
+collections_info_table_structure     = ['collection_name', 'num_splits', 'num_clusters', 'cluster_ids']
+collections_info_table_types         = [      'text'     ,  'numeric'  ,   'numeric'   ,     'text'   ]
 
 collections_colors_table_name        = 'collections_colors'
-collections_colors_table_structure   = ['entry_id', 'source', 'cluster_id', 'htmlcolor']
-collections_colors_table_types       = [ 'numeric',  'text' ,    'text'   ,    'text'  ]
+collections_colors_table_structure   = ['entry_id', 'collection_name', 'cluster_id', 'htmlcolor']
+collections_colors_table_types       = [ 'numeric',       'text'     ,    'text'   ,    'text'  ]
 
 collections_contigs_table_name       = 'collections_of_contigs'
-collections_contigs_table_structure  = ['entry_id', 'source', 'contig', 'cluster_id']
-collections_contigs_table_types      = [ 'numeric',  'text' ,  'text' ,    'text'   ]
+collections_contigs_table_structure  = ['entry_id', 'collection_name', 'contig', 'cluster_id']
+collections_contigs_table_types      = [ 'numeric',       'text'     ,  'text' ,    'text'   ]
 
 collections_splits_table_name        = 'collections_of_splits'
-collections_splits_table_structure   = ['entry_id', 'source', 'split', 'cluster_id']
-collections_splits_table_types       = [ 'numeric',  'text' , 'text' ,    'text'   ]
+collections_splits_table_structure   = ['entry_id', 'collection_name', 'split', 'cluster_id']
+collections_splits_table_types       = [ 'numeric',       'text'     , 'text' ,    'text'   ]
 
 
 ####################################################################################################

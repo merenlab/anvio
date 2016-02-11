@@ -326,21 +326,21 @@ def get_collection_dict(collection_source):
     else:
         return routes.get_collection_dict(retval["data"]["args"], retval["data"]["d"], request, response, collection_source)
 
-@route('/summary/<collection_id>/:filename#.*#')
-def send_summary_static(collection_id, filename):
+@route('/summary/<collection_name>/:filename#.*#')
+def send_summary_static(collection_name, filename):
     retval = userdb.set_user_data(request)
     if retval["status"] == "error":
         return json.dumps(retval)
     else:
-        return routes.send_summary_static(retval["data"]["args"], retval["data"]["d"], request, response, collection_id, filename)
+        return routes.send_summary_static(retval["data"]["args"], retval["data"]["d"], request, response, collection_name, filename)
 
-@route('/summarize/<collection_id>')
-def gen_summary(collection_id):
+@route('/summarize/<collection_name>')
+def gen_summary(collection_name):
     retval = userdb.set_user_data(request)
     if retval["status"] == "error":
         return json.dumps(retval)
     else:
-        return routes.gen_summary(retval["data"]["args"], retval["data"]["d"], request, response, collection_id)
+        return routes.gen_summary(retval["data"]["args"], retval["data"]["d"], request, response, collection_name)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
