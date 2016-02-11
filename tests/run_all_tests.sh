@@ -92,14 +92,14 @@ anvi-import-collection example_files_for_external_binning_results/external_binni
                        -p test-output/204-MERGED/PROFILE.db \
                        -c test-output/CONTIGS.db \
                        --collection-name 'SPLITS_IMPORTED' \
-                       --colors example_files_for_external_binning_results/example_colors_file.txt
+                       --bins-info example_files_for_external_binning_results/example_bins_info_file.txt
 
 INFO "Importing external binning results for splits into the profile database as 'CONTIGS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_contigs.txt \
                        -c test-output/CONTIGS.db \
                        -p test-output/204-MERGED/PROFILE.db \
                        --collection-name 'CONTIGS_IMPORTED' \
-                       --colors example_files_for_external_binning_results/example_colors_file.txt \
+                       --bins-info example_files_for_external_binning_results/example_bins_info_file.txt \
                        --contigs-mode
 
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."

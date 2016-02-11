@@ -196,8 +196,12 @@ def store_collections_dict(args, d, request, response):
     run.info_single('A request to store %d bins that describe %d splits under the collection id "%s"\
                      has been made.' % (len(data), num_splits, source), cut_after = None)
 
+    bins_info_dict = {}
+    for bin_name in data:
+        bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
+
     collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
-    collections.append(source, data, colors)
+    collections.append(source, data, bins_info_dict)
     d.collections.populate_collections_dict(d.profile_db_path, anvio.__profile__version__)
     msg = "New collection '%s' with %d bin%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
     run.info_single(msg)
@@ -208,8 +212,12 @@ def store_refined_bins(args, r, request, response):
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
 
+    bins_info_dict = {}
+    for bin_name in data:
+        bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-refine"}
+
     try:
-        r.store_refined_bins(data, colors)
+        r.store_refined_bins(data, bins_info_dict)
     except RefineError, e:
         return json.dumps({'status': -1, 'message': e.clear_text()})
 
@@ -258,11 +266,17 @@ def send_summary_static(args, d, request, response, collection_name, filename):
     return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_name))
 
 
-def get_collection_dict(args, d, request, response, collection_source):
-    run.info_single('Data for collection source "%s" has been requested.' % len(collection_source))
+def get_collection_dict(args, d, request, response, collection_name):
+    run.info_single('Data for collection "%s" has been requested.' % len(collection_name))
     set_default_headers(response)
-    return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
-                       'colors': d.collections.get_collection_colors(collection_source)})
+
+    bins_info_dict = d.collections.get_bins_info_dict(collection_name)
+    colors_dict = {}
+    for bin_name in bins_info_dict:
+        colors_dict[bin_name] = bins_info_dict[bin_name]['html_color']
+
+    return json.dumps({'data'  : d.collections.get_collection_dict(collection_name),
+                       'colors': colors_dict})
 
 
 def get_collections(args, d, request, response):

@@ -80,6 +80,7 @@
                                         <tr>
                                             <th data-defaultsort='disabled' class="text-center"></th>
                                             <th>Bin</th>
+                                            <th class="text-center">Source</th>
 
                                             {% if meta|lookup:"contigs"|lookup:"genes_annotation_source" %}
                                             <th class="text-center">Taxonomy</th>
@@ -99,6 +100,7 @@
                                         <tr>
                                             <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                             <td style="vertical-align: middle;">{{ bin }}</td>
+                                            <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"source" }}</td>
 
                                             {% if meta|lookup:"contigs"|lookup:"genes_annotation_source" %}
                                             <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>

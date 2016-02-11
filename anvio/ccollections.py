@@ -81,47 +81,46 @@ class Collections:
         database.disconnect()
 
         # FIXME: this could be resolved with a WHERE clause in the SQL query:
-        collection = utils.get_filtered_dict(collections_splits_table, 'collection_name', set([collection_name]))
+        collection_dict_from_db = utils.get_filtered_dict(collections_splits_table, 'collection_name', set([collection_name]))
 
-        collection_dict = {}
+        collection_dict_to_return = {}
 
-        for entry in collection.values():
+        for entry in collection_dict_from_db.values():
             collection_name = entry['collection_name']
-            cluster_id = entry['cluster_id']
+            bin_name = entry['bin_name']
             split = entry['split']
 
-            if collection_dict.has_key(cluster_id):
-                collection_dict[cluster_id].append(split)
+            if collection_dict_to_return.has_key(bin_name):
+                collection_dict_to_return[bin_name].append(split)
             else:
-                collection_dict[cluster_id] = [split]
+                collection_dict_to_return[bin_name] = [split]
 
-        return collection_dict
+        return collection_dict_to_return
 
 
-    def get_collection_colors(self, collection_name):
+    def get_bins_info_dict(self, collection_name):
         self.sanity_check(collection_name)
 
         c = self.collections_dict[collection_name]
 
         database = db.DB(c['source_db_path'], c['source_db_version'])
-        collections_colors = database.get_table_as_dict(t.collections_colors_table_name)
+        collections_bins_info_table = database.get_table_as_dict(t.collections_bins_info_table_name)
         database.disconnect()
 
         # FIXME: this could be resolved with a WHERE clause in the SQL query:
-        collection = utils.get_filtered_dict(collections_colors, 'collection_name', set([collection_name]))
+        collections_bins_info_table_filtered = utils.get_filtered_dict(collections_bins_info_table, 'collection_name', set([collection_name]))
 
-        collection_color_dict = {}
+        bins_info_dict = {}
+        for v in collections_bins_info_table_filtered.values():
+            bins_info_dict[v['bin_name']] = {'html_color': v['html_color'], 'source': v['source']}
 
-        for entry in collection.values():
-            collection_color_dict[entry['cluster_id']] = entry['htmlcolor']
-
-        return collection_color_dict
+        return bins_info_dict
 
 
     def list_collections(self):
         for collection_name in self.collections_dict:
             c = self.collections_dict[collection_name]
-            output = '%s (%d clusters, representing %d splits).' % (collection_name, c['num_clusters'], c['num_splits'])
+            output = '%s (%d bins, representing %d splits).' % (collection_name, c['num_bins'], c['num_splits'])
             self.run.info_single(output)
 
 

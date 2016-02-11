@@ -39,9 +39,9 @@ def main(args):
     for source in collections_info_table:
         run.warning('', header = 'Collection: "%s"' % source, lc = 'green')
         run.info('Collection ID', source)
-        run.info('Number of bins', collections_info_table[source]['num_clusters'])
+        run.info('Number of bins', collections_info_table[source]['num_bins'])
         run.info('Number of splits described', collections_info_table[source]['num_splits'])
-        run.info('Bin IDs', ', '.join(sorted(collections_info_table[source]['cluster_ids'].split(','))), nl_after = 2)
+        run.info('Bin names', ', '.join(sorted(collections_info_table[source]['bin_names'].split(','))), nl_after = 2)
 
 
 if __name__ == '__main__':

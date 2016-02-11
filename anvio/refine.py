@@ -110,7 +110,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         return d
 
 
-    def store_refined_bins(self, refined_bin_data, refined_bin_colors):
+    def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
         if 0 in [len(b) for b in refined_bin_data.values()]:
             raise RefineError, 'One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
                                 this is not the right way to do it.'
@@ -118,7 +118,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.progress.new('Storing refined bins')
         self.progress.update('accessing to collection "%s" ...' % self.collection_name)
         collection_dict = self.collections.get_collection_dict(self.collection_name)
-        colors_dict = self.collections.get_collection_colors(self.collection_name)
+        bins_info_dict = self.collections.get_bins_info_dict(self.collection_name)
         self.progress.end()
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]
@@ -135,33 +135,33 @@ class RefineBins(dbops.DatabasesMetaclass):
         # remove bins that should be updated in the database:
         for bin_id in self.ids_for_already_refined_bins:
             collection_dict.pop(bin_id)
-            colors_dict.pop(bin_id)
+            bins_info_dict.pop(bin_id)
 
         # zero it out
         self.ids_for_already_refined_bins = set([])
 
         if self.debug:
             self.run.info('collection from db', collection_dict)
-            self.run.info('colors from db', colors_dict)
+            self.run.info('bins info from db', bins_info_dict)
             self.run.info_single('')
 
             self.run.info('incoming collection data', refined_bin_data)
-            self.run.info('incoming collection colors', refined_bin_colors)
+            self.run.info('incoming bins info', refined_bins_info_dict)
             self.run.info_single('')
 
         for bin_id in refined_bin_data:
             collection_dict[bin_id] = refined_bin_data[bin_id]
-            colors_dict[bin_id] = refined_bin_colors[bin_id]
+            bins_info_dict[bin_id] = refined_bins_info_dict[bin_id]
             self.ids_for_already_refined_bins.add(bin_id)
 
 
         if self.debug:
             self.run.info('resulting collection', collection_dict)
-            self.run.info('resulting collection colors', colors_dict)
+            self.run.info('resulting bins info', bins_info_dict)
             self.run.info_single('')
 
         collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
-        collections.append(self.collection_name, collection_dict, colors_dict)
+        collections.append(self.collection_name, collection_dict, bins_info_dict)
 
         self.run.info_single('"%s" collection is updated!' % self.collection_name)
 

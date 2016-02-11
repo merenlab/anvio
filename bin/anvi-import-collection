@@ -34,8 +34,12 @@ def main(args):
     # read the input file with split/contig - bin ID associations
     input_data_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
 
-    # populate colors dict with colors file if there is any
-    colors_dict = dict([l.strip().split('\t') for l in open(args.colors).readlines() if not l.startswith('#')]) if args.colors else {}
+    # populate bins_info_dict there is any information about bins
+    try:
+        bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
+    except Exception, e:
+        raise ConfigError, "Someone was not happy with the TAB-delimited bins info file you provided. Here\
+                            is the complaint: %s" % e
 
     contigs_db = dbops.ContigsDatabase(args.contigs_db)
     splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
@@ -89,7 +93,7 @@ def main(args):
 
 
     collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
-    collections.append(args.collection_name, data, colors_dict)
+    collections.append(args.collection_name, data, bins_info_dict)
 
 
 def sanity_check(args):
@@ -111,8 +115,8 @@ def sanity_check(args):
         dbops.is_contigs_db(args.contigs_db)
 
     filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
-    if args.colors:
-        filesnpaths.is_file_tab_delimited(args.colors, expected_number_of_fields = 2)
+    if args.bins_info:
+        filesnpaths.is_file_tab_delimited(args.bins_info, expected_number_of_fields = 3)
 
     num_occurences_of_entries = Counter([l.split('\t')[0] for l in open(args.data).readlines()])
     if max(num_occurences_of_entries.values()) != 1:
@@ -133,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parser.add_argument(*anvio.A('colors'), **anvio.K('colors'))
+    parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
     parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 
     args = parser.parse_args()

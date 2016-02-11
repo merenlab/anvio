@@ -1462,7 +1462,7 @@ function showCollectionDetails(list) {
         // clear details
         var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
             '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>n/a</b></div>' +
-            '<div class="col-md-8">Number of Clusters:</div><div class="col-md-4"><b>n/a</b></div>';
+            '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>n/a</b></div>';
 
         $('.collection-details').html(tbl);
 
@@ -1476,7 +1476,7 @@ function showCollectionDetails(list) {
         success: function(data) {
             var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
                 '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
-                '<div class="col-md-8">Number of Clusters:</div><div class="col-md-4"><b>' + data[cname]['num_clusters'] + '</b></div>';
+                '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>' + data[cname]['num_bins'] + '</b></div>';
 
             $('.collection-details').html(tbl);
         }

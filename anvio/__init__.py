@@ -548,11 +548,18 @@ D = {
              'help': "Minimum significance score of an HMM find to be considered as a valid hit.\
                       Default is %(default)g."}
                 ),
-    'colors': (
-            ['--colors'],
+    'bins-info': (
+            ['--bins-info'],
             {'metavar': 'TAB_DELIM_FILE',
-             'help': "Colors for bins. There must be two TAB-delimited columns, where the first should be a\
-             unique bin name, and the second should be a 7 character HTML color code (i.e., '#424242')."}
+             'help': "Additional information for bins. The file must contain three TAB-delimited columns,\
+                      where the first one must be a unique bin name, the second should be a 'source', and the\
+                      last one should be a 7 character HTML color code (i.e., '#424242'). Source column must\
+                      contain information about the origin of the bin. If these bins are automatically\
+                      identified by a program like CONCOCT, this column could contain the program name and\
+                      version. The source information will be associated with the bin in various interfaces\
+                      so in a sense it is not *that* critical what it says there, but on the other hand it is,\
+                      becuse we should also think about people who may end up having to work with what we put\
+                      together later."}
                 ),
     'contigs-mode': (
             ['--contigs-mode'],

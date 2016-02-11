@@ -11,7 +11,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "5"
-profile_db_version = "10"
+profile_db_version = "11"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
 
@@ -120,21 +120,21 @@ atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'  
 #
 ####################################################################################################
 
-collections_info_table_name          = 'collections_info'
-collections_info_table_structure     = ['collection_name', 'num_splits', 'num_clusters', 'cluster_ids']
-collections_info_table_types         = [      'text'     ,  'numeric'  ,   'numeric'   ,     'text'   ]
+collections_info_table_name           = 'collections_info'
+collections_info_table_structure      = ['collection_name', 'num_splits', 'num_bins', 'bin_names']
+collections_info_table_types          = [      'text'     ,  'numeric'  ,  'numeric',    'text'  ]
 
-collections_colors_table_name        = 'collections_colors'
-collections_colors_table_structure   = ['entry_id', 'collection_name', 'cluster_id', 'htmlcolor']
-collections_colors_table_types       = [ 'numeric',       'text'     ,    'text'   ,    'text'  ]
+collections_bins_info_table_name      = 'collections_bins_info'
+collections_bins_info_table_structure = ['entry_id', 'collection_name', 'bin_name', 'source', 'html_color']
+collections_bins_info_table_types     = [ 'numeric',       'text'     ,   'text'  ,  'text' ,    'text'   ]
 
-collections_contigs_table_name       = 'collections_of_contigs'
-collections_contigs_table_structure  = ['entry_id', 'collection_name', 'contig', 'cluster_id']
-collections_contigs_table_types      = [ 'numeric',       'text'     ,  'text' ,    'text'   ]
+collections_contigs_table_name        = 'collections_of_contigs'
+collections_contigs_table_structure   = ['entry_id', 'collection_name', 'contig', 'bin_name']
+collections_contigs_table_types       = [ 'numeric',       'text'     ,  'text' ,   'text'  ]
 
-collections_splits_table_name        = 'collections_of_splits'
-collections_splits_table_structure   = ['entry_id', 'collection_name', 'split', 'cluster_id']
-collections_splits_table_types       = [ 'numeric',       'text'     , 'text' ,    'text'   ]
+collections_splits_table_name         = 'collections_of_splits'
+collections_splits_table_structure    = ['entry_id', 'collection_name', 'split', 'bin_name']
+collections_splits_table_types        = [ 'numeric',       'text'     , 'text' ,   'text'  ]
 
 
 ####################################################################################################
