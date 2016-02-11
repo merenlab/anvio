@@ -95,7 +95,7 @@ class Summarizer(DatabasesMetaclass):
     def process(self):
         # learn who you are:
         collection_dict = self.collections.get_collection_dict(self.collection_name)
-        collection_colors = self.collections.get_collection_colors(self.collection_name)
+        bins_info_dict = self.collections.get_bins_info_dict(self.collection_name)
 
         # init profile data for colletion.
         self.init_collection_profile(collection_dict)
@@ -175,7 +175,8 @@ class Summarizer(DatabasesMetaclass):
             bin.bin_profile = self.collection_profile[bin_id]
 
             self.summary['collection'][bin_id] = bin.create()
-            self.summary['collection'][bin_id]['color'] = collection_colors[bin_id] or '#212121'
+            self.summary['collection'][bin_id]['color'] = bins_info_dict[bin_id]['html_color'] or '#212121'
+            self.summary['collection'][bin_id]['source'] = bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
 

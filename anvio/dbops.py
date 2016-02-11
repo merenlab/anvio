@@ -759,7 +759,7 @@ class ProfileDatabase:
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
-        self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
@@ -879,7 +879,7 @@ class ContigsDatabase:
         self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
         self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
-        self.db.create_table(t.collections_colors_table_name, t.collections_colors_table_structure, t.collections_colors_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
@@ -1660,7 +1660,7 @@ class TablesForHMMHits(Table):
 
 
 class TablesForCollections(Table):
-    """Populates the collections_* tables, where clusters of contigs and splits are kept"""
+    """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
     def __init__(self, db_path, version, run=run, progress=progress):
         self.db_path = db_path
         self.version = version
@@ -1668,52 +1668,54 @@ class TablesForCollections(Table):
         Table.__init__(self, self.db_path, version, run, progress)
 
         # set these dudes so we have access to unique IDs:
-        self.set_next_available_id(t.collections_colors_table_name)
+        self.set_next_available_id(t.collections_bins_info_table_name)
         self.set_next_available_id(t.collections_contigs_table_name)
         self.set_next_available_id(t.collections_splits_table_name)
 
 
-    def append(self, source, clusters_dict, cluster_colors = None):
-        if not len(source):
-            raise ConfigError, 'Source identifier cannot be empty.'
+    def append(self, collection_name, collection_dict, bins_info_dict = None):
+        if not len(collection_name):
+            raise ConfigError, 'Collection name cannot be empty.'
 
-        if cluster_colors:
-            if set(clusters_dict.keys()) - set(cluster_colors.keys()):
-                raise ConfigError, 'Entries in the cluster dict do not match to entries in the colors dict.\
-                                    They do not have to be identical, but for each cluster id, there must be a color\
-                                    in the colors dict).'
+        if bins_info_dict:
+            if set(collection_dict.keys()) - set(bins_info_dict.keys()):
+                raise ConfigError, 'Bins in the collection dict do not match to the ones in the bins info dict.\
+                                    They do not have to be identical, but for each bin id, there must be a unique\
+                                    entry in the bins informaiton dict. There is something wrong with your input :/'
 
-        # remove any pre-existing information for 'source'
-        self.delete_entries_for_key('source', source, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_colors_table_name])
+        # remove any pre-existing information for 'collection_name'
+        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
 
-        num_splits_in_clusters_dict = sum([len(splits) for splits in clusters_dict.values()])
-        splits_in_clusters_dict = set(list(chain.from_iterable(clusters_dict.values())))
-        if len(splits_in_clusters_dict) != num_splits_in_clusters_dict:
+        num_splits_in_collection_dict = sum([len(splits) for splits in collection_dict.values()])
+        splits_in_collection_dict = set(list(chain.from_iterable(collection_dict.values())))
+        if len(splits_in_collection_dict) != num_splits_in_collection_dict:
             raise ConfigError, "TablesForCollections::append: %d of the split or contig IDs appear more than once in\
-                                your collections input. It is unclear to anvio how did you manage to do this, but we\
-                                cannot go anywhere with this :/" % (num_splits_in_clusters_dict - len(splits_in_clusters_dict))
+                                your collections input. It is unclear to anvi'o how did you manage to do this, but we\
+                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict))
 
         database = db.DB(self.db_path, self.version)
 
-        # how many clusters are defined in 'clusters_dict'?
-        cluster_ids = clusters_dict.keys()
+        # how many clusters are defined in 'collection_dict'?
+        bin_names = collection_dict.keys()
 
         # push information about this search result into serach_info table.
-        db_entries = tuple([source, num_splits_in_clusters_dict, len(cluster_ids), ','.join(cluster_ids)])
+        db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
         database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
 
-        if not cluster_colors:
-            cluster_colors = utils.get_random_colors_dict(cluster_ids)
+        if not bins_info_dict:
+            colors = utils.get_random_colors_dict(bin_names)
+            for bin_name in bin_names:
+                bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': 'UNKNOWN'}
 
-        # populate colors table.
-        db_entries = [(self.next_id(t.collections_colors_table_name), source, cid, cluster_colors[cid]) for cid in cluster_ids]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_colors_table_name, db_entries)
+        # populate bins info table.
+        db_entries = [(self.next_id(t.collections_bins_info_table_name), collection_name, b, bins_info_dict[b]['source'], bins_info_dict[b]['html_color']) for b in bin_names]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.collections_bins_info_table_name, db_entries)
 
         # populate splits table
         db_entries = []
-        for cluster_id in clusters_dict:
-            for split_name in clusters_dict[cluster_id]:
-                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), source, split_name, cluster_id]))
+        for bin_name in collection_dict:
+            for split_name in collection_dict[bin_name]:
+                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), collection_name, split_name, bin_name]))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
         num_splits = len(db_entries)
 
@@ -1724,40 +1726,40 @@ class TablesForCollections(Table):
         # the profile database. hence some special controls for contigs db (note that collections_contigs_table is
         # only populated in the contigs database):
         if self.db_type == 'contigs':
-            splits_only_in_clusters_dict = [c for c in splits_in_clusters_dict if c not in self.splits_info]
-            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_clusters_dict]
+            splits_only_in_collection_dict = [c for c in splits_in_collection_dict if c not in self.splits_info]
+            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
 
-            if len(splits_only_in_clusters_dict):
+            if len(splits_only_in_collection_dict):
                 self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
                                           but you must be the judge of it. If this is somewhat surprising, please use caution\
                                           and make sure all is fine before going forward with you analysis.'\
-                                                % (len(splits_only_in_clusters_dict), len(splits_in_clusters_dict), source))
+                                                % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
 
             if len(splits_only_in_db):
                 self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
                                           does not make any sense, please make sure you know why before going any further.'\
-                                                % (len(splits_only_in_db), len(self.splits_info), source))
+                                                % (len(splits_only_in_db), len(self.splits_info), collection_name))
 
             # then populate contigs table.
-            db_entries = self.process_contigs(source, clusters_dict)
+            db_entries = self.process_contigs(collection_name, collection_dict)
             database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
 
         database.disconnect()
 
         self.run.info('Collections', '%s annotations for %d splits have been successfully added to the database at "%s".'\
-                                        % (source, num_splits, self.db_path), mc='green')
+                                        % (collection_name, num_splits, self.db_path), mc='green')
 
 
-    def process_contigs(self, source, clusters_dict):
+    def process_contigs(self, collection_name, collection_dict):
         db_entries_for_contigs = []
 
-        split_to_cluster_id = {}
-        for cluster_id in clusters_dict:
-            for split_name in clusters_dict[cluster_id]:
-                split_to_cluster_id[split_name] = cluster_id
+        split_to_bin_name = {}
+        for bin_name in collection_dict:
+            for split_name in collection_dict[bin_name]:
+                split_to_bin_name[split_name] = bin_name
 
         contigs_processed = set([])
-        for split_name in split_to_cluster_id:
+        for split_name in split_to_bin_name:
             if split_name not in self.splits_info:
                 # which means this split only appears in the input file, but not in the database.
                 continue
@@ -1769,7 +1771,7 @@ class TablesForCollections(Table):
             else:
                 contigs_processed.add(contig_name)
 
-            db_entry = tuple([self.next_id(t.collections_contigs_table_name), source, contig_name, split_to_cluster_id[split_name]])
+            db_entry = tuple([self.next_id(t.collections_contigs_table_name), collection_name, contig_name, split_to_bin_name[split_name]])
             db_entries_for_contigs.append(db_entry)
 
         return db_entries_for_contigs

@@ -40,27 +40,27 @@ collections_splits_table = db.db.get_table_as_dict(t.collections_splits_table_na
 collections_info_table = db.db.get_table_as_dict(t.collections_info_table_name)
 db.disconnect()
 
-sources = collections_info_table.keys()
+collection_names = collections_info_table.keys()
 
 splits = {}
 for entry in collections_splits_table.values():
     split = entry['split']
-    source = entry['source']
-    cluster_id = entry['cluster_id']
+    collection_name = entry['collection_name']
+    bin_name = entry['bin_name']
 
     if splits.has_key(split):
-        splits[split][source] = cluster_id
+        splits[split][collection_name] = bin_name
     else:
-        splits[split] = {source: cluster_id}
+        splits[split] = {collection_name: bin_name}
 
 
 output = open(args.output_file, 'w')
-output.write('split\t%s\n' % '\t'.join(sources))
+output.write('split\t%s\n' % '\t'.join(collection_names))
 for split in splits.keys():
     line = [split]
-    for source in sources:
-        if splits[split].has_key(source):
-            line.append(splits[split][source])
+    for collection_name in collection_names:
+        if splits[split].has_key(collection_name):
+            line.append(splits[split][collection_name])
         else:
             line.append(None)
     output.write('\t'.join(line) + '\n')
