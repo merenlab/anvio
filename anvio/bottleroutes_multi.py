@@ -8,10 +8,11 @@
 
 import json
 import os
-from bottle import redirect
+from bottle import redirect, static_file
 
+import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
-
 
 def set_default_headers(response):
     response.set_header('Content-Type', 'application/json')
@@ -20,6 +21,11 @@ def set_default_headers(response):
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     
 
+def server_version(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps({"database": anvio.__users_db_version__, "server": anvio.__version__})
+
+    
 def get_user(request, userdb, response):
     # check if we have a cookie
     if request.get_cookie('anvioSession'):
@@ -120,6 +126,11 @@ def logout_from_app(request, userdb, response):
 
 
 def set_view_cookie(request, userdb, response, login, name, private):
+    # get the absolute path for static directory under anvio
+    
+    static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
+    response = static_file('index.html', root=static_dir)
+    
     if private:
         if not request.query.code:
             redirect('/app/error.html?err=401')
@@ -128,8 +139,8 @@ def set_view_cookie(request, userdb, response, login, name, private):
             response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'|'+request.query.code+'; path=/;')
     else:
         response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'; path=/;')
-        
-    redirect('/app/index.html')
+
+    return response
         
 
 def set_project(request, userdb, response):
