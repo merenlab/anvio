@@ -14,6 +14,7 @@ contigs_db_version = "5"
 profile_db_version = "11"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
+users_db_version = "1"
 
 
 ####################################################################################################

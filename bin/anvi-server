@@ -87,7 +87,7 @@ try:
         mailer = None
 
     # initialize usermanagement
-    userdb = usermgmt.UserMGMT(copy.deepcopy(args), '1', mailer = mailer)
+    userdb = usermgmt.UserMGMT(copy.deepcopy(args), anvio.__users_db_version__, mailer = mailer)
 except ConfigError, e:
     print e
     sys.exit(-1)
