@@ -2,9 +2,10 @@ function showHeader (currentPage, more) {
     var html = [];
 
     var menuitems = [
+	{ "icon": "home", "title": "Server Home", "newpage": false, "href": "/" },
 	{ "icon": "picture", "title": "Gallery", "newpage": true, "href": "#" },
 	{ "icon": "align-right", "title": "Data Types", "newpage": true, "href": "#" },
-	{ "icon": "heart-empty", "title": "Anvi\'o Project", "newpage": true, "href": "http://merenlab.org/projects/anvio/" },
+	{ "icon": "cog", "title": "Anvi\'o Project", "newpage": true, "href": "http://merenlab.org/projects/anvio/" },
     ];
     
     html.push('<nav class="navbar"><div class="container-fluid"><div class="navbar-header">');
