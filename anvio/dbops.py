@@ -2081,7 +2081,7 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     return True
 
 
-def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
+def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, manual_mode_exception = False):
     """Check whether every sample name in the profile database is represented in the samples information database"""
     is_profile_db(profile_db_path)
     is_samples_db(samples_db_path)
@@ -2092,9 +2092,27 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path):
     if profile_db.meta.has_key('merged') and not int(profile_db.meta['merged']):
         raise ConfigError, "Samples databases are only useful if you are working on a merged profile."
 
+    if manual_mode_exception:
+        # manual mode exception is a funny need. when the user wants to use --manual flag with anvi-interactive,
+        # and provides a blank name for profile.db, sample names for that profile db are automaticalaly populated
+        # from the data matrix file. so far so good. if the data matrix file is a mixed one, i.e., contains both
+        # sample names in the conventional sense with numerical view data, and additional data, then sample names
+        # coming from the first row of the file does not match with the entries in samples database. the best
+        # solution for this is to enforce the use of view_data and additional_data inputs separately. unfortunately
+        # that complicates the anvi-server interface unnecessarily.. so here we will simply pass the following
+        # important tests, and hope that the user did a good job making sure sample names in samples database do match
+        # the samples bit that appears in the data file :( I know, I know...
+        samples_in_samples_db_but_not_in_profile_db = samples_db.samples - profile_db.samples
+        if len(samples_in_samples_db_but_not_in_profile_db):
+            raise ConfigError, "Anvi'o is upset with you :/ Please make sure your samples information files (or your\
+                                samples database) contain sample names from your data file. These sample names are in\
+                                your samples information, but not in your data file: '%s'. If this error does not make\
+                                any sense to you, please contact an anvi'o developer." % ', '.join(samples_in_samples_db_but_not_in_profile_db)
+        return
+
+
     missing_samples = profile_db.samples - samples_db.samples
     num_represented_samples = len(profile_db.samples) - len(missing_samples)
-
 
     if len(missing_samples):
         how_much_of_the_samples_are_represented_txt = 'none' if len(missing_samples) == len(profile_db.samples) else\
