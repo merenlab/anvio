@@ -34,7 +34,7 @@ function performLogin () {
     	data : formData,
     	success : function(data) {
 	    if (data.status == 'ok') {
-		window.location = 'user.html';
+		window.location = '/';
 	    } else {
 		alert(data.message);
 	    }
@@ -53,7 +53,7 @@ function performLogout () {
     	data : formData,
     	success : function(data) {
 	    $.removeCookie('anvioSession', { path: '/' });
-	    window.location = 'home.html';
+	    window.location = '/';
 	}
     });
 }

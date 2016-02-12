@@ -58,12 +58,31 @@ function showUserdata () {
     if (user.projects && user.projects.length) {
 	html.push('<ul class="list-group col-sm-8">');
 	for (var i=0; i<user.projects.length; i++) {
+	    var isPublic = false;
+	    var isShared = false;
+	    var publicLink = "";
+	    for (var h=0; h<user.projects[i].views.length; h++) {
+		isShared = true;
+		if (user.projects[i].views[h]['public'] == 1) {
+		    isPublic = true;
+		    publicLink = window.location.origin + '/public/' +user.projects[i].views[h]['user'] + '/' + user.projects[i].views[h].name;
+		}
+	    }
+	    
 	    html.push('<li class="list-group-item">');
-	    html.push('<a href="#" onclick="setActiveProject(\''+i+'\');" title="view project">'+user.projects[i].name+'</a>');
+	    html.push('<a href="#" onclick="setActiveProject(\''+i+'\');" title="'+user.projects[i].description+'">'+user.projects[i].name+'</a>');
+	    
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-danger btn-sm" title="delete project" onclick="deleteProject(\''+i+'\')" id="projectDelete'+i+'"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>');
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="add data" onclick="addDataToProject(\''+i+'\')"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span></button>');
-	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="share project" onclick="selectedProject=\''+i+'\';$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>');
+
 	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm" title="project settings" onclick="showProjectSettings(\''+i+'\');"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>');
+	    
+	    html.push('<button type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px;" class="btn btn-default btn-sm'+(isPublic ? ' btn-success' : (isShared ? ' btn-info': ''))+'" title="'+(isPublic ? ' publicly shared, add share?' : (isShared ? ' privately shared, add share?': 'share'))+'" onclick="selectedProject=\''+i+'\';$(\'#modShareProject\').modal(\'show\');"><span class="glyphicon glyphicon-share" aria-hidden="true"></span></button>');
+	    
+	    if (isPublic) {
+		html.push('<a href="http://twitter.com/home/?status=my anvi\'o project: '+publicLink+'" target=_blank type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px; padding: 0px;" class="btn btn-default btn-sm" title="tweet on twitter"><img src="images/twitter.png" style="width: 28px;"></a>');
+		html.push('<a href="http://www.facebook.com/sharer/sharer.php?u='+publicLink+'" target=_blank type="button" style="margin-right: 5px; float: right; position: relative; bottom: 5px; padding: 0px;" class="btn btn-default btn-sm" title="share on facebook"><img src="images/facebook.png" style="width: 28px;"></a>');
+	    }
 	    
 	    html.push('</li>');
 	}
