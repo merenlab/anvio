@@ -108,7 +108,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
         # being filled within the self.load_from_user_files function based on the headers of the view data.
         if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path)
+            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception = self.manual_mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
