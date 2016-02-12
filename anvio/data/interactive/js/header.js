@@ -17,7 +17,7 @@ function showHeader (currentPage, more) {
 	menu.push('<span class="glyphicon glyphicon-'+currentPage.icon+'"></span> '+currentPage.title);
     }
     html.push(menu.join(' / '));
-    html.push('<div style="clear: both;font-size: 12px;" id="version"></div></div>')
+    html.push('<div style="clear: both;font-size: 12px; padding-left: 30px; opacity: 0.8;" id="version"></div></div>')
     if (more) {
 	html.push(more);
     }
@@ -25,6 +25,6 @@ function showHeader (currentPage, more) {
     
     document.getElementById('header').innerHTML = html.join("\n");
     $.getJSON('/version', function(data) {
-	document.getElementById('version').innerHTML = "server version "+data.server + " - database version "+ data.database;
+	document.getElementById('version').innerHTML = "Running on anvi'o <b>v" + data.server + "</b> &amp; anvi'server DB <b>v"+ data.database + "</b>.";
     })
 }
