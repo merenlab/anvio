@@ -132,6 +132,10 @@ def validate_request():
 def redirect_to_app():
     redirect('/app/home.html')
 
+@route('/version')
+def server_version():
+    return multiroutes.server_version(request, userdb, response)
+
 @route('/user', method='DELETE')
 def delete_user():
     return multiroutes.delete_user(request, userdb, response)

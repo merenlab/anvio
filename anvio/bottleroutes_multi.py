@@ -10,6 +10,7 @@ import json
 import os
 from bottle import redirect
 
+import anvio
 import anvio.dbops as dbops
 
 
@@ -20,6 +21,11 @@ def set_default_headers(response):
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
     
 
+def server_version(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps({"database": anvio.__users_db_version__, "server": anvio.__version__})
+
+    
 def get_user(request, userdb, response):
     # check if we have a cookie
     if request.get_cookie('anvioSession'):
