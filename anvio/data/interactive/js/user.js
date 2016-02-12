@@ -628,12 +628,7 @@ function isDataFile (string) {
 		continue;
 	    }
 	    var cells = lines[i].split(/\t/);
-	    for (var h=1; h<cells.length; h++) {
-		if (! isNumber(cells[h])) {
-		    toastr.error('The data in row '+(i+1)+' col '+(h+1)+' is '+cells[h]+' (should be a number)', null, {timeOut: 0, closeButton: true});
-		    return false;
-		}
-	    }
+
 	    if (cells.length != header.length) {
 		toastr.error('invalid number of columns in line '+(i+1)+' ('+cells.length+'), should be '+header.length, null, {timeOut: 0, closeButton: true});
 		return false;
