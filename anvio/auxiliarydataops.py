@@ -51,7 +51,8 @@ class HDF5_IO(object):
                                   version '%s'. Bad news." % (self.file_path, self.fp.attrs['version'], anvio.__hdf5__version__)
 
             if not ignore_hash and self.fp.attrs['hash'] != unique_hash:
-                raise HDF5Error, "The database at '%s' does not have the hash the client requested."
+                raise HDF5Error, "The database at '%s' does not seem to be compatible with the client :/\
+                                  (i.e., the hash values do not match)." % self.file_path
 
 
     def add_integer_list(self, path, l, data_type = 'uint16'):

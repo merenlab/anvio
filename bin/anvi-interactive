@@ -22,7 +22,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 import anvio.bottleroutes as routes
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
 
 
 __author__ = "Özcan Esen"
@@ -110,6 +110,9 @@ except DictIOError, e:
 except SamplesError, e:
     print e
     sys.exit(-4)
+except HDF5Error, e:
+    print e
+    sys.exit(-5)
 
 
 #######################################################################################################################
