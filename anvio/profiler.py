@@ -51,6 +51,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
         self.overwrite_output_destinations = False
         self.skip_SNV_profiling = False
+        self.skip_AA_frequencies = False
         self.gen_serialized_profile = False
 
         if args:
@@ -70,6 +71,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.report_variability_full = args.report_variability_full
             self.overwrite_output_destinations = args.overwrite_output_destinations
             self.skip_SNV_profiling = args.skip_SNV_profiling
+            self.skip_AA_frequencies = args.skip_AA_frequencies
             self.gen_serialized_profile = args.gen_serialized_profile
 
             if args.contigs_of_interest:
@@ -134,6 +136,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
+                       'AA_frequencies_profiled': not self.skip_AA_frequencies,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -142,6 +145,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.skip_SNV_profiling:
             self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
+
+        if self.skip_AA_frequencies:
+            self.run.warning('Amino acid linkmer ferquencies will not be characterized for this profile.')
 
         self.progress.end()
 
@@ -167,6 +173,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
+        self.run.info('skip_AA_frequencies', self.skip_AA_frequencies)
         self.run.info('report_variability_full', self.report_variability_full)
         self.run.info('gene_coverages_computed', self.a_meta['genes_are_called'])
 
@@ -547,6 +554,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             if not self.skip_SNV_profiling:
                 contig.analyze_auxiliary(self.bam, self.progress)
+
+            if not self.skip_AA_frequencies:
+                print self.contig_name_to_genes[contig_name]
 
             self.progress.end()
 
