@@ -1977,8 +1977,6 @@ function draw_tree(settings) {
         // draw event catcher of the layer
         if (settings['tree-type']=='phylogram')
         {
-            var color = layers[pindex]['color'];
-
             drawPhylogramRectangle('event_catcher_' + layer_index,
                 'event',
                 layer_boundaries[layer_index][0],
@@ -1991,8 +1989,6 @@ function draw_tree(settings) {
         }
         if (settings['tree-type']=='circlephylogram')
         {
-            var color = layers[pindex]['color'];
-
             var _min = Math.toRadians(settings['angle-min']);
             var _max = Math.toRadians(settings['angle-max']);
 
@@ -2008,20 +2004,24 @@ function draw_tree(settings) {
                 true);
         }
 
+        if (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') {
+            var _bgcolor = layers[pindex]['color-start'];
+        } else {
+            var _bgcolor = layers[pindex]['color'];
+        }
+
         // draw backgrounds
         if (settings['tree-type']=='phylogram' && ((layer_types[pindex] == 3 && layers[pindex]['type'] == 'bar') || (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text')))
         {
             // if phylogram and
             // (numerical (3) and bar type) or (categorical (2) and text type)
-            var color = layers[pindex]['color'];
-
             drawPhylogramRectangle('layer_background_' + layer_index,
                 'all',
                 layer_boundaries[layer_index][0],
                 tree_max_y / 2,
                 tree_max_y + height_per_leaf,
                 layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
-                color,
+                _bgcolor,
                 0.3,
                 false);
         }
@@ -2030,8 +2030,6 @@ function draw_tree(settings) {
         {
             // if circlephylogram and
             // (numerical (3) and bar type) or (categorical (2) and text type)
-            var color = layers[pindex]['color'];
-
             var _min = Math.toRadians(settings['angle-min']);
             var _max = Math.toRadians(settings['angle-max']);
 
@@ -2042,7 +2040,7 @@ function draw_tree(settings) {
                 layer_boundaries[layer_index][0],
                 layer_boundaries[layer_index][1],
                 (_max - _min > Math.PI) ? 1:0, // large arc flag
-                color,
+                _bgcolor,
                 0.3,
                 false);
         }
