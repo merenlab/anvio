@@ -64,33 +64,16 @@ class LinkMersData:
         self.run = run
         self.progress = progress
 
-    def append(self, input_bam_path, request_id, contig_name, positions, only_complete_links = False):
+
+    def append(self, bam_file_object, sample_id, request_id, contig_name, positions, only_complete_links = False):
         data = []
-
-        try:
-            bam = pysam.Samfile(input_bam_path, 'rb')
-        except ValueError as e:
-            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (input_bam_path, e)
-
-        try:
-            num_reads_mapped = bam.mapped
-        except ValueError:
-            self.progress.end()
-            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
-
-        sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
 
         self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
 
-        self.run.info('input_bam_path', input_bam_path)
-        self.run.info('sample_id', sample_id)
-        self.run.info('total_reads_mapped', pp(int(num_reads_mapped)))
-        self.run.info('num_contigs_in_bam', pp(len(bam.references)))
-
-        self.progress.new('Processing "%s" in "%s"' % (contig_name, input_bam_path))
+        self.progress.new('Processing "%s" in "%s"' % (contig_name, sample_id))
         self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
 
-        for pileupcolumn in bam.pileup(contig_name, min(positions) - 1, max(positions) + 1):
+        for pileupcolumn in bam_file_object.pileup(contig_name, min(positions) - 1, max(positions) + 1):
             if pileupcolumn.pos not in positions:
                 continue
 
@@ -126,6 +109,30 @@ class LinkMersData:
             self.data.append((contig_name, positions, [d for d in data if d.read_unique_id in read_unique_ids_to_keep]))
         else:
             self.data.append((contig_name, positions, data))
+
+
+class BAMFileObject:
+    def __init__(self, input_bam_path, run = run, progress = progress):
+        self.run = run
+        self.progress = progress
+
+        self.input_bam_path = input_bam_path
+
+        filesnpaths.is_file_exists(input_bam_path)
+
+    def get(self):
+        try:
+            bam_file_object = pysam.Samfile(self.input_bam_path, 'rb')
+        except ValueError as e:
+            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e)
+
+        try:
+            bam_file_object.mapped
+        except ValueError:
+            self.progress.end()
+            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+
+        return bam_file_object
 
 
 class LinkMers:
@@ -182,8 +189,18 @@ class LinkMers:
         self.linkmers = LinkMersData(self.run, self.progress)
 
         for input_file in self.input_file_paths:
+            sample_id = '.'.join(os.path.basename(input_file).split('.')[:-1])
+            bam_file_object = BAMFileObject(input_file).get()
+
+            self.run.info('input_bam_path', input_file)
+            self.run.info('sample_id', sample_id)
+            self.run.info('total_reads_mapped', pp(int(bam_file_object.mapped)))
+            self.run.info('num_contigs_in_bam', pp(len(bam_file_object.references)))
+
             for request_id, contig_name, positions in self.contig_and_position_requests_list:
-                self.linkmers.append(input_file, request_id, contig_name, positions, self.only_complete_links)
+                self.linkmers.append(bam_file_object, sample_id, request_id, contig_name, positions, self.only_complete_links)
+
+            bam_file_object.close()
 
         return self.linkmers.data
 
@@ -211,13 +228,15 @@ class LinkMers:
     def list_contigs(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        bam_file_object = BAMFileObject(self.input_file_path).get()
         self.progress.end()
 
-        self.contig_names = self.bam.references
-        self.contig_lengths = self.bam.lengths
+        contig_names = self.bam.references
+        contig_lengths = self.bam.lengths
 
-        for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse = True):
+        bam_file_object.close()
+
+        for tpl in sorted(zip(contig_lengths, contig_names), reverse = True):
             print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
 
@@ -304,11 +323,12 @@ class GetReadsFromBAM:
         for bam_file_path in self.input_bam_files:
             bam_file_name = '.'.join(os.path.basename(bam_file_path).split('.')[:-1])
 
+            bam_file_object = BAMFileObject(bam_file_path).get()
+
             self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
 
-            bam_file = pysam.Samfile(bam_file_path, 'rb')
             for contig_id, start, stop in contig_start_stops:
-                for entry in bam_file.fetch(contig_id, start, stop):
+                for entry in bam_file_object.fetch(contig_id, start, stop):
                     '''
                     here's what's available in the entry object:
                     
@@ -326,7 +346,10 @@ class GetReadsFromBAM:
                     # we are doing only for 'single reads', but I think this has to take into account the paired-end case as well.
                     short_reads_for_splits_dict['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
 
+            bam_file_object.close()
+
         self.progress.end()
+
 
         return short_reads_for_splits_dict
 
@@ -347,10 +370,12 @@ class GetReadsFromBAM:
         bad_bam_files = []
         for bam_file_path in self.input_bam_files:
             try:
-                filesnpaths.is_file_exists(bam_file_path)
-                pysam.Samfile(bam_file_path, 'rb')
-            except ValueError as e:
+                bam_file_object = BAMFileObject(bam_file_path).get()
+            except ConfigError as e:
                 bad_bam_files.append(bam_file_path)
+
+            bam_file_object.close()
+
         if len(bad_bam_files):
             raise ConfigError, 'Samtools is not happy with some of your bam files. The following\
                                 file(s) do not look like proper BAM files [ here is the actual\
@@ -377,16 +402,7 @@ class ReadsMappingToARange:
         data = []
 
         for input_bam_path in input_bam_paths:
-            try:
-                bam = pysam.Samfile(input_bam_path, 'rb')
-            except ValueError as e:
-                raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (input_bam_path, e)
-
-            try:
-                num_reads_mapped = bam.mapped
-            except ValueError:
-                self.progress.end()
-                raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+            bam_file_object = BAMFileObject(input_bam_path).get()
 
             sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
 
@@ -394,15 +410,15 @@ class ReadsMappingToARange:
 
             self.run.info('input_bam_path', input_bam_path)
             self.run.info('sample_id', sample_id)
-            self.run.info('total_reads_mapped', pp(int(num_reads_mapped)))
-            self.run.info('num_contigs_in_bam', pp(len(bam.references)))
+            self.run.info('total_reads_mapped', pp(int(bam_file_object.mapped)))
+            self.run.info('num_contigs_in_bam', pp(len(bam_file_object.references)))
 
             self.progress.new('Processing "%s" in "%s"' % (contig_name, input_bam_path))
             self.progress.update('Analyzing positions stretching %d nts ...' % (end - start))
 
             read_ids = set([])
 
-            for pileupcolumn in bam.pileup(contig_name, start, end):
+            for pileupcolumn in bam_file_object.pileup(contig_name, start, end):
                 for pileupread in pileupcolumn.pileups:
                     if not pileupread.is_del:
                         L = LinkMerDatum(sample_id, pileupread.alignment.qname, pileupread.alignment.is_read1)
@@ -418,6 +434,7 @@ class ReadsMappingToARange:
                             read_ids.add(L.read_unique_id)
             
             self.progress.end()
+            bam_file_object.close()
 
         self.run.info('data', '%d reads identified mapping between positions %d and %d in "%s"' % (len(data), start, end, contig_name))
 
