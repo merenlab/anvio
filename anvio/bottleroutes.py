@@ -8,7 +8,6 @@
 
 import os
 import json
-import copy
 import datetime
 
 from bottle import static_file
@@ -267,15 +266,17 @@ def send_summary_static(args, d, request, response, collection_name, filename):
 
 
 def get_collection_dict(args, d, request, response, collection_name):
-    run.info_single('Data for collection "%s" has been requested.' % len(collection_name))
+    run.info_single('Data for collection "%s" has been requested.' % collection_name)
     set_default_headers(response)
 
+    collection_dict = d.collections.get_collection_dict(collection_name)
     bins_info_dict = d.collections.get_bins_info_dict(collection_name)
+
     colors_dict = {}
     for bin_name in bins_info_dict:
         colors_dict[bin_name] = bins_info_dict[bin_name]['html_color']
 
-    return json.dumps({'data'  : d.collections.get_collection_dict(collection_name),
+    return json.dumps({'data'  : collection_dict,
                        'colors': colors_dict})
 
 
