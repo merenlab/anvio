@@ -50,6 +50,16 @@ html, body, #wrapper {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+#multiUser {
+    width: 490px;
+    border-right: 1px solid #d3d3d3;
+    border-bottom: 1px solid #d3d3d3;
+    padding-left: 10px;
+    padding-bottom: 5px;
+    padding-top: 5px;
+    background-color: floralwhite;
+}
+
 #sidebar {
     position: fixed;
     background: url('../images/fractal.jpg') center center scroll;
