@@ -2006,8 +2006,10 @@ function draw_tree(settings) {
 
         if (layer_types[pindex] == 2 && layers[pindex]['type'] == 'text') {
             var _bgcolor = layers[pindex]['color-start'];
+            var _opacity = 1;
         } else {
             var _bgcolor = layers[pindex]['color'];
+            var _opacity = 0.3;
         }
 
         // draw backgrounds
@@ -2022,7 +2024,7 @@ function draw_tree(settings) {
                 tree_max_y + height_per_leaf,
                 layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
                 _bgcolor,
-                0.3,
+                _opacity,
                 false);
         }
 
@@ -2041,7 +2043,7 @@ function draw_tree(settings) {
                 layer_boundaries[layer_index][1],
                 (_max - _min > Math.PI) ? 1:0, // large arc flag
                 _bgcolor,
-                0.3,
+                _opacity,
                 false);
         }
     }
