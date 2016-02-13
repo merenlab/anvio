@@ -105,9 +105,6 @@ anvi-import-collection example_files_for_external_binning_results/external_binni
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/anvio_concoct_clusters.txt --collection-name 'cmdline_concoct'
 
-INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'
-
 INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file ..."
 anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_2 -o test-output/short_reads_for_Bin_2.fasta test-output/*bam
 
@@ -147,3 +144,6 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
 
 INFO "Firing up the interactive interface to refine a bin ..."
 anvi-refine -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -s test-output/SAMPLES.db -C CONCOCT -b Bin_1
+
+INFO "Summarizing CONCOCT results ..."
+anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'

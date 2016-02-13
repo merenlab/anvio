@@ -52,9 +52,6 @@ INFO "Merging profiles ..."
 # merge samples
 anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db
 
-INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'CONCOCT'
-
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
 
@@ -64,3 +61,8 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
                  -c test-output/CONTIGS.db \
                  -s test-output/SAMPLES.db \
                  --split-hmm-layers
+
+INFO "Summarizing CONCOCT results ..."
+anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'CONCOCT'
+
+
