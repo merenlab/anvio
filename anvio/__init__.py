@@ -382,6 +382,17 @@ D = {
                       Remember that the number of nodes in the network will also depend on the number of samples described in\
                       the variability profile."}
                 ),
+    'num-CPUs': (
+            ['-T', '--num-CPUs'],
+            {'metavar': 'NUM_CPUS',
+             'default': 1,
+             'type': int,
+             'help': "Maximum number of CPUs to use for multithreading whenever possible. Very conservatively, the default\
+                      is '%(default)d'. Please be careful with this option if you are running your commands on a SGE --if you\
+                      are clusterizing your runs, and asking for multiple CPUs to use, you may deplete your resources very\
+                      fast."}
+                ),
+
     'min-coverage-in-each-sample': (
             ['--min-coverage-in-each-sample'],
             {'metavar': 'INT',
@@ -677,7 +688,7 @@ D = {
                       %(default)dX. You can change that minimum using this parameter."}
                 ),
     'contigs-and-positions': (
-            ['-P', '--contigs-and-positions'],
+            ['--contigs-and-positions'],
             {'metavar': 'TAB_DELIM_FILE',
              'required': True,
              'help': "This is the file where you list the contigs, and nucleotide positions you are interested in. This\
