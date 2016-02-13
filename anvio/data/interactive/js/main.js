@@ -93,6 +93,7 @@ var current_state_name = "";
 var unique_session_id;
 var ping_timer;
 var autoload_state;
+var mode;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -207,6 +208,7 @@ function initData () {
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
             unique_session_id = sessionIdResponse[0];
+            mode = modeResponse[0];
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
@@ -227,7 +229,7 @@ function initData () {
                 toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser. For the best performance, and to avoid unexpected issues, please consider using anvi'o with the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
 
-            if (modeResponse[0] == 'refine')
+            if (mode == 'refine')
             {
                 $('.full-mode').hide();
                 $('.refine-mode').show();
@@ -1523,7 +1525,7 @@ function loadCollection() {
         url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             $('#modLoadCollection').modal('hide');
-            
+
             // clear bins tab
             var bins_cleared = false;
             SELECTED = new Array();
@@ -1543,14 +1545,16 @@ function loadCollection() {
 
                 for (index in data['data'][bin])
                 {
-                    if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
+                    if (mode === 'manual'){
+                        contigs.push(data['data'][bin][index]);
+                    } else if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
                         contigs.push(data['data'][bin][index]);
                         sum_contig_length += contig_lengths[data['data'][bin][index]];
                     }
                     
                 }
 
-                if (sum_contig_length >= threshold)
+                if (mode === 'manual' || sum_contig_length >= threshold)
                 {
                     if (!bins_cleared)
                     {
