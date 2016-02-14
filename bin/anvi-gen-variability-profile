@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 """Fetches information from the variable positions table"""
 
+import sys
 import argparse
 
 import anvio
@@ -54,3 +55,4 @@ if __name__ == '__main__':
         variable_nt_positions.report()
     except ConfigError, e:
         print e
+        sys.exit(-1)
