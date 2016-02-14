@@ -473,7 +473,12 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = max(self.variable_nts_table.keys()) + 1
 
-        self.progress.update('creating a dicts to track missing base frequencies for each sample / split / pos')
+        self.progress.update('populating a dict to track corresponding gene ids for each unique position')
+        unique_pos_identifier_to_corresponding_gene_id = {}
+        for entry in self.variable_nts_table.values():
+            unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
+
+        self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
         split_pos_to_unique_pos_identifier = {}
         splits_to_consider = {}
         for split_name in splits_wanted:
@@ -507,9 +512,11 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
             contig_name_name = split_info['parent']
 
             for pos in splits_to_consider[split]:
+                unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
                 contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
                 pos_in_contig = split_info['start'] + pos
                 base_at_pos = contig_name_seq[pos_in_contig]
+                corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
 
                 in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
@@ -528,8 +535,9 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
                                                                         'cov_outlier_in_split': 0,
                                                                         'cov_outlier_in_contig': 0,
                                                                         'competing_nts': base_at_pos + base_at_pos,
-                                                                        'unique_pos_identifier': split_pos_to_unique_pos_identifier[split][pos],
+                                                                        'unique_pos_identifier': unique_pos_identifier,
                                                                         'unique_pos_identifier_str': '%s_%d' % (split, pos),
+                                                                        'corresponding_gene_call': corresponding_gene_call,
                                                                         'split_name': split}
                     self.variable_nts_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
