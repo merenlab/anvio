@@ -108,6 +108,9 @@ anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -c test-output/CO
 INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file ..."
 anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_2 -o test-output/short_reads_for_Bin_2.fasta test-output/*bam
 
+INFO "Summarizing CONCOCT results ..."
+anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'
+
 INFO "Generate a variabilty profile for Bin_1 using a collection id"
 anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C cmdline_concoct -b Bin_1 -o test-output/variability_Bin_1.txt --quince-mode
 
@@ -144,6 +147,3 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
 
 INFO "Firing up the interactive interface to refine a bin ..."
 anvi-refine -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -s test-output/SAMPLES.db -C CONCOCT -b Bin_1
-
-INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'
