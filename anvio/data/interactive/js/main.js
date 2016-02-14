@@ -276,7 +276,11 @@ function initData () {
             });
 
             // make layers and samples table sortable
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr:not(:first)"}).disableSelection(); 
+            var _notFirstSelector = ''
+            if (mode != 'manual') {
+                _notFirstSelector = ':not(:first)';
+            }
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
             samples_order_dict = samplesOrderResponse[0];
