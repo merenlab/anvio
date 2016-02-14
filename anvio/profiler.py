@@ -215,6 +215,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.new('Storing variability information')
         for contig in self.contigs.values():
+            # learn about gene start stops, because we want to include which unique gene caller id
+            # is associated with variable nucleotide positions.
+            gene_start_stops_in_contig = self.contig_name_to_genes[contig.name]
+
             for split in contig.splits:
                 for column_profile in split.column_profiles.values():
                     # let's figure out more about this particular variable position
@@ -225,6 +229,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     column_profile['pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
 
                     column_profile['sample_id'] = self.sample_id
+                    column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
+                                                                   # nt position, which will be updated in the following lines.
+                                                                   # yeah, we use '-1', because genecaller ids start from 0 :/
+
+                    # if this particular position (`pos_in_contig`) falls within a complete or partial gene call,
+                    # we would like to find out which unique gene caller id(s) match to this position.
+                    if column_profile['in_partial_gene_call'] or column_profile['in_complete_gene_call']:
+                        corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
+
+                        # if there are more than one corresponding gene call, this usually indicates an assembly error
+                        # just to be on the safe side, we will not report a corresopnding unique gene callers id for this
+                        # position
+                        if len(corresponding_gene_calls) == 1:
+                            column_profile['corresponding_gene_call'] = corresponding_gene_calls[0]
 
                     variable_nts_table.append(column_profile)
 
