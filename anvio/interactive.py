@@ -169,9 +169,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                 existing database, as anvi'o will generate an empty one for your if there is no\
                                 profile database."
 
-        if (not self.view_data_path) or (not self.tree):
+        if not self.tree:
             raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
-                                each of the '-d', and '-t' parameters. Please see the documentation for help."
+                                at least the tree file. Please see the documentation for help."
 
         if self.view:
             raise ConfigError, "You can't use '--view' parameter when you are running the interactive interface\
@@ -184,9 +184,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             raise ConfigError, "Sorry, there are no states to show in manual mode :/"
 
         filesnpaths.is_file_exists(self.tree)
-        filesnpaths.is_proper_newick(self.tree)
+        tree = filesnpaths.is_proper_newick(self.tree)
 
-        view_data_path = os.path.abspath(self.view_data_path)
+        view_data_path = os.path.abspath(self.view_data_path) if self.view_data_path else None
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
@@ -198,18 +198,31 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.default_view = self.p_meta['default_view']
 
-        # sanity of the view data
-        filesnpaths.is_file_tab_delimited(view_data_path)
-        view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
-        if not view_data_columns[0] == "contig":
-            raise ConfigError, "The first row of the first column of the view data file must\
-                                      say 'contig', which is not the case for your view data file\
-                                      ('%s'). Please make sure this is a properly formatted view data\
-                                      file." % (view_data_path)
+        if self.view_data_path:
+            # sanity of the view data
+            filesnpaths.is_file_tab_delimited(view_data_path)
+            view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
+            if not view_data_columns[0] == "contig":
+                raise ConfigError, "The first row of the first column of the view data file must\
+                                    say 'contig', which is not the case for your view data file\
+                                    ('%s'). Please make sure this is a properly formatted view data\
+                                    file." % (view_data_path)
 
-        # load view data as the default view:
-        self.views[self.default_view] = {'header': view_data_columns[1:],
-                                         'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
+            # load view data as the default view:
+            self.views[self.default_view] = {'header': view_data_columns[1:],
+                                             'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
+        else:
+            # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
+            # here using what is in the tree.
+            names_in_the_tree = [n.name for n in tree.get_leaves()]
+
+            ad_hoc_dict = {}
+            for item in names_in_the_tree:
+                ad_hoc_dict[item] = {'names': item}
+
+            self.views[self.default_view] = {'header': ['names'],
+                                             'dict': ad_hoc_dict}
+
         self.split_names_ordered = self.views[self.default_view]['dict'].keys()
 
         # we assume that the sample names are the header of the view data, so we might as well set it up: 
