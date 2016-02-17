@@ -8,6 +8,7 @@
 
 import json
 import os
+
 from bottle import redirect, static_file
 
 import anvio
@@ -146,6 +147,16 @@ def set_view_cookie(request, userdb, response, login, name, private):
 def set_project(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.set_project(get_user(request, userdb, response), request.forms.get('project')))
+
+
+def get_current_project(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps(userdb.set_user_data(request, True))
+
+
+def download_project(request, userdb, response):
+    set_default_headers(response)
+    return userdb.download_project(request, response)
 
 
 def delete_project(request, userdb, response):
