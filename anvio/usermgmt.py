@@ -14,6 +14,8 @@ import hashlib
 import shutil
 import re
 
+from bottle import static_file
+
 import time
 from datetime import date, datetime
 
@@ -308,7 +310,7 @@ class UserMGMT:
         user = self.users_db.fetchone("SELECT * FROM users WHERE token=?", (token, ))
 
         if user:
-            # if record is true, remeber the login time and return verbose userdata
+            # if record is true, remember the login time and return verbose userdata
             if record:
                 self.users_db.execute("UPDATE users SET visit=? WHERE login=?", (datetime.fromtimestamp(time.time()).isoformat(), user['login'], ))
                 
@@ -605,6 +607,17 @@ class UserMGMT:
             return { 'status': 'ok', 'message': None, 'data': project }
         else:
             return { 'status': 'error', 'message': "project not found", 'data': None }
+
+    def get_current_project(self, project):
+        if not project:
+            return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
+
+        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
+
+        if project:
+            return { 'status': 'ok', 'message': None, 'data': project }
+        else:
+            return { 'status': 'error', 'message': "project not found", 'data': None }
         
 
     def set_project(self, user, pname):
@@ -744,8 +757,22 @@ class UserMGMT:
         projectData = { "name": project['name'], "description": project['description'], "user": user, "views": views, "files": dataFiles }
 
         return { 'status': 'ok', 'message': None, 'data': projectData }
+
+    def download_project(self, request, response):
+        project = self.set_user_data(request, True)
         
-      
+        if project['status'] == 'error':
+            return project
+
+        tmp = filesnpaths.get_temp_file_path()
+        basepath = os.path.join(self.users_data_dir, 'userdata', project['data']['user_path'], project['data']['path'])
+        shutil.make_archive(tmp, 'zip', basepath)
+        response = static_file(os.path.basename(tmp)+".zip", root=os.path.dirname(tmp))
+        response.set_header('Content-Type', 'application/zip')
+        
+        return response
+    
+    
     ######################################
     # VIEWS
     ######################################
@@ -775,6 +802,7 @@ class UserMGMT:
                 return { 'status': 'error', 'message': "Could not find a user for project %s" % view['project'], 'data': None }
             
             view['path'] = user['path'] + '/' + path
+            view['project_data'] = project
         else:
             # the project is gone, clean up this reference
             self.users_db.execute("DELETE FROM views WHERE name=?", (vname, ))
@@ -874,7 +902,7 @@ class UserMGMT:
             return { "status": "error", "message": e.e, "data": None }
 
 
-    def check_user(self, request):
+    def check_user(self, request, project_only = False):
         # check if we have a cookie
         if request.get_cookie('anvioSession'):
 
@@ -883,6 +911,13 @@ class UserMGMT:
             if retval['status'] == 'ok':
                 user = retval['data']
                 if user.has_key('project_path'):
+                    if project_only:
+                        retval = self.get_project(user, user['project'])
+                        if retval['status'] == 'ok':
+                            retval['data']['user_path'] = user['path']
+                            retval['data']['user'] = user['firstname'] + ' ' + user['lastname']
+                        return retval
+                    
                     basepath = os.path.join(self.users_data_dir, 'userdata', user['path'], user['project_path'])
 
                     return self.get_the_interactive_object(basepath, title = user['project'], read_only = False)
@@ -894,7 +929,7 @@ class UserMGMT:
             return { "status": "ok", "message": "no cookie", "data": None }
 
 
-    def check_view(self, request):
+    def check_view(self, request, project_only = False):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
             p2 = None
@@ -904,6 +939,12 @@ class UserMGMT:
             if view["status"] == "error":
                 return view
             else:
+                if project_only:
+                    user = self.users_db.fetchone("SELECT firstname, lastname, path FROM users WHERE login=?", (view['data']['user'], ))
+                    view['data']['project_data']['user'] = user['firstname'] + ' ' + user['lastname']
+                    view['data']['project_data']['user_path'] = user['path']
+                    return { "status": "ok", "message": None, "data": view['data']['project_data'] }
+                    
                 view = view["data"]
                 basepath = os.path.join(self.users_data_dir, 'userdata', view['path'])
 
@@ -912,17 +953,18 @@ class UserMGMT:
             return { "status": "ok", "message": "no cookie", "data": None }
 
 
-    def set_user_data(self, request):
-        retval = self.check_view(request)
+    def set_user_data(self, request, project_only = False):
+        retval = self.check_view(request, project_only)
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
 
-        retval = self.check_user(request)
+        retval = self.check_user(request, project_only)
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
 
         return { "status": "error", "message": "data not available", "data": None }
-        
+
+    
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
