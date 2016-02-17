@@ -45,8 +45,8 @@ function showUserdata () {
     // username and logout button
     var html = [];
     html.push('<div style="padding-top: 10px; float: right;">');
-    html.push('<img src="images/user.png" style="width: 32px; border-radius: 3px; margin-right: 5px;">');
-    html.push('<span>'+user.firstname+' '+user.lastname+' ('+user.login+')</span>');
+    html.push('<img src="http://www.gravatar.com/avatar/'+SparkMD5.hash(user.email.toLowerCase())+'?d=mm&s=30" style="margin-right: 5px;" />');
+    html.push('<span>logged in as '+user.firstname+' '+user.lastname+' ('+user.login+')</span>');
     html.push('<button type="button" style="margin-left: 5px;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button><div style="font-size: 11px;"><a href="change.html">change password</a>'+(user.clearance=='admin'?'<a style="float: right;" href="admin.html">admin page</a>':'')+'</div>');
     html.push('</div>');
 
