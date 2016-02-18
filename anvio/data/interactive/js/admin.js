@@ -353,33 +353,3 @@ function changeClearance(user, clearance) {
 	}
     });
 }
-
-function saveAs(data, filename) {
-    try {
-	data = window.btoa(data);
-    } catch (err) {
-	var utftext = "";
-	for(var n=0; n<data.length; n++) {
-	    var c=data.charCodeAt(n);
-	    if (c<128)
-		utftext += String.fromCharCode(c);
-            else if((c>127) && (c<2048)) {
-		utftext += String.fromCharCode((c>>6)|192);
-		utftext += String.fromCharCode((c&63)|128);}
-	    else {
-		utftext += String.fromCharCode((c>>12)|224);
-		utftext += String.fromCharCode(((c>>6)&63)|128);
-		utftext += String.fromCharCode((c&63)|128);}
-	}
-	data = window.btoa(utftext);
-    }
-    
-    data = 'data:application/octet-stream;base64,'+data;
-    
-    var anchor = document.createElement('a');
-    anchor.setAttribute('download', filename || "download.txt");
-    anchor.setAttribute('href', data);
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-}
