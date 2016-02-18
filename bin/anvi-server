@@ -124,8 +124,6 @@ def validate_request():
         pass
     elif request.path.startswith('/private/'):
         pass
-    elif request.path.startswith('/data/project'):
-        pass
     else:
         if ('X-Requested-With' not in request.headers) or (request.headers['X-Requested-With'] != 'XMLHttpRequest'):
             raise HTTPResponse(status=500, body='This API endpoint is only available via XMLHTTPRequest.')
@@ -279,9 +277,6 @@ def send_data(name):
                              "noPing": True,
                              "inspectionAvailable": d.auxiliary_profile_data_available,
                              "sequencesAvailable": True if d.split_sequences else False})
-
-    elif name == "project":
-        return multiroutes.download_project(request, userdb, response)
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
