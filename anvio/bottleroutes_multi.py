@@ -151,12 +151,7 @@ def set_project(request, userdb, response):
 
 def get_current_project(request, userdb, response):
     set_default_headers(response)
-    return json.dumps(userdb.set_user_data(request, True))
-
-
-def download_project(request, userdb, response):
-    set_default_headers(response)
-    return userdb.download_project(request, response)
+    return json.dumps(userdb.get_current_project(request))
 
 
 def delete_project(request, userdb, response):

@@ -608,18 +608,6 @@ class UserMGMT:
         else:
             return { 'status': 'error', 'message': "project not found", 'data': None }
 
-    def get_current_project(self, project):
-        if not project:
-            return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
-
-        project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
-
-        if project:
-            return { 'status': 'ok', 'message': None, 'data': project }
-        else:
-            return { 'status': 'error', 'message': "project not found", 'data': None }
-        
-
     def set_project(self, user, pname):
         if not user:
             return { 'status': 'error', 'message': "You must pass a user to set the project", 'data': None }
@@ -758,20 +746,45 @@ class UserMGMT:
 
         return { 'status': 'ok', 'message': None, 'data': projectData }
 
-    def download_project(self, request, response):
-        project = self.set_user_data(request, True)
-        
-        if project['status'] == 'error':
-            return project
 
-        tmp = filesnpaths.get_temp_file_path()
-        basepath = os.path.join(self.users_data_dir, 'userdata', project['data']['user_path'], project['data']['path'])
-        shutil.make_archive(tmp, 'zip', basepath)
-        response = static_file(os.path.basename(tmp)+".zip", root=os.path.dirname(tmp))
-        response.set_header('Content-Type', 'application/zip')
+    def get_current_project(self, request):
+        retval = self.set_user_data(request, True)
+        if retval["status"] == "error":
+            return retval
+        else:
+            retval = retval["data"]
         
-        return response
-    
+        user = None
+        project = None
+        
+        if 'projectname' in retval:
+            user = retval["user"]
+            project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
+            if not project:
+                return { 'status': 'error', 'message': 'project not found', 'data': None }
+        else:
+            project = retval["project"]
+            user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
+            if not user:
+                return { 'status': 'error', 'message': 'user not found', 'data': None }
+
+        # get files of the project
+        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
+        filenames = [ "data", "fasta", "tree", "additionalData", "samplesInformation", "samplesOrder" ]
+        dataFiles = {}
+        for fn in filenames:
+            fullfn = path+fn+"File"
+            if os.access(fullfn, os.R_OK):
+                with open(fullfn, 'r') as content_file:
+                    content = content_file.read()
+                    dataFiles[fn] = content
+            else:
+                dataFiles[fn] = None
+        
+        # construct return structure
+        projectData = { "name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles }
+
+        return { 'status': 'ok', 'message': None, 'data': projectData }
     
     ######################################
     # VIEWS
@@ -902,7 +915,7 @@ class UserMGMT:
             return { "status": "error", "message": e.e, "data": None }
 
 
-    def check_user(self, request, project_only = False):
+    def check_user(self, request, projectOnly = False):
         # check if we have a cookie
         if request.get_cookie('anvioSession'):
 
@@ -911,12 +924,8 @@ class UserMGMT:
             if retval['status'] == 'ok':
                 user = retval['data']
                 if user.has_key('project_path'):
-                    if project_only:
-                        retval = self.get_project(user, user['project'])
-                        if retval['status'] == 'ok':
-                            retval['data']['user_path'] = user['path']
-                            retval['data']['user'] = user['firstname'] + ' ' + user['lastname']
-                        return retval
+                    if projectOnly:
+                        return { "status": "ok", "message": None, "data": { "user": user, "projectname": user["project"] } }
                     
                     basepath = os.path.join(self.users_data_dir, 'userdata', user['path'], user['project_path'])
 
@@ -929,7 +938,7 @@ class UserMGMT:
             return { "status": "ok", "message": "no cookie", "data": None }
 
 
-    def check_view(self, request, project_only = False):
+    def check_view(self, request, projectOnly = False):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
             p2 = None
@@ -939,11 +948,8 @@ class UserMGMT:
             if view["status"] == "error":
                 return view
             else:
-                if project_only:
-                    user = self.users_db.fetchone("SELECT firstname, lastname, path FROM users WHERE login=?", (view['data']['user'], ))
-                    view['data']['project_data']['user'] = user['firstname'] + ' ' + user['lastname']
-                    view['data']['project_data']['user_path'] = user['path']
-                    return { "status": "ok", "message": None, "data": view['data']['project_data'] }
+                if projectOnly:
+                    return { "status": "ok", "message": None, "data": { "project": view["data"]["project_data"] } }
                     
                 view = view["data"]
                 basepath = os.path.join(self.users_data_dir, 'userdata', view['path'])
@@ -953,12 +959,12 @@ class UserMGMT:
             return { "status": "ok", "message": "no cookie", "data": None }
 
 
-    def set_user_data(self, request, project_only = False):
-        retval = self.check_view(request, project_only)
+    def set_user_data(self, request, projectOnly = False):
+        retval = self.check_view(request, projectOnly)
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
 
-        retval = self.check_user(request, project_only)
+        retval = self.check_user(request, projectOnly)
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
 
