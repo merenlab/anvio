@@ -22,7 +22,7 @@ function initContent () {
     if (user) {
 	html += '<button type="button" style="margin-right: 5px; float: right;" class="btn btn-danger btn-sm" title="log out" onclick="performLogout();"><span class="glyphicon glyphicon-white glyphicon-off" aria-hidden="true"></span></button>';
 	html += '<button type="button" style="margin-right: 5px; float: left;" class="btn btn-default btn-sm" title="project management" onclick="window.location=\'/\';"><span class="glyphicon glyphicon-home" aria-hidden="true"></span></button>';
-	html += '<img src="http://www.gravatar.com/avatar/'+SparkMD5.hash(user.email.toLowerCase())+'?d=mm&s=30" style="margin-left: 10px; border: 1px solid #cccccc; border-radius: 3px; float: left; margin-right: 10px;" title="logged in as '+user.firstname+' '+user.lastname+' ('+user.login+')" />';
+	html += '<img src="http://www.gravatar.com/avatar/'+SparkMD5.hash(user.email.toLowerCase())+'?s=30&d=mm" style="margin-left: 10px; border: 1px solid #cccccc; border-radius: 3px; float: left; margin-right: 10px;" title="logged in as '+user.firstname+' '+user.lastname+' ('+user.login+')" />';
 	html += '<div id="projectInfo" style="width: 330px; float: left;"><img src="images/loading.gif" style="width: 32px;"></div>';
     } else {
 	html += '<div id="projectInfo" style="margin-right: 10px;"><img src="images/loading.gif" style="width: 32px;"></div>';
