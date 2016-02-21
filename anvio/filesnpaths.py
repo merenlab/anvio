@@ -157,6 +157,16 @@ def is_output_file_writable(file_path):
     return True
 
 
+def is_output_dir_writable(dir_path):
+    if not dir_path:
+        raise FilesNPathsError, "No output directory path is declared..."
+    if not os.path.isdir(dir_path):
+        raise FilesNPathsError, "'%s' is not a directory..." % dir_path
+    if not os.access(os.path.abspath(dir_path), os.W_OK):
+        raise FilesNPathsError, "You do not have permission to generate files in '%s'" % dir_path
+    return True
+
+
 def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields = None):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
