@@ -1358,7 +1358,7 @@ class TableForVariability(Table):
         self.db_path = db_path
         self.progress = progress
 
-        Table.__init__(self, self.db_path, version)
+        Table.__init__(self, self.db_path, version, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
@@ -1384,7 +1384,7 @@ class TableForAAFrequencies(Table):
         self.db_path = db_path
         self.progress = progress
 
-        Table.__init__(self, self.db_path, version)
+        Table.__init__(self, self.db_path, version, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
