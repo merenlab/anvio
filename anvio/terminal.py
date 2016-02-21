@@ -119,6 +119,10 @@ class Progress:
     def update(self, msg):
         if not self.verbose:
             return
+
+        if not self.pid:
+            raise TerminalError, 'Progress with null pid will not update for msg "%s"' % msg
+
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))
 
