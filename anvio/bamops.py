@@ -18,6 +18,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
+from anvio.constants import codon_to_AA, codon_to_AA_RC
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -25,13 +26,86 @@ pp = terminal.pretty_print
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
-__credits__ = ["Faruk Uzun"]
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+
+class AAFrequencies:
+    def __init__(self, run = run):
+        self.run = run
+
+
+    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile = None):
+        if gene_call['partial']:
+            return None
+
+        contig_name = gene_call['contig']
+        start = gene_call['start']
+        stop = gene_call['stop']
+
+        # here we will create a dictionary to translate codons in a gene to nucleotide positions in the context
+        # of the contig. thanks to this dict, we will be able to profile only a small number of codons from a
+        # gene, if they are specified in `codons_to_profile` variable. for instance, this function is called
+        # during profiling only with codon positions in genes that possess nucleotide variation.
+        codon_order_to_nt_positions = {}
+        codon_order = 0
+        if gene_call['direction'] == 'r':
+            for nt_pos in range(stop - 1, start - 1, -3):
+                codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
+                codon_order += 1
+        else:
+            for nt_pos in range(start, stop, 3):
+                codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
+                codon_order += 1
+
+        # here we generate the actual 'linkmers' information.
+        d = {}
+        linkmers = LinkMersData()
+        linkmers.quiet = True
+        for codon_order in codon_order_to_nt_positions:
+            if codons_to_profile and codon_order not in codons_to_profile:
+                continue
+
+            nt_positions = codon_order_to_nt_positions[codon_order]
+
+            consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
+            # if concensus sequence contains shitty characters, we will not continue
+            if consensus_codon_sequence not in codon_to_AA:
+                continue
+
+            linkmers.data = []
+            linkmers.append(bam_file_object, 'sample_id', None, contig_name, nt_positions, only_complete_links = True)
+            data = linkmers.data[0][2]
+
+            hash_to_oligotype = {}
+            unique_hashes = set([datum.read_unique_id for datum in data])
+            for unique_hash in unique_hashes:
+                hash_to_oligotype[unique_hash] = []
+
+            for datum in data:
+                hash_to_oligotype[datum.read_unique_id].append((datum.pos_in_contig, datum.base),)
+
+            for unique_hash in unique_hashes:
+                hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
+
+            nt_frequencies = Counter(hash_to_oligotype.values())
+
+            if gene_call['direction'] == 'r':
+                frequencies = Counter(dict([(codon_to_AA_RC[nt], nt_frequencies[nt]) for nt in nt_frequencies]))
+                consensus_codon_AA = codon_to_AA[utils.rev_comp(consensus_codon_sequence)]
+            else:
+                frequencies = Counter(dict([(codon_to_AA[nt], nt_frequencies[nt]) for nt in nt_frequencies]))
+                consensus_codon_AA = codon_to_AA[consensus_codon_sequence]
+
+            d[codon_order] = {'consensus': consensus_codon_AA, 'coverage': sum(frequencies.values()), 'frequencies': frequencies}
+
+        return d
 
 
 class LinkMerDatum:
@@ -50,16 +124,17 @@ class LinkMerDatum:
 
 
     def __str__(self):
-        return 'Contig: %s, C_pos: %d, R_pos: %d, Base: %s, hash: %s' % (self.contig_name,
-                                                                         self.pos_in_contig,
-                                                                         self.pos_in_read,
-                                                                         self.base,
-                                                                         self.sequence)
+        return 'Contig: %s, C_pos: %d, R_pos: %d, Base: %s, seq: %s' % (self.contig_name,
+                                                                        self.pos_in_contig,
+                                                                        self.pos_in_read,
+                                                                        self.base,
+                                                                        self.sequence)
 
 
 class LinkMersData:
-    def __init__(self, run = run, progress = progress):
+    def __init__(self, run = run, progress = progress, quiet = False):
         self.data = []
+        self.quiet = quiet
 
         self.run = run
         self.progress = progress
@@ -68,10 +143,11 @@ class LinkMersData:
     def append(self, bam_file_object, sample_id, request_id, contig_name, positions, only_complete_links = False):
         data = []
 
-        self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
+        if not self.quiet:
+            self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
 
-        self.progress.new('Processing "%s" in "%s"' % (contig_name, sample_id))
-        self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
+            self.progress.new('Processing "%s" in "%s"' % (contig_name, sample_id))
+            self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
 
         for pileupcolumn in bam_file_object.pileup(contig_name, min(positions) - 1, max(positions) + 1):
             if pileupcolumn.pos not in positions:
@@ -96,16 +172,19 @@ class LinkMersData:
                     #  'reference_length', 'reference_name', 'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
                     #  'template_length', 'tid', 'tlen', 'tostring']
                     data.append(L)
-        
-        self.progress.end()
 
-        self.run.info('data', '%d entries identified mapping at least one of the nucleotide positions for "%s"' % (len(data), contig_name))
+        if not self.quiet:
+            self.progress.end()
+            self.run.info('data', '%d entries identified mapping at least one of the nucleotide positions for "%s"' % (len(data), contig_name))
 
         if only_complete_links:
             num_positions = len(positions)
             num_hits_dict = Counter([d.read_unique_id for d in data])
             read_unique_ids_to_keep = set([read_unique_id for read_unique_id in num_hits_dict if num_hits_dict[read_unique_id] == num_positions])
-            self.run.info('data', '%s unique reads that covered all positions were kept' % (len(read_unique_ids_to_keep)), mc = 'red')
+
+            if not self.quiet:
+                self.run.info('data', '%s unique reads that covered all positions were kept' % (len(read_unique_ids_to_keep)), mc = 'red')
+
             self.data.append((contig_name, positions, [d for d in data if d.read_unique_id in read_unique_ids_to_keep]))
         else:
             self.data.append((contig_name, positions, data))
