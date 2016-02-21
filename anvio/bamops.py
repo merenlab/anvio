@@ -48,23 +48,12 @@ class AAFrequencies:
             return None
 
         contig_name = gene_call['contig']
-        start = gene_call['start']
-        stop = gene_call['stop']
 
         # here we will create a dictionary to translate codons in a gene to nucleotide positions in the context
         # of the contig. thanks to this dict, we will be able to profile only a small number of codons from a
         # gene, if they are specified in `codons_to_profile` variable. for instance, this function is called
         # during profiling only with codon positions in genes that possess nucleotide variation.
-        codon_order_to_nt_positions = {}
-        codon_order = 0
-        if gene_call['direction'] == 'r':
-            for nt_pos in range(stop - 1, start - 1, -3):
-                codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
-                codon_order += 1
-        else:
-            for nt_pos in range(start, stop, 3):
-                codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
-                codon_order += 1
+        codon_order_to_nt_positions = utils.get_codon_order_to_nt_positions_dict(gene_call)
 
         # here we generate the actual 'linkmers' information.
         d = {}

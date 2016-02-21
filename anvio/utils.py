@@ -22,7 +22,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.terminal import Run, Progress
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
-from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
+from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements, codon_to_AA, codon_to_AA_RC
 
 
 __author__ = "A. Murat Eren"
@@ -578,6 +578,63 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
             contigs_splits_dict[s['parent']] = {s['order_in_parent']: split_id}
 
     return contigs_splits_dict
+
+
+def get_codon_order_to_nt_positions_dict(gene_call):
+    """Returns a dictionary to translate codons in a gene to nucleotide positions"""
+
+    if gene_call['partial']:
+        raise ConfigError, "get_codon_order_to_nt_positions_dict: this simply will not work\
+                            for partial gene calls, and this on *is* a partial one."
+
+    start = gene_call['start']
+    stop = gene_call['stop']
+
+    codon_order_to_nt_positions = {}
+    codon_order = 0
+
+    if gene_call['direction'] == 'r':
+        for nt_pos in range(stop - 1, start - 1, -3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
+            codon_order += 1
+    else:
+        for nt_pos in range(start, stop, 3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
+            codon_order += 1
+
+    return codon_order_to_nt_positions
+
+
+def get_list_of_amino_acids_for_gene_call(gene_call, contig_sequences_dict):
+    codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
+
+    if gene_call['contig'] not in contig_sequences_dict:
+        raise ConfigError, "get_list_of_amino_acids_for_gene_call: The contig sequences dict sent to\
+                            this function does contain the contig name that appears in the gene call.\
+                            Something is wrong here..."
+
+    try:
+        contig_sequence = contig_sequences_dict[gene_call['contig']]['sequence']
+    except:
+        raise ConfigError, "get_list_of_amino_acids_for_gene_call: The contig sequences dict sent to\
+                            this function does not seem to be an anvi'o contig sequences dict :/ It\
+                            doesn't have the item 'sequence' in it."
+
+    list_of_amino_acids = []
+    for codon_order in codon_order_to_nt_positions:
+        nt_positions = codon_order_to_nt_positions[codon_order]
+        consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
+
+        # if concensus sequence contains shitty characters, we will not continue
+        if consensus_codon_sequence not in codon_to_AA:
+            continue
+        # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
+        conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
+
+        list_of_amino_acids.append(conv_dict[consensus_codon_sequence])
+
+    return list_of_amino_acids
+
 
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
     """
