@@ -154,8 +154,6 @@ class ContigsSuperclass(object):
         for entry in self.genes_in_splits.values():
             self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
-        self.progress.end()
-
         contigs_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
@@ -282,7 +280,7 @@ class ContigsSuperclass(object):
     def get_nt_position_info(self, contig_name, pos_in_contig):
         """This function returns a tuple with three items for each nucleotide position.
         
-            (in_partial_gene_call, in_complete_gene_call, pos_in_codon)
+            (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon)
         
         See `init_nt_position_info_dict` for more info."""
 
@@ -390,6 +388,58 @@ class ContigsSuperclass(object):
         self.progress.end()
 
         return split_names, full_report
+
+
+    def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
+        """Takes a gene caller id, a contig name, and a nucleotide position in that contig,
+           and returns the order of codon the nucleotide matches to."""
+
+        if not isinstance(pos_in_contig, int):
+            raise ConfigError, "get_corresponding_codon_order_in_gene :: pos_in_contig must be of type 'int'"
+
+        if not isinstance(gene_caller_id, int):
+            raise ConfigError, "get_corresponding_codon_order_in_gene :: gene_caller_id must be of type 'int'"
+
+        gene_call = self.genes_in_contigs_dict[gene_caller_id]
+
+        if contig_name != gene_call['contig']:
+            raise ConfigError, 'get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s\
+                                do not seem to have anything to do with each other :/ This is not a user-level error\
+                                something must have gone very wrong somewhere in the code ...' % (gene_caller_id, contig_name)
+
+        if not pos_in_contig >= gene_call['start'] or not pos_in_contig < gene_call['stop']:
+            raise ConfigError, "get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
+                                                        % (pos_in_contig, gene_caller_id)
+
+        start, stop = gene_call['start'], gene_call['stop']
+
+        gene_length = stop - start
+        num_codons_in_gene =  int(gene_length / 3)
+
+        if gene_call['direction'] == 'r':
+            corresponding_codon_order_in_gene = num_codons_in_gene - int((pos_in_contig - start) / 3) - 1
+        else:
+            corresponding_codon_order_in_gene = int((pos_in_contig - start) / 3)
+
+        return corresponding_codon_order_in_gene
+
+
+    def get_gene_start_stops_in_contig(self, contig_name):
+        """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring
+           in contig_name"""
+        return self.contig_name_to_genes[contig_name]
+
+
+    def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
+        """For a given nucleotide position and contig name, returns all matching gene caller ids"""
+        gene_start_stops_in_contig = self.get_gene_start_stops_in_contig(contig_name)
+
+        if not gene_start_stops_in_contig:
+            return []
+
+        corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
+
+        return corresponding_gene_calls
 
 
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary = True):
@@ -540,7 +590,8 @@ class ProfileSuperclass(object):
 
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
-        self.progress.update('Reading gene coverages table ...')
+        self.progress.new('Reading gene coverages table')
+        self.progress.update('...')
         gene_coverages_table = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
         profile_db.disconnect()
 
@@ -591,7 +642,7 @@ class ProfileSuperclass(object):
             if not return_outliers and e['cov_outlier_in_contig']:
                 continue
 
-            d[e['sample_id']]['variability'][e['pos_in_codon']][e['pos']] = e['departure_from_consensus']
+            d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_consensus']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
 
         return d
@@ -757,6 +808,7 @@ class ProfileDatabase:
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
+        self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -1302,10 +1354,11 @@ class TableForViews(Table):
 
 
 class TableForVariability(Table):
-    def __init__(self, db_path, version, run=run, progress=progress):
+    def __init__(self, db_path, version, progress=progress):
         self.db_path = db_path
+        self.progress = progress
 
-        Table.__init__(self, self.db_path, version, run, progress)
+        Table.__init__(self, self.db_path, version)
 
         self.num_entries = 0
         self.db_entries = []
@@ -1317,12 +1370,38 @@ class TableForVariability(Table):
         self.db_entries.append(db_entry)
         self.num_entries += 1
         if self.num_entries % 100 == 0:
-            progress.update('Information for %d SNP sites have been added ...' % self.num_entries)
+            self.progress.update('Information for %d SNP sites have been added ...' % self.num_entries)
 
 
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
+        profile_db.disconnect()
+
+
+class TableForAAFrequencies(Table):
+    def __init__(self, db_path, version, run=run, progress=progress):
+        self.db_path = db_path
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, version)
+
+        self.num_entries = 0
+        self.db_entries = []
+        self.set_next_available_id(t.variable_aas_table_name)
+
+
+    def append(self, profile):
+        db_entry = tuple([self.next_id(t.variable_aas_table_name)] + [profile[h] for h in t.variable_aas_table_structure[1:]])
+        self.db_entries.append(db_entry)
+        self.num_entries += 1
+        if self.num_entries % 100 == 0:
+            self.progress.update('Information for %d codons have been added ...' % self.num_entries)
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
         profile_db.disconnect()
 
 
