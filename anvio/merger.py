@@ -149,6 +149,7 @@ class MultipleRuns:
                      ('min_mean_coverage', 'Minimum mean coverage (-C)'),
                      ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)'),
                      ('report_variability_full', 'Report full variability (--report-variability-full)'),
+                     ('skip_AA_frequencies', 'Skip AA frequencies parameter (--skip-AA-frequencies)'),
                      ('skip_SNV_profiling', 'Skip SNV profiling parameter (--skip-SNV-profiling)')]:
             v = set([r[k] for r in self.input_runinfo_dicts.values()])
             if len(v) > 1:
@@ -236,6 +237,23 @@ class MultipleRuns:
         variable_nts_table.store()
 
 
+    def merge_variable_aas_tables(self):
+        self.is_all_samples_have_it('AA_frequencies_table')
+
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+
+        for runinfo in self.input_runinfo_dicts.values():
+            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
+            sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
+            sample_profile_db.disconnect()
+
+            for tpl in sample_variable_aas_table:
+                entry = tuple([variable_aas_table.next_id(tables.variable_aas_table_name)] + list(tpl[1:]))
+                variable_aas_table.db_entries.append(entry)
+
+        variable_aas_table.store()
+
+
     def merge_gene_coverages_tables(self):
         self.is_all_samples_have_it('gene_coverages_table')
 
@@ -321,6 +339,7 @@ class MultipleRuns:
         self.min_coverage_for_variability = self.input_runinfo_dicts.values()[0]['min_coverage_for_variability']
         self.report_variability_full = self.input_runinfo_dicts.values()[0]['report_variability_full']
         self.gene_coverages_computed = self.input_runinfo_dicts.values()[0]['gene_coverages_computed']
+        self.AA_frequencies_profiled = not self.input_runinfo_dicts.values()[0]['skip_AA_frequencies']
         self.SNVs_profiled = not self.input_runinfo_dicts.values()[0]['skip_SNV_profiling']
         self.total_length = self.input_runinfo_dicts.values()[0]['total_length']
         meta_values = {'db_type': 'profile',
@@ -332,6 +351,7 @@ class MultipleRuns:
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
+                       'AA_frequencies_profiled': self.AA_frequencies_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -372,7 +392,15 @@ class MultipleRuns:
             self.merge_variable_nts_tables()
             self.progress.end()
         else:
-            self.run.warning("SNVs were not profiled, variable positions tables will be empty in the merged profile database.")
+            self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
+
+        if self.AA_frequencies_profiled:
+            self.progress.new('Merging variable AAs tables')
+            self.merge_variable_aas_tables()
+            self.progress.end()
+        else:
+            self.run.warning("AA frequencies were not profiled, these tables will be empty in the merged profile database.")
+
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
