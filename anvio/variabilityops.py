@@ -478,6 +478,11 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
         for entry in self.variable_nts_table.values():
             unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
 
+        self.progress.update('populating a dict to track codon order in genes for each unique position')
+        unique_pos_identifier_to_codon_order_in_gene = {}
+        for entry in self.variable_nts_table.values():
+            unique_pos_identifier_to_codon_order_in_gene[entry['unique_pos_identifier']] = entry['codon_order_in_gene']
+
         self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
         split_pos_to_unique_pos_identifier = {}
         splits_to_consider = {}
@@ -517,8 +522,9 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
                 pos_in_contig = split_info['start'] + pos
                 base_at_pos = contig_name_seq[pos_in_contig]
                 corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
+                codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
 
-                in_partial_gene_call, in_complete_gene_call, pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
+                in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
                 for sample in splits_to_consider[split][pos]:
                     self.variable_nts_table[next_available_entry_id] = {'contig_name': contig_name_name,
@@ -529,7 +535,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
                                                                         'pos_in_contig': pos_in_contig,
                                                                         'in_partial_gene_call': in_partial_gene_call,
                                                                         'in_complete_gene_call': in_complete_gene_call,
-                                                                        'pos_in_codon': pos_in_codon,
+                                                                        'base_pos_in_codon': base_pos_in_codon,
                                                                         'coverage': split_coverage_across_samples[sample][pos],
                                                                         'sample_id': sample,
                                                                         'cov_outlier_in_split': 0,
@@ -538,6 +544,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass):
                                                                         'unique_pos_identifier': unique_pos_identifier,
                                                                         'unique_pos_identifier_str': '%s_%d' % (split, pos),
                                                                         'corresponding_gene_call': corresponding_gene_call,
+                                                                        'codon_order_in_gene': codon_order_in_gene,
                                                                         'split_name': split}
                     self.variable_nts_table[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
