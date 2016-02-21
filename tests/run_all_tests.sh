@@ -120,12 +120,11 @@ anvi-gen-variability-profile -c test-output/CONTIGS.db \
                              --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt \
                              -o test-output/variability_Bin_1_ALT.txt
 
-
 INFO "Generating amino acid frequencies for gene caller id 3 in 204-6M.bam ..."
-anvi-get-aa-frequencies -i test-output/204-6M.bam -c test-output/CONTIGS.db --gene-caller-id 3 -o AA_frequencies_for_gene_caller_id_3.txt
+anvi-get-aa-frequencies -i test-output/204-6M.bam -c test-output/CONTIGS.db --gene-caller-id 3 -o test-output/AA_frequencies_for_gene_caller_id_3.txt
 
 INFO "Getting back the sequence for gene call 3 ..."
-anvi-get-sequences-for-gene-calls -c CONTIGS.db --gene-caller-ids 3 -o Sequence_for_gene_caller_id_3.fa
+anvi-get-sequences-for-gene-calls -c test-output/CONTIGS.db --gene-caller-ids 3 -o test-output/Sequence_for_gene_caller_id_3.fa
 
 INFO "Get sequences for HMM hits for a bin in a collection ..."
 anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
@@ -133,8 +132,14 @@ anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-out
 INFO "Generate a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
 
-INFO "Get linkmers from 204-6M.bam for contig 1720, position 600 and 661"
-anvi-report-linkmers --contigs-and-positions contigs_and_positions_for_linkmers.txt -i test-output/204-6M.bam -o test-output/linkmers_for_contig_1720_pos_600_and_661.txt
+INFO "Get linkmers from all BAM files for some distant positions"
+anvi-report-linkmers --contigs-and-positions distant_positions_for_linkmers.txt -i test-output/*.bam -o test-output/distant_linkmers.txt
+
+INFO "Get linkmers from all BAM files for some adjacent positions connected with --only-complete-links"
+anvi-report-linkmers --contigs-and-positions adjacent_positions_for_linkmers.txt -i test-output/*.bam -o test-output/adjacent_linkmers.txt --only-complete-links
+
+INFO "Oligotype linkmers report generated for adjacent nucleotide positions ..."
+anvi-oligotype-linkmers -i test-output/adjacent_linkmers.txt -o test-output/
 
 INFO "Search for functions to get split names with matching genes"
 anvi-search-functions-in-splits -c test-output/CONTIGS.db --search transporter,kinase -o test-output/transporter-hits.txt --verbose
