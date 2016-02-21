@@ -10,6 +10,7 @@ import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.dictio as dictio
+import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
 import anvio.constants as constants
@@ -108,6 +109,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
 
+        # following variable will be populated while the variable positions table is computed
+        self.codons_in_genes_to_profile_AA_frequencies = set([])
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
@@ -188,6 +191,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_serialized_profile()
 
         self.generate_variabile_positions_table()
+        self.profile_AA_frequencies()
         self.generate_gene_coverages_table()
         self.store_split_coverages()
 
@@ -209,7 +213,56 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
 
+        self.bam.close()
         self.run.quit()
+
+
+    def profile_AA_frequencies(self):
+        if self.skip_SNV_profiling or self.skip_AA_frequencies:
+            # there is nothing to generate really..
+            self.run.info('AA_frequencies_table', False, quiet = True)
+            return
+
+        self.progress.new('Computing AA frequencies at variable positions')
+
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+
+        aa_frequencies = bamops.AAFrequencies()
+
+        codons_in_genes_to_profile_AA_frequencies_dict = {}
+        for gene_call_id, codon_order in self.codons_in_genes_to_profile_AA_frequencies:
+            if not codons_in_genes_to_profile_AA_frequencies_dict.has_key(gene_call_id):
+                codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id] = set([])
+            codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
+
+        gene_caller_ids_to_profile = codons_in_genes_to_profile_AA_frequencies_dict.keys()
+        num_gene_caller_ids_to_profile = len(gene_caller_ids_to_profile)
+
+        for i in range(0, len(gene_caller_ids_to_profile)):
+            gene_caller_id = gene_caller_ids_to_profile[i]
+            codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
+
+            self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
+                                % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
+    
+            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            contig_name = gene_call['contig']
+            aa_frequencies_dict = aa_frequencies.process_gene_call(self.bam, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
+
+            for codon_order in aa_frequencies_dict:
+                e = aa_frequencies_dict[codon_order]
+
+                db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_caller_id}
+                db_entry['consensus'] = e['consensus']
+                db_entry['coverage'] = e['coverage']
+                db_entry['codon_order_in_gene'] = codon_order
+                for aa in constants.codon_to_AA.values():
+                    db_entry[aa] = e['frequencies'][aa]
+
+                variable_aas_table.append(db_entry)
+
+        variable_aas_table.store()
+        self.progress.end()
 
 
     def generate_variabile_positions_table(self):
@@ -218,14 +271,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.info('variable_nts_table', False, quiet = True)
             return
 
+        self.progress.new('NT Variability')
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
 
-        self.progress.new('Storing variability information')
         for contig in self.contigs.values():
-            # learn about gene start stops, because we want to include which unique gene caller id
-            # is associated with variable nucleotide positions.
-            gene_start_stops_in_contig = self.contig_name_to_genes[contig.name]
-
             for split in contig.splits:
                 for column_profile in split.column_profiles.values():
                     # let's figure out more about this particular variable position
@@ -233,23 +282,32 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     column_profile['in_partial_gene_call'], \
                     column_profile['in_complete_gene_call'],\
-                    column_profile['pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
+                    column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
 
                     column_profile['sample_id'] = self.sample_id
                     column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
                                                                    # nt position, which will be updated in the following lines.
                                                                    # yeah, we use '-1', because genecaller ids start from 0 :/
+                    column_profile['codon_order_in_gene'] = -1
 
-                    # if this particular position (`pos_in_contig`) falls within a complete or partial gene call,
+                    # if this particular position (`pos_in_contig`) falls within a COMPLETE gene call,
                     # we would like to find out which unique gene caller id(s) match to this position.
-                    if column_profile['in_partial_gene_call'] or column_profile['in_complete_gene_call']:
-                        corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
+                    if column_profile['in_complete_gene_call']:
+                        corresponding_gene_caller_ids = self.get_corresponding_gene_caller_ids_for_base_position(contig.name, pos_in_contig)
 
                         # if there are more than one corresponding gene call, this usually indicates an assembly error
                         # just to be on the safe side, we will not report a corresopnding unique gene callers id for this
                         # position
-                        if len(corresponding_gene_calls) == 1:
-                            column_profile['corresponding_gene_call'] = corresponding_gene_calls[0]
+                        if len(corresponding_gene_caller_ids) == 1:
+                            # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
+                            # first, we will store the gene_caller_id that corresponds to this nt position, and then we will store the
+                            # order of the corresponding codon in the gene for this nt position.
+                            gene_caller_id = corresponding_gene_caller_ids[0]
+                            column_profile['corresponding_gene_call'] = gene_caller_id 
+                            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_caller_id, contig.name, pos_in_contig)
+
+                            # save this information for later use
+                            self.codons_in_genes_to_profile_AA_frequencies.add((gene_caller_id, column_profile['codon_order_in_gene']),)
 
                     variable_nts_table.append(column_profile)
 
@@ -409,22 +467,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        try:
-            self.bam = pysam.Samfile(self.input_file_path, 'rb')
-        except ValueError as e:
-            self.progress.end()
-            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_file_path, e)
+        self.bam = bamops.BAMFileObject(self.input_file_path, run = self.run, progress = self.progress).get()
+        self.num_reads_mapped = self.bam.mapped
         self.progress.end()
 
         self.contig_names = self.bam.references
         self.contig_lengths = self.bam.lengths
 
         utils.check_contig_names(self.contig_names)
-
-        try:
-            self.num_reads_mapped = self.bam.mapped
-        except ValueError:
-            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
 
         runinfo = self.generate_output_destination('RUNINFO')
         self.run.init_info_file_obj(runinfo)
@@ -554,9 +604,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             if not self.skip_SNV_profiling:
                 contig.analyze_auxiliary(self.bam, self.progress)
-
-            if not self.skip_AA_frequencies:
-                print self.contig_name_to_genes[contig_name]
 
             self.progress.end()
 
