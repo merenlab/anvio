@@ -3,6 +3,8 @@
 
    The default client is `anvi-report-linkmers`"""
 
+from __future__ import division
+
 import os
 import sys
 import pysam
@@ -75,6 +77,7 @@ class AAFrequencies:
             nt_positions = codon_order_to_nt_positions[codon_order]
 
             consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
+
             # if concensus sequence contains shitty characters, we will not continue
             if consensus_codon_sequence not in codon_to_AA:
                 continue
@@ -95,15 +98,26 @@ class AAFrequencies:
                 hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
 
             nt_frequencies = Counter(hash_to_oligotype.values())
+            aa_frequencies = Counter({})
 
-            if gene_call['direction'] == 'r':
-                frequencies = Counter(dict([(codon_to_AA_RC[nt], nt_frequencies[nt]) for nt in nt_frequencies]))
-                consensus_codon_AA = codon_to_AA[utils.rev_comp(consensus_codon_sequence)]
-            else:
-                frequencies = Counter(dict([(codon_to_AA[nt], nt_frequencies[nt]) for nt in nt_frequencies]))
-                consensus_codon_AA = codon_to_AA[consensus_codon_sequence]
+            # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
+            conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
 
-            d[codon_order] = {'consensus': consensus_codon_AA, 'coverage': sum(frequencies.values()), 'frequencies': frequencies}
+            consensus_codon_AA = conv_dict[consensus_codon_sequence]
+            for nt in nt_frequencies:
+                aa_frequencies[conv_dict[nt]] += nt_frequencies[nt]
+
+            coverage = sum(aa_frequencies.values())
+
+            # here we quantify the ratio of frequencies of non-consensus-aas observed in this codon
+            # to the overall overage, and that is our `departure_from_consensus`:
+            total_frequency_of_all_codons_but_the_conensus = sum([aa_frequencies[aa] for aa in aa_frequencies if aa != consensus_codon_AA])
+            departure_from_consensus = total_frequency_of_all_codons_but_the_conensus / coverage
+
+            d[codon_order] = {'consensus': consensus_codon_AA,
+                              'coverage': coverage,
+                              'frequencies': aa_frequencies,
+                              'departure_from_consensus': departure_from_consensus}
 
         return d
 
