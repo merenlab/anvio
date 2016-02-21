@@ -112,6 +112,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
+
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
             raise ConfigError, "You can not run profiling without a contigs database. You can create\
@@ -130,6 +131,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
+        if self.skip_SNV_profiling:
+            self.skip_AA_frequencies = True
+
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
                        'sample_id': self.sample_id,
@@ -146,13 +150,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'gene_coverages_computed': self.a_meta['genes_are_called']}
         profile_db.create(meta_values)
 
+        self.progress.end()
+
         if self.skip_SNV_profiling:
             self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
 
         if self.skip_AA_frequencies:
             self.run.warning('Amino acid linkmer ferquencies will not be characterized for this profile.')
-
-        self.progress.end()
 
 
     def _run(self):
@@ -263,6 +267,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_aas_table.store()
         self.progress.end()
+        self.run.info('AA_frequencies_table', True, quiet = True)
 
 
     def generate_variabile_positions_table(self):
