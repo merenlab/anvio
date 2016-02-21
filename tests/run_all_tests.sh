@@ -120,6 +120,13 @@ anvi-gen-variability-profile -c test-output/CONTIGS.db \
                              --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt \
                              -o test-output/variability_Bin_1_ALT.txt
 
+
+INFO "Generating amino acid frequencies for gene caller id 3 in 204-6M.bam ..."
+anvi-get-aa-frequencies -i test-output/204-6M.bam -c test-output/CONTIGS.db --gene-caller-id 3 -o AA_frequencies_for_gene_caller_id_3.txt
+
+INFO "Getting back the sequence for gene call 3 ..."
+anvi-get-sequences-for-gene-calls -c CONTIGS.db --gene-caller-ids 3 -o Sequence_for_gene_caller_id_3.fa
+
 INFO "Get sequences for HMM hits for a bin in a collection ..."
 anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
 
