@@ -29,14 +29,15 @@ function createBin(parent, bin_id) {
 
 //--------------------------------------------------------------------------------------------------
 function drawTitle(top, left, settings) {
-    top -= 250;
-    drawText('viewport', {'x': left, 'y': top}, document.title, '160px', 'center');
-    top += 130;
+    var _font_size = (total_radius / 25);
+    top -= 3 * _font_size;
+    drawText('viewport', {'x': left, 'y': top}, document.title, 2 * _font_size + 'px', 'center');
+    top += 2 * _font_size;
     var _sub_title = "Tree order: " + settings['order-by'] + " | ";
     _sub_title    += "Current view: " + settings['current-view'] + " | ";
     _sub_title    += "Sample order: " + settings['samples-order'];
 
-    drawText('viewport', {'x': left, 'y': top}, _sub_title, '72px', 'center');
+    drawText('viewport', {'x': left, 'y': top}, _sub_title, _font_size + 'px', 'center');
 }
 
 //--------------------------------------------------------------------------------------------------
