@@ -117,8 +117,6 @@ $(document).ready(function() {
         "hideMethod": "fadeOut",
     }
 
-    waitingDialog.show('Loading the interface ...', {dialogSize: 'sm'});
-
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram') 
         {
@@ -327,46 +325,53 @@ function onViewChange() {
     $('#views_container').prop('disabled', false);
     $('#btn_draw_tree').prop('disabled', true);
 
-    waitingDialog.show('Requesting view data from the server ...', {dialogSize: 'sm', onHide: function() {defer.resolve(); }});
+    waitingDialog.show('Requesting view data from the server ...', 
+        {
+            dialogSize: 'sm', 
+            onHide: function() {
+                defer.resolve(); 
+            },
+            onShow: function() {
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
+                    success: function(data) {
+                        layerdata = eval(data);
+                        parameter_count = layerdata[0].length;
 
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            layerdata = eval(data);
-            parameter_count = layerdata[0].length;
+                        // since we are painting parent layers odd-even, 
+                        // we should remove single parents (single means no parent)
+                        removeSingleParents(); // in utils.js
 
-            // since we are painting parent layers odd-even, 
-            // we should remove single parents (single means no parent)
-            removeSingleParents(); // in utils.js
+                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                        layer_types = {};
 
-            layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-            layer_types = {};
+                        // add layerdata columns to search window
+                        $('#searchLayerList').empty();
+                        for (var i=0; i < layerdata[0].length; i++)
+                        {
+                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
+                        }
 
-            // add layerdata columns to search window
-            $('#searchLayerList').empty();
-            for (var i=0; i < layerdata[0].length; i++)
-            {
-                $('#searchLayerList').append(new Option(layerdata[0][i],i));
-            }
+                        $('#views_container').attr('disabled', false);
+                        $('#btn_draw_tree').attr('disabled', false);
 
-            $('#views_container').attr('disabled', false);
-            $('#btn_draw_tree').attr('disabled', false);
+                        if (current_view != '') {
+                            // backup current layer order and layers table to global views object
+                            syncViews();
+                        }
+                        current_view = $('#views_container').val();
 
-            if (current_view != '') {
-                // backup current layer order and layers table to global views object
-                syncViews();
-            }
-            current_view = $('#views_container').val();
+                        $("#tbody_layers").empty();
 
-            $("#tbody_layers").empty();
+                        buildLayersTable(layer_order, views[current_view]);  
 
-            buildLayersTable(layer_order, views[current_view]);  
-
-            waitingDialog.hide();
-        }
-    });
+                        waitingDialog.hide();
+                    }
+                });
+            },
+        });
 
     return defer.promise();
 }
@@ -377,20 +382,26 @@ function onTreeClusteringChange() {
     $('#trees_container').prop('disabled', true);
     $('#btn_draw_tree').prop('disabled', true);
 
-    waitingDialog.show('Requesting the tree data ...', {dialogSize: 'sm', onHide: function() { defer.resolve(); }});
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            newick = data;
-            $('#trees_container').attr('disabled', false);
-            $('#btn_draw_tree').attr('disabled', false); 
-
-            waitingDialog.hide();
-        }
-    });
+    waitingDialog.show('Requesting the tree data ...', 
+        {
+            dialogSize: 'sm', 
+            onHide: function() { 
+                defer.resolve(); 
+            },
+            onShow: function() {    
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
+                    success: function(data) {
+                        newick = data;
+                        $('#trees_container').attr('disabled', false);
+                        $('#btn_draw_tree').attr('disabled', false); 
+                        waitingDialog.hide();
+                    }
+                });
+            },
+        });
 
     return defer.promise();
 }
@@ -905,32 +916,34 @@ function drawTree() {
     $('#mouse_tooltips_tab').removeClass("disabled"); // enable bins tab
     $('#search_panel_tab').removeClass("disabled"); // enable bins tab
 
-    waitingDialog.show('Drawing ...', {dialogSize: 'sm'});
 
     // clear existing diagram, if any
     document.getElementById('svg').innerHTML = "";
 
-    setTimeout(function () 
-        { 
-            draw_tree(settings); // call treelib.js where the magic happens
+    waitingDialog.show('Drawing ...', 
+        {
+            dialogSize: 'sm',
+            onShow: function() {
+                draw_tree(settings); // call treelib.js where the magic happens
 
-            // last_settings used in export svg for layer information,
-            // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
-            // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
-            last_settings = serializeSettings();
+                // last_settings used in export svg for layer information,
+                // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
+                // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
+                last_settings = serializeSettings();
 
-            redrawBins();
+                redrawBins();
 
-            waitingDialog.hide();
-            $('#btn_draw_tree').prop('disabled', false);
-            $('#btn_redraw_samples').prop('disabled', false);
+                waitingDialog.hide();
+                $('#btn_draw_tree').prop('disabled', false);
+                $('#btn_redraw_samples').prop('disabled', false);
 
-            if (settings['tree-radius'] == 0)
-            {
-                $('#tree-radius-container').show();
-                $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
-            }
-        }, 500); 
+                if (settings['tree-radius'] == 0)
+                {
+                    $('#tree-radius-container').show();
+                    $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
+                }
+            },
+        });
 }
 
 
@@ -1702,163 +1715,174 @@ function loadState()
         state_name = $('#loadState_list').val();
     }
 
-    $.ajax({
-        type: 'POST',
-        cache: false,
-        url: '/state/get?timestamp=' + new Date().getTime(),
-        data: {'name': state_name },
-        success: function(response) {
-            try{
-                var state = JSON.parse(response);
-            }catch(e){
-                toastr.error('Failed to parse state data, ' + e);
-                defer.reject();
-                return;
-            }
-            
-            if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
-            {
-                toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
-                defer.reject();
-                return;
-            }
+    waitingDialog.show('Requesting state data from the server ...', 
+        {
+            dialogSize: 'sm', 
+            onHide: function() {
+                defer.resolve(); 
+            },
+            onShow: function() {
+                $.ajax({
+                        type: 'POST',
+                        cache: false,
+                        url: '/state/get?timestamp=' + new Date().getTime(),
+                        data: {'name': state_name },
+                        success: function(response) {
+                            try{
+                                var state = JSON.parse(response);
+                            }catch(e){
+                                toastr.error('Failed to parse state data, ' + e);
+                                defer.reject();
+                                return;
+                            }
+                            
+                            if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
+                            {
+                                toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                                defer.reject();
+                                return;
+                            }
 
-            if (state.hasOwnProperty('layer-order')) {
-                layer_order = [];
-                for (var i = 0; i < state['layer-order'].length; i++)
-                {
-                    // remove non-exists layers.
-                    var layer_id = getLayerId(state['layer-order'][i]);
+                            if (state.hasOwnProperty('layer-order')) {
+                                layer_order = [];
+                                for (var i = 0; i < state['layer-order'].length; i++)
+                                {
+                                    // remove non-exists layers.
+                                    var layer_id = getLayerId(state['layer-order'][i]);
 
-                    if (layer_id != -1)
-                    {
-                        layer_order.push(layer_id);
-                    }
-                }
+                                    if (layer_id != -1)
+                                    {
+                                        layer_order.push(layer_id);
+                                    }
+                                }
 
-                // add layers that not exist in state and exist in layerdata
-                for (var i=1; i < parameter_count; i++)
-                {
-                    if ($.inArray(i, layer_order) === -1)
-                    {
-                        layer_order.push(i);
-                    }
-                }
+                                // add layers that not exist in state and exist in layerdata
+                                for (var i=1; i < parameter_count; i++)
+                                {
+                                    if ($.inArray(i, layer_order) === -1)
+                                    {
+                                        layer_order.push(i);
+                                    }
+                                }
 
-            } else {
-                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-            }
+                            } else {
+                                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                            }
 
-            if (state.hasOwnProperty('views')) {
-                views = {};
-                for (var view_key in state['views'])
-                {
-                    views[view_key] = {};
-                    for (var key in state['views'][view_key])
-                    {
-                        var layer_id = getLayerId(key);
-                        if (layer_id != -1)
-                        {
-                            views[view_key][layer_id] = state['views'][view_key][key];
+                            if (state.hasOwnProperty('views')) {
+                                views = {};
+                                for (var view_key in state['views'])
+                                {
+                                    views[view_key] = {};
+                                    for (var key in state['views'][view_key])
+                                    {
+                                        var layer_id = getLayerId(key);
+                                        if (layer_id != -1)
+                                        {
+                                            views[view_key][layer_id] = state['views'][view_key][key];
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('layers')) {
+                                layers = {};
+                                for (var key in state['layers'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        layers[layer_id] = state['layers'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('categorical_data_colors')) {
+                                categorical_data_colors = {};
+                                for (var key in state['categorical_data_colors'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('stack_bar_colors')) {
+                                stack_bar_colors = {};
+                                for (var key in state['stack_bar_colors'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('tree-type'))
+                                $('#tree_type').val(state['tree-type']);
+                            if (state.hasOwnProperty('angle-min'))
+                                $('#angle-min').val(state['angle-min']);
+                            if (state.hasOwnProperty('tree-height'))
+                                $('#tree_height').val(state['tree-height']);
+                            if (state.hasOwnProperty('tree-width'))
+                                $('#tree_width').val(state['tree-width']);
+                            if (state.hasOwnProperty('angle-max'))
+                                $('#angle-max').val(state['angle-max']);
+                            if (state.hasOwnProperty('tree-radius')) {
+                                $('#tree-radius-container').show();
+                                $('#tree-radius').val(state['tree-radius']);
+                            }
+                            if (state.hasOwnProperty('max-font-size')) {
+                                $('#max_font_size').val(state['max-font-size']);
+                            }
+                            if (state.hasOwnProperty('layer-margin'))
+                                $('#layer-margin').val(state['layer-margin']);
+                            if (state.hasOwnProperty('outer-ring-height'))
+                                $('#outer-ring-height').val(state['outer-ring-height']);
+                            if (state.hasOwnProperty('edge-normalization'))
+                                $('#edge_length_normalization').prop('checked', state['edge-normalization']);
+                            if (state.hasOwnProperty('custom-layer-margin')) {
+                                $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('grid-color')) {
+                                $('#grid_color').attr('color', state['grid-color']);
+                                $('#grid_color').css('background-color', state['grid-color']);
+                            }
+                            if (state.hasOwnProperty('grid-width')) {
+                                $('#grid_width').val(state['grid-width']);
+                            }
+                            if (state.hasOwnProperty('show-grid-for-bins')) {
+                                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+                                redrawBins();
+                            }
+
+                            // reload layers
+                            var current_view = $('#views_container').val();
+                            $("#tbody_layers").empty();
+
+                            if (state.hasOwnProperty('samples-categorical-colors'))
+                                samples_categorical_colors = state['samples-categorical-colors']; 
+                            if (state.hasOwnProperty('samples-stack-bar-colors'))
+                                samples_stack_bar_colors = state['samples-stack-bar-colors']; 
+
+
+                            buildLayersTable(layer_order, views[current_view]);
+                            buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+                            current_state_name = state_name;
+                            $('#current_state').html('[current state: ' + current_state_name + ']');
+
+                            toastr.success("State '" + current_state_name + "' successfully loaded.");
+                            waitingDialog.hide();
                         }
-                    }
-                }
-            }
-
-            if (state.hasOwnProperty('layers')) {
-                layers = {};
-                for (var key in state['layers'])
-                {
-                    var layer_id = getLayerId(key);
-                    if (layer_id != -1)
-                    {
-                        layers[layer_id] = state['layers'][key];
-                    }
-                }
-            }
-
-            if (state.hasOwnProperty('categorical_data_colors')) {
-                categorical_data_colors = {};
-                for (var key in state['categorical_data_colors'])
-                {
-                    var layer_id = getLayerId(key);
-                    if (layer_id != -1)
-                    {
-                        categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
-                    }
-                }
-            }
-
-            if (state.hasOwnProperty('stack_bar_colors')) {
-                stack_bar_colors = {};
-                for (var key in state['stack_bar_colors'])
-                {
-                    var layer_id = getLayerId(key);
-                    if (layer_id != -1)
-                    {
-                        stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
-                    }
-                }
-            }
-
-            if (state.hasOwnProperty('tree-type'))
-                $('#tree_type').val(state['tree-type']);
-            if (state.hasOwnProperty('angle-min'))
-                $('#angle-min').val(state['angle-min']);
-            if (state.hasOwnProperty('tree-height'))
-                $('#tree_height').val(state['tree-height']);
-            if (state.hasOwnProperty('tree-width'))
-                $('#tree_width').val(state['tree-width']);
-            if (state.hasOwnProperty('angle-max'))
-                $('#angle-max').val(state['angle-max']);
-            if (state.hasOwnProperty('tree-radius')) {
-                $('#tree-radius-container').show();
-                $('#tree-radius').val(state['tree-radius']);
-            }
-            if (state.hasOwnProperty('max-font-size')) {
-                $('#max_font_size').val(state['max-font-size']);
-            }
-            if (state.hasOwnProperty('layer-margin'))
-                $('#layer-margin').val(state['layer-margin']);
-            if (state.hasOwnProperty('outer-ring-height'))
-                $('#outer-ring-height').val(state['outer-ring-height']);
-            if (state.hasOwnProperty('edge-normalization'))
-                $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-            if (state.hasOwnProperty('custom-layer-margin')) {
-                $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-            }
-            if (state.hasOwnProperty('grid-color')) {
-                $('#grid_color').attr('color', state['grid-color']);
-                $('#grid_color').css('background-color', state['grid-color']);
-            }
-            if (state.hasOwnProperty('grid-width')) {
-                $('#grid_width').val(state['grid-width']);
-            }
-            if (state.hasOwnProperty('show-grid-for-bins')) {
-                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-                redrawBins();
-            }
-
-            // reload layers
-            var current_view = $('#views_container').val();
-            $("#tbody_layers").empty();
-
-            if (state.hasOwnProperty('samples-categorical-colors'))
-                samples_categorical_colors = state['samples-categorical-colors']; 
-            if (state.hasOwnProperty('samples-stack-bar-colors'))
-                samples_stack_bar_colors = state['samples-stack-bar-colors']; 
-
-
-            buildLayersTable(layer_order, views[current_view]);
-            buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-
-            current_state_name = state_name;
-            $('#current_state').html('[current state: ' + current_state_name + ']');
-
-            toastr.success("State '" + current_state_name + "' successfully loaded.");
-            defer.resolve();
+                    });
+            },
         }
-    });
+    );
+    
 
     return defer.promise();
 }
