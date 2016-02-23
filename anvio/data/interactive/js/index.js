@@ -36,7 +36,7 @@ function initContent () {
 	type : 'GET',
 	processData: false,
 	contentType: false,
-	complete : function(jqXHR) {
+	success : function(jqXHR) {
 	    var r = JSON.parse(jqXHR.responseText);
 	    if (r.status == 'error') {
 		toastr.error(r.message);
@@ -66,6 +66,9 @@ function initContent () {
 
 	    // add the content of the info section
 	    document.getElementById('projectInfo').innerHTML = '<button style="float: right;" class="btn btn-info btn-sm" title="open project information" onclick="$(\'#modProjectInfo\').modal(\'show\');"><i class="glyphicon glyphicon-info-sign"></i></button><span style="font-weight: bold;">'+pdata.name + '</span><br/><i>by '+pdata.user+'</i>';
+	},
+	error: function(jqXHR) {
+	    document.getElementById('multiUser').style.display = 'none';
 	}
     });
 };
