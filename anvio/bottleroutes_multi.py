@@ -134,6 +134,10 @@ def set_view_cookie(request, userdb, response, login, name, private):
     
     static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
     response = static_file('index.html', root=static_dir)
+
+    if not userdb.view_exists(login, name):
+        redirect('/app/error.html?err=404')
+        return
     
     if private:
         if not request.query.code:
