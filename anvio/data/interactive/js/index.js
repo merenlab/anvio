@@ -52,8 +52,8 @@ function initContent () {
 	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;">'+pdata.description+'</p>');
 
 	    // project files
-	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files</p>');
-	    fields = Object.keys(pdata.files).sort();
+	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files<button class="btn btn-default" style="float: right; position: relative; bottom: 5px;" title="download all project files" onclick="downloadProjectZIP();"><i class="glyphicon glyphicon-floppy-save"></i></button></p>');
+	    var fields = Object.keys(pdata.files).sort();
 	    for (var i=0; i<fields.length; i++) {
 		if (pdata.files[fields[i]]) {
 		    html.push('<li style="cursor: pointer;font-family: \'PT Serif\',serif; font-size: 14px;" class="list-group-item" title="download this file" onclick="saveAs(pdata.files.'+fields[i]+', \''+fields[i]+'.txt\')">'+fields[i]+'<i style="float: right; margin-right: 10px;" class="glyphicon glyphicon-floppy-save"></i></li>');
@@ -72,4 +72,15 @@ function initContent () {
 	    document.getElementById('sidebar').style.marginTop = "43px";
 	}
     });
+};
+
+function downloadProjectZIP() {
+    var zip = new JSZip();
+    var fields = Object.keys(pdata.files).sort();
+    for (var i=0; i<fields.length; i++) {
+	if (pdata.files[fields[i]]) {
+	    zip.file(pdata.name+"/"+fields[i]+".txt", pdata.files[fields[i]]);
+	}
+    }
+    saveAs('data:application/zip;base64,'+zip.generate({type:"base64"}), pdata.name+".zip", true);
 };
