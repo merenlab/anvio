@@ -607,7 +607,7 @@ class UserMGMT:
             return { 'status': 'ok', 'message': None, 'data': project }
         else:
             return { 'status': 'error', 'message': "project not found", 'data': None }
-
+        
     def set_project(self, user, pname):
         if not user:
             return { 'status': 'error', 'message': "You must pass a user to set the project", 'data': None }
@@ -884,6 +884,20 @@ class UserMGMT:
         self.users_db.execute("INSERT INTO views (name, user, project, public, token) values (?, ?, ?, ?, ?)", (vname, user['login'], pname, public, token, ))
 
         return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'user': user['login'], 'name': vname, 'token': token, 'public': public } }
+
+    def view_exists(self, login, viewname):
+        if not login:
+            return False
+
+        if not viewname:
+            return False
+
+        view = self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (login, viewname, ))
+
+        if view:
+            return True
+        else:
+            return False
 
 
     ######################################
