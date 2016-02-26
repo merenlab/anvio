@@ -14,6 +14,9 @@ from bottle import redirect, static_file
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.terminal as terminal
+
+run = terminal.Run()
 
 def set_default_headers(response):
     response.set_header('Content-Type', 'application/json')
@@ -154,6 +157,14 @@ def get_current_project(request, userdb, response):
     return json.dumps(userdb.get_current_project(request))
 
 
+def debug(source, request):
+    run.warning(None, header=source)
+    run.warning(request.forms.dict, 'Forms', lc = 'yellow')
+    run.warning(request.files.dict, 'Files', lc = 'yellow')
+    run.warning(request.headers.items(), 'Headers', lc = 'yellow')
+    run.warning(request.method, 'Method', lc = 'yellow')
+
+
 def delete_project(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.delete_project(get_user(request, userdb, response), request.forms.get('project'), request.forms.get('user')))
@@ -182,11 +193,12 @@ def receive_upload_file(request, userdb, response):
     if not user:
         return '{ "status": "error", "message": "you need to be logged in to create a project", "data": null }'
     
-    if not request.forms.get('title'):
-        return '{ "status": "error", "message": "a title is required to create a project", "data": null }'
 
     if not request.files.get('treeFile'):
         return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
+
+    if not request.forms.get('title'):
+        return '{ "status": "error", "message": "a title is required to create a project", "data": null }'
 
     if not request.files.get('dataFile'):
         return '{ "status": "error", "message": "you need to upload a data file", "data": null }'
