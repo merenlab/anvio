@@ -53,7 +53,7 @@ D = {
                 ),
     'additional-view': (
             ['-V', '--additional-view'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'ADDITIONAL_VIEW',
              'help': "A TAB-delimited file for an additional view to be used in the interface. This\
                       file file should contain all split names, and values for each of them in all\
                       samples. Each column in this file must correspond to a sample name. Content\
@@ -67,7 +67,7 @@ D = {
                 ),
     'samples-information': (
             ['-D', '--samples-information'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'SAMPLES-INFO',
              'help': "A TAB-delimited file with information about samples in your dataset. Each row in this\
                       file must correspond to a sample name. Each column must contain a unique attribute.\
                       Please refer to the documentation to learn more about the structure and purpose of\
@@ -75,7 +75,7 @@ D = {
                 ),
     'samples-order': (
             ['-R', '--samples-order'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'SAMPLES-ORDER',
              'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
                       the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
                       tree structurei that describes the organization of each sample. Anvi'o will look for a\
@@ -154,7 +154,7 @@ D = {
                 ),
     'view-data': (
             ['-d', '--view-data'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'VIEW_DATA',
              'help': "A TAB-delimited file for view data"}
                 ),
     'tree': (
@@ -164,7 +164,7 @@ D = {
                 ),
     'additional-layers': (
             ['-A', '--additional-layers'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'ADDITIONAL_LAYERS',
              'help': "A TAB-delimited file for additional layers for splits. The first column of this file\
                       must be split names, and the remaining columns should be unique attributes.\
                       The file does not need to contain all split names, or values for each split in\
@@ -529,6 +529,13 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
+    'host': (
+            ['--host'],
+            {'metavar': 'HOST_NAME',
+             'type': str,
+             'default': None,
+             'help': "Host name for an anvi'server."}
+                ),
     'port-number': (
             ['-P', '--port-number'],
             {'metavar': 'INT',
@@ -536,6 +543,13 @@ D = {
              'type': int,
              'help': "Port number to use for communication. If nothing is declared, anvi'o will try to find\
                       a suitable port number."}
+                ),
+    'user': (
+            ['--user'],
+            {'metavar': 'USERNAME',
+             'default': None,
+             'type': str,
+             'help': "The user for an anvi'server."}
                 ),
     'read-only': (
             ['--read-only'],
@@ -569,7 +583,7 @@ D = {
                 ),
     'bins-info': (
             ['--bins-info'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'BINS_INFO',
              'help': "Additional information for bins. The file must contain three TAB-delimited columns,\
                       where the first one must be a unique bin name, the second should be a 'source', and the\
                       last one should be a 7 character HTML color code (i.e., '#424242'). Source column must\
@@ -594,6 +608,11 @@ D = {
                       and without spaces) that is unique (considering all others). If you do not\
                       provide one, anvi'o will try to make up one for you based on other information,\
                       although, you should never let the software to decide these things)."}
+                ),
+    'project-name': (
+            ['-J', '--project-name'],
+            {'metavar': 'PROJECT_NAME',
+             'help': "Name of the project. Please choose a short but descriptive name."}
                 ),
     'skip-hierarchical-clustering': (
             ['--skip-hierarchical-clustering'],
@@ -627,6 +646,12 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Overwrite if the output files and/or directories exist."}
+                ),
+    'delete-if-exists': (
+            ['--delete-if-exists'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Be bold (at your own risk), and delete if exists."}
                 ),
     'report-variability-full': (
             ['--report-variability-full'],
@@ -697,7 +722,7 @@ D = {
                 ),
     'contigs-and-positions': (
             ['--contigs-and-positions'],
-            {'metavar': 'TAB_DELIM_FILE',
+            {'metavar': 'CONTIGS_AND_POS',
              'required': True,
              'help': "This is the file where you list the contigs, and nucleotide positions you are interested in. This\
                       is supposed to be a TAB-delimited file with two columns. In each line, the first column should be\
