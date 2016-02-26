@@ -626,7 +626,7 @@ class UserMGMT:
             self.users_db.execute("UPDATE users SET project=? WHERE login=?", (pname, user['login'], ))
             return { 'status': 'ok', 'message': "project set", 'data': None }
         else:
-            return { 'status': 'ok', 'message': "the user does not own this project", 'data': None }
+            return { 'status': 'error', 'message': "the user does not own this project", 'data': None }
 
 
     def delete_project(self, user, pname, uname=None):
