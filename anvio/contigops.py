@@ -216,6 +216,7 @@ class AtomicContigSplitData:
 
     def store_atomic_data_for_contigs_and_splits(self, sample_id, contigs, db):
         self.progress.new('Storing atomic_data')
+        self.progress.update('...')
 
         num_contigs = pp(len(contigs))
         cur_contig = 1
@@ -224,7 +225,8 @@ class AtomicContigSplitData:
         # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
         # although it looks crappy:
         for contig_name in contigs:
-            self.progress.update("Processing contig %s of %s" % (pp(cur_contig), num_contigs))
+            if cur_contig % 10 == 0:
+                self.progress.update("Processing contig %s of %s" % (pp(cur_contig), num_contigs))
             contig = contigs[contig_name]
             contig_atomic_data = contig.get_atomic_data_dict()
 
@@ -238,6 +240,8 @@ class AtomicContigSplitData:
                 self.atomic_data_splits[split.name] = {'contig': split.name}
                 for atomic_data_field in t.atomic_data_table_structure[1:]:
                     self.atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
+
+            cur_contig += 1
 
 
         self.progress.update("Generating tables ...")
