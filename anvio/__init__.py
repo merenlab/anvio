@@ -359,7 +359,7 @@ D = {
     'min-scatter': (
             ['-m', '--min-scatter'],
             {'metavar': 'INT',
-             'default': 1,
+             'default': 0,
              'type': int,
              'help': "This one is tricky. If you have N samples in your dataset, a given variable position x in one\
                       of your splits can split your N samples into `t` groups based on the identity of the\
@@ -374,7 +374,7 @@ D = {
                       than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
                       of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
                       position would not be reported in your output matrix. The default value for -m is\
-                      %(default)d, which means every x found in the database and survived previous filtering\
+                      %(default)d, which means every `x` found in the database and survived previous filtering\
                       criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
                       Please refer to the user documentation if this is confusing."}
                 ),
