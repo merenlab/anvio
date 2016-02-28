@@ -478,7 +478,7 @@ function buildLayersTable(order, settings)
         short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
-        if (typeof settings !== 'undefined') {
+        if (typeof settings !== 'undefined' && typeof settings[layer_id] !== 'undefined') {
             var view_settings = settings[layer_id];
             var hasViewSettings = true;
         }
