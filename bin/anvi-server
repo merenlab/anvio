@@ -266,7 +266,7 @@ def send_data(name):
                              "views": (d.default_view, available_views),
                              "contigLengths": split_lengths,
                              "defaultView": d.views[d.default_view],
-                             "mode": "full",
+                             "mode": "server",
                              "readOnly": args.read_only,
                              "binPrefix": "Bin_",
                              "sessionId": 1,
