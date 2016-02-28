@@ -29,4 +29,5 @@ function showError () {
     document.getElementById('error').innerHTML = errors[errNo];
 };
 
-var errors = { '401': "You are not authorized to see the content of this page" };
+var errors = { '401': "You are not authorized to see the content of this page",
+	       '404': "The content you are looking for was not found" };

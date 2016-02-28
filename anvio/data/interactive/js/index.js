@@ -36,13 +36,12 @@ function initContent () {
 	type : 'GET',
 	processData: false,
 	contentType: false,
-	success : function(jqXHR) {
-	    var r = JSON.parse(jqXHR.responseText);
-	    if (r.status == 'error') {
-		toastr.error(r.message);
+	success : function(data) {
+	    if (data.status == 'error') {
+		toastr.error(data.message);
 		return;
 	    }
-	    window.pdata = r.data;
+	    window.pdata = data.data;
 
 	    // create the HTML for the modal
 	    var html = [];
@@ -53,8 +52,8 @@ function initContent () {
 	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;">'+pdata.description+'</p>');
 
 	    // project files
-	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files</p>');
-	    fields = Object.keys(pdata.files).sort();
+	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files<button class="btn btn-default" style="float: right; position: relative; bottom: 5px;" title="download all project files" onclick="downloadProjectZIP();"><i class="glyphicon glyphicon-floppy-save"></i></button></p>');
+	    var fields = Object.keys(pdata.files).sort();
 	    for (var i=0; i<fields.length; i++) {
 		if (pdata.files[fields[i]]) {
 		    html.push('<li style="cursor: pointer;font-family: \'PT Serif\',serif; font-size: 14px;" class="list-group-item" title="download this file" onclick="saveAs(pdata.files.'+fields[i]+', \''+fields[i]+'.txt\')">'+fields[i]+'<i style="float: right; margin-right: 10px;" class="glyphicon glyphicon-floppy-save"></i></li>');
@@ -66,9 +65,22 @@ function initContent () {
 
 	    // add the content of the info section
 	    document.getElementById('projectInfo').innerHTML = '<button style="float: right;" class="btn btn-info btn-sm" title="open project information" onclick="$(\'#modProjectInfo\').modal(\'show\');"><i class="glyphicon glyphicon-info-sign"></i></button><span style="font-weight: bold;">'+pdata.name + '</span><br/><i>by '+pdata.user+'</i>';
+	    document.getElementById('sidebar').style.marginTop = "86px";
 	},
 	error: function(jqXHR) {
 	    document.getElementById('multiUser').style.display = 'none';
+	    document.getElementById('sidebar').style.marginTop = "43px";
 	}
     });
+};
+
+function downloadProjectZIP() {
+    var zip = new JSZip();
+    var fields = Object.keys(pdata.files).sort();
+    for (var i=0; i<fields.length; i++) {
+	if (pdata.files[fields[i]]) {
+	    zip.file(pdata.name+"/"+fields[i]+".txt", pdata.files[fields[i]]);
+	}
+    }
+    saveAs('data:application/zip;base64,'+zip.generate({type:"base64"}), pdata.name+".zip", true);
 };
