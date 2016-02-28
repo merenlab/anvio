@@ -227,12 +227,20 @@ function initData () {
                 toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser. For the best performance, and to avoid unexpected issues, please consider using anvi'o with the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
 
+            // hide all mode dependent divs:
+            $('.full-mode').hide();
+            $('.server-mode').hide();
+            $('.refine-mode').hide();
+
+            // mode switch:
             if (mode == 'refine')
             {
-                $('.full-mode').hide();
                 $('.refine-mode').show();
-
                 $('#fixed-navbar-div').css('background-color', '#F3A2AD');
+            } else if (mode == 'server') {
+                $('.server-mode').show();
+            } else if (mode == 'full') {
+                $('.full-mode').show();
             }
 
             if (readOnlyResponse[0] == true)
@@ -992,7 +1000,7 @@ function newBin(id, binState) {
         var name = bin_prefix + id;
         var color = randomColor({luminosity: 'dark'});
         var contig_count = 0;
-        var contig_length = 0;
+        var contig_length = "N/A";
         var completeness = '---';
         var redundancy = '---';
 
@@ -1005,7 +1013,7 @@ function newBin(id, binState) {
         var name = binState['name'];
         var color = binState['color'];
         var contig_count = 0;
-        var contig_length = 0;
+        var contig_length = "N/A";
         var completeness = "---";
         var redundancy = "---";
     }
@@ -1134,7 +1142,12 @@ function updateBinsWindow(bin_list) {
         }
 
         $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
-        $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
+
+        // it is likely in manual or server modes lenghts are not going to be available.
+        if (isNaN(length_sum))
+            $('#contig_length_' + bin_id).html('N//A').parent().attr('data-value', 0);
+        else
+            $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
         updateComplateness(bin_id);
         showContigNames(bin_id, true);
@@ -1144,6 +1157,11 @@ function updateBinsWindow(bin_list) {
 }
 
 function updateComplateness(bin_id) {
+    if (mode === 'manual' || mode === 'server'){ 
+        // there is nothing to do here
+        return;
+    }
+
     $.ajax({
         type: "POST",
         url: "/data/completeness",
@@ -1164,6 +1182,7 @@ function updateComplateness(bin_id) {
                 sum_completeness += stats[source]['percent_complete'];
                 sum_redundancy += stats[source]['percent_redundancy'];
             }
+
             average_completeness = sum_completeness / Object.keys(stats).length;
             average_redundancy = sum_redundancy / Object.keys(stats).length;
 
