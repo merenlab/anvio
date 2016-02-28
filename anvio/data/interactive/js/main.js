@@ -181,28 +181,28 @@ function initData () {
     var timestamp = new Date().getTime(); 
 
     $.when(
-	$.ajax({
+    $.ajax({
             type: 'GET',
             cache: false,
             url: '/data/init?timestamp=' + timestamp,
         })
     )
     .then(
-	function (response)
+    function (response)
         {
-	    var titleResponse = [ response.title ];
-	    var clusteringsResponse = [ response.clusterings ];
-	    var viewsResponse = [ response.views ];
-	    var contigLengthsResponse = [ response.contigLengths ];
-	    var defaultViewResponse = [ response.defaultView ];
-	    var modeResponse = [ response.mode ];
-	    var readOnlyResponse = [ response.readOnly ];
-	    var prefixResponse = [ response.binPrefix ];
-	    var sessionIdResponse = [ response.sessionId ];
-	    var samplesOrderResponse = [ response.samplesOrder ];
-	    var sampleInformationResponse = [ response.sampleInformation ];
-	    var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
-	    var stateAutoloadResponse = [ response.stateAutoload ];
+        var titleResponse = [ response.title ];
+        var clusteringsResponse = [ response.clusterings ];
+        var viewsResponse = [ response.views ];
+        var contigLengthsResponse = [ response.contigLengths ];
+        var defaultViewResponse = [ response.defaultView ];
+        var modeResponse = [ response.mode ];
+        var readOnlyResponse = [ response.readOnly ];
+        var prefixResponse = [ response.binPrefix ];
+        var sessionIdResponse = [ response.sessionId ];
+        var samplesOrderResponse = [ response.samplesOrder ];
+        var sampleInformationResponse = [ response.sampleInformation ];
+        var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
+        var stateAutoloadResponse = [ response.stateAutoload ];
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
             unique_session_id = sessionIdResponse[0];
@@ -218,9 +218,9 @@ function initData () {
             $('.menuItemSequence').addClass('menu-disabled');
         }
 
-	    if (! response.noPing) {
-		ping_timer = setInterval(checkBackgroundProcess, 5000);
-	    }
+        if (! response.noPing) {
+        ping_timer = setInterval(checkBackgroundProcess, 5000);
+        }
 
             if (!$.browser.chrome)
             {
