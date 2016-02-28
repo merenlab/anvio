@@ -98,6 +98,12 @@ class AAFrequencies:
 
             coverage = sum(aa_frequencies.values())
 
+            if not coverage:
+                # FIXME: there was at least one case where the coverage here in this context was 0,
+                #        which crashed the profiling. we never went after this issue, and it is
+                #        important to understand how often this happens, and why.
+                continue
+
             # here we quantify the ratio of frequencies of non-consensus-aas observed in this codon
             # to the overall overage, and that is our `departure_from_consensus`:
             total_frequency_of_all_codons_but_the_conensus = sum([aa_frequencies[aa] for aa in aa_frequencies if aa != consensus_codon_AA])
