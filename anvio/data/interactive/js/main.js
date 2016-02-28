@@ -1145,7 +1145,7 @@ function updateBinsWindow(bin_list) {
 
         // it is likely in manual or server modes lenghts are not going to be available.
         if (isNaN(length_sum))
-            $('#contig_length_' + bin_id).html('N//A').parent().attr('data-value', 0);
+            $('#contig_length_' + bin_id).html('N/A').parent().attr('data-value', 0);
         else
             $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
