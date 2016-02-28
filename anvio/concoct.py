@@ -20,6 +20,7 @@
 """
 
 import random
+import collections
 import numpy as np
 
 from sklearn.decomposition import PCA
@@ -127,8 +128,8 @@ class CONCOCT:
                                                             #  \
                                                             #    poor man's random color generator
 
-        collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
-        collections.append(collection_name, data, bin_info_dict)
+        c = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
+        c.append(collection_name, data, bin_info_dict)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only = True)
 
@@ -215,4 +216,10 @@ class CONCOCT_INTERFACE():
         self.run.info('CONCOCT VGBMM', 'Done with %d clusters' % (len(set(self.assign))))
 
         # construct and return a results dictionary:
-        return dict(zip(self.contig_names, ['Bin_%d' % g for g in self.assign]))
+        bin_name_conversion_dict = {}
+        bin_counter = 1
+        for bin_id, num_contigs in collections.Counter(self.assign).most_common():
+            bin_name_conversion_dict[bin_id] = 'Bin_%d' % bin_counter
+            bin_counter += 1
+
+        return dict(zip(self.contig_names, [bin_name_conversion_dict[g] for g in self.assign]))
