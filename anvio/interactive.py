@@ -265,7 +265,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
     def load_from_anvio_files(self, args):
         if not self.contigs_db_path:
-            raise ConfigError, "Anvi'o needs the contigs database to make sense of this run."
+            raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
+                                should use the `--manual` flag if that's what your intention)."
 
         ProfileSuperclass.__init__(self, args)
 
