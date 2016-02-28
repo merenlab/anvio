@@ -196,16 +196,12 @@ def receive_upload_file(request, userdb, response):
     # check mandatory values
     if not user:
         return '{ "status": "error", "message": "you need to be logged in to create a project", "data": null }'
-    
 
     if not request.files.get('treeFile'):
         return '{ "status": "error", "message": "you need to upload a tree file", "data": null }'
 
     if not request.forms.get('title'):
         return '{ "status": "error", "message": "a title is required to create a project", "data": null }'
-
-    if not request.files.get('dataFile'):
-        return '{ "status": "error", "message": "you need to upload a data file", "data": null }'
 
     # create the project
     retval = userdb.create_project(user['data'], request.forms.get('title'), request.forms.get('description'))
@@ -227,7 +223,9 @@ def receive_upload_file(request, userdb, response):
 
     # tree and data fiels are mandatory
     request.files.get('treeFile').save(basepath + 'treeFile')
-    request.files.get('dataFile').save(basepath + 'dataFile')
+
+    if request.files.get('dataFile'):
+        request.files.get('dataFile').save(basepath + 'dataFile')
 
     if request.files.get('fastaFile'):
         request.files.get('fastaFile').save(basepath + 'fastaFile')

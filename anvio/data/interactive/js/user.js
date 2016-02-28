@@ -300,9 +300,6 @@ function uploadFiles () {
     }
     if ($('#dataFileSelect')[0].files.length) {
 	formData.append('dataFile', $('#dataFileSelect')[0].files[0]);
-    } else {
-	toastr.error("You must provide a data file");
-	return;
     }
     if ($('#samplesOrderFileSelect')[0].files.length) {
 	formData.append('samplesOrderFile', $('#samplesOrderFileSelect')[0].files[0]);
