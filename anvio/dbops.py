@@ -161,8 +161,11 @@ class ContigsSuperclass(object):
         if os.path.exists(auxiliary_contigs_data_path):
             self.auxiliary_contigs_data_available = True
             self.nt_positions_info = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, self.a_meta['contigs_db_hash'])
-
-        self.progress.end()
+            self.progress.end()
+        else:
+            self.progress.end()
+            self.run.warning("Auxiliary contigs data ('%s') is not available. Some operations related to\
+                              variability analyses will not be available." % auxiliary_contigs_data_path)
 
         if self.auxiliary_contigs_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_contigs_data_path, anvio.__hdf5__version__))
