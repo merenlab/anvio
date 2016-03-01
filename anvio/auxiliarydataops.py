@@ -83,8 +83,8 @@ class HDF5_IO(object):
 
 class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, create_new = False, run=run, progress=progress, quiet = False):
-        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new)
+    def __init__(self, file_path, db_hash, create_new = False, ignore_hash = False, run=run, progress=progress, quiet = False):
+        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
 
         self.quiet = quiet
 
