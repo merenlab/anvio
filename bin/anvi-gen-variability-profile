@@ -7,7 +7,7 @@ import argparse
 
 import anvio
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import VariableNtPositionsEngine
 
 
@@ -55,4 +55,7 @@ if __name__ == '__main__':
         variable_nt_positions.report()
     except ConfigError, e:
         print e
-        sys.exit(-1)
+        sys.exit(1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(2)
