@@ -51,7 +51,7 @@ if __name__ == '__main__':
     
     try:
         variable_nt_positions = VariableNtPositionsEngine(args)
-        variable_nt_positions.init()
+        variable_nt_positions.process()
         variable_nt_positions.report()
     except ConfigError, e:
         print e
