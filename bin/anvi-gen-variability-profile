@@ -8,7 +8,7 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.variabilityops import VariableNtPositionsEngine
+from anvio.variabilityops import VariabilityEngine
 
 
 __author__ = "A. Murat Eren"
@@ -41,6 +41,7 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
     groupO.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
     groupO.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
+    groupE.add_argument(*anvio.A('focus'), **anvio.K('focus'))
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
     groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
@@ -50,9 +51,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        variable_nt_positions = VariableNtPositionsEngine(args)
-        variable_nt_positions.process()
-        variable_nt_positions.report()
+        variability_engine = VariabilityEngine(args)
+        variability_engine.process()
+        variability_engine.report()
     except ConfigError, e:
         print e
         sys.exit(1)
