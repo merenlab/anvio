@@ -776,7 +776,7 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'min_coverage_for_variability', 'merged', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length', 'total_reads_mapped']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length', 'total_reads_mapped']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
