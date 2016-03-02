@@ -68,7 +68,7 @@ class VariabilitySuper(object):
         self.contig_sequences = None
         self.input_file_path = None
 
-        if self.focus not in ['NT']:
+        if self.focus not in variability_engines:
             raise ConfigError, "The superclass is inherited with an unknown focus. Anvi'o needs an adult :("
 
         # Initialize the contigs super
@@ -160,6 +160,8 @@ class VariabilitySuper(object):
 
         if self.focus == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
+        elif self.focus == 'AA':
+            self.data = profile_db.db.get_table_as_dict(t.variable_aas_table_name)
         else:
             raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a focus on '%s' yet :/" % self.focus
 
@@ -796,3 +798,18 @@ class VariabilityNetwork:
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)
+
+
+class VariabilityEngine(VariableNtPositionsEngine, VariableAAPositionsEngine):
+    def __init__(self, args, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        if args.focus not in variability_engines:
+            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.focus
+
+        variability_engines[args.focus].__init__(self, args = args, r = self.run, p = self.progress)
+
+
+variability_engines = {'NT': VariableNtPositionsEngine,
+                       'AA': VariableAAPositionsEngine}

@@ -446,6 +446,13 @@ D = {
                       of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
                       (as well as for some beautiful visualizations)."}
                 ),
+    'focus': (
+            ['--focus'],
+            {'default': 'NT',
+             'metavar': 'FOCUS',
+             'type': str,
+             'help': "Focus of varaibility. The default is '%(default)s'."}
+                ),
     'transpose': (
             ['--transpose'],
             {'default': False,
