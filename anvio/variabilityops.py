@@ -40,6 +40,8 @@ class VariabilitySuper(object):
     def __init__(self, args = {}, p=progress, r=run):
         self.args = args
 
+        self.data = {} 
+
         self.splits_of_interest = set([])
         self.samples_of_interest = set([])
 
@@ -58,6 +60,20 @@ class VariabilitySuper(object):
         self.quince_mode = A('quince_mode', bool)
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
+
+        self.merged_split_coverage_values = None
+        self.unique_pos_identifier = 0
+        self.split_name_position_dict = {}
+        self.unique_pos_id_to_entry_id = {}
+        self.contig_sequences = None
+        self.input_file_path = None
+
+        if self.focus not in ['NT']:
+            raise ConfigError, "The superclass is inherited with an unknown focus. Anvi'o needs an adult :("
+
+        # Initialize the contigs super
+        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
+        self.init_contig_sequences()
 
 
     def init_commons(self):
@@ -145,7 +161,7 @@ class VariabilitySuper(object):
         if self.focus == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
         else:
-            raise ConfigError, "The superclass is inherited with an unknown focus. Anvi'o needs an adult :("
+            raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a focus on '%s' yet :/" % self.focus
 
         profile_db.disconnect()
 
@@ -266,54 +282,6 @@ class VariabilitySuper(object):
             v['contig_name'] = self.splits_basic_info[v['split_name']]['parent']
 
         self.progress.end()
-
-
-class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
-    """This is the main class to make sense and report variability for a given set of splits,
-       or a bin in a collection, across multiple or all samples. The user can scrutinize the
-       nature of the variable positions to be reported dramatically given the ecology and/or
-       other biologically-relevant considerations, or purely technical limitations such as
-       minimum coverage of a given nucleotide position or the ratio of the competing nts at a
-       given position. The default entry to this class is the `anvi-gen-variability-profile`
-       program."""
-
-    def __init__(self, args = {}, p=progress, r=run):
-        self.run = r
-        self.progress = p
-
-        # Init Meta
-        VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
-
-        self.data = {} 
-        self.focus = 'NT'
-
-        self.merged_split_coverage_values = None
-        self.unique_pos_identifier = 0
-        self.split_name_position_dict = {}
-        self.unique_pos_id_to_entry_id = {}
-        self.contig_sequences = None
-        self.input_file_path = None
-
-        # Initialize the contigs super
-        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
-        self.init_contig_sequences()
-
-
-    def process(self):
-        self.init_commons()
-
-        self.apply_preliminary_filters()
-
-        self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
-
-        self.filter_based_on_scattering_factor()
-
-        self.filter_based_on_num_positions_from_each_split()
-
-        if self.quince_mode: # will be very costly...
-            self.recover_base_frequencies_for_all_samples() 
-
-        self.filter_based_on_minimum_coverage_in_each_sample()
 
 
     def get_unique_pos_identification_number(self, unique_pos_identifier_str):
@@ -481,6 +449,60 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.check_if_data_is_empty()
 
 
+    def process(self):
+        self.init_commons()
+
+        self.apply_preliminary_filters()
+
+        self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
+
+        self.filter_based_on_scattering_factor()
+
+        self.filter_based_on_num_positions_from_each_split()
+
+        if self.quince_mode: # will be very costly...
+            self.recover_base_frequencies_for_all_samples() 
+
+        self.filter_based_on_minimum_coverage_in_each_sample()
+
+
+    def get_unique_pos_identifier_to_corresponding_gene_id(self):
+        self.progress.update('populating a dict to track corresponding gene ids for each unique position')
+        unique_pos_identifier_to_corresponding_gene_id = {}
+        for entry in self.data.values():
+            unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
+
+        return unique_pos_identifier_to_corresponding_gene_id
+
+
+    def get_unique_pos_identifier_to_codon_order_in_gene(self):
+        self.progress.update('populating a dict to track codon order in genes for each unique position')
+        unique_pos_identifier_to_codon_order_in_gene = {}
+        for entry in self.data.values():
+            unique_pos_identifier_to_codon_order_in_gene[entry['unique_pos_identifier']] = entry['codon_order_in_gene']
+
+        return unique_pos_identifier_to_codon_order_in_gene
+
+
+class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
+    """This is the main class to make sense and report variability for a given set of splits,
+       or a bin in a collection, across multiple or all samples. The user can scrutinize the
+       nature of the variable positions to be reported dramatically given the ecology and/or
+       other biologically-relevant considerations, or purely technical limitations such as
+       minimum coverage of a given nucleotide position or the ratio of the competing nts at a
+       given position. The default entry to this class is the `anvi-gen-variability-profile`
+       program."""
+
+    def __init__(self, args = {}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.focus = 'NT'
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+
+
     def recover_base_frequencies_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
@@ -491,15 +513,9 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = max(self.data.keys()) + 1
 
-        self.progress.update('populating a dict to track corresponding gene ids for each unique position')
-        unique_pos_identifier_to_corresponding_gene_id = {}
-        for entry in self.data.values():
-            unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
+        unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
 
-        self.progress.update('populating a dict to track codon order in genes for each unique position')
-        unique_pos_identifier_to_codon_order_in_gene = {}
-        for entry in self.data.values():
-            unique_pos_identifier_to_codon_order_in_gene[entry['unique_pos_identifier']] = entry['codon_order_in_gene']
+        unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
 
         self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
         split_pos_to_unique_pos_identifier = {}
@@ -546,24 +562,24 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 for sample in splits_to_consider[split][pos]:
                     self.data[next_available_entry_id] = {'contig_name': contig_name_name,
-                                                                        'departure_from_consensus': 0,
-                                                                        'consensus': base_at_pos,
-                                                                        'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
-                                                                        'pos': pos,
-                                                                        'pos_in_contig': pos_in_contig,
-                                                                        'in_partial_gene_call': in_partial_gene_call,
-                                                                        'in_complete_gene_call': in_complete_gene_call,
-                                                                        'base_pos_in_codon': base_pos_in_codon,
-                                                                        'coverage': split_coverage_across_samples[sample][pos],
-                                                                        'sample_id': sample,
-                                                                        'cov_outlier_in_split': 0,
-                                                                        'cov_outlier_in_contig': 0,
-                                                                        'competing_nts': base_at_pos + base_at_pos,
-                                                                        'unique_pos_identifier': unique_pos_identifier,
-                                                                        'unique_pos_identifier_str': '%s_%d' % (split, pos),
-                                                                        'corresponding_gene_call': corresponding_gene_call,
-                                                                        'codon_order_in_gene': codon_order_in_gene,
-                                                                        'split_name': split}
+                                                          'departure_from_consensus': 0,
+                                                          'consensus': base_at_pos,
+                                                          'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
+                                                          'pos': pos,
+                                                          'pos_in_contig': pos_in_contig,
+                                                          'in_partial_gene_call': in_partial_gene_call,
+                                                          'in_complete_gene_call': in_complete_gene_call,
+                                                          'base_pos_in_codon': base_pos_in_codon,
+                                                          'coverage': split_coverage_across_samples[sample][pos],
+                                                          'sample_id': sample,
+                                                          'cov_outlier_in_split': 0,
+                                                          'cov_outlier_in_contig': 0,
+                                                          'competing_nts': base_at_pos + base_at_pos,
+                                                          'unique_pos_identifier': unique_pos_identifier,
+                                                          'unique_pos_identifier_str': '%s_%d' % (split, pos),
+                                                          'corresponding_gene_call': corresponding_gene_call,
+                                                          'codon_order_in_gene': codon_order_in_gene,
+                                                          'split_name': split}
                     self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
                     next_available_entry_id += 1
 
