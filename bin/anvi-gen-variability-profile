@@ -21,7 +21,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extract information from the variable positions table')
+    parser = argparse.ArgumentParser(description='Extract information for variable positions')
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
     groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
-    groupE.add_argument(*anvio.A('min-ratio-of-competings-nts'), **anvio.K('min-ratio-of-competings-nts'))
+    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus'))
     groupE.add_argument(*anvio.A('min-occurrence-of-variable-postiions'), **anvio.K('min-occurrence-of-variable-postiions'))
 
     args = parser.parse_args()
