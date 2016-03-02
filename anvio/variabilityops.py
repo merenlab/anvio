@@ -50,7 +50,7 @@ class VariabilitySuper(object):
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
-        self.min_ratio = A('min_ratio', float)
+        self.min_departure_from_consensus = A('min_departure_from_consensus', float)
         self.min_occurrence = A('min_occurrence', int)
         self.num_positions_from_each_split = A('num_positions_from_each_split', int)
         self.min_scatter = A('min_scatter', int)
@@ -231,9 +231,9 @@ class VariabilitySuper(object):
         num_positions_each_sample = Counter([v['sample_id'] for v in self.data.values()])
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
 
-        if self.min_ratio:
-            self.run.info('Min departure from consensus ratio', self.min_ratio)
-            self.filter('departure from consensus', lambda x: x['departure_from_consensus'] < self.min_ratio)
+        if self.min_departure_from_consensus:
+            self.run.info('Min departure from consensus', self.min_departure_from_consensus)
+            self.filter('departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
 
         for entry_id in self.data:
             v = self.data[entry_id]
@@ -599,6 +599,115 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.run.info('Num entries reported', pp(len(self.data)))
         self.run.info('Output File', self.args.output_file) 
         self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
+
+
+class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
+    def __init__(self, args = {}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.focus = 'AA'
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+
+
+    def recover_base_frequencies_for_all_samples(self):
+        """this function populates variable_nts_table dict with entries from samples that have no
+           variation at nucleotide positions reported in the table"""
+
+        self.progress.new('Recovering base frequencies for all')
+
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
+        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
+        next_available_entry_id = max(self.data.keys()) + 1
+
+        unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
+
+        unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
+
+        self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
+        split_pos_to_unique_pos_identifier = {}
+        splits_to_consider = {}
+        for split_name in splits_wanted:
+            splits_to_consider[split_name] = {}
+            split_pos_to_unique_pos_identifier[split_name] = {}
+
+        self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
+        for entry_id in self.data:
+            v = self.data[entry_id]
+            p = v['pos']
+            d = splits_to_consider[v['split_name']]
+            u = split_pos_to_unique_pos_identifier[v['split_name']]
+
+            if d.has_key(p):
+                d[p].remove(v['sample_id'])
+            else:
+                d[p] = copy.deepcopy(samples_wanted)
+                d[p].remove(v['sample_id'])
+
+            if not u.has_key(p):
+                u[p] = v['unique_pos_identifier']
+
+        counter = 0
+        for split in splits_to_consider:
+            counter += 1
+            self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
+
+            split_coverage_across_samples = self.merged_split_coverage_values.get(split)
+
+            split_info = self.splits_basic_info[split]
+            contig_name_name = split_info['parent']
+
+            for pos in splits_to_consider[split]:
+                unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
+                contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
+                pos_in_contig = split_info['start'] + pos
+                base_at_pos = contig_name_seq[pos_in_contig]
+                corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
+                codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
+
+                in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
+
+                for sample in splits_to_consider[split][pos]:
+                    self.data[next_available_entry_id] = {'contig_name': contig_name_name,
+                                                          'departure_from_consensus': 0,
+                                                          'consensus': base_at_pos,
+                                                          'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
+                                                          'pos': pos,
+                                                          'pos_in_contig': pos_in_contig,
+                                                          'in_partial_gene_call': in_partial_gene_call,
+                                                          'in_complete_gene_call': in_complete_gene_call,
+                                                          'base_pos_in_codon': base_pos_in_codon,
+                                                          'coverage': split_coverage_across_samples[sample][pos],
+                                                          'sample_id': sample,
+                                                          'cov_outlier_in_split': 0,
+                                                          'cov_outlier_in_contig': 0,
+                                                          'competing_nts': base_at_pos + base_at_pos,
+                                                          'unique_pos_identifier': unique_pos_identifier,
+                                                          'unique_pos_identifier_str': '%s_%d' % (split, pos),
+                                                          'corresponding_gene_call': corresponding_gene_call,
+                                                          'codon_order_in_gene': codon_order_in_gene,
+                                                          'split_name': split}
+                    self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                    next_available_entry_id += 1
+
+        self.progress.end()
+
+
+    def report(self):
+        self.progress.new('Reporting')
+
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['contig_name', 'split_name', 'unique_pos_identifier_str']
+
+        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
+
+        utils.store_dict_as_TAB_delimited_file(self.data, self.args.output_file, new_structure)
+        self.progress.end()
+
+        self.run.info('Num entries reported', pp(len(self.data)))
+        self.run.info('Output File', self.args.output_file) 
+        self.run.info('Num AA positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
 
 
 class VariabilityNetwork:
