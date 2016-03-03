@@ -41,7 +41,7 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
     groupO.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
     groupO.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
-    groupE.add_argument(*anvio.A('focus'), **anvio.K('focus'))
+    groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
     groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
@@ -51,10 +51,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        if args.focus not in variability_engines:
-            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.focus
+        if args.engine not in variability_engines:
+            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine
 
-        variability_engine = variability_engines[args.focus](args)
+        variability_engine = variability_engines[args.engine](args)
         variability_engine.process()
         variability_engine.report()
     except ConfigError, e:

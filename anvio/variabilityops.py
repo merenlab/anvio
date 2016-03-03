@@ -69,8 +69,8 @@ class VariabilitySuper(object):
         self.contig_sequences = None
         self.input_file_path = None
 
-        if self.focus not in variability_engines:
-            raise ConfigError, "The superclass is inherited with an unknown focus. Anvi'o needs an adult :("
+        if self.engine not in variability_engines:
+            raise ConfigError, "The superclass is inherited with an unknown engine. Anvi'o needs an adult :("
 
         # Initialize the contigs super
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
@@ -159,9 +159,9 @@ class VariabilitySuper(object):
             raise ConfigError, "Well well well. It seems SNVs were not characterized for this profile database.\
                                 Sorry, there is nothing to report here!"
 
-        if self.focus == 'NT':
+        if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
-        elif self.focus == 'AA':
+        elif self.engine == 'AA':
             # AA specific stuff. first check whether things were profiled
             if not profile_db.meta['AA_frequencies_profiled']:
                 raise ConfigError, "It seems AA frequencies were not characterized for this profile database.\
@@ -174,7 +174,7 @@ class VariabilitySuper(object):
             for e in self.data.values():
                 e['split_name'] = self.gene_callers_id_to_split_name_dict[e['corresponding_gene_call']]
         else:
-            raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a focus on '%s' yet :/" % self.focus
+            raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine
 
         profile_db.disconnect()
 
@@ -250,9 +250,9 @@ class VariabilitySuper(object):
 
         for entry_id in self.data:
             v = self.data[entry_id]
-            if self.focus == 'NT':
+            if self.engine == 'NT':
                 v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
-            if self.focus == 'AA':
+            if self.engine == 'AA':
                 v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['corresponding_gene_call']), str(v['codon_order_in_gene'])])
 
         if self.min_occurrence == 1:
@@ -513,7 +513,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.run = r
         self.progress = p
 
-        self.focus = 'NT'
+        self.engine = 'NT'
 
         # Init Meta
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
@@ -622,7 +622,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.run = r
         self.progress = p
 
-        self.focus = 'AA'
+        self.engine = 'AA'
 
         # Init Meta
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
