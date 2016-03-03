@@ -8,7 +8,7 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.variabilityops import VariabilityEngine
+from anvio.variabilityops import variability_engines
 
 
 __author__ = "A. Murat Eren"
@@ -51,7 +51,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        variability_engine = VariabilityEngine(args)
+        if args.focus not in variability_engines:
+            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.focus
+
+        variability_engine = variability_engines[args.focus](args)
         variability_engine.process()
         variability_engine.report()
     except ConfigError, e:
