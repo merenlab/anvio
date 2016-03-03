@@ -328,8 +328,8 @@ D = {
             {'metavar': 'FILE',
              'help': "It is possible to analyze only a group of contigs from a given BAM file. If you provide\
                       a text file, in which every contig of interest is listed line by line, the profiler would\
-                      focus only on those contigs in the BAM file and ignore the rest. This can be used for\
-                      debugging purposes, or to focus on a particular group of contigs that were identified as\
+                      engine only on those contigs in the BAM file and ignore the rest. This can be used for\
+                      debugging purposes, or to engine on a particular group of contigs that were identified as\
                       relevant during the interactive analysis."}
                 ),
     'bin-id': (
@@ -446,12 +446,12 @@ D = {
                       of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
                       (as well as for some beautiful visualizations)."}
                 ),
-    'focus': (
-            ['--focus'],
+    'engine': (
+            ['--engine'],
             {'default': 'NT',
-             'metavar': 'FOCUS',
+             'metavar': 'ENGINE',
              'type': str,
-             'help': "Focus of varaibility. The default is '%(default)s'."}
+             'help': "Varaibility engine. The default is '%(default)s'."}
                 ),
     'transpose': (
             ['--transpose'],
