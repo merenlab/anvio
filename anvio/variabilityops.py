@@ -20,6 +20,7 @@ import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.constants import codon_to_AA
 
 
 __author__ = "A. Murat Eren"
@@ -161,7 +162,17 @@ class VariabilitySuper(object):
         if self.focus == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
         elif self.focus == 'AA':
+            # AA specific stuff. first check whether things were profiled
+            if not profile_db.meta['AA_frequencies_profiled']:
+                raise ConfigError, "It seems AA frequencies were not characterized for this profile database.\
+                                    There is nothing to report here for AAs!"
+
+            # get the data.
             self.data = profile_db.db.get_table_as_dict(t.variable_aas_table_name)
+
+            # append split_name information
+            for e in self.data.values():
+                e['split_name'] = self.gene_callers_id_to_split_name_dict[e['corresponding_gene_call']]
         else:
             raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a focus on '%s' yet :/" % self.focus
 
@@ -239,7 +250,10 @@ class VariabilitySuper(object):
 
         for entry_id in self.data:
             v = self.data[entry_id]
-            v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
+            if self.focus == 'NT':
+                v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
+            if self.focus == 'AA':
+                v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['corresponding_gene_call']), str(v['codon_order_in_gene'])])
 
         if self.min_occurrence == 1:
             return
@@ -615,83 +629,101 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
 
     def recover_base_frequencies_for_all_samples(self):
-        """this function populates variable_nts_table dict with entries from samples that have no
-           variation at nucleotide positions reported in the table"""
-
-        self.progress.new('Recovering base frequencies for all')
+        self.progress.new('Recovering AA frequencies for all')
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = max(self.data.keys()) + 1
 
-        unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
+        unique_pos_identifier_str_to_consenus_codon = {}
+        unique_pos_identifier_str_to_unique_pos_identifier = {}
+        for e in self.data.values():
+            upi = e['unique_pos_identifier_str']
+            unique_pos_identifier_str_to_consenus_codon[upi] = e['consensus']
+            unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
 
-        unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
+        self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
 
-        self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
-        split_pos_to_unique_pos_identifier = {}
         splits_to_consider = {}
         for split_name in splits_wanted:
             splits_to_consider[split_name] = {}
-            split_pos_to_unique_pos_identifier[split_name] = {}
 
-        self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
+        self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
         for entry_id in self.data:
             v = self.data[entry_id]
-            p = v['pos']
+            gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
             d = splits_to_consider[v['split_name']]
-            u = split_pos_to_unique_pos_identifier[v['split_name']]
 
-            if d.has_key(p):
-                d[p].remove(v['sample_id'])
+            if d.has_key(gene_codon_key):
+                d[gene_codon_key].remove(v['sample_id'])
             else:
-                d[p] = copy.deepcopy(samples_wanted)
-                d[p].remove(v['sample_id'])
-
-            if not u.has_key(p):
-                u[p] = v['unique_pos_identifier']
+                d[gene_codon_key] = copy.deepcopy(samples_wanted)
+                d[gene_codon_key].remove(v['sample_id'])
 
         counter = 0
-        for split in splits_to_consider:
+        for split_name in splits_to_consider:
             counter += 1
             self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
 
-            split_coverage_across_samples = self.merged_split_coverage_values.get(split)
+            split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
 
-            split_info = self.splits_basic_info[split]
-            contig_name_name = split_info['parent']
+            split_info = self.splits_basic_info[split_name]
+            contig_name = split_info['parent']
 
-            for pos in splits_to_consider[split]:
-                unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
-                contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
-                pos_in_contig = split_info['start'] + pos
-                base_at_pos = contig_name_seq[pos_in_contig]
-                corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
-                codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
+            for gene_codon_key in splits_to_consider[split_name]:
+                corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
 
-                in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
+                for sample_name in splits_to_consider[split_name][gene_codon_key]:
+                    unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
+                    consensus_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
-                for sample in splits_to_consider[split][pos]:
-                    self.data[next_available_entry_id] = {'contig_name': contig_name_name,
-                                                          'departure_from_consensus': 0,
-                                                          'consensus': base_at_pos,
-                                                          'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
-                                                          'pos': pos,
-                                                          'pos_in_contig': pos_in_contig,
-                                                          'in_partial_gene_call': in_partial_gene_call,
-                                                          'in_complete_gene_call': in_complete_gene_call,
-                                                          'base_pos_in_codon': base_pos_in_codon,
-                                                          'coverage': split_coverage_across_samples[sample][pos],
-                                                          'sample_id': sample,
-                                                          'cov_outlier_in_split': 0,
-                                                          'cov_outlier_in_contig': 0,
-                                                          'competing_nts': base_at_pos + base_at_pos,
-                                                          'unique_pos_identifier': unique_pos_identifier,
-                                                          'unique_pos_identifier_str': '%s_%d' % (split, pos),
+                    self.data[next_available_entry_id] = {'unique_pos_identifier_str': unique_pos_identifier_str,
+                                                          'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
+                                                          'sample_id': sample_name,
+                                                          'split_name': split_name,
+                                                          'contig_name': contig_name, 
                                                           'corresponding_gene_call': corresponding_gene_call,
                                                           'codon_order_in_gene': codon_order_in_gene,
-                                                          'split_name': split}
-                    self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                                                          'departure_from_consensus': 0,
+                                                          'coverage': None,
+                                                          'consensus': consensus_codon}
+
+                    # DEALING WITH COVERAGE ##################################################################
+                    # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
+                    # what we want to do is to learn the coverage of this codon in the sample. all we have is the corresponding
+                    # gene call id, and the order of this codon in the gene. so here how it goes:
+                    #
+                    # learn the gene call
+                    gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
+
+                    # the following dict converts codon orders into nt positions in contig for a geven gene call
+                    codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
+
+                    # so the nucleotide positions for this codon in the contig is the following:
+                    nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
+
+                    # but we need to convert those positions to the context of this split. so here is the start pos:
+                    split_start = self.splits_basic_info[split_name]['start']
+
+                    # here we map nt positions from the contig context to split context using the start position
+                    nt_positions_for_codon_in_split = [p - split_start for p in nt_positions_for_codon_in_contig]
+
+                    # we acquire coverages that match to these positions
+                    coverages = split_coverage_across_samples[sample_name][nt_positions_for_codon_in_split]
+                    coverage = int(round(sum(coverages) / 3))
+
+                    # and finally update the data table
+                    self.data[next_available_entry_id]['coverage'] = coverage
+
+                    # DEALING WITH AAs ##################################################################
+                    # here we need to put all the codons into the data table for this sample
+                    for codon in set(codon_to_AA.values()):
+                        self.data[next_available_entry_id][codon] = 0
+
+                    # and finally update the frequency of the consensus codon with the coverage (WHICH IS VERY BAD,
+                    # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
+                    self.data[next_available_entry_id][consensus_codon] = coverage
+
                     next_available_entry_id += 1
 
         self.progress.end()
@@ -798,17 +830,6 @@ class VariabilityNetwork:
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)
-
-
-class VariabilityEngine(VariableNtPositionsEngine, VariableAAPositionsEngine):
-    def __init__(self, args, p=progress, r=run):
-        self.run = r
-        self.progress = p
-
-        if args.focus not in variability_engines:
-            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.focus
-
-        variability_engines[args.focus].__init__(self, args = args, r = self.run, p = self.progress)
 
 
 variability_engines = {'NT': VariableNtPositionsEngine,
