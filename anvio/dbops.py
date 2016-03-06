@@ -32,6 +32,7 @@ from anvio.errors import ConfigError
 from anvio.hmmops import HMMSearch
 from anvio.parsers import parser_modules
 from anvio.tableops import Table
+from anvio.constants import codon_to_AA
 
 
 __author__ = "A. Murat Eren"
@@ -431,6 +432,65 @@ class ContigsSuperclass(object):
         """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring
            in contig_name"""
         return self.contig_name_to_genes[contig_name]
+
+
+    def get_AA_counts_dict(self, split_names = set([]), contig_names = set([]), gene_caller_ids = set([])):
+        """Returns a dictionary of AA counts.
+
+           The dict can be returned for a given collection of split names, contigs names,
+           or gene calls. If none of these variables are specified, the dict will contain
+           counts for all gene calls in the contigs database"""
+
+        AA_counts_dict = {}
+
+        # nothing to do here if the genes were not called:
+        if not self.a_meta['genes_are_called']:
+            return AA_counts_dict
+
+        if len([True for v in [split_names, contig_names, gene_caller_ids] if v]) > 1:
+            raise ConfigError, "get_AA_counts_dict :: If you want to get AA counts for a specific\
+                                set of split names, contig names, or gene call ids, that is totally\
+                                fine. But you can't request more than one at a time."
+
+        # we need to understand what genes we're interested in first. it could be genes in
+        # a collection, or it could be everything in the contigs database, etc
+        gene_calls_of_interest = set([])
+
+        if split_names:
+            for split_name in split_names:
+                for gene_call_id in self.split_name_to_gene_caller_ids_dict[split_name]:
+                    gene_calls_of_interest.add(gene_call_id)
+        elif contig_names:
+            for contig_name in contig_names:
+                for gene_call_id in [t[0] for t in self.contig_name_to_genes[contig_name]]:
+                    gene_calls_of_interest.add(gene_call_id)
+        elif gene_caller_ids:
+            gene_calls_of_interest = set(gene_caller_ids)
+        else:
+            gene_calls_of_interest = set(self.genes_in_contigs_dict.keys())
+
+        if not len(self.contig_sequences):
+            self.init_contig_sequences()
+
+        AAs = []
+        for gene_call_id in gene_calls_of_interest:
+            gene_call = self.genes_in_contigs_dict[gene_call_id]
+
+            if gene_call['partial']:
+                continue
+
+            AAs.extend(utils.get_list_of_AAs_for_gene_call(gene_call, self.contig_sequences))
+
+        AA_counts_dict['AA_counts'] = Counter(AAs)
+        AA_counts_dict['total_AAs'] = sum(Counter(AAs).values())
+        AA_counts_dict['total_gene_calls'] = len(gene_calls_of_interest)
+
+        # add missing AAs into the dict .. if there are any
+        for AA in codon_to_AA.values():
+            if AA not in AA_counts_dict['AA_counts']:
+                AA_counts_dict['AA_counts'][AA] = 0
+
+        return AA_counts_dict
 
 
     def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
