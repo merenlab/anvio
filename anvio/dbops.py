@@ -67,7 +67,7 @@ class ContigsSuperclass(object):
         self.genes_in_splits = {}
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
-        self.split_to_genes_in_splits_ids = {} # for fast access to all self.genes_in_splits entries for a given split
+        self.split_name_to_gene_caller_ids_dict = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
         self.auxiliary_contigs_data_available = False
@@ -141,14 +141,14 @@ class ContigsSuperclass(object):
         self.progress.update('Generating "split name" to "gene entry ids" mapping dict')
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']
-            if split_name in self.split_to_genes_in_splits_ids:
-                self.split_to_genes_in_splits_ids[split_name].add(entry_id)
+            if split_name in self.split_name_to_gene_caller_ids_dict:
+                self.split_name_to_gene_caller_ids_dict[split_name].add(entry_id)
             else:
-                self.split_to_genes_in_splits_ids[split_name] = set([entry_id])
+                self.split_name_to_gene_caller_ids_dict[split_name] = set([entry_id])
 
         for split_name in self.splits_basic_info:
-            if not self.split_to_genes_in_splits_ids.has_key(split_name):
-                self.split_to_genes_in_splits_ids[split_name] = set([])
+            if not self.split_name_to_gene_caller_ids_dict.has_key(split_name):
+                self.split_name_to_gene_caller_ids_dict[split_name] = set([])
 
         self.progress.update('Generating "gene caller id" to "split name" mapping dict')
         for entry in self.genes_in_splits.values():

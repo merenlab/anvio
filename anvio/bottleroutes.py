@@ -127,7 +127,7 @@ def charts(d, split_name, show_outlier_SNVs = False):
         data['variability'].append(split_variability_info_dict[layer]['variability'])
 
     levels_occupied = {1: []}
-    for entry_id in d.split_to_genes_in_splits_ids[split_name]:
+    for entry_id in d.split_name_to_gene_caller_ids_dict[split_name]:
         gene_callers_id = d.genes_in_splits[entry_id]['gene_callers_id']
         p = d.genes_in_splits[entry_id]
         # p looks like this at this point:
