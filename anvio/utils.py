@@ -605,22 +605,22 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
-def get_list_of_amino_acids_for_gene_call(gene_call, contig_sequences_dict):
+def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
     if gene_call['contig'] not in contig_sequences_dict:
-        raise ConfigError, "get_list_of_amino_acids_for_gene_call: The contig sequences dict sent to\
+        raise ConfigError, "get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
                             this function does contain the contig name that appears in the gene call.\
                             Something is wrong here..."
 
     try:
         contig_sequence = contig_sequences_dict[gene_call['contig']]['sequence']
     except:
-        raise ConfigError, "get_list_of_amino_acids_for_gene_call: The contig sequences dict sent to\
+        raise ConfigError, "get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
                             this function does not seem to be an anvi'o contig sequences dict :/ It\
                             doesn't have the item 'sequence' in it."
 
-    list_of_amino_acids = []
+    list_of_AAs = []
     for codon_order in codon_order_to_nt_positions:
         nt_positions = codon_order_to_nt_positions[codon_order]
         consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
@@ -631,9 +631,9 @@ def get_list_of_amino_acids_for_gene_call(gene_call, contig_sequences_dict):
         # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
         conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
 
-        list_of_amino_acids.append(conv_dict[consensus_codon_sequence])
+        list_of_AAs.append(conv_dict[consensus_codon_sequence])
 
-    return list_of_amino_acids
+    return list_of_AAs
 
 
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
