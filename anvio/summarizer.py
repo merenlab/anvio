@@ -468,10 +468,10 @@ class Bin:
         genes_dict = {}
 
         for split_name in self.split_ids:
-            if split_name not in self.summary.split_to_genes_in_splits_ids:
+            if split_name not in self.summary.split_name_to_gene_caller_ids_dict:
                 continue
 
-            for gene_entry_id in self.summary.split_to_genes_in_splits_ids[split_name]:
+            for gene_entry_id in self.summary.split_name_to_gene_caller_ids_dict[split_name]:
                 gene_call_in_split = self.summary.genes_in_splits[gene_entry_id]
                 gene_callers_id = gene_call_in_split['gene_callers_id']
 
