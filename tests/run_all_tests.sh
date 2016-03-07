@@ -141,11 +141,31 @@ anvi-report-linkmers --contigs-and-positions adjacent_positions_for_linkmers.txt
 INFO "Oligotype linkmers report generated for adjacent nucleotide positions ..."
 anvi-oligotype-linkmers -i test-output/adjacent_linkmers.txt -o test-output/
 
-INFO "Search for functions to get split names with matching genes"
+INFO "Search for functions to get split names with matching genes ..."
 anvi-search-functions-in-splits -c test-output/CONTIGS.db --search transporter,kinase -o test-output/transporter-hits.txt --verbose
 
 INFO "Get all short reads that map to the gene ID 38 (which is a Zinc transpoprter)"
 anvi-get-short-reads-mapping-to-a-gene -c test-output/CONTIGS.db --gene-caller-id 38 --leeway 100 -i test-output/*bam -o test-output/reads-mapping-to-gene-id-38.fa
+
+INFO "Get AA counts for the entire contigs database ..."
+anvi-get-aa-counts -c test-output/CONTIGS.db -o test-output/aa_counts_for_contigs_db.txt
+column -t test-output/aa_counts_for_contigs_db.txt
+
+INFO "Get AA counts for bins in collection CONCOCT stored in the merged profile ..."
+anvi-get-aa-counts -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C CONCOCT -o test-output/aa_counts_for_bins_in_collection_CONCOCT.txt
+column -t test-output/aa_counts_for_bins_in_collection_CONCOCT.txt
+
+INFO "Get AA counts for bin 'bin_3' in collection CONCOCT stored in the merged profile ..."
+anvi-get-aa-counts -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C CONCOCT -o test-output/aa_counts_for_bin_3_in_collection_CONCOCT.txt -B sample_CONCOCT_bin_id.txt
+column -t test-output/aa_counts_for_bin_3_in_collection_CONCOCT.txt
+
+INFO "Get AA counts for bin 'bin_3' in collection CONCOCT stored in the merged profile ..."
+anvi-get-aa-counts -c test-output/CONTIGS.db --contigs-of-interest sample_contig_ids.txt -o test-output/aa_counts_for_two_contigs.txt
+column -t test-output/aa_counts_for_two_contigs.txt
+
+INFO "Get AA counts for five genes ..."
+anvi-get-aa-counts -c test-output/CONTIGS.db --gene-caller-ids sample_gene_call_ids.txt -o test-output/aa_counts_for_five_genes.txt
+column -t test-output/aa_counts_for_five_genes.txt
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
