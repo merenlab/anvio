@@ -1219,7 +1219,8 @@ class SamplesInformationDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
-            self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')])
+            self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')]) \
+                                                if self.meta['sample_names_for_order'] else self.samples
             self.samples_information_default_layer_order = self.meta['samples_information_default_layer_order'].split(',')
 
             self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
