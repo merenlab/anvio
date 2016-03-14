@@ -1435,8 +1435,8 @@ CircleTreeDrawer.prototype.Draw = function() {
     TreeDrawer.prototype.Draw.call(this);
 
     // move drawing to centre of viewport
-    var viewport = document.getElementById(this.settings.svg_id);
-    viewport.setAttribute('transform', 'translate(' + (this.settings.width + this.root_length) / 2 + ' ' + this.settings.height / 2 + ')');
+    // var viewport = document.getElementById(this.settings.svg_id);
+    // viewport.setAttribute('transform', 'translate(' + (this.settings.width + this.root_length) / 2 + ' ' + this.settings.height / 2 + ')');
 }
 
 //--------------------------------------------------------------------------------------------------
