@@ -4,6 +4,7 @@
 """
 
 import os
+import sys
 import time
 import copy
 import numpy
@@ -974,7 +975,7 @@ class ContigsDatabase:
             raise ConfigError, "Split size must be an integer."
 
         if split_length <= 0:
-            raise ConfigError, "For obvious reasons, split length must be a positive number. Nice try, though..."
+            split_length = sys.maxint
 
         try:
             kmer_size = int(kmer_size)
