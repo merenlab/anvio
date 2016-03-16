@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A DIAMOND and MCL-based pangenome workflow"""
+
+import sys
+
+import anvio
+import anvio.panops as panops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="A DIAMOND and MCL-based anvi'o pangenome workflow. You provide\
+                                                  anvi'o contigs databases, it gives you back a pangenome.")
+
+    parser.add_argument('-i', '--input-contig-dbs', metavar = 'CONTIG_DBs', default = None, required = True,
+                        help = "A flat, two-column TAB-delimited text file that lists anvi'o contigs databases. The first item\
+                                in the header line should read 'name', and the second should read 'path', and each line should\
+                                list the name and the path for each anvi'o contigs database you wish to analyze.")
+
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'default': 'unknown-pan-output'}))
+    parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+    parser.add_argument(*anvio.A('num-CPUs'), **anvio.K('num-CPUs'))
+
+    args = parser.parse_args()
+
+    try:
+        pan = panops.Pangenome(args, run, progress)
+        pan.process()
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
