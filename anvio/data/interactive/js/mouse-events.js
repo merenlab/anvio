@@ -193,7 +193,10 @@ function lineMouseEnterHandler(event) {
             bin_color,
             0.3,
             false);
-   }
+    }
+
+    if (p.IsLeaf())
+        return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
