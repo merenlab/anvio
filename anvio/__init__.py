@@ -93,8 +93,8 @@ D = {
                       advise you to not go below 10,000. The lower you go, the more complicated the\
                       tree will be, and will take more time and computational resources to finish the\
                       analysis. Also this is not a case of 'the smaller the split size the more sensitive\
-                      the results'. If you do not want your contigs to be split, you can either enter a very\
-                      large integer, or '-1'."}
+                      the results'. If you do not want your contigs to be split, you can either simply\
+                      enter '0' or ANY OTHER negative integer (lots of unnecessary freedom here, enjoy!)."}
                 ),
     'kmer-size': (
             ['-K', '--kmer-size'],
