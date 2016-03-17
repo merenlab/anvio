@@ -38,7 +38,7 @@ class Pangenome:
 
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         input_file_for_contig_dbs = A('input_contig_dbs')
-        self.num_CPUs = A('num_CPUs')
+        self.num_threads = A('num_threads')
         self.output_dir = A('output_dir')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
@@ -153,7 +153,7 @@ class Pangenome:
 
 
     def run_diamond(self, combined_proteins_fasta_path):
-        diamond = Diamond(run = self.run, progress = self.progress)
+        diamond = Diamond(run = self.run, progress = self.progress, num_threads = self.num_threads)
 
         log_file_path = self.get_output_file_path('log.txt')
         db_path = self.get_output_file_path('.'.join(combined_proteins_fasta_path.split('.')[:-1]))
@@ -200,16 +200,20 @@ class Pangenome:
 
 
 class Diamond:
-    def __init__(self, run = run, progress = progress):
+    def __init__(self, run = run, progress = progress, num_threads = 1):
         self.run = run
         self.progress = progress
 
+        self.num_threads = num_threads
+
+
     def makedb(self, combined_proteins_fasta_path, db_path, log_file_path):
         self.progress.new('DIAMOND')
-        self.progress.update('creating the search database ...')
-        cmd_line = ('diamond makedb --in %s -d %s >> "%s" 2>&1' % (combined_proteins_fasta_path,
-                                                                   db_path,
-                                                                   log_file_path))
+        self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
+        cmd_line = ('diamond makedb --in %s -d %s --p %d >> "%s" 2>&1' % (combined_proteins_fasta_path,
+                                                                          db_path,
+                                                                          self.num_threads,
+                                                                          log_file_path))
 
         with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
@@ -221,12 +225,13 @@ class Diamond:
 
     def blastp(self, combined_proteins_fasta_path, db_path, search_output_path, output_dir, log_file_path):
         self.progress.new('DIAMOND')
-        self.progress.update('running blastp ...')
-        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s >> "%s" 2>&1' % (combined_proteins_fasta_path,
-                                                                             db_path,
-                                                                             search_output_path,
-                                                                             output_dir,
-                                                                             log_file_path))
+        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
+        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d >> "%s" 2>&1' % (combined_proteins_fasta_path,
+                                                                                    db_path,
+                                                                                    search_output_path,
+                                                                                    output_dir,
+                                                                                    self.num_threads,
+                                                                                    log_file_path))
         with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
@@ -237,10 +242,11 @@ class Diamond:
 
     def view(self, search_output_path, tabular_output_path, log_file_path):
         self.progress.new('DIAMOND')
-        self.progress.update('creating a tabular output file ...')
-        cmd_line = ('diamond view -a %s -o %s >> "%s" 2>&1' % (search_output_path + '.daa',
-                                                               tabular_output_path,
-                                                               log_file_path))
+        self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
+        cmd_line = ('diamond view -a %s -o %s -p %d >> "%s" 2>&1' % (search_output_path + '.daa',
+                                                                     tabular_output_path,
+                                                                     self.num_threads,
+                                                                     log_file_path))
         with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
