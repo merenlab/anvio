@@ -26,7 +26,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     run.warning('If you publish results from this workflow, please do not forget to cite DIAMOND\
-                 (doi:10.1038/nmeth.3176) and MCL (http://micans.org/mcl/)', lc = 'yellow')
+                 (doi:10.1038/nmeth.3176) and MCL (http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
 
     import argparse
 
