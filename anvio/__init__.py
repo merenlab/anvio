@@ -588,6 +588,13 @@ D = {
              'help': "Minimum significance score of an HMM find to be considered as a valid hit.\
                       Default is %(default)g."}
                 ),
+    'min-percent-identity': (
+            ['--min-percent-identity'],
+            {'metavar': 'PERCENT_IDENTITY',
+             'default': 80,
+             'type': float,
+             'help': "Minimum percent identity. The default is %(default)g."}
+                ),
     'bins-info': (
             ['--bins-info'],
             {'metavar': 'BINS_INFO',
