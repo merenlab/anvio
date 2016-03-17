@@ -6,6 +6,7 @@
 """
 
 import os
+import shutil
 import tempfile
 
 import anvio
@@ -13,6 +14,7 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -120,7 +122,7 @@ class Pangenome:
                                 based on the description you provided :( Here is one that is missing: '%s'" \
                                                 % (len(missing_dbs), len(self.contig_dbs), missing_dbs[0])
 
-        # just go over the contig dbs to make sure they all are OK.
+        # just go over the contig dbs to make sure they all are OK, AAAAAND set some stuff for later use.
         for contigs_db_name in self.contig_dbs:
             c = self.contig_dbs[contigs_db_name]
 
@@ -257,6 +259,41 @@ class Pangenome:
         return view_data_file_path
 
 
+    def gen_samples_info_file(self):
+        samples_info_dict = {}
+        samples_info_file_path = self.get_output_file_path('anvio-samples-information.txt')
+        headers = ['num_genes', 'total_length']
+
+        for c in self.contig_dbs.values():
+            new_dict = {}
+            for header in headers:
+                new_dict[header] = c[header]
+
+            samples_info_dict[c['name']] = new_dict
+
+        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers = ['samples'] + headers)
+
+        return samples_info_file_path
+
+
+    def gen_samples_order_file(self):
+        samples_order_dict = {}
+        samples_order_file = self.get_output_file_path('anvio-samples-order.txt')
+        return None
+
+
+    def gen_ad_hoc_anvio_run(self, view_data_file_path, samples_info_file_path, samples_order_file_path):
+        ad_hoc_run = AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
+
+        ad_hoc_run.samples_info_file_path = samples_info_file_path
+        ad_hoc_run.samples_order_file_path = samples_order_file_path
+
+        ad_hoc_run.output_directory = self.get_output_file_path('anvio-run-files')
+        ad_hoc_run.delete_output_directory_if_exists = True
+
+        ad_hoc_run.generate()
+
+
     def sanity_check(self):
         self.check_programs()
         self.check_params()
@@ -279,7 +316,109 @@ class Pangenome:
         protein_clustering_dict = self.run_mcl(mcl_input_file_path)
 
         # create view data from protein clusters
-        self.gen_view_data_from_protein_clusters(protein_clustering_dict)
+        view_data_file_path = self.gen_view_data_from_protein_clusters(protein_clustering_dict)
+
+        # gen samples info and order files
+        samples_info_file_path = self.gen_samples_info_file()
+        samples_order_file_path = self.gen_samples_order_file()
+
+        # gen ad hoc anvi'o run
+        self.gen_ad_hoc_anvio_run(view_data_file_path, samples_info_file_path, samples_order_file_path)
+
+
+class AdHocRunGenerator:
+    """From a matrix file to full-blown anvi'o interface.
+    
+       This is a class to take in a view data matrix at minimum, and create all
+       necessary files for an anvi'o interactive interface call in manual mode."""
+
+    def __init__(self, view_data_path, tree_file_path = None, samples_info_file_path = None, samples_order_file_path = None, run = run, progress = progress):
+        self.run = run
+        self.progress = progress
+
+        self.view_data_path = view_data_path
+        self.tree_file_path = tree_file_path
+
+        self.samples_info_file_path = samples_info_file_path
+        self.samples_order_file_path = samples_order_file_path
+
+
+        self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
+        self.delete_output_directory_if_exists = False
+
+        self.sanity_checked = False
+
+
+    def sanity_check(self):
+        filesnpaths.is_file_tab_delimited(self.view_data_path)
+        if self.tree_file_path:
+            filesnpaths.is_proper_newick(self.tree_file_path)
+
+        self.check_output_directory()
+
+        new_view_data_path = self.get_output_file_path('view_data.txt')
+        shutil.copyfile(self.view_data_path, new_view_data_path)
+        self.view_data_path = new_view_data_path
+
+        if self.tree_file_path:
+            new_tree_path = self.get_output_file_path('tree.txt')
+            shutil.copyfile(self.tree_file_path, new_tree_path)
+            self.tree_file_path = new_tree_path
+
+        self.sanity_checked = True
+
+
+    def is_good_to_go(self):
+        if not self.sanity_checked:
+            raise ConfigError, "AdHocRunGenerator :: You gotta be nice, and run sanity check first :/"
+
+
+    def get_output_file_path(self, file_name):
+        return os.path.join(self.output_directory, file_name)
+
+
+    def check_output_directory(self):
+        if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
+            raise ConfigError, "AdHocRunGenerator will not work with an existing directory. Please provide a new\
+                                path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
+                                any existing directory."
+
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = self.delete_output_directory_if_exists)
+
+
+    def generate(self):
+        self.sanity_check()
+
+        if not self.tree_file_path:
+            self.gen_center_tree()
+
+        self.gen_samples_db()
+
+
+        self.run.info("Ad hoc anvi'o run files", self.output_directory)
+
+
+    def gen_center_tree(self):
+        self.is_good_to_go()
+
+        self.progress.new('Generating the tree for view data')
+        self.progress.update('..')
+
+        self.tree_file_path = self.get_output_file_path('tree.txt')
+        clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path)
+
+        self.progress.end()
+
+        self.run.info('Tree', self.tree_file_path)
+
+
+    def gen_samples_db(self):
+        if not self.samples_info_file_path and not self.samples_order_file_path:
+            return
+
+        samples_db_output_path = self.get_output_file_path('samples.db')
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = False)
+        s.create(self.samples_info_file_path, self.samples_order_file_path)
 
 
 class MCL:
