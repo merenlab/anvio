@@ -55,6 +55,10 @@ class Pangenome:
             if not path.startswith('/'):
                 self.contig_dbs[contigs_db]['path'] = os.path.abspath(os.path.join(os.path.dirname(input_file_for_contig_dbs), path))
 
+        # to be filled during init:
+        self.hash_to_contigs_db_name = {}
+        self.view_data = {}
+
 
     def get_output_file_path(self, file_name, temp_file = False):
         output_file_path = os.path.join(self.output_dir, file_name)
@@ -119,11 +123,15 @@ class Pangenome:
         # just go over the contig dbs to make sure they all are OK.
         for contigs_db_name in self.contig_dbs:
             c = self.contig_dbs[contigs_db_name]
-            c['name'] = contigs_db_name
+
             contigs_db = dbops.ContigsDatabase(c['path'])
             for key in contigs_db.meta:
                 c[key] = contigs_db.meta[key]
             contigs_db.disconnect()
+
+            c['name'] = contigs_db_name
+
+            self.hash_to_contigs_db_name[c['contigs_db_hash']] = contigs_db_name
 
         # if two contigs db has the same hash, we are kinda f'd:
         if len(set([c['contigs_db_hash'] for c in self.contig_dbs.values()])) != len(self.contig_dbs):
@@ -230,6 +238,25 @@ class Pangenome:
         return mcl_input_file_path
 
 
+    def gen_view_data_from_protein_clusters(self, protein_clustering_dict):
+        self.progress.new('Generating view data')
+        self.progress.update('...')
+
+        for pc in protein_clustering_dict:
+            self.view_data[pc] = dict([(contigs_db_name, 0) for contigs_db_name in self.contig_dbs])
+            for contigs_db_hash, gene_callers_id in [e.split('_') for e in protein_clustering_dict[pc]]:
+                contigs_db_name = self.hash_to_contigs_db_name[contigs_db_hash]
+                self.view_data[pc][contigs_db_name] += 1
+
+        view_data_file_path = self.get_output_file_path('anvio-view-data.txt')
+        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_file_path, headers = ['contig'] + sorted(self.contig_dbs.keys()))
+
+        self.progress.end()
+        self.run.info("Anvi'o view data for protein clusters", view_data_file_path)
+
+        return view_data_file_path
+
+
     def sanity_check(self):
         self.check_programs()
         self.check_params()
@@ -249,7 +276,10 @@ class Pangenome:
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
 
         # get clusters from MCL
-        protein_clusters = self.run_mcl(mcl_input_file_path)
+        protein_clustering_dict = self.run_mcl(mcl_input_file_path)
+
+        # create view data from protein clusters
+        self.gen_view_data_from_protein_clusters(protein_clustering_dict)
 
 
 class MCL:
