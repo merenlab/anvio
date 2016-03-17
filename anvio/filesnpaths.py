@@ -4,6 +4,7 @@
 import os
 import mmap
 import json
+import time
 import shutil
 import tempfile
 import anvio.fastalib as u
@@ -282,7 +283,10 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
         try:
             run.warning('filesnpaths::gen_output_directory: the client asked\
                          the existing directory "%s" to be removed.. Just so\
-                         you know :/' % output_directory)
+                         you know :/ (You have 5 seconds to cancel this ..\
+                         maybe only 2 when you are done reading this).' \
+                                                            % output_directory)
+            time.sleep(5)
             shutil.rmtree(output_directory)
         except:
             progress.end()
