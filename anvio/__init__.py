@@ -390,15 +390,15 @@ D = {
                       Remember that the number of nodes in the network will also depend on the number of samples described in\
                       the variability profile."}
                 ),
-    'num-CPUs': (
-            ['-T', '--num-CPUs'],
+    'num-threads': (
+            ['-T', '--num-threads'],
             {'metavar': 'NUM_CPUS',
              'default': 1,
              'type': int,
-             'help': "Maximum number of CPUs to use for multithreading whenever possible. Very conservatively, the default\
-                      is '%(default)d'. Please be careful with this option if you are running your commands on a SGE --if you\
-                      are clusterizing your runs, and asking for multiple CPUs to use, you may deplete your resources very\
-                      fast."}
+             'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default\
+                      is '%(default)d'. It is a good idea to not exceed the number of CPUs / cores on your system. Plus, please\
+                      be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
+                      and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
 
     'min-coverage-in-each-sample': (

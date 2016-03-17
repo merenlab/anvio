@@ -1658,8 +1658,8 @@ class TablesForGeneCalls(Table):
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_CPUs_to_use = 1, run=run, progress=progress):
-        self.num_CPUs_to_use = num_CPUs_to_use
+    def __init__(self, db_path, num_threads_to_use = 1, run=run, progress=progress):
+        self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
 
         self.debug = False
@@ -1696,7 +1696,7 @@ class TablesForHMMHits(Table):
             protein_sequences_fasta = self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name)
             remove_fasta_file_upon_finish = True
 
-        commander = HMMSearch(protein_sequences_fasta, num_CPUs_to_use = self.num_CPUs_to_use)
+        commander = HMMSearch(protein_sequences_fasta, num_threads_to_use = self.num_threads_to_use)
 
         for source in sources:
             kind_of_search = sources[source]['kind']

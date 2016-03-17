@@ -26,8 +26,8 @@ progress = terminal.Progress()
 
 
 class HMMSearch:
-    def __init__(self, protein_sequences_fasta, num_CPUs_to_use = 1, progress = progress, run = run):
-        self.num_CPUs_to_use = num_CPUs_to_use
+    def __init__(self, protein_sequences_fasta, num_threads_to_use = 1, progress = progress, run = run):
+        self.num_threads_to_use = num_threads_to_use
         self.progress = progress
         self.run = run
 
@@ -48,7 +48,7 @@ class HMMSearch:
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))
-        self.run.info('Number of CPUs will be used for search', self.num_CPUs_to_use)
+        self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
         tmp_dir = filesnpaths.get_temp_directory_path()
         self.tmp_dirs.append(tmp_dir)
@@ -91,7 +91,7 @@ class HMMSearch:
         cmd_line = ('hmmscan -o "%s" %s --cpu %d --tblout "%s" "%s" "%s" >> "%s" 2>&1' \
                                         % (self.hmm_scan_output,
                                            cut_off_flag,
-                                           self.num_CPUs_to_use,
+                                           self.num_threads_to_use,
                                            self.hmm_scan_hits_shitty,
                                            hmm_file_path,
                                            self.protein_sequences_fasta,
