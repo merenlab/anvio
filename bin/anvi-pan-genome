@@ -25,6 +25,9 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
+    run.warning('If you publish results from this workflow, please do not forget to cite DIAMOND\
+                 (doi:10.1038/nmeth.3176) and MCL (http://micans.org/mcl/)', lc = 'yellow')
+
     import argparse
 
     parser = argparse.ArgumentParser(description="A DIAMOND and MCL-based anvi'o pangenome workflow. You provide\
