@@ -43,6 +43,7 @@ class Pangenome:
         self.output_dir = A('output_dir')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
+        self.min_percent_identity = A('min_percent_identity')
 
         self.temp_files_to_remove_later = []
 
@@ -74,6 +75,7 @@ class Pangenome:
 
     def check_programs(self):
         utils.is_program_exists('diamond')
+        utils.is_program_exists('mcl')
 
 
     def check_params(self):
@@ -85,6 +87,13 @@ class Pangenome:
 
         filesnpaths.is_output_dir_writable(self.output_dir)
         self.output_dir = os.path.abspath(self.output_dir)
+
+        if type(self.min_percent_identity) != float:
+            raise ConfigError, "Minimum percent identity value must be of type float :("
+
+        if self.min_percent_identity < 20 or self.min_percent_identity > 100:
+            raise ConfigError, "Minimum percent identity must be between 20%% and 100%%. Although your %.2f%% is\
+                                pretty cute, too." % self.min_percent_identity
 
 
     def init_contig_dbs(self):
@@ -162,7 +171,63 @@ class Pangenome:
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
-        diamond.get_blastall_results()
+        return diamond.get_blastall_results()
+
+
+    def run_mcl(self, mcl_input_file_path):
+        mcl = MCL(mcl_input_file_path, run = self.run, progress = self.progress, num_threads = self.num_threads)
+
+        mcl.clusters_file_path = self.get_output_file_path('mcl-clusters.txt')
+        mcl.log_file_path = self.get_output_file_path('log.txt')
+
+        return mcl.get_clusters_dict()
+
+
+    def gen_mcl_input(self, blastall_results):
+        self.progress.new('Filtering blastall results')
+        self.progress.update('...')
+
+        mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
+        mcl_input = open(mcl_input_file_path, 'w')
+
+        mapping = [str, str, float, int, int, int, int, int, int, int, float, float]
+
+        line_no = 1
+        num_edges_stored = 0
+        for line in open(blastall_results):
+            fields = line.strip().split('\t')
+
+            try:
+                query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
+                    [mapping[i](fields[i]) for i in range(0, len(mapping))]
+            except Exception, e:
+                self.progress.end()
+                raise ConfigError, "Something went wrong while processing the blastall output file in line %d.\
+                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e)
+
+            line_no += 1
+
+            if line_no % 5000 == 0:
+                self.progress.update('Lines processed %s ...' % pp(line_no))
+
+            #
+            # FILTERS
+            #
+
+            if perc_id < self.min_percent_identity:
+                continue
+
+            mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, perc_id / 100.0))
+            num_edges_stored += 1
+
+
+        mcl_input.close()
+
+        self.progress.end()
+        self.run.info('Filtered diamond results', '%s edges stored' % pp(num_edges_stored))
+        self.run.info('MCL input', '%s' % mcl_input_file_path)
+
+        return mcl_input_file_path
 
 
     def sanity_check(self):
@@ -178,7 +243,72 @@ class Pangenome:
         combined_proteins_fasta_path = self.gen_combined_proteins_fasta()
 
         # run diamond
-        self.run_diamond(combined_proteins_fasta_path)
+        blastall_results = self.run_diamond(combined_proteins_fasta_path)
+
+        # generate MCL input from filtered blastall_results
+        mcl_input_file_path = self.gen_mcl_input(blastall_results)
+
+        # get clusters from MCL
+        protein_clusters = self.run_mcl(mcl_input_file_path)
+
+
+class MCL:
+    def __init__(self, mcl_input_file_path, run = run, progress = progress, num_threads = 1):
+        self.run = run
+        self.progress = progress
+
+        self.mcl_input_file_path = mcl_input_file_path
+        self.num_threads = num_threads
+
+        utils.is_program_exists('mcl')
+
+        self.inflation = 2.0
+
+        self.clusters_file_path = 'mcl-clusters.txt'
+        self.log_file_path = 'mcl-log-file.txt'
+
+
+    def check_output(self, expected_output, process = 'diamond'):
+        if not os.path.exists(expected_output):
+            self.progress.end()
+            raise ConfigError, "Pfft. Something probably went wrong with MCL's '%s' since one of the expected output files are missing.\
+                                Please check the log file here: '%s." % (process, self.log_file_path)
+
+
+    def get_clusters_dict(self):
+        self.cluster()
+
+        clusters_dict = {}
+
+        line_no = 1
+        for line in open(self.clusters_file_path).readlines():
+            clusters_dict['PC_%08d' % line_no] = line.strip().split('\t')
+
+            line_no += 1
+
+        self.run.info('Clusters', '%s clusters processed' % pp(len(clusters_dict)))
+
+        return clusters_dict
+
+
+    def cluster(self):
+        self.progress.new('MCL')
+        self.progress.update('clustering (using %d thread(s)) ...' % self.num_threads)
+        cmd_line = ('mcl %s --abc -I %f -o %s -te %d >> "%s" 2>&1' % (self.mcl_input_file_path,
+                                                                         self.inflation,
+                                                                         self.clusters_file_path,
+                                                                         self.num_threads,
+                                                                         self.log_file_path))
+
+        with open(self.log_file_path, "a") as log: log.write('MCL CMD: ' + cmd_line + '\n')
+
+        utils.run_command(cmd_line)
+
+        self.progress.end()
+
+        self.check_output(self.clusters_file_path, 'makedb')
+
+        self.run.info('MCL output', self.clusters_file_path)
 
 
 class Diamond:
@@ -207,19 +337,19 @@ class Diamond:
             force_makedb = True
 
         if os.path.exists(self.target_db_path + '.dmnd') and not force_makedb:
-            run.info_single("Notice: A diamond database is found in the output directory, and will be used!", mc = 'red', nl_before = 1)
+            self.run.warning("Notice: A diamond database is found in the output directory, and will be used!")
         else:
             self.makedb()
             force_blastp, forrce_view = True, True
 
         if os.path.exists(self.search_output_path + '.daa') and not force_blastp:
-            run.info_single("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!", mc = 'red', nl_before = 1)
+            self.run.warning("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!")
         else:
             self.blastp()
             force_view = True
 
         if os.path.exists(self.tabular_output_path) and not force_view:
-            run.info_single("Notice: A DIAMOND tabular output is found in the output directory. Anvi'o will not generate another one!", mc = 'red', nl_before = 1)
+            self.run.warning("Notice: A DIAMOND tabular output is found in the output directory. Anvi'o will not generate another one!")
         else:
             self.view()
 

@@ -40,6 +40,9 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'default': 'unknown-pan-output'}))
     parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    parser.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 'Minimum percent identity\
+                                for proteins to be assumed "similar". This value will be used to filter hits from the search\
+                                results, and remaining hits will go into MCL analysis. The default is %(default)g.'}))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
