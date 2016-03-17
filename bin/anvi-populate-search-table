@@ -45,7 +45,7 @@ def main(args):
         # sources will be loaded from defaults. 
         pass
 
-    search_tables = dbops.TablesForHMMHits(args.contigs_db, num_CPUs_to_use = args.num_CPUs)
+    search_tables = dbops.TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
     search_tables.debug = args.debug
     search_tables.populate_search_tables(sources)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
-    parser.add_argument(*anvio.A('num-CPUs'), **anvio.K('num-CPUs'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()

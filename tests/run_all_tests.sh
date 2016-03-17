@@ -45,7 +45,7 @@ INFO "Re-populating taxonomy for splits table in the database using the recovere
 anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -i gene_calls_sample_matrix.txt
 
 INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles ..."
-anvi-populate-search-table -c test-output/CONTIGS.db --num-CPUs 2
+anvi-populate-search-table -c test-output/CONTIGS.db --num-threads 2
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory ..."
 anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
