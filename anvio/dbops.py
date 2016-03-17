@@ -1444,6 +1444,134 @@ class TableForVariability(Table):
         profile_db.disconnect()
 
 
+class AA_counts(ContigsSuperclass):
+    def __init__(self, args, run = run, progress = progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.output_file_path = A('output_file')
+        self.collection_name = A('collection_name')
+        self.bin_ids_file_path = A('bin_ids_file')
+        self.contigs_of_interest_file_path = A('contigs_of_interest')
+        self.genes_of_interest_file_path = A('gene_caller_ids')
+
+        if self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
+
+        self.counts_dict = {}
+
+        # init contigs bro
+        ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
+
+        error_msg = "You mixed up optional stuff :/ Please read the help."
+        if self.profile_db_path:
+            if self.contigs_of_interest_file_path or self.genes_of_interest_file_path:
+                raise ConfigError, error_msg
+            self.__AA_counts_for_bins()
+        elif self.contigs_of_interest_file_path:
+            if self.profile_db_path or self.genes_of_interest_file_path:
+                raise ConfigError, error_msg
+            self.__AA_counts_for_contigs()
+        elif self.genes_of_interest_file_path:
+            if self.profile_db_path or self.contigs_of_interest_file_path:
+                raise ConfigError, error_msg
+            self.__AA_counts_for_genes()
+        else:
+            self.__AA_counts_for_the_contigs_db()
+
+
+    def __AA_counts_for_bins(self):
+        if not self.collection_name:
+            raise ConfigError, "You must declare a collection name along with the profile database."
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        collections_info_table = profile_db.db.get_table_as_dict(t.collections_info_table_name)
+        collections_splits_table = profile_db.db.get_table_as_dict(t.collections_splits_table_name)
+        profile_db.disconnect()
+
+        if not len(collections_info_table):
+            raise ConfigError, "There are no collections stored in the profile database :/"
+
+        if not self.collection_name in collections_info_table:
+            valid_collections = ', '.join(collections_info_table.keys())
+            raise ConfigError, "'%s' is not a valid collection name. But %s: '%s'." \
+                                    % (self.collection_name,
+                                       'these are' if len(valid_collections) > 1 else 'this is',
+                                       valid_collections)
+
+        bin_names_in_collection = collections_info_table[self.collection_name]['bin_names'].split(',')
+
+        if self.bin_ids_file_path:
+            filesnpaths.is_file_exists(self.bin_ids_file_path)
+            bin_names_of_interest = [line.strip() for line in open(self.bin_ids_file_path).readlines()]
+
+            missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
+            if len(missing_bins):
+                raise ConfigError, "Some bin names you declared do not appear to be in the collection %s." \
+                                            % self.collection_name
+        else:
+            bin_names_of_interest = bin_names_in_collection
+
+        collection_dict = utils.get_filtered_dict(collections_splits_table, 'collection_name', set([self.collection_name]))
+        collection_dict = utils.get_filtered_dict(collection_dict, 'bin_name', set(bin_names_of_interest))
+
+        split_name_per_bin_dict = {}
+        for bin_name in bin_names_of_interest:
+            split_name_per_bin_dict[bin_name] = set([])
+
+        for e in collection_dict.values():
+            split_name_per_bin_dict[e['bin_name']].add(e['split'])
+        
+        for bin_name in bin_names_of_interest:
+            self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names = set(split_name_per_bin_dict[bin_name]))['AA_counts']
+
+
+    def __AA_counts_for_contigs(self):
+        filesnpaths.is_file_exists(self.contigs_of_interest_file_path)
+
+        contigs_of_interest = [line.strip() for line in open(self.contigs_of_interest_file_path).readlines()]
+
+        missing_contigs = [True for c in contigs_of_interest if c not in self.contigs_basic_info]
+        if missing_contigs:
+            raise ConfigError, "Some contig names you declared do not seem to be present in the contigs\
+                                database :("
+
+        for contig_name in contigs_of_interest:
+            self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names = set([contig_name]))['AA_counts']
+
+
+    def __AA_counts_for_genes(self):
+        filesnpaths.is_file_exists(self.genes_of_interest_file_path)
+
+        try:
+            genes_of_interest = [int(line.strip()) for line in open(self.genes_of_interest_file_path).readlines()]
+        except:
+            raise ConfigError, "Gene call ids in your genes of interest file does not resemble anvi'o gene\
+                                call ids (I tried to int them, and it didn't work!)"
+
+        for gene_call in genes_of_interest:
+            self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids = set([gene_call]))['AA_counts']
+
+
+    def __AA_counts_for_the_contigs_db(self):
+        self.counts_dict[self.args.contigs_db] = self.get_AA_counts_dict()['AA_counts']
+
+
+    def report(self):
+        if self.args.output_file:
+            header = ['source'] + sorted(self.counts_dict.values()[0].keys())
+            utils.store_dict_as_TAB_delimited_file(self.counts_dict, self.args.output_file, header)
+            self.run.info('Output', self.args.output_file)
+
+        return self.counts_dict
+
+
+
+
 class TableForAAFrequencies(Table):
     def __init__(self, db_path, version, run=run, progress=progress):
         self.db_path = db_path
