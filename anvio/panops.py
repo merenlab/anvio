@@ -6,6 +6,7 @@
 """
 
 import os
+import tempfile
 
 import anvio
 import anvio.tables as t
@@ -153,34 +154,15 @@ class Pangenome:
 
 
     def run_diamond(self, combined_proteins_fasta_path):
-        diamond = Diamond(run = self.run, progress = self.progress, num_threads = self.num_threads)
+        diamond = Diamond(combined_proteins_fasta_path, run = self.run, progress = self.progress,
+                          num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
 
-        log_file_path = self.get_output_file_path('log.txt')
-        db_path = self.get_output_file_path('.'.join(combined_proteins_fasta_path.split('.')[:-1]))
+        diamond.log_file_path = self.get_output_file_path('log.txt')
+        diamond.target_db_path = self.get_output_file_path('.'.join(combined_proteins_fasta_path.split('.')[:-1]))
+        diamond.search_output_path = self.get_output_file_path('diamond-search-results')
+        diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
-        force_makedb, force_blastp, force_view = False, False, False
-
-        if self.overwrite_output_destinations:
-            force_makedb = True
-
-        if os.path.exists(db_path + '.dmnd') and not force_makedb:
-            run.info_single("Notice: A diamond database is found in the output directory, and will be used!", mc = 'red', nl_before = 1)
-        else:
-            diamond.makedb(combined_proteins_fasta_path, db_path, log_file_path)
-            force_blastp, forrce_view = True, True
-
-        search_output_path = self.get_output_file_path('search_results')
-        if os.path.exists(search_output_path + '.daa') and not force_blastp:
-            run.info_single("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!", mc = 'red', nl_before = 1)
-        else:
-            diamond.blastp(combined_proteins_fasta_path, db_path, search_output_path, self.output_dir, log_file_path)
-            force_view = True
-
-        tabular_output_path = self.get_output_file_path('search_results.txt')
-        if os.path.exists(tabular_output_path) and not force_view:
-            run.info_single("Notice: A DIAMOND tabular output is found in the output directory. Anvi'o will not generate another one!", mc = 'red', nl_before = 1)
-        else:
-            diamond.view(search_output_path, tabular_output_path, log_file_path)
+        diamond.get_blastall_results()
 
 
     def sanity_check(self):
@@ -200,56 +182,111 @@ class Pangenome:
 
 
 class Diamond:
-    def __init__(self, run = run, progress = progress, num_threads = 1):
+    def __init__(self, query_fasta, run = run, progress = progress, num_threads = 1, overwrite_output_destinations = False):
         self.run = run
         self.progress = progress
 
         self.num_threads = num_threads
+        self.overwrite_output_destinations = overwrite_output_destinations
+
+        utils.is_program_exists('diamond')
+
+        self.tmp_dir = tempfile.gettempdir()
+
+        self.query_fasta = query_fasta
+        self.log_file_path = 'diamond-log-file.txt'
+        self.target_db_path = 'diamond-target'
+        self.search_output_path = 'diamond-search-resuults'
+        self.tabular_output_path = 'diamond-search-results.txt'
 
 
-    def makedb(self, combined_proteins_fasta_path, db_path, log_file_path):
+    def get_blastall_results(self):
+        force_makedb, force_blastp, force_view = False, False, False
+
+        if self.overwrite_output_destinations:
+            force_makedb = True
+
+        if os.path.exists(self.target_db_path + '.dmnd') and not force_makedb:
+            run.info_single("Notice: A diamond database is found in the output directory, and will be used!", mc = 'red', nl_before = 1)
+        else:
+            self.makedb()
+            force_blastp, forrce_view = True, True
+
+        if os.path.exists(self.search_output_path + '.daa') and not force_blastp:
+            run.info_single("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!", mc = 'red', nl_before = 1)
+        else:
+            self.blastp()
+            force_view = True
+
+        if os.path.exists(self.tabular_output_path) and not force_view:
+            run.info_single("Notice: A DIAMOND tabular output is found in the output directory. Anvi'o will not generate another one!", mc = 'red', nl_before = 1)
+        else:
+            self.view()
+
+        return self.tabular_output_path
+
+
+    def check_output(self, expected_output, process = 'diamond'):
+        if not os.path.exists(expected_output):
+            self.progress.end()
+            raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
+                                Please check the log file here: '%s." % (process, self.log_file_path)
+
+
+    def makedb(self):
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond makedb --in %s -d %s --p %d >> "%s" 2>&1' % (combined_proteins_fasta_path,
-                                                                          db_path,
-                                                                          self.num_threads,
-                                                                          log_file_path))
+        cmd_line = ('diamond makedb --in %s -d %s -p %d >> "%s" 2>&1' % (self.query_fasta,
+                                                                         self.target_db_path,
+                                                                         self.num_threads,
+                                                                         self.log_file_path))
 
-        with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
 
         self.progress.end()
-        self.run.info('Diamond temp search db', db_path + '.dmnd')
+
+        expected_output = self.target_db_path + '.dmnd'
+        self.check_output(expected_output, 'makedb')
+
+        self.run.info('Diamond temp search db', expected_output)
 
 
-    def blastp(self, combined_proteins_fasta_path, db_path, search_output_path, output_dir, log_file_path):
+    def blastp(self):
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d >> "%s" 2>&1' % (combined_proteins_fasta_path,
-                                                                                    db_path,
-                                                                                    search_output_path,
-                                                                                    output_dir,
-                                                                                    self.num_threads,
-                                                                                    log_file_path))
-        with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d >> "%s" 2>&1' % (self.query_fasta,
+                                                                                   self.target_db_path,
+                                                                                   self.search_output_path,
+                                                                                   self.tmp_dir,
+                                                                                   self.num_threads,
+                                                                                   self.log_file_path))
+        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
 
         self.progress.end()
-        self.run.info('Diamond blastp results', search_output_path + '.daa')
+
+        expected_output = self.search_output_path + '.daa'
+        self.check_output(expected_output, 'blastp')
+
+        self.run.info('Diamond blastp results', expected_output)
 
 
-    def view(self, search_output_path, tabular_output_path, log_file_path):
+    def view(self):
         self.progress.new('DIAMOND')
         self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond view -a %s -o %s -p %d >> "%s" 2>&1' % (search_output_path + '.daa',
-                                                                     tabular_output_path,
+        cmd_line = ('diamond view -a %s -o %s -p %d >> "%s" 2>&1' % (self.search_output_path + '.daa',
+                                                                     self.tabular_output_path,
                                                                      self.num_threads,
-                                                                     log_file_path))
-        with open(log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+                                                                     self.log_file_path))
+        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
 
         self.progress.end()
-        self.run.info('Diamond tabular output file', tabular_output_path)
+
+        self.check_output(self.tabular_output_path, 'view')
+
+        self.run.info('Diamond tabular output file', self.tabular_output_path)
