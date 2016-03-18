@@ -110,72 +110,6 @@ def synchronize(current_root, control):
                 new_root_sister.name += control
 
 
-def get_normalized_newick(root):
-    """A function written by Doğan Can Kilment. It converts this:
-                         /-C
-                        |
-                        |--D
-                        |
-               /--------|                              /-r4
-              |         |                    /--------|
-              |         |          /--------|          \-r3
-              |         |         |         |
-              |         |         |          \-r5
-              |          \--------|
-     ---------|                   |                    /-r6
-              |                   |          /--------|
-              |                    \--------|          \-r2
-              |                             |
-              |                              \-r1
-              |
-               \-B
-
-
-       into this, for visualization purposes:
-
-                         /--------------------------------C
-                        |
-                        |---------------------------------D
-                        |
-               /--------|                              /-r4
-              |         |                    /--------|
-              |         |          /--------|          \-r3
-              |         |         |         |
-              |         |         |          \-----------r5
-              |          \--------|
-     ---------|                   |                    /-r6
-              |                   |          /--------|
-              |                    \--------|          \-r2
-              |                             |
-              |                              \-----------r1
-              |
-               \------------------------------------------B
-
-
-    """
-
-    farthest_node = root.get_farthest_node()
-    circle_radius = farthest_node[0].get_distance(root)
-
-    control = '_!$!' # this is to keep track of what is edited
-    for cr_node in root.traverse("levelorder"):
-        if not cr_node.is_leaf():
-            farthest_leaf = cr_node.get_farthest_leaf()[0]
-            dist_to_root = farthest_leaf.get_distance(root)
-            diff = circle_radius - dist_to_root
-            cr_node.dist = cr_node.dist + diff
-        else:
-            synchronize(cr_node, control)
-
-
-    # final traverse to clean 'control' strings.
-    for cr_node in root.traverse("levelorder"):
-        if cr_node.name.endswith(control):
-            cr_node.name = cr_node.name[:-len(control)]
-
-    return root
-
-
 def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean',
                          clustering_method = 'complete', norm = 'l1', progress = progress, transpose = False):
     filesnpaths.is_file_exists(observation_matrix_path)
@@ -251,7 +185,7 @@ def get_clustering_as_tree(vectors, ward = True, clustering_distance='euclidean'
     return hcluster.to_tree(clustering_result)
 
 
-def get_tree_object_in_newick(tree, id_to_sample_dict, normalize_branches = False):
+def get_tree_object_in_newick(tree, id_to_sample_dict):
     """i.e., tree = hcluster.to_tree(c_res)"""
 
     root = Tree()
@@ -276,9 +210,6 @@ def get_tree_object_in_newick(tree, id_to_sample_dict, normalize_branches = Fals
                 item2node[node].add_child(ch)
                 item2node[ch_node] = ch
                 to_visit.append(ch_node)
-
-    if normalize_branches:
-        root = get_normalized_newick(root)
 
     return root.write(format=1)
 
