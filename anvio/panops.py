@@ -61,6 +61,7 @@ class Pangenome:
         # to be filled during init:
         self.hash_to_contigs_db_name = {}
         self.view_data = {}
+        self.additional_view_data = {}
 
 
     def get_output_file_path(self, file_name, temp_file = False):
@@ -246,23 +247,29 @@ class Pangenome:
         return mcl_input_file_path
 
 
-    def gen_view_data_from_protein_clusters(self, protein_clustering_dict):
+    def gen_view_data_and_additional_data_from_protein_clusters(self, protein_clustering_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
         for pc in protein_clustering_dict:
             self.view_data[pc] = dict([(contigs_db_name, 0) for contigs_db_name in self.contig_dbs])
+            self.additional_view_data[pc] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0}
             for contigs_db_hash, gene_callers_id in [e.split('_') for e in protein_clustering_dict[pc]]:
                 contigs_db_name = self.hash_to_contigs_db_name[contigs_db_hash]
                 self.view_data[pc][contigs_db_name] += 1
+                self.additional_view_data[pc]['num_genes_in_pc'] += 1
+            self.additional_view_data[pc]['num_genomes_pc_has_hits'] = len([True for genome in self.view_data[pc] if self.view_data[pc][genome] > 0])
 
         view_data_file_path = self.get_output_file_path('anvio-view-data.txt')
+        additional_view_data_file_path = self.get_output_file_path('anvio-additional-view-data.txt')
         utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_file_path, headers = ['contig'] + sorted(self.contig_dbs.keys()))
+        utils.store_dict_as_TAB_delimited_file(self.additional_view_data, additional_view_data_file_path, headers = ['contig'] + sorted(self.additional_view_data.values()[0].keys()))
 
         self.progress.end()
         self.run.info("Anvi'o view data for protein clusters", view_data_file_path)
+        self.run.info("Anvi'o additional view data", additional_view_data_file_path)
 
-        return view_data_file_path
+        return view_data_file_path, additional_view_data_file_path
 
 
     def gen_samples_info_file(self):
@@ -312,10 +319,10 @@ class Pangenome:
         return samples_order_file_path
 
 
-    def gen_ad_hoc_anvio_run(self, view_data_file_path, samples_info_file_path, samples_order_file_path):
+    def gen_ad_hoc_anvio_run(self, view_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path):
         ad_hoc_run = AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
 
-        ad_hoc_run.tree_file_path = '/Users/meren/github/anvio/tests/sandbox/anvi_pangenome_files/test-output/tree.txt'
+        ad_hoc_run.additional_view_data_file_path = additional_view_data_file_path
         ad_hoc_run.samples_info_file_path = samples_info_file_path
         ad_hoc_run.samples_order_file_path = samples_order_file_path
 
@@ -347,14 +354,14 @@ class Pangenome:
         protein_clustering_dict = self.run_mcl(mcl_input_file_path)
 
         # create view data from protein clusters
-        view_data_file_path = self.gen_view_data_from_protein_clusters(protein_clustering_dict)
+        view_data_file_path, additional_view_data_file_path = self.gen_view_data_and_additional_data_from_protein_clusters(protein_clustering_dict)
 
         # gen samples info and order files
         samples_info_file_path = self.gen_samples_info_file()
         samples_order_file_path = self.gen_samples_order_file(view_data_file_path)
 
         # gen ad hoc anvi'o run
-        self.gen_ad_hoc_anvio_run(view_data_file_path, samples_info_file_path, samples_order_file_path)
+        self.gen_ad_hoc_anvio_run(view_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path)
 
 
 class AdHocRunGenerator:
@@ -363,16 +370,17 @@ class AdHocRunGenerator:
        This is a class to take in a view data matrix at minimum, and create all
        necessary files for an anvi'o interactive interface call in manual mode."""
 
-    def __init__(self, view_data_path, tree_file_path = None, samples_info_file_path = None, samples_order_file_path = None, run = run, progress = progress):
+    def __init__(self, view_data_path, run = run, progress = progress):
         self.run = run
         self.progress = progress
 
         self.view_data_path = view_data_path
-        self.tree_file_path = tree_file_path
 
-        self.samples_info_file_path = samples_info_file_path
-        self.samples_order_file_path = samples_order_file_path
+        self.tree_file_path = None
+        self.additional_view_data_file_path = None
 
+        self.samples_info_file_path = None
+        self.samples_order_file_path = None
 
         self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
         self.delete_output_directory_if_exists = False
@@ -395,6 +403,11 @@ class AdHocRunGenerator:
             new_tree_path = self.get_output_file_path('tree.txt')
             shutil.copyfile(self.tree_file_path, new_tree_path)
             self.tree_file_path = new_tree_path
+
+        if self.additional_view_data_file_path:
+            new_additional_view_data_file_path = self.get_output_file_path('additional_view_data.txt')
+            shutil.copyfile(self.additional_view_data_file_path, new_additional_view_data_file_path)
+            self.additional_view_data_file_path = new_additional_view_data_file_path
 
         self.sanity_checked = True
 
