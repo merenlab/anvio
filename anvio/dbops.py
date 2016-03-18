@@ -1233,7 +1233,7 @@ class SamplesInformationDatabase:
         if not self.db:
             raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
 
-        samples = samplesops.SamplesInformation()
+        samples = samplesops.SamplesInformation(run = self.run, progress = self.progress, quiet = self.quiet)
 
         samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data = False),
                                                                             self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data = False))
@@ -1259,7 +1259,7 @@ class SamplesInformationDatabase:
             raise ConfigError, "Anvi'o will not overwrite an existing samples information database. Please choose a\
                                 different name or remove the existing database ('%s') first." % (self.db_path)
 
-        samples = samplesops.SamplesInformation()
+        samples = samplesops.SamplesInformation(run = self.run, progress = self.progress, quiet = self.quiet)
         samples.populate_from_input_files(samples_information_path, samples_order_path)
 
         if not self.db_path.lower().endswith('.db'):
