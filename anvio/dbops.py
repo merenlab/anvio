@@ -1570,8 +1570,6 @@ class AA_counts(ContigsSuperclass):
         return self.counts_dict
 
 
-
-
 class TableForAAFrequencies(Table):
     def __init__(self, db_path, version, run=run, progress=progress):
         self.db_path = db_path
