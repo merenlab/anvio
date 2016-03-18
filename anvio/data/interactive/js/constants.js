@@ -59,6 +59,18 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Num genes per kbp',
     },
+    'num_genomes_pc_has_hits': {
+        'height': 90,
+        'color': '#002e4f',
+        'norm': 'none',
+        'pretty_name': 'Num genomes',
+    },
+    'num_genes_in_pc': {
+        'height': 90,
+        'color': '#002e4f',
+        'norm': 'sqrt',
+        'pretty_name': 'Num genes in PC',
+    },
     'total_length': {
         'height': 180,
         'color': '#121261',
