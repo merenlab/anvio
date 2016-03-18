@@ -287,18 +287,35 @@ class Pangenome:
 
         utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers = ['samples'] + headers)
 
+        self.run.info("Anvi'o samples information", samples_info_file_path)
+
         return samples_info_file_path
 
 
-    def gen_samples_order_file(self):
-        samples_order_dict = {}
-        samples_order_file = self.get_output_file_path('anvio-samples-order.txt')
-        return None
+    def gen_samples_order_file(self, view_data_file_path):
+        self.progress.new('Hierarchical clustering of the (transposed) view data')
+        self.progress.update('..')
+
+
+        newick = clustering.get_newick_tree_data(view_data_file_path, transpose = True)
+
+        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
+        samples_order = open(samples_order_file_path, 'w')
+        samples_order.write('attributes\tbasic\tnewick\n')
+        samples_order.write('protein_clusters\t\t%s\n' % newick)
+        samples_order.close()
+
+        self.progress.end()
+
+        self.run.info("Anvi'o samples order", samples_order_file_path)
+
+        return samples_order_file_path
 
 
     def gen_ad_hoc_anvio_run(self, view_data_file_path, samples_info_file_path, samples_order_file_path):
         ad_hoc_run = AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
 
+        ad_hoc_run.tree_file_path = '/Users/meren/github/anvio/tests/sandbox/anvi_pangenome_files/test-output/tree.txt'
         ad_hoc_run.samples_info_file_path = samples_info_file_path
         ad_hoc_run.samples_order_file_path = samples_order_file_path
 
@@ -334,7 +351,7 @@ class Pangenome:
 
         # gen samples info and order files
         samples_info_file_path = self.gen_samples_info_file()
-        samples_order_file_path = self.gen_samples_order_file()
+        samples_order_file_path = self.gen_samples_order_file(view_data_file_path)
 
         # gen ad hoc anvi'o run
         self.gen_ad_hoc_anvio_run(view_data_file_path, samples_info_file_path, samples_order_file_path)
@@ -404,7 +421,7 @@ class AdHocRunGenerator:
         self.sanity_check()
 
         if not self.tree_file_path:
-            self.gen_center_tree()
+            self.gen_clustering_of_view_data()
 
         self.gen_samples_db()
 
@@ -412,10 +429,10 @@ class AdHocRunGenerator:
         self.run.info("Ad hoc anvi'o run files", self.output_directory)
 
 
-    def gen_center_tree(self):
+    def gen_clustering_of_view_data(self):
         self.is_good_to_go()
 
-        self.progress.new('Generating the tree for view data')
+        self.progress.new('Hierarchical clustering of the view data')
         self.progress.update('..')
 
         self.tree_file_path = self.get_output_file_path('tree.txt')
@@ -431,7 +448,7 @@ class AdHocRunGenerator:
             return
 
         samples_db_output_path = self.get_output_file_path('samples.db')
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = False)
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = True)
         s.create(self.samples_info_file_path, self.samples_order_file_path)
 
 
