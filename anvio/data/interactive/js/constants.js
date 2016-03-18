@@ -6,15 +6,15 @@ var named_layers = {
         'pretty_name': 'Taxonomy',
     },
     'num_genes': {
-        'height': 80,
+        'height': 180,
         'color': '#414141',
-        'norm': 'sqrt',
+        'norm': 'none',
         'pretty_name': 'Number of genes',
     },
     'avg_gene_length': {
-        'height': 0,
+        'height': 180,
         'color': '#414141',
-        'norm': 'sqrt',
+        'norm': 'none',
         'pretty_name': 'Avg. gene length',
     },
     'ratio_coding': {
@@ -53,7 +53,18 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'GC-content',
     },
-
+    'num_genes_per_kb': {
+        'height': 180,
+        'color': '#414141',
+        'norm': 'none',
+        'pretty_name': 'Num genes per kbp',
+    },
+    'total_length': {
+        'height': 180,
+        'color': '#121261',
+        'norm': 'none',
+        'pretty_name': 'Total length',
+    },
     'normalized_coverage': {
         'height': 0,
         'color': '#414141',
