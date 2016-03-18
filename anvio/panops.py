@@ -15,6 +15,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.clustering as clustering
+import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -123,17 +124,22 @@ class Pangenome:
                                                 % (len(missing_dbs), len(self.contig_dbs), missing_dbs[0])
 
         # just go over the contig dbs to make sure they all are OK, AAAAAND set some stuff for later use.
-        for contigs_db_name in self.contig_dbs:
+        self.progress.new('Initializing')
+        contig_db_names = self.contig_dbs.keys()
+        for i in range(0, len(contig_db_names)):
+            contigs_db_name = contig_db_names[i]
             c = self.contig_dbs[contigs_db_name]
-
-            contigs_db = dbops.ContigsDatabase(c['path'])
-            for key in contigs_db.meta:
-                c[key] = contigs_db.meta[key]
-            contigs_db.disconnect()
-
             c['name'] = contigs_db_name
 
+            self.progress.update('%d of %d ... %s' % (i + 1, len(self.contig_dbs), contigs_db_name))
+
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['path'])
+
+            for key in contigs_db_summary:
+                c[key] = contigs_db_summary[key]
+
             self.hash_to_contigs_db_name[c['contigs_db_hash']] = contigs_db_name
+        self.progress.end()
 
         # if two contigs db has the same hash, we are kinda f'd:
         if len(set([c['contigs_db_hash'] for c in self.contig_dbs.values()])) != len(self.contig_dbs):
@@ -262,7 +268,15 @@ class Pangenome:
     def gen_samples_info_file(self):
         samples_info_dict = {}
         samples_info_file_path = self.get_output_file_path('anvio-samples-information.txt')
-        headers = ['num_genes', 'total_length']
+
+        # set headers
+        headers = ['total_length']
+
+        for h in ['percent_complete', 'percent_redundancy']:
+            if self.contig_dbs.values()[0].has_key(h):
+                headers.append(h)
+
+        headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
         for c in self.contig_dbs.values():
             new_dict = {}
