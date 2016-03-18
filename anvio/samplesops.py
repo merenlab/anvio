@@ -22,7 +22,7 @@ run = terminal.Run()
 
 
 class SamplesInformation:
-    def __init__(self, run = run, progress = progress):
+    def __init__(self, run = run, progress = progress, quiet = False):
         self.samples_information_dict = {}
         self.samples_order_dict = {}
 
@@ -37,6 +37,7 @@ class SamplesInformation:
 
         self.run = run
         self.prgress = progress
+        self.quiet = quiet
 
 
     def process_samples_information_file(self, samples_information_path):
@@ -48,7 +49,7 @@ class SamplesInformation:
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
         self.samples_information_default_layer_order = open(samples_information_path, 'rU').readline().strip().split('\t')[1:]
  
-        self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict))
+        self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet = self.quiet)
 
 
     def recover_samples_information_dict(self, samples_information_dict_from_db, aliases_to_attributes_dict):
@@ -101,7 +102,7 @@ class SamplesInformation:
 
         self.available_orders = set(self.samples_order_dict.keys())
 
-        self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict))
+        self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet = self.quiet)
 
 
     def update_samples_order_dict(self):
