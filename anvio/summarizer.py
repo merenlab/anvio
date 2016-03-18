@@ -11,12 +11,13 @@ from collections import Counter
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.sequence as sequence
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass
+from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, is_contigs_db
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 
@@ -277,7 +278,6 @@ class Summarizer(DatabasesMetaclass):
             self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
 
         return open(file_path, 'w')
-
 
 
 class Bin:
@@ -686,5 +686,46 @@ class Bin:
         self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'] if self.bin_info_dict['N50'] else 'NA')
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
+
+def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False):
+    """Returns an info dict for a given contigs db"""
+
+    class Args:
+        def __init__(self):
+            self.contigs_db = contigs_db_path
+
+    args = Args()
+    run = run 
+    progress = progress
+    run.verbose = False
+    progress.verbose = False
+    c = ContigsSuperclass(args, r = run, p = progress)
+
+    info_dict = {'path': contigs_db_path}
+
+    for key in c.a_meta:
+        info_dict[key] = c.a_meta[key]
+
+    c.init_contig_sequences()
+    seq = ''.join([e['sequence'] for e in c.contig_sequences.values()])
+    info_dict['gc_content'] = sequence.Composition(seq).GC_content
+    info_dict['num_genes'] = len(c.genes_in_contigs_dict)
+    info_dict['avg_gene_length'] = numpy.mean([(gene['stop'] - gene['start']) for gene in c.genes_in_contigs_dict.values() if not gene['partial']])
+    info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+
+    # get completeness / contamination estimates
+    comp = completeness.Completeness(contigs_db_path).get_info_for_splits(set(c.splits_basic_info.keys()))
+
+    if comp.has_key('Campbell_et_al'):
+        info_dict['percent_complete'] = comp['Campbell_et_al']['percent_complete']
+        info_dict['percent_redundancy'] = comp['Campbell_et_al']['percent_redundancy']
+
+    # lets get all amino acids used in all complete gene calls:
+    if include_AA_counts:
+        AA_counts_dict = c.get_AA_counts_dict()
+        info_dict['AA_counts'] = AA_counts_dict['AA_counts']
+        info_dict['total_AAs'] = AA_counts_dict['total_AAs']
+
+    return info_dict
 
 
