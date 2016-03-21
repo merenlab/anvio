@@ -2,11 +2,13 @@
 """
     Classes for pan operations.
 
-    anvi-pan-genome is the default client of this module
+    anvi-pan-genome is the default client using this module
 """
 
 import os
+import copy
 import shutil
+import hashlib
 import tempfile
 
 import anvio
@@ -14,6 +16,7 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 import anvio.clustering as clustering
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
@@ -41,26 +44,47 @@ class Pangenome:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
-        input_file_for_contig_dbs = A('input_contig_dbs')
+        input_file_for_internal_genomes = A('internal_genomes')
+        input_file_for_external_genomes = A('external_genomes')
         self.num_threads = A('num_threads')
         self.output_dir = A('output_dir')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
+        self.PC_min_occurrence = A('min_occurrence')
+
+        self.genomes = {}
 
         self.temp_files_to_remove_later = []
 
-        self.contig_dbs = utils.get_TAB_delimited_file_as_dictionary(input_file_for_contig_dbs, expected_fields = ['name', 'path']) if input_file_for_contig_dbs else {}
+        fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
+        fields_for_external_genomes_input = ['name', 'contigs_db_path']
 
-        # convert relative paths to absolute paths
-        for contigs_db in self.contig_dbs:
-            path = self.contig_dbs[contigs_db]['path']
-            if not path.startswith('/'):
-                self.contig_dbs[contigs_db]['path'] = os.path.abspath(os.path.join(os.path.dirname(input_file_for_contig_dbs), path))
+        internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields = fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
+        external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields = fields_for_external_genomes_input) if input_file_for_external_genomes else {}
+
+        self.internal_genome_names = internal_genomes_dict.keys()
+        self.external_genome_names = external_genomes_dict.keys()
+
+        if len(self.internal_genome_names) + len(self.external_genome_names) != len(set(self.internal_genome_names + self.external_genome_names)):
+            raise ConfigError, "Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
+                                seem to be the case with your input :/"
+
+        # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
+        for source, input_file in [(external_genomes_dict, input_file_for_external_genomes), (internal_genomes_dict, input_file_for_internal_genomes)]:
+            for genome_name in source:
+                self.genomes[genome_name] = source[genome_name]
+                for db_path_var in ['contigs_db_path', 'profile_db_path']:
+                    if db_path_var not in self.genomes[genome_name]:
+                        continue
+                    path = self.genomes[genome_name][db_path_var]
+                    if not path.startswith('/'):
+                        self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
 
         # to be filled during init:
-        self.hash_to_contigs_db_name = {}
+        self.hash_to_genome_name = {}
         self.view_data = {}
+        self.view_data_presence_absence = {}
         self.additional_view_data = {}
 
 
@@ -104,54 +128,112 @@ class Pangenome:
                                 pretty cute, too." % self.min_percent_identity
 
 
-    def init_contig_dbs(self):
-        if type(self.contig_dbs) != type({}):
-            raise ConfigError, "self.contig_dbs must be of type dict. Anvi'o needs an adult :("
+        if len([c for c in self.genomes.values() if 'contigs_db_path' not in c]):
+            raise ConfigError, "self.genomes does not seem to be a properly formatted dictionary for\
+                                the anvi'o class Pangenome."
 
-        if not len(self.contig_dbs):
-            raise ConfigError, "There is no contig databases to process..."
+        for genome_name in self.genomes:
+            if not os.path.exists(self.genomes[genome_name]['contigs_db_path']):
+                raise ConfigError, "The contigs database for genome %s is not where the input data suggested where\
+                                    it would be.." % genome_name
+            if genome_name in self.internal_genome_names and not os.path.exists(self.genomes[genome_name]['profile_db_path']):
+                raise ConfigError, "The profile database for genome %s is not where the input data suggested where\
+                                    it would be.." % genome_name
 
-        if len(self.contig_dbs) < 2:
-            raise ConfigError, "There must be at least two contigs databases for this to work :/"
 
-        if len([c for c in self.contig_dbs.values() if 'path' not in c]):
-            raise ConfigError, "self.contig_dbs does not seem to be a properly formatted dictionary for\
-                                the anvi'o class Pangenome. You did something very wrong."
+    def init_external_genomes(self):
+        self.progress.new('Initializing external genomes')
+        for genome_name in self.external_genome_names:
+            c = self.genomes[genome_name]
+            c['name'] = genome_name
 
-        missing_dbs = [c['path'] for c in self.contig_dbs.values() if not os.path.exists(c['path'])]
-        if len(missing_dbs):
-            raise ConfigError, "%d of %d of your contigs databases are not found where they were supposed to be \
-                                based on the description you provided :( Here is one that is missing: '%s'" \
-                                                % (len(missing_dbs), len(self.contig_dbs), missing_dbs[0])
+            self.progress.update('working on %s' % (genome_name))
 
-        # just go over the contig dbs to make sure they all are OK, AAAAAND set some stuff for later use.
-        self.progress.new('Initializing')
-        contig_db_names = self.contig_dbs.keys()
-        for i in range(0, len(contig_db_names)):
-            contigs_db_name = contig_db_names[i]
-            c = self.contig_dbs[contigs_db_name]
-            c['name'] = contigs_db_name
-
-            self.progress.update('%d of %d ... %s' % (i + 1, len(self.contig_dbs), contigs_db_name))
-
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['path'])
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'])
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
 
-            self.hash_to_contigs_db_name[c['contigs_db_hash']] = contigs_db_name
+            c['genome_entry_hash'] = c['contigs_db_hash']
+
+            self.hash_to_genome_name[c['genome_entry_hash']] = genome_name
         self.progress.end()
 
         # if two contigs db has the same hash, we are kinda f'd:
-        if len(set([c['contigs_db_hash'] for c in self.contig_dbs.values()])) != len(self.contig_dbs):
+        if len(set([self.genomes[genome_name]['genome_entry_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
             raise ConfigError, 'Not all hash values are unique across all contig databases you provided. Something\
                                 very fishy is going on :/'
 
         # make sure genes are called in every contigs db:
-        if len([c['genes_are_called'] for c in self.contig_dbs.values()]) != len(self.contig_dbs):
-            raise ConfigError, 'Genes are not called in every contigs db in the collection :/'
+        genomes_missing_gene_calls = [g for g in self.external_genome_names if not self.genomes[genome_name]['genes_are_called']]
+        if len(genomes_missing_gene_calls):
+            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
+                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
 
-        self.run.info('Contig DBs', '%d contig databases have been found.' % len(self.contig_dbs))
+        self.run.info('External genomes', '%d have been initialized.' % len(self.external_genome_names))
+
+
+    def init_internal_genomes(self):
+        self.progress.new('Initializing internal genomes')
+
+        # to not initialize things over and over again:
+        unique_profile_db_path_to_internal_genome_name = {}
+        for profile_path in set([self.genomes[g]['profile_db_path'] for g in self.internal_genome_names]):
+            unique_profile_db_path_to_internal_genome_name[profile_path] = [g for g in self.internal_genome_names if self.genomes[g]['profile_db_path'] == profile_path]
+
+        for profile_db_path in unique_profile_db_path_to_internal_genome_name:
+            self.collections = ccollections.Collections()
+            self.collections.populate_collections_dict(profile_db_path, anvio.__profile__version__)
+
+            for genome_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+                self.progress.update('working on %s' % (genome_name))
+                c = self.genomes[genome_name]
+
+                dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+
+                # set name
+                c['name'] = genome_name
+
+                collection_dict = self.collections.get_collection_dict(c['collection_id'])
+                bins_info_dict = self.collections.get_bins_info_dict(c['collection_id'])
+
+                if c['bin_id'] not in bins_info_dict:
+                    self.progress.end()
+                    raise ConfigError, "You betrayed us :( Genome %s does not appear to be a valid bin in collection %s in %s"\
+                                % (c['bin_id'], c['collection_id'], c['profile_db_path'])
+
+
+                split_names_of_interest = collection_dict[c['bin_id']]
+                if not len(split_names_of_interest):
+                    raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (c['bin_id'], c['collection_id'])
+
+
+                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, include_AA_counts = True)
+                for key in contigs_db_summary:
+                    c[key] = contigs_db_summary[key]
+
+                # set hash
+                c['genome_entry_hash'] = hashlib.sha224('_'.join([split_names_of_interest[0], split_names_of_interest[-1], c['contigs_db_hash']])).hexdigest()
+                self.hash_to_genome_name[c['genome_entry_hash']] = genome_name
+
+        self.progress.end()
+
+        if len(set([self.genomes[genome_name]['genome_entry_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
+            raise ConfigError, "Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
+                                wrong with your workflow :/ Please let the developers know if you can't figure this one out"
+
+        # make sure genes are called in every contigs db:
+        genomes_missing_gene_calls = [g for g in self.internal_genome_names if not self.genomes[genome_name]['genes_are_called']]
+        if len(genomes_missing_gene_calls):
+            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
+                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
+
+        self.run.info('Internal genomes', '%d have been initialized.' % len(self.internal_genome_names))
+
+
+    def init_genomes(self):
+        self.init_external_genomes()
+        self.init_internal_genomes()
 
 
     def gen_combined_proteins_fasta(self):
@@ -159,22 +241,20 @@ class Pangenome:
         output_file_path = self.get_output_file_path('combined_proteins.fa', temp_file = True)
         output_file = open(output_file_path, 'w')
 
-        for c in self.contig_dbs.values():
-            self.progress.update('Working on %s ...' % c['name'])
-            num_genes = 0
-            contigs_db = dbops.ContigsDatabase(c['path'])
-            protein_sequences = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
-            for protein_id in protein_sequences:
-                num_genes += 1
-                output_file.write('>%s_%d\n' % (c['contigs_db_hash'], protein_id))
-                output_file.write('%s\n' % protein_sequences[protein_id]['sequence'])
+        for genome_name in self.genomes:
+            g = self.genomes[genome_name]
+            self.progress.update('Working on %s ...' % genome_name)
+            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+            for gene_caller_id in g['gene_caller_ids']:
+                output_file.write('>%s_%d\n' % (g['genome_entry_hash'], gene_caller_id))
+                output_file.write('%s\n' % protein_sequences_dict[gene_caller_id]['sequence'])
             contigs_db.disconnect()
-            c['num_genes'] = num_genes
 
         output_file.close()
         self.progress.end()
 
-        self.run.info('ORFs', '%s protein sequences are stored for analysis.' % pp(sum([c['num_genes'] for c in self.contig_dbs.values()])))
+        self.run.info('ORFs', '%s protein sequences are stored for analysis.' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
 
         return output_file_path
 
@@ -228,15 +308,13 @@ class Pangenome:
                 self.progress.update('Lines processed %s ...' % pp(line_no))
 
             #
-            # FILTERS
+            # FILTERING BASED ON PERCENT IDENTITY
             #
-
             if perc_id < self.min_percent_identity:
                 continue
 
             mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, perc_id / 100.0))
             num_edges_stored += 1
-
 
         mcl_input.close()
 
@@ -247,29 +325,66 @@ class Pangenome:
         return mcl_input_file_path
 
 
-    def gen_view_data_and_additional_data_from_protein_clusters(self, protein_clustering_dict):
+    def gen_data_from_protein_clusters(self, protein_clustering_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
-        for pc in protein_clustering_dict:
-            self.view_data[pc] = dict([(contigs_db_name, 0) for contigs_db_name in self.contig_dbs])
-            self.additional_view_data[pc] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0}
-            for contigs_db_hash, gene_callers_id in [e.split('_') for e in protein_clustering_dict[pc]]:
-                contigs_db_name = self.hash_to_contigs_db_name[contigs_db_hash]
-                self.view_data[pc][contigs_db_name] += 1
-                self.additional_view_data[pc]['num_genes_in_pc'] += 1
-            self.additional_view_data[pc]['num_genomes_pc_has_hits'] = len([True for genome in self.view_data[pc] if self.view_data[pc][genome] > 0])
+        PCs = protein_clustering_dict.keys()
+
+        for PC in PCs:
+            self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
+            self.view_data_presence_absence[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
+            self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0}
+            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clustering_dict[PC]]:
+                try:
+                    genome_name = self.hash_to_genome_name[entry_hash]
+                except KeyError:
+                    raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
+                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
+                self.view_data[PC][genome_name] += 1
+                self.view_data_presence_absence[PC][genome_name] = 1
+                self.additional_view_data[PC]['num_genes_in_pc'] += 1
+            self.additional_view_data[PC]['num_genomes_pc_has_hits'] = len([True for genome in self.view_data[PC] if self.view_data[PC][genome] > 0])
+
+        self.progress.end()
+
+        #
+        # FILTERING BASED ON OCCURRENCE
+        #
+        PCs_of_interest = set([])
+        for PC in PCs:
+            if self.additional_view_data[PC]['num_genomes_pc_has_hits'] >= self.PC_min_occurrence:
+                PCs_of_interest.add(PC)
+
+        for PC in PCs:
+            if PC not in PCs_of_interest:
+                self.view_data.pop(PC)
+                self.view_data_presence_absence.pop(PC)
+                self.additional_view_data.pop(PC)
+
+        if self.PC_min_occurrence > 1:
+            self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clustering_dict) - len(PCs_of_interest))))
 
         view_data_file_path = self.get_output_file_path('anvio-view-data.txt')
         additional_view_data_file_path = self.get_output_file_path('anvio-additional-view-data.txt')
-        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_file_path, headers = ['contig'] + sorted(self.contig_dbs.keys()))
-        utils.store_dict_as_TAB_delimited_file(self.additional_view_data, additional_view_data_file_path, headers = ['contig'] + sorted(self.additional_view_data.values()[0].keys()))
+        view_data_presence_absence_file_path = self.get_output_file_path('anvio-view-data-prsence-absence.txt')
 
-        self.progress.end()
+        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_file_path, headers = ['contig'] + sorted(self.genomes.keys()))
+        utils.store_dict_as_TAB_delimited_file(self.additional_view_data, additional_view_data_file_path, headers = ['contig'] + sorted(self.additional_view_data.values()[0].keys()))
+        utils.store_dict_as_TAB_delimited_file(self.view_data_presence_absence, view_data_presence_absence_file_path, headers = ['contig'] + sorted(self.view_data_presence_absence.values()[0].keys()))
+
+        # here's where we finalize experimental data for clustering
+        experimental_data = copy.deepcopy(self.view_data_presence_absence)
+        for PC in self.additional_view_data:
+            for i in range(0, int(len(self.genomes) / 2)):
+                experimental_data[PC]['num_genomes_pc_has_hits_%d' % i] = self.additional_view_data[PC]['num_genomes_pc_has_hits']
+        experimental_data_file_path = self.get_output_file_path('anvio-experimental-data-for-clustering.txt')
+        utils.store_dict_as_TAB_delimited_file(experimental_data, experimental_data_file_path, headers = ['contig'] + sorted(experimental_data.values()[0].keys()))
+
         self.run.info("Anvi'o view data for protein clusters", view_data_file_path)
         self.run.info("Anvi'o additional view data", additional_view_data_file_path)
 
-        return view_data_file_path, additional_view_data_file_path
+        return view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path
 
 
     def gen_samples_info_file(self):
@@ -280,12 +395,12 @@ class Pangenome:
         headers = ['total_length']
 
         for h in ['percent_complete', 'percent_redundancy']:
-            if self.contig_dbs.values()[0].has_key(h):
+            if self.genomes.values()[0].has_key(h):
                 headers.append(h)
 
         headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
-        for c in self.contig_dbs.values():
+        for c in self.genomes.values():
             new_dict = {}
             for header in headers:
                 new_dict[header] = c[header]
@@ -319,9 +434,10 @@ class Pangenome:
         return samples_order_file_path
 
 
-    def gen_ad_hoc_anvio_run(self, view_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path):
+    def gen_ad_hoc_anvio_run(self, view_data_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path):
         ad_hoc_run = AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
 
+        ad_hoc_run.matrix_data_for_clustering = experimental_data_file_path
         ad_hoc_run.additional_view_data_file_path = additional_view_data_file_path
         ad_hoc_run.samples_info_file_path = samples_info_file_path
         ad_hoc_run.samples_order_file_path = samples_order_file_path
@@ -334,12 +450,22 @@ class Pangenome:
 
     def sanity_check(self):
         self.check_programs()
+
+        if type(self.genomes) != type({}):
+            raise ConfigError, "self.genomes must be a dict. Anvi'o needs an adult :("
+
+        if len(self.genomes) < 2:
+            raise ConfigError, "There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
+                    % len(self.genomes)
+
         self.check_params()
-        self.init_contig_dbs()
 
 
     def process(self):
         self.sanity_check()
+
+        # initialize genomes
+        self.init_genomes()
 
         # first we will export all proteins 
         combined_proteins_fasta_path = self.gen_combined_proteins_fasta()
@@ -354,14 +480,14 @@ class Pangenome:
         protein_clustering_dict = self.run_mcl(mcl_input_file_path)
 
         # create view data from protein clusters
-        view_data_file_path, additional_view_data_file_path = self.gen_view_data_and_additional_data_from_protein_clusters(protein_clustering_dict)
+        view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path = self.gen_data_from_protein_clusters(protein_clustering_dict)
 
         # gen samples info and order files
         samples_info_file_path = self.gen_samples_info_file()
         samples_order_file_path = self.gen_samples_order_file(view_data_file_path)
 
         # gen ad hoc anvi'o run
-        self.gen_ad_hoc_anvio_run(view_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path)
+        self.gen_ad_hoc_anvio_run(view_data_presence_absence_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path)
 
 
 class AdHocRunGenerator:
@@ -377,6 +503,7 @@ class AdHocRunGenerator:
         self.view_data_path = view_data_path
 
         self.tree_file_path = None
+        self.matrix_data_for_clustering = None
         self.additional_view_data_file_path = None
 
         self.samples_info_file_path = None
@@ -445,11 +572,15 @@ class AdHocRunGenerator:
     def gen_clustering_of_view_data(self):
         self.is_good_to_go()
 
-        self.progress.new('Hierarchical clustering of the view data')
+        self.progress.new('Hierarchical clustering')
         self.progress.update('..')
 
         self.tree_file_path = self.get_output_file_path('tree.txt')
-        clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path)
+
+        if self.matrix_data_for_clustering:
+            clustering.get_newick_tree_data(self.matrix_data_for_clustering, self.tree_file_path)
+        else:
+            clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path)
 
         self.progress.end()
 
@@ -499,7 +630,7 @@ class MCL:
 
             line_no += 1
 
-        self.run.info('Clusters', '%s clusters processed' % pp(len(clusters_dict)))
+        self.run.info('Number of protein clusters', '%s' % pp(len(clusters_dict)))
 
         return clusters_dict
 
