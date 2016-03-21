@@ -32,7 +32,7 @@ def main(args):
     I = lambda: 'contigs' if args.contigs_mode else 'splits'
 
     # read the input file with split/contig - bin ID associations
-    input_data_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
+    input_data_file_content = utils.get_TAB_delimited_file_as_dictionary(args.data, no_header = True, column_names = ['split_id', 'bin_name'])
 
     # populate bins_info_dict there is any information about bins
     bins_info_dict = {}
@@ -52,10 +52,10 @@ def main(args):
     run.info('Num contigs in the database', len(contigs_basic_info))
     run.info('Num splits in the database', len(splits_basic_info))
     run.info('Num %s in the input file' % I(), len(input_data_file_content))
-    run.info('Num bins the input file describes', len(set([i[1] for i in input_data_file_content])))
+    run.info('Num bins the input file describes', len(set([e['bin_name'] for e in input_data_file_content.values()])))
 
     # lets make sure names in the input file are relevant to names in the database (whether it is contigs, or splits):
-    input_names = set([i[0] for i in input_data_file_content])
+    input_names = set(input_data_file_content.keys())
     db_names = set(contigs_basic_info.keys() if args.contigs_mode else splits_basic_info.keys())
 
     entry_names_overlap_between_input_and_db = set.intersection(*[db_names, input_names])
@@ -73,7 +73,8 @@ def main(args):
     data = {}
 
     # populate the data ditionary
-    for entry_name, bin_name in input_data_file_content:
+    for entry_name in input_data_file_content:
+        bin_name = input_data_file_content[entry_name]['bin_name']
         if entry_name not in entry_names_overlap_between_input_and_db:
             continue
 
