@@ -35,11 +35,13 @@ def main(args):
     input_data_file_content = [l.strip().split('\t') for l in open(args.data).readlines() if not l.startswith('#')]
 
     # populate bins_info_dict there is any information about bins
-    try:
-        bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
-    except Exception, e:
-        raise ConfigError, "Someone was not happy with the TAB-delimited bins info file you provided. Here\
-                            is the complaint: %s" % e
+    bins_info_dict = {}
+    if args.bins_info:
+        try:
+            bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
+        except Exception, e:
+            raise ConfigError, "Someone was not happy with the TAB-delimited bins info file you provided. Here\
+                                is the complaint: %s" % e
 
     contigs_db = dbops.ContigsDatabase(args.contigs_db)
     splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
