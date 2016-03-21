@@ -5,6 +5,8 @@ import sys
 import glob
 import string
 
+from collections import Counter
+
 import anvio
 
 __author__ = "A. Murat Eren"
@@ -46,39 +48,39 @@ complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
 
 nucleotides = 'ATCGN'
 
-codon_to_AA = {'ATA':'Ile', 'ATC':'Ile', 'ATT':'Ile', 'ATG':'Met',
-               'ACA':'Thr', 'ACC':'Thr', 'ACG':'Thr', 'ACT':'Thr',
-               'AAC':'Asn', 'AAT':'Asn', 'AAA':'Lys', 'AAG':'Lys',
-               'AGC':'Ser', 'AGT':'Ser', 'AGA':'Arg', 'AGG':'Arg',
-               'CTA':'Leu', 'CTC':'Leu', 'CTG':'Leu', 'CTT':'Leu',
-               'CCA':'Pro', 'CCC':'Pro', 'CCG':'Pro', 'CCT':'Pro',
-               'CAC':'His', 'CAT':'His', 'CAA':'Gln', 'CAG':'Gln',
-               'CGA':'Arg', 'CGC':'Arg', 'CGG':'Arg', 'CGT':'Arg',
-               'GTA':'Val', 'GTC':'Val', 'GTG':'Val', 'GTT':'Val',
-               'GCA':'Ala', 'GCC':'Ala', 'GCG':'Ala', 'GCT':'Ala',
-               'GAC':'Asp', 'GAT':'Asp', 'GAA':'Glu', 'GAG':'Glu',
-               'GGA':'Gly', 'GGC':'Gly', 'GGG':'Gly', 'GGT':'Gly',
-               'TCA':'Ser', 'TCC':'Ser', 'TCG':'Ser', 'TCT':'Ser',
-               'TTC':'Phe', 'TTT':'Phe', 'TTA':'Leu', 'TTG':'Leu',
-               'TAC':'Tyr', 'TAT':'Tyr', 'TAA':'STP', 'TAG':'STP',
-               'TGC':'Cys', 'TGT':'Cys', 'TGA':'STP', 'TGG':'Trp'}
+codon_to_AA = Counter({'ATA':'Ile', 'ATC':'Ile', 'ATT':'Ile', 'ATG':'Met',
+                       'ACA':'Thr', 'ACC':'Thr', 'ACG':'Thr', 'ACT':'Thr',
+                       'AAC':'Asn', 'AAT':'Asn', 'AAA':'Lys', 'AAG':'Lys',
+                       'AGC':'Ser', 'AGT':'Ser', 'AGA':'Arg', 'AGG':'Arg',
+                       'CTA':'Leu', 'CTC':'Leu', 'CTG':'Leu', 'CTT':'Leu',
+                       'CCA':'Pro', 'CCC':'Pro', 'CCG':'Pro', 'CCT':'Pro',
+                       'CAC':'His', 'CAT':'His', 'CAA':'Gln', 'CAG':'Gln',
+                       'CGA':'Arg', 'CGC':'Arg', 'CGG':'Arg', 'CGT':'Arg',
+                       'GTA':'Val', 'GTC':'Val', 'GTG':'Val', 'GTT':'Val',
+                       'GCA':'Ala', 'GCC':'Ala', 'GCG':'Ala', 'GCT':'Ala',
+                       'GAC':'Asp', 'GAT':'Asp', 'GAA':'Glu', 'GAG':'Glu',
+                       'GGA':'Gly', 'GGC':'Gly', 'GGG':'Gly', 'GGT':'Gly',
+                       'TCA':'Ser', 'TCC':'Ser', 'TCG':'Ser', 'TCT':'Ser',
+                       'TTC':'Phe', 'TTT':'Phe', 'TTA':'Leu', 'TTG':'Leu',
+                       'TAC':'Tyr', 'TAT':'Tyr', 'TAA':'STP', 'TAG':'STP',
+                       'TGC':'Cys', 'TGT':'Cys', 'TGA':'STP', 'TGG':'Trp'})
 
-codon_to_AA_RC = {'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile',
-                  'ACA': 'Cys', 'ACC': 'Gly', 'ACG': 'Arg', 'ACT': 'Ser',
-                  'AGA': 'Ser', 'AGC': 'Ala', 'AGG': 'Pro', 'AGT': 'Thr',
-                  'ATA': 'Tyr', 'ATC': 'Asp', 'ATG': 'His', 'ATT': 'Asn',
-                  'CAA': 'Leu', 'CAC': 'Val', 'CAG': 'Leu', 'CAT': 'Met',
-                  'CCA': 'Trp', 'CCC': 'Gly', 'CCG': 'Arg', 'CCT': 'Arg',
-                  'CGA': 'Ser', 'CGC': 'Ala', 'CGG': 'Pro', 'CGT': 'Thr',
-                  'CTA': 'STP', 'CTC': 'Glu', 'CTG': 'Gln', 'CTT': 'Lys',
-                  'GAA': 'Phe', 'GAC': 'Val', 'GAG': 'Leu', 'GAT': 'Ile',
-                  'GCA': 'Cys', 'GCC': 'Gly', 'GCG': 'Arg', 'GCT': 'Ser',
-                  'GGA': 'Ser', 'GGC': 'Ala', 'GGG': 'Pro', 'GGT': 'Thr',
-                  'GTA': 'Tyr', 'GTC': 'Asp', 'GTG': 'His', 'GTT': 'Asn',
-                  'TAA': 'Leu', 'TAC': 'Val', 'TAG': 'Leu', 'TAT': 'Ile',
-                  'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
-                  'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
-                  'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'}
+codon_to_AA_RC = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile',
+                          'ACA': 'Cys', 'ACC': 'Gly', 'ACG': 'Arg', 'ACT': 'Ser',
+                          'AGA': 'Ser', 'AGC': 'Ala', 'AGG': 'Pro', 'AGT': 'Thr',
+                          'ATA': 'Tyr', 'ATC': 'Asp', 'ATG': 'His', 'ATT': 'Asn',
+                          'CAA': 'Leu', 'CAC': 'Val', 'CAG': 'Leu', 'CAT': 'Met',
+                          'CCA': 'Trp', 'CCC': 'Gly', 'CCG': 'Arg', 'CCT': 'Arg',
+                          'CGA': 'Ser', 'CGC': 'Ala', 'CGG': 'Pro', 'CGT': 'Thr',
+                          'CTA': 'STP', 'CTC': 'Glu', 'CTG': 'Gln', 'CTT': 'Lys',
+                          'GAA': 'Phe', 'GAC': 'Val', 'GAG': 'Leu', 'GAT': 'Ile',
+                          'GCA': 'Cys', 'GCC': 'Gly', 'GCG': 'Arg', 'GCT': 'Ser',
+                          'GGA': 'Ser', 'GGC': 'Ala', 'GGG': 'Pro', 'GGT': 'Thr',
+                          'GTA': 'Tyr', 'GTC': 'Asp', 'GTG': 'His', 'GTT': 'Asn',
+                          'TAA': 'Leu', 'TAC': 'Val', 'TAG': 'Leu', 'TAT': 'Ile',
+                          'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
+                          'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
+                          'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
 
 pretty_names = {}
 
