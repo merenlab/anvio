@@ -17,7 +17,7 @@ import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, is_contigs_db
+from anvio.dbops import DatabasesMetaclass, ContigsSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 
