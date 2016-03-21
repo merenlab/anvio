@@ -30,21 +30,40 @@ if __name__ == '__main__':
 
     import argparse
 
-    parser = argparse.ArgumentParser(description="A DIAMOND and MCL-based anvi'o pangenome workflow. You provide\
-                                                  anvi'o contigs databases, it gives you back a pangenome.")
+    parser = argparse.ArgumentParser(description="A DIAMOND and MCL-based anvi'o pangenome workflow. You provide genomes from anywhere\
+                                                  (whether they are external genomes, or anvi'o genome bins in collections), and it\
+                                                  gives you back a pangenome analysis.")
 
-    parser.add_argument('-i', '--input-contig-dbs', metavar = 'CONTIG_DBs', default = None, required = True,
-                        help = "A flat, two-column TAB-delimited text file that lists anvi'o contigs databases. The first item\
-                                in the header line should read 'name', and the second should read 'path', and each line should\
-                                list the name and the path for each anvi'o contigs database you wish to analyze.")
+    groupA = parser.add_argument_group('EXTERNAL GENOMES', "External genomes listed as anvi'o contigs databases. As in, you have one\
+                                                    or more genomes say from NCBI you want to work with, and you created an\
+                                                    anvi'o contigs database for each one of them.")
+    groupA.add_argument('-e', '--external-genomes', metavar = 'FILE', default = None,
+                        help = "A two-column TAB-delimited flat text file that lists anvi'o contigs databases. The first item\
+                                in the header line should read 'name', and the second should read 'contigs_db'. Each line in the\
+                                file should describe a single entry, where the first column is the name of the genome (or MAG), and\
+                                the second column is the anvi'o contigs database generated for this genome.")
 
-    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'default': 'unknown-pan-output'}))
-    parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
-    parser.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 'Minimum percent identity\
-                                for proteins to be assumed "similar". This value will be used to filter hits from the search\
-                                results, and remaining hits will go into MCL analysis. The default is %(default)g.'}))
-    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupB = parser.add_argument_group("INTERNAL GENOMES", "Genome bins stored in an anvi'o profile databases as collections.")
+    groupB.add_argument('-i', '--internal-genomes', metavar = 'FILE', default = None,
+                        help = "A four-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
+                                'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
+                                can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection.")
+
+    groupC = parser.add_argument_group("ADVANCED", "MCL- or DIAMOND-related parameters.")
+    groupC.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 'Minimum percent identity\
+                                for proteins to be assumed "similar". This value will be used to filter hits from the DIAMOND\
+                                search results, and passing hits will go into MCL analysis. The default is %(default)g.'}))
+    groupC.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singleons?\ This\
+                                is the parameter that will let you do that. Anvi'o will remove protein clusters that occur less than the\
+                                value you set using this parameter from the analysis. The default is %(default)d, which means protein cluster\
+                                needs to appear in at least %(default)d genome. If you want to remove singletons, set it to 2, if you want to\
+                                remove doubletons as well, set it to 3, and so on.")
+
+    groupD = parser.add_argument_group("GENERAL", "Important stuff Tom never pays attention (but you should).")
+    groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'default': 'unknown-pan-output'}))
+    groupD.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
 
