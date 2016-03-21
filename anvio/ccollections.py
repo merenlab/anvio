@@ -66,9 +66,10 @@ class Collections:
 
     def sanity_check(self, collection_name):
         if collection_name not in self.collections_dict:
-            raise ConfigError, 'There is no "%s" I know of. Maybe the populate_collections_dict was not called\
-                                for whatever database you are trying to get collections from? (anvio asks this\
-                                rhetorical question to the programmer).' % collection_name
+            raise ConfigError, 'There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
+                                a programmer and accessing to the collections from your program, here is a reminder for you:\
+                                are you sure `populate_collections_dict` was called for whatever database you are trying to\
+                                get collections from?' % collection_name
 
 
     def get_collection_dict(self, collection_name):
