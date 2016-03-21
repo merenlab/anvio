@@ -94,7 +94,8 @@ class AAFrequencies:
 
             consensus_codon_AA = conv_dict[consensus_codon_sequence]
             for nt in nt_frequencies:
-                aa_frequencies[conv_dict[nt]] += nt_frequencies[nt]
+                if conv_dict[nt]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
+                    aa_frequencies[conv_dict[nt]] += nt_frequencies[nt]
 
             coverage = sum(aa_frequencies.values())
 
