@@ -591,7 +591,7 @@ D = {
     'min-percent-identity': (
             ['--min-percent-identity'],
             {'metavar': 'PERCENT_IDENTITY',
-             'default': 80,
+             'default': 80.0,
              'type': float,
              'help': "Minimum percent identity. The default is %(default)g."}
                 ),
