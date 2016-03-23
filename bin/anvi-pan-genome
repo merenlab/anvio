@@ -50,14 +50,19 @@ if __name__ == '__main__':
                                 can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection.")
 
     groupC = parser.add_argument_group("ADVANCED", "MCL- or DIAMOND-related parameters.")
-    groupC.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 'Minimum percent identity\
-                                for proteins to be assumed "similar". This value will be used to filter hits from the DIAMOND\
-                                search results, and passing hits will go into MCL analysis. The default is %(default)g.'}))
+    groupC.add_argument('--min-percent-identity', type = float, default = 20.0, metavar = "PERCENT", help = "Minimum percent identity\
+                                for proteins to be kept for MCL analysis. This value will be used to filter hits from the DIAMOND\
+                                search results. No need to be too stringent, but don't listen to anyone, and do experiment on your own!\
+                                The default is %(default)g.")
     groupC.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singleons?\ This\
                                 is the parameter that will let you do that. Anvi'o will remove protein clusters that occur less than the\
                                 value you set using this parameter from the analysis. The default is %(default)d, which means protein cluster\
                                 needs to appear in at least %(default)d genome. If you want to remove singletons, set it to 2, if you want to\
                                 remove doubletons as well, set it to 3, and so on.")
+    groupC.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
+                                the sensitivity of the algorithm during the identification of the protein clusters. More information on this\
+                                parameter and it's effect on cluster granularity is here: (http://micans.org/mcl/man/mclfaq.html#faq7.2).\
+                                The default is %(default)g.")
 
     groupD = parser.add_argument_group("GENERAL", "Important stuff Tom never pays attention (but you should).")
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'default': 'unknown-pan-output'}))
