@@ -52,6 +52,7 @@ class Pangenome:
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
         self.PC_min_occurrence = A('min_occurrence')
+        self.mcl_inflation = A('mcl_inflation') 
 
         self.genomes = {}
 
@@ -238,7 +239,7 @@ class Pangenome:
 
     def gen_combined_proteins_fasta(self):
         self.progress.new('Storing combined protein sequences')
-        output_file_path = self.get_output_file_path('combined_proteins.fa', temp_file = True)
+        output_file_path = self.get_output_file_path('combined-proteins.fa', temp_file = True)
         output_file = open(output_file_path, 'w')
 
         for genome_name in self.genomes:
@@ -254,7 +255,8 @@ class Pangenome:
         output_file.close()
         self.progress.end()
 
-        self.run.info('ORFs', '%s protein sequences are stored for analysis.' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
+        self.run.info('ORFs', '%s found.' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
+        self.run.info('Combined protein sequences FASTA', output_file_path)
 
         return output_file_path
 
@@ -274,6 +276,7 @@ class Pangenome:
     def run_mcl(self, mcl_input_file_path):
         mcl = MCL(mcl_input_file_path, run = self.run, progress = self.progress, num_threads = self.num_threads)
 
+        mcl.inflation = self.mcl_inflation
         mcl.clusters_file_path = self.get_output_file_path('mcl-clusters.txt')
         mcl.log_file_path = self.get_output_file_path('log.txt')
 
@@ -451,6 +454,12 @@ class Pangenome:
     def sanity_check(self):
         self.check_programs()
 
+        if type(self.mcl_inflation) != float:
+            raise ConfigError, "Well, MCL likes its inflation parameter in 'float' form..."
+
+        if self.mcl_inflation > 100 or self.mcl_inflation < 0.1:
+            raise ConfigError, "MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0."
+
         if type(self.genomes) != type({}):
             raise ConfigError, "self.genomes must be a dict. Anvi'o needs an adult :("
 
@@ -601,12 +610,12 @@ class MCL:
         self.run = run
         self.progress = progress
 
+        self.inflation = 2.0
         self.mcl_input_file_path = mcl_input_file_path
         self.num_threads = num_threads
 
         utils.is_program_exists('mcl')
 
-        self.inflation = 2.0
 
         self.clusters_file_path = 'mcl-clusters.txt'
         self.log_file_path = 'mcl-log-file.txt'
@@ -636,6 +645,8 @@ class MCL:
 
 
     def cluster(self):
+        self.run.info('MCL inflation', self.inflation)
+
         self.progress.new('MCL')
         self.progress.update('clustering (using %d thread(s)) ...' % self.num_threads)
         cmd_line = ('mcl %s --abc -I %f -o %s -te %d >> "%s" 2>&1' % (self.mcl_input_file_path,
