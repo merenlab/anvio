@@ -740,14 +740,14 @@ def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path
     output_fasta = u.FastaOutput(output_fasta_path)
     names_file = open(names_file_path, 'w')
 
-    num_unique_entries = 0
+    names_dict = {}
     while input_fasta.next():
         output_fasta.store(input_fasta, split = False)
         names_file.write('%s\t%s\n' % (input_fasta.id, ','.join(input_fasta.ids)))
 
-        num_unique_entries += 1
+        names_dict[input_fasta.id] = input_fasta.ids
 
-    return output_fasta_path, names_file_path, num_unique_entries
+    return output_fasta_path, names_file_path, names_dict
 
 
 def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
