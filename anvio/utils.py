@@ -716,7 +716,7 @@ def get_FASTA_file_as_dictionary(file_path):
     return d
 
 
-def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path = None):
+def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path = None, store_frequencies_in_deflines = True):
     filesnpaths.is_file_exists(input_file_path)
 
     if not output_fasta_path:
@@ -742,7 +742,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path
 
     names_dict = {}
     while input_fasta.next():
-        output_fasta.store(input_fasta, split = False)
+        output_fasta.store(input_fasta, split = False, store_frequencies = store_frequencies_in_deflines)
         names_file.write('%s\t%s\n' % (input_fasta.id, ','.join(input_fasta.ids)))
 
         names_dict[input_fasta.id] = input_fasta.ids
