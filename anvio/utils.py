@@ -716,6 +716,40 @@ def get_FASTA_file_as_dictionary(file_path):
     return d
 
 
+def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path = None):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not output_fasta_path:
+        output_fasta_path = input_file_path + '.unique'
+
+    if not names_file_path:
+        names_file_path = output_fasta_path + '.names'
+
+    if output_fasta_path == names_file_path:
+        raise ConfigError, "I can't unique this. Output FASTA file path can't be identical to\
+                            the names file path..."
+
+    if output_fasta_path == input_file_path or names_file_path == input_file_path:
+        raise ConfigError, "Anvi'o will not unique this. Output FASTA path and names file path should\
+                            be different from the the input file path..."
+
+    filesnpaths.is_output_file_writable(output_fasta_path)
+    filesnpaths.is_output_file_writable(names_file_path)
+
+    input_fasta = u.SequenceSource(input_file_path, unique = True)
+    output_fasta = u.FastaOutput(output_fasta_path)
+    names_file = open(names_file_path, 'w')
+
+    num_unique_entries = 0
+    while input_fasta.next():
+        output_fasta.store(input_fasta, split = False)
+        names_file.write('%s\t%s\n' % (input_fasta.id, ','.join(input_fasta.ids)))
+
+        num_unique_entries += 1
+
+    return output_fasta_path, names_file_path, num_unique_entries
+
+
 def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
     filesnpaths.is_output_file_writable(output_file_path)
     output = open(output_file_path, 'w')
