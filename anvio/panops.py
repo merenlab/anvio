@@ -237,10 +237,10 @@ class Pangenome:
         self.init_internal_genomes()
 
 
-    def gen_combined_proteins_fasta(self):
+    def gen_combined_proteins_unique_FASTA(self):
         self.progress.new('Storing combined protein sequences')
-        output_file_path = self.get_output_file_path('combined-proteins.fa', temp_file = True)
-        output_file = open(output_file_path, 'w')
+        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa', temp_file = True)
+        output_file = open(combined_proteins_FASTA_path, 'w')
 
         for genome_name in self.genomes:
             g = self.genomes[genome_name]
@@ -255,18 +255,24 @@ class Pangenome:
         output_file.close()
         self.progress.end()
 
-        self.run.info('ORFs', '%s found.' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
-        self.run.info('Combined protein sequences FASTA', output_file_path)
+        # unique the FASTA file
+        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(combined_proteins_FASTA_path, store_frequencies_in_deflines = False)
 
-        return output_file_path
+        self.run.info('Num protein sequences', '%s' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
+        self.run.info('Num unique protein sequences', '%s' % pp(len(unique_proteins_names_dict)))
+        self.run.info('Combined protein sequences FASTA', combined_proteins_FASTA_path)
+        self.run.info('Unique protein sequences FASTA', unique_proteins_FASTA_path)
+
+        return unique_proteins_FASTA_path, unique_proteins_names_dict
 
 
-    def run_diamond(self, combined_proteins_fasta_path):
-        diamond = Diamond(combined_proteins_fasta_path, run = self.run, progress = self.progress,
+    def run_diamond(self, unique_proteins_fasta_path, unique_proteins_names_dict):
+        diamond = Diamond(unique_proteins_fasta_path, run = self.run, progress = self.progress,
                           num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
 
+        diamond.names_dict = unique_proteins_names_dict
         diamond.log_file_path = self.get_output_file_path('log.txt')
-        diamond.target_db_path = self.get_output_file_path('.'.join(combined_proteins_fasta_path.split('.')[:-1]))
+        diamond.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
@@ -287,23 +293,21 @@ class Pangenome:
         self.progress.new('Filtering blastall results')
         self.progress.update('...')
 
+        all_ids = set([])
+
+        # mapping for the fields in the blast output
+        mapping = [str, str, float, int, int, int, int, int, int, int, float, float]
+
         mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
         mcl_input = open(mcl_input_file_path, 'w')
-
-        mapping = [str, str, float, int, int, int, int, int, int, int, float, float]
 
         line_no = 1
         num_edges_stored = 0
         for line in open(blastall_results):
             fields = line.strip().split('\t')
 
-            try:
-                query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
-                    [mapping[i](fields[i]) for i in range(0, len(mapping))]
-            except Exception, e:
-                self.progress.end()
-                raise ConfigError, "Something went wrong while processing the blastall output file in line %d.\
-                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e)
+            query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
+                [mapping[i](fields[i]) for i in range(0, len(mapping))]
 
             line_no += 1
 
@@ -477,10 +481,10 @@ class Pangenome:
         self.init_genomes()
 
         # first we will export all proteins 
-        combined_proteins_fasta_path = self.gen_combined_proteins_fasta()
+        unique_proteins_FASTA_path, unique_proteins_names_dict = self.gen_combined_proteins_unique_FASTA()
 
         # run diamond
-        blastall_results = self.run_diamond(combined_proteins_fasta_path)
+        blastall_results = self.run_diamond(unique_proteins_FASTA_path, unique_proteins_names_dict)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
@@ -684,6 +688,9 @@ class Diamond:
         self.search_output_path = 'diamond-search-resuults'
         self.tabular_output_path = 'diamond-search-results.txt'
 
+        # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
+        # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
+        self.names_dict = None
 
     def get_blastall_results(self):
         force_makedb, force_blastp, force_view = False, False, False
@@ -741,7 +748,7 @@ class Diamond:
     def blastp(self):
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d >> "%s" 2>&1' % (self.query_fasta,
+        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d -k 1000000 >> "%s" 2>&1' % (self.query_fasta,
                                                                                    self.target_db_path,
                                                                                    self.search_output_path,
                                                                                    self.tmp_dir,
@@ -762,7 +769,7 @@ class Diamond:
     def view(self):
         self.progress.new('DIAMOND')
         self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond view -a %s -o %s -p %d >> "%s" 2>&1' % (self.search_output_path + '.daa',
+        cmd_line = ('diamond view -a %s -o %s -p %d -k 1000000 >> "%s" 2>&1' % (self.search_output_path + '.daa',
                                                                      self.tabular_output_path,
                                                                      self.num_threads,
                                                                      self.log_file_path))
@@ -770,8 +777,36 @@ class Diamond:
 
         utils.run_command(cmd_line)
 
-        self.progress.end()
-
         self.check_output(self.tabular_output_path, 'view')
 
-        self.run.info('Diamond tabular output file', self.tabular_output_path)
+        if self.names_dict:
+            self.progress.update('Un-uniqueing the tabular output ...')
+            with open(self.log_file_path, "a") as log: log.write('self.names_dict is found. Un-uniqueing the tabular output.\n')
+            # if we are here, this means the self.tabular_output_path contains information only about unique
+            # entries. We will expand it here so downstream analyses do not need to pay attention to this
+            # detail.
+            new_tabular_output_path = self.tabular_output_path + '.ununiqued'
+            new_tabular_output = open(new_tabular_output_path, 'w')
+            saved_comparisons = set([])
+
+            for line in open(self.tabular_output_path):
+                fields = line.strip().split('\t')
+                for query_id in self.names_dict[fields[0]]:
+                    for subject_id in self.names_dict[fields[1]]:
+                        comparison_id = '_'.join(sorted([query_id, subject_id]))
+
+                        if comparison_id in saved_comparisons:
+                            continue
+
+                        new_tabular_output.write('%s\t%s\t%s\n' % (query_id, subject_id, '\t'.join(fields[2:])))
+                        saved_comparisons.add(comparison_id)
+
+
+            new_tabular_output.close()
+
+        shutil.move(self.tabular_output_path, self.tabular_output_path + '.unique')
+        shutil.move(new_tabular_output_path, self.tabular_output_path)
+
+        self.progress.end()
+
+        self.run.info('Diamond %stabular output file' % ('un-uniqued' if len(self.names_dict) else ''), self.tabular_output_path)
