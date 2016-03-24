@@ -53,6 +53,8 @@ class Pangenome:
         self.min_percent_identity = A('min_percent_identity')
         self.PC_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation') 
+        self.sensitive = A('sensitive') 
+        self.maxbit = A('maxbit') 
 
         self.genomes = {}
 
@@ -121,11 +123,17 @@ class Pangenome:
         filesnpaths.is_output_dir_writable(self.output_dir)
         self.output_dir = os.path.abspath(self.output_dir)
 
+        if type(self.maxbit) != float:
+            raise ConfigError, "maxbit value must be of type float :("
+
+        if self.maxbit < 0 or self.maxbit > 1:
+            raise ConfigError, "Well. maxbit must be between 0 and 1. Yes. Very boring."
+
         if type(self.min_percent_identity) != float:
             raise ConfigError, "Minimum percent identity value must be of type float :("
 
-        if self.min_percent_identity < 20 or self.min_percent_identity > 100:
-            raise ConfigError, "Minimum percent identity must be between 20%% and 100%%. Although your %.2f%% is\
+        if self.min_percent_identity < 0 or self.min_percent_identity > 100:
+            raise ConfigError, "Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is\
                                 pretty cute, too." % self.min_percent_identity
 
 
@@ -276,6 +284,8 @@ class Pangenome:
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
+        diamond.sensitive = self.sensitive
+
         return diamond.get_blastall_results()
 
 
@@ -290,13 +300,78 @@ class Pangenome:
 
 
     def gen_mcl_input(self, blastall_results):
-        self.progress.new('Filtering blastall results')
+        self.progress.new('Processing diamond search results')
         self.progress.update('...')
 
         all_ids = set([])
 
         # mapping for the fields in the blast output
         mapping = [str, str, float, int, int, int, int, int, int, int, float, float]
+
+        # here we perform an initial pass on the blast results to fill the dict that will hold
+        # the bit score for each gene when it was blasted against itself. this dictionary
+        # will then be used to calculate the 'maxbit' value between two genes, which I learned
+        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines maxbit as 
+        # 'bit score between target and query / min(selfbit for query, selbit for target)'. This
+        # heuristic approach provides a mean to set a cutoff to eliminate weak matches between
+        # two genes. maxbit value reaches to 1 for hits between two genes that are almost identical.
+        self_bit_scores = {}
+        line_no = 1
+        self.progress.update('(initial pass of the serach results to set the self bit scores ...)')
+        for line in open(blastall_results):
+            fields = line.strip().split('\t')
+
+            try:
+                query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
+                    [mapping[i](fields[i]) for i in range(0, len(mapping))]
+            except Exception, e:
+                self.progress.end()
+                raise ConfigError, "Something went wrong while processing the blastall output file in line %d.\
+                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e)
+            line_no += 1
+            all_ids.add(query_id)
+            all_ids.add(subject_id)
+
+            if query_id == subject_id:
+                self_bit_scores[query_id] = bit_score
+
+        self.progress.end()
+
+        ids_without_self_search = all_ids - set(self_bit_scores.keys())
+        if len(ids_without_self_search):
+            self.run.warning("DIAMOND did not retun search results for %d of %d the protein sequences in your input FASTA file.\
+                              Anvi'o will do some heuristic magic to complete the missing data in the search output to recover\
+                              from this. But since you are a scientist, here are the protein sequence IDs for which Diamond\
+                              failed to report self search results: %s." \
+                                                    % (len(ids_without_self_search), len(all_ids), ', '.join(ids_without_self_search)))
+
+
+        # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
+        # we are here, because protein sequences in ids_without_self_search did not have any hits in the search output
+        # although they were in the FASTA file the target database were built from. so we will make sure they are not
+        # missing from self_bit_scores dict, or mcl_input (additional mcl inputs will be stored in the following dict)
+        additional_mcl_input_lines = {}
+        for id_without_self_search in ids_without_self_search:
+            entry_hash, gene_caller_id = id_without_self_search.split('_')
+
+            try:
+                genome_name = self.hash_to_genome_name[entry_hash]
+            except KeyError:
+                raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
+                                    additional genomes without cleaning the previous work directory. Sounds familiar?"
+
+            # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
+            # bit score that would have recovered from a perfect match
+            self_bit_scores[id_without_self_search] = (self.genomes[genome_name]['gene_lengths'][int(gene_caller_id)] / 3.0) * 2
+
+            # add this SOB into additional_mcl_input_lines dict.
+            additional_mcl_input_lines[id_without_self_search] = '%s\t%s\t1.0\n' % (id_without_self_search, id_without_self_search)
+
+
+        # CONTINUE AS IF NOTHING HAPPENED
+        self.run.info('Min percent identity', self.min_percent_identity)
+        self.run.info('Maxbit', self.maxbit)
+        self.progress.new('Processing diamond search results')
 
         mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
         mcl_input = open(mcl_input_file_path, 'w')
@@ -320,7 +395,19 @@ class Pangenome:
             if perc_id < self.min_percent_identity:
                 continue
 
+            #
+            # FILTERING BASED ON MAXBIT
+            #
+            maxbit = bit_score / min(self_bit_scores[query_id], self_bit_scores[subject_id])
+            if maxbit < self.maxbit:
+                continue
+
             mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, perc_id / 100.0))
+            num_edges_stored += 1
+
+        # add additional lines if there are any:
+        for line in additional_mcl_input_lines.values():
+            mcl_input.write(line)
             num_edges_stored += 1
 
         mcl_input.close()
@@ -688,6 +775,8 @@ class Diamond:
         self.search_output_path = 'diamond-search-resuults'
         self.tabular_output_path = 'diamond-search-results.txt'
 
+        self.sensitive = False
+
         # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
         self.names_dict = None
@@ -746,15 +835,18 @@ class Diamond:
 
 
     def blastp(self):
+        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d -k 1000000 >> "%s" 2>&1' % (self.query_fasta,
+        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d %s -k 1000000 >> "%s" 2>&1' % (self.query_fasta,
                                                                                    self.target_db_path,
                                                                                    self.search_output_path,
                                                                                    self.tmp_dir,
                                                                                    self.num_threads,
+                                                                                   '--sensitive' if self.sensitive else '',
                                                                                    self.log_file_path))
-        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+        with open(self.log_file_path, "a") as log: log.write('BLASTP CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
 
@@ -773,7 +865,7 @@ class Diamond:
                                                                      self.tabular_output_path,
                                                                      self.num_threads,
                                                                      self.log_file_path))
-        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+        with open(self.log_file_path, "a") as log: log.write('VIEW CMD: ' + cmd_line + '\n')
 
         utils.run_command(cmd_line)
 
