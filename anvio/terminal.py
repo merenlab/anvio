@@ -135,27 +135,35 @@ class Progress:
 
 
 class Run:
-    def __init__(self, info_file_path = None, verbose = True, width = 45):
-        if info_file_path:
-            self.init_info_file_obj(info_file_path)
-        else:
-            self.info_file_obj = None
+    def __init__(self, log_file_path = None, verbose = True, width = 45):
+        self.log_file_path = log_file_path
 
         self.info_dict = {}
         self.verbose = verbose
         self.width = width
 
 
-    def init_info_file_obj(self, info_file_path):
-            self.info_file_obj = open(info_file_path, 'w')
+    def log(self, line):
+        if not self.log_file_path:
+            self.warning("The run object got a logging request, but it was not inherited with\
+                          a log file path :(")
+            return
+
+        line = line if line.endswith('\n') else line + '\n'
+        with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line))
+
+
+    def write(self, line, quiet = False):
+        if self.log_file_path:
+            self.log(line)
+
+        if self.verbose and not quiet:
+            sys.stderr.write(line)
 
 
     def info(self, key, value, quiet = False, display_only = False, nl_before = 0, nl_after = 0, lc = 'cyan', mc = 'yellow'):
         if not display_only:
             self.info_dict[key] = value
-
-        if quiet:
-            return True
 
         if type(value) == str:
             value = remove_spaces(value)
@@ -168,11 +176,7 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
 
-        if self.info_file_obj:
-            self.info_file_obj.write(info_line)
-
-        if self.verbose:
-            sys.stderr.write(info_line)
+        self.write(info_line, quiet = quiet)
 
 
     def info_single(self, message, mc = 'yellow', nl_before = 0, nl_after = 0, cut_after = 80):
@@ -184,30 +188,26 @@ class Run:
         else:
             message_line = c("* %s\n" % str(message), mc)
 
-        if self.verbose:
-            sys.stderr.write('\n' * nl_before)
-            sys.stderr.write(message_line)
-            sys.stderr.write('\n' * nl_after)
+        message_line = ('\n' * nl_before) + message_line + ('\n' * nl_before)
+
+        self.write(message_line)
 
 
     def warning(self, message, header='WARNING', lc = 'red', raw = False):
         if type(message) == str:
             message = remove_spaces(message)
 
+        message_line = ''
         header_line = c("\n%s\n%s\n" % (header, '=' * (self.width + 2)), lc)
         if raw:
             message_line = c("%s\n\n" % (message), lc)
         else:
             message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
 
-        if self.verbose:
-            sys.stderr.write(header_line)
-            if message:
-                sys.stderr.write(message_line)
+        self.write(header_line + message_line)
 
 
     def store_info_dict(self, destination, strip_prefix = None):
-
         if strip_prefix:
             # mostly to get rid of output_dir prefix in output file names.
             # surprisingly enough, this is the best place to do it. live 
@@ -218,8 +218,8 @@ class Run:
 
 
     def quit(self):
-        if self.info_file_obj:
-            self.info_file_obj.close()
+        if self.log_file_path:
+            self.log('Bye.')
 
 
 def pretty_print(n):
