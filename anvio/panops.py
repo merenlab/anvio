@@ -20,6 +20,7 @@ import anvio.clustering as clustering
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 
@@ -56,6 +57,7 @@ class Pangenome:
         self.mcl_inflation = A('mcl_inflation') 
         self.sensitive = A('sensitive') 
         self.maxbit = A('maxbit') 
+        self.use_ncbi_blast = A('use_ncbi_blast') 
 
         self.genomes = {}
 
@@ -290,6 +292,29 @@ class Pangenome:
         return diamond.get_blastall_results()
 
 
+    def run_blast(self, unique_proteins_fasta_path, unique_proteins_names_dict):
+        self.run.warning("You elected to use NCBI's blastp for protein search. Running blastp will be significantly\
+                          slower than DIAMOND (although, anvi'o developers are convinced that you *are*\
+                          doing the right thing, so, kudos to you).")
+        blast = BLAST(unique_proteins_fasta_path, run = self.run, progress = self.progress,
+                          num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
+
+        blast.names_dict = unique_proteins_names_dict
+        blast.log_file_path = self.get_output_file_path('log.txt')
+        blast.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
+        blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
+
+
+        return blast.get_blastall_results()
+
+
+    def run_search(self, unique_proteins_fasta_path, unique_proteins_names_dict):
+        if self.use_ncbi_blast:
+            return self.run_blast(unique_proteins_fasta_path, unique_proteins_names_dict)
+        else:
+            return self.run_diamond(unique_proteins_fasta_path, unique_proteins_names_dict)
+
+
     def run_mcl(self, mcl_input_file_path):
         mcl = MCL(mcl_input_file_path, run = self.run, progress = self.progress, num_threads = self.num_threads)
 
@@ -301,7 +326,7 @@ class Pangenome:
 
 
     def gen_mcl_input(self, blastall_results):
-        self.progress.new('Processing diamond search results')
+        self.progress.new('Processing search results')
         self.progress.update('...')
 
         all_ids = set([])
@@ -340,11 +365,12 @@ class Pangenome:
 
         ids_without_self_search = all_ids - set(self_bit_scores.keys())
         if len(ids_without_self_search):
-            self.run.warning("DIAMOND did not retun search results for %d of %d the protein sequences in your input FASTA file.\
+            search_tool = 'BLAST' if self.use_ncbi_blast else 'DIAMOND'
+            self.run.warning("%s did not retun search results for %d of %d the protein sequences in your input FASTA file.\
                               Anvi'o will do some heuristic magic to complete the missing data in the search output to recover\
-                              from this. But since you are a scientist, here are the protein sequence IDs for which Diamond\
+                              from this. But since you are a scientist, here are the protein sequence IDs for which %s\
                               failed to report self search results: %s." \
-                                                    % (len(ids_without_self_search), len(all_ids), ', '.join(ids_without_self_search)))
+                                                    % (search_tool, len(ids_without_self_search), len(all_ids), ', '.join(ids_without_self_search), search_tool))
 
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
@@ -372,7 +398,7 @@ class Pangenome:
         # CONTINUE AS IF NOTHING HAPPENED
         self.run.info('Min percent identity', self.min_percent_identity)
         self.run.info('Maxbit', self.maxbit)
-        self.progress.new('Processing diamond search results')
+        self.progress.new('Processing search results')
 
         mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
         mcl_input = open(mcl_input_file_path, 'w')
@@ -414,7 +440,7 @@ class Pangenome:
         mcl_input.close()
 
         self.progress.end()
-        self.run.info('Filtered diamond results', '%s edges stored' % pp(num_edges_stored))
+        self.run.info('Filtered search results', '%s edges stored' % pp(num_edges_stored))
         self.run.info('MCL input', '%s' % mcl_input_file_path)
 
         return mcl_input_file_path
@@ -571,8 +597,8 @@ class Pangenome:
         # first we will export all proteins 
         unique_proteins_FASTA_path, unique_proteins_names_dict = self.gen_combined_proteins_unique_FASTA()
 
-        # run diamond
-        blastall_results = self.run_diamond(unique_proteins_FASTA_path, unique_proteins_names_dict)
+        # run search
+        blastall_results = self.run_search(unique_proteins_FASTA_path, unique_proteins_names_dict)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
