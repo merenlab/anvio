@@ -891,7 +891,7 @@ class ProfileDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
-    def __init__(self, db_path, run=run, progress=progress, quiet = True):
+    def __init__(self, db_path, run=run, progress=progress, quiet = True, skip_init = False):
         self.db = None
         self.db_path = db_path
 
@@ -900,7 +900,9 @@ class ContigsDatabase:
         self.quiet = quiet
 
         self.meta = {}
-        self.init()
+
+        if not skip_init:
+            self.init()
 
 
     def init(self):
@@ -950,6 +952,10 @@ class ContigsDatabase:
                                 anvi'o. Please read this section in the tutorial to understand the reason behind this\
                                 requirement (anvi'o is very upset for making you do this): %s" \
                                                       % ('http://merenlab.org/2015/05/02/anvio-tutorial/#preparation')
+
+        all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
+        if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
+            raise ConfigError, "Every contig in the input FASTA file must have a unique ID. You know..."
 
         if os.path.exists(self.db_path):
             raise ConfigError, "Anvi'o will not overwrite an existing contigs database. Please choose a different name\
