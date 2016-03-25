@@ -124,6 +124,8 @@ def validate_request():
         pass
     elif request.path.startswith('/private/'):
         pass
+    elif request.path.startswith('/confirm'):
+        pass
     else:
         if ('X-Requested-With' not in request.headers) or (request.headers['X-Requested-With'] != 'XMLHttpRequest'):
             raise HTTPResponse(status=500, body='This API endpoint is only available via XMLHTTPRequest.')
