@@ -39,9 +39,13 @@ class BLAST:
         self.tmp_dir = tempfile.gettempdir()
 
         self.query_fasta = query_fasta
-        self.log_file_path = 'blast-log-file.txt'
         self.target_db_path = 'blast-target'
         self.search_output_path = 'blast-search-results.txt'
+
+
+        if not self.run.log_file_path:
+            self.run.log_file_path = 'blast-log-file.txt'
+
 
         # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
@@ -75,7 +79,7 @@ class BLAST:
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.log_file_path)
+                                Please check the log file here: '%s." % (process, self.run.log_file_path)
 
 
     def makedb(self):
@@ -83,9 +87,9 @@ class BLAST:
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
         cmd_line = ('makeblastdb -in %s -dbtype prot -out %s >> "%s" 2>&1' % (self.query_fasta,
                                                                          self.target_db_path,
-                                                                         self.log_file_path))
+                                                                         self.run.log_file_path))
 
-        with open(self.log_file_path, "a") as log: log.write('MAKEBLASTDB CMD: ' + cmd_line + '\n')
+        self.run.info('blast makeblast cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
@@ -102,8 +106,9 @@ class BLAST:
                                                                                    self.target_db_path,
                                                                                    self.search_output_path,
                                                                                    self.num_threads,
-                                                                                   self.log_file_path))
-        with open(self.log_file_path, "a") as log: log.write('BLASTP CMD: ' + cmd_line + '\n')
+                                                                                   self.run.log_file_path))
+
+        self.run.info('blast blastp cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
@@ -115,10 +120,10 @@ class BLAST:
 
 
     def ununique_search_results(self):
-        self.progress.new('BLAST')
+        self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output.', quiet = True)
 
+        self.progress.new('BLAST')
         self.progress.update('Un-uniqueing the tabular output ...')
-        with open(self.log_file_path, "a") as log: log.write('self.names_dict is found. Un-uniqueing the tabular output.\n')
 
         utils.ununique_BLAST_tabular_output(self.search_output_path, self.names_dict)
 
