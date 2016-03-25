@@ -7,6 +7,7 @@ import sys
 import time
 import copy
 import socket
+import shutil
 import smtplib
 import textwrap
 import subprocess
@@ -748,6 +749,33 @@ def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path
         names_dict[input_fasta.id] = input_fasta.ids
 
     return output_fasta_path, names_file_path, names_dict
+
+
+def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
+    new_search_output_path = tabular_output_path + '.ununiqued'
+    new_tabular_output = open(new_search_output_path, 'w')
+    saved_comparisons = set([])
+
+    for line in open(tabular_output_path):
+        fields = line.strip().split('\t')
+        for query_id in names_dict[fields[0]]:
+            for subject_id in names_dict[fields[1]]:
+                comparison_id = '_'.join(sorted([query_id, subject_id]))
+
+                if comparison_id in saved_comparisons:
+                    continue
+
+                new_tabular_output.write('%s\t%s\t%s\n' % (query_id, subject_id, '\t'.join(fields[2:])))
+                saved_comparisons.add(comparison_id)
+
+
+    new_tabular_output.close()
+
+    shutil.move(tabular_output_path, tabular_output_path + '.unique')
+    shutil.move(new_search_output_path, tabular_output_path)
+
+
+    return tabular_output_path
 
 
 def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
