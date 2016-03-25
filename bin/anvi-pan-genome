@@ -26,7 +26,8 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     run.warning('If you publish results from this workflow, please do not forget to cite DIAMOND\
-                 (doi:10.1038/nmeth.3176) and MCL (http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
+                 (doi:10.1038/nmeth.3176), unless you use it with --use-ncbi-blast flag, and MCL\
+                 (http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
 
     import argparse
 
@@ -49,7 +50,9 @@ if __name__ == '__main__':
                                 'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
                                 can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection.")
 
-    groupC = parser.add_argument_group("ADVANCED", "MCL- or DIAMOND-related parameters.")
+    groupC = parser.add_argument_group("ADVANCED", "Serious stuff.")
+    groupC.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default, however,\
+                                if you like, you can use good ol' blastp from NCBI instead.")
     groupC.add_argument('--maxbit', type = float, default = 0.1, metavar = "MAXBIT", help = "The maxbit heuristic provides a mean to set a\
                                 to eliminate weak matches between two protein sequences. We learned it from ITEP (Benedict MN et al,\
                                 doi:10.1186/1471-2164-15-8), which is a comprehensive pan genome analysis workflow, and decided to use it in\
