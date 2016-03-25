@@ -2,7 +2,6 @@
 """Interface to Diamond."""
 
 import os
-import shutil
 import tempfile
 
 import anvio
@@ -39,10 +38,12 @@ class Diamond:
         self.tmp_dir = tempfile.gettempdir()
 
         self.query_fasta = query_fasta
-        self.log_file_path = 'diamond-log-file.txt'
         self.target_db_path = 'diamond-target'
         self.search_output_path = 'diamond-search-resuults'
         self.tabular_output_path = 'diamond-search-results.txt'
+
+        if not self.run.log_file_path:
+            self.run.log_file_path = 'diamond-log-file.txt'
 
         self.sensitive = False
 
@@ -81,7 +82,7 @@ class Diamond:
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.log_file_path)
+                                Please check the log file here: '%s." % (process, self.run.log_file_path)
 
 
     def makedb(self):
@@ -90,9 +91,9 @@ class Diamond:
         cmd_line = ('diamond makedb --in %s -d %s -p %d >> "%s" 2>&1' % (self.query_fasta,
                                                                          self.target_db_path,
                                                                          self.num_threads,
-                                                                         self.log_file_path))
+                                                                         self.run.log_file_path))
 
-        with open(self.log_file_path, "a") as log: log.write('CMD: ' + cmd_line + '\n')
+        self.run.info('diamond makedb cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
@@ -115,8 +116,9 @@ class Diamond:
                                                                                    self.tmp_dir,
                                                                                    self.num_threads,
                                                                                    '--sensitive' if self.sensitive else '',
-                                                                                   self.log_file_path))
-        with open(self.log_file_path, "a") as log: log.write('BLASTP CMD: ' + cmd_line + '\n')
+                                                                                   self.run.log_file_path))
+
+        self.run.info('diamond blastp cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
@@ -134,16 +136,17 @@ class Diamond:
         cmd_line = ('diamond view -a %s -o %s -p %d -k 1000000 >> "%s" 2>&1' % (self.search_output_path + '.daa',
                                                                      self.tabular_output_path,
                                                                      self.num_threads,
-                                                                     self.log_file_path))
-        with open(self.log_file_path, "a") as log: log.write('VIEW CMD: ' + cmd_line + '\n')
+                                                                     self.run.log_file_path))
+
+        self.run.info('diamond view cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
         self.check_output(self.tabular_output_path, 'view')
 
         if self.names_dict:
+            self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output', quiet = True)
             self.progress.update('Un-uniqueing the tabular output ...')
-            with open(self.log_file_path, "a") as log: log.write('self.names_dict is found. Un-uniqueing the tabular output.\n')
             # if we are here, this means the self.tabular_output_path contains information only about unique
             # entries. We will expand it here so downstream analyses do not need to pay attention to this
             # detail.

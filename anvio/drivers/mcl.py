@@ -36,14 +36,16 @@ class MCL:
         utils.is_program_exists('mcl')
 
         self.clusters_file_path = 'mcl-clusters.txt'
-        self.log_file_path = 'mcl-log-file.txt'
+
+        if not self.run.log_file_path:
+            self.run.log_file_path = 'mcl-log-file.txt'
 
 
     def check_output(self, expected_output, process = 'diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with MCL's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.log_file_path)
+                                Please check the log file here: '%s." % (process, self.run.log_file_path)
 
 
     def get_clusters_dict(self):
@@ -71,9 +73,9 @@ class MCL:
                                                                          self.inflation,
                                                                          self.clusters_file_path,
                                                                          self.num_threads,
-                                                                         self.log_file_path))
+                                                                         self.run.log_file_path))
 
-        with open(self.log_file_path, "a") as log: log.write('MCL CMD: ' + cmd_line + '\n')
+        self.run.info('mcl cmd', cmd_line, quiet = True)
 
         utils.run_command(cmd_line)
 
