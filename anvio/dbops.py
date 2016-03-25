@@ -30,10 +30,11 @@ import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.hmmops import HMMSearch
 from anvio.parsers import parser_modules
 from anvio.tableops import Table
 from anvio.constants import codon_to_AA
+
+from anvio.drivers.hmmer import HMMer
 
 
 __author__ = "A. Murat Eren"
@@ -43,7 +44,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 run = terminal.Run()
@@ -1822,7 +1822,7 @@ class TablesForHMMHits(Table):
             protein_sequences_fasta = self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name)
             remove_fasta_file_upon_finish = True
 
-        commander = HMMSearch(protein_sequences_fasta, num_threads_to_use = self.num_threads_to_use)
+        commander = HMMer(protein_sequences_fasta, num_threads_to_use = self.num_threads_to_use)
 
         for source in sources:
             kind_of_search = sources[source]['kind']
