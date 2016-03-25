@@ -166,6 +166,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.init_dirs_and_dbs()
 
+        self.run.log_file_path = self.generate_output_destination('RUNLOG.txt')
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
@@ -482,8 +483,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         utils.check_contig_names(self.contig_names)
 
-        runinfo = self.generate_output_destination('RUNINFO')
-        self.run.init_info_file_obj(runinfo)
         self.run.info('input_bam', self.input_file_path)
         self.run.info('output_dir', self.output_directory, display_only = True)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
