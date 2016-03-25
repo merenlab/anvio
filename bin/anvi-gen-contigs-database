@@ -38,7 +38,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False)
+        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)
         a.create(args)
     except ConfigError, e:
         print e
