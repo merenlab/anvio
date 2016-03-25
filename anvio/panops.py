@@ -42,6 +42,7 @@ pp = terminal.pretty_print
 
 class Pangenome:
     def __init__(self, args = None, run = run, progress = progress):
+        self.args = args
         self.run = run
         self.progress = progress
 
@@ -63,6 +64,8 @@ class Pangenome:
 
         fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
         fields_for_external_genomes_input = ['name', 'contigs_db_path']
+
+        self.log_file_path = None
 
         internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields = fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
         external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields = fields_for_external_genomes_input) if input_file_for_external_genomes else {}
@@ -112,6 +115,12 @@ class Pangenome:
 
         filesnpaths.is_output_dir_writable(self.output_dir)
         self.output_dir = os.path.abspath(self.output_dir)
+
+        if not self.log_file_path:
+            self.log_file_path = self.get_output_file_path('log.txt')
+        
+        filesnpaths.is_output_file_writable(self.log_file_path)
+        os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
         if type(self.maxbit) != float:
             raise ConfigError, "maxbit value must be of type float :("
@@ -269,7 +278,6 @@ class Pangenome:
                           num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
 
         diamond.names_dict = unique_proteins_names_dict
-        diamond.log_file_path = self.get_output_file_path('log.txt')
         diamond.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
@@ -287,7 +295,7 @@ class Pangenome:
                           num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
 
         blast.names_dict = unique_proteins_names_dict
-        blast.log_file_path = self.get_output_file_path('log.txt')
+        blast.log_file_path = self.log_file_path
         blast.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
@@ -307,7 +315,7 @@ class Pangenome:
 
         mcl.inflation = self.mcl_inflation
         mcl.clusters_file_path = self.get_output_file_path('mcl-clusters.txt')
-        mcl.log_file_path = self.get_output_file_path('log.txt')
+        mcl.log_file_path = self.log_file_path
 
         return mcl.get_clusters_dict()
 
@@ -357,8 +365,8 @@ class Pangenome:
                               Anvi'o will do some heuristic magic to complete the missing data in the search output to recover\
                               from this. But since you are a scientist, here are the protein sequence IDs for which %s\
                               failed to report self search results: %s." \
-                                                    % (search_tool, len(ids_without_self_search), len(all_ids), ', '.join(ids_without_self_search), search_tool))
-
+                                                    % (search_tool, len(ids_without_self_search), len(all_ids), \
+                                                       search_tool, ', '.join(ids_without_self_search)))
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
         # we are here, because protein sequences in ids_without_self_search did not have any hits in the search output
@@ -574,6 +582,9 @@ class Pangenome:
 
         self.check_params()
 
+        self.run.log_file_path = self.log_file_path
+        self.run.info('Args', (str(self.args)), quiet = True)
+
 
     def process(self):
         self.sanity_check()
@@ -602,6 +613,10 @@ class Pangenome:
 
         # gen ad hoc anvi'o run
         self.gen_ad_hoc_anvio_run(view_data_presence_absence_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path)
+
+        # done
+        self.run.info('log file', self.run.log_file_path)
+        self.run.quit()
 
 
 class AdHocRunGenerator:
