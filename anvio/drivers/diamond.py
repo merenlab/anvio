@@ -147,27 +147,7 @@ class Diamond:
             # if we are here, this means the self.tabular_output_path contains information only about unique
             # entries. We will expand it here so downstream analyses do not need to pay attention to this
             # detail.
-            new_tabular_output_path = self.tabular_output_path + '.ununiqued'
-            new_tabular_output = open(new_tabular_output_path, 'w')
-            saved_comparisons = set([])
-
-            for line in open(self.tabular_output_path):
-                fields = line.strip().split('\t')
-                for query_id in self.names_dict[fields[0]]:
-                    for subject_id in self.names_dict[fields[1]]:
-                        comparison_id = '_'.join(sorted([query_id, subject_id]))
-
-                        if comparison_id in saved_comparisons:
-                            continue
-
-                        new_tabular_output.write('%s\t%s\t%s\n' % (query_id, subject_id, '\t'.join(fields[2:])))
-                        saved_comparisons.add(comparison_id)
-
-
-            new_tabular_output.close()
-
-        shutil.move(self.tabular_output_path, self.tabular_output_path + '.unique')
-        shutil.move(new_tabular_output_path, self.tabular_output_path)
+            utils.ununique_BLAST_tabular_output(self.tabular_output_path, self.names_dict)
 
         self.progress.end()
 
