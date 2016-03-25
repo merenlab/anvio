@@ -61,8 +61,6 @@ class Pangenome:
 
         self.genomes = {}
 
-        self.temp_files_to_remove_later = []
-
         fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
         fields_for_external_genomes_input = ['name', 'contigs_db_path']
 
@@ -94,21 +92,10 @@ class Pangenome:
         self.additional_view_data = {}
 
 
-    def get_output_file_path(self, file_name, temp_file = False):
+    def get_output_file_path(self, file_name):
         output_file_path = os.path.join(self.output_dir, file_name)
 
-        if temp_file:
-            self.temp_files_to_remove_later.append(output_file_path)
-
         return output_file_path
-
-
-    def remove_temp_files(self):
-        if self.debug:
-            return
-
-        for file_path in self.temp_files_to_remove_later:
-            os.remove(file_path)
 
 
     def check_programs(self):
@@ -250,7 +237,7 @@ class Pangenome:
 
     def gen_combined_proteins_unique_FASTA(self):
         self.progress.new('Storing combined protein sequences')
-        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa', temp_file = True)
+        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa')
         output_file = open(combined_proteins_FASTA_path, 'w')
 
         for genome_name in self.genomes:
