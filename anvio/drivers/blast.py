@@ -31,6 +31,7 @@ class BLAST:
         self.progress = progress
 
         self.num_threads = num_threads
+        self.evalue = 1e-05
         self.overwrite_output_destinations = overwrite_output_destinations
 
         utils.is_program_exists('makeblastdb')
@@ -58,7 +59,8 @@ class BLAST:
         if self.overwrite_output_destinations:
             force_makedb = True
 
-        if os.path.exists(self.target_db_path + '.phr') and os.path.exists(self.target_db_path + '.pin') and os.path.exists(self.target_db_path + '.psq') and not force_makedb:
+        if os.path.exists(self.target_db_path + '.phr') and os.path.exists(self.target_db_path + '.pin')\
+                                                and os.path.exists(self.target_db_path + '.psq') and not force_makedb:
             self.run.warning("Notice: A BLAST database is found in the output directory, and will be used!")
         else:
             self.makedb()
@@ -102,11 +104,12 @@ class BLAST:
     def blastp(self):
         self.progress.new('BLASTP')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('blastp -query %s -db %s -evalue 0.0001 -outfmt 6 -out %s -num_threads %d >> "%s" 2>&1' % (self.query_fasta,
-                                                                                   self.target_db_path,
-                                                                                   self.search_output_path,
-                                                                                   self.num_threads,
-                                                                                   self.run.log_file_path))
+        cmd_line = ('blastp -query %s -db %s -evalue %f -outfmt 6 -out %s -num_threads %d >> "%s" 2>&1' % (self.query_fasta,
+                                                                                                           self.target_db_path,
+                                                                                                           self.evalue,
+                                                                                                           self.search_output_path,
+                                                                                                           self.num_threads,
+                                                                                                           self.run.log_file_path))
 
         self.run.info('blast blastp cmd', cmd_line, quiet = True)
 
