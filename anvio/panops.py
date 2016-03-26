@@ -102,7 +102,11 @@ class Pangenome:
 
 
     def check_programs(self):
-        utils.is_program_exists('diamond')
+        if self.use_ncbi_blast:
+            utils.is_program_exists('blastp')
+        else:
+            utils.is_program_exists('diamond')
+
         utils.is_program_exists('mcl')
 
 
@@ -445,6 +449,14 @@ class Pangenome:
         self.progress.new('Generating view data')
         self.progress.update('...')
 
+        def store_file(data, path, headers = None):
+            if not headers:
+                headers = ['contig'] + sorted(data.values()[0].keys())
+
+            utils.store_dict_as_TAB_delimited_file(data, path, headers = headers)
+
+            return path
+
         PCs = protein_clustering_dict.keys()
 
         for PC in PCs:
@@ -465,6 +477,13 @@ class Pangenome:
         self.progress.end()
 
         #
+        # STORING A COPY OF RAW DATA
+        #
+        store_file(self.view_data, self.get_output_file_path('anvio-view-data-RAW.txt'), headers = ['contig'] + sorted(self.genomes.keys()))
+        store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data-RAW.txt'))
+        store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence-RAW.txt'))
+
+        #
         # FILTERING BASED ON OCCURRENCE
         #
         PCs_of_interest = set([])
@@ -481,21 +500,19 @@ class Pangenome:
         if self.PC_min_occurrence > 1:
             self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clustering_dict) - len(PCs_of_interest))))
 
-        view_data_file_path = self.get_output_file_path('anvio-view-data.txt')
-        additional_view_data_file_path = self.get_output_file_path('anvio-additional-view-data.txt')
-        view_data_presence_absence_file_path = self.get_output_file_path('anvio-view-data-prsence-absence.txt')
-
-        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_file_path, headers = ['contig'] + sorted(self.genomes.keys()))
-        utils.store_dict_as_TAB_delimited_file(self.additional_view_data, additional_view_data_file_path, headers = ['contig'] + sorted(self.additional_view_data.values()[0].keys()))
-        utils.store_dict_as_TAB_delimited_file(self.view_data_presence_absence, view_data_presence_absence_file_path, headers = ['contig'] + sorted(self.view_data_presence_absence.values()[0].keys()))
+        #
+        # STORING FILTERED DATA
+        #
+        view_data_file_path = store_file(self.view_data, self.get_output_file_path('anvio-view-data.txt'), headers = ['contig'] + sorted(self.genomes.keys()))
+        additional_view_data_file_path = store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data.txt'))
+        view_data_presence_absence_file_path = store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence.txt'))
 
         # here's where we finalize experimental data for clustering
         experimental_data = copy.deepcopy(self.view_data_presence_absence)
         for PC in self.additional_view_data:
             for i in range(0, int(len(self.genomes) / 2)):
                 experimental_data[PC]['num_genomes_pc_has_hits_%d' % i] = self.additional_view_data[PC]['num_genomes_pc_has_hits']
-        experimental_data_file_path = self.get_output_file_path('anvio-experimental-data-for-clustering.txt')
-        utils.store_dict_as_TAB_delimited_file(experimental_data, experimental_data_file_path, headers = ['contig'] + sorted(experimental_data.values()[0].keys()))
+        experimental_data_file_path = utils.store_dict_as_TAB_delimited_file(experimental_data, self.get_output_file_path('anvio-experimental-data-for-clustering.txt'))
 
         self.run.info("Anvi'o view data for protein clusters", view_data_file_path)
         self.run.info("Anvi'o additional view data", additional_view_data_file_path)
