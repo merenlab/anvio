@@ -754,19 +754,12 @@ def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path
 def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
     new_search_output_path = tabular_output_path + '.ununiqued'
     new_tabular_output = open(new_search_output_path, 'w')
-    saved_comparisons = set([])
 
     for line in open(tabular_output_path):
         fields = line.strip().split('\t')
         for query_id in names_dict[fields[0]]:
             for subject_id in names_dict[fields[1]]:
-                comparison_id = '_'.join(sorted([query_id, subject_id]))
-
-                if comparison_id in saved_comparisons:
-                    continue
-
                 new_tabular_output.write('%s\t%s\t%s\n' % (query_id, subject_id, '\t'.join(fields[2:])))
-                saved_comparisons.add(comparison_id)
 
 
     new_tabular_output.close()
