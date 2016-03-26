@@ -1,5 +1,6 @@
 .*
 *.pyc
+*.so
 /build/
 /dist/
 test-output/
