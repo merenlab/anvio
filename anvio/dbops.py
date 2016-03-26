@@ -98,7 +98,7 @@ class ContigsSuperclass(object):
         filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
-        contigs_db = ContigsDatabase(self.contigs_db_path)
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
         self.progress.update('Setting contigs self data dict')
         self.a_meta = contigs_db.meta
