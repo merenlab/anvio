@@ -90,6 +90,7 @@ class Pangenome:
 
         # to be filled during init:
         self.hash_to_genome_name = {}
+        self.protein_sequences_dict = {}
         self.view_data = {}
         self.view_data_presence_absence = {}
         self.additional_view_data = {}
@@ -248,6 +249,25 @@ class Pangenome:
         self.init_internal_genomes()
 
 
+    def gen_protein_sequences_dict(self):
+        self.progress.new('Reading protein seqeunces into memory')
+        self.progress.update('...')
+
+        for genome_name in self.genomes:
+            g = self.genomes[genome_name]
+
+            self.protein_sequences_dict[genome_name] = {}
+
+            self.progress.update('Working on %s ...' % genome_name)
+            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+            for gene_caller_id in g['gene_caller_ids']:
+                self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
+            contigs_db.disconnect()
+
+        self.progress.end()
+
+
     def gen_combined_proteins_unique_FASTA(self):
         self.progress.new('Storing combined protein sequences')
         combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa')
@@ -256,12 +276,10 @@ class Pangenome:
         for genome_name in self.genomes:
             g = self.genomes[genome_name]
             self.progress.update('Working on %s ...' % genome_name)
-            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
-            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+
             for gene_caller_id in g['gene_caller_ids']:
                 output_file.write('>%s_%d\n' % (g['genome_entry_hash'], gene_caller_id))
-                output_file.write('%s\n' % protein_sequences_dict[gene_caller_id]['sequence'])
-            contigs_db.disconnect()
+                output_file.write('%s\n' % self.protein_sequences_dict[genome_name][gene_caller_id])
 
         output_file.close()
         self.progress.end()
@@ -445,7 +463,7 @@ class Pangenome:
         return mcl_input_file_path
 
 
-    def gen_data_from_protein_clusters(self, protein_clustering_dict):
+    def gen_data_from_protein_clusters(self, protein_clusters_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
@@ -457,13 +475,13 @@ class Pangenome:
 
             return path
 
-        PCs = protein_clustering_dict.keys()
+        PCs = protein_clusters_dict.keys()
 
         for PC in PCs:
             self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0}
-            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clustering_dict[PC]]:
+            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
                 try:
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
@@ -498,7 +516,7 @@ class Pangenome:
                 self.additional_view_data.pop(PC)
 
         if self.PC_min_occurrence > 1:
-            self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clustering_dict) - len(PCs_of_interest))))
+            self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clusters_dict) - len(PCs_of_interest))))
 
         #
         # STORING FILTERED DATA
@@ -603,11 +621,46 @@ class Pangenome:
         self.run.info('Args', (str(self.args)), quiet = True)
 
 
+    def store_protein_clusters(self, protein_clusters_dict):
+        self.progress.new('Storing protein clusters')
+        self.progress.update('...')
+
+        protein_clusters_output_path = self.get_output_file_path('protein-clusters.txt')
+
+        self.progress.end()
+        d = {}
+
+        PCs = protein_clusters_dict.keys()
+
+        unique_entry_id = 0
+        for PC in PCs:
+            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
+                try:
+                    genome_name = self.hash_to_genome_name[entry_hash]
+                except KeyError:
+                    raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
+                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
+
+                d[unique_entry_id] = {'gene_caller_id': gene_caller_id, 'protein_cluster_id': PC, 'genome_name': genome_name, 'sequence': self.protein_sequences_dict[genome_name][int(gene_caller_id)]}
+                unique_entry_id += 1
+
+        utils.store_dict_as_TAB_delimited_file(d, protein_clusters_output_path, headers = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence'])
+
+        self.progress.end()
+
+        self.run.info('protein clusters info', protein_clusters_output_path)
+
+        return protein_clusters_output_path
+
+
     def process(self):
         self.sanity_check()
 
         # initialize genomes
         self.init_genomes()
+
+        # get all protein sequences:
+        self.gen_protein_sequences_dict()
 
         # first we will export all proteins 
         unique_proteins_FASTA_path, unique_proteins_names_dict = self.gen_combined_proteins_unique_FASTA()
@@ -619,10 +672,13 @@ class Pangenome:
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
 
         # get clusters from MCL
-        protein_clustering_dict = self.run_mcl(mcl_input_file_path)
+        protein_clusters_dict = self.run_mcl(mcl_input_file_path)
+
+        # store protein clusters, and gene calls in them
+        self.store_protein_clusters(protein_clusters_dict)
 
         # create view data from protein clusters
-        view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path = self.gen_data_from_protein_clusters(protein_clustering_dict)
+        view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path = self.gen_data_from_protein_clusters(protein_clusters_dict)
 
         # gen samples info and order files
         samples_info_file_path = self.gen_samples_info_file()
