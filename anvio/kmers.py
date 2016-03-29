@@ -23,9 +23,10 @@ def rev_comp(seq):
 
 
 class KMers:
-    def __init__(self, k = 4, alphabet = 'ATCG'):
+    def __init__(self, k = 4, alphabet = 'ATCG', consider_rev_comps = True):
         self.kmers = {}
         self.alphabet = alphabet
+        self.consider_rev_comps = consider_rev_comps
         self.k = k
         
         self.get_kmers()
@@ -37,7 +38,10 @@ class KMers:
         
         for item in itertools.product(*arg):
             kmer = ''.join(item)
-            if rev_comp(kmer) not in kmers:
+            if self.consider_rev_comps:
+                if rev_comp(kmer) not in kmers:
+                    kmers.add(kmer)
+            else:
                 kmers.add(kmer)
         
         self.kmers[k] = kmers
@@ -63,10 +67,13 @@ class KMers:
             if len([n for n in kmer if n not in self.alphabet]):
                 continue
 
-            if frequencies.has_key(kmer):
-                frequencies[kmer] += 1
+            if self.consider_rev_comps:
+                if frequencies.has_key(kmer):
+                    frequencies[kmer] += 1
+                else:
+                    frequencies[rev_comp(kmer)] += 1
             else:
-                frequencies[rev_comp(kmer)] += 1
+                frequencies[kmer] += 1
 
         if dist_metric_safe:
             # we don't want all kmer freq values to be zero. so the distance
