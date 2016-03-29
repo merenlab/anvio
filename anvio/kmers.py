@@ -23,15 +23,16 @@ def rev_comp(seq):
 
 
 class KMers:
-    def __init__(self, k = 4):
+    def __init__(self, k = 4, alphabet = 'ATCG'):
         self.kmers = {}
+        self.alphabet = alphabet
         self.k = k
         
         self.get_kmers()
 
     def get_kmers(self):
         k = self.k
-        arg = ['ATCG'] * k
+        arg = [self.alphabet] * k
         kmers = set()
         
         for item in itertools.product(*arg):
@@ -59,7 +60,7 @@ class KMers:
             kmer = sequence[i:i + k]
             
             # FIXME: this can be faster/better
-            if len([n for n in kmer if n not in 'ATCG']):
+            if len([n for n in kmer if n not in self.alphabet]):
                 continue
 
             if frequencies.has_key(kmer):
