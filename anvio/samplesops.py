@@ -32,6 +32,7 @@ class SamplesInformation:
 
         self.sample_names_in_samples_order_file = None
         self.sample_names_in_samples_information_file = None
+        self.samples_information_default_layer_order = None
 
         self.sample_names = None
 
@@ -102,6 +103,9 @@ class SamplesInformation:
 
         self.available_orders = set(self.samples_order_dict.keys())
 
+        if not self.samples_information_default_layer_order:
+            pass
+ 
         self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet = self.quiet)
 
 
@@ -138,6 +142,7 @@ class SamplesInformation:
 
         self.sample_names = self.sample_names_in_samples_information_file or self.sample_names_in_samples_order_file
 
+
     def sanity_check(self):
         if self.sample_names_in_samples_information_file and self.sample_names_in_samples_order_file:
             if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
@@ -150,3 +155,14 @@ class SamplesInformation:
                                                                self.sample_names_in_samples_order_file,
                                                                list(set(self.sample_names_in_samples_information_file) - set(self.sample_names_in_samples_order_file)))
 
+        if not self.samples_information_default_layer_order:
+            # we still don't have a default order. we will try to recover from that here
+            # by looking into what we have in the samples order informaiton
+            if not len(self.samples_order_dict):
+                raise SamplesError, "Something is missing. Anvi'o is having hard time coming up with a default samples\
+                                    order for the samples database."
+
+            a_basic_order = [o['basic'] for o in self.samples_order_dict.values()][0]
+            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] for o in self.samples_order_dict.values()][0])
+
+            self.samples_information_default_layer_order = a_basic_order or a_tree_order
