@@ -15,9 +15,6 @@ from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformation
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
 from anvio.errors import ConfigError
 
-with terminal.SuppressAllOutput():
-    from ete2 import Tree
-
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -132,11 +129,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                     flag for single profiles to access to this functionality. Please read the help\
                                     menu for anvi-profile, and/or refer to the tutorial."
 
-        tree = Tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'], format = 1)
-
         # self.split_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        self.split_names_ordered = [n.name for n in tree.get_leaves()]
+        self.split_names_ordered = utils.get_names_order_from_newick_tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
 
         # now we knot what splits we are interested in (self.split_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
