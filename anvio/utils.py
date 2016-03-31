@@ -303,10 +303,10 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
-def get_names_order_from_newick_tree(tree_file_path, newick_format = 1):
-    filesnpaths.is_proper_newick(tree_file_path)
-
-    tree = Tree(tree_file_path, format = newick_format)
+def get_names_order_from_newick_tree(newick_tree, newick_format = 1):
+    filesnpaths.is_proper_newick(newick_tree)
+    
+    tree = Tree(newick_tree, format = newick_format)
 
     return [n.name for n in tree.get_leaves()]
 
