@@ -565,33 +565,12 @@ class Pangenome:
         return samples_info_file_path
 
 
-    def gen_samples_order_file(self, view_data_file_path):
-        self.progress.new('Hierarchical clustering of the (transposed) view data')
-        self.progress.update('..')
-
-
-        newick = clustering.get_newick_tree_data(view_data_file_path, transpose = True)
-
-        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
-        samples_order = open(samples_order_file_path, 'w')
-        samples_order.write('attributes\tbasic\tnewick\n')
-        samples_order.write('protein_clusters\t\t%s\n' % newick)
-        samples_order.close()
-
-        self.progress.end()
-
-        self.run.info("Anvi'o samples order", samples_order_file_path)
-
-        return samples_order_file_path
-
-
-    def gen_ad_hoc_anvio_run(self, view_data_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path):
+    def gen_ad_hoc_anvio_run(self, view_data_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path):
         ad_hoc_run = AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
 
         ad_hoc_run.matrix_data_for_clustering = experimental_data_file_path
         ad_hoc_run.additional_view_data_file_path = additional_view_data_file_path
         ad_hoc_run.samples_info_file_path = samples_info_file_path
-        ad_hoc_run.samples_order_file_path = samples_order_file_path
 
         ad_hoc_run.output_directory = self.get_output_file_path('anvio-run-files')
         ad_hoc_run.delete_output_directory_if_exists = True
@@ -682,10 +661,9 @@ class Pangenome:
 
         # gen samples info and order files
         samples_info_file_path = self.gen_samples_info_file()
-        samples_order_file_path = self.gen_samples_order_file(view_data_file_path)
 
         # gen ad hoc anvi'o run
-        self.gen_ad_hoc_anvio_run(view_data_presence_absence_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path, samples_order_file_path)
+        self.gen_ad_hoc_anvio_run(view_data_presence_absence_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path)
 
         # done
         self.run.info('log file', self.run.log_file_path)
@@ -767,7 +745,6 @@ class AdHocRunGenerator:
 
         self.gen_samples_db()
 
-
         self.run.info("Ad hoc anvi'o run files", self.output_directory)
 
 
@@ -789,9 +766,29 @@ class AdHocRunGenerator:
         self.run.info('Tree', self.tree_file_path)
 
 
+    def gen_samples_order_file(self, data_file_path):
+        self.progress.new('Hierarchical clustering of the (transposed) view data')
+        self.progress.update('..')
+
+        newick = clustering.get_newick_tree_data(data_file_path, transpose = True)
+
+        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
+        samples_order = open(samples_order_file_path, 'w')
+        samples_order.write('attributes\tbasic\tnewick\n')
+        samples_order.write('protein_clusters\t\t%s\n' % newick)
+        samples_order.close()
+
+        self.progress.end()
+
+        self.run.info("Anvi'o samples order", samples_order_file_path)
+
+        return samples_order_file_path
+
+
+
     def gen_samples_db(self):
-        if not self.samples_info_file_path and not self.samples_order_file_path:
-            return
+        if not self.samples_order_file_path:
+            self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
 
         samples_db_output_path = self.get_output_file_path('samples.db')
         s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = True)
