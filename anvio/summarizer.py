@@ -4,14 +4,17 @@
 import os
 import sys
 import numpy
+import shutil
 import textwrap
 
 from collections import Counter
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.sequence as sequence
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
@@ -751,4 +754,129 @@ def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, in
         info_dict['total_AAs'] = AA_counts_dict['total_AAs']
 
     return info_dict
+
+
+class AdHocRunGenerator:
+    """From a matrix file to full-blown anvi'o interface.
+    
+       This is a class to take in a view data matrix at minimum, and create all
+       necessary files for an anvi'o interactive interface call in manual mode."""
+
+    def __init__(self, view_data_path, run = run, progress = progress):
+        self.run = run
+        self.progress = progress
+
+        self.view_data_path = view_data_path
+
+        self.tree_file_path = None
+        self.matrix_data_for_clustering = None
+        self.additional_view_data_file_path = None
+
+        self.samples_info_file_path = None
+        self.samples_order_file_path = None
+
+        self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
+        self.delete_output_directory_if_exists = False
+
+        self.sanity_checked = False
+
+
+    def sanity_check(self):
+        filesnpaths.is_file_tab_delimited(self.view_data_path)
+        if self.tree_file_path:
+            filesnpaths.is_proper_newick(self.tree_file_path)
+
+        self.check_output_directory()
+
+        new_view_data_path = self.get_output_file_path('view_data.txt')
+        shutil.copyfile(self.view_data_path, new_view_data_path)
+        self.view_data_path = new_view_data_path
+
+        if self.tree_file_path:
+            new_tree_path = self.get_output_file_path('tree.txt')
+            shutil.copyfile(self.tree_file_path, new_tree_path)
+            self.tree_file_path = new_tree_path
+
+        if self.additional_view_data_file_path:
+            new_additional_view_data_file_path = self.get_output_file_path('additional_view_data.txt')
+            shutil.copyfile(self.additional_view_data_file_path, new_additional_view_data_file_path)
+            self.additional_view_data_file_path = new_additional_view_data_file_path
+
+        self.sanity_checked = True
+
+
+    def is_good_to_go(self):
+        if not self.sanity_checked:
+            raise ConfigError, "AdHocRunGenerator :: You gotta be nice, and run sanity check first :/"
+
+
+    def get_output_file_path(self, file_name):
+        return os.path.join(self.output_directory, file_name)
+
+
+    def check_output_directory(self):
+        if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
+            raise ConfigError, "AdHocRunGenerator will not work with an existing directory. Please provide a new\
+                                path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
+                                any existing directory."
+
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = self.delete_output_directory_if_exists)
+
+
+    def generate(self):
+        self.sanity_check()
+
+        if not self.tree_file_path:
+            self.gen_clustering_of_view_data()
+
+        self.gen_samples_db()
+
+        self.run.info("Ad hoc anvi'o run files", self.output_directory)
+
+
+    def gen_clustering_of_view_data(self):
+        self.is_good_to_go()
+
+        self.progress.new('Hierarchical clustering')
+        self.progress.update('..')
+
+        self.tree_file_path = self.get_output_file_path('tree.txt')
+
+        if self.matrix_data_for_clustering:
+            clustering.get_newick_tree_data(self.matrix_data_for_clustering, self.tree_file_path)
+        else:
+            clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path)
+
+        self.progress.end()
+
+        self.run.info('Tree', self.tree_file_path)
+
+
+    def gen_samples_order_file(self, data_file_path):
+        self.progress.new('Hierarchical clustering of the (transposed) view data')
+        self.progress.update('..')
+
+        newick = clustering.get_newick_tree_data(data_file_path, transpose = True)
+
+        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
+        samples_order = open(samples_order_file_path, 'w')
+        samples_order.write('attributes\tbasic\tnewick\n')
+        samples_order.write('protein_clusters\t\t%s\n' % newick)
+        samples_order.close()
+
+        self.progress.end()
+
+        self.run.info("Anvi'o samples order", samples_order_file_path)
+
+        return samples_order_file_path
+
+
+
+    def gen_samples_db(self):
+        if not self.samples_order_file_path:
+            self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
+
+        samples_db_output_path = self.get_output_file_path('samples.db')
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = True)
+        s.create(self.samples_info_file_path, self.samples_order_file_path)
 
