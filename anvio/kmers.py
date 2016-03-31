@@ -1,7 +1,12 @@
 # -*- coding: utf-8
-"""Simple KMers class to compute kmer-nucleotide frequecies"""
+"""Simple KMers class to compute kmer frequecies
+
+   This module should not be used for k > 4.
+"""
 
 import itertools
+
+from collections import Counter
 
 import anvio
 
@@ -47,7 +52,7 @@ class KMers:
         self.kmers[k] = kmers
 
 
-    def get_kmer_frequency(self, sequence, dist_metric_safe = True):
+    def get_kmer_frequency(self, sequence, dist_metric_safe = False):
         k = self.k
         sequence = sequence.upper()
 
@@ -58,17 +63,13 @@ class KMers:
             self.get_kmers(k)
         
         kmers = self.kmers[k]
-        frequencies = dict(zip(kmers, [0] * len(kmers)))
-        
+
+        frequencies = Counter({})
         for i in range(0, len(sequence) - (k - 1)):
             kmer = sequence[i:i + k]
             
-            # FIXME: this can be faster/better
-            if len([n for n in kmer if n not in self.alphabet]):
-                continue
-
             if self.consider_rev_comps:
-                if frequencies.has_key(kmer):
+                if kmer in kmers:
                     frequencies[kmer] += 1
                 else:
                     frequencies[rev_comp(kmer)] += 1
@@ -79,8 +80,7 @@ class KMers:
             # we don't want all kmer freq values to be zero. so the distance
             # metrics wouldn't go crazy. instead we fill it with 1. which
             # doesn't affect relative distances.
-            if sum(frequencies.values()) == 0:
-                words = self.kmers[self.k]
-                frequencies = dict(zip(words, [1] * len(words)))
+            if not len(frequencies):
+                frequencies = dict(zip(kmers, [1] * len(kmers)))
 
         return frequencies
