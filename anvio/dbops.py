@@ -1385,12 +1385,12 @@ class KMerTablesForContigsAndSplits:
 
 
     def get_kmer_freq(self, sequence):
-        return self.kmers_class.get_kmer_frequency(sequence)
+        return self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe = True)
 
 
     def append(self, seq_id, sequence, kmer_freq = None):
         if not kmer_freq:
-            kmer_freq = self.kmers_class.get_kmer_frequency(sequence)
+            kmer_freq = self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe = True)
 
         db_entry = tuple([seq_id] + [kmer_freq[kmer] for kmer in self.kmers])
         self.db_entries.append(db_entry)
