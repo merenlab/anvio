@@ -1309,7 +1309,7 @@ class SamplesInformationDatabase:
         self.disconnect()
 
         self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet = self.quiet)
-        self.run.info('Number of samples', len(samples.samples_information_dict), quiet = self.quiet)
+        self.run.info('Number of samples', len(samples.sample_names), quiet = self.quiet)
         self.run.info('Number of organizations', len(available_orders), quiet = self.quiet)
 
     def disconnect(self):
