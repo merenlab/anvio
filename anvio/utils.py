@@ -20,10 +20,13 @@ import anvio
 import anvio.fastalib as u
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress
+from anvio.terminal import Run, Progress, SuppressAllOutput
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
 from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements, codon_to_AA, codon_to_AA_RC
+
+with SuppressAllOutput():
+    from ete2 import Tree
 
 
 __author__ = "A. Murat Eren"
@@ -298,6 +301,14 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')
     else:
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
+
+
+def get_names_order_from_newick_tree(tree_file_path, newick_format = 1):
+    filesnpaths.is_proper_newick(tree_file_path)
+
+    tree = Tree(tree_file_path, format = newick_format)
+
+    return [n.name for n in tree.get_leaves()]
 
 
 def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = [], transpose = False):
