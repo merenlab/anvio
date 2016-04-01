@@ -690,7 +690,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False, split_names = None):
+def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False, split_names = None, include_partial_gene_calls = True):
     """Returns an info dict for a given contigs db"""
 
     class Args:
@@ -709,29 +709,35 @@ def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, in
     for key in c.a_meta:
         info_dict[key] = c.a_meta[key]
 
+    # Two different strategies here depending on whether we work with a given set if split ids or
+    # everything in the contigs database.
     if split_names:
         split_names = set(split_names)
-
-    if split_names:
         c.init_split_sequences()
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        info_dict['total_length'] = len(seq)
-        info_dict['gc_content'] = sequence.Composition(seq).GC_content
-        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in c.genes_in_splits.values() if e['split'] in split_names])
-        info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in info_dict['gene_caller_ids']])
-        info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
-        info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
-        info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
-        info_dict['num_splits'] = len(split_names)
+        candidate_gene_caller_ids = set([e['gene_callers_id'] for e in c.genes_in_splits.values() if e['split'] in split_names])
     else:
         c.init_contig_sequences()
         seq = ''.join([e['sequence'] for e in c.contig_sequences.values()])
-        info_dict['gc_content'] = sequence.Composition(seq).GC_content
-        info_dict['num_genes'] = len(c.genes_in_contigs_dict)
-        info_dict['gene_caller_ids'] = set(c.genes_in_contigs_dict.keys())
-        info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in info_dict['gene_caller_ids']])
-        info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
-        info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+        candidate_gene_caller_ids = c.genes_in_contigs_dict.keys()
+
+    gene_caller_ids = set([])
+    excluded_gene_ids = set([])
+    for gene_caller_id in candidate_gene_caller_ids:
+        if c.genes_in_contigs_dict[gene_caller_id]['partial'] and not include_partial_gene_calls:
+            excluded_gene_ids.add(gene_caller_id)
+        else:
+            gene_caller_ids.add(gene_caller_id)
+
+    info_dict['gene_caller_ids'] = gene_caller_ids
+    info_dict['excluded_gene_ids'] = excluded_gene_ids
+    info_dict['num_genes'] = len(gene_caller_ids)
+    info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in gene_caller_ids])
+    info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
+    info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+
+    info_dict['gc_content'] = sequence.Composition(seq).GC_content
+    info_dict['total_length'] = len(seq)
 
     # get completeness / contamination estimates
     if split_names:
