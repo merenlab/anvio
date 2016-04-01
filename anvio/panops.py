@@ -161,7 +161,7 @@ class Pangenome:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'])
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], include_partial_gene_calls = self.include_partial_gene_calls)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -220,7 +220,7 @@ class Pangenome:
                     raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (c['bin_id'], c['collection_id'])
 
 
-                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, include_AA_counts = True)
+                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, include_partial_gene_calls = self.include_partial_gene_calls)
                 for key in contigs_db_summary:
                     c[key] = contigs_db_summary[key]
 
@@ -251,7 +251,8 @@ class Pangenome:
     def gen_protein_sequences_dict(self):
         self.run.info('Include partial gene calls', self.include_partial_gene_calls, nl_after = 1)
 
-        total_num_genes = 0
+        total_num_protein_sequences = 0
+        total_num_excluded_protein_sequences = 0
 
         for genome_name in self.genomes:
             self.progress.new('Reading protein seqeunces into memory')
@@ -260,31 +261,25 @@ class Pangenome:
 
             self.protein_sequences_dict[genome_name] = {}
 
-            excluded_gene_calls = 0
-            included_gene_calls = 0
-
             self.progress.update('Working on %s ...' % genome_name)
             contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
             protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
-            genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
+            total_num_excluded_protein_sequences += len(g['excluded_gene_ids'])
 
             for gene_caller_id in g['gene_caller_ids']:
-                if genes_in_contigs[gene_caller_id]['partial'] and not self.include_partial_gene_calls:
-                    excluded_gene_calls += 1
-                    continue
-                else:
-                    self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
-                    included_gene_calls += 1
-                    total_num_genes += 1
+                self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
+                total_num_protein_sequences += 1
 
             self.progress.end()
 
             self.run.info_single('%s is initialized with %s genes (%s were excluded)'
-                          % (genome_name, pp(included_gene_calls), pp(excluded_gene_calls)), cut_after = 120)
+                          % (genome_name, pp(len(g['gene_caller_ids'])), pp(len(g['excluded_gene_ids']))), cut_after = 120)
 
             contigs_db.disconnect()
 
-        self.run.info('Num protein sequences', '%s' % pp(total_num_genes), nl_before = 1)
+        self.run.info('Num protein sequences', '%s' % pp(total_num_protein_sequences), nl_before = 1)
+        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_protein_sequences))
 
 
     def gen_combined_proteins_unique_FASTA(self):
