@@ -57,6 +57,7 @@ class Pangenome:
         self.sensitive = A('sensitive') 
         self.maxbit = A('maxbit') 
         self.use_ncbi_blast = A('use_ncbi_blast') 
+        self.include_partial_gene_calls = A('include_partial_gene_calls') 
 
         self.genomes = {}
 
@@ -248,22 +249,42 @@ class Pangenome:
 
 
     def gen_protein_sequences_dict(self):
-        self.progress.new('Reading protein seqeunces into memory')
-        self.progress.update('...')
+        self.run.info('Include partial gene calls', self.include_partial_gene_calls, nl_after = 1)
+
+        total_num_genes = 0
 
         for genome_name in self.genomes:
+            self.progress.new('Reading protein seqeunces into memory')
+            self.progress.update('...')
             g = self.genomes[genome_name]
 
             self.protein_sequences_dict[genome_name] = {}
 
+            excluded_gene_calls = 0
+            included_gene_calls = 0
+
             self.progress.update('Working on %s ...' % genome_name)
             contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
             protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+            genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
             for gene_caller_id in g['gene_caller_ids']:
-                self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
+                if genes_in_contigs[gene_caller_id]['partial'] and not self.include_partial_gene_calls:
+                    excluded_gene_calls += 1
+                    continue
+                else:
+                    self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
+                    included_gene_calls += 1
+                    total_num_genes += 1
+
+            self.progress.end()
+
+            self.run.info_single('%s is initialized with %s genes (%s were excluded)'
+                          % (genome_name, pp(included_gene_calls), pp(excluded_gene_calls)), cut_after = 120)
+
             contigs_db.disconnect()
 
-        self.progress.end()
+        self.run.info('Num protein sequences', '%s' % pp(total_num_genes), nl_before = 1)
 
 
     def gen_combined_proteins_unique_FASTA(self):
@@ -285,7 +306,6 @@ class Pangenome:
         # unique the FASTA file
         unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(combined_proteins_FASTA_path, store_frequencies_in_deflines = False)
 
-        self.run.info('Num protein sequences', '%s' % pp(sum([g['num_genes'] for g in self.genomes.values()])))
         self.run.info('Num unique protein sequences', '%s' % pp(len(unique_proteins_names_dict)))
         self.run.info('Combined protein sequences FASTA', combined_proteins_FASTA_path)
         self.run.info('Unique protein sequences FASTA', unique_proteins_FASTA_path)
