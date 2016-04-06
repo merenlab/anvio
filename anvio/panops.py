@@ -57,7 +57,7 @@ class Pangenome:
         self.sensitive = A('sensitive') 
         self.maxbit = A('maxbit') 
         self.use_ncbi_blast = A('use_ncbi_blast') 
-        self.include_partial_gene_calls = A('include_partial_gene_calls') 
+        self.exclude_partial_gene_calls = A('exclude_partial_gene_calls') 
 
         self.genomes = {}
 
@@ -161,7 +161,7 @@ class Pangenome:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], include_partial_gene_calls = self.include_partial_gene_calls)
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], exclude_partial_gene_calls = self.exclude_partial_gene_calls)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -220,7 +220,7 @@ class Pangenome:
                     raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (c['bin_id'], c['collection_id'])
 
 
-                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, include_partial_gene_calls = self.include_partial_gene_calls)
+                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, exclude_partial_gene_calls = self.exclude_partial_gene_calls)
                 for key in contigs_db_summary:
                     c[key] = contigs_db_summary[key]
 
@@ -249,7 +249,7 @@ class Pangenome:
 
 
     def gen_protein_sequences_dict(self):
-        self.run.info('Include partial gene calls', self.include_partial_gene_calls, nl_after = 1)
+        self.run.info('Exclude partial gene calls', self.exclude_partial_gene_calls, nl_after = 1)
 
         total_num_protein_sequences = 0
         total_num_excluded_protein_sequences = 0
