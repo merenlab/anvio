@@ -51,9 +51,11 @@ if __name__ == '__main__':
                                 can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection.")
 
     groupC = parser.add_argument_group("ADVANCED", "Important stuff Tom never pays attention (but you should).")
-    groupC.add_argument('--include-partial-gene-calls', default = False, action = 'store_true', help = "By default, anvi'o excludes all partial\
-                                gene calls from the analysis to minimize the inflation of protein clusters and heterogeneity within them. Using\
-                                this flag, you can request anvi'o to use all gene calls.")
+    groupC.add_argument('--exclude-partial-gene-calls', default = False, action = 'store_true', help = "By default, anvi'o includes all partial\
+                                gene calls from the analysis, which, in some cases, may inflate the number of protein clusters identified and\
+                                introduce extra heterogeneity within those protein clusters. Using this flag, you can request anvi'o to exclude\
+                                partial gene calls from the analysis (whether a gene call is partial or not is an information that comes directly\
+                                from the gene caller used to identify genes during the generation of the contigs database).")
     groupC.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default, however,\
                                 if you like, you can use good ol' blastp from NCBI instead.")
     groupC.add_argument('--maxbit', type = float, default = 0.5, metavar = "MAXBIT", help = "The maxbit heuristic provides a mean to set a\

@@ -690,7 +690,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False, split_names = None, include_partial_gene_calls = True):
+def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False, split_names = None, exclude_partial_gene_calls = True):
     """Returns an info dict for a given contigs db"""
 
     class Args:
@@ -724,7 +724,7 @@ def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, in
     gene_caller_ids = set([])
     excluded_gene_ids = set([])
     for gene_caller_id in candidate_gene_caller_ids:
-        if c.genes_in_contigs_dict[gene_caller_id]['partial'] and not include_partial_gene_calls:
+        if c.genes_in_contigs_dict[gene_caller_id]['partial'] and exclude_partial_gene_calls:
             excluded_gene_ids.add(gene_caller_id)
         else:
             gene_caller_ids.add(gene_caller_id)
