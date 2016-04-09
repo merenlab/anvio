@@ -14,8 +14,6 @@ import hashlib
 import shutil
 import re
 
-from bottle import static_file
-
 import time
 from datetime import date, datetime
 
@@ -165,6 +163,16 @@ class UserMGMT:
         self.users_db_path = os.path.join(self.users_data_dir, 'USERS.db')
         self.users_db = UsersDB(client_version, self.users_db_path, ignore_version = ignore_version, run = self.run, progress = self.progress)
 
+        # figure out the hostname.
+        self.hostname = "localhost"
+        if self.args.hostname:
+            self.hostname = self.args.hostname
+        elif self.args.ip_address:
+            self.hostname = self.args.ip_address
+
+        if self.args.port_number:
+            self.hostname = '%s:%d' % (self.hostname, self.args.port_number)
+
 
     ######################################
     # USERS
@@ -252,11 +260,11 @@ class UserMGMT:
         p = (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, entrydate, )
         self.users_db.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
 
-        anvioURL = "http://%s/" % self.args.ip_address if self.args.ip_address else "localhost";
         if self.mailer:
+            confirmation_link = 'http://%s/confirm?code=%s&login=%s' % (self.hostname, token, login)
             # send the user a mail to verify the email account
-            messageSubject = "anvio account request"
-            messageText = "You have requested an account for anvio.\n\nClick the following link to activate your account:\n\n"+anvioURL+"confirm?code="+token+"&login="+login;
+            messageSubject = "Anvi'o Account Confirmation"
+            messageText = "Dear %s,\n\nPlease click the following link to activate your anvi'server account:\n\n        %s\n\n\nThank you for your interest." % (firstname, confirmation_link)
 
             self.mailer.send(email, messageSubject, messageText)
             return { 'status': 'ok', 'message': "User request created", 'data': None }
