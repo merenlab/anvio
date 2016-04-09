@@ -119,6 +119,7 @@ class Collections:
 
 
     def list_collections(self):
+        self.run.warning('', 'COLLECTIONS FOUND', lc = 'yellow')
         for collection_name in self.collections_dict:
             c = self.collections_dict[collection_name]
             output = '%s (%d bins, representing %d splits).' % (collection_name, c['num_bins'], c['num_splits'])
