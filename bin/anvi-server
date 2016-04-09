@@ -52,6 +52,13 @@ groupA.add_argument(*anvio.A('users-data-dir'), **anvio.K('users-data-dir', {'re
 groupA.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number', {'default': None}))
+groupB.add_argument(*anvio.A('hostname'), **anvio.K('hostname', {'help': "Hostname for the anvi'server. This will be\
+                                                     used generate links back to the server in confirmation e-mails. For\
+                                                     instance, if the hostname is 'HOSTNAME', links to the server will be\
+                                                     built as 'http://HOSTNAME/'. If you don't declare a hostname, the IP\
+                                                     address will be used for this purpose, and things will go South if the\
+                                                     anvi'server is served along with multiple web services from one IP\
+                                                     address.", 'default': None}))
 groupC.add_argument(*anvio.A('smtp-config-file'), **anvio.K('smtp-config-file'))
 groupC.add_argument(*anvio.A('validate-users-automatically'), **anvio.K('validate-users-automatically'))
 
