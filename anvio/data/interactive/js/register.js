@@ -98,7 +98,7 @@ function performRegistration() {
 	  if (result.status == 'error') {
 	      alert("Your registration failed: "+result.message);
 	  } else {
-	      document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully. You will received a confirmation at the registered email address shortly.</p><p>Click on the link in that email to confirm your account.</p></div>";
+	      document.getElementById('main').innerHTML = "<h3>Registration Successful</h3><div class='alert alert-success col-sm-6'><p>Your registration has been submitted successfully, and a confirmation link is sent to your e-mail address.</p><p>Please do not forget to check your SPAM folder if it is nowhere to be found.</p></div>";
 	  }
       }).fail(function(result){
 	  if (result.status == 'error') {
