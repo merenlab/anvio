@@ -536,8 +536,8 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'host': (
-            ['--host'],
+    'hostname': (
+            ['--hostname'],
             {'metavar': 'HOST_NAME',
              'type': str,
              'default': None,

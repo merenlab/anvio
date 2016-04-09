@@ -41,7 +41,7 @@ class AnviServerAPI:
 
         # server variables:
         self.user = A('user')
-        self.host = A('host')
+        self.hostname = A('hostname')
         self.password = A('password')
         self.port_number = A('port_number')
 
@@ -67,7 +67,7 @@ class AnviServerAPI:
                         'DELETE': requests.delete,
                         'GET': requests.get}
 
-        self.URL = lambda target: '%s://%s:%d/%s' % (self.protocol, self.host, self.port_number, self.is_target_proper(target))
+        self.URL = lambda target: '%s://%s:%d/%s' % (self.protocol, self.hostname, self.port_number, self.is_target_proper(target))
 
 
     def is_target_proper(self, target):
@@ -111,7 +111,7 @@ class AnviServerAPI:
             response_object = self.methods[method](url, data = data, headers = headers, cookies = cookies, files = files)
         except Exception, e:
             raise AnviServerError, "Something went wrong while trying to connect to the host %s. Here is a more\
-                                detailed and uglier report: '''%s'''" % (self.host, e)
+                                detailed and uglier report: '''%s'''" % (self.hostname, e)
 
         if not response_object.status_code == requests.codes.ok:
             raise AnviServerError, "Somewhing went wrong with the server, and it returned an error code of %d.\
