@@ -167,7 +167,7 @@ def send_data(name):
     elif name == "title":
         return json.dumps(d.title)
     elif name == "mode":
-        return json.dumps("full")
+        return json.dumps("full" if not d.manual_mode else "manual")
     elif name == "read_only":
         return json.dumps(args.read_only)
     elif name == "bin_prefix":
