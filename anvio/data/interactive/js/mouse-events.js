@@ -314,8 +314,10 @@ function mouseMoveHandler(event) {
         }
 
         $('#tooltip_content').html(message);
-        if ($('#tooltip_content') > $(window).height()) {
-            $('#mouse_hover_scroll').css('top', $(window).height() / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
+        if ($('#tooltip_content').height() + 300 > $(window).height()) {
+            $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
+        } else {
+            $('#mouse_hover_scroll').css('top', 0);
         }
         return;
     }
@@ -367,8 +369,10 @@ function mouseMoveHandler(event) {
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
     $('#tooltip_content').html(message + tr_bin);
-    if ($('#tooltip_content') > $(window).height()) {
-        $('#mouse_hover_scroll').css('top', $(window).height() / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
+    if ($('#tooltip_content').height() + 300 > $(window).height()) {
+        $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
+    } else {
+        $('#mouse_hover_scroll').css('top', 0);
     }
 }
 
