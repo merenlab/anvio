@@ -1606,6 +1606,7 @@ function draw_tree(settings) {
     }
 
     $('#tooltip_content').html(empty_tooltip);
+    $('#mouse_hover_scroll').css('top', '0');
 
     for (var index = 1; index < layerdata.length; index++) 
     {

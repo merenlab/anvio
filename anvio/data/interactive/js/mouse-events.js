@@ -296,6 +296,7 @@ function mouseMoveHandler(event) {
         var layer_name_hover = event.target.getAttribute('layer-name');
 
         var message = "";
+        var layer_pos = 0;
         for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
             var layer_name = last_settings['samples-layer-order'][i];
@@ -304,6 +305,7 @@ function mouseMoveHandler(event) {
             if (layer_name == layer_name_hover)
             {
                 message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_name][layer_name] + '</td></tr>';
+                layer_pos = i;
             }
             else
             {
@@ -312,6 +314,9 @@ function mouseMoveHandler(event) {
         }
 
         $('#tooltip_content').html(message);
+        if ($('#tooltip_content') > $(window).height()) {
+            $('#mouse_hover_scroll').css('top', $(window).height() / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
+        }
         return;
     }
 
@@ -362,6 +367,9 @@ function mouseMoveHandler(event) {
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
     $('#tooltip_content').html(message + tr_bin);
+    if ($('#tooltip_content') > $(window).height()) {
+        $('#mouse_hover_scroll').css('top', $(window).height() / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
+    }
 }
 
 
