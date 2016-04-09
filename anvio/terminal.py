@@ -204,7 +204,7 @@ class Run:
         else:
             message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
 
-        self.write(header_line + message_line)
+        self.write((header_line + message_line) if message else header_line)
 
 
     def store_info_dict(self, destination, strip_prefix = None):
