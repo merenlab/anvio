@@ -11,6 +11,7 @@ this information from the database, and presents it as an intuitive data structu
 for the client.
 """
 
+import os
 
 import anvio
 import anvio.db as db
@@ -124,6 +125,34 @@ class Collections:
             c = self.collections_dict[collection_name]
             output = '%s (%d bins, representing %d splits).' % (collection_name, c['num_bins'], c['num_splits'])
             self.run.info_single(output)
+
+
+    def export_collection(self, collection_name, output_file_prefix = None):
+        self.sanity_check(collection_name)
+
+        if not output_file_prefix:
+            output_file_prefix = 'collection-%s' % (collection_name.strip().replace(' ', '-'))
+
+        info_file_path = output_file_prefix + '-info.txt'
+        items_file_path = output_file_prefix + '.txt'
+
+        self.run.info('Items file path', items_file_path)
+        filesnpaths.is_output_file_writable(items_file_path)
+
+        bins_info = self.get_bins_info_dict(collection_name)
+        collection = self.get_collection_dict(collection_name)
+
+        if len(bins_info):
+            self.run.info('Info file path', info_file_path)
+            info_file = open(info_file_path, 'w')
+            for bin_name in bins_info:
+                info_file.write('%s\t%s\t%s\n' % (bin_name, bins_info[bin_name]['source'], bins_info[bin_name]['html_color']))
+            info_file.close()
+
+        items_file = open(items_file_path, 'w')
+        for bin_name in collection:
+            for item_name in collection[bin_name]:
+                items_file.write('%s\t%s\n' % (item_name, bin_name))
 
 
 class GetSplitNamesInBins:
