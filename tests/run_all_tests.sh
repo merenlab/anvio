@@ -102,6 +102,16 @@ anvi-import-collection example_files_for_external_binning_results/external_binni
                        --bins-info example_files_for_external_binning_results/example_bins_info_file.txt \
                        --contigs-mode
 
+INFO "Exporting the 'CONTIGS_IMPORTED' collection that was just imported ..."
+anvi-export-collection -p test-output/204-MERGED/PROFILE.db -C CONTIGS_IMPORTED --output-file-prefix test-output/exported-collection
+
+INFO "Re-importing a collection from files just exported for CONTIGS_IMPORTED collection (just to confuse you, and to see if we can import stuff we export) ..."
+anvi-import-collection test-output/exported-collection.txt \
+                       -c test-output/CONTIGS.db \
+                       -p test-output/204-MERGED/PROFILE.db \
+                       --collection-name 'CONTIGS_RE_IMPORTED' \
+                       --bins-info test-output/exported-collection-info.txt
+
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/anvio_concoct_clusters.txt --collection-name 'cmdline_concoct'
 
