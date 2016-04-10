@@ -1584,7 +1584,7 @@ function loadCollection() {
 
                 for (index in data['data'][bin])
                 {
-                    if (mode === 'manual'){
+                    if (mode === 'manual' || mode === 'server'){
                         contigs.push(data['data'][bin][index]);
                     } else if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
                         contigs.push(data['data'][bin][index]);
@@ -1593,7 +1593,7 @@ function loadCollection() {
                     
                 }
 
-                if (mode === 'manual' || sum_contig_length >= threshold)
+                if (mode === 'manual' || mode === 'server' || sum_contig_length >= threshold)
                 {
                     if (!bins_cleared)
                     {
