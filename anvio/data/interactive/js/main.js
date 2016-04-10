@@ -219,7 +219,7 @@ function initData () {
         }
 
         if (! response.noPing) {
-        ping_timer = setInterval(checkBackgroundProcess, 5000);
+            ping_timer = setInterval(checkBackgroundProcess, 5000);
         }
 
             if (!$.browser.chrome)
@@ -229,8 +229,11 @@ function initData () {
 
             // hide all mode dependent divs:
             $('.full-mode').hide();
+            $('.manual-mode').hide();
             $('.server-mode').hide();
             $('.refine-mode').hide();
+
+            console.log("The running mode for the interface: " + mode);
 
             // mode switch:
             if (mode == 'refine')
@@ -241,8 +244,8 @@ function initData () {
                 $('.server-mode').show();
             } else if (mode == 'full') {
                 $('.full-mode').show();
-            } else if (mode == 'manual') { // manual mode is pretty much identical to full mode, yet we create an explicit
-                $('.full-mode').show();    // branch for it so it is possible for it to diverge later.
+            } else if (mode == 'manual') {
+                $('.manual-mode').show();
             }
 
             if (readOnlyResponse[0] == true)
