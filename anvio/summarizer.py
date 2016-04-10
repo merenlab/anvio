@@ -808,6 +808,12 @@ class AdHocRunGenerator:
             shutil.copyfile(self.additional_view_data_file_path, new_additional_view_data_file_path)
             self.additional_view_data_file_path = new_additional_view_data_file_path
 
+        if self.samples_info_file_path:
+            new_samples_info_file_path = self.get_output_file_path('anvio_samples_info.txt')
+            shutil.copyfile(self.additional_view_data_file_path, new_samples_info_file_path)
+            self.samples_info_file_path = new_samples_info_file_path
+
+
         self.sanity_checked = True
 
 
