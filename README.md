@@ -1,3 +1,5 @@
+[![Gitter](https://badges.gitter.im/meren/anvio.svg)](https://gitter.im/meren/anvio?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 ![anvio logo](http://merenlab.org/images/anvio-logo.png)
 
 Please see the project page for installation and usage information: 
