@@ -173,7 +173,10 @@ class Summarizer(DatabasesMetaclass):
             self.summary['meta']['hmm_items'] = dict([(hmm_search_source, self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         # summarize bins:
-        for bin_id in collection_dict: 
+        bin_ids = collection_dict.keys()
+        for i in range(0, len(bin_ids)):
+            bin_id = bin_ids[i]
+            self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(bin_ids)))
             bin = Bin(self, bin_id, collection_dict[bin_id], self.run, self.progress)
             bin.output_directory = os.path.join(self.output_directory, 'bin_by_bin', bin_id)
             bin.bin_profile = self.collection_profile[bin_id]
@@ -183,6 +186,7 @@ class Summarizer(DatabasesMetaclass):
             self.summary['collection'][bin_id]['source'] = bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
+            self.progress.end()
 
         # bins are computed, add some relevant meta info:
         self.summary['meta']['percent_contigs_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
@@ -317,8 +321,6 @@ class Bin:
 
 
     def create(self):
-        self.progress.new('[Processing "%s"]' % self.bin_id)
-
         self.create_bin_dir()
 
         self.store_sequences_for_hmm_hits()
@@ -339,8 +341,6 @@ class Bin:
             self.store_gene_coverages_matrix()
 
         self.store_profile_data()
-
-        self.progress.end()
 
         return self.bin_info_dict
 
