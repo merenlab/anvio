@@ -775,6 +775,32 @@ class UserMGMT:
             user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
             if not user:
                 return { 'status': 'error', 'message': 'user not found', 'data': None }
+        
+        # construct return structure
+        projectData = { "name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"] }
+
+        return { 'status': 'ok', 'message': None, 'data': projectData }
+
+    def get_current_project_files(self, request):
+        retval = self.set_user_data(request, True)
+        if retval["status"] == "error":
+            return retval
+        else:
+            retval = retval["data"]
+        
+        user = None
+        project = None
+        
+        if 'projectname' in retval:
+            user = retval["user"]
+            project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
+            if not project:
+                return { 'status': 'error', 'message': 'project not found', 'data': None }
+        else:
+            project = retval["project"]
+            user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
+            if not user:
+                return { 'status': 'error', 'message': 'user not found', 'data': None }
 
         # get files of the project
         path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
