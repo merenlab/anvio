@@ -30,47 +30,71 @@ function initContent () {
     html += '</div>';
     document.getElementById('multiUser').innerHTML = html;
 
-    // get the project information
+    // get the project base information
+    var promise = $.Deferred();
     $.ajax({
 	url : '/project',
 	type : 'GET',
 	processData: false,
+	p: promise,
 	contentType: false,
 	success : function(data) {
 	    if (data.status == 'error') {
 		toastr.error(data.message);
 		return;
 	    }
-	    window.pdata = data.data;
-
-	    // create the HTML for the modal
-	    var html = [];
-	    
-	    // project base data
-	    html.push('<div style="padding: 10px;"><p style="margin-top: -10px; margin-bottom: 0px; font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">'+pdata.name+'</p>');
-	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;"><i>by '+pdata.user+'</i></p>');
-	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;">'+pdata.description+'</p>');
-
-	    // project files
-	    html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files<button class="btn btn-default" style="float: right; position: relative; bottom: 5px;" title="download all project files" onclick="downloadProjectZIP();"><i class="glyphicon glyphicon-floppy-save"></i></button></p>');
-	    var fields = Object.keys(pdata.files).sort();
-	    for (var i=0; i<fields.length; i++) {
-		if (pdata.files[fields[i]]) {
-		    html.push('<li style="cursor: pointer;font-family: \'PT Serif\',serif; font-size: 14px;" class="list-group-item" title="download this file" onclick="saveAs(pdata.files.'+fields[i]+', \''+fields[i]+'.txt\')">'+fields[i]+'<i style="float: right; margin-right: 10px;" class="glyphicon glyphicon-floppy-save"></i></li>');
-		}
-	    }
-	    html.push('</div>');
-
-	    document.getElementById('projectInfoContent').innerHTML = html.join("\n");
+	    window.pbasedata = data.data;
 
 	    // add the content of the info section
-	    document.getElementById('projectInfo').innerHTML = '<button style="float: right;" class="btn btn-info btn-sm" title="open project information" onclick="$(\'#modProjectInfo\').modal(\'show\');"><i class="glyphicon glyphicon-info-sign"></i></button><span style="font-weight: bold;">'+pdata.name + '</span><br/><i>by '+pdata.user+'</i>';
+	    document.getElementById('projectInfo').innerHTML = '<button style="float: right;" class="btn btn-info btn-sm" title="open project information" onclick="$(\'#modProjectInfo\').modal(\'show\');"><i class="glyphicon glyphicon-info-sign"></i></button><span style="font-weight: bold;">'+pbasedata.name + '</span><br/><i>by '+pbasedata.user+'</i>';
 	    document.getElementById('sidebar').style.marginTop = "86px";
+	    this.p.resolve();
 	},
 	error: function(jqXHR) {
 	    document.getElementById('multiUser').style.display = 'none';
 	    document.getElementById('sidebar').style.marginTop = "43px";
 	}
+    });
+
+    promise.then( function () {
+	// get the project files
+	$.ajax({
+	    url : '/projectfiles',
+	    type : 'GET',
+	    processData: false,
+	    contentType: false,
+	    success : function(data) {
+		if (data.status == 'error') {
+		    toastr.error(data.message);
+		    return;
+		}
+		window.pdata = data.data;
+		
+		// create the HTML for the modal
+		var html = [];
+		
+		// project base data
+		html.push('<div style="padding: 10px;"><p style="margin-top: -10px; margin-bottom: 0px; font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">'+pdata.name+'</p>');
+		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;"><i>by '+pdata.user+'</i></p>');
+		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;">'+pdata.description+'</p>');
+		
+		// project files
+		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files<button class="btn btn-default" style="float: right; position: relative; bottom: 5px;" title="download all project files" onclick="downloadProjectZIP();"><i class="glyphicon glyphicon-floppy-save"></i></button></p>');
+		var fields = Object.keys(pdata.files).sort();
+		for (var i=0; i<fields.length; i++) {
+		    if (pdata.files[fields[i]]) {
+			html.push('<li style="cursor: pointer;font-family: \'PT Serif\',serif; font-size: 14px;" class="list-group-item" title="download this file" onclick="saveAs(pdata.files.'+fields[i]+', \''+fields[i]+'.txt\')">'+fields[i]+'<i style="float: right; margin-right: 10px;" class="glyphicon glyphicon-floppy-save"></i></li>');
+		    }
+		}
+		html.push('</div>');
+		
+		document.getElementById('projectInfoContent').innerHTML = html.join("\n");
+	    },
+	    error: function(jqXHR) {
+		document.getElementById('multiUser').style.display = 'none';
+		document.getElementById('sidebar').style.marginTop = "43px";
+	    }
+	});
     });
 };
 

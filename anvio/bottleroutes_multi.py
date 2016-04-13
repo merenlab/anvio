@@ -161,6 +161,11 @@ def get_current_project(request, userdb, response):
     return json.dumps(userdb.get_current_project(request))
 
 
+def get_current_project_files(request, userdb, response):
+    set_default_headers(response)
+    return json.dumps(userdb.get_current_project_files(request))
+
+
 def debug(source, request):
     run.warning(None, header=source)
     run.warning(request.forms.dict, 'Forms', lc = 'yellow')
