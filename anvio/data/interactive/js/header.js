@@ -4,7 +4,7 @@ function showHeader (currentPage, more) {
     var menuitems = [
 	{ "icon": "home", "title": "Server Home", "newpage": false, "href": "/" },
 	{ "icon": "picture", "title": "Gallery", "newpage": true, "href": "#" },
-	{ "icon": "align-right", "title": "Data Types", "newpage": true, "href": "#" },
+	{ "icon": "align-right", "title": "Interface and Data Types", "newpage": true, "href": "http://merenlab.org/2016/02/27/the-anvio-interactive-interface/" },
 	{ "icon": "cog", "title": "Anvi\'o Project", "newpage": true, "href": "http://merenlab.org/projects/anvio/" },
     ];
     
