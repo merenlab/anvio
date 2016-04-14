@@ -189,7 +189,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta['default_view'] = 'single'
         self.p_meta['default_clustering'] = 'default'
         self.p_meta['available_clusterings'] = ['default']
-        self.p_meta['clusterings'] = {'default': {'newick': open(os.path.abspath(self.tree)).read()}}
+        self.p_meta['clusterings'] = {'default': {'newick': ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])}}
 
         self.default_view = self.p_meta['default_view']
 
