@@ -577,33 +577,33 @@ function drawSamplesLayers(settings) {
 
             drawText('samples', {
                 'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color']);
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
+            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color'], 'baseline');
 
             drawText('samples', {
                 'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - samples_layer_boundaries[i][1]
-            }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-before-edge');
+                'y': 0 - samples_layer_boundaries[i][1] + samples_layer_settings['height'] / 6
+            }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
 
             drawText('samples', {
                 'x': layer_boundaries[samples_end][1] + 20,
                 'y': 0 - samples_layer_boundaries[i][0]
-            }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'text-after-edge');
+            }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
 
         }
         else if (samples_layer_settings['data-type'] == 'stack-bar')
         {
             drawText('samples', {
                 'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-            }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191');
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
+            }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191', 'baseline');
         }
         else
         {
             drawText('samples', {
                 'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2
-            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color']);   
+                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 2
+            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color'], 'baseline');   
         }
     }
 
