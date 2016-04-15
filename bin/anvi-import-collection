@@ -95,7 +95,11 @@ def main(args):
                                                                                      len(data)), nl_before = 1)
 
 
-    collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+    if args.profile_db:
+        collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+    else:
+        collections = dbops.TablesForCollections(args.contigs_db, anvio.__contigs__version__)
+
     collections.append(args.collection_name, data, bins_info_dict)
 
 
@@ -103,8 +107,14 @@ def sanity_check(args):
     if not args.collection_name:
         raise ConfigError, "You must give a name for this collection."
 
+    if not args.contigs_db:
+        raise ConfigError, "You must at least provide an anvi'o' contigs database for this to work :("
+
     if not args.profile_db:
-        raise ConfigError, "Anvi'o needs a profile database to add this collection to..."
+        run.warning("Since you haven't provided an anvi'o profile database, this program will add your collection into\
+                     the contigs database you provided. If you use the same collection name later in one of your profile\
+                     databases that will be generated from this contigs database, things may go South, and anvi'o would\
+                     not even care.")
 
     try:
         utils.check_sample_id(args.collection_name)
@@ -113,9 +123,9 @@ def sanity_check(args):
                             ANY characters but digits, ASCII letters and underscore character(s). There should not be\
                             any space characters, and the collection name should not start with a digit.' % args.collection_name
 
-    dbops.is_profile_db(args.profile_db)
-    if args.contigs_db:
-        dbops.is_contigs_db(args.contigs_db)
+    if args.profile_db:
+        dbops.is_profile_db(args.profile_db)
+    dbops.is_contigs_db(args.contigs_db)
 
     filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
     if args.bins_info:
@@ -137,8 +147,8 @@ if __name__ == '__main__':
     parser.add_argument('data', metavar = "TAB DELIMITED FILE",
                         help = 'The input file that describes bin IDs for each split or contig.')
 
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
     parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
