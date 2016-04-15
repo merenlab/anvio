@@ -87,6 +87,12 @@ anvi-experimental-organization example_clustering_configuration.ini -i test-outp
 INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, and add the resulting tree into the database as 'EXP-ORG-DB'"
 anvi-experimental-organization example_clustering_configuration.ini -i test-output/204-MERGED -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db --name EXP-ORG-DB
 
+INFO "Importing external binning results for splits into the contigs database as 'SPLITS_IMPORTED_INTO_CONTIGS_DB'"
+anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
+                       -c test-output/CONTIGS.db \
+                       --collection-name 'SPLITS_IMPORTED_INTO_CONTIGS_DB' \
+                       --bins-info example_files_for_external_binning_results/example_bins_info_file.txt
+
 INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
                        -p test-output/204-MERGED/PROFILE.db \
