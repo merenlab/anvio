@@ -50,17 +50,7 @@ class SequencesForHMMHits:
             self.sources = self.hmm_hits_info.keys()
 
 
-    def get_hmm_sequences_dict_for_splits(self, splits_dict):
-        """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
-           its struture goes like this:
-
-                {
-                    'bin_x': set['split_a, split_b, ...'],
-                    'bin_y': set['split_c, split_d, ...'],
-                    ...
-                }
-        """
-
+    def get_hmm_hits_in_splits(self, splits_dict):
         split_names = set([])
         for s in splits_dict.values():
             split_names.update(s)
@@ -72,8 +62,56 @@ class SequencesForHMMHits:
             for split_name in splits_dict[bin_id]:
                 split_name_to_bin_id[split_name] = bin_id
 
-        if not hits_in_splits:
-            return {}
+        return hits_in_splits, split_name_to_bin_id
+
+
+    def get_hmm_hits_per_bin(self, splits_dict, source):
+        hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
+
+        hmm_hits_per_bin = {}
+        for bin_name in splits_dict.keys():
+            hmm_hits_per_bin[bin_name] = {}
+
+        unique_ids_taken_care_of = set([])
+        for split_entry in hits_in_splits.values():
+            hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
+
+            hit_source = hmm_hit['source']
+
+            if source and hit_source != source:
+                continue
+
+            split_name = split_entry['split']
+            gene_name = hmm_hit['gene_name']
+            gene_unique_id = hmm_hit['gene_unique_identifier']
+
+            if gene_unique_id in unique_ids_taken_care_of:
+                continue
+            else:
+                unique_ids_taken_care_of.add(gene_unique_id)
+
+            bin_id = split_name_to_bin_id[split_name]
+
+            if gene_name not in hmm_hits_per_bin[bin_id]:
+                hmm_hits_per_bin[bin_id][gene_name] = 1
+            else:
+                hmm_hits_per_bin[bin_id][gene_name] += 1
+
+        return hmm_hits_per_bin
+
+
+    def get_hmm_sequences_dict_for_splits(self, splits_dict):
+        """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
+           its struture goes like this:
+
+                {
+                    'bin_x': set['split_a, split_b, ...'],
+                    'bin_y': set['split_c, split_d, ...'],
+                    ...
+                }
+        """
+
+        hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
 
         hmm_sequences_dict_for_splits = {}
 
