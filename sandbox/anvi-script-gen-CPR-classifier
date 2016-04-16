@@ -66,12 +66,12 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Train a model for CPR prediction')
+    parser = argparse.ArgumentParser(description='Train a classifier for CPR prediction')
 
     parser.add_argument('matrix', help = 'TAB-delimited matrix of CPR genome names, classes, and presence absence\
                                           of single-copy genes. Headers of the first two rows should be "genome", and\
                                           "class". The rest of the rows shold be single-copy genes.')
-    parser.add_argument('-o', '--output', default = "cpr-scg.model", help = "Output file name for the model.")
+    parser.add_argument('-o', '--output', default = "cpr-scg.classifier", help = "Output file name for the classifier.")
 
     args = parser.parse_args()
 

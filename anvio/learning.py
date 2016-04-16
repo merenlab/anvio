@@ -27,20 +27,20 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class RF:
-    def __init__(self, model_object_path = "rf.model", r = run, p = progress):
+    def __init__(self, classifier_object_path = "rf.classifier", r = run, p = progress):
         self.run = r
         self.progress = p
-        self.model_object_path = model_object_path
+        self.classifier_object_path = classifier_object_path
 
-        self.model_initialized = False
-        self.model = None
+        self.classifier_initialized = False
+        self.classifier = None
         self.features = None
         self.classes = None
 
 
     def train(self, features, data, labels, n_trees = 64):
         self.run.info('RF Train', "%d observations with %d features grouped into %d classes." % (len(data), len(features), len(set(labels))))
-        filesnpaths.is_output_file_writable(self.model_object_path)
+        filesnpaths.is_output_file_writable(self.classifier_object_path)
 
         self.progress.new('Training')
         self.progress.update('...')
@@ -48,16 +48,16 @@ class RF:
         rf.fit(np.array(data), labels)
         self.progress.end()
 
-        cPickle.dump({'features': features, 'classes': rf.classes_, 'model': rf}, open(self.model_object_path, 'w'))
-        self.run.info('Model output', self.model_object_path)
+        cPickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'w'))
+        self.run.info('Classifier output', self.classifier_object_path)
 
     def predict_from_TAB_delimited_file(self, file_path):
         cols = utils.get_columns_of_TAB_delim_file(file_path)
         return self.predict(utils.get_TAB_delimited_file_as_dictionary(file_path, column_mapping = [str] + [float] * len(cols)))
 
     def predict(self, data_dict):
-        if not self.model_initialized:
-            self.initialize_model()
+        if not self.classifier_initialized:
+            self.initialize_classifier()
 
         samples = data_dict.keys()
         self.run.info('Num samples to classify', "%d." % (len(samples)))
@@ -67,14 +67,14 @@ class RF:
             datum = []
             for feature in self.features:
                 if feature not in data_dict[sample]:
-                    raise ConfigError, "RF prediction run into an issue. All features described in the model should be present\
+                    raise ConfigError, "RF prediction run into an issue. All features described in the classifier should be present\
                                         for all observations in the data. However, that is not the case. For instance, feature\
-                                        '%s' is in the model, but the entry '%s' in the input data does not have an observation\
+                                        '%s' is in the classifier, but the entry '%s' in the input data does not have an observation\
                                         for it :/ Not good." % (feature, sample)
                 datum.append(data_dict[sample][feature])
             data.append(datum)
 
-        predictions = self.model.predict_proba(data)
+        predictions = self.classifier.predict_proba(data)
 
         predictions_dict = {}
         for i in range(0, len(samples)):
@@ -87,19 +87,19 @@ class RF:
         return predictions_dict
 
 
-    def initialize_model(self):
-        filesnpaths.is_file_exists(self.model_object_path)
-        model_obj = cPickle.load(open(self.model_object_path))
+    def initialize_classifier(self):
+        filesnpaths.is_file_exists(self.classifier_object_path)
+        classifier_obj = cPickle.load(open(self.classifier_object_path))
 
         try:
-            self.features = model_obj['features']
-            self.classes = model_obj['classes']
-            self.model = model_obj['model']
+            self.features = classifier_obj['features']
+            self.classes = classifier_obj['classes']
+            self.classifier = classifier_obj['classifier']
         except:
-            raise ConfigError, "RF class does not like the model object it was sent for processing :/ Are you sure you\
+            raise ConfigError, "RF class does not like the classifier object it was sent for processing :/ Are you sure you\
                                 generated it the way you were supposed to?"
 
-        self.model_initialized = True
+        self.classifier_initialized = True
 
-        self.run.info('Model', "Initialized with %d features grouped into %d classes." % (len(self.features), len(self.classes)))
+        self.run.info('Classifier', "Initialized with %d features grouped into %d classes." % (len(self.features), len(self.classes)))
 
