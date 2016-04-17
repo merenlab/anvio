@@ -156,7 +156,7 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap = 200):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap = 120):
         filesnpaths.is_output_file_writable(output_file_path)
 
         if type(wrap) != int:
