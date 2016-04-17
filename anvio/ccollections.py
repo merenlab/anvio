@@ -11,8 +11,6 @@ this information from the database, and presents it as an intuitive data structu
 for the client.
 """
 
-import os
-
 import anvio
 import anvio.db as db
 import anvio.tables as t
