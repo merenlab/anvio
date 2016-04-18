@@ -124,17 +124,20 @@ anvi-cluster-with-concoct -p test-output/204-MERGED/PROFILE.db -c test-output/CO
 INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file ..."
 anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_2 -o test-output/short_reads_for_Bin_2.fasta test-output/*bam
 
+INFO "Rename bins in collection 'cmdline_concoct'"
+anvi-rename-bins -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db --prefix 'P204' -C cmdline_concoct
+
 INFO "Summarizing CONCOCT results ..."
 anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'
 
-INFO "Generate a variabilty profile for Bin_1 using a collection id"
-anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C cmdline_concoct -b Bin_1 -o test-output/variability_Bin_1.txt --quince-mode
+INFO "Generate a variabilty profile for P204_bin_00001 using a collection id"
+anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C cmdline_concoct -b P204_bin_00001 -o test-output/variability_P204_bin_00001.txt --quince-mode
 
-INFO "Generate a variabilty profile for Bin_1 using split ids stored in a file (after summary)"
+INFO "Generate a variabilty profile for P204_bin_00001 using split ids stored in a file (after summary)"
 anvi-gen-variability-profile -c test-output/CONTIGS.db \
                              -p test-output/204-MERGED/PROFILE.db \
-                             --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/Bin_1/Bin_1-original_split_names.txt \
-                             -o test-output/variability_Bin_1_ALT.txt
+                             --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/P204_bin_00001/P204_bin_00001-original_split_names.txt \
+                             -o test-output/variability_P204_bin_00001_ALT.txt
 
 INFO "Generating amino acid frequencies for gene caller id 3 in 204-6M.bam ..."
 anvi-get-aa-frequencies -i test-output/204-6M.bam -c test-output/CONTIGS.db --gene-caller-id 3 -o test-output/AA_frequencies_for_gene_caller_id_3.txt
