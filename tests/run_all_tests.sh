@@ -125,7 +125,11 @@ INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FA
 anvi-get-short-reads-from-bam -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_2 -o test-output/short_reads_for_Bin_2.fasta test-output/*bam
 
 INFO "Rename bins in collection 'cmdline_concoct'"
-anvi-rename-bins -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db --prefix 'P204' -C cmdline_concoct
+anvi-rename-bins -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db --prefix 'P204' -C cmdline_concoct --report-file test-output/renaming-report.txt
+
+echo
+column -t test-output/renaming-report.txt
+echo
 
 INFO "Summarizing CONCOCT results ..."
 anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'cmdline_concoct'
