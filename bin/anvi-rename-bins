@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import copy
+import operator
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.ccollections as ccollections
+
+from anvio.completeness import Completeness
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def main(args):
+    A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+    profile_db = A('profile_db')
+    contigs_db = A('contigs_db')
+    list_collections = A('list_collections')
+    collection_name = A('collection_name')
+    prefix = A('prefix')
+
+    if not prefix:
+        raise ConfigError, "Anvi'o is having hard time believing that you called this function without\
+                            a prefix to rename bins in collection '%s'." % collection_name
+
+    utils.is_this_name_OK_for_database('prefix', prefix)
+
+    dbops.is_profile_db_and_contigs_db_compatible(profile_db, contigs_db)
+
+    collections = ccollections.Collections()
+    collections.populate_sources_dict(profile_db, anvio.__profile__version__)
+
+    if list_collections:
+        collections.list_collections()
+        sys.exit()
+
+    if not collection_name:
+        raise ConfigError, "You must provide a collection name."
+
+    if  collection_name not in collections.sources_dict:
+        raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name
+
+    completeness = Completeness(contigs_db)
+
+    if not len(completeness.sources):
+        raise ConfigError, "HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
+                            their completion estimates? :("
+
+    if not 'Campbell_et_al' in completeness.sources:
+        raise ConfigError, "In most cases anvi'o relies on single-copy gene collection by Campbell et al., and it seems the contigs database\
+                            does not contain HMM hits for that resource :/ Bad news."
+
+    collection_dict = collections.get_collection_dict(collection_name)
+
+    bins_sorted_by_completion = []
+    for bin_name in collection_dict:
+        d = completeness.get_info_for_splits(set(collection_dict[bin_name]))['Campbell_et_al']
+        bins_sorted_by_completion.append((bin_name, d['percent_complete'] - d['percent_redundancy']),)
+
+    bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
+    counter = 1
+    for bin_name, _ in bins_sorted_by_completion:
+        new_bin_name = '%s_bin_%05d' % (prefix, counter)
+        collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
+        collection_dict.pop(bin_name)
+
+        counter += 1
+
+    # update tables with new bin names.
+    collections_table = dbops.TablesForCollections(profile_db, anvio.__profile__version__)
+    collections_table.append(collection_name, collection_dict)
+
+    run.info('Rename', 'Renaming is done for %d bins in collection "%s".' % (len(collection_dict), collection_name))
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Rename all bins in a given collection.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    parser.add_argument('--prefix', default = None, required = True,\
+                        help = "Prefix for the bin names. Must be a single word, composed\
+                                of digits and numbers. The use of the underscore character is OK,\
+                                but that's about it (fine, the use of the dash character is OK, too\
+                                but no more!). If the prefix is 'PREFIX', each bin will be renamed\
+                                as 'PREFIX_Bin_00001, PREFIX_bin_00002', and so on, in the order of\
+                                percent completion minus percent redundancy.")
+    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
