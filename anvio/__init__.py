@@ -246,10 +246,10 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for bins (each line should be a unique bin id)."}
                 ),
-    'collection-id': (
-            ['-C', '--collection-id'],
+    'collection-name': (
+            ['-C', '--collection-name'],
             {'metavar': 'COLLECTION_NAME',
-             'help': "Collection ID you are interested in."}
+             'help': "Collection name."}
                 ),
     'num-positions-from-each-split': (
             ['--num-positions-from-each-split'],
