@@ -44,7 +44,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
-        self.collection_id = A('collection_id')
+        self.collection_name = A('collection_name')
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
@@ -73,14 +73,14 @@ class RefineBins(dbops.DatabasesMetaclass):
         # it will check this varlable and, (1) if empty, continue updating stuff in db store updates
         # in it, (2) if not empty, remove items stored in this variable from collections dict, and continue
         # with step (1). the starting point is of course self.bins. when the store_refined_bins function is
-        # called the first time, it will read collection data for collection_id, and remove the bin(s) in
+        # called the first time, it will read collection data for collection_name, and remove the bin(s) in
         # analysis from it before it stores the data:
         self.ids_for_already_refined_bins = self.bins
 
         self.input_directory = os.path.dirname(os.path.abspath(self.profile_db_path))
 
         self.run.info('Input directory', self.input_directory)
-        self.run.info('Collection ID', self.collection_id)
+        self.run.info('Collection ID', self.collection_name)
         self.run.info('Number of bins', len(self.bins))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
@@ -101,7 +101,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         bins = sorted(list(self.bins))
         title = 'Refining %s%s from "%s"' % (', '.join(bins[0:3]),
                                               ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
-                                              self.collection_id)
+                                              self.collection_name)
         d.title = textwrap.fill(title)
 
         return d
@@ -113,9 +113,9 @@ class RefineBins(dbops.DatabasesMetaclass):
                                 this is not the right way to do it.'
 
         self.progress.new('Storing refined bins')
-        self.progress.update('accessing to collection "%s" ...' % self.collection_id)
-        collection_dict = self.collections.get_collection_dict(self.collection_id)
-        colors_dict = self.collections.get_collection_colors(self.collection_id)
+        self.progress.update('accessing to collection "%s" ...' % self.collection_name)
+        collection_dict = self.collections.get_collection_dict(self.collection_name)
+        colors_dict = self.collections.get_collection_colors(self.collection_name)
         self.progress.end()
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]
@@ -158,9 +158,9 @@ class RefineBins(dbops.DatabasesMetaclass):
             self.run.info_single('')
 
         collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
-        collections.append(self.collection_id, collection_dict, colors_dict)
+        collections.append(self.collection_name, collection_dict, colors_dict)
 
-        self.run.info_single('"%s" collection is updated!' % self.collection_id)
+        self.run.info_single('"%s" collection is updated!' % self.collection_name)
 
 
     def cluster_splits_of_interest(self):

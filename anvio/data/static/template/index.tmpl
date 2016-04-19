@@ -55,7 +55,7 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_id"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b> of all nucleotides stored in the contigs database, and <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database.
+                Bins that were identified in {% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %} profile '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b> of all nucleotides stored in the contigs database, and <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database.
             </div>
         </div>
     </header>

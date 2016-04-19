@@ -286,13 +286,13 @@ def get_collection_dict(collection_source):
     return json.dumps({'data'  : d.collections.get_collection_dict(collection_source),
                        'colors': d.collections.get_collection_colors(collection_source)})
 
-@route('/summary/<collection_id>/:filename#.*#')
-def send_summary_static(collection_id, filename):
+@route('/summary/<collection_name>/:filename#.*#')
+def send_summary_static(collection_name, filename):
     set_default_headers(response)
-    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_id))
+    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_name))
 
-@route('/summarize/<collection_id>')
-def gen_summary(collection_id):
+@route('/summarize/<collection_name>')
+def gen_summary(collection_name):
     set_default_headers(response)
 
     if args.read_only:
@@ -301,7 +301,7 @@ def gen_summary(collection_id):
     if d.manual_mode:
         return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
 
-    run.info_single('A summary of collection "%s" has been requested.' % collection_id)
+    run.info_single('A summary of collection "%s" has been requested.' % collection_name)
 
     class Args:
         pass
@@ -309,11 +309,11 @@ def gen_summary(collection_id):
     summarizer_args = Args()
     summarizer_args.profile_db = d.profile_db_path
     summarizer_args.contigs_db = d.contigs_db_path
-    summarizer_args.collection_id = collection_id
+    summarizer_args.collection_name = collection_name
     summarizer_args.list_collections = None
     summarizer_args.quick_summary = False
     summarizer_args.debug = None
-    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_id)
+    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
 
     try:
         summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
@@ -323,7 +323,7 @@ def gen_summary(collection_id):
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
     
-    url = "http://%s:%d/summary/%s/index.html" % (ip, port, collection_id)
+    url = "http://%s:%d/summary/%s/index.html" % (ip, port, collection_name)
     return json.dumps({'url': url})  
 
 

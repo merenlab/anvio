@@ -65,14 +65,14 @@ class Summarizer(DatabasesMetaclass):
         self.collections.populate_sources_dict(self.contigs_db_path, anvio.__contigs__version__)
         self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
-        self.collection_id = None
+        self.collection_name = None
 
         if args:
             if args.list_collections:
                 self.collections.list_collections()
                 sys.exit()
 
-            self.collection_id = args.collection_id
+            self.collection_name = args.collection_name
             self.output_directory = args.output_dir
             self.quick = args.quick_summary
             self.debug = args.debug
@@ -83,19 +83,19 @@ class Summarizer(DatabasesMetaclass):
 
 
     def sanity_check(self):
-        if not self.collection_id:
+        if not self.collection_name:
             raise ConfigError, "You must specify a collection id :/"
 
-        if self.collection_id not in self.collections.sources_dict:
-            raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_id
+        if self.collection_name not in self.collections.sources_dict:
+            raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists = True)
 
 
     def process(self):
         # learn who you are:
-        collection_dict = self.collections.get_collection_dict(self.collection_id)
-        collection_colors = self.collections.get_collection_colors(self.collection_id)
+        collection_dict = self.collections.get_collection_dict(self.collection_name)
+        collection_colors = self.collections.get_collection_colors(self.collection_name)
 
         # init profile data for colletion.
         self.init_collection_profile(collection_dict)
@@ -115,7 +115,7 @@ class Summarizer(DatabasesMetaclass):
                                 'output_directory': self.output_directory,
                                 'collection': collection_dict.keys(),
                                 'num_bins': len(collection_dict.keys()),
-                                'collection_id': self.collection_id,
+                                'collection_name': self.collection_name,
                                 'total_nts_in_collection': 0,
                                 'num_contigs_in_collection': 0,
                                 'anvio_version': __version__, 
@@ -306,7 +306,7 @@ class Bin:
                               sometimes external clustering results that are added to the contigs via\
                               `anvi-populate-collections-table` may include split names that are not used\
                               while the contigs database was generated.'\
-                                                % (len(missing_ids), bin_id, self.summary.collection_id))
+                                                % (len(missing_ids), bin_id, self.summary.collection_name))
 
 
     def create(self):

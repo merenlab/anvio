@@ -119,9 +119,9 @@ class Collections:
 
 
     def list_collections(self):
-        for collection_id in self.sources_dict:
-            c = self.sources_dict[collection_id]
-            output = '%s (%d clusters, representing %d splits).' % (collection_id, c['num_clusters'], c['num_splits'])
+        for collection_name in self.sources_dict:
+            c = self.sources_dict[collection_name]
+            output = '%s (%d clusters, representing %d splits).' % (collection_name, c['num_clusters'], c['num_splits'])
             self.run.info_single(output)
 
 
@@ -133,7 +133,7 @@ class GetSplitNamesInBins:
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
-        self.collection_id = A('collection_id')
+        self.collection_name = A('collection_name')
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
@@ -146,7 +146,7 @@ class GetSplitNamesInBins:
                                 focus on, or declare a single bin id (-b) from your collection. You have\
                                 not really given anvi'o anything to work with."
 
-        if not self.collection_id:
+        if not self.collection_name:
             raise ConfigError, 'This will not work without a collection ID for your bins :/'
 
         if self.bin_ids_file_path:
@@ -161,12 +161,12 @@ class GetSplitNamesInBins:
         self.collections = Collections()
         self.collections.populate_sources_dict(self.profile_db_path, anvio.__profile__version__)
 
-        if self.collection_id not in self.collections.sources_dict:
+        if self.collection_name not in self.collections.sources_dict:
             raise ConfigError, 'The collection id "%s" does not seem to be in the profile database. These are the\
                                 collections that are available through this profile database: %s.'\
-                                                    % (self.collection_id, ', '.join(self.collections.sources_dict))
+                                                    % (self.collection_name, ', '.join(self.collections.sources_dict))
 
-        self.collection_dict = self.collections.get_collection_dict(self.collection_id)
+        self.collection_dict = self.collections.get_collection_dict(self.collection_name)
 
         bins_in_collection = self.collection_dict.keys()
 
@@ -174,7 +174,7 @@ class GetSplitNamesInBins:
         if len(bins_that_does_not_exist_in_collection):
             raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
                                 "%s". Here is a list of bins that are missing: %s'\
-                                        % (self.collection_id, ', '.join(bins_that_does_not_exist_in_collection))
+                                        % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection))
 
 
 
