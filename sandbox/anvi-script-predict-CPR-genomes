@@ -89,22 +89,26 @@ def main(args):
         class_prediction = 'CPR' if predictions[bin_id]['CPR'] > predictions[bin_id]['NON-CPR'] else 'NOT CPR'
         class_probability = max(predictions[bin_id].values()) * 100
 
-        percent_completion = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']['percent_complete']
+        c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
+        percent_completion = c['percent_complete']
+        percent_redundancy = c['percent_redundancy']
         total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
 
         if class_probability < args.min_class_probability or \
            percent_completion < args.min_percent_completion or \
+           percent_redundancy > args.max_percent_redundancy or \
            total_length < (args.min_genome_size * 10**6):
             class_prediction = 'INCONCLUSIVE'
 
         if args.report_only_cpr and class_prediction != 'CPR':
             continue
         else:
-            run.info(bin_id, "%s (Confidence: %.0f%%, Size: %s, Completion: %.0f%%)" % \
+            run.info(bin_id, "%s (Conf: %.0f%%, Size: %s, C/R: %.0f%%/%.0f%%)" % \
                                     (class_prediction,
                                      class_probability,
                                      (pp(total_length)),
-                                     percent_completion))
+                                     percent_completion,
+                                     percent_redundancy))
 
 
 if __name__ == '__main__':
@@ -123,6 +127,8 @@ if __name__ == '__main__':
                         Default is %(default)f')
     parser.add_argument('--min-percent-completion', type = int, default = 50, help = "Minimum percent completion estimate based on\
                         anvi'o default single-copy gene collections. Default is %(default)d")
+    parser.add_argument('--max-percent-redundancy', type = int, default = 30, help = "Maxumum percent redundancy or single-copy genes\
+                        in an anvi'o bin, or a genome to consider for classification. The default is %(default)d")
     parser.add_argument('--min-class-probability', type = int, default = 75, help = "If the classification confidence is below this\
                         don't bother. Default is %(default)d.")
 
