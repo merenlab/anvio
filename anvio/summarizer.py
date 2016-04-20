@@ -196,7 +196,9 @@ class Summarizer(DatabasesMetaclass):
         if not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins_matrix_output = {}
-            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content', 'percent_complete', 'percent_redundancy']
+            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
+            if self.completeness_data_available:
+                properties += ['percent_complete', 'percent_redundancy']
 
             for bin_name in self.summary['collection']:
                 summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
