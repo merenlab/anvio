@@ -49,7 +49,7 @@ setup(
     description = "An interactive analysis and visualization platform for 'omics data. See https://merenlab.org/projects/anvio for more information",
     license = "GPLv3+",
     keywords = "metagenomics metatranscriptomics microbiology shotgun genomics MBL pipeline sequencing bam visualization SNP",
-    url = "https://meren.github.io/projects/anvio/",
+    url = "https://merenlab.org/projects/anvio/",
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
