@@ -1703,14 +1703,15 @@ class TablesForGeneCalls(Table):
     def populate_genes_in_contigs_table(self, gene_calls_dict, protein_sequences):
         contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
-        self.progress.new('Entering gene calls into the database')
-        counter = 0
-        for entry_id in gene_calls_dict:
-            if counter % 10 == 0:
-                self.progress.update('%d ...' % (counter))
-            contigs_db._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]))
-            contigs_db._exec('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [protein_sequences[entry_id]]))
-            counter += 1
+        self.progress.new('Processing')
+        self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
+
+        db_entries = [tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
+
+        db_entries = [tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [protein_sequences[entry_id]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, db_entries)
+
         self.progress.end()
 
         contigs_db.disconnect()
