@@ -494,6 +494,12 @@ D = {
              'type': str,
              'help': "File path to store results."}
                 ),
+    'log-file': (
+            ['--log-file'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to a log output."}
+                ),
     'output-db-path': (
             ['-o', '--output-db-path'],
             {'metavar': 'DB_FILE_PATH',
