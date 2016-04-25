@@ -7,6 +7,7 @@ import copy
 
 import anvio
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.learning import RF
@@ -25,15 +26,12 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-def main(args):
-    if args.log_file:
-        run = terminal.Run(log_file_path = args.log_file)
-    else:
-        run = terminal.Run()
 
+def main(args):
     collections = ccollections.Collections()
     collections.populate_collections_dict(args.contigs_db, anvio.__contigs__version__)
     if args.profile_db:
@@ -42,6 +40,9 @@ def main(args):
     if args.list_collections:
         collections.list_collections()
         sys.exit()
+
+    if args.output_file:
+        filesnpaths.is_output_file_writable(args.output_file)
 
     if args.profile_db and not args.collection_name:
         raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
@@ -106,12 +107,11 @@ def main(args):
         if args.report_only_cpr and class_prediction != 'CPR':
             continue
         else:
-            run.info(bin_id, "%s (Conf: %.0f%%, Size: %s, C/R: %.0f%%/%.0f%%)" % \
-                                    (class_prediction,
-                                     class_probability,
-                                     (pp(total_length)),
-                                     percent_completion,
-                                     percent_redundancy))
+            result = "%s (Conf: %.0f%%, Size: %s, C/R: %.0f%%/%.0f%%)" % \
+                        (class_prediction, class_probability, pp(total_length), percent_completion, percent_redundancy)
+            run.info(bin_id, result)
+            if args.output_file:
+                with open(args.output_file, "w") as f: f.write(result + '\n')
 
 
 if __name__ == '__main__':
@@ -134,7 +134,7 @@ if __name__ == '__main__':
                         in an anvi'o bin, or a genome to consider for classification. The default is %(default)d")
     parser.add_argument('--min-class-probability', type = int, default = 75, help = "If the classification confidence is below this\
                         don't bother. Default is %(default)d.")
-    parser.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.parse_args()
 
