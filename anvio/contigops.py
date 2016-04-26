@@ -194,7 +194,7 @@ class Auxiliary:
                 cp['cov_outlier_in_contig'] = pos_in_contig in self.parent_outlier_positions
                 self.column_profile[pos_in_contig] = cp
 
-        # variation density = number of SNPs per kb
+        # variation density = number of SNVs per kb
         self.variation_density = len(ratios) * 1000.0 / self.split.length
 
         for i in range(self.split.start, self.split.end):
