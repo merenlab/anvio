@@ -1441,7 +1441,7 @@ class TableForVariability(Table):
         self.db_entries.append(db_entry)
         self.num_entries += 1
         if self.num_entries % 100 == 0:
-            self.progress.update('Information for %d SNP sites have been added ...' % self.num_entries)
+            self.progress.update('Information for %d SNV sites have been added ...' % self.num_entries)
 
 
     def store(self):

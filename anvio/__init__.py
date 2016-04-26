@@ -354,7 +354,7 @@ D = {
              'type': int,
              'help': "Each split may have one or more variable positions. What is the maximum number of positons\
                       to report from each split is described via this paramter. The default is %(default)d. Which\
-                      means from every split, a maximum of %(default)d eligable SNP is going to be reported."}
+                      means from every split, a maximum of %(default)d eligable SNV is going to be reported."}
              ),
     'min-scatter': (
             ['-m', '--min-scatter'],
@@ -736,7 +736,7 @@ D = {
             {'metavar': 'INT',
              'default': 10,
              'type': int,
-             'help': "Minimum coverage of a nucleotide position to be subjected to SNP profiling. By default, anvio will\
+             'help': "Minimum coverage of a nucleotide position to be subjected to SNV profiling. By default, anvio will\
                       not attempt to make sense of variation in a given nucleotide position if it is covered less than\
                       %(default)dX. You can change that minimum using this parameter."}
                 ),
