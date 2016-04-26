@@ -8,6 +8,7 @@
    bin.
 """
 
+import os
 import sys
 import argparse
 
@@ -15,8 +16,9 @@ import anvio
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
 from anvio.hmmops import SequencesForHMMHits
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
@@ -40,8 +42,15 @@ def main(args):
             run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
         sys.exit(0)
 
-    splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-    run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
+    if args.profile_db and not args.collection_name:
+        raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
+
+    if args.profile_db:
+        splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+        run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
+    else:
+        contigs_db = ContigsSuperclass(args, r = run, p = progress)
+        splits_dict = {os.path.basename(args.contigs_db[:-3]): contigs_db.splits_basic_info.keys()}
 
     sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
     s = SequencesForHMMHits(args.contigs_db, sources = sources)
@@ -56,8 +65,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get sequences for all HMM hits in a given bin")
 
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     parser.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
