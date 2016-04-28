@@ -3,6 +3,19 @@
     line-height: 1.428;
 }
 
+.desc {
+    font-family: 'PT Serif',serif;
+    font-size: 14px;
+    margin-bottom: 15px;
+    padding: 20px;
+    /* padding-left: 40px; */
+    border-radius: 5px;
+    background-color: #F9F9F9;
+    border: 1px solid #F5F5F5;
+    border-left: 10px solid #F1F1F1;
+    font-size: 12px;
+}
+
 h4 {
     margin-top: 10px;
 }

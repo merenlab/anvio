@@ -707,7 +707,7 @@ class UserMGMT:
         if len(filterwords):
             where_phrase = " WHERE "+" AND ".join(filterwords)
 
-        query = "SELECT name, user, description FROM projects" \
+        query = "SELECT name, user, path, description FROM projects" \
                  + where_phrase + " ORDER BY " + order + " " + dir + " LIMIT " + str(limit) + " OFFSET " + str(offset)
         table = self.users_db.fetchall(query)
 
@@ -816,7 +816,7 @@ class UserMGMT:
                 dataFiles[fn] = None
         
         # construct return structure
-        projectData = { "name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles }
+        projectData = { "name": project['name'], "path": project['path'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles }
 
         return { 'status': 'ok', 'message': None, 'data': projectData }
     

@@ -18,12 +18,21 @@
  */
 
 function initContent() {
-    window.tables = { "user": { "limit": 6, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {}, "url": "/adminData", "columns": [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit', 'details' ], "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="showUserDetails(\'$$\');">show details</button>', "data": 'login' }, "response": null},
-		      "project": { "limit": 5, "offset": 0, "order": "user", "dir": "ASC", "filter": {}, "url": "/adminProjectData", "columns": [ 'name', 'user', 'description', 'details' ], "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="getProjectDetails(\'$$\');">show details</button>', "data": 'name' }, "response": null } };
+    window.tables = {
+                "user": { "limit": 50, "offset": 0, "order": "lastname", "dir": "ASC", "filter": {}, "url": "/adminData",
+                "columns": [ 'firstname', 'lastname', 'login', 'email', 'affiliation', 'projects', 'date', 'clearance', 'visit', 'details' ],
+                "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="showUserDetails(\'$$\');">show details</button>', "data": 'login' },
+                "response": null},
+
+		            "project": { "limit": 100, "offset": 0, "order": "user", "dir": "ASC", "filter": {}, "url": "/adminProjectData",
+                "columns": [ 'name', 'user', 'path', 'description', 'details' ],
+                "special": { "column": "details", "code": '<button class="btn btn-default btn-xs" onclick="getProjectDetails(\'$$\');">show details</button>', "data": 'name' },
+                "response": null }
+            };
     var content = document.getElementById('content');
     var html = [];
     if (user && user.clearance == 'admin') {
-	html.push('<h3>Welcome back '+user.firstname+'</h3><h4 align="center">Users</h4><div id="usertable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
+	html.push('<h3>Welcome back ' + user.firstname + '</h3><h4 align="center">Users</h4><div id="usertable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
 	html.push('<h4 align="center">Projects</h4><div id="projecttable"><div class="progress" style="width: 50%; margin-top: 100px; margin-left: 25%; margin-right: 25%;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"><span class="sr-only">Loading...</span></div></div></div>');
 	html.push('<div id="details"></div>');
 	content.innerHTML = html.join('\n');
@@ -214,7 +223,7 @@ function showProjectDetails() {
     // project base data
     html.push('<button style="float: right;" class="btn btn-sm btn-danger" onclick="deleteProject(\''+projectData.name+'\', \''+projectData.user.login+'\')"><span class="glyphicon glyphicon-trash"></span></button>');
     html.push('<h4 style="margin-top: 0px;">Project '+projectData.name+'</h4>');
-    html.push('<p>'+projectData.description+'</p>');
+    html.push('<p>' + projectData.description + '</p>');
 
     // project user
     html.push('<h4><span class="glyphicon glyphicon-user" style="margin-right: 10px;"></span>Owner</h4><p><b>'+projectData.user.firstname+' '+projectData.user.lastname+'</b></p><table class="table table-condensed col-sm-8">');
