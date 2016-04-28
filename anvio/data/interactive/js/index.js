@@ -74,10 +74,11 @@ function initContent () {
 		var html = [];
 		
 		// project base data
-		html.push('<div style="padding: 10px;"><p style="margin-top: -10px; margin-bottom: 0px; font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">'+pdata.name+'</p>');
-		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;"><i>by '+pdata.user+'</i></p>');
-		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;">'+pdata.description+'</p>');
-		
+		html.push('<div style="padding: 10px;">');
+		html.push('<p style="margin-top: -10px; margin-bottom: 0px; font-size: 22px; font-weight: bold;">' + pdata.name + '</p>');
+		html.push('<hr style="margin: 0px; margin-top: 5px;" />');
+		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 14px;"><i>by '+ pdata.user + ' (hash: ' + pdata.path + ')</i></p>');
+		html.push('<div class="desc">'+pdata.description+'</div>');
 		// project files
 		html.push('<p style="font-family: \'PT Serif\',serif; font-size: 16px; font-weight: bold;">Project Files<button class="btn btn-default" style="float: right; position: relative; bottom: 5px;" title="download all project files" onclick="downloadProjectZIP();"><i class="glyphicon glyphicon-floppy-save"></i></button></p>');
 		var fields = Object.keys(pdata.files).sort();

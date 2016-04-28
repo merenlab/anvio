@@ -360,7 +360,7 @@ def admin_project_data(request, userdb, response):
     if user['status'] == 'ok':
         if user['data']['clearance'] == 'admin':
             filterhash = {}
-            fields = [ 'name', 'user', 'description', 'views', 'metadata' ]
+            fields = [ 'name', 'user', 'path', 'description', 'views', 'metadata' ]
             for field in fields:
                 if field in request.query:
                     filterhash[field] = request.query[field]
