@@ -350,11 +350,12 @@ D = {
     'num-positions-from-each-split': (
             ['--num-positions-from-each-split'],
             {'metavar': 'INT',
-             'default': 2,
+             'default': 0,
              'type': int,
-             'help': "Each split may have one or more variable positions. What is the maximum number of positons\
-                      to report from each split is described via this paramter. The default is %(default)d. Which\
-                      means from every split, a maximum of %(default)d eligable SNV is going to be reported."}
+             'help': "Each split may have one or more variable positions. By default, anvi'o will report every SNV\
+                      position found in a given split. This parameter will help you to define a cutoff for the maximum\
+                      number of SNVs to be reported from a split (if the number of SNVs is more than the number you\
+                      declare using this parameter, the positions will be randomly subsampled)."}
              ),
     'min-scatter': (
             ['-m', '--min-scatter'],
