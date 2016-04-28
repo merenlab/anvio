@@ -421,7 +421,11 @@ class VariabilitySuper(object):
 
 
     def filter_based_on_num_positions_from_each_split(self):
-        self.run.info('Num positions to keep from each split (-n)', self.num_positions_from_each_split)
+        if self.num_positions_from_each_split > 0:
+            self.run.info('Num positions to keep from each split', self.num_positions_from_each_split)
+        else:
+            self.run.info('Num positions to keep from each split', '(all positions)')
+            return
 
         num_entries_before_filter = len(self.data)
 
@@ -457,7 +461,7 @@ class VariabilitySuper(object):
 
         self.progress.end()
 
-        self.run.info('Remaining entries after "-n" filter',
+        self.run.info('Remaining entries after num positions filter',
                       '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
                                                           pp(num_entries_before_filter - num_entries_after_filter)),
                       mc = 'green')
