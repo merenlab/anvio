@@ -250,6 +250,10 @@ def send_static(filename):
     set_default_headers(response)
     return static_file(filename, root=static_dir)
 
+@route('/app/downloadProjectFiles', method='GET')
+def download_project_files():
+    return multiroutes.get_current_project_archive(request, userdb, response)
+
 @route('/public/<login>/:filename#.*#')
 def send_static(login, filename):
     set_default_headers(response)

@@ -13,9 +13,11 @@ import random
 import hashlib
 import shutil
 import re
+import zipfile
 
 import time
 from datetime import date, datetime
+from StringIO import StringIO
 
 import anvio
 import anvio.terminal as terminal
@@ -781,7 +783,7 @@ class UserMGMT:
 
         return { 'status': 'ok', 'message': None, 'data': projectData }
 
-    def get_current_project_files(self, request):
+    def get_current_project_files(self, request, include_db_files=False):
         retval = self.set_user_data(request, True)
         if retval["status"] == "error":
             return retval
@@ -804,22 +806,41 @@ class UserMGMT:
 
         # get files of the project
         path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
-        filenames = [ "data", "fasta", "tree", "additionalData", "samplesInformation", "samplesOrder" ]
+        filenames = ['data', 'fasta', 'tree', 'additionalData', 'samplesInformation', 'samplesOrder']
+        if include_db_files:
+            filenames += ['profile.db', 'samples.db']
         dataFiles = {}
+
         for fn in filenames:
-            fullfn = path+fn+"File"
+            fullfn = path + fn
+            if not os.path.splitext(fn)[-1] == '.db':
+                fullfn += 'File'
+
             if os.access(fullfn, os.R_OK):
                 with open(fullfn, 'r') as content_file:
                     content = content_file.read()
                     dataFiles[fn] = content
             else:
                 dataFiles[fn] = None
-        
+
         # construct return structure
         projectData = { "name": project['name'], "path": project['path'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles }
 
         return { 'status': 'ok', 'message': None, 'data': projectData }
-    
+
+    def get_current_project_archive(self, request):
+        project_files = self.get_current_project_files(request=request, include_db_files=True)
+        file_data = project_files['data']['files'] if project_files['status'] == 'ok' else {}
+        zip_buffer = StringIO()
+        with zipfile.ZipFile(zip_buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for filename, content in file_data.items():
+                if content is None:
+                    continue
+                if not os.path.splitext(filename)[-1]:
+                    filename += '.txt'
+                zf.writestr(filename, content)
+        return '{}.zip'.format(project_files['data']['name']), zip_buffer
+
     ######################################
     # VIEWS
     ######################################
