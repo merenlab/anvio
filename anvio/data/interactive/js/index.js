@@ -100,12 +100,5 @@ function initContent () {
 };
 
 function downloadProjectZIP() {
-    var zip = new JSZip();
-    var fields = Object.keys(pdata.files).sort();
-    for (var i=0; i<fields.length; i++) {
-	if (pdata.files[fields[i]]) {
-	    zip.file(pdata.name+"/"+fields[i]+".txt", pdata.files[fields[i]]);
-	}
-    }
-    saveAs('data:application/zip;base64,'+zip.generate({type:"base64"}), pdata.name+".zip", true);
+  window.location = '/app/downloadProjectFiles';
 };

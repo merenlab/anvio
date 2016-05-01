@@ -166,6 +166,18 @@ def get_current_project_files(request, userdb, response):
     return json.dumps(userdb.get_current_project_files(request))
 
 
+def get_current_project_archive(request, userdb, response):
+    set_default_headers(response)
+
+    zip_name, zip_archive = userdb.get_current_project_archive(request)
+
+    # prepare response to download ZIP archive
+    response.headers['Content-Type'] = 'application/zip, application/octet-stream; charset=UTF-8'
+    response.headers['Content-Disposition'] = 'attachment; filename="{}"'.format(zip_name)
+
+    return zip_archive.getvalue()
+
+
 def debug(source, request):
     run.warning(None, header=source)
     run.warning(request.forms.dict, 'Forms', lc = 'yellow')
