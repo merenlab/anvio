@@ -29,7 +29,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 pp = terminal.pretty_print
@@ -37,50 +36,31 @@ pp = terminal.pretty_print
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
-    def __init__(self, args = None):
-        self.args = None
-        self.input_file_path = None 
-        self.contigs_db_path = None
-        self.serialized_profile_path = None 
-        self.output_directory = None 
-        self.list_contigs_and_exit = None 
-        self.min_contig_length = 10000 
-        self.min_mean_coverage = 0
-        self.min_coverage_for_variability = 10 # if a nucleotide position is covered less than this, don't bother
+    def __init__(self, args):
+        self.args = args
+
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.input_file_path = A('input_file')
+        self.contigs_db_path = A('contigs_db')
+        self.serialized_profile_path = A('serialized_profile')
+        self.output_directory = A('output_dir')
+        self.list_contigs_and_exit = A('list_contigs')
+        self.min_contig_length = A('min_contig_length')
+        self.min_mean_coverage = A('min_mean_coverage')
+        self.min_coverage_for_variability = A('min_coverage_for_variability')
+        self.contigs_shall_be_clustered = A('cluster_contigs')
+        self.sample_id = A('sample_name')
+        self.report_variability_full = A('report_variability_full')
+        self.overwrite_output_destinations = A('overwrite_output_destinations')
+        self.skip_SNV_profiling = A('skip_SNV_profiling')
+        self.skip_AA_frequencies = A('skip_AA_frequencies')
+        self.gen_serialized_profile = A('gen_serialized_profile')
         self.contig_names_of_interest = None
-        self.contigs_shall_be_clustered = False
-        self.report_variability_full = False # don't apply any noise filtering, and simply report ALL base frequencies
-        self.overwrite_output_destinations = False
-        self.skip_SNV_profiling = False
-        self.skip_AA_frequencies = False
-        self.gen_serialized_profile = False
 
-        if args:
-            self.args = args
-            self.input_file_path = args.input_file
-            self.contigs_db_path = args.contigs_db
-            self.serialized_profile_path = args.serialized_profile
-            self.output_directory = args.output_dir
-            self.list_contigs_and_exit = args.list_contigs
-            self.min_contig_length = args.min_contig_length
-            self.min_mean_coverage = args.min_mean_coverage
-            self.min_coverage_for_variability = args.min_coverage_for_variability
-            self.contigs_shall_be_clustered = args.cluster_contigs
-            self.number_of_threads = 4 
-            self.no_trehading = True
-            self.sample_id = args.sample_name
-            self.report_variability_full = args.report_variability_full
-            self.overwrite_output_destinations = args.overwrite_output_destinations
-            self.skip_SNV_profiling = args.skip_SNV_profiling
-            self.skip_AA_frequencies = args.skip_AA_frequencies
-            self.gen_serialized_profile = args.gen_serialized_profile
-
-            if args.contigs_of_interest:
-                if not os.path.exists(args.contigs_of_interest):
-                    raise ConfigError, "Contigs file (%s) is missing..." % (args.contigs_of_interest)
-
-                self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
-                                                                               if c.strip() and not c.startswith('#')])
+        if args.contigs_of_interest:
+            filesnpaths.is_file_exists(args.contigs_of_interest)
+            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
+                                                                           if c.strip() and not c.startswith('#')])
 
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
@@ -88,6 +68,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.list_contigs_and_exit:
             self.list_contigs()
             sys.exit()
+
+        if not self.contigs_db_path:
+            raise ConfigError, "No contigs database, no profilin'. Bye."
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
