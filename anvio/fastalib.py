@@ -150,7 +150,7 @@ class SequenceSource():
             line = self.file_pointer.readline()
             if not line:
                 if len(sequence):
-                    self.seq = sequence
+                    self.seq = sequence if self.allow_mixed_case else sequence.upper()
                     self.pos += 1
                     return True
                 else:
