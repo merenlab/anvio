@@ -37,6 +37,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.views = {}
         self.states_table = None
         self.p_meta = {}
+        self.mode = None
         self.title = 'Unknown Project'
 
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
@@ -95,15 +96,21 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
+        # set the mode straight:
+        if self.manual_mode:
+            self.mode = 'manual'
+        else:
+            self.mode = 'full'
+
         # here is where the big deal stuff takes place:
         if self.manual_mode:
-            self.load_from_user_files(args)
+            self.load_manual_mode(args)
         else:
-            self.load_from_anvio_files(args)
+            self.load_full_mode(args)
 
         # make sure the samples information database, if there is one, is in fact compatible with the profile database
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
-        # being filled within the self.load_from_user_files function based on the headers of the view data.
+        # being filled within the self.load_manual_mode function based on the headers of the view data.
         if self.profile_db_path and self.samples_information_db_path:
             is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception = self.manual_mode)
 
@@ -151,18 +158,17 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.convert_view_data_into_json()
 
 
-    def load_from_user_files(self, args):
+    def load_manual_mode(self, args):
         if self.contigs_db_path:
-            raise ConfigError, "When you want to use the interactive interface in an ad hoc manner, you must\
+            raise ConfigError, "When you want to use the interactive interface in manual mode, you must\
                                 not use a contigs database."
 
         if not self.profile_db_path:
-            raise ConfigError, "Even when you want to use the interactive interface in an ad hoc manner by\
-                                using the '--manual-mode' flag, you still need to declare a profile database.\
-                                The profile database in this mode only used to read or store the 'state' of\
-                                the display for visualization purposes. You DO NOT need to point to an already\
-                                existing database, as anvi'o will generate an empty one for your if there is no\
-                                profile database."
+            raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
+                                to declare a profile database. The profile database in this mode only used to\
+                                read or store the 'state' of the display for visualization purposes. You DO\
+                                NOT need to point to an already existing database, as anvi'o will generate\
+                                an empty one for your if there is no profile database."
 
         if not self.tree:
             raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
@@ -243,7 +249,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
                                                     'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
-        # create a new, empty profile database for ad hoc operations
+        # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile', 'merged': True, 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
@@ -258,7 +264,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.title = self.title
 
 
-    def load_from_anvio_files(self, args):
+    def load_full_mode(self, args):
         if not self.contigs_db_path:
             raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
                                 should use the `--manual` flag if that's what your intention)."
