@@ -342,12 +342,12 @@ def get_parent_state():
     return state_for_charts[statekey]
 
 @route('/data/contig/<split_name>')
-def get_split_info(split_name):
+def get_sequence_for_split(split_name):
     retval = userdb.set_user_data(request)
     if retval["status"] == "error":
         return json.dumps(retval)
     else:
-        return routes.get_split_info(retval["data"]["args"], retval["data"]["d"], request, response, split_name)
+        return routes.get_sequence_for_split(retval["data"]["args"], retval["data"]["d"], request, response, split_name)
 
 @route('/data/collections')
 def collections():

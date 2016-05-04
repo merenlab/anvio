@@ -404,10 +404,10 @@ function menu_callback(action) {
             });
             break;
 
-        case 'blastn_nr': fire_up_ncbi_blast(contig_name, 'blastn', 'nr'); break;
-        case 'blastx_nr': fire_up_ncbi_blast(contig_name, 'blastx', 'nr'); break;
-        case 'blastn_refseq_genomic': fire_up_ncbi_blast(contig_name, 'blastn', 'refseq_genomic'); break;
-        case 'blastx_refseq_protein': fire_up_ncbi_blast(contig_name, 'blastx', 'refseq_genomic'); break;
+        case 'blastn_nr': fire_up_ncbi_blast(contig_name, 'blastn', 'nr', 'contig'); break;
+        case 'blastx_nr': fire_up_ncbi_blast(contig_name, 'blastx', 'nr', 'contig'); break;
+        case 'blastn_refseq_genomic': fire_up_ncbi_blast(contig_name, 'blastn', 'refseq_genomic', 'contig'); break;
+        case 'blastx_refseq_protein': fire_up_ncbi_blast(contig_name, 'blastx', 'refseq_genomic', 'contig'); break;
         
         case 'inspect':
             $.ajax({

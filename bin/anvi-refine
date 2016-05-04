@@ -206,8 +206,8 @@ def get_parent_state():
     return state_for_charts
 
 @route('/data/contig/<split_name>')
-def split_info(split_name):
-    return routes.get_split_info(args, d, request, response, split_name)
+def get_sequence_for_split(split_name):
+    return routes.get_sequence_for_split(args, d, request, response, split_name)
 
 @route('/store_refined_bins', method='POST')
 def store_refined_bins():
