@@ -211,8 +211,8 @@ def get_parent_state():
     return state_for_charts
 
 @route('/data/contig/<split_name>')
-def get_split_info(split_name):
-    return routes.get_split_info(args, d, request, response, split_name)
+def get_sequence_for_split(split_name):
+    return routes.get_sequence_for_split(args, d, request, response, split_name)
 
 @route('/data/collections')
 def collections():

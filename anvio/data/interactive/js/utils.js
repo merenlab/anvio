@@ -90,8 +90,13 @@ function getGradientColor(start_color, end_color, percent) {
    return '#' + diff_red + diff_green + diff_blue;
  };
 
-function fire_up_ncbi_blast(contig_name, program, database)
+function fire_up_ncbi_blast(item_name, program, database, target)
 {
+    if (["gene", "contig"].indexOf(target) < 0){
+        console.log("fire_up_ncbi_blast: Unrecognized target. Target must be either 'gene', or 'contig'.");
+        return;
+    }
+
     var blast_window = window.open('about:blank', '_blank');
 
     var post_variables = {
@@ -130,9 +135,9 @@ function fire_up_ncbi_blast(contig_name, program, database)
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
+        url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            post_variables['QUERY'] = '>' + contig_name + '\n' + data;
+            post_variables['QUERY'] = '>' + item_name + '\n' + data;
             
             var form = document.createElement('form');
             

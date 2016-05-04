@@ -297,7 +297,7 @@ def get_tree(args, d, request, response, tree_id):
     return json.dumps("")
 
 
-def get_split_info(args, d, request, response, split_name):
+def get_sequence_for_split(args, d, request, response, split_name):
     set_default_headers(response)
     return json.dumps(d.split_sequences[split_name])
 
