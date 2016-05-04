@@ -97,8 +97,6 @@ function fire_up_ncbi_blast(item_name, program, database, target)
         return;
     }
 
-    var blast_window = window.open('about:blank', '_blank');
-
     var post_variables = {
         'PROGRAM': 'blastn',
         'DATABASE': 'nr',
@@ -137,20 +135,26 @@ function fire_up_ncbi_blast(item_name, program, database, target)
         cache: false,
         url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            post_variables['QUERY'] = '>' + item_name + '\n' + data;
-            
-            var form = document.createElement('form');
-            
-            form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
-            form.method = 'POST';
+            if ('error' in data){
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            } else {
+                var blast_window = window.open('about:blank', '_blank');
 
-            for (name in post_variables)
-            {
-                $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+                post_variables['QUERY'] = '>' + data['header'] + '\n' + data['sequence'];
+
+                var form = document.createElement('form');
+                
+                form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
+                form.method = 'POST';
+
+                for (name in post_variables)
+                {
+                    $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+                }
+
+                blast_window.document.body.appendChild(form);
+                form.submit();
             }
-
-            blast_window.document.body.appendChild(form);
-            form.submit();
         }
     });
 }
