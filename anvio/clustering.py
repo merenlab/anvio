@@ -110,6 +110,14 @@ def synchronize(current_root, control):
                 new_root_sister.name += control
 
 
+def get_newick_tree_data_for_dict(d):
+    matrix_file = filesnpaths.get_temp_file_path()
+    utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + d[d.keys()[0]].keys())
+    newick = get_newick_tree_data(matrix_file)
+    os.remove(matrix_file)
+    return newick
+
+
 def get_newick_tree_data(observation_matrix_path, output_file_name = None, clustering_distance='euclidean',
                          clustering_method = 'complete', norm = 'l1', progress = progress, transpose = False):
     filesnpaths.is_file_exists(observation_matrix_path)
