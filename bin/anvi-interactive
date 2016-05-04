@@ -143,7 +143,7 @@ def send_data(name):
                              "views": (d.default_view, dict(zip(d.views.keys(), d.views.keys()))),
                              "contigLengths": dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info]),
                              "defaultView": d.views[d.default_view],
-                             "mode": "full" if not d.manual_mode else "manual",
+                             "mode": d.mode,
                              "readOnly": args.read_only,
                              "binPrefix": "Bin_",
                              "sessionId": unique_session_id,
@@ -167,7 +167,7 @@ def send_data(name):
     elif name == "title":
         return json.dumps(d.title)
     elif name == "mode":
-        return json.dumps("full" if not d.manual_mode else "manual")
+        return json.dumps(d.mode)
     elif name == "read_only":
         return json.dumps(args.read_only)
     elif name == "bin_prefix":
