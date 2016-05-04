@@ -299,7 +299,14 @@ def get_tree(args, d, request, response, tree_id):
 
 def get_sequence_for_split(args, d, request, response, split_name):
     set_default_headers(response)
-    return json.dumps(d.split_sequences[split_name])
+
+    try:
+        sequence = d.split_sequences[split_name]
+        header = split_name
+    except Exception, e:
+        return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
+
+    return json.dumps({'sequence': sequence, 'header': header})
 
 
 def get_view_data(args, d, request, response, view_id):
