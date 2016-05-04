@@ -297,6 +297,26 @@ def get_tree(args, d, request, response, tree_id):
     return json.dumps("")
 
 
+def get_sequence_for_gene_call(args, d, request, response, gene_callers_id):
+    set_default_headers(response)
+
+    try:
+        gene_callers_id = int(gene_callers_id)
+    except:
+        return json.dumps({'error': "Gene caller id does not seem to be 'integerable'. Not good :/"})
+
+    try:
+        gene_calls_tuple = d.get_sequences_for_gene_callers_ids([gene_callers_id])
+    except Exception, e:
+        return json.dumps({'error': "Something went wrong when I tried to access to that gene: '%s' :/" % e})
+
+    entry = gene_calls_tuple[1][gene_callers_id]
+    sequence = entry['sequence']
+    header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+
+    return json.dumps({'sequence': sequence, 'header': header})
+
+
 def get_sequence_for_split(args, d, request, response, split_name):
     set_default_headers(response)
 
