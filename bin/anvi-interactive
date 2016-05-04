@@ -214,6 +214,10 @@ def get_parent_state():
 def get_sequence_for_split(split_name):
     return routes.get_sequence_for_split(args, d, request, response, split_name)
 
+@route('/data/gene/<gene_callers_id>')
+def get_sequence_for_gene_call(gene_callers_id):
+    return routes.get_sequence_for_gene_call(args, d, request, response, gene_callers_id)
+
 @route('/data/collections')
 def collections():
     return routes.get_collections(args, d, request, response)
