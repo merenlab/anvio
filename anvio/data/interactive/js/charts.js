@@ -304,11 +304,11 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
-    functions_table_html += '<button type="button" class="btn btn-default" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
 
     if(!gene.functions)
         return functions_table_html;
