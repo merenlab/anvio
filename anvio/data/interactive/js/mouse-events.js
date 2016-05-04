@@ -398,7 +398,7 @@ function menu_callback(action) {
                 cache: false,
                 url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    $('#splitSequence').val('>' + contig_name + '\n' + data);
+                    $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
                     $('#modSplitSequence').modal('show');
                 }
             });
