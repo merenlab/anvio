@@ -14,6 +14,7 @@ from bottle import static_file
 
 import anvio
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 
@@ -325,6 +326,28 @@ def get_sequence_for_split(args, d, request, response, split_name):
         header = split_name
     except Exception, e:
         return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
+
+    return json.dumps({'sequence': sequence, 'header': header})
+
+
+def get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name):
+    set_default_headers(response)
+
+    if d.mode != 'collection':
+        return json.dumps({'error': "HMM hits from bins can only be requested in 'collection' mode. You are doing something wrong..."})
+
+    if not d.collection:
+        return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
+
+    hmm_sequences_dict = d.hmm_access.get_hmm_sequences_dict_for_splits({bin_name: set(d.collection[bin_name])})
+    gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
+
+    if not gene_sequences:
+        return json.dumps({'error': "Sorry. It seems %s does not have a hit for %s." % (bin_name, gene_name)})
+
+    unique_id_for_longest_hit = sorted([(gene_sequences[gene_id]['length'], gene_id) for gene_id in gene_sequences], reverse = True)[0][1]
+
+    header, sequence = d.hmm_access.get_FASTA_header_and_sequence_for_gene_unique_id(gene_sequences, unique_id_for_longest_hit)
 
     return json.dumps({'sequence': sequence, 'header': header})
 
