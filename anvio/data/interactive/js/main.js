@@ -247,6 +247,7 @@ function initData () {
                 $('.full-mode').show();
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
+                $('#fixed-navbar-div').css('background-color', '#E2DEF2');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
             }
