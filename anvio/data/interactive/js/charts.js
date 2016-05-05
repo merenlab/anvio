@@ -304,6 +304,12 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+
     if(!gene.functions)
         return functions_table_html;
 
@@ -330,6 +336,36 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '</tbody></table>';
 
     return functions_table_html;
+}
+
+function show_sequence(gene_id) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/gene/' + gene_id + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            $('body').append('<div class="modal modal-sequence"> \
+                <div class="modal-dialog"> \
+                    <div class="modal-content"> \
+                        <div class="modal-header"> \
+                            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
+                            <h4 class="modal-title">Split Sequence</h4> \
+                        </div> \
+                        <div class="modal-body"> \
+                            <div class="col-md-12"> \
+                                <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>&gt;' + data['header'] + '\n' + data['sequence'] + '</textarea> \
+                            </div> \
+                        </div> \
+                        <div class="modal-footer"> \
+                            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                        </div> \
+                    </div> \
+                </div> \
+            </div>');
+            $('[data-toggle="popover"]').popover('hide');
+            $('.modal-sequence').modal('show');
+        }
+    });
 }
 
 function drawArrows(_start, _stop) {
