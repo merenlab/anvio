@@ -130,6 +130,8 @@ function fire_up_ncbi_blast(item_name, program, database, target)
     if (typeof database !== 'undefined')
         post_variables['DATABASE'] = database;
 
+    var blast_window = window.open('about:blank', '_blank');
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -138,8 +140,6 @@ function fire_up_ncbi_blast(item_name, program, database, target)
             if ('error' in data){
                 toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             } else {
-                var blast_window = window.open('about:blank', '_blank');
-
                 post_variables['QUERY'] = '>' + data['header'] + '\n' + data['sequence'];
 
                 var form = document.createElement('form');
