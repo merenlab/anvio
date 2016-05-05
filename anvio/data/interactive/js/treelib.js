@@ -2488,6 +2488,7 @@ function draw_tree(settings) {
     tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);
     document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
     document.body.addEventListener('click', function() { $('#default_right_click_menu').hide(); }, false);
+    document.body.addEventListener('click', function() { $('#collection_mode_right_click_menu').hide(); }, false);
 
     // code below required to stop clicking on contings while panning.
     var viewport = document.getElementById('svg');
