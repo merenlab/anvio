@@ -213,6 +213,10 @@ def get_parent_state():
     set_default_headers(response)
     return state_for_charts
 
+@route('/data/hmm/<bin_name>/<gene_name>')
+def get_hmm_hit_from_bin(bin_name, gene_name):
+    return routes.get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name)
+
 @route('/data/contig/<split_name>')
 def get_sequence_for_split(split_name):
     return routes.get_sequence_for_split(args, d, request, response, split_name)
