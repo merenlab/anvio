@@ -690,13 +690,24 @@
         <li class="divider"></li>
         <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect');">Inspect</a></li>
         <li class="divider"></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('content');">Show split sequence</a></li>
+        <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_split_sequence');">Show split sequence</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</a></li>
     </ul>
 
+    <!-- COLLECTION MODE RIGHT CLICK MENU -->
+    <ul id="collection_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
+        <li id="select"><a href="#" onclick="menu_callback('select');">Select</a></li>
+        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove</a></li>
+        <li class="divider"></li>
+        <li class="menuItemRefineBin"><a href="#" onclick="menu_callback('refine_bin');">Refine this bin</a></li>
+        <li class="divider"></li>
+        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'RecA');">RecA</a></li>
+        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_S3_C');">Ribosomal S3</a></li>
+        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_L10');">Ribosomal L10</a></li>
+    </ul>
 
     <!-- AREA ZOOM -->
     <div id="divzoom"><div id="divzoom_inner"></div></div>
