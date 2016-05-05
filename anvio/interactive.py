@@ -3,16 +3,18 @@
 
 import os
 import sys
+import numpy
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-import anvio.completeness as completeness
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
+from anvio.completeness import Completeness
 from anvio.errors import ConfigError
 
 
@@ -43,6 +45,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
         self.additional_layers_path = A('additional_layers')
@@ -58,6 +61,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.state = A('state')
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
+        self.list_collections = A('list_collections')
 
         self.split_names_ordered = None
         self.additional_layers = None
@@ -67,6 +71,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.samples_order_dict = {}
         self.samples_information_default_layer_order = {}
 
+        # make sure the mode will be set properly
+        if self.collection_name and self.manual_mode:
+            raise ConfigError, "You can't anvi-interactive in manual mode with a collection name."
 
         self.external_clustering = external_clustering
 
@@ -81,7 +88,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             samples_information_db.disconnect()
 
         if self.contigs_db_path:
-            self.completeness = completeness.Completeness(self.contigs_db_path)
+            self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
         else:
             self.completeness = None
@@ -96,16 +103,17 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
-        # set the mode straight:
-        if self.manual_mode:
-            self.mode = 'manual'
-        else:
-            self.mode = 'full'
-
         # here is where the big deal stuff takes place:
         if self.manual_mode:
+            self.mode = 'manual'
+            self.run.info('Mode', self.mode, mc = 'red')
             self.load_manual_mode(args)
+        elif self.collection_name or self.list_collections:
+            self.mode = 'collection'
+            self.run.info('Mode', self.mode, mc = 'green')
+            self.load_collection_mode(args)
         else:
+            self.mode = 'full'
             self.load_full_mode(args)
 
         # make sure the samples information database, if there is one, is in fact compatible with the profile database
@@ -148,7 +156,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # we would like to visualize them as additional layers. following function is inherited from
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
-        self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
+        if self.mode == 'full':
+            self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
 
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
@@ -262,6 +271,93 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         if self.title:
             self.title = self.title
+
+
+    def load_collection_mode(self, args):
+        collections = ccollections.Collections()
+        collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
+        collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+
+        if self.list_collections:
+            collections.list_collections()
+            sys.exit()
+
+        if self.collection_name not in collections.collections_dict:
+            raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
+
+        completeness = Completeness(args.contigs_db)
+        if not len(completeness.sources):
+            raise ConfigError, "HMM's were not run for this contigs database :/"
+
+        if not 'Campbell_et_al' in completeness.sources:
+            raise ConfigError, "This 'collection' mode uses Campbell et al. single-copy gene collections to make sense of the completion\
+                                and redundancy of bins. The bad news is that Campbell et al is not among the available HMM sources in your\
+                                contigs database :/ Why? Why?"
+
+        collection = collections.get_collection_dict(self.collection_name)
+
+        # we will do something quite tricky here. first, we will load the full mode to get the self.views
+        # data structure fully initialized based on the profile database. Then, we using information about
+        # bins in the selected collection, we will create another views data structure, and replace it with
+        # the one we have. that will be LOVELY.
+        self.load_full_mode(args)
+
+        self.p_meta['default_clustering'] = 'mean_coverage'
+        self.p_meta['available_clusterings'] = []
+        self.p_meta['clusterings'] = {}
+
+        # setting up a new view:
+        views_for_collection = {}
+        for view in self.views:
+            v = self.views[view]
+
+            d = {}
+            d['table_name'] = v['table_name']
+            d['header'] = [h for h in v['header'] if not h == '__parent__']
+            d['dict'] = {}
+
+            for bin_id in collection:
+                d['dict'][bin_id] = {}
+                for header in d['header']:
+                     d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in collection[bin_id]])
+                     
+            self.p_meta['available_clusterings'].append(view)
+            self.p_meta['clusterings'][view] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'])}
+
+            views_for_collection[view] = d
+
+        # replace self.views with the new view:
+        self.views = views_for_collection
+
+        # preparing a new 'splits_basic_info'
+        basic_info_for_collection = {}
+        for bin_id in collection:
+            basic_info_for_collection[bin_id] = {'length': sum([self.splits_basic_info[s]['length'] for s in collection[bin_id]]),
+                                                 'gc_content': numpy.mean([self.splits_basic_info[s]['gc_content'] for s in collection[bin_id]])}
+
+
+        # replace it with the new one!
+        self.splits_basic_info = basic_info_for_collection
+
+        # completion and redundancy estimates for each bin:
+        self.progress.new('Estimating completion and redundancy for bins')
+        for bin_id in collection:
+            self.progress.update('%s ...' % bin_id)
+            c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
+            percent_completion = c['percent_complete']
+            percent_redundancy = c['percent_redundancy']
+        self.progress.end()
+
+        # let empty some variables to avoid confusion downstream
+        self.hmm_sources_info = {}
+        self.split_sequences = None
+        self.splits_taxonomy_dict = {}
+        self.genes_in_splits_summary_dict = {}
+        self.split_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
+
+        # set the title:
+        R = lambda x: x.replace('-', ' ').replace('_', ' ')
+        self.title = "Collection '%s' for %s" % (R(self.collection_name), R(self.p_meta['sample_id']))
 
 
     def load_full_mode(self, args):
