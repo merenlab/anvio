@@ -285,7 +285,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.collection_name not in collections.collections_dict:
             raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
 
-        completeness = Completeness(args.contigs_db)
+        completeness = Completeness(args.contigs_db, source = 'Campbell_et_al')
         if not len(completeness.sources):
             raise ConfigError, "HMM's were not run for this contigs database :/"
 
@@ -324,6 +324,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.p_meta['available_clusterings'].append(view)
             self.p_meta['clusterings'][view] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'])}
 
+            # clustering is done, we can get prepared for the expansion of the view dict
+            # with new layers. Note that these layers are going to be filled later.
+            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name'])
+
             views_for_collection[view] = d
 
         # replace self.views with the new view:
@@ -339,13 +343,24 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # replace it with the new one!
         self.splits_basic_info = basic_info_for_collection
 
-        # completion and redundancy estimates for each bin:
-        self.progress.new('Estimating completion and redundancy for bins')
+        # additional layers for each bin, INCLUDING completion and redundancy estimates:
+        self.progress.new('Additional layers for bins')
+        num_bins = len(collection)
+        current_bin = 1
         for bin_id in collection:
-            self.progress.update('%s ...' % bin_id)
+            self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
+
+            # get completeness estimate
             c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
             percent_completion = c['percent_complete']
             percent_redundancy = c['percent_redundancy']
+
+            for view in self.views:
+                self.views[view]['dict'][bin_id]['bin_name'] = bin_id
+                self.views[view]['dict'][bin_id]['percent_completion'] = percent_completion
+                self.views[view]['dict'][bin_id]['percent_redundancy'] = percent_redundancy
+
+            current_bin += 1
         self.progress.end()
 
         # let empty some variables to avoid confusion downstream
