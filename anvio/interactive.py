@@ -12,6 +12,7 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
+from anvio.hmmops import SequencesForHMMHits
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
 from anvio.completeness import Completeness
@@ -276,16 +277,19 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
 
     def load_collection_mode(self, args):
-        collections = ccollections.Collections()
-        collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
-        collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
 
         if self.list_collections:
-            collections.list_collections()
+            self.collections.list_collections()
             sys.exit()
 
-        if self.collection_name not in collections.collections_dict:
+        if self.collection_name not in self.collections.collections_dict:
             raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
+
+        self.progress.new('Accessing HMM hits')
+        self.progress.update('...')
+        self.hmm_access = SequencesForHMMHits(self.contigs_db_path, sources = set(['Campbell_et_al']))
+        self.progress.end()
 
         completeness = Completeness(args.contigs_db, source = 'Campbell_et_al')
         if not len(completeness.sources):
@@ -296,7 +300,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                 and redundancy of bins. The bad news is that Campbell et al is not among the available HMM sources in your\
                                 contigs database :/ Why? Why?"
 
-        collection = collections.get_collection_dict(self.collection_name)
+        self.collection = self.collections.get_collection_dict(self.collection_name)
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
@@ -318,10 +322,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             d['header'] = [h for h in v['header'] if not h == '__parent__']
             d['dict'] = {}
 
-            for bin_id in collection:
+            for bin_id in self.collection:
                 d['dict'][bin_id] = {}
                 for header in d['header']:
-                     d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in collection[bin_id]])
+                     d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in self.collection[bin_id]])
                      
             self.p_meta['available_clusterings'].append(view)
             self.p_meta['clusterings'][view] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'])}
@@ -337,9 +341,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         # preparing a new 'splits_basic_info'
         basic_info_for_collection = {}
-        for bin_id in collection:
-            basic_info_for_collection[bin_id] = {'length': sum([self.splits_basic_info[s]['length'] for s in collection[bin_id]]),
-                                                 'gc_content': numpy.mean([self.splits_basic_info[s]['gc_content'] for s in collection[bin_id]])}
+        for bin_id in self.collection:
+            basic_info_for_collection[bin_id] = {'length': sum([self.splits_basic_info[s]['length'] for s in self.collection[bin_id]]),
+                                                 'gc_content': numpy.mean([self.splits_basic_info[s]['gc_content'] for s in self.collection[bin_id]])}
 
 
         # replace it with the new one!
@@ -347,13 +351,13 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         # additional layers for each bin, INCLUDING completion and redundancy estimates:
         self.progress.new('Additional layers for bins')
-        num_bins = len(collection)
+        num_bins = len(self.collection)
         current_bin = 1
-        for bin_id in collection:
+        for bin_id in self.collection:
             self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
 
             # get completeness estimate
-            c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
+            c = completeness.get_info_for_splits(set(self.collection[bin_id]))['Campbell_et_al']
             percent_completion = c['percent_complete']
             percent_redundancy = c['percent_redundancy']
 
