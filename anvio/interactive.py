@@ -39,10 +39,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.views = {}
         self.states_table = None
         self.p_meta = {}
-        self.mode = None
         self.title = 'Unknown Project'
 
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.mode = A('mode')
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
@@ -104,10 +104,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.cwd = os.getcwd()
 
         # here is where the big deal stuff takes place:
-        if self.manual_mode:
+        if not self.mode and self.manual_mode:
             self.mode = 'manual'
             self.run.info('Mode', self.mode, mc = 'red')
             self.load_manual_mode(args)
+        elif self.mode == 'refine':
+            self.load_full_mode(args)
         elif self.collection_name or self.list_collections:
             self.mode = 'collection'
             self.run.info('Mode', self.mode, mc = 'green')
