@@ -6,13 +6,13 @@ var named_layers = {
         'pretty_name': 'Taxonomy',
     },
     'num_genes': {
-        'height': 180,
+        'height': 0,
         'color': '#414141',
         'norm': 'none',
         'pretty_name': 'Number of genes',
     },
     'avg_gene_length': {
-        'height': 180,
+        'height': 0,
         'color': '#414141',
         'norm': 'none',
         'pretty_name': 'Avg. gene length',
@@ -46,12 +46,14 @@ var named_layers = {
         'color': '#414141',
         'norm': 'none',
         'pretty_name': 'Length',
+        'type': 'bar',
     },
     'gc_content': {
         'height': 180,
         'color': '#004a0f',
         'norm': 'none',
         'pretty_name': 'GC-content',
+        'type': 'bar',
     },
     'num_genes_per_kb': {
         'height': 180,
@@ -125,6 +127,32 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Variablity',
     },
+    'percent_completion': {
+        'height': 200,
+        'color': '#004400',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Completion',
+        'type': 'bar',
+    },
+    'percent_redundancy': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Redundancy',
+        'type': 'bar',
+    },
+    'bin_name': {
+        'type': 'text',
+        'pretty_name': 'Bin name',
+    },
 };
 
 pretty_names = {
@@ -136,7 +164,7 @@ pretty_names = {
 function getPrettyName(name)
 {
 
-    if (['none', 'sqrt', 'log'].indexOf(name) >= 0){
+    if (['none', 'sqrt', 'log', 'bar', 'intensity'].indexOf(name) >= 0){
         return name;
     }
 
