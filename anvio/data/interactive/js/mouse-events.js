@@ -84,29 +84,29 @@ function lineContextMenuHandler(event) {
     {
         context_menu_target_id = getNodeFromEvent(event).id;
 
-        $('#control_contextmenu').show();
+        $('#default_right_click_menu').show();
 
         if (bin_id > 0)
         {
             var pos = SELECTED[bin_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
 
             if (pos == -1) {
-                $('#control_contextmenu #select').show();
-                $('#control_contextmenu #remove').hide();
+                $('#default_right_click_menu #select').show();
+                $('#default_right_click_menu #remove').hide();
             }
             else
             {
-                $('#control_contextmenu #select').hide();
-                $('#control_contextmenu #remove').show();
+                $('#default_right_click_menu #select').hide();
+                $('#default_right_click_menu #remove').show();
             }
         }
         else
         {
-            $('#control_contextmenu #select').hide();
-            $('#control_contextmenu #remove').hide();
+            $('#default_right_click_menu #select').hide();
+            $('#default_right_click_menu #remove').hide();
         }
 
-        $('#control_contextmenu').offset({left:event.pageX-2,top:event.pageY-2});
+        $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         return false;
     }
 
