@@ -617,10 +617,16 @@ function buildLayersTable(order, settings)
             else
             {
                 var color = "#000000";
-                var color_start = "#B3B3B3";
                 var height = '30';
                 var margin = '15';
-                var type = 'color';
+                var color_start = "#DDDDDD";
+
+                if (mode == 'collection') {
+                    var type = getNamedLayerDefaults(layer_name, 'type', 'color');
+                    $('.max-font-size-input').show();
+                } else {
+                    var type = 'color';
+                }
 
                 // set default categorical layer type to 'text' 
                 // if there are more than 11 unique values and leaf count is less than 300
@@ -700,10 +706,10 @@ function buildLayersTable(order, settings)
             else
             {
                 var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
-                var min    = 0;
-                var max    = 0;
-                var min_disabled = true;
-                var max_disabled = true;
+                var min    = getNamedLayerDefaults(layer_name, 'min', 0);
+                var max    = getNamedLayerDefaults(layer_name, 'max', 0);
+                var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
+                var max_disabled = getNamedLayerDefaults(layer_name, 'max_disabled', true);
             }
 
             if (hasLayerSettings)
@@ -719,8 +725,13 @@ function buildLayersTable(order, settings)
                 var height = getNamedLayerDefaults(layer_name, 'height', '180');
                 var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                 var margin = '15';
-                var color_start = "#FFFFFF";
-                var type = "bar";
+                if (mode == 'collection') {
+                    var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
+                    var color_start = "#EEEEEE";
+                } else {
+                    var type = 'bar'
+                    var color_start = "#FFFFFF";
+                }
             }
 
             var template = '<tr>' +
