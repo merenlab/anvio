@@ -214,7 +214,7 @@ def delete_project():
     return multiroutes.delete_project(request, userdb, response)
 
 @route('/projectfiles', method='GET')
-def get_current_project():
+def get_current_project_files():
     return multiroutes.get_current_project_files(request, userdb, response)
 
 @route('/share', method='POST')
