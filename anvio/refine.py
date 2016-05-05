@@ -38,6 +38,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.progress = terminal.Progress()
         self.run = terminal.Run()
         self.args = args
+        self.args.mode = 'refine'
 
         self.bins = set([])
 
