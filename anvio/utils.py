@@ -1058,18 +1058,21 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
     return d
 
 
-def get_filtered_dict(d, property, values):
-    # removes any entry from d, where the value of the 'property' of items in d does not match
-    # with desired 'values'
-    d = copy.deepcopy(d)
-    if type(values) != type(set([])):
+def get_filtered_dict(input_dict, item, accepted_values_set):
+    # removes any entry from d, where the value of the 'item' of items in d does not match
+    # with 'accepted_values'
+    if type(accepted_values_set) != type(set([])):
         raise ConfigError, "get_filtered_dict: values must be type of set([])."
 
-    entry_ids_to_remove = [entry_id for entry_id in d if d[entry_id][property] not in values]
-    for entry_id in entry_ids_to_remove:
-        d.pop(entry_id)
+    filtered_dict = {}
 
-    return d
+    for entry_id in input_dict:
+        if input_dict[entry_id][item] not in accepted_values_set:
+            continue
+        else:
+            filtered_dict[entry_id] = input_dict[entry_id]
+
+    return filtered_dict
 
 
 def get_HMM_sources_dictionary(source_dirs=[]):
