@@ -84,29 +84,37 @@ function lineContextMenuHandler(event) {
     {
         context_menu_target_id = getNodeFromEvent(event).id;
 
-        $('#default_right_click_menu').show();
+        if (mode == "collection") {
+            $('#collection_mode_right_click_menu').show();
+            $('#collection_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else {
+            $('#default_right_click_menu').show();
+            $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        }
 
-        if (bin_id > 0)
-        {
+        if (bin_id > 0) {
             var pos = SELECTED[bin_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
 
             if (pos == -1) {
                 $('#default_right_click_menu #select').show();
                 $('#default_right_click_menu #remove').hide();
+                $('#collection_mode_right_click_menu #select').show();
+                $('#collection_mode_right_click_menu #remove').hide();
             }
-            else
-            {
+            else {
                 $('#default_right_click_menu #select').hide();
                 $('#default_right_click_menu #remove').show();
+                $('#collection_mode_right_click_menu #select').hide();
+                $('#collection_mode_right_click_menu #remove').show();
             }
         }
-        else
-        {
+        else {
             $('#default_right_click_menu #select').hide();
             $('#default_right_click_menu #remove').hide();
+            $('#collection_mode_right_click_menu #select').hide();
+            $('#collection_mode_right_click_menu #remove').hide();
         }
 
-        $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         return false;
     }
 
@@ -377,8 +385,8 @@ function mouseMoveHandler(event) {
 }
 
 
-function menu_callback(action) {
-    var contig_name = id_to_node_map[context_menu_target_id].label;
+function menu_callback(action, param) {
+    var item_name = id_to_node_map[context_menu_target_id].label;
 
     switch (action) {
 
@@ -392,11 +400,11 @@ function menu_callback(action) {
             lineContextMenuHandler(fake_event);
             break;
 
-        case 'content':
+        case 'get_split_sequence':
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/contig/' + contig_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
                     $('#modSplitSequence').modal('show');
@@ -404,11 +412,33 @@ function menu_callback(action) {
             });
             break;
 
-        case 'blastn_nr': fire_up_ncbi_blast(contig_name, 'blastn', 'nr', 'contig'); break;
-        case 'blastx_nr': fire_up_ncbi_blast(contig_name, 'blastx', 'nr', 'contig'); break;
-        case 'blastn_refseq_genomic': fire_up_ncbi_blast(contig_name, 'blastn', 'refseq_genomic', 'contig'); break;
-        case 'blastx_refseq_protein': fire_up_ncbi_blast(contig_name, 'blastx', 'refseq_genomic', 'contig'); break;
-        
+        case 'blastn_nr': fire_up_ncbi_blast(item_name, 'blastn', 'nr', 'contig'); break;
+        case 'blastx_nr': fire_up_ncbi_blast(item_name, 'blastx', 'nr', 'contig'); break;
+        case 'blastn_refseq_genomic': fire_up_ncbi_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
+        case 'blastx_refseq_protein': fire_up_ncbi_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
+
+        // collection mode-specific:
+        case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
+                                        'Please use `anvi-refine` program for "' + item_name  +'"'); break;
+        case 'get_hmm_sequence':
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/hmm/' + item_name + '/' + param + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    if ('error' in data){
+                        $('#modGenerateSummary').modal('hide');
+                        waitingDialog.hide();
+                        toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                    } else {
+                        $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                        $('#modSplitSequence').modal('show');
+                    }
+                }
+            });
+            break;
+
+       
         case 'inspect':
             $.ajax({
                 type: 'POST',
@@ -417,7 +447,7 @@ function menu_callback(action) {
                 url: "/data/charts/set_state?timestamp=" + new Date().getTime(), 
                 data: {state: JSON.stringify(serializeSettings(true), null, 4)},
                 success: function() {
-                    window.open('charts.html?contig=' + contig_name, '_blank');
+                    window.open('charts.html?contig=' + item_name, '_blank');
                 }
             });
             break;
