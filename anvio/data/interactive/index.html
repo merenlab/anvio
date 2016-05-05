@@ -89,7 +89,7 @@
             <div class="tab-content">
                 <div role="tabpanel" class="tab-pane fade in active" id="tree_settings" style="padding-bottom: 50px;">
                     <div id="tree-settings" class="form-horizontal">
-                        <h4>Tree Settings</h4>
+                        <h4>General Display Settings</h4>
                         <div class="form-group form-margin">
                                 <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>  
                                 <div class="col-md-8">
@@ -265,6 +265,12 @@
                                 <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
                                 <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                             </div>
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                            </div>
+                        </div>
+
+                        <div class="collection-mode">
                             <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
                             </div>

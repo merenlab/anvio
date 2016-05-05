@@ -229,6 +229,7 @@ function initData () {
 
             // hide all mode dependent divs:
             $('.full-mode').hide();
+            $('.collection-mode').hide();
             $('.manual-mode').hide();
             $('.server-mode').hide();
             $('.refine-mode').hide();
@@ -244,6 +245,8 @@ function initData () {
                 $('.server-mode').show();
             } else if (mode == 'full') {
                 $('.full-mode').show();
+            } else if (mode == 'collection') {
+                $('.collection-mode').show();
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
             }
