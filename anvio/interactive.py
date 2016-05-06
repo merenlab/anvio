@@ -136,10 +136,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
                 raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
-                                    that is required by the interactive interface. It may have been generated\
-                                    by anvi-merge with `--skip-hierarchical-clustering` flag, or hierarchical\
-                                    clustering step may have been skipped automatically by the platform. Please\
-                                    read the help menu for anvi-merge, and/or refer to the tutorial: \
+                                    of splits that is required by the interactive interface. It may have been generated\
+                                    by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                    clustering step may have been skipped by anvi-merge because you had too many stplits\
+                                    to get the clustering in a reasonable amount of time. Please read the help menu for\
+                                    anvi-merge, and/or refer to the tutorial: \
                                     http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging"
             else:
                 raise ConfigError, "This single profile database does not seem to have any hierarchical clustering\

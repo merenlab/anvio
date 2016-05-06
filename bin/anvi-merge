@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     parser.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
     parser.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
+    parser.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
     parser.add_argument(*anvio.A('skip-concoct-binning'), **anvio.K('skip-concoct-binning'))
     parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
