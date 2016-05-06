@@ -61,17 +61,20 @@ function drawLegend(top, left, line_end) {
 
         var categorical_stats = {};
 
+        categorical_stats['None'] = 0;
         for (var name in categorical_data_colors[pindex]) {
             categorical_stats[name] = 0;
         }
         for (var index = 1; index < layerdata.length; index++)
         {
-            categorical_stats[layerdata[index][pindex]] += 1;
+            var taxonomy_name = layerdata[index][pindex];
+            if (taxonomy_name == null || taxonomy_name == '' || taxonomy_name == 'null')
+                taxonomy_name = 'None';
+            categorical_stats[taxonomy_name] += 1;
         }
         var names = Object.keys(categorical_stats).sort(function(a,b){return categorical_stats[b]-categorical_stats[a]});
 
-        names.push(names.splice(names.indexOf('null'), 1)[0]); // move null and empty categorical items to end
-        names.push(names.splice(names.indexOf(''), 1)[0]);
+        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
 
         legends.push({
             'name': getLayerName(pindex),
@@ -141,6 +144,10 @@ function drawLegend(top, left, line_end) {
         var legend = legends[i];
 
         for (var j = 0; j < legend['item_names'].length; j++) {
+            var _name = legend['item_names'][j];
+            if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+                continue;
+
             if (_left > line_end)
             {
                 _left = left;
@@ -172,8 +179,6 @@ function drawLegend(top, left, line_end) {
             });
 
             _left += line_height + gap;
-
-            var _name = legend['item_names'][j];
 
             if (legend.hasOwnProperty('stats'))
             {
@@ -2120,7 +2125,7 @@ function draw_tree(settings) {
                         else if(isCategorical)
                         {
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
+                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '' || layerdata_dict[q.label][pindex] == 'None')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
@@ -2225,7 +2230,7 @@ function draw_tree(settings) {
                         {
 
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '')
+                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '' || layerdata_dict[q.label][pindex] == 'None')
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
                                 else
                                     categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
