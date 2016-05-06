@@ -51,7 +51,9 @@ except ImportError, e:
 class MultipleRuns:
     def __init__(self, args, run = run, progress = progress):
         self.progress = progress
-        self.run = run 
+        self.run = run
+
+        self.max_num_splits_for_hierarchical_clustering = 25000
 
         self.sample_id = args.sample_name
         self.merged_sample_ids = []
@@ -62,6 +64,7 @@ class MultipleRuns:
         self.profiles = []
         self.output_directory = args.output_dir
         self.skip_hierarchical_clustering = args.skip_hierarchical_clustering
+        self.enforce_hierarchical_clustering = args.enforce_hierarchical_clustering
         self.skip_concoct_binning = args.skip_concoct_binning
 
         self.contigs_db_path = args.contigs_db
@@ -134,6 +137,10 @@ class MultipleRuns:
         if missing:
             raise ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
                                                                  ', '.join(missing))
+
+        if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
+            raise ConfigError, "You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
+                                while also asking it to enforce it."
 
         self.read_runinfo_dicts()
 
@@ -342,6 +349,22 @@ class MultipleRuns:
         self.AA_frequencies_profiled = not self.input_runinfo_dicts.values()[0]['skip_AA_frequencies']
         self.SNVs_profiled = not self.input_runinfo_dicts.values()[0]['skip_SNV_profiling']
         self.total_length = self.input_runinfo_dicts.values()[0]['total_length']
+
+        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
+            self.run.warning("It seems you have more than %s splits in your samples to be merged. This is the\
+                              soft limit for anvi'o to attempt to create a hierarchical clustering of your splits\
+                              (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
+                              clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`.\
+                              But more importantly, please take a look at the anvi'o tutorial to make sure you know\
+                              your better options to analyze large metagenomic datasets with anvi'o." \
+                                                                % pp(self.max_num_splits_for_hierarchical_clustering))
+            self.skip_hierarchical_clustering = True
+
+        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
+            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
+                              to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
+                                                                % pp(self.max_num_splits_for_hierarchical_clustering))
+
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
                        'sample_id': self.sample_id,
