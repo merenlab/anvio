@@ -641,7 +641,19 @@ D = {
              'action': 'store_true',
              'help': "If you are not planning to use the interactive interface (or if you have other\
                       means to add a tree of contigs in the database) you may skip the clustering step\
-                      and simply just merge multiple runs"}
+                      and simply just merge multiple runs."}
+                ),
+    'enforce-hierarchical-clustering': (
+            ['--enforce-hierarchical-clustering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you have more than 25,000 splits in your merged profile, anvi-merge will automatically\
+                      skip the hierarchical clustering of splits (by setting --skip-hierarchical-clustering flag\
+                      on). This is due to the fact that computational time required for hierarchical clustering\
+                      increases exponentially with the number of items being clustered. Based on our experience\
+                      we decided that 25,000 splits is about the maximum we should try. However, this is not a\
+                      theoretical limit, and you can overwrite this heuristic by using this flag, which would\
+                      tell anvi'o to attempt to cluster splits regardless."}
                 ),
     'cluster-contigs': (
             ['--cluster-contigs'],
