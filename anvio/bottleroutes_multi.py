@@ -264,7 +264,10 @@ def receive_upload_file(request, userdb, response):
     # create a samples database if needed
     if createSamplesDB:
         sample = dbops.SamplesInformationDatabase(basepath + 'samples.db')
-        sample.create(samplesInfoPath, samplesOrderPath)
+        try:
+            sample.create(samplesInfoPath, samplesOrderPath)
+        except Exception as e:
+            return json.dumps({'status': 'error', 'message': "That one did not go as expected. Here is the error: %s" % e, "data": None})
 
     # all files are uploaded, do a sanity check
     retval = userdb.get_the_interactive_object(basepath, read_only = False)
@@ -331,8 +334,11 @@ def receive_additional_upload_file(request, userdb, response):
             samplesOrderPath = basepath + 'samplesOrderFile'
         if samplesInfoPath and samplesOrderPath:
             sample = dbops.SamplesInformationDatabase(samplesDBPath)
-            sample.create(samplesInfoPath, samplesOrderPath)
-            
+            try:
+                sample.create(samplesInfoPath, samplesOrderPath)
+            except Exception as e:
+                return json.dumps({'status': 'error', 'message': "That one did not go as expected. Here is the error: %s" % e, "data": None})
+
     return '{ "status": "ok", "message": "file '+message+'", "data": null }'
 
 def admin_data(request, userdb, response):
