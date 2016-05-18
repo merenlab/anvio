@@ -485,6 +485,8 @@ class VariabilitySuper(object):
 
         self.filter_based_on_minimum_coverage_in_each_sample()
 
+        self.insert_additional_fields()
+
 
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
         self.progress.update('populating a dict to track corresponding gene ids for each unique position')
@@ -521,6 +523,18 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # Init Meta
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+
+
+    def insert_additional_fields(self):
+        self.progress.new('Inserting additional data')
+        self.progress.update('...')
+
+        for e in self.data.values():
+            nt_freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse = True)
+            e['n2n1ratio'] = nt_freqs_list[1][0] / nt_freqs_list[0][0]
+            e['most_frequent_base'] = nt_freqs_list[0][1]
+
+        self.progress.end()
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -609,7 +623,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['contig_name', 'split_name', 'unique_pos_identifier_str']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['n2n1ratio', 'most_frequent_base', 'contig_name', 'split_name', 'unique_pos_identifier_str']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
@@ -630,6 +644,20 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # Init Meta
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+
+
+    def insert_additional_fields(self):
+        self.progress.new('Inserting additional data')
+        self.progress.update('...')
+
+        aas = set(codon_to_AA.values())
+
+        for e in self.data.values():
+            aa_freqs_list = sorted([(e[aa], aa) for aa in aas], reverse = True)
+            e['n2n1ratio'] = aa_freqs_list[1][0] / aa_freqs_list[0][0]
+            e['most_frequent_aa'] = aa_freqs_list[0][1]
+
+        self.progress.end()
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -736,7 +764,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['contig_name', 'split_name', 'unique_pos_identifier_str']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['n2n1ratio', 'most_frequent_aa', 'contig_name', 'split_name', 'unique_pos_identifier_str']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
