@@ -150,7 +150,7 @@ function lineMouseEnterHandler(event) {
         return;
 
     var p = getNodeFromEvent(event);
-
+console.log(p);
     $('#path_hover').remove();
 
     if (typeof p === 'undefined' || p.id == 0)
@@ -473,7 +473,7 @@ function updateSingleBackgroundGlobals()
     }
     else // circlephylogram
     {
-        var root = document.getElementById('line0');
+        var root = document.getElementById('line_origin');
         var rect = root.getBoundingClientRect();
 
         var angle = id_to_node_map[0].angle;
@@ -515,7 +515,6 @@ function getNodeFromEvent(event)
         {
             var _y = event.clientY - origin_y;
             var _x = event.clientX - origin_x;
-
             var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
             if (angle < 0)
                 angle = 2 * Math.PI + angle;

@@ -399,6 +399,11 @@ function NodeIterator(root)
 //--------------------------------------------------------------------------------------------------
 NodeIterator.prototype.Begin = function() 
 {
+    if (this.root.constructor === Array)
+    {
+        this.cur = 0;
+        return label_to_node_map[this.root[0]];
+    }
     this.cur = this.root;
     while (this.cur.child)
     {
@@ -411,6 +416,15 @@ NodeIterator.prototype.Begin = function()
 //--------------------------------------------------------------------------------------------------
 NodeIterator.prototype.Next = function() 
 {
+    if (this.root.constructor === Array)
+    {
+        this.cur = this.cur + 1;
+        if (this.cur >= this.root.length)
+        {
+            return null;
+        }
+        return label_to_node_map[this.root[this.cur]];
+    }
     if (this.stack.length == 0)
     {
         this.cur = null;
