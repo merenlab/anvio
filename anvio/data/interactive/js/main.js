@@ -50,7 +50,8 @@ var total_radius = 0;
 var layer_boundaries;
 
 var SELECTED = new Array();
-var newick;
+var clusteringData;
+var hasTree;
 
 var layerdata;
 var contig_lengths;
@@ -411,7 +412,7 @@ function onTreeClusteringChange() {
                     cache: false,
                     url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        newick = data;
+                        clusteringData = get_newick_leaf_order(data);
                         $('#trees_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false); 
                         waitingDialog.hide();
