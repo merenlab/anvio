@@ -150,7 +150,7 @@ function lineMouseEnterHandler(event) {
         return;
 
     var p = getNodeFromEvent(event);
-console.log(p);
+
     $('#path_hover').remove();
 
     if (typeof p === 'undefined' || p.id == 0)
@@ -476,30 +476,8 @@ function updateSingleBackgroundGlobals()
         var root = document.getElementById('line_origin');
         var rect = root.getBoundingClientRect();
 
-        var angle = id_to_node_map[0].angle;
-
-        var halfPI = Math.PI / 2;
-
-        if (angle < halfPI)
-        {
-            origin_x = rect.left;
-            origin_y = rect.top;
-        }
-        else if (angle < 2 * halfPI)
-        {
-            origin_x = rect.left + rect.width;
-            origin_y = rect.top;
-        }
-        else if (angle < 3 * halfPI)
-        {
-            origin_x = rect.left + rect.width;
-            origin_y = rect.top + rect.height;
-        }
-        else // 4 * halfPI
-        {
-            origin_x = rect.left;
-            origin_y = rect.top + rect.height;
-        }
+        origin_x = rect.left;
+        origin_y = rect.top;
     }
 }
 

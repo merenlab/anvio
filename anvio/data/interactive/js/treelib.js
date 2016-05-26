@@ -1599,8 +1599,9 @@ function draw_tree(settings) {
             var leaf_name = clusteringData[i];
             var leaf_node = new Node(leaf_name);
             
-            leaf_node.id = i;
-            leaf_node.child_nodes = [];
+            leaf_node.id = i+1;
+            leaf_node.order = i;
+            leaf_node.child_nodes = [leaf_node.id];
 
             if (settings['tree-type']=='phylogram') {
                 leaf_node.xy = {};
@@ -1618,7 +1619,7 @@ function draw_tree(settings) {
                 leaf_node.backarc['y'] = pt['y'];
             }
 
-            id_to_node_map[i] = leaf_node;
+            id_to_node_map[leaf_node.id] = leaf_node;
             label_to_node_map[leaf_name] = leaf_node;
             order_to_node_map[i] = leaf_node;
 
