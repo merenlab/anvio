@@ -2811,6 +2811,9 @@ function redrawBins()
 
 function rebuildIntersections()
 {
+    if (!hasTree)
+        return;
+
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
 
         // delete extra intersections
