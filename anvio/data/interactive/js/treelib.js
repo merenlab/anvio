@@ -1563,20 +1563,17 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 function draw_tree(settings) {
     var tree_draw_timer = new BasicTimer('tree_draw');
 
-    var width = settings['tree-width'];
-    var height = settings['tree-height'];
-    var radius = settings['tree-radius'];
+    var width = parseFloat(settings['tree-width']);
+    var height = parseFloat(settings['tree-height']);
+    var radius = parseFloat(settings['tree-radius']);
 
     if (width == 0)
         width = VIEWER_WIDTH;
     if (height == 0)
         height = VIEWER_HEIGHT;
 
-    radius = VIEWER_WIDTH;
-    if (VIEWER_HEIGHT > radius)
-    {
-        radius = VIEWER_HEIGHT;
-    }
+    if (radius == 0)
+        radius = (height > width) ? height : width;
 
     id_to_node_map = new Array();
     label_to_node_map = {};
