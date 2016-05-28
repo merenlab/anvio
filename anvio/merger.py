@@ -131,7 +131,7 @@ class MultipleRuns:
         if not self.contigs_db_path:
             raise ConfigError, "You must provide a contigs database for this operation."
         if not os.path.exists(self.contigs_db_path):
-            raise ConfigError, "anvio couldn't find the contigs database where you said it would be :/"
+            raise ConfigError, "Anvi'o couldn't find the contigs database where you said it would be :/"
 
         missing = [p for p in self.input_runinfo_paths if not os.path.exists(p)]
         if missing:
@@ -143,6 +143,17 @@ class MultipleRuns:
                                 while also asking it to enforce it."
 
         self.read_runinfo_dicts()
+
+        # test open the contigs database (and learn its hash while doing it) to make sure we don't have
+        # a deal breaker just yet
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet = True)
+        contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
+
+        # test open all profile databases to make sure you are golden with versions
+        for runinfo in self.input_runinfo_dicts.values():
+            sample_profile_db = anvio.db.DB(runinfo['profile_db'], anvio.__profile__version__)
+            sample_profile_db.disconnect()
 
         if [True for v in self.input_runinfo_dicts.values() if v['merged']]:
             raise ConfigError, "This is very cute, but you can't merge already merged runs. anvio can only merge\
@@ -185,11 +196,8 @@ class MultipleRuns:
                                           profiled using the same contigs database, or all runs must be profiled\
                                           without a contigs database :/"
 
-        # make sure contigs hash that is common across runs is also identical to the contigs database
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet = True)
-        contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        contigs_db.disconnect()
 
+        # make sure the hash for contigs db is identical across all profile databases:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
             raise ConfigError, "The contigs database you provided, which is identified with hash '%s', does\
                                       not seem to match the run profiles you are trying to merge, which share the\
@@ -338,17 +346,18 @@ class MultipleRuns:
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
-        self.contigs_db_hash = self.input_runinfo_dicts.values()[0]['contigs_db_hash']
-        self.min_contig_length = self.input_runinfo_dicts.values()[0]['min_contig_length']
-        self.num_contigs = self.input_runinfo_dicts.values()[0]['num_contigs']
-        self.num_splits = self.input_runinfo_dicts.values()[0]['num_splits']
-        self.total_reads_mapped = self.input_runinfo_dicts.values()[0]['total_reads_mapped']
-        self.min_coverage_for_variability = self.input_runinfo_dicts.values()[0]['min_coverage_for_variability']
-        self.report_variability_full = self.input_runinfo_dicts.values()[0]['report_variability_full']
-        self.gene_coverages_computed = self.input_runinfo_dicts.values()[0]['gene_coverages_computed']
-        self.AA_frequencies_profiled = not self.input_runinfo_dicts.values()[0]['skip_AA_frequencies']
-        self.SNVs_profiled = not self.input_runinfo_dicts.values()[0]['skip_SNV_profiling']
-        self.total_length = self.input_runinfo_dicts.values()[0]['total_length']
+        C = lambda x: self.input_runinfo_dicts.values()[0][x]
+        self.contigs_db_hash = C('contigs_db_hash')
+        self.min_contig_length = C('min_contig_length')
+        self.num_contigs = C('num_contigs')
+        self.num_splits = C('num_splits')
+        self.total_reads_mapped = C('total_reads_mapped')
+        self.min_coverage_for_variability = C('min_coverage_for_variability')
+        self.report_variability_full = C('report_variability_full')
+        self.gene_coverages_computed = C('gene_coverages_computed')
+        self.AA_frequencies_profiled = not C('skip_AA_frequencies')
+        self.SNVs_profiled = not C('skip_SNV_profiling')
+        self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
             self.run.warning("It seems you have more than %s splits in your samples to be merged. This is the\
