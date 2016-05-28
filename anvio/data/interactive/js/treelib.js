@@ -1866,6 +1866,9 @@ function draw_tree(settings) {
     createBin('tree_bin', 'tree');
     drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
 
+    if (settings['tree-type'] == 'phylogram')
+        $('#tree_bin').attr('transform', 'rotate(90)'); 
+
     if (hasTree) 
     {
         t.ComputeWeights(t.root);
@@ -1886,7 +1889,6 @@ function draw_tree(settings) {
                     fontHeight: 10,
                     root_length: 0.1
                 });
-                $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
 
                 // calculate height per leaf
                 height_per_leaf = width / (t.num_leaves - 1);
@@ -1979,7 +1981,15 @@ function draw_tree(settings) {
     }
     else
     {
-        layer_boundaries.push([0, radius]);
+        if (settings['tree-type'] == 'circlephylogram') {
+            layer_boundaries.push([0, radius]);
+        }
+        else
+        {
+            tree_max_y = width;
+            tree_max_x = 0;
+            layer_boundaries.push([0, 0]);
+        }
     }
 
     margin = parseFloat(settings['layer-margin']);
@@ -2526,13 +2536,14 @@ function draw_tree(settings) {
     }
 
     // draw title
+    var legend_top = total_radius + parseFloat(settings['layer-margin']) + parseFloat(settings['outer-ring-height']) * 2;
     switch (settings['tree-type']) {
         case 'phylogram':
-            drawLegend(total_radius, 0 - VIEWER_HEIGHT, 0);
+            drawLegend(legend_top, 0 - VIEWER_HEIGHT, 0);
             drawTitle(-150, -0.5 * VIEWER_HEIGHT, settings);
             break;
         case 'circlephylogram':
-            drawLegend(total_radius, 0 - total_radius, total_radius - 40);
+            drawLegend(legend_top, 0 - total_radius, total_radius - 40);
             drawTitle(-1 * total_radius - 150, 0, settings);
             break;
     }

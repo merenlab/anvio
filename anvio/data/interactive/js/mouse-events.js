@@ -192,12 +192,13 @@ function lineMouseEnterHandler(event) {
     }
     else
     {  
+        var _x = (p.ancestor) ? p.ancestor.xy.x : p.xy.x;
         drawPhylogramRectangle('tree_bin',
             'hover',
-            p.ancestor.xy.x,
+             _x,
             (p1.xy.y + p2.xy.y) / 2,
             p2.xy.y - p1.xy.y + height_per_leaf,
-            total_radius - p.ancestor.xy.x,
+            total_radius - _x,
             bin_color,
             0.3,
             false);
