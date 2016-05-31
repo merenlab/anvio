@@ -65,10 +65,10 @@ class AAFrequencies:
 
             nt_positions = codon_order_to_nt_positions[codon_order]
 
-            consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
+            reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
             # if concensus sequence contains shitty characters, we will not continue
-            if consensus_codon_sequence not in codon_to_AA:
+            if reference_codon_sequence not in codon_to_AA:
                 continue
 
             linkmers.data = []
@@ -92,7 +92,7 @@ class AAFrequencies:
             # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
             conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
 
-            consensus_codon_AA = conv_dict[consensus_codon_sequence]
+            reference_codon_AA = conv_dict[reference_codon_sequence]
             for nt in nt_frequencies:
                 if conv_dict[nt]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
                     aa_frequencies[conv_dict[nt]] += nt_frequencies[nt]
@@ -105,15 +105,15 @@ class AAFrequencies:
                 #        important to understand how often this happens, and why.
                 continue
 
-            # here we quantify the ratio of frequencies of non-consensus-aas observed in this codon
-            # to the overall overage, and that is our `departure_from_consensus`:
-            total_frequency_of_all_codons_but_the_conensus = sum([aa_frequencies[aa] for aa in aa_frequencies if aa != consensus_codon_AA])
-            departure_from_consensus = total_frequency_of_all_codons_but_the_conensus / coverage
+            # here we quantify the ratio of frequencies of non-reference-aas observed in this codon
+            # to the overall overage, and that is our `departure_from_reference`:
+            total_frequency_of_all_codons_but_the_conensus = sum([aa_frequencies[aa] for aa in aa_frequencies if aa != reference_codon_AA])
+            departure_from_reference = total_frequency_of_all_codons_but_the_conensus / coverage
 
-            d[codon_order] = {'consensus': consensus_codon_AA,
+            d[codon_order] = {'reference': reference_codon_AA,
                               'coverage': coverage,
                               'frequencies': aa_frequencies,
-                              'departure_from_consensus': departure_from_consensus}
+                              'departure_from_reference': departure_from_reference}
 
         return d
 

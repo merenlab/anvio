@@ -715,7 +715,7 @@ class ProfileSuperclass(object):
             if not return_outliers and e['cov_outlier_in_contig']:
                 continue
 
-            d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_consensus']
+            d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
 
         return d
@@ -2207,8 +2207,8 @@ class TableForSplitsTaxonomy(Table):
                     d = Counter()
                     for taxon in taxonomy_strings:
                         d[taxon] += 1
-                    consensus, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
-                    splits_dict[split_name]['t_species'] = consensus
+                    most_frequent_taxon_name, occurrence = sorted(d.items(), key=operator.itemgetter(1))[-1]
+                    splits_dict[split_name]['t_species'] = most_frequent_taxon_name
 
                 num_splits_with_taxonomy += 1
 

@@ -178,17 +178,17 @@ class Auxiliary:
             column = ''.join(valid_nts)
 
             pos_in_split = pos_in_contig - self.split.start
-            consensus_base_in_contig = self.split.sequence[pos_in_split]
+            base_in_contig = self.split.sequence[pos_in_split]
 
             cp = ColumnProfile(column,
-                               consensus = consensus_base_in_contig,
+                               reference = base_in_contig,
                                coverage = coverage,
                                split_name = self.split.name,
                                pos = pos_in_split,
                                test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
-            if cp['departure_from_consensus']:
-                ratios.append((cp['departure_from_consensus'], cp['coverage']), )
+            if cp['departure_from_reference']:
+                ratios.append((cp['departure_from_reference'], cp['coverage']), )
                 cp['pos_in_contig'] = pos_in_contig
                 cp['cov_outlier_in_split'] = pos_in_split in self.split.coverage.outlier_positions
                 cp['cov_outlier_in_contig'] = pos_in_contig in self.parent_outlier_positions
@@ -199,8 +199,8 @@ class Auxiliary:
 
         for i in range(self.split.start, self.split.end):
             if self.column_profile.has_key(i):
-                self.rep_seq += self.column_profile[i]['consensus']
-                self.v.append(self.column_profile[i]['departure_from_consensus'])
+                self.rep_seq += self.column_profile[i]['reference']
+                self.v.append(self.column_profile[i]['departure_from_reference'])
                 self.competing_nucleotides[self.column_profile[i]['pos']] = self.column_profile[i]['competing_nts']
             else:
                 self.rep_seq += 'N'
