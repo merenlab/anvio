@@ -51,7 +51,7 @@ class VariabilitySuper(object):
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
-        self.min_departure_from_consensus = A('min_departure_from_consensus', float)
+        self.min_departure_from_reference = A('min_departure_from_reference', float)
         self.min_occurrence = A('min_occurrence', int)
         self.num_positions_from_each_split = A('num_positions_from_each_split', int)
         self.min_scatter = A('min_scatter', int)
@@ -244,9 +244,9 @@ class VariabilitySuper(object):
         num_positions_each_sample = Counter([v['sample_id'] for v in self.data.values()])
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
 
-        if self.min_departure_from_consensus:
-            self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-            self.filter('departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
+        if self.min_departure_from_reference:
+            self.run.info('Min departure from reference', self.min_departure_from_reference)
+            self.filter('departure from reference', lambda x: x['departure_from_reference'] < self.min_departure_from_reference)
 
         for entry_id in self.data:
             v = self.data[entry_id]
@@ -596,8 +596,8 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 for sample in splits_to_consider[split][pos]:
                     self.data[next_available_entry_id] = {'contig_name': contig_name_name,
-                                                          'departure_from_consensus': 0,
-                                                          'consensus': base_at_pos,
+                                                          'departure_from_reference': 0,
+                                                          'reference': base_at_pos,
                                                           'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                           'pos': pos,
                                                           'pos_in_contig': pos_in_contig,
@@ -671,7 +671,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         unique_pos_identifier_str_to_unique_pos_identifier = {}
         for e in self.data.values():
             upi = e['unique_pos_identifier_str']
-            unique_pos_identifier_str_to_consenus_codon[upi] = e['consensus']
+            unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
             unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
 
         self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
@@ -707,7 +707,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 for sample_name in splits_to_consider[split_name][gene_codon_key]:
                     unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
-                    consensus_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
+                    reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
                     self.data[next_available_entry_id] = {'unique_pos_identifier_str': unique_pos_identifier_str,
                                                           'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
@@ -716,9 +716,9 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                           'contig_name': contig_name, 
                                                           'corresponding_gene_call': corresponding_gene_call,
                                                           'codon_order_in_gene': codon_order_in_gene,
-                                                          'departure_from_consensus': 0,
+                                                          'departure_from_reference': 0,
                                                           'coverage': None,
-                                                          'consensus': consensus_codon}
+                                                          'reference': reference_codon}
 
                     # DEALING WITH COVERAGE ##################################################################
                     # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
@@ -752,9 +752,9 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     for codon in set(codon_to_AA.values()):
                         self.data[next_available_entry_id][codon] = 0
 
-                    # and finally update the frequency of the consensus codon with the coverage (WHICH IS VERY BAD,
+                    # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
                     # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                    self.data[next_available_entry_id][consensus_codon] = coverage
+                    self.data[next_available_entry_id][reference_codon] = coverage
 
                     next_available_entry_id += 1
 
@@ -852,7 +852,7 @@ class VariabilityNetwork:
         for entry in self.data.values():
             sample_id = entry['sample_id']
             pos = entry['unique_pos_identifier']
-            frequency = entry['departure_from_consensus']
+            frequency = entry['departure_from_reference']
 
             samples_dict[sample_id][pos] = float(frequency)
 

@@ -45,8 +45,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
     groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
-    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus'))
-    groupE.add_argument(*anvio.A('min-occurrence-of-variable-postiions'), **anvio.K('min-occurrence-of-variable-postiions'))
+    groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference'))
+    groupE.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
 
     args = parser.parse_args()
     

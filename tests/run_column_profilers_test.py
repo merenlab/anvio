@@ -21,7 +21,7 @@ ColumnProfile = {'Python': ColumnProfile_in_Python,
 
 
 # test function:
-def test(column, consensus = 'A', quiet = False, test_class = variability_test_class):
+def test(column, reference = 'A', quiet = False, test_class = variability_test_class):
     coverage = len(column)
 
     results = {}
@@ -33,7 +33,7 @@ def test(column, consensus = 'A', quiet = False, test_class = variability_test_c
         results[method] = {}
 
         start = time.time()
-        results[method]['profile'] = ColumnProfile[method](column, consensus = consensus, coverage = coverage, pos = 0, test_class = test_class).profile
+        results[method]['profile'] = ColumnProfile[method](column, reference = reference, coverage = coverage, pos = 0, test_class = test_class).profile
         end = time.time()
     
         results[method]['delta_time'] = end - start

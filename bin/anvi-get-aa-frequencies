@@ -57,14 +57,14 @@ def main(args):
     progress.update('Working on the output ...')
     for codon_order in aa_frequencies_dict:
         entry = aa_frequencies_dict[codon_order]
-        d[codon_order] = {'consensus': entry['consensus'], 'coverage': entry['coverage'],
+        d[codon_order] = {'reference': entry['reference'], 'coverage': entry['coverage'],
                           'contig_name': gene_call['contig'], 'start': gene_call['start'],
                           'stop': gene_call['stop'], 'direction': gene_call['direction']}
 
         for aa in codon_to_AA.values():
             d[codon_order][aa] = entry['frequencies'][aa]
 
-    header = ['codon_order_in_gene', 'contig_name', 'start', 'stop', 'direction', 'consensus', 'coverage'] + sorted(list(set(codon_to_AA.values())))
+    header = ['codon_order_in_gene', 'contig_name', 'start', 'stop', 'direction', 'reference', 'coverage'] + sorted(list(set(codon_to_AA.values())))
     progress.update('Storing output ...')
     utils.store_dict_as_TAB_delimited_file(d, args.output_file, header)
 

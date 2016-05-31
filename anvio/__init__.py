@@ -413,14 +413,14 @@ D = {
                       is covered less than this value even in one sample, it will be removed from the analysis. Default\
                       is %(default)d."}
                 ),
-    'min-departure-from-consensus': (
-            ['-r', '--min-departure-from-consensus'],
+    'min-departure-from-reference': (
+            ['-r', '--min-departure-from-reference'],
             {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
-             'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus. Default is %(default)f."}
+             'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the reference. Default is %(default)f."}
                 ),
-    'min-occurrence-of-variable-postiions': (
+    'min-occurrence-of-variable-positions': (
             ['-x', '--min-occurrence'],
             {'metavar': 'NUM_SAMPLES',
              'default': 1,
