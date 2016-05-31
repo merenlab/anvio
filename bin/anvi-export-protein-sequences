@@ -35,7 +35,7 @@ def main(args):
             Table.__init__(self, db_path, version, run, progress)
 
     h = T(args.contigs_db, anvio.__contigs__version__)
-    h.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, args.output_file)
+    h.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, output_file_path = args.output_file)
 
 
 if __name__ == '__main__':
