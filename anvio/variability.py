@@ -73,8 +73,8 @@ class ColumnProfile:
 
         # here we quantify the ratio of frequencies of non-consensus-nts observed in this column
         # to the overall overage, and that is our `departure_from_consensus`:
-        total_frequency_of_all_bases_but_the_conensus = sum([tpl[1] for tpl in nts_sorted if tpl[0] != consensus])
-        departure_from_consensus = total_frequency_of_all_bases_but_the_conensus / coverage
+        total_frequency_of_all_bases_but_the_consensus = sum([tpl[1] for tpl in nts_sorted if tpl[0] != consensus])
+        departure_from_consensus = total_frequency_of_all_bases_but_the_consensus / coverage
 
         if test_class:
             if departure_from_consensus > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
