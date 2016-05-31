@@ -51,10 +51,10 @@ class VariablityTestFactory:
 class ColumnProfile:
     """A class to report raw variability information for a given nucleotide position"""
 
-    def __init__(self, column, consensus, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
-        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'consensus': consensus,
+    def __init__(self, column, reference, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
+        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'reference': reference,
                         'coverage': coverage if coverage else len(column),
-                        'departure_from_consensus': 0, 'competing_nts': None}
+                        'departure_from_reference': 0, 'competing_nts': None}
 
         nt_counts = Counter(column)
         for nt in nucleotides:
@@ -66,19 +66,19 @@ class ColumnProfile:
             return
 
         # competing nts are simply the most frequent two nucleotides in the column.
-        # clearly, the `consensus` nucleotide (which is the observed nucleotide in
+        # clearly, the `reference` nucleotide (which is the observed nucleotide in
         # the contig for this particular `pos`) may not be one of these. but here,
         # we don't care about that.
         self.profile['competing_nts'] = ''.join(sorted(nts_sorted[0][0] + nts_sorted[1][0]))
 
-        # here we quantify the ratio of frequencies of non-consensus-nts observed in this column
-        # to the overall overage, and that is our `departure_from_consensus`:
-        total_frequency_of_all_bases_but_the_consensus = sum([tpl[1] for tpl in nts_sorted if tpl[0] != consensus])
-        departure_from_consensus = total_frequency_of_all_bases_but_the_consensus / coverage
+        # here we quantify the ratio of frequencies of non-reference-nts observed in this column
+        # to the overall overage, and that is our `departure_from_reference`:
+        total_frequency_of_all_bases_but_the_reference = sum([tpl[1] for tpl in nts_sorted if tpl[0] != reference])
+        departure_from_reference = total_frequency_of_all_bases_but_the_reference / coverage
 
         if test_class:
-            if departure_from_consensus > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
-                self.profile['departure_from_consensus'] = departure_from_consensus
+            if departure_from_reference > test_class.min_acceptable_ratio_given_coverage(self.profile['coverage']):
+                self.profile['departure_from_reference'] = departure_from_reference
         else:
             # if there is no test class, just report everything.
-            self.profile['departure_from_consensus'] = departure_from_consensus
+            self.profile['departure_from_reference'] = departure_from_reference
