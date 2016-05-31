@@ -635,15 +635,15 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
     list_of_AAs = []
     for codon_order in codon_order_to_nt_positions:
         nt_positions = codon_order_to_nt_positions[codon_order]
-        consensus_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
+        reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # if concensus sequence contains shitty characters, we will not continue
-        if consensus_codon_sequence not in codon_to_AA:
+        if reference_codon_sequence not in codon_to_AA:
             continue
         # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
         conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
 
-        list_of_AAs.append(conv_dict[consensus_codon_sequence])
+        list_of_AAs.append(conv_dict[reference_codon_sequence])
 
     return list_of_AAs
 
