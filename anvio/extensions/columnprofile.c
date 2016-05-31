@@ -6,7 +6,7 @@
 typedef struct {
     PyObject_HEAD
     PyObject *column;
-    PyObject *consensus;
+    PyObject *reference;
     int coverage;
     int pos;
     PyObject *split_name;
@@ -20,7 +20,7 @@ ColumnProfile_dealloc(ColumnProfile* self)
 {
 
     Py_XDECREF(self->column);
-    Py_XDECREF(self->consensus);
+    Py_XDECREF(self->reference);
     Py_XDECREF(self->split_name);
     Py_XDECREF(self->test_class);
     Py_XDECREF(self->profile);
@@ -43,8 +43,8 @@ ColumnProfile_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             return NULL;
           }
 
-        self->consensus = PyString_FromString("");
-        if (self->consensus == NULL)
+        self->reference = PyString_FromString("");
+        if (self->reference == NULL)
           {
             Py_DECREF(self);
             return NULL;
@@ -105,13 +105,13 @@ int compare ( const void *pa, const void *pb )
 static int
 ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *column=NULL, *consensus=NULL, *split_name=NULL, *test_class=Py_None, *sample_id=Py_None, *tmp;
+    PyObject *column=NULL, *reference=NULL, *split_name=NULL, *test_class=Py_None, *sample_id=Py_None, *tmp;
 
-    static char *kwlist[] = {"column", "consensus", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
+    static char *kwlist[] = {"column", "reference", "coverage", "pos", "split_name", "sample_id", "test_class", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOiiOOO", kwlist, 
                                       &column,
-                                      &consensus,
+                                      &reference,
                                       &self->coverage,
                                       &self->pos,
                                       &split_name, 
@@ -126,10 +126,10 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
         Py_XDECREF(tmp);
     }
 
-    if (consensus) {
-        tmp = self->consensus;
-        Py_INCREF(consensus);
-        self->consensus = consensus;
+    if (reference) {
+        tmp = self->reference;
+        Py_INCREF(reference);
+        self->reference = reference;
         Py_XDECREF(tmp);
     }
 
@@ -151,25 +151,25 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
     PyDict_SetItemString(self->profile, "split_name", self->split_name);
     PyDict_SetItemString(self->profile, "pos", PyInt_FromLong(self->pos));
     PyDict_SetItemString(self->profile, "coverage", (self->coverage != 0) ? PyInt_FromLong(self->coverage) : PyInt_FromLong(PyString_Size(self->column)));
-    PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(0));
+    PyDict_SetItemString(self->profile, "departure_from_reference", PyFloat_FromDouble(0));
     PyDict_SetItemString(self->profile, "competing_nts", Py_None);
-    PyDict_SetItemString(self->profile, "consensus", self->consensus);
+    PyDict_SetItemString(self->profile, "reference", self->reference);
 
     const char nucleotides[6] = "ACGNT";
     const char * _column = PyString_AsString(self->column);
-    const char * _consensus = PyString_AsString(self->consensus);
+    const char * _reference = PyString_AsString(self->reference);
 
     int i;
     int nt_counts[5][2];
     char np[2] = "";
     char competing_nts[3] = "";
-    double departure_from_consensus;
+    double departure_from_reference;
     double total_frequency_of_all_bases_but_the_conensus = 0;
     double minratio;
 
     for (i=0; i<5; i++){
         int cc = count_chars(_column, nucleotides[i]); 
-        if (nucleotides[i] != *_consensus) {
+        if (nucleotides[i] != *_reference) {
             total_frequency_of_all_bases_but_the_conensus += cc;
         }        
         nt_counts[i][0] = cc;
@@ -190,18 +190,18 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 
     PyDict_SetItemString(self->profile, "competing_nts", PyString_FromString(competing_nts));    
 
-    departure_from_consensus = (total_frequency_of_all_bases_but_the_conensus / self->coverage);
+    departure_from_reference = (total_frequency_of_all_bases_but_the_conensus / self->coverage);
     PyObject *min_acceptable_ratio_given_coverage = PyObject_CallMethod(self->test_class, "min_acceptable_ratio_given_coverage", "I", self->coverage);
     minratio = PyFloat_AsDouble(min_acceptable_ratio_given_coverage);
 
     if (test_class != Py_None) {
-        if (departure_from_consensus > minratio){
-            PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus));    
+        if (departure_from_reference > minratio){
+            PyDict_SetItemString(self->profile, "departure_from_reference", PyFloat_FromDouble(departure_from_reference));    
         }
     }
 
     else {
-        PyDict_SetItemString(self->profile, "departure_from_consensus", PyFloat_FromDouble(departure_from_consensus)); 
+        PyDict_SetItemString(self->profile, "departure_from_reference", PyFloat_FromDouble(departure_from_reference)); 
     }
 
     return 0;
@@ -211,8 +211,8 @@ ColumnProfile_init(ColumnProfile *self, PyObject *args, PyObject *kwds)
 static PyMemberDef ColumnProfile_members[] = {
     {"column", T_OBJECT_EX, offsetof(ColumnProfile, column), 0,
      "column"},
-    {"consensus", T_OBJECT_EX, offsetof(ColumnProfile, consensus), 0,
-     "consensus"},
+    {"reference", T_OBJECT_EX, offsetof(ColumnProfile, reference), 0,
+     "reference"},
     {"coverage", T_INT, offsetof(ColumnProfile, coverage), 0,
      "coverage"},
     {"pos", T_INT, offsetof(ColumnProfile, pos), 0,
