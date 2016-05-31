@@ -549,7 +549,11 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list, output_file_path, wrap = 120):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list = [], output_file_path = None, wrap = 120):
+        if not output_file_path:
+            raise ConfigError, "gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
+                                Anvi'o does not know how you managed to come here, but please go back and come again."
+
         filesnpaths.is_output_file_writable(output_file_path)
 
         if type(wrap) != int:
@@ -558,6 +562,11 @@ class ContigsSuperclass(object):
             wrap = None
         if wrap and wrap <= 20:
             raise ConfigError, 'Value for wrap must be larger than 20. Yes. Rules.'
+
+        if not gene_caller_ids_list:
+            gene_caller_ids_list = self.genes_in_contigs_dict.keys()
+            self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
+                              %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
 
