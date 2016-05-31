@@ -247,7 +247,9 @@ D = {
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
-             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma).\
+                      If you declare nothing, you may get everything. Or you may get an error. Really depends on the\
+                      situation. Worth a try."}
                 ),
     'gene-caller-id': (
             ['--gene-caller-id'],
