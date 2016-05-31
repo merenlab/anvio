@@ -241,9 +241,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 e = aa_frequencies_dict[codon_order]
 
                 db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_caller_id}
-                db_entry['consensus'] = e['consensus']
+                db_entry['reference'] = e['reference']
                 db_entry['coverage'] = e['coverage']
-                db_entry['departure_from_consensus'] = e['departure_from_consensus']
+                db_entry['departure_from_reference'] = e['departure_from_reference']
                 db_entry['codon_order_in_gene'] = codon_order
                 for aa in constants.codon_to_AA.values():
                     db_entry[aa] = e['frequencies'][aa]
