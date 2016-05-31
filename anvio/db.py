@@ -49,8 +49,11 @@ class DB:
                 raise ConfigError, "It seems the database '%s' was generated when your client was at version %s,\
                                     however, your client now is at version %s. Which means this database file\
                                     cannot be used with this client anymore and needs to be upgraded to the\
-                                    version %s :/"\
-                                            % (self.db_path, self.version, client_version, client_version)
+                                    version %s :/ That being said, you may not need to re-create this database\
+                                    if there is a script to upgrade this database from v%s to v%s. Please feel free to\
+                                    get in touch with the anvi'o developers (they will be happy to hear from you)."\
+                                            % (self.db_path, self.version, client_version, client_version,\
+                                               self.version, client_version)
 
 
     def get_version(self):
