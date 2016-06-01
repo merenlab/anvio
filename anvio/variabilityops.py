@@ -326,6 +326,28 @@ class VariabilitySuper(object):
         self.progress.end()
 
 
+    def insert_additional_fields(self):
+        self.progress.new('Inserting additional data')
+        self.progress.update('...')
+
+        for e in self.data.values():
+            if self.engine == 'NT':
+                freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse = True)
+            elif self.engine == 'AA':
+                aas = set(codon_to_AA.values())
+                freqs_list = sorted([(e[aa], aa) for aa in aas], reverse = True)
+
+            e['n2n1ratio'] = freqs_list[1][0] / freqs_list[0][0]
+            e['consensus'] = freqs_list[0][1]
+
+            total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
+            frequency_of_consensus = freqs_list[0][0]
+            coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
+            e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage
+
+        self.progress.end()
+
+
     def filter_based_on_scattering_factor(self):
         """To remove any unique entry from the variable positions table that describes a variable position
            and yet is not helpful to distinguish samples from eachother."""
@@ -525,18 +547,6 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
 
 
-    def insert_additional_fields(self):
-        self.progress.new('Inserting additional data')
-        self.progress.update('...')
-
-        for e in self.data.values():
-            nt_freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse = True)
-            e['n2n1ratio'] = nt_freqs_list[1][0] / nt_freqs_list[0][0]
-            e['most_frequent_base'] = nt_freqs_list[0][1]
-
-        self.progress.end()
-
-
     def recover_base_frequencies_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
@@ -623,7 +633,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['n2n1ratio', 'most_frequent_base', 'contig_name', 'split_name', 'unique_pos_identifier_str']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio', 'contig_name', 'split_name', 'unique_pos_identifier_str']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
@@ -644,20 +654,6 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # Init Meta
         VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
-
-
-    def insert_additional_fields(self):
-        self.progress.new('Inserting additional data')
-        self.progress.update('...')
-
-        aas = set(codon_to_AA.values())
-
-        for e in self.data.values():
-            aa_freqs_list = sorted([(e[aa], aa) for aa in aas], reverse = True)
-            e['n2n1ratio'] = aa_freqs_list[1][0] / aa_freqs_list[0][0]
-            e['most_frequent_aa'] = aa_freqs_list[0][1]
-
-        self.progress.end()
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -764,7 +760,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['n2n1ratio', 'most_frequent_aa', 'contig_name', 'split_name', 'unique_pos_identifier_str']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio', 'contig_name', 'split_name', 'unique_pos_identifier_str']
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
