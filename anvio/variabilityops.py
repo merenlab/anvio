@@ -52,6 +52,7 @@ class VariabilitySuper(object):
         self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
         self.min_departure_from_reference = A('min_departure_from_reference', float)
+        self.min_departure_from_consensus = A('min_departure_from_consensus', float)
         self.min_occurrence = A('min_occurrence', int)
         self.num_positions_from_each_split = A('num_positions_from_each_split', int)
         self.min_scatter = A('min_scatter', int)
@@ -61,6 +62,7 @@ class VariabilitySuper(object):
         self.quince_mode = A('quince_mode', bool)
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
+        self.genes_of_interest_path = A('genes_of_interest', null)
 
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -86,10 +88,22 @@ class VariabilitySuper(object):
 
         self.progress.update('Checking the samples of interest ..')
         if self.samples_of_interest_path:
-            filesnpaths.is_file_exists(self.samples_of_interest_path)
+            filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields = 1)
             self.samples_of_interest = set([s.strip() for s in open(self.samples_of_interest_path).readlines()])
         else:
             self.samples_of_interest = set([])
+
+        self.progress.update('Any genes of interest?')
+        if self.genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields = 1)
+            try:
+                self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
+            except ValueError:
+                self.progress.end()
+                raise ConfigError, "Well. Anvi'o was working on your genes of interest .. and ... those gene IDs did not\
+                                    look like anvi'o gene caller ids :/ Anvi'o is sad now."
+        else:
+            self.genes_of_interest = set([])
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -220,6 +234,14 @@ class VariabilitySuper(object):
             sys.exit()
 
 
+    def apply_advanced_filters(self):
+        if self.min_departure_from_consensus:
+            self.run.info('Min departure from consensus', self.min_departure_from_consensus)
+            self.filter('departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
+
+        self.check_if_data_is_empty()
+
+
     def apply_preliminary_filters(self):
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
@@ -235,6 +257,10 @@ class VariabilitySuper(object):
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = self.samples_of_interest
             self.filter('samples of interest', lambda x: x['sample_id'] not in self.samples_of_interest)
+
+        if self.genes_of_interest:
+            self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
+            self.filter('genes of interest', lambda x: x['corresponding_gene_call'] not in self.genes_of_interest)
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
@@ -326,11 +352,13 @@ class VariabilitySuper(object):
         self.progress.end()
 
 
-    def insert_additional_fields(self):
-        self.progress.new('Inserting additional data')
-        self.progress.update('...')
+    def insert_additional_fields(self, keys = []):
+        if not len(keys):
+            keys = self.data.keys()
 
-        for e in self.data.values():
+        for key in keys:
+            e = self.data[key]
+
             if self.engine == 'NT':
                 freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse = True)
             elif self.engine == 'AA':
@@ -344,8 +372,6 @@ class VariabilitySuper(object):
             frequency_of_consensus = freqs_list[0][0]
             coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
             e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage
-
-        self.progress.end()
 
 
     def filter_based_on_scattering_factor(self):
@@ -502,12 +528,14 @@ class VariabilitySuper(object):
 
         self.filter_based_on_num_positions_from_each_split()
 
+        self.insert_additional_fields()
+
+        self.apply_advanced_filters()
+
         if self.quince_mode: # will be very costly...
             self.recover_base_frequencies_for_all_samples() 
 
         self.filter_based_on_minimum_coverage_in_each_sample()
-
-        self.insert_additional_fields()
 
 
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
@@ -625,6 +653,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                           'codon_order_in_gene': codon_order_in_gene,
                                                           'split_name': split}
                     self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                    self.insert_additional_fields([next_available_entry_id])
                     next_available_entry_id += 1
 
         self.progress.end()
