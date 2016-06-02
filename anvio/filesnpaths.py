@@ -179,7 +179,7 @@ def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields
         else:
             break
 
-    if len(line.split(separator)) == 1:
+    if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
         raise FilesNPathsError, "File '%s' does not seem to have TAB characters.\
                             Did you export this file on MAC using EXCEL? :(" % file_path
 
