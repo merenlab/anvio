@@ -781,6 +781,9 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
                     self.data[next_available_entry_id][reference_codon] = coverage
 
+                    # insert additional fields for this newly added data point
+                    self.insert_additional_fields([next_available_entry_id])
+
                     next_available_entry_id += 1
 
         self.progress.end()
