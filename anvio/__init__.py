@@ -334,6 +334,18 @@ D = {
                       debugging purposes, or to engine on a particular group of contigs that were identified as\
                       relevant during the interactive analysis."}
                 ),
+    'samples-of-interest': (
+            ['--samples-of-interest'],
+            {'metavar': 'FILE',
+             'help': "A file with samples names. There should be only one column in the file, and each line\
+                      should correspond to a unique sample name (without a column header)."}
+                ),
+    'genes-of-interest': (
+            ['--genes-of-interest'],
+            {'metavar': 'FILE',
+             'help': "A file with anvi'o gene caller IDs. There should be only one column in the file, and each line\
+                      should correspond to a unique gene caller id (without a column header)."}
+                ),
     'bin-id': (
             ['-b', '--bin-id'],
             {'metavar': 'BIN_NAME',
@@ -418,7 +430,16 @@ D = {
             {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
-             'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the reference. Default is %(default)f."}
+             'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the reference. Default is %(default)f.\
+                      The reference here observation that corresponds to a given position in the mapped context."}
+                ),
+    'min-departure-from-consensus': (
+            ['-j', '--min-departure-from-consensus'],
+            {'metavar': 'FLOAT',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus for a given position. The\
+                      default is %(default)f. The consensus is the most frequent observation at a given positon."}
                 ),
     'min-occurrence-of-variable-positions': (
             ['-x', '--min-occurrence'],
@@ -428,12 +449,6 @@ D = {
              'help': "Minimum number of samples a nucleotide position should be reported as variable. Default is %(default)d.\
                       If you set it to 2, for instance, each eligable variable position will be expected to appear in at least\
                       two samples, which will reduce the impact of stochastic, or unintelligeable varaible positions."}
-                ),
-    'samples-of-interest': (
-            ['--samples-of-interest'],
-            {'metavar': 'FILE',
-             'help': "A file with samples names. There should be only one column in the file, and each line\
-                      should correspond to a unique sample name."}
                 ),
     'quince-mode': (
             ['--quince-mode'],
