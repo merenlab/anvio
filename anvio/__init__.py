@@ -433,6 +433,14 @@ D = {
              'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the reference. Default is %(default)f.\
                       The reference here observation that corresponds to a given position in the mapped context."}
                 ),
+    'max-departure-from-reference': (
+            ['-z', '--max-departure-from-reference'],
+            {'metavar': 'FLOAT',
+             'default': 1,
+             'type': float,
+             'help': "Similar to '--min-departure-from-reference', but defines an upper limit for divergence. The\
+                      default is %(default)f."}
+                ),
     'min-departure-from-consensus': (
             ['-j', '--min-departure-from-consensus'],
             {'metavar': 'FLOAT',
@@ -440,6 +448,14 @@ D = {
              'type': float,
              'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus for a given position. The\
                       default is %(default)f. The consensus is the most frequent observation at a given positon."}
+                ),
+    'max-departure-from-consensus': (
+            ['-a', '--max-departure-from-consensus'],
+            {'metavar': 'FLOAT',
+             'default': 1,
+             'type': float,
+             'help': "Similar to '--min-departure-from-consensus', but defines an upper limit for divergence. The\
+                      default is %(default)f."}
                 ),
     'min-occurrence-of-variable-positions': (
             ['-x', '--min-occurrence'],
