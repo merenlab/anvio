@@ -46,7 +46,9 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
     groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference'))
+    groupE.add_argument(*anvio.A('max-departure-from-reference'), **anvio.K('max-departure-from-reference'))
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus'))
+    groupE.add_argument(*anvio.A('max-departure-from-consensus'), **anvio.K('max-departure-from-consensus'))
     groupE.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupE.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
 

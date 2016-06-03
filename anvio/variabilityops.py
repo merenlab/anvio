@@ -34,7 +34,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 pp = terminal.pretty_print
 progress = terminal.Progress()
-run = terminal.Run(width = 60)
+run = terminal.Run(width = 62)
 
 
 class VariabilitySuper(object):
@@ -52,7 +52,9 @@ class VariabilitySuper(object):
         self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
         self.min_departure_from_reference = A('min_departure_from_reference', float)
+        self.max_departure_from_reference = A('max_departure_from_reference', float)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float)
+        self.max_departure_from_consensus = A('max_departure_from_consensus', float)
         self.min_occurrence = A('min_occurrence', int)
         self.num_positions_from_each_split = A('num_positions_from_each_split', int)
         self.min_scatter = A('min_scatter', int)
@@ -237,7 +239,11 @@ class VariabilitySuper(object):
     def apply_advanced_filters(self):
         if self.min_departure_from_consensus:
             self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-            self.filter('departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
+            self.filter('max departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
+
+        if self.max_departure_from_consensus < 1:
+            self.run.info('Max departure from consensus', self.max_departure_from_consensus)
+            self.filter('max departure from consensus', lambda x: x['departure_from_consensus'] > self.max_departure_from_consensus)
 
         self.check_if_data_is_empty()
 
@@ -272,7 +278,11 @@ class VariabilitySuper(object):
 
         if self.min_departure_from_reference:
             self.run.info('Min departure from reference', self.min_departure_from_reference)
-            self.filter('departure from reference', lambda x: x['departure_from_reference'] < self.min_departure_from_reference)
+            self.filter('min departure from reference', lambda x: x['departure_from_reference'] < self.min_departure_from_reference)
+
+        if self.max_departure_from_reference < 1:
+            self.run.info('Max departure from reference', self.max_departure_from_reference)
+            self.filter('max departure from reference', lambda x: x['departure_from_reference'] > self.max_departure_from_reference)
 
         for entry_id in self.data:
             v = self.data[entry_id]
