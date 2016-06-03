@@ -137,10 +137,11 @@ anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o
 INFO "Generate a variabilty profile for P204_bin_00001 using a collection id"
 anvi-gen-variability-profile -c test-output/CONTIGS.db -p test-output/204-MERGED/PROFILE.db -C cmdline_concoct -b P204_bin_00001 -o test-output/variability_P204_bin_00001.txt --quince-mode
 
-INFO "Generate a variabilty profile for P204_bin_00001 using split ids stored in a file (after summary)"
+INFO "Generate a variabilty profile for P204_bin_00001 using split ids and gene ids of interest (after summary)"
 anvi-gen-variability-profile -c test-output/CONTIGS.db \
                              -p test-output/204-MERGED/PROFILE.db \
                              --splits-of-interest test-output/204-MERGED-SUMMARY/bin_by_bin/P204_bin_00001/P204_bin_00001-original_split_names.txt \
+                             --genes-of-interest example_genes_of_interest.txt \
                              -o test-output/variability_P204_bin_00001_ALT.txt
 
 INFO "Generating amino acid frequencies for gene caller id 3 in 204-6M.bam ..."
