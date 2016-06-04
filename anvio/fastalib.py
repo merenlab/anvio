@@ -3,6 +3,7 @@
 """A very lightweight FASTA I/O library"""
 
 import sys
+import gzip
 import numpy
 import hashlib
 
@@ -21,7 +22,12 @@ __status__ = "Development"
 class FastaOutput:
     def __init__(self, output_file_path):
         self.output_file_path = output_file_path
-        self.output_file_obj = open(output_file_path, 'w')
+        self.compressed = True if self.output_file_path.endswith('.gz') else False
+
+        if self.compressed:
+            self.output_file_obj = gzip.open(output_file_path, 'w')
+        else:
+            self.output_file_obj = open(output_file_path, 'w')
 
     def store(self, entry, split = True, store_frequencies = True):
         if entry.unique and store_frequencies:
@@ -71,6 +77,7 @@ class SequenceSource():
     def __init__(self, fasta_file_path, lazy_init = True, unique = False, allow_mixed_case = False):
         self.fasta_file_path = fasta_file_path
         self.name = None
+        self.compressed = True if self.fasta_file_path.endswith('.gz') else False
         self.lazy_init = lazy_init
         self.allow_mixed_case = allow_mixed_case
         
@@ -84,7 +91,10 @@ class SequenceSource():
         self.unique_hash_list = []
         self.unique_next_hash = 0
 
-        self.file_pointer = open(self.fasta_file_path)
+        if self.compressed:
+            self.file_pointer = gzip.open(self.fasta_file_path)
+        else:
+            self.file_pointer = open(self.fasta_file_path)
 
         if not self.file_pointer.read(1) == '>':
             raise FastaLibError, "File '%s' does not seem to be a FASTA file." % self.fasta_file_path
