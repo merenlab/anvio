@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.terminal as terminal
+import anvio.ccollections as ccollections
+
+from anvio.completeness import Completeness
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def main(args):
+    collections = ccollections.Collections()
+    collections.populate_collections_dict(args.contigs_db, anvio.__contigs__version__)
+    if args.profile_db:
+        collections.populate_collections_dict(args.profile_db, anvio.__profile__version__)
+
+    if args.list_collections:
+        collections.list_collections()
+        sys.exit()
+
+    if args.profile_db and not args.collection_name:
+        raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
+
+    if not args.collection_name:
+        run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
+                     is a a single genome (or genome bin).")
+
+    if args.collection_name and args.collection_name not in collections.collections_dict:
+        raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name
+
+    completeness = Completeness(args.contigs_db)
+    if not len(completeness.sources):
+        raise ConfigError, "HMM's were not run for this contigs database :/"
+
+    if not 'Campbell_et_al' in completeness.sources:
+        raise ConfigError, "This classifier uses Campbell et al. single-copy gene collections, and it is not among the available HMM sources in your\
+                            contigs database :/ Bad news."
+
+    contigs_db = ContigsSuperclass(args, r = run, p = progress)
+
+    if args.collection_name:
+        collection = collections.get_collection_dict(args.collection_name)
+    else:
+        collection = {os.path.basename(args.contigs_db[:-3]): contigs_db.splits_basic_info.keys()}
+
+    if args.collection_name:
+        run.warning(None, header = 'Bins in collection "%s"' % args.collection_name, lc = 'green')
+    else:
+        run.warning(None, header = 'Genome in "%s"' % os.path.basename(args.contigs_db), lc = 'green')
+
+    for bin_id in collection:
+        c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
+        percent_completion = c['percent_complete']
+        percent_redundancy = c['percent_redundancy']
+        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
+        num_splits = len(collection[bin_id])
+
+        print "%s :: PC: %.2f%%, PR: %.2f%%, N: %s, S: %s" % (bin_id, percent_completion, percent_redundancy, pp(num_splits), pp(total_length))
+
+    print
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Get info draft')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
