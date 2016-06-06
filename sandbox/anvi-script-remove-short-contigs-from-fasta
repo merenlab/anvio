@@ -63,6 +63,7 @@ def remove_short_contigs_from_fasta(args):
     run.info('Total num nucleotides', total_num_nucleotides)
     run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
     run.info('Nucleotides removed', '%d (%.2f%% of all)' % (total_num_nucleotides_removed, total_num_nucleotides_removed * 100.0 / total_num_nucleotides), mc='green')
+    run.info('Deflines simplified', args.simplify_names, mc='green')
 
 
 if __name__ == '__main__':
