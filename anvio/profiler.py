@@ -57,6 +57,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.contig_names_of_interest = None
 
+        # whehther the profile database is a blank (without any BAM files or reads):
+        self.blank = A('blank_profile')
+
+        if self.blank:
+            self.contigs_shall_be_clustered = True
+
         if args.contigs_of_interest:
             filesnpaths.is_file_exists(args.contigs_of_interest)
             self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
@@ -84,7 +90,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.profile_db_path = None
 
-        self.clustering_configs = constants.clustering_configs['single']
+        self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
 
         self.atomic_contig_split_data = contigops.AtomicContigSplitData(self.progress)
 
@@ -122,6 +128,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'sample_id': self.sample_id,
                        'samples': self.sample_id,
                        'merged': False,
+                       'blank': self.blank,
                        'contigs_clustered': self.contigs_shall_be_clustered,
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
@@ -158,6 +165,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('merged', False)
+        self.run.info('blank', self.blank)
         self.run.info('split_length', self.a_meta['split_length'])
         self.run.info('min_contig_length', self.min_contig_length)
         self.run.info('min_mean_coverage', self.min_mean_coverage)
@@ -170,13 +178,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
-        if self.input_file_path:
+        if self.blank:
+            self.init_mock_profile()
+        elif self.input_file_path:
             self.init_profile_from_BAM()
             self.profile()
             if self.gen_serialized_profile:
                 self.store_profile()
-        else:
+        elif self.serialized_profile_path:
             self.init_serialized_profile()
+        else:
+            raise ConfigError, "What are you doing? :( You don't "
 
         self.generate_variabile_positions_table()
         self.profile_AA_frequencies()
@@ -201,7 +213,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('runinfo', runinfo_serialized)
         self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
 
-        self.bam.close()
+        if self.bam:
+            self.bam.close()
+
         self.run.quit()
 
 
@@ -454,6 +468,40 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
 
+    def remove_contigs_that_are_shorter_than_min_contig_length(self):
+        """Removes contigs that are shorter than M"""
+        contigs_longer_than_M = set()
+        for i in range(0, len(self.contig_names)):
+            if self.contig_lengths[i] >= self.min_contig_length:
+                contigs_longer_than_M.add(i)
+
+        if not len(contigs_longer_than_M):
+            raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+        else:
+            self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
+            self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
+            self.num_contigs = len(self.contig_names)    # we will store these two
+            self.total_length = sum(self.contig_lengths) # into the db in a second.
+
+        contigs_longer_than_M = set(self.contig_names) # for fast access
+        self.split_names = set([])
+        self.contig_name_to_splits = {}
+        for split_name in sorted(self.splits_basic_info.keys()):
+            parent = self.splits_basic_info[split_name]['parent']
+
+            if parent not in contigs_longer_than_M:
+                continue
+
+            self.split_names.add(split_name)
+
+            if self.contig_name_to_splits.has_key(parent):
+                self.contig_name_to_splits[parent].append(split_name)
+            else:
+                self.contig_name_to_splits[parent] = [split_name]
+
+        self.num_splits = len(self.split_names)
+
+
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
@@ -481,19 +529,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.check_contigs_without_any_gene_calls(self.contig_names)
 
         # check for the -M parameter.
-        contigs_longer_than_M = set()
-        for i in range(0, len(self.contig_names)):
-            if self.contig_lengths[i] >= self.min_contig_length:
-                contigs_longer_than_M.add(i)
-
-        if not len(contigs_longer_than_M):
-            raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
-        else:
-            self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
-            self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
-            self.num_contigs = len(self.contig_names)    # we will store these two
-            self.total_length = sum(self.contig_lengths) # into the db in a second.
-
+        self.remove_contigs_that_are_shorter_than_min_contig_length()
 
         # let's see whether the user screwed up to follow the simple instructions
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
@@ -507,25 +543,39 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                     prior to mapping, which is described here: %s"\
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
 
-        contigs_longer_than_M = set(self.contig_names) # for fast access
-        self.split_names = set([])
-        self.contig_name_to_splits = {}
-        for split_name in sorted(self.splits_basic_info.keys()):
-            parent = self.splits_basic_info[split_name]['parent']
+        self.run.info('num_contigs_after_M', self.num_contigs, display_only = True)
+        self.run.info('num_contigs', self.num_contigs, quiet = True)
+        self.run.info('num_splits', self.num_splits)
+        self.run.info('total_length', self.total_length)
 
-            if parent not in contigs_longer_than_M:
-                continue
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('num_splits', self.num_splits)
+        profile_db.db.set_meta_value('num_contigs', self.num_contigs)
+        profile_db.db.set_meta_value('total_length', self.total_length)
+        profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
+        profile_db.disconnect()
 
-            self.split_names.add(split_name)
 
-            if self.contig_name_to_splits.has_key(parent):
-                self.contig_name_to_splits[parent].append(split_name)
-            else:
-                self.contig_name_to_splits[parent] = [split_name]
+    def init_mock_profile(self):
+        self.progress.new('Init')
+        self.progress.update('...')
+        self.num_reads_mapped = 0
+        self.progress.end()
 
-        # we just recovered number of splits that are coming from contigs
-        # longer than M:
-        self.num_splits = len(self.split_names)
+        self.contig_names = self.contigs_basic_info.keys()
+        self.contig_lengths = [self.contigs_basic_info[contig_name]['length'] for contig_name in self.contigs_basic_info]
+        self.total_length = sum(self.contig_lengths)
+        self.num_contigs = len(self.contig_names)
+
+        utils.check_contig_names(self.contig_names)
+
+        self.run.info('input_bam', None)
+        self.run.info('output_dir', self.output_directory, display_only = True)
+        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
+        self.run.info('num_contigs', pp(self.num_contigs))
+
+        # check for the -M parameter.
+        self.remove_contigs_that_are_shorter_than_min_contig_length()
 
         self.run.info('num_contigs_after_M', self.num_contigs, display_only = True)
         self.run.info('num_contigs', self.num_contigs, quiet = True)
@@ -623,6 +673,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def cluster_contigs(self):
+        default_clustering = constants.blank_default if self.blank else constants.single_default
+
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
@@ -635,13 +687,26 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 continue
 
-            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == constants.single_default, run = self.run)
+            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == default_clustering, run = self.run)
 
 
     def check_args(self):
+        if self.blank:
+            self.run.warning("You are about to generate a blank profile. This is what we do when we have nothing\
+                              but a contigs database to play with. Because anvi'o is lazy, it will not check the\
+                              rest of the parameters you may have declred. Most of them will not matter.")
+
+            if not self.output_directory:
+                raise ConfigError, "If you want to generate a blank profile, you need to declare an output diretory path."
+            if not self.sample_id:
+                raise ConfigError, "Mock profiles require a sample name to be declared. Because :/"
+            return
+
         if (not self.input_file_path) and (not self.serialized_profile_path):
-            raise ConfigError, "You must declare either an input file, or a serialized profile. Use '--help'\
-                                      to learn more about the command line parameters."
+            raise ConfigError, "You didn't declare any input files :/ If you intend to create a blank profile without any,\
+                                input file, you should be a bit more explicit about your intention (you know, in the help\
+                                there is a flag for it and all). Otherwise you should either provide an input BAM file, or\
+                                a serialized anvi'o profile. See '--help' maybe?"
         if self.input_file_path and self.serialized_profile_path:
             raise ConfigError, "You can't declare both an input file and a serialized profile."
         if self.serialized_profile_path and (not self.output_directory):
