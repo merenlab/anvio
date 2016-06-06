@@ -272,6 +272,12 @@ class ClusteringConfiguration:
                 if self.row_ids_of_interest:
                     table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
 
+                if not len(table_rows):
+                    raise ConfigError, "It seems the table '%s' in database '%s' is empty. This is not good. Are you sure\
+                                        you are not using a clustering configuration for a database that is not expected to\
+                                        provide information for some of the requests in there? Here is the section that is\
+                                        not working for you: '%s' :/" % (table, database_path, section)
+
                 tmp_file_path = filesnpaths.get_temp_file_path()
                 table_structure = dbc.get_table_structure(table)
                 columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
