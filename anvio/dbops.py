@@ -657,6 +657,10 @@ class ProfileSuperclass(object):
 
 
     def init_gene_coverages_dict(self):
+        if self.p_meta['blank']:
+            # this is a blank profile, there is nothing to init here
+            return
+
         if not self.a_meta['genes_are_called']:
             # genes were not identified/annotated
             return
