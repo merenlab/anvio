@@ -387,6 +387,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
                                 should use the `--manual` flag if that's what your intention)."
 
+        if not self.profile_db_path:
+            raise ConfigError, "So you want to run anvi'o in full mode, but without a profile database?\
+                                Well. This does not make any sense."
+
         ProfileSuperclass.__init__(self, args)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
@@ -403,8 +407,18 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
 
         # load views from the profile database
-        self.load_views()
-        self.default_view = self.p_meta['default_view']
+        if self.p_meta['blank']:
+            blank_dict = {}
+            for split_name in self.splits_basic_info:
+                blank_dict[split_name] = {'blank_view': 0}
+
+            self.views['blank_view'] = {'header': ['blank_view'],
+                                        'dict': blank_dict}
+            self.default_view = 'blank_view'
+
+        else:
+            self.load_views()
+            self.default_view = self.p_meta['default_view']
 
         # if the user wants to see available views, show them and exit.
         if self.show_views:
