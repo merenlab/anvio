@@ -34,6 +34,15 @@ D = {
                       profiling much more quickly. This file is generated only if it is requested during the\
                       initial profiling of the BAM file. See '--gen-serialized-profile' flag for details."}
                 ),
+    'blank-profile': (
+            ['--blank-profile'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to\
+                      take a look from it), this flag will become very hand. After creating a contigs database for your\
+                      contigs, you can create a blank anvi'o profile database to use anvi'o interactive\
+                      interface with that contigs database without any mapping data."}
+                ),
     'samples-information-db': (
             ['-s', '--samples-information-db'],
             {'metavar': 'SAMPLES_DB',

@@ -37,6 +37,7 @@ if __name__ == '__main__':
 
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
+    groupI.add_argument(*anvio.A('blank-profile'), **anvio.K('blank-profile'))
     groupM.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
