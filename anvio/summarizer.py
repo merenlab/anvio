@@ -237,13 +237,17 @@ class Summarizer(DatabasesMetaclass):
                 utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
 
             # store percent abundance of each bin
-            self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
-            self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
-            output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
-            utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
-                                                   None,
-                                                   headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
-                                                   file_obj = output_file_obj)
+            if self.p_meta['blank']:
+                self.summary['bin_percent_recruitment'] = None
+                self.summary['bin_percent_abundance_items'] = None
+            else:
+                self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
+                self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
+                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
+                utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
+                                                       None,
+                                                       headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
+                                                       file_obj = output_file_obj)
 
 
         if self.debug:
