@@ -153,12 +153,19 @@ var named_layers = {
         'type': 'text',
         'pretty_name': 'Bin name',
     },
+    'blank_view': {
+        'height': 0,
+        'color': '#FFFFFF',
+        'norm': 'none',
+        'pretty_name': '_',
+    },
 };
 
 pretty_names = {
     'tnf-cov': 'Seq. Composition + Diff. Coverage',
     'cov': 'Differential coverage',
-    'tnf': 'Sequence composition'
+    'tnf': 'Sequence composition',
+    'tnf-splits': 'Sequence composition (w/independent splits)'
 };
 
 function getPrettyName(name)
