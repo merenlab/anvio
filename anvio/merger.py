@@ -159,6 +159,11 @@ class MultipleRuns:
             raise ConfigError, "This is very cute, but you can't merge already merged runs. anvio can only merge\
                                       individual profiles (which are generated through anvi-profile program). Sorry."
 
+        if [True for v in self.input_runinfo_dicts.values() if v['blank']]:
+            raise ConfigError, "Do you have a blank profile in there? Because it seems you do :/ Well, here is the problem:\
+                                blank profiles are merely useful to play with a contigs database when no mapping data is\
+                                available, and they are not supposed to be merged."
+
         for k, p in [('total_length', 'Number of nucleotides described'),
                      ('num_contigs', 'Number of contigs'),
                      ('num_splits', 'Number of splits'),
@@ -379,6 +384,7 @@ class MultipleRuns:
                        'sample_id': self.sample_id,
                        'samples': ','.join(self.merged_sample_ids),
                        'merged': True,
+                       'blank': False,
                        'contigs_clustered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
