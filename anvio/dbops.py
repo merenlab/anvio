@@ -724,7 +724,7 @@ class ProfileSuperclass(object):
     def init_collection_profile(self, collection):
         profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
 
-        table_names = [table_name for table_name in t.atomic_data_table_structure[1:-1]]
+        table_names = [] if self.p_meta['blank'] else [table_name for table_name in t.atomic_data_table_structure[1:-1]]
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
@@ -770,17 +770,20 @@ class ProfileSuperclass(object):
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
         self.bin_percent_recruitment_per_sample = {}
-        for sample in self.p_meta['samples']:
-            percents = {}
-            all_coverages_in_sample = sum([d[sample] for d in coverage_table_data.values()])
+        if self.p_meta['blank']:
+            pass
+        else:
+            for sample in self.p_meta['samples']:
+                percents = {}
+                all_coverages_in_sample = sum([d[sample] for d in coverage_table_data.values()])
 
-            for bin_id in collection:
-                bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
-                percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
+                for bin_id in collection:
+                    bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
+                    percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
 
-            splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_not_binned])
-            percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
-            self.bin_percent_recruitment_per_sample[sample] = percents
+                splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_not_binned])
+                percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
+                self.bin_percent_recruitment_per_sample[sample] = percents
 
         profile_db.disconnect()
 
