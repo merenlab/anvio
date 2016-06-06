@@ -56,6 +56,8 @@ anvi-import-functional-annotation-of-genes -c test-output/CONTIGS.db -i example_
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
 
+INFO "Generating a 'blank profile' with the newly generated contigs database ..."
+anvi-profile -c test-output/CONTIGS.db -o test-output/BLANK-PROFILE -S BLANK --blank-profile
 
 # for each sample, run the profiling using the same split size used for the contigs database.
 # profiling generates individual directiorues uner test-output directory for each sample.
@@ -191,8 +193,7 @@ INFO "Get AA counts for five genes ..."
 anvi-get-aa-counts -c test-output/CONTIGS.db --gene-caller-ids sample_gene_call_ids.txt -o test-output/aa_counts_for_five_genes.txt
 column -t test-output/aa_counts_for_five_genes.txt
 
-INFO "Firing up the interactive interface ..."
-# fire up the browser to show how does the merged samples look like.
+INFO "Firing up the interactive interface for merged samples ..."
 anvi-interactive -p test-output/204-MERGED/PROFILE.db \
                  -c test-output/CONTIGS.db \
                  -s test-output/SAMPLES.db \
@@ -200,6 +201,9 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
                  -t test-output/204-MERGED/EXP-ORG-FILE.txt \
                  -V additional_view.txt \
                  --split-hmm-layers
+
+INFO "Firing up the interactive interface with the blank profile ..."
+anvi-interactive -c test-output/CONTIGS.db -p test-output/BLANK-PROFILE/PROFILE.db
 
 INFO "Firing up the interactive interface to refine a bin ..."
 anvi-refine -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -s test-output/SAMPLES.db -C CONCOCT -b Bin_1
