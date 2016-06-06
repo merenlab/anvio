@@ -21,18 +21,17 @@ __status__ = "Development"
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
 
+blank_default = "tnf-splits"
 single_default = "tnf"
 merged_default = "tnf-cov"
 
-if not os.path.exists(os.path.join(clustering_configs_dir, 'single', single_default)):
-    print "Error: The default clustering configuration file for single runs, '%s',\n\
-       is missing from data/clusterconfigs dir! I can't fix this!." % (single_default)
-    sys.exit()
-
-if not os.path.exists(os.path.join(clustering_configs_dir, 'merged', merged_default)):
-    print "Error: The default clustering configuration file for merged runs, '%s',\n\
-       is missing from data/clusterconfigs dir! I can't fix this!." % (merged_default)
-    sys.exit()
+for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
+    run_type, default_config = run_type_and_default_config_tuples
+    if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
+        print "Error: The default clustering configuration file for %s runs, '%s',\n\
+       is missing from data/clusterconfigs dir! I don't know how this happened,\n\
+       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config)
+        sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
     clustering_configs[dir] = {}
