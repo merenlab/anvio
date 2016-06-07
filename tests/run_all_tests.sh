@@ -205,5 +205,8 @@ anvi-interactive -p test-output/204-MERGED/PROFILE.db \
 INFO "Firing up the interactive interface with the blank profile ..."
 anvi-interactive -c test-output/CONTIGS.db -p test-output/BLANK-PROFILE/PROFILE.db
 
+INFO "Firing up the interactive interface in 'COLLECTION' mode ..."
+anvi-interactive -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT
+
 INFO "Firing up the interactive interface to refine a bin ..."
 anvi-refine -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -s test-output/SAMPLES.db -C CONCOCT -b Bin_1
