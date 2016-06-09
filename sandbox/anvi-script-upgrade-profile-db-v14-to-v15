@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
 import argparse
 
 import anvio.db as db
 import anvio.dbops as dbops
+import anvio.dictio as dictio
 import anvio.terminal as terminal 
 
 from anvio.errors import ConfigError
@@ -42,6 +44,23 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False):
             sys.exit()
 
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
+
+    # update the runinfo.cp
+    input_dir = os.path.dirname(os.path.abspath(profile_db_path))
+    P = lambda x: os.path.join(input_dir, x)
+    E = lambda x: os.path.exists(x)
+    
+    runinfo_path = P('RUNINFO.cp') if E(P('RUNINFO.cp')) else None
+    runinfo_path = P('RUNINFO.mcp') if E(P('RUNINFO.mcp')) else None
+
+    if not runinfo_path:
+        raise ConfigError, "I can't find the runinfo file around this profile :("
+
+    runinfo = dictio.read_serialized_object(runinfo_path)
+    if not runinfo.has_key('blank'):
+        runinfo['blank'] = False
+
+        dictio.write_serialized_object(runinfo, runinfo_path)
 
     # add the new value
     profile_db.set_meta_value('blank', False)
