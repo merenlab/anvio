@@ -5,7 +5,6 @@
 import os
 import sys
 import time
-import copy
 import socket
 import shutil
 import smtplib
@@ -23,7 +22,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.terminal import Run, Progress, SuppressAllOutput
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
-from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements, codon_to_AA, codon_to_AA_RC
+from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
+from anvio.constants import codon_to_AA, codon_to_AA_RC, AA_to_single_letter_code
 
 with SuppressAllOutput():
     from ete2 import Tree
@@ -615,6 +615,25 @@ def get_codon_order_to_nt_positions_dict(gene_call):
             codon_order += 1
 
     return codon_order_to_nt_positions
+
+
+def get_DNA_sequence_translated(sequence):
+    sequence = sequence.upper()
+
+    if len(sequence) % 3.0 != 0:
+        raise ConfigError, "This sequence does not have proper number of nucleotides to be translated :/"
+
+    translated_sequence = ''
+
+    for i in range(0, len(sequence), 3):
+        single_letter_code = AA_to_single_letter_code[codon_to_AA[sequence[i:i+3]]]
+
+        if not single_letter_code:
+            single_letter_code = 'X'
+
+        translated_sequence += single_letter_code
+
+    return translated_sequence
 
 
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
