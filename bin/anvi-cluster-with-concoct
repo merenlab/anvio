@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
+    parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
