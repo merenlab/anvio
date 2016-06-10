@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class BLAST:
-    def __init__(self, query_fasta, run = run, progress = progress, num_threads = 1, overwrite_output_destinations = False):
+    def __init__(self, query_fasta, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -77,7 +77,7 @@ class BLAST:
         return self.search_output_path
 
 
-    def check_output(self, expected_output, process = 'diamond'):
+    def check_output(self, expected_output, process='diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
@@ -91,7 +91,7 @@ class BLAST:
                                                                          self.target_db_path,
                                                                          self.run.log_file_path))
 
-        self.run.info('blast makeblast cmd', cmd_line, quiet = True)
+        self.run.info('blast makeblast cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 
@@ -111,7 +111,7 @@ class BLAST:
                                                                                                            self.num_threads,
                                                                                                            self.run.log_file_path))
 
-        self.run.info('blast blastp cmd', cmd_line, quiet = True)
+        self.run.info('blast blastp cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 
@@ -123,7 +123,7 @@ class BLAST:
 
 
     def ununique_search_results(self):
-        self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output.', quiet = True)
+        self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output.', quiet=True)
 
         self.progress.new('BLAST')
         self.progress.update('Un-uniqueing the tabular output ...')

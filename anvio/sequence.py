@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 '''Primitive classes for basic DNA sequence properties.'''
 
@@ -129,7 +130,7 @@ def get_list_of_outliers(values, threshold=1.5):
     """
 
     if len(values.shape) == 1:
-        values = values[:,None]
+        values = values[:, None]
 
     median = numpy.median(values, axis=0)
 

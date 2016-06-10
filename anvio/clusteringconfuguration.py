@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 
 import os
@@ -30,13 +31,13 @@ __status__ = "Development"
 
 config_template = {
     'general': {
-                'output_file'    : {'mandatory': False, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
+                'output_file': {'mandatory': False, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
                 'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                                    'required': "an integer value between 1 and 256"},
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
-                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ','').split(',')) > 1,
+                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 1,
                             'required': 'more than one, comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
@@ -62,7 +63,7 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory = None, db_paths = {}, row_ids_of_interest = [], r = run, p = progress):
+    def __init__(self, config_file_path, input_directory=None, db_paths={}, row_ids_of_interest=[], r=run, p=progress):
         self.run = r
         self.progress = p
 
@@ -174,14 +175,14 @@ class ClusteringConfiguration:
 
     def print_summary(self, r):
         r.info_single('Summary of the config file:', mc='green', nl_before=2)
-        r.warning('', header = 'General')
+        r.warning('', header='General')
         r.info('Input directory', self.input_directory)
         r.info('Number of components', self.num_components)
         r.info('Seed', self.seed)
         r.info('Output file', self.output_file_name)
         for alias in self.matrices:
             m = self.matrices_dict[alias]
-            r.warning('', header = '%s (%s) %s' % (alias, m['alias'], '[MASTER]' if alias == self.master else ''))
+            r.warning('', header='%s (%s) %s' % (alias, m['alias'], '[MASTER]' if alias == self.master else ''))
             r.info('Ratio', m['ratio'])
             r.info('Normalize', m['normalize'])
             r.info('Log', m['log'])
@@ -262,7 +263,7 @@ class ClusteringConfiguration:
                 if not os.path.exists(database_path):
                     raise ConfigError, 'The database you requested (%s) is not in the input directory :/' % database
 
-                dbc = db.DB(database_path, None, ignore_version = True)
+                dbc = db.DB(database_path, None, ignore_version=True)
 
                 if not table in dbc.get_table_names():
                     raise ConfigError, 'The table you requested (%s) does not seem to be in %s :/' % (table, database)
@@ -280,7 +281,7 @@ class ClusteringConfiguration:
                 tmp_file_path = filesnpaths.get_temp_file_path()
                 table_structure = dbc.get_table_structure(table)
                 columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
-                store_array(table_rows, tmp_file_path, table_structure, exclude_columns = columns_to_exclude)
+                store_array(table_rows, tmp_file_path, table_structure, exclude_columns=columns_to_exclude)
                 self.matrix_paths[alias] = tmp_file_path
 
 

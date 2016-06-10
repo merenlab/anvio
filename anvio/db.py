@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Low-level db operations.
 """
@@ -93,7 +94,7 @@ class DB:
 
     def get_meta_value(self, key):
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
-        rows =  response.fetchall()
+        rows = response.fetchall()
 
         if not rows:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
@@ -154,11 +155,11 @@ class DB:
         return [t[0] for t in response.description]
 
 
-    def get_table_as_list_of_tuples(self, table, table_structure = None):
+    def get_table_as_list_of_tuples(self, table, table_structure=None):
         return self.get_all_rows_from_table(table)
 
 
-    def get_table_as_dict(self, table, table_structure = None, string_the_key = False, columns_of_interest = None, keys_of_interest = None, omit_parent_column = False, error_if_no_data = True):
+    def get_table_as_dict(self, table, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
         if not table_structure:
             table_structure = self.get_table_structure(table)
 
@@ -211,7 +212,7 @@ class DB:
         return results_dict
 
 
-    def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data = True, string_the_key = False):
+    def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
         """This is similar to get_table_as_dict, but much less general.
         
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.

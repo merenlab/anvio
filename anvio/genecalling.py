@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Classes for gene calling.
 """
@@ -28,7 +29,7 @@ progress = terminal.Progress()
 
 
 class GeneCaller:
-    def __init__(self, fasta_file_path, gene_caller = 'prodigal', progress = progress, run = run, debug = False):
+    def __init__(self, fasta_file_path, gene_caller='prodigal', progress=progress, run=run, debug=False):
         filesnpaths.is_file_exists(fasta_file_path)
         filesnpaths.is_file_fasta_formatted(fasta_file_path)
 

@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Classes to create, access, and/or populate contigs and profile databases.
 """
@@ -7,7 +8,6 @@ import os
 import sys
 import time
 import copy
-import numpy
 import random
 import hashlib
 import datetime
@@ -15,6 +15,8 @@ import operator
 import textwrap
 from itertools import chain
 from collections import Counter
+
+import numpy
 
 import anvio
 import anvio.db as db
@@ -52,7 +54,7 @@ pp = terminal.pretty_print
 
 
 class ContigsSuperclass(object):
-    def __init__(self, args, r = run, p = progress):
+    def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
 
@@ -106,7 +108,7 @@ class ContigsSuperclass(object):
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
 
         self.progress.update('Reading contigs basic info')
-        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
+        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
 
         self.progress.update('Reading splits basic info')
         self.splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
@@ -175,7 +177,7 @@ class ContigsSuperclass(object):
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
-    def init_contig_sequences(self, min_contig_length = 0):
+    def init_contig_sequences(self, min_contig_length=0):
         self.progress.new('Loading contig sequences')
 
         self.progress.update('Identifying contigs shorter than M')
@@ -183,7 +185,7 @@ class ContigsSuperclass(object):
 
         self.progress.update('Reading contig sequences')
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
         contigs_db.disconnect()
 
         self.progress.update('Filtering out shorter contigs')
@@ -195,7 +197,7 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
-    def init_split_sequences(self, min_contig_length = 0):
+    def init_split_sequences(self, min_contig_length=0):
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
 
         self.progress.new('Computing split sequences from contigs')
@@ -225,7 +227,7 @@ class ContigsSuperclass(object):
         self.progress.end()
 
 
-    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest = None, return_each_gene_as_a_layer = False):
+    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=None, return_each_gene_as_a_layer=False):
         if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
@@ -345,7 +347,7 @@ class ContigsSuperclass(object):
         self.gene_function_calls_initiated = True
 
 
-    def search_splits_for_gene_functions(self, search_terms, verbose = False, full_report = False):
+    def search_splits_for_gene_functions(self, search_terms, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
             raise ConfigError, "Search terms must be of type 'list'"
 
@@ -385,9 +387,9 @@ class ContigsSuperclass(object):
             if len(matching_gene_caller_ids):
                 self.run.info('Matches', '%d unique gene calls contained the search term "%s"' % (len(matching_gene_caller_ids[search_term]), search_term))
                 if verbose:
-                    self.run.warning('\n'.join(matching_function_calls[search_term][0:25]), header="Matching names for '%s' (up to 25)" % search_term, raw = True, lc = 'cyan')
+                    self.run.warning('\n'.join(matching_function_calls[search_term][0:25]), header="Matching names for '%s' (up to 25)" % search_term, raw=True, lc='cyan')
             else:
-                self.run.info('Matches', 'No matches found the search term "%s"' % (search_term), mc = 'red')
+                self.run.info('Matches', 'No matches found the search term "%s"' % (search_term), mc='red')
 
         contigs_db.disconnect()
         self.progress.end()
@@ -419,7 +421,7 @@ class ContigsSuperclass(object):
         start, stop = gene_call['start'], gene_call['stop']
 
         gene_length = stop - start
-        num_codons_in_gene =  int(gene_length / 3)
+        num_codons_in_gene = int(gene_length / 3)
 
         if gene_call['direction'] == 'r':
             corresponding_codon_order_in_gene = num_codons_in_gene - int((pos_in_contig - start) / 3) - 1
@@ -435,7 +437,7 @@ class ContigsSuperclass(object):
         return self.contig_name_to_genes[contig_name]
 
 
-    def get_AA_counts_dict(self, split_names = set([]), contig_names = set([]), gene_caller_ids = set([])):
+    def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([])):
         """Returns a dictionary of AA counts.
 
            The dict can be returned for a given collection of split names, contigs names,
@@ -506,7 +508,7 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary = True):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True):
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError, "Gene caller's ids must be of type 'list'"
 
@@ -549,7 +551,7 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list = [], output_file_path = None, wrap = 120):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120):
         if not output_file_path:
             raise ConfigError, "gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
                                 Anvi'o does not know how you managed to come here, but please go back and come again."
@@ -580,7 +582,7 @@ class ContigsSuperclass(object):
             sequence = entry['sequence']
 
             if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens = False)
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
             output.write('>%s\n' % header)
             output.write('%s\n' % sequence)
@@ -592,7 +594,7 @@ class ContigsSuperclass(object):
 
 
 class ProfileSuperclass(object):
-    def __init__(self, args, r = run, p = progress):
+    def __init__(self, args, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
@@ -665,7 +667,7 @@ class ProfileSuperclass(object):
             # genes were not identified/annotated
             return
 
-        profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
+        profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         self.progress.new('Reading gene coverages table')
         self.progress.update('...')
@@ -696,14 +698,14 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_variability_information_for_split(self, split_name, return_outliers = False, return_raw_results = False):
+    def get_variability_information_for_split(self, split_name, return_outliers=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError, "get_variability_information_for_split: The split name '%s' does not seem to be\
                                 represented in this profile database. Are you sure you are looking for it\
                                 in the right database?" % split_name
 
         profile_db = ProfileDatabase(self.profile_db_path)
-        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data = False).values()
+        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values()
         profile_db.disconnect()
 
         if return_raw_results:
@@ -726,7 +728,7 @@ class ProfileSuperclass(object):
 
 
     def init_collection_profile(self, collection):
-        profile_db = ProfileDatabase(self.profile_db_path, quiet = True)
+        profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         table_names = [] if self.p_meta['blank'] else [table_name for table_name in t.atomic_data_table_structure[1:-1]]
 
@@ -739,9 +741,9 @@ class ProfileSuperclass(object):
         # is called, there is no other way really. and calling init_split_sequences() before this is also not feasible. so, here
         # we are.
         if self.p_meta['merged']:
-            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column = True)
+            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
         else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest = "mean_coverage", omit_parent_column = True))
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest="mean_coverage", omit_parent_column=True))
 
         self.split_names_not_binned = set(coverage_table_data.keys())
 
@@ -751,9 +753,9 @@ class ProfileSuperclass(object):
 
         for table_name in table_names:
             if self.p_meta['merged']:
-                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column = True)
+                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
             else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest = table_name, omit_parent_column = True))
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=table_name, omit_parent_column=True))
 
             for bin_id in collection:
                 # populate averages per bin
@@ -792,7 +794,7 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
 
-    def load_views(self, splits_of_interest = None):
+    def load_views(self, splits_of_interest=None):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
@@ -801,14 +803,14 @@ class ProfileSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest = splits_of_interest)}
+                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
 
         profile_db.disconnect()
 
 
 class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
     """Essential data to load for a given run"""
-    def __init__(self, args, r = run, p = progress):
+    def __init__(self, args, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
@@ -835,7 +837,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
 
 class ProfileDatabase:
     """To create an empty profile database and/or access one."""
-    def __init__(self, db_path, run=run, progress=progress, quiet = True):
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
         self.db = None
         self.db_path = db_path
 
@@ -861,13 +863,13 @@ class ProfileDatabase:
 
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
-            self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
-            self.run.info('Samples', self.meta['samples'], quiet = self.quiet)
+            self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+            self.run.info('Samples', self.meta['samples'], quiet=self.quiet)
         else:
             self.db = None
 
 
-    def create(self, meta_values = {}):
+    def create(self, meta_values={}):
         if os.path.exists(self.db_path):
             raise ConfigError, "anvio will not overwrite an existing profile database. Please choose a different name\
                                 or remove the existing database ('%s') first." % (self.db_path)
@@ -877,7 +879,7 @@ class ProfileDatabase:
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
-        self.db = db.DB(self.db_path, anvio.__profile__version__, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -898,7 +900,7 @@ class ProfileDatabase:
 
         self.disconnect()
 
-        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):
@@ -907,7 +909,7 @@ class ProfileDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
-    def __init__(self, db_path, run=run, progress=progress, quiet = True, skip_init = False):
+    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path
 
@@ -936,11 +938,11 @@ class ContigsDatabase:
                                     that generates the database ends prematurely. Most probably, you will need to generate\
                                     the contigs database from scratch. Sorry!" % (self.db_path)
 
-            self.run.info('Contigs database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
-            self.run.info('Number of contigs', self.meta['num_contigs'], quiet = self.quiet)
-            self.run.info('Number of splits', self.meta['num_splits'], quiet = self.quiet)
-            self.run.info('Total number of nucleotides', self.meta['total_length'], quiet = self.quiet)
-            self.run.info('Split length', self.meta['split_length'], quiet = self.quiet)
+            self.run.info('Contigs database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+            self.run.info('Number of contigs', self.meta['num_contigs'], quiet=self.quiet)
+            self.run.info('Number of splits', self.meta['num_splits'], quiet=self.quiet)
+            self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
+            self.run.info('Split length', self.meta['split_length'], quiet=self.quiet)
         else:
             self.db = None
 
@@ -971,7 +973,7 @@ class ContigsDatabase:
         defline = fasta.id
         fasta.close()
 
-        if not utils.check_contig_names(defline, dont_raise = True):
+        if not utils.check_contig_names(defline, dont_raise=True):
             raise ConfigError, "The FASTA file you provided does not comply with the 'simple deflines' requirement of\
                                 anvi'o. Please read this section in the tutorial to understand the reason behind this\
                                 requirement (anvi'o is very upset for making you do this): %s" \
@@ -1018,7 +1020,7 @@ class ContigsDatabase:
         if skip_gene_calling:
             skip_mindful_splitting = True
 
-        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
 
         # creating empty default tables
         self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
@@ -1053,7 +1055,7 @@ class ContigsDatabase:
             # temporarily disconnect to perform gene calls
             self.db.disconnect()
 
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug = debug)
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:
@@ -1084,7 +1086,7 @@ class ContigsDatabase:
         # create an instance from AuxiliaryDataForNtPositions to store information
         # about each nt position while looping over contigs
         auxiliary_contigs_data_path = ''.join(self.db_path[:-3]) + '.h5'
-        nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new = True)
+        nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
 
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
@@ -1127,7 +1129,7 @@ class ContigsDatabase:
                 # holds kmer values for splits only. in one table, each split has a kmer value of their
                 # contigs (to not lose the genomic context while clustering based on kmers), in the other
                 # one each split holds its own kmer value.
-                contigs_kmer_table.append(split_name, contig_sequence[start:end], kmer_freq = contig_kmer_freq)
+                contigs_kmer_table.append(split_name, contig_sequence[start:end], kmer_freq=contig_kmer_freq)
                 splits_kmer_table.append(split_name, contig_sequence[start:end])
 
                 splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
@@ -1158,16 +1160,16 @@ class ContigsDatabase:
         if not skip_gene_calling:
             gene_calls_tables.populate_genes_in_splits_tables()
 
-        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet = self.quiet)
-        self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet = self.quiet)
-        self.run.info('Number of splits', splits_info_table.total_splits, quiet = self.quiet)
-        self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet = self.quiet)
-        self.run.info('Gene calling step skipped', skip_gene_calling, quiet = self.quiet)
-        self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet = self.quiet)
-        self.run.info('Desired split length (what the user wanted)', split_length, quiet = self.quiet)
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet=self.quiet)
+        self.run.info('Number of splits', splits_info_table.total_splits, quiet=self.quiet)
+        self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet=self.quiet)
+        self.run.info('Gene calling step skipped', skip_gene_calling, quiet=self.quiet)
+        self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet=self.quiet)
+        self.run.info('Desired split length (what the user wanted)', split_length, quiet=self.quiet)
         self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
                                                                         if recovered_split_lengths \
-                                                                            else "(Anvi'o did not create any splits)", quiet = self.quiet)
+                                                                            else "(Anvi'o did not create any splits)", quiet=self.quiet)
 
 
     def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
@@ -1232,7 +1234,7 @@ class SamplesInformationDatabase:
        how should samples be organized in the interactive interface, or what environmental
        data available about them?
     """
-    def __init__(self, db_path, run=run, progress=progress, quiet = True):
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
         self.db = None
         self.db_path = db_path
 
@@ -1259,7 +1261,7 @@ class SamplesInformationDatabase:
                                                 if self.meta['sample_names_for_order'] else self.samples
             self.samples_information_default_layer_order = self.meta['samples_information_default_layer_order'].split(',')
 
-            self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet = self.quiet)
+            self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
         else:
             self.db = None
 
@@ -1268,10 +1270,10 @@ class SamplesInformationDatabase:
         if not self.db:
             raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
 
-        samples = samplesops.SamplesInformation(run = self.run, progress = self.progress, quiet = self.quiet)
+        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
 
-        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data = False),
-                                                                            self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data = False))
+        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data=False),
+                                                                            self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data=False))
         samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
 
         return samples_information_dict, samples_order_dict
@@ -1284,7 +1286,7 @@ class SamplesInformationDatabase:
         return self.samples_information_default_layer_order
 
 
-    def create(self, samples_information_path = None, samples_order_path = None):
+    def create(self, samples_information_path=None, samples_order_path=None):
         if not samples_information_path and not samples_order_path:
             raise ConfigError, "You must declare at least one of the input files to create a samples information\
                                 database. Neither samples information, nor samples order file has been passed to\
@@ -1294,7 +1296,7 @@ class SamplesInformationDatabase:
             raise ConfigError, "Anvi'o will not overwrite an existing samples information database. Please choose a\
                                 different name or remove the existing database ('%s') first." % (self.db_path)
 
-        samples = samplesops.SamplesInformation(run = self.run, progress = self.progress, quiet = self.quiet)
+        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
         samples.populate_from_input_files(samples_information_path, samples_order_path)
 
         if not self.db_path.lower().endswith('.db'):
@@ -1302,7 +1304,7 @@ class SamplesInformationDatabase:
                                 for imposing their views on how local databases should be named, and are humbled by your\
                                 cooperation."
 
-        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database = True)
+        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
 
         # know thyself
         self.db.set_meta_value('db_type', 'samples_information')
@@ -1337,9 +1339,9 @@ class SamplesInformationDatabase:
 
         self.disconnect()
 
-        self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet = self.quiet)
-        self.run.info('Number of samples', len(samples.sample_names), quiet = self.quiet)
-        self.run.info('Number of organizations', len(available_orders), quiet = self.quiet)
+        self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
+        self.run.info('Number of organizations', len(available_orders), quiet=self.quiet)
 
     def disconnect(self):
         self.db.disconnect()
@@ -1360,7 +1362,7 @@ class InfoTableForContigs:
         self.split_length = split_length
 
 
-    def append(self, seq_id, sequence, gene_start_stops = None):
+    def append(self, seq_id, sequence, gene_start_stops=None):
         sequence_length = len(sequence)
         gc_content = utils.get_GC_content_for_sequence(sequence)
 
@@ -1401,7 +1403,7 @@ class InfoTableForSplits:
 
 
 class KMerTablesForContigsAndSplits:
-    def __init__(self, table_name, k = 4):
+    def __init__(self, table_name, k=4):
         self.table_name = table_name
         self.kmers_class = kmers.KMers(k)
         self.kmers = sorted(list(self.kmers_class.kmers[k]))
@@ -1414,12 +1416,12 @@ class KMerTablesForContigsAndSplits:
 
 
     def get_kmer_freq(self, sequence):
-        return self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe = True)
+        return self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
 
 
-    def append(self, seq_id, sequence, kmer_freq = None):
+    def append(self, seq_id, sequence, kmer_freq=None):
         if not kmer_freq:
-            kmer_freq = self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe = True)
+            kmer_freq = self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
 
         db_entry = tuple([seq_id] + [kmer_freq[kmer] for kmer in self.kmers])
         self.db_entries.append(db_entry)
@@ -1480,7 +1482,7 @@ class TableForVariability(Table):
 
 
 class AA_counts(ContigsSuperclass):
-    def __init__(self, args, run = run, progress = progress):
+    def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
@@ -1562,7 +1564,7 @@ class AA_counts(ContigsSuperclass):
             split_name_per_bin_dict[e['bin_name']].add(e['split'])
         
         for bin_name in bin_names_of_interest:
-            self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names = set(split_name_per_bin_dict[bin_name]))['AA_counts']
+            self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names=set(split_name_per_bin_dict[bin_name]))['AA_counts']
 
 
     def __AA_counts_for_contigs(self):
@@ -1576,7 +1578,7 @@ class AA_counts(ContigsSuperclass):
                                 database :("
 
         for contig_name in contigs_of_interest:
-            self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names = set([contig_name]))['AA_counts']
+            self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names=set([contig_name]))['AA_counts']
 
 
     def __AA_counts_for_genes(self):
@@ -1589,7 +1591,7 @@ class AA_counts(ContigsSuperclass):
                                 call ids (I tried to int them, and it didn't work!)"
 
         for gene_call in genes_of_interest:
-            self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids = set([gene_call]))['AA_counts']
+            self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids=set([gene_call]))['AA_counts']
 
 
     def __AA_counts_for_the_contigs_db(self):
@@ -1674,7 +1676,7 @@ class TableForGeneCoverages(Table):
 
 
 class TablesForGeneCalls(Table):
-    def __init__(self, db_path, contigs_fasta = None, run=run, progress=progress, debug = False):
+    def __init__(self, db_path, contigs_fasta=None, run=run, progress=progress, debug=False):
         self.db_path = db_path
         self.contigs_fasta = contigs_fasta
         self.debug = debug
@@ -1712,15 +1714,15 @@ class TablesForGeneCalls(Table):
 
 
     def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path):
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple = True)
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
 
         self.set_next_available_id(t.genes_in_contigs_table_name)
 
         # take care of gene calls dict
         gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
-                                                                     expected_fields = t.genes_in_contigs_table_structure,
-                                                                     only_expected_fields = True,
-                                                                     column_mapping = [int, str, int, int, str, int, str, str])
+                                                                     expected_fields=t.genes_in_contigs_table_structure,
+                                                                     only_expected_fields=True,
+                                                                     column_mapping=[int, str, int, int, str, int, str, str])
 
         # recover protein sequences. during this operation we are going to have to read all contig sequences
         # into the damn memory. anvi'o is doing a pretty bad job with memory management :(
@@ -1753,8 +1755,8 @@ class TablesForGeneCalls(Table):
         self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
 
 
-    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller = 'prodigal'):
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple = True)
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
 
         self.set_next_available_id(t.genes_in_contigs_table_name)
 
@@ -1775,7 +1777,7 @@ class TablesForGeneCalls(Table):
         self.gene_calls_dict_id_to_db_unique_id = dict([(entry_id, self.next_id(t.genes_in_contigs_table_name)) for entry_id in gene_calls_dict])
 
 
-    def run_gene_caller(self, gene_caller = 'prodigal'):
+    def run_gene_caller(self, gene_caller='prodigal'):
         """Runs gene caller, and returns gene_calls_dict, and protein sequences."""
         remove_fasta_after_processing = False
 
@@ -1785,9 +1787,9 @@ class TablesForGeneCalls(Table):
 
         if self.debug:
             self.run.info_single('--debug flag is [ON], which means temporary directories generated by\
-                                 this run will not be removed', nl_after = 2)
+                                 this run will not be removed', nl_after=2)
 
-        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller = gene_caller, debug = self.debug)
+        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, debug=self.debug)
 
         gene_calls_dict, protein_sequences = gene_caller.process()
 
@@ -1888,7 +1890,7 @@ class TablesForGeneCalls(Table):
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use = 1, run=run, progress=progress):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
 
@@ -1910,7 +1912,7 @@ class TablesForHMMHits(Table):
         self.set_next_available_id(t.hmm_hits_splits_table_name)
 
 
-    def populate_search_tables(self, sources = {}, protein_sequences_fasta = None):
+    def populate_search_tables(self, sources={}, protein_sequences_fasta=None):
         # if we end up generating a temporary file for protein sequences:
         remove_fasta_file_upon_finish = False
 
@@ -1926,7 +1928,7 @@ class TablesForHMMHits(Table):
             protein_sequences_fasta = self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name)
             remove_fasta_file_upon_finish = True
 
-        commander = HMMer(protein_sequences_fasta, num_threads_to_use = self.num_threads_to_use)
+        commander = HMMer(protein_sequences_fasta, num_threads_to_use=self.num_threads_to_use)
 
         for source in sources:
             kind_of_search = sources[source]['kind']
@@ -2048,7 +2050,7 @@ class TablesForCollections(Table):
         self.set_next_available_id(t.collections_splits_table_name)
 
 
-    def append(self, collection_name, collection_dict, bins_info_dict = None):
+    def append(self, collection_name, collection_dict, bins_info_dict=None):
         if not len(collection_name):
             raise ConfigError, 'Collection name cannot be empty.'
 
@@ -2178,7 +2180,7 @@ class TablesForStates(Table):
         return self.states[state_id]
 
 
-    def store_state(self, state_id, content, last_modified = None):
+    def store_state(self, state_id, content, last_modified=None):
         self.remove_state(state_id)
 
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
@@ -2416,7 +2418,7 @@ def is_samples_db(db_path):
 
 def get_db_type(db_path):
     try:
-        database = db.DB(db_path, None, ignore_version = True)
+        database = db.DB(db_path, None, ignore_version=True)
     except:
         raise ConfigError, 'Are you sure "%s" is a database file? Because, you know, probably\
                             it is not at all..' % db_path
@@ -2456,7 +2458,7 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     return True
 
 
-def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, manual_mode_exception = False):
+def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, manual_mode_exception=False):
     """Check whether every sample name in the profile database is represented in the samples information database"""
     is_profile_db(profile_db_path)
     is_samples_db(samples_db_path)
@@ -2527,7 +2529,7 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
-def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering_newick, make_default = False, run = run):
+def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering_newick, make_default=False, run=run):
     is_profile_db(profile_db_path)
     utils.is_this_name_OK_for_database('clustering_id', clustering_id)
 

@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Classes for HMM related operations.
 
@@ -23,7 +24,7 @@ progress = terminal.Progress()
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources = set([]), run = run, progress = progress):
+    def __init__(self, contigs_db_path, sources=set([]), run=run, progress=progress):
         if type(sources) != type(set([])):
             raise ConfigError, "'sources' variable has to be a set instance."
 
@@ -34,7 +35,7 @@ class SequencesForHMMHits:
         self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+        self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
         self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
 
@@ -156,7 +157,7 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap = 120):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120):
         filesnpaths.is_output_file_writable(output_file_path)
 
         if type(wrap) != int:
@@ -168,7 +169,7 @@ class SequencesForHMMHits:
             header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
 
             if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens = False)
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
             f.write('>%s\n' % header)
             f.write('%s\n' % sequence)

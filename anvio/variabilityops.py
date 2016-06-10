@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Classes to make sense of single nucleotide variation"""
 
@@ -34,11 +35,11 @@ __email__ = "a.murat.eren@gmail.com"
 
 pp = terminal.pretty_print
 progress = terminal.Progress()
-run = terminal.Run(width = 62)
+run = terminal.Run(width=62)
 
 
 class VariabilitySuper(object):
-    def __init__(self, args = {}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
         self.data = {} 
@@ -77,7 +78,7 @@ class VariabilitySuper(object):
             raise ConfigError, "The superclass is inherited with an unknown engine. Anvi'o needs an adult :("
 
         # Initialize the contigs super
-        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
+        dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
         self.init_contig_sequences()
 
 
@@ -90,14 +91,14 @@ class VariabilitySuper(object):
 
         self.progress.update('Checking the samples of interest ..')
         if self.samples_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields = 1)
+            filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields=1)
             self.samples_of_interest = set([s.strip() for s in open(self.samples_of_interest_path).readlines()])
         else:
             self.samples_of_interest = set([])
 
         self.progress.update('Any genes of interest?')
         if self.genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields = 1)
+            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
             try:
                 self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
             except ValueError:
@@ -133,7 +134,7 @@ class VariabilitySuper(object):
             if not os.path.exists(auxiliary_data_file_path):
                 raise ConfigError, "Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path
-            self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash = True)
+            self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
 
         self.progress.update('Attempting to get our splits of interest sorted ..')
@@ -224,7 +225,7 @@ class VariabilitySuper(object):
         self.run.info('Remaining entries after "%s" filter' % filter_name,
                       '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
                                                           pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc = 'green')
+                      mc='green')
 
         self.check_if_data_is_empty()
 
@@ -362,7 +363,7 @@ class VariabilitySuper(object):
         self.progress.end()
 
 
-    def insert_additional_fields(self, keys = []):
+    def insert_additional_fields(self, keys=[]):
         if not len(keys):
             keys = self.data.keys()
 
@@ -370,10 +371,10 @@ class VariabilitySuper(object):
             e = self.data[key]
 
             if self.engine == 'NT':
-                freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse = True)
+                freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
             elif self.engine == 'AA':
                 aas = set(codon_to_AA.values())
-                freqs_list = sorted([(e[aa], aa) for aa in aas], reverse = True)
+                freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
 
             frequency_of_consensus = freqs_list[0][0]
 
@@ -431,7 +432,7 @@ class VariabilitySuper(object):
         self.run.info('Remaining entries after "minimum scatter" filter',
                       '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
                                                           pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc = 'green')
+                      mc='green')
 
         self.check_if_data_is_empty()
 
@@ -474,7 +475,7 @@ class VariabilitySuper(object):
         self.run.info('Remaining entries after "minimum cov in all samples" filter',
                       '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
                                                           pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc = 'green')
+                      mc='green')
 
         self.check_if_data_is_empty()
 
@@ -523,7 +524,7 @@ class VariabilitySuper(object):
         self.run.info('Remaining entries after num positions filter',
                       '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
                                                           pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc = 'green')
+                      mc='green')
 
         self.check_if_data_is_empty()
 
@@ -576,14 +577,14 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
        given position. The default entry to this class is the `anvi-gen-variability-profile`
        program."""
 
-    def __init__(self, args = {}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run):
         self.run = r
         self.progress = p
 
         self.engine = 'NT'
 
         # Init Meta
-        VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -686,14 +687,14 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
 
 class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
-    def __init__(self, args = {}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run):
         self.run = r
         self.progress = p
 
         self.engine = 'AA'
 
         # Init Meta
-        VariabilitySuper.__init__(self, args = args, r = self.run, p = self.progress)
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
 
 
     def recover_base_frequencies_for_all_samples(self):
@@ -816,7 +817,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
 
 class VariabilityNetwork:
-    def __init__(self, args = {}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
         self.run = r
@@ -877,7 +878,7 @@ class VariabilityNetwork:
 
         if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
             self.unique_variable_nt_positions = set(random.sample(self.unique_variable_nt_positions, self.max_num_unique_positions))
-            self.run.info('unique_variable_nt_positions', 'Unique positions are subsampled to %d' % self.max_num_unique_positions, mc = 'red')
+            self.run.info('unique_variable_nt_positions', 'Unique positions are subsampled to %d' % self.max_num_unique_positions, mc='red')
 
         self.progress.new('Samples dict')
         self.progress.update('Creating an empty one ...')
@@ -897,7 +898,7 @@ class VariabilityNetwork:
 
 
         self.progress.update('Generating the network file')
-        utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict = self.samples_information_dict)
+        utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)

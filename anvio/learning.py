@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """A simple module with classes for learning operations"""
 
 import cPickle
@@ -27,7 +28,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class RF:
-    def __init__(self, classifier_object_path = "rf.classifier", r = run, p = progress):
+    def __init__(self, classifier_object_path="rf.classifier", r=run, p=progress):
         self.run = r
         self.progress = p
         self.classifier_object_path = classifier_object_path
@@ -38,7 +39,7 @@ class RF:
         self.classes = None
 
 
-    def train(self, features, data, labels, n_trees = 64):
+    def train(self, features, data, labels, n_trees=64):
         self.run.info('RF Train', "%d observations with %d features grouped into %d classes." % (len(data), len(features), len(set(labels))))
         filesnpaths.is_output_file_writable(self.classifier_object_path)
 
@@ -53,7 +54,7 @@ class RF:
 
     def predict_from_TAB_delimited_file(self, file_path):
         cols = utils.get_columns_of_TAB_delim_file(file_path)
-        return self.predict(utils.get_TAB_delimited_file_as_dictionary(file_path, column_mapping = [str] + [float] * len(cols)))
+        return self.predict(utils.get_TAB_delimited_file_as_dictionary(file_path, column_mapping=[str] + [float] * len(cols)))
 
     def predict(self, data_dict):
         if not self.classifier_initialized:

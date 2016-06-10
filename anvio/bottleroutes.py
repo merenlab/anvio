@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Common routes for bottle web server.
 
@@ -84,7 +85,7 @@ def completeness(d, request):
     return json.dumps({'stats': completeness_stats, 'refs': d.completeness.http_refs})
 
 
-def charts(d, split_name, show_outlier_SNVs = False):
+def charts(d, split_name, show_outlier_SNVs=False):
     data = {'layers': [],
              'index': None,
              'total': None,
@@ -119,7 +120,7 @@ def charts(d, split_name, show_outlier_SNVs = False):
     ## get the variability information dict for split:
     progress.new('Variability')
     progress.update('Collecting info for "%s"' % split_name)
-    split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers = show_outlier_SNVs)
+    split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers=show_outlier_SNVs)
 
     for layer in layers:
         progress.update('Formatting variability data: "%s"' % layer)
@@ -194,7 +195,7 @@ def store_collections_dict(args, d, request, response):
             return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
     run.info_single('A request to store %d bins that describe %d splits under the collection id "%s"\
-                     has been made.' % (len(data), num_splits, source), cut_after = None)
+                     has been made.' % (len(data), num_splits, source), cut_after=None)
 
     bins_info_dict = {}
     for bin_name in data:
@@ -249,7 +250,7 @@ def gen_summary(args, d, request, response, collection_name):
     summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
 
     try:
-        summary = summarizer.Summarizer(summarizer_args, r = run, p = progress)
+        summary = summarizer.Summarizer(summarizer_args, r=run, p=progress)
         summary.process()
     except Exception as e:
         return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
@@ -277,13 +278,13 @@ def get_collection_dict(args, d, request, response, collection_name):
     for bin_name in bins_info_dict:
         colors_dict[bin_name] = bins_info_dict[bin_name]['html_color']
 
-    return json.dumps({'data'  : collection_dict,
+    return json.dumps({'data': collection_dict,
                        'colors': colors_dict})
 
 
 def get_collections(args, d, request, response):
     csd = d.collections.collections_dict
-    run.info_single('Collection sources has been requested (info dict with %d item(s) has been returned).' % len(csd), cut_after = None)
+    run.info_single('Collection sources has been requested (info dict with %d item(s) has been returned).' % len(csd), cut_after=None)
     set_default_headers(response)
     return json.dumps(csd)
 
@@ -345,7 +346,7 @@ def get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name):
     if not gene_sequences:
         return json.dumps({'error': "Sorry. It seems %s does not have a hit for %s." % (bin_name, gene_name)})
 
-    unique_id_for_longest_hit = sorted([(gene_sequences[gene_id]['length'], gene_id) for gene_id in gene_sequences], reverse = True)[0][1]
+    unique_id_for_longest_hit = sorted([(gene_sequences[gene_id]['length'], gene_id) for gene_id in gene_sequences], reverse=True)[0][1]
 
     header, sequence = d.hmm_access.get_FASTA_header_and_sequence_for_gene_unique_id(gene_sequences, unique_id_for_longest_hit)
 

@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, protein_sequences_fasta, num_threads_to_use = 1, progress = progress, run = run):
+    def __init__(self, protein_sequences_fasta, num_threads_to_use=1, progress=progress, run=run):
         self.num_threads_to_use = num_threads_to_use
         self.progress = progress
         self.run = run
@@ -45,8 +45,8 @@ class HMMer:
         self.tmp_dirs = []
 
 
-    def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag = "--cut_ga"):
-        self.run.warning('', header = 'HMM Profiling for %s' % source, lc = 'green')
+    def run_hmmscan(self, source, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+        self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))

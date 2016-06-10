@@ -25,7 +25,7 @@ pp = terminal.pretty_print
 
 
 class MCL:
-    def __init__(self, mcl_input_file_path, run = run, progress = progress, num_threads = 1):
+    def __init__(self, mcl_input_file_path, run=run, progress=progress, num_threads=1):
         self.run = run
         self.progress = progress
 
@@ -41,7 +41,7 @@ class MCL:
             self.run.log_file_path = 'mcl-log-file.txt'
 
 
-    def check_output(self, expected_output, process = 'diamond'):
+    def check_output(self, expected_output, process='diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with MCL's '%s' since one of the expected output files are missing.\
@@ -75,7 +75,7 @@ class MCL:
                                                                          self.num_threads,
                                                                          self.run.log_file_path))
 
-        self.run.info('mcl cmd', cmd_line, quiet = True)
+        self.run.info('mcl cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 

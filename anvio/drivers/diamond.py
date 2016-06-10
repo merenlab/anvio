@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class Diamond:
-    def __init__(self, query_fasta, run = run, progress = progress, num_threads = 1, overwrite_output_destinations = False):
+    def __init__(self, query_fasta, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -78,7 +78,7 @@ class Diamond:
         return self.tabular_output_path
 
 
-    def check_output(self, expected_output, process = 'diamond'):
+    def check_output(self, expected_output, process='diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
@@ -93,7 +93,7 @@ class Diamond:
                                                                          self.num_threads,
                                                                          self.run.log_file_path))
 
-        self.run.info('diamond makedb cmd', cmd_line, quiet = True)
+        self.run.info('diamond makedb cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 
@@ -118,7 +118,7 @@ class Diamond:
                                                                                    '--sensitive' if self.sensitive else '',
                                                                                    self.run.log_file_path))
 
-        self.run.info('diamond blastp cmd', cmd_line, quiet = True)
+        self.run.info('diamond blastp cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 
@@ -138,14 +138,14 @@ class Diamond:
                                                                      self.num_threads,
                                                                      self.run.log_file_path))
 
-        self.run.info('diamond view cmd', cmd_line, quiet = True)
+        self.run.info('diamond view cmd', cmd_line, quiet=True)
 
         utils.run_command(cmd_line)
 
         self.check_output(self.tabular_output_path, 'view')
 
         if self.names_dict:
-            self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output', quiet = True)
+            self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output', quiet=True)
             self.progress.update('Un-uniqueing the tabular output ...')
             # if we are here, this means the self.tabular_output_path contains information only about unique
             # entries. We will expand it here so downstream analyses do not need to pay attention to this

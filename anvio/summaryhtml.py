@@ -1,4 +1,5 @@
 # coding: utf-8
+# pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os
@@ -66,13 +67,13 @@ progress = terminal.Progress()
 
 
 class SummaryHTMLOutput:
-    def __init__(self, summary_dict = {}, r = run, p = progress):
+    def __init__(self, summary_dict={}, r=run, p=progress):
         self.run = r
         self.progress = p
         self.summary_dict = summary_dict
 
 
-    def generate(self, quick = False):
+    def generate(self, quick=False):
         self.progress.new('Copying static files')
         self.copy_files()
 
@@ -90,7 +91,7 @@ class SummaryHTMLOutput:
         self.progress.end()
 
 
-    def render(self, quick = False):
+    def render(self, quick=False):
         self.progress.update('Processing the template ...')
 
         if quick:

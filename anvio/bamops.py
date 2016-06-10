@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """LinkMer reporting classes.
 
    The default client is `anvi-report-linkmers`"""
@@ -39,11 +40,11 @@ __status__ = "Development"
 
 
 class AAFrequencies:
-    def __init__(self, run = run):
+    def __init__(self, run=run):
         self.run = run
 
 
-    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile = None):
+    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile=None):
         if gene_call['partial']:
             return None
 
@@ -72,7 +73,7 @@ class AAFrequencies:
                 continue
 
             linkmers.data = []
-            linkmers.append(bam_file_object, 'sample_id', None, contig_name, nt_positions, only_complete_links = True)
+            linkmers.append(bam_file_object, 'sample_id', None, contig_name, nt_positions, only_complete_links=True)
             data = linkmers.data[0][2]
 
             hash_to_oligotype = {}
@@ -142,7 +143,7 @@ class LinkMerDatum:
 
 
 class LinkMersData:
-    def __init__(self, run = run, progress = progress, quiet = False):
+    def __init__(self, run=run, progress=progress, quiet=False):
         self.data = []
         self.quiet = quiet
 
@@ -150,11 +151,11 @@ class LinkMersData:
         self.progress = progress
 
 
-    def append(self, bam_file_object, sample_id, request_id, contig_name, positions, only_complete_links = False):
+    def append(self, bam_file_object, sample_id, request_id, contig_name, positions, only_complete_links=False):
         data = []
 
         if not self.quiet:
-            self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
+            self.run.warning('', header="Working on '%s'" % sample_id, lc='cyan')
 
             self.progress.new('Processing "%s" in "%s"' % (contig_name, sample_id))
             self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
@@ -193,7 +194,7 @@ class LinkMersData:
             read_unique_ids_to_keep = set([read_unique_id for read_unique_id in num_hits_dict if num_hits_dict[read_unique_id] == num_positions])
 
             if not self.quiet:
-                self.run.info('data', '%s unique reads that covered all positions were kept' % (len(read_unique_ids_to_keep)), mc = 'red')
+                self.run.info('data', '%s unique reads that covered all positions were kept' % (len(read_unique_ids_to_keep)), mc='red')
 
             self.data.append((contig_name, positions, [d for d in data if d.read_unique_id in read_unique_ids_to_keep]))
         else:
@@ -201,7 +202,7 @@ class LinkMersData:
 
 
 class BAMFileObject:
-    def __init__(self, input_bam_path, run = run, progress = progress):
+    def __init__(self, input_bam_path, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -229,7 +230,7 @@ class LinkMers:
        report bases in reads that contribute to positions of interest following Chris Quince's
        suggestion. Each read is reported with a unique ID, therefore linkage informaiton can
        be followed."""
-    def __init__(self, args = None):
+    def __init__(self, args=None):
         self.args = args
         self.input_file_paths = []
         self.contig_and_position_requests_list = []
@@ -253,7 +254,7 @@ class LinkMers:
                 sys.exit()
 
             filesnpaths.is_file_exists(args.contigs_and_positions)
-            filesnpaths.is_file_tab_delimited(args.contigs_and_positions, expected_number_of_fields = 2)
+            filesnpaths.is_file_tab_delimited(args.contigs_and_positions, expected_number_of_fields=2)
 
             request_id = 0
             f = open(args.contigs_and_positions)
@@ -325,7 +326,7 @@ class LinkMers:
 
         bam_file_object.close()
 
-        for tpl in sorted(zip(contig_lengths, contig_names), reverse = True):
+        for tpl in sorted(zip(contig_lengths, contig_names), reverse=True):
             print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
 
@@ -339,7 +340,7 @@ class GetReadsFromBAM:
        access short reads in one or more BAM iles mapping to those contigs
        (expanded in #173)."""
 
-    def __init__(self, args = None, run = terminal.Run(), progress = terminal.Progress()):
+    def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
 
@@ -478,7 +479,7 @@ class GetReadsFromBAM:
 
 class ReadsMappingToARange:
     """Returns all reads from BAM that maps to a range in a contig"""
-    def __init__(self, run = run, progress = progress):
+    def __init__(self, run=run, progress=progress):
         self.data = []
 
         self.run = run
@@ -495,7 +496,7 @@ class ReadsMappingToARange:
 
             sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
 
-            self.run.warning('', header = "Working on '%s'" % sample_id, lc = 'cyan')
+            self.run.warning('', header="Working on '%s'" % sample_id, lc='cyan')
 
             self.run.info('input_bam_path', input_bam_path)
             self.run.info('sample_id', sample_id)

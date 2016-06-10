@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Implements the collections class (the file name has an extra 'c' to avoid
 masking the standard collections library).
@@ -36,7 +37,7 @@ progress = terminal.Progress()
 
 
 class Collections:
-    def __init__(self, r = run, p = progress):
+    def __init__(self, r=run, p=progress):
         self.collections_dict = {}
         self.run = r
         self.progress = p
@@ -118,14 +119,14 @@ class Collections:
 
 
     def list_collections(self):
-        self.run.warning('', 'COLLECTIONS FOUND', lc = 'yellow')
+        self.run.warning('', 'COLLECTIONS FOUND', lc='yellow')
         for collection_name in self.collections_dict:
             c = self.collections_dict[collection_name]
             output = '%s (%d bins, representing %d splits).' % (collection_name, c['num_bins'], c['num_splits'])
             self.run.info_single(output)
 
 
-    def export_collection(self, collection_name, output_file_prefix = None):
+    def export_collection(self, collection_name, output_file_prefix=None):
         self.sanity_check(collection_name)
 
         if not output_file_prefix:

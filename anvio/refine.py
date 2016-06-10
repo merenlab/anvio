@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """The library to focus on a single bin or multiple bins.
 
 The default client of this library is bin/anvi-refine-bin."""
@@ -98,7 +99,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         clusterings = self.cluster_splits_of_interest()
         default_clustering = constants.merged_default if self.is_merged else constants.single_default
 
-        d = interactive.InputHandler(self.args, external_clustering = {'clusterings': clusterings,
+        d = interactive.InputHandler(self.args, external_clustering={'clusterings': clusterings,
                                                                         'default_clustering': default_clustering})
 
         # set a more appropriate title
@@ -176,10 +177,10 @@ class RefineBins(dbops.DatabasesMetaclass):
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.input_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names_of_interest)
+            config = ClusteringConfiguration(config_path, self.input_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names_of_interest)
 
             try:
-                newick = clustering.order_contigs_simple(config, progress = self.progress)
+                newick = clustering.order_contigs_simple(config, progress=self.progress)
             except Exception as e:
                 self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 self.progress.end()

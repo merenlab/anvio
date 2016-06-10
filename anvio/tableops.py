@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """ Table schemas for databases."""
 
@@ -39,7 +40,7 @@ progress = terminal.Progress()
 
 class Table(object):
     """Superclass for rudimentary needs and operations for contigs db tables"""
-    def __init__(self, db_path, version, run=run, progress=progress, quiet = False, simple = False):
+    def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
         if not os.path.exists(db_path):
             raise ConfigError, "Database ('%s') does not exist. You must create one first." % db_path
 
@@ -65,8 +66,8 @@ class Table(object):
             # and contigs db calls.
             self.split_length = database.get_meta_value('split_length')
             self.genes_are_called = database.get_meta_value('genes_are_called')
-            self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
-            self.splits_info  = database.get_table_as_dict(t.splits_info_table_name)
+            self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
+            self.splits_info = database.get_table_as_dict(t.splits_info_table_name)
             self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.splits_info, self.contigs_info)
             self.gene_calls_dict = None
 
@@ -92,7 +93,7 @@ class Table(object):
         database.disconnect()
 
 
-    def export_sequences_table_in_db_into_FASTA_file(self, table = t.contig_sequences_table_name, output_file_path = None):
+    def export_sequences_table_in_db_into_FASTA_file(self, table=t.contig_sequences_table_name, output_file_path=None):
         if self.db_type != 'contigs':
             return None
 
@@ -134,7 +135,7 @@ class Table(object):
         return output_file_path
 
 
-    def delete_entries_for_key(self, table_column, key, tables_to_clear = []):
+    def delete_entries_for_key(self, table_column, key, tables_to_clear=[]):
         # FIXME: this should be in db.py
         # removes rows from each table in 'tables_to_remove' where 'table_column' equals 'value'
         database = db.DB(self.db_path, self.version)

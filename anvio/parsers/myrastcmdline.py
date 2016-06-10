@@ -23,7 +23,7 @@ class MyRastCMDLine(Parser):
                                  'col_mapping': [str, int, str, str],
                                  'indexing_field': 2},
                            'genes': 
-                                {'type': 'fasta'},}
+                                {'type': 'fasta'}, }
 
         self.taxonomy_table_structure = taxonomy_table_structure
         Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)

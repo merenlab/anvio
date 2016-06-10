@@ -10,7 +10,7 @@ class HMMScan(Parser):
         files_expected = {'hits': hmm_scan_hits_txt}
 
         files_structure = {'hits': 
-                                {'col_names': ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f','f', 'f','f'],
+                                {'col_names': ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'],
                                  'col_mapping': [str, str, int, str, float, str, str, str, str, str, str, str, str, str, str, str, str, str],
                                  'indexing_field': -1,
                                  'no_header': True

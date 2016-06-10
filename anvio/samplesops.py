@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Module to make sense of samples information and samples order input"""
 
 
@@ -22,7 +23,7 @@ run = terminal.Run()
 
 
 class SamplesInformation:
-    def __init__(self, run = run, progress = progress, quiet = False):
+    def __init__(self, run=run, progress=progress, quiet=False):
         self.samples_information_dict = {}
         self.samples_order_dict = {}
 
@@ -50,7 +51,7 @@ class SamplesInformation:
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
         self.samples_information_default_layer_order = open(samples_information_path, 'rU').readline().strip().split('\t')[1:]
  
-        self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet = self.quiet)
+        self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet=self.quiet)
 
 
     def recover_samples_information_dict(self, samples_information_dict_from_db, aliases_to_attributes_dict):
@@ -106,7 +107,7 @@ class SamplesInformation:
         if not self.samples_information_default_layer_order:
             pass
  
-        self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet = self.quiet)
+        self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet=self.quiet)
 
 
     def update_samples_order_dict(self):
@@ -133,7 +134,7 @@ class SamplesInformation:
                 self.samples_order_dict['>> ' + attribute + ' (reverse)'] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples, reverse=True)])}
 
 
-    def populate_from_input_files(self, samples_information_path = None, samples_order_path = None):
+    def populate_from_input_files(self, samples_information_path=None, samples_order_path=None):
         self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
         self.update_samples_order_dict()

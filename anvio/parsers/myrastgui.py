@@ -17,7 +17,7 @@ class MyRastGUI(Parser):
                                  'col_mapping': None},
                            'peg':
                                 {'col_names': ['prot', 'contig', 'start', 'stop'],
-                                 'col_mapping': [str, str, int, int]},}
+                                 'col_mapping': [str, str, int, int]}, }
 
         self.splits_taxonomy_table_structure = splits_taxonomy_table_structure
         Parser.__init__(self, 'MyRastGUI', input_file_paths, files_expected, files_structure)

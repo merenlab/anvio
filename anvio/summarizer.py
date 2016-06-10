@@ -1,4 +1,5 @@
 # coding: utf-8
+# pylint: disable=line-too-long
 """Summarizes information for a collection."""
 
 import os
@@ -43,7 +44,7 @@ P = lambda x, y: float(x) * 100 / float(y)
 
 class Summarizer(DatabasesMetaclass):
     """Creates an über dictionary of 'summary'."""
-    def __init__(self, args = None, r = run, p = progress):
+    def __init__(self, args=None, r=run, p=progress):
         self.summary = {}
 
         self.debug = False
@@ -83,7 +84,7 @@ class Summarizer(DatabasesMetaclass):
 
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = True)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
 
 
     def sanity_check(self):
@@ -93,7 +94,7 @@ class Summarizer(DatabasesMetaclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists = True)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
 
     def process(self):
@@ -133,9 +134,9 @@ class Summarizer(DatabasesMetaclass):
                                 'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available, 
                                 'percent_contigs_nts_described_by_collection': 0.0,
                                 'percent_profile_nts_described_by_collection': 0.0,
-                                'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']) ,
-                                'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']) ,
-                                'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']) ,
+                                'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']),
+                                'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']),
+                                'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
                                     }
 
         # I am not sure whether this is the best place to do this, 
@@ -203,8 +204,8 @@ class Summarizer(DatabasesMetaclass):
             for bin_name in self.summary['collection']:
                 summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
 
-            output_file_obj = self.get_output_file_handle(prefix = 'general_bins_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers = ['bins'] + properties, file_obj = output_file_obj)
+            output_file_obj = self.get_output_file_handle(prefix='general_bins_summary.txt')
+            utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
             # save merged matrices for bins x samples
             for table_name in self.collection_profile.values()[0].keys():
@@ -212,8 +213,8 @@ class Summarizer(DatabasesMetaclass):
                 for bin_id in self.collection_profile:
                     d[bin_id] = self.collection_profile[bin_id][table_name]
 
-                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % table_name)
-                utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.p_meta['samples']), file_obj = output_file_obj)
+                output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='%s.txt' % table_name)
+                utils.store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.p_meta['samples']), file_obj=output_file_obj)
 
             # merge and store matrices for hmm hits
             if self.non_single_copy_gene_hmm_data_available:
@@ -224,17 +225,17 @@ class Summarizer(DatabasesMetaclass):
                     for bin_id in self.summary['meta']['bins']:
                         d[bin_id] = self.summary['collection'][bin_id]['hmms'][hmm_search_source]
 
-                    output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = '%s.txt' % hmm_search_source, within='hmms')
-                    utils.store_dict_as_TAB_delimited_file(d, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj = output_file_obj)
+                    output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='%s.txt' % hmm_search_source, within='hmms')
+                    utils.store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj=output_file_obj)
 
                 # this is to keep number of hmm hits per bin:
                 n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
                 for hmm_search_source in self.summary['meta']['hmm_items']:
                     for bin_id in self.summary['meta']['bins']:
-                        n[bin_id][hmm_search_source] =  sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
+                        n[bin_id][hmm_search_source] = sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
 
-                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'hmm_hit_totals.txt')
-                utils.store_dict_as_TAB_delimited_file(n, None, headers = ['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj = output_file_obj)
+                output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='hmm_hit_totals.txt')
+                utils.store_dict_as_TAB_delimited_file(n, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj=output_file_obj)
 
             # store percent abundance of each bin
             if self.p_meta['blank']:
@@ -243,18 +244,18 @@ class Summarizer(DatabasesMetaclass):
             else:
                 self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
                 self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
-                output_file_obj = self.get_output_file_handle(sub_directory = 'bins_across_samples', prefix = 'bins_percent_recruitment.txt')
+                output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='bins_percent_recruitment.txt')
                 utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
                                                        None,
-                                                       headers = ['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
-                                                       file_obj = output_file_obj)
+                                                       headers=['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
+                                                       file_obj=output_file_obj)
 
 
         if self.debug:
             import json
             print json.dumps(self.summary, sort_keys=True, indent=4)
 
-        self.index_html = SummaryHTMLOutput(self.summary, r = self.run, p = self.progress).generate(quick = self.quick)
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
 
 
     def get_bins_ordered_by_completeness_and_size(self):
@@ -264,7 +265,7 @@ class Summarizer(DatabasesMetaclass):
             return sorted(self.summary['collection'].keys())
 
 
-    def get_output_file_handle(self, sub_directory = None, prefix = 'output.txt', overwrite = False, within = None):
+    def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None):
         if sub_directory:
             output_directory = os.path.join(self.output_directory, sub_directory)
         else:
@@ -294,7 +295,7 @@ class Summarizer(DatabasesMetaclass):
 
 
 class Bin:
-    def __init__(self, summary, bin_id, split_ids, r = run, p = progress):
+    def __init__(self, summary, bin_id, split_ids, r=run, p=progress):
         self.summary = summary
         self.bin_id = bin_id
         self.split_ids = split_ids
@@ -361,7 +362,7 @@ class Bin:
         filesnpaths.gen_output_directory(self.output_directory)
 
 
-    def get_output_file_handle(self, prefix = 'output.txt', overwrite = False, key = None):
+    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
         if os.path.exists(file_path) and not overwrite:
             raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
@@ -413,7 +414,7 @@ class Bin:
 
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
-            utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers = ['bin'] + self.summary.p_meta['samples'], file_obj = output_file_obj)
+            utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers=['bin'] + self.summary.p_meta['samples'], file_obj=output_file_obj)
 
 
     def summarize_hmm_hits(self):
@@ -540,7 +541,7 @@ class Bin:
         else:
             headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence']
 
-        utils.store_dict_as_TAB_delimited_file(d, None, headers = headers, file_obj = output_file_obj)
+        utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
         self.bin_info_dict['genes'] = {'num_genes_found': len(gene_callers_ids_for_complete_genes)}
 
@@ -558,7 +559,7 @@ class Bin:
         for hmm_search_source in single_copy_gene_hmm_sources + non_single_copy_gene_hmm_sources:
             filtered_hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'source', set([hmm_search_source]))
 
-            output_file_obj = self.get_output_file_handle('%s-hmm-sequences.txt' % hmm_search_source, key = hmm_search_source)
+            output_file_obj = self.get_output_file_handle('%s-hmm-sequences.txt' % hmm_search_source, key=hmm_search_source)
 
             for gene_unique_id in filtered_hmm_sequences_dict:
                 header, sequence = s.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict, gene_unique_id)
@@ -639,7 +640,7 @@ class Bin:
 
                 self.progress.update('Creating the FASTA file :: Writing contig sequence into file ...')
                 fasta_file.write('>%s\n' % fasta_id)
-                fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens = False))
+                fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False))
 
                 # fill in basic info about contigs in bin
                 len_seq = len(sequence)
@@ -666,7 +667,7 @@ class Bin:
         for split_id in self.split_ids:
             taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]['t_species']] += 1
 
-        taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key = lambda x: int(x[1]), reverse = True)
+        taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key=lambda x: int(x[1]), reverse=True)
 
         self.bin_info_dict['taxon_calls'] = taxon_calls
 
@@ -696,7 +697,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, include_AA_counts = False, split_names = None, exclude_partial_gene_calls = True):
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, exclude_partial_gene_calls=True):
     """Returns an info dict for a given contigs db"""
 
     class Args:
@@ -708,7 +709,7 @@ def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, in
     progress = progress
     run.verbose = False
     progress.verbose = False
-    c = ContigsSuperclass(args, r = run, p = progress)
+    c = ContigsSuperclass(args, r=run, p=progress)
 
     info_dict = {'path': contigs_db_path}
 
@@ -758,7 +759,7 @@ def get_contigs_db_info_dict(contigs_db_path, run = run, progress = progress, in
     # lets get all amino acids used in all complete gene calls:
     if include_AA_counts:
         if split_names:
-            AA_counts_dict = c.get_AA_counts_dict(split_names = split_names)
+            AA_counts_dict = c.get_AA_counts_dict(split_names=split_names)
         else:
             AA_counts_dict = c.get_AA_counts_dict()
 
@@ -774,7 +775,7 @@ class AdHocRunGenerator:
        This is a class to take in a view data matrix at minimum, and create all
        necessary files for an anvi'o interactive interface call in manual mode."""
 
-    def __init__(self, view_data_path, run = run, progress = progress):
+    def __init__(self, view_data_path, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -838,7 +839,7 @@ class AdHocRunGenerator:
                                 path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
                                 any existing directory."
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = self.delete_output_directory_if_exists)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
 
 
     def generate(self):
@@ -874,7 +875,7 @@ class AdHocRunGenerator:
         self.progress.new('Hierarchical clustering of the (transposed) view data')
         self.progress.update('..')
 
-        newick = clustering.get_newick_tree_data(data_file_path, transpose = True)
+        newick = clustering.get_newick_tree_data(data_file_path, transpose=True)
 
         samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
         samples_order = open(samples_order_file_path, 'w')
@@ -895,6 +896,6 @@ class AdHocRunGenerator:
             self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
 
         samples_db_output_path = self.get_output_file_path('samples.db')
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run = self.run, progress = self.progress, quiet = True)
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
         s.create(self.samples_info_file_path, self.samples_order_file_path)
 

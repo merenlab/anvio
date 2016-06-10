@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """A simple anvi'server API."""
 
 import os
@@ -8,7 +9,7 @@ import requests
 
 
 class AnviServerError(Exception):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.error_type = "Anvi'server Error:"
         self.e = e
         Exception.__init__(self)
@@ -97,18 +98,18 @@ class AnviServerAPI:
         return files_dict
 
 
-    def request(self, target, data = {}, files = {}, method = 'POST', continue_on_error = False):
+    def request(self, target, data={}, files={}, method='POST', continue_on_error=False):
         if method not in self.methods: 
             raise AnviServerError, "Unknown method: '%s'" % method
 
         url = self.URL(target)
 
-        headers = {"X-Requested-With": "XMLHttpRequest", "User-Agent":"Anvi'o/v2"}
+        headers = {"X-Requested-With": "XMLHttpRequest", "User-Agent": "Anvi'o/v2"}
 
         cookies = dict(anvioSession=self.token) if self.token else dict()
 
         try:
-            response_object = self.methods[method](url, data = data, headers = headers, cookies = cookies, files = files)
+            response_object = self.methods[method](url, data=data, headers=headers, cookies=cookies, files=files)
         except Exception, e:
             raise AnviServerError, "Something went wrong while trying to connect to the host %s. Here is a more\
                                 detailed and uglier report: '''%s'''" % (self.hostname, e)
@@ -128,12 +129,12 @@ class AnviServerAPI:
         return server_response
 
 
-    def delete_project(self, project, continue_on_error = False):
+    def delete_project(self, project, continue_on_error=False):
         self.check_login()
 
         data = {'project': project}
 
-        return self.request('project', data = data, method = "DELETE", continue_on_error = continue_on_error)
+        return self.request('project', data=data, method="DELETE", continue_on_error=continue_on_error)
 
 
     def login(self):
@@ -156,11 +157,11 @@ class AnviServerAPI:
             raise AnviServerError, "You are not logged in. Please make a login() call first."
 
 
-    def push(self, delete_if_exists = False):
+    def push(self, delete_if_exists=False):
         self.check_login()
 
         if delete_if_exists:
-            self.delete_project(self.project_name, continue_on_error = True)
+            self.delete_project(self.project_name, continue_on_error=True)
 
         files = self.get_files_dict({'dataFile': self.view_data,
                                      'fastaFile': self.fasta_file,
@@ -170,6 +171,6 @@ class AnviServerAPI:
 
         data = {'title': self.project_name}
 
-        return self.request('upload', data, files = files)
+        return self.request('upload', data, files=files)
 
 
