@@ -208,8 +208,8 @@ class ClusteringConfiguration:
         for option, value in config.items(section):
             if option not in config_template[template_class].keys():
                 raise ConfigError, 'Unknown option, "%s", under section "%s".' % (option, section)
-            if config_template[template_class][option].has_key('test') and not config_template[template_class][option]['test'](value):
-                if config_template[template_class][option].has_key('required'):
+            if 'test' in config_template[template_class][option] and not config_template[template_class][option]['test'](value):
+                if 'required' in config_template[template_class][option]:
                     r = config_template[template_class][option]['required']
                     raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".\
                                         What is expected is %s.' % (value, option, section, r)
@@ -217,7 +217,7 @@ class ClusteringConfiguration:
                     raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section)
 
         for option in config_template[template_class]:
-            if config_template[template_class][option].has_key('mandatory') and config_template[template_class][option]['mandatory'] and not config.has_option(section, option):
+            if 'mandatory' in config_template[template_class][option] and config_template[template_class][option]['mandatory'] and not config.has_option(section, option):
                 raise ConfigError, 'Missing mandatory option for section "%s": %s' % (section, option)
 
 

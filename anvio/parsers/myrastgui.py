@@ -47,14 +47,14 @@ class MyRastGUI(Parser):
                 entry['direction'] = 'r'
             entry['contig'] = d['contig']
 
-            if self.dicts['gene_otus'].has_key(prot):
+            if prot in self.dicts['gene_otus']:
                 d = self.dicts['gene_otus'][prot]
                 t_species_str = d['t_species']
                 if len(t_species_str.split()) > 2:
                     t_species_str = ' '.join(t_species_str.split()[0:2])
                 entry['t_species'] = t_species_str
 
-            if self.dicts['functions'].has_key(prot):
+            if prot in self.dicts['functions']:
                 d = self.dicts['functions'][prot]
                 entry['figfam'] = d['figfam']
                 entry['function'] = d['function']

@@ -222,7 +222,7 @@ class MultipleRuns:
 
 
     def is_all_samples_have_it(self, runinfo_variable):
-        presence = [runinfo[runinfo_variable] for runinfo in self.input_runinfo_dicts.values() if runinfo.has_key(runinfo_variable)]
+        presence = [runinfo[runinfo_variable] for runinfo in self.input_runinfo_dicts.values() if runinfo_variable in runinfo]
 
         if not len(presence):
             raise ConfigError, "Something is wrong. Your profiles are not compatible with the merger. Please\

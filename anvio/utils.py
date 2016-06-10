@@ -681,7 +681,7 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 
     for split_name in splits_basic_info_dict:
         parent = splits_basic_info_dict[split_name]['parent']
-        if contig_name_to_splits_dict.has_key(parent):
+        if parent in contig_name_to_splits_dict:
             contig_name_to_splits_dict[parent].append(split_name)
         else:
             contig_name_to_splits_dict[parent] = [split_name]
@@ -890,7 +890,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
 
-        if sample_mapping_dict and sample_mapping_dict[sample].has_key('colors'):
+        if sample_mapping_dict and 'colors' in sample_mapping_dict[sample]:
             output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
                                              HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled=False))
 
@@ -907,7 +907,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
         if skip_unit_labels:
             output.write('''    <node id="%s">\n''' % (unit))
         else:
-            if unit_mapping_dict and unit_mapping_dict.has_key('labels'):
+            if unit_mapping_dict and 'labels' in unit_mapping_dict:
                 output.write('''    <node id="%s" label="%s">\n''' % (unit, unit_mapping_dict['labels'][unit]))
             else:
                 output.write('''    <node id="%s">\n''' % (unit))
@@ -1225,8 +1225,8 @@ class Mailer:
         for option, value in config.items(section):
             if option not in self.config_template[section].keys():
                 raise ConfigError, 'Unknown option, "%s", under section "%s".' % (option, section)
-            if self.config_template[section][option].has_key('test') and not self.config_template[section][option]['test'](value):
-                if self.config_template[section][option].has_key('required'):
+            if 'test' in self.config_template[section][option] and not self.config_template[section][option]['test'](value):
+                if 'required' in self.config_template[section][option]:
                     r = self.config_template[section][option]['required']
                     raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".\
                                         What is expected is %s.' % (value, option, section, r)

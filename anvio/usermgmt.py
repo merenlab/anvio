@@ -337,7 +337,7 @@ class UserMGMT:
         if not user:
             return {'status': 'error', 'message': "You must pass a user to reset a password", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -369,7 +369,7 @@ class UserMGMT:
         if not password:
             return {'status': 'error', 'message': "You must select a password", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -400,7 +400,7 @@ class UserMGMT:
         if not valid_clearance[clearance]:
             return {'status': 'error', 'message': "invalid clearance selected", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -425,7 +425,7 @@ class UserMGMT:
         # get user from the database
         user = self.get_user_for_login(login, True)
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -525,7 +525,7 @@ class UserMGMT:
         return {'status': 'ok', 'message': None, 'data': data}
 
     def delete_user(self, login, user):
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -581,7 +581,7 @@ class UserMGMT:
         if not pname:
             return {'status': 'error', 'message': "You must pass a project name to create a project", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -606,7 +606,7 @@ class UserMGMT:
         if not projectname:
             return {'status': 'error', 'message': "You must pass a project name", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -625,7 +625,7 @@ class UserMGMT:
         if not pname:
             return {'status': 'error', 'message': "You must pass a project name to set the project", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -646,7 +646,7 @@ class UserMGMT:
         if not pname:
             return {'status': 'error', 'message': "You must pass a project name to delete a project", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -685,7 +685,7 @@ class UserMGMT:
         if not user:
             return {'status': 'error', 'message': "You must pass a user to delete a project", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -896,7 +896,7 @@ class UserMGMT:
         if not user:
             return {'status': 'error', 'message': "You must provide a user to delete a view", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -915,7 +915,7 @@ class UserMGMT:
         if not user:
             return {'status': 'error', 'message': "You must provide a user to create a view", 'data': None}
 
-        if user.has_key('status'):
+        if 'status' in user:
             if user['status'] == 'ok':
                 user = user['data']
             else:
@@ -993,7 +993,7 @@ class UserMGMT:
             retval = self.get_user_for_token(request.get_cookie('anvioSession'))
             if retval['status'] == 'ok':
                 user = retval['data']
-                if user.has_key('project_path'):
+                if 'project_path' in user:
                     if projectOnly:
                         return {"status": "ok", "message": None, "data": {"user": user, "projectname": user["project"]}}
 

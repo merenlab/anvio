@@ -45,7 +45,7 @@ class Pangenome:
         self.run = run
         self.progress = progress
 
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         input_file_for_internal_genomes = A('internal_genomes')
         input_file_for_external_genomes = A('external_genomes')
         self.num_threads = A('num_threads')
@@ -560,7 +560,7 @@ class Pangenome:
         headers = ['total_length']
 
         for h in ['percent_complete', 'percent_redundancy']:
-            if self.genomes.values()[0].has_key(h):
+            if h in self.genomes.values()[0]:
                 headers.append(h)
 
         headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])

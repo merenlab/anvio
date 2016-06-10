@@ -40,7 +40,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def __init__(self, args):
         self.args = args
 
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.input_file_path = A('input_file')
         self.contigs_db_path = A('contigs_db')
         self.serialized_profile_path = A('serialized_profile')
@@ -234,7 +234,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         codons_in_genes_to_profile_AA_frequencies_dict = {}
         for gene_call_id, codon_order in self.codons_in_genes_to_profile_AA_frequencies:
-            if not codons_in_genes_to_profile_AA_frequencies_dict.has_key(gene_call_id):
+            if gene_call_id not in codons_in_genes_to_profile_AA_frequencies_dict:
                 codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id] = set([])
             codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
 
@@ -333,7 +333,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
-            if self.contig_name_to_genes.has_key(contig):
+            if contig in self.contig_name_to_genes:
                 gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
 
         gene_coverages_table.store()
@@ -495,7 +495,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.split_names.add(split_name)
 
-            if self.contig_name_to_splits.has_key(parent):
+            if parent in self.contig_name_to_splits:
                 self.contig_name_to_splits[parent].append(split_name)
             else:
                 self.contig_name_to_splits[parent] = [split_name]

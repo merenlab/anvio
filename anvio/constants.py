@@ -92,7 +92,7 @@ codon_to_AA_RC = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile'
 pretty_names = {}
 
 def get_pretty_name(key):
-    if pretty_names.has_key(key):
+    if key in pretty_names:
         return pretty_names[key]
     else:
         return key

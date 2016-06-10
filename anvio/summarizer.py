@@ -285,7 +285,7 @@ class Summarizer(DatabasesMetaclass):
         key = prefix.split('.')[0].replace('-', '_')
 
         if within:
-            if not self.summary['files'].has_key(within):
+            if within not in self.summary['files']:
                 self.summary['files'][within] = {}
             self.summary['files'][within][key] = file_path[len(self.output_directory):].strip('/')
         else:
@@ -434,7 +434,7 @@ class Bin:
         info_dict = {}
 
         # lets limit our interest space into splits that are in our bin and have hmm hits from the get go:
-        split_ids_with_hmm_hits = [split_id for split_id in self.split_ids if self.summary.hmm_searches_dict.has_key(split_id)]
+        split_ids_with_hmm_hits = [split_id for split_id in self.split_ids if split_id in self.summary.hmm_searches_dict]
 
         for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header:
             hmm_items = self.summary.hmm_sources_info[hmm_search_source]['genes']
@@ -485,7 +485,7 @@ class Bin:
                 gene_call_in_split = self.summary.genes_in_splits[gene_entry_id]
                 gene_callers_id = gene_call_in_split['gene_callers_id']
 
-                if genes_dict.has_key(gene_callers_id):
+                if gene_callers_id in genes_dict:
                     genes_dict[gene_callers_id].append(gene_call_in_split)
                 else:
                     genes_dict[gene_callers_id] = [gene_call_in_split]
@@ -752,7 +752,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     else:
         comp = completeness.Completeness(contigs_db_path).get_info_for_splits(set(c.splits_basic_info.keys()))
 
-    if comp.has_key('Campbell_et_al'):
+    if 'Campbell_et_al' in comp:
         info_dict['percent_complete'] = comp['Campbell_et_al']['percent_complete']
         info_dict['percent_redundancy'] = comp['Campbell_et_al']['percent_redundancy']
 

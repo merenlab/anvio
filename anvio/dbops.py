@@ -105,7 +105,7 @@ class ContigsSuperclass(object):
         self.progress.update('Setting contigs self data dict')
         self.a_meta = contigs_db.meta
 
-        self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if self.a_meta.has_key('creation_date') else 'unknown'
+        self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
 
         self.progress.update('Reading contigs basic info')
         self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
@@ -151,7 +151,7 @@ class ContigsSuperclass(object):
                 self.split_name_to_gene_caller_ids_dict[split_name] = set([entry_id])
 
         for split_name in self.splits_basic_info:
-            if not self.split_name_to_gene_caller_ids_dict.has_key(split_name):
+            if split_name not in self.split_name_to_gene_caller_ids_dict:
                 self.split_name_to_gene_caller_ids_dict[split_name] = set([])
 
         self.progress.update('Generating "gene caller id" to "split name" mapping dict')
@@ -629,7 +629,7 @@ class ProfileSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
-        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if self.p_meta.has_key('creation_date') else 'unknown'
+        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
@@ -690,7 +690,7 @@ class ProfileSuperclass(object):
         for gene_coverage_entry in gene_coverages_table.values():
             gene_callers_id = gene_coverage_entry['gene_callers_id']
 
-            if not self.gene_coverages_dict.has_key(gene_callers_id):
+            if gene_callers_id not in self.gene_coverages_dict:
                 self.gene_coverages_dict[gene_callers_id] = {}
 
             self.gene_coverages_dict[gene_callers_id][gene_coverage_entry['sample_id']] = gene_coverage_entry['mean_coverage']
@@ -948,7 +948,7 @@ class ContigsDatabase:
 
 
     def create(self, args):
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
         split_length = A('split_length')
         kmer_size = A('kmer_size')
@@ -1070,7 +1070,7 @@ class ContigsDatabase:
 
             for gene_unique_id in genes_in_contigs_dict:
                 e = genes_in_contigs_dict[gene_unique_id]
-                if not contig_name_to_gene_start_stops.has_key(e['contig']):
+                if e['contig'] not in contig_name_to_gene_start_stops:
                     contig_name_to_gene_start_stops[e['contig']] = set([])
 
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
@@ -1487,7 +1487,7 @@ class AA_counts(ContigsSuperclass):
         self.run = run
         self.progress = progress
 
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.output_file_path = A('output_file')
@@ -1826,7 +1826,7 @@ class TablesForGeneCalls(Table):
         gene_calls_in_contigs_dict = {}
         for gene_callers_id in self.gene_calls_dict:
             contig = self.gene_calls_dict[gene_callers_id]['contig']
-            if gene_calls_in_contigs_dict.has_key(contig):
+            if contig in gene_calls_in_contigs_dict:
                 gene_calls_in_contigs_dict[contig].add(gene_callers_id)
             else:
                 gene_calls_in_contigs_dict[contig] = set([gene_callers_id])
@@ -2002,7 +2002,7 @@ class TablesForHMMHits(Table):
         for hit in search_results_dict.values():
             contig_name = self.gene_calls_dict[hit['gene_callers_id']]['contig']
 
-            if hits_per_contig.has_key(contig_name):
+            if contig_name in hits_per_contig:
                 hits_per_contig[contig_name].append(hit)
             else:
                 hits_per_contig[contig_name] = [hit]
@@ -2010,7 +2010,7 @@ class TablesForHMMHits(Table):
         db_entries_for_splits = []
 
         for contig in self.contigs_info:
-            if not hits_per_contig.has_key(contig):
+            if contig not in hits_per_contig:
                 # no hits for this contig. pity!
                 continue
 
@@ -2257,7 +2257,7 @@ class TableForSplitsTaxonomy(Table):
         prots_in_contig = {}
         for prot in self.genes_dict:
             contig = self.genes_dict[prot]['contig']
-            if prots_in_contig.has_key(contig):
+            if contig in prots_in_contig:
                 prots_in_contig[contig].add(prot)
             else:
                 prots_in_contig[contig] = set([prot])
@@ -2466,7 +2466,7 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, ma
     profile_db = ProfileDatabase(profile_db_path)
     samples_db = SamplesInformationDatabase(samples_db_path)
 
-    if profile_db.meta.has_key('merged') and not int(profile_db.meta['merged']):
+    if 'merged' in profile_db.meta and not int(profile_db.meta['merged']):
         raise ConfigError, "Samples databases are only useful if you are working on a merged profile."
 
     if manual_mode_exception:
