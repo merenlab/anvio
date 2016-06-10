@@ -381,7 +381,7 @@ class Pangenome:
             try:
                 query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
                     [mapping[i](fields[i]) for i in range(0, len(mapping))]
-            except Exception, e:
+            except Exception as e:
                 self.progress.end()
                 raise ConfigError, "Something went wrong while processing the blastall output file in line %d.\
                                     Here is the error from the uppoer management: '''%s'''" % (line_no, e)

@@ -179,7 +179,7 @@ def run_command(cmdline):
             raise ConfigError, "command was terminated"
         else:
             return ret_val
-    except OSError, e:
+    except OSError as e:
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
 
@@ -1209,7 +1209,7 @@ class Mailer:
 
         try:
             config.read(self.config_ini_path)
-        except Exception, e:
+        except Exception as e:
             raise ConfigError, "Well, the file '%s' does not seem to be a config file at all :/ Here\
                                 is what the parser had to complain about it: %s" % (self.config_ini_path, e)
 

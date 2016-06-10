@@ -1007,7 +1007,7 @@ class ContigsDatabase:
             raise ConfigError, "Split size must be an integer."
 
         if split_length <= 0:
-            split_length = sys.maxint
+            split_length = sys.maxsize
 
         try:
             kmer_size = int(kmer_size)

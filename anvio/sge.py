@@ -220,7 +220,7 @@ class SGE:
     def get_qstat_info(self, job_identifier):
         try:
             proc = subprocess.Popen(['qstat'], stdout=subprocess.PIPE)
-        except OSError, e:
+        except OSError as e:
             raise ConfigError, "qstat command was failed for the following reason: '%s'" % (e)
 
         qstat_state_codes = {'Pending': ['qw', 'hqw', 'hRwq'],
