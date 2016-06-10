@@ -124,6 +124,16 @@ D = {
                       frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
                       process. If you prefer, you can later import your own gene calling results into the database."}
                 ),
+    'external-gene-calls': (
+            ['--external-gene-calls'],
+            {'metavar': 'GENE-CALLS',
+             'help': "A TAB-delimited file to utilize external gene calls. The file must have these columns: 'gene_callers_id'\
+                      (a unique integer number for each gene call, start from 1), 'contig' (the contig name the gene call is found),\
+                      'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading\
+                      frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial\
+                      calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
+                      v2.6.7 or v1.0)."}
+                ),
     'skip-SNV-profiling': (
             ['--skip-SNV-profiling'],
             {'default': False,
