@@ -17,7 +17,7 @@ class AnviServerError(Exception):
 
     def __str__(self):
         max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        while 1:
+        while True:
             if self.e.find("  ") > -1:
                 self.e = self.e.replace("  ", " ")
             else:

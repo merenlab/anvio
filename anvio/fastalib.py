@@ -157,7 +157,7 @@ class SequenceSource():
         self.id = self.file_pointer.readline()[1:].strip()
         sequence = ''
 
-        while 1:
+        while True:
             line = self.file_pointer.readline()
             if not line:
                 if len(sequence):
@@ -308,7 +308,7 @@ class QualSource:
 
         qualscores = ''
 
-        while 1:
+        while True:
             line = self.file_pointer.readline()
             if not line:
                 if len(qualscores):
@@ -344,7 +344,7 @@ class QualSource:
 class FastaLibError(Exception):
     def __init__(self, e=None):
         Exception.__init__(self)
-        while 1:
+        while True:
             if e.find("  ") > -1:
                 e = e.replace("  ", " ")
             else:

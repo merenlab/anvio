@@ -173,7 +173,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
-    while 1:
+    while True:
         line = f.readline().strip(' ')
         if line.startswith('#'):
             continue
