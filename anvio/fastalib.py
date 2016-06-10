@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=line-too-long
 # v.140713
 """A very lightweight FASTA I/O library"""
 
@@ -29,7 +30,7 @@ class FastaOutput:
         else:
             self.output_file_obj = open(output_file_path, 'w')
 
-    def store(self, entry, split = True, store_frequencies = True):
+    def store(self, entry, split=True, store_frequencies=True):
         if entry.unique and store_frequencies:
             self.write_id('%s|%s' % (entry.id, 'frequency:%d' % len(entry.ids)))
         else:
@@ -40,12 +41,12 @@ class FastaOutput:
     def write_id(self, id):
         self.output_file_obj.write('>%s\n' % id)
 
-    def write_seq(self, seq, split = True):
+    def write_seq(self, seq, split=True):
         if split:
             seq = self.split(seq)
         self.output_file_obj.write('%s\n' % seq)
 
-    def split(self, sequence, piece_length = 80):
+    def split(self, sequence, piece_length=80):
         ticks = range(0, len(sequence), piece_length) + [len(sequence)]
         return '\n'.join([sequence[ticks[x]:ticks[x + 1]] for x in range(0, len(ticks) - 1)])
 
@@ -74,7 +75,7 @@ class ReadFasta:
 
 
 class SequenceSource():
-    def __init__(self, fasta_file_path, lazy_init = True, unique = False, allow_mixed_case = False):
+    def __init__(self, fasta_file_path, lazy_init=True, unique=False, allow_mixed_case=False):
         self.fasta_file_path = fasta_file_path
         self.name = None
         self.compressed = True if self.fasta_file_path.endswith('.gz') else False
@@ -82,7 +83,7 @@ class SequenceSource():
         self.allow_mixed_case = allow_mixed_case
         
         self.pos = 0
-        self.id  = None
+        self.id = None
         self.seq = None
         self.ids = []
         
@@ -117,13 +118,13 @@ class SequenceSource():
                 self.unique_hash_dict[hash]['ids'].append(self.id)
                 self.unique_hash_dict[hash]['count'] += 1
             else:
-                self.unique_hash_dict[hash] = {'id' : self.id,
+                self.unique_hash_dict[hash] = {'id': self.id,
                                                'ids': [self.id],
                                                'seq': self.seq,
                                                'count': 1}
 
         self.unique_hash_list = [i[1] for i in sorted([(self.unique_hash_dict[hash]['count'], hash)\
-                        for hash in self.unique_hash_dict], reverse = True)]
+                        for hash in self.unique_hash_dict], reverse=True)]
 
 
         self.total_unique = len(self.unique_hash_dict)
@@ -142,7 +143,7 @@ class SequenceSource():
                 
                 self.pos += 1
                 self.seq = hash_entry['seq'] if self.allow_mixed_case else hash_entry['seq'].upper()
-                self.id  = hash_entry['id']
+                self.id = hash_entry['id']
                 self.ids = hash_entry['ids']
 
                 return True
@@ -189,12 +190,12 @@ class SequenceSource():
 
     def reset(self):
         self.pos = 0
-        self.id  = None
+        self.id = None
         self.seq = None
         self.ids = []
         self.file_pointer.seek(0)
 
-    def visualize_sequence_length_distribution(self, title, dest = None, max_seq_len = None, xtickstep = None, ytickstep = None):
+    def visualize_sequence_length_distribution(self, title, dest=None, max_seq_len=None, xtickstep=None, ytickstep=None):
         import matplotlib.pyplot as plt
         import matplotlib.gridspec as gridspec
 
@@ -220,18 +221,18 @@ class SequenceSource():
         for l in sequence_lengths:
             seq_len_distribution[l] += 1
     
-        fig = plt.figure(figsize = (16, 12))
-        plt.rcParams.update({'axes.linewidth' : 0.9})
+        fig = plt.figure(figsize=(16, 12))
+        plt.rcParams.update({'axes.linewidth': 0.9})
         plt.rc('grid', color='0.50', linestyle='-', linewidth=0.1)
     
         gs = gridspec.GridSpec(10, 1)
     
         ax1 = plt.subplot(gs[0:8])
         plt.grid(True)
-        plt.subplots_adjust(left=0.05, bottom = 0.03, top = 0.95, right = 0.98)
+        plt.subplots_adjust(left=0.05, bottom=0.03, top=0.95, right=0.98)
     
-        plt.plot(seq_len_distribution, color = 'black', alpha = 0.3)
-        plt.fill_between(range(0, max_seq_len + 1), seq_len_distribution, y2 = 0, color = 'black', alpha = 0.15)
+        plt.plot(seq_len_distribution, color='black', alpha=0.3)
+        plt.fill_between(range(0, max_seq_len + 1), seq_len_distribution, y2=0, color='black', alpha=0.15)
         plt.ylabel('number of sequences')
         plt.xlabel('sequence length')
     
@@ -245,13 +246,13 @@ class SequenceSource():
         plt.yticks(range(0, max(seq_len_distribution) + 1, ytickstep),
                    [y for y in range(0, max(seq_len_distribution) + 1, ytickstep)],
                    size='xx-small')
-        plt.xlim(xmin = 0, xmax = max_seq_len)
-        plt.ylim(ymin = 0, ymax = max(seq_len_distribution) + (max(seq_len_distribution) / 20.0))
+        plt.xlim(xmin=0, xmax=max_seq_len)
+        plt.ylim(ymin=0, ymax=max(seq_len_distribution) + (max(seq_len_distribution) / 20.0))
     
-        plt.figtext(0.5, 0.96, '%s' % (title), weight = 'black', size = 'xx-large', ha = 'center')
+        plt.figtext(0.5, 0.96, '%s' % (title), weight='black', size='xx-large', ha='center')
     
         ax1 = plt.subplot(gs[9])
-        plt.rcParams.update({'axes.edgecolor' : 20})
+        plt.rcParams.update({'axes.edgecolor': 20})
         plt.grid(False)
         plt.yticks([])
         plt.xticks([])
@@ -260,7 +261,7 @@ class SequenceSource():
                numpy.mean(sequence_lengths), numpy.std(sequence_lengths),\
                min(sequence_lengths),\
                max(sequence_lengths)),\
-            va = 'center', alpha = 0.8, size = 'x-large')
+            va='center', alpha=0.8, size='x-large')
     
         if dest == None:
             dest = self.fasta_file_path
@@ -279,13 +280,13 @@ class SequenceSource():
  
 
 class QualSource:
-    def __init__(self, quals_file_path, lazy_init = True):
+    def __init__(self, quals_file_path, lazy_init=True):
         self.quals_file_path = quals_file_path
         self.name = None
         self.lazy_init = lazy_init
         
         self.pos = 0
-        self.id  = None
+        self.id = None
         self.quals = None
         self.quals_int = None
         self.ids = []
@@ -333,7 +334,7 @@ class QualSource:
 
     def reset(self):
         self.pos = 0
-        self.id  = None
+        self.id = None
         self.quals = None
         self.quals_int = None
         self.ids = []
@@ -341,7 +342,7 @@ class QualSource:
 
 
 class FastaLibError(Exception):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         Exception.__init__(self)
         while 1:
             if e.find("  ") > -1:
@@ -356,4 +357,4 @@ class FastaLibError(Exception):
 
 if __name__ == '__main__':
     fasta = SequenceSource(sys.argv[1])
-    fasta.visualize_sequence_length_distribution(title = sys.argv[2] if len(sys.argv) == 3 else 'None')
+    fasta.visualize_sequence_length_distribution(title=sys.argv[2] if len(sys.argv) == 3 else 'None')

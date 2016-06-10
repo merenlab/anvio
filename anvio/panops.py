@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Classes for pan operations.
 
@@ -39,7 +40,7 @@ pp = terminal.pretty_print
 
 
 class Pangenome:
-    def __init__(self, args = None, run = run, progress = progress):
+    def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
@@ -66,8 +67,8 @@ class Pangenome:
 
         self.log_file_path = None
 
-        internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields = fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
-        external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields = fields_for_external_genomes_input) if input_file_for_external_genomes else {}
+        internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
+        external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if input_file_for_external_genomes else {}
 
         self.internal_genome_names = internal_genomes_dict.keys()
         self.external_genome_names = external_genomes_dict.keys()
@@ -115,7 +116,7 @@ class Pangenome:
         try:
             filesnpaths.is_file_exists(self.output_dir)
         except FilesNPathsError:
-            filesnpaths.gen_output_directory(self.output_dir, delete_if_exists = self.overwrite_output_destinations)
+            filesnpaths.gen_output_directory(self.output_dir, delete_if_exists=self.overwrite_output_destinations)
 
         filesnpaths.is_output_dir_writable(self.output_dir)
         self.output_dir = os.path.abspath(self.output_dir)
@@ -161,7 +162,7 @@ class Pangenome:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], exclude_partial_gene_calls = self.exclude_partial_gene_calls)
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], exclude_partial_gene_calls=self.exclude_partial_gene_calls)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -220,7 +221,7 @@ class Pangenome:
                     raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (c['bin_id'], c['collection_id'])
 
 
-                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names = split_names_of_interest, exclude_partial_gene_calls = self.exclude_partial_gene_calls)
+                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names=split_names_of_interest, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
                 for key in contigs_db_summary:
                     c[key] = contigs_db_summary[key]
 
@@ -249,7 +250,7 @@ class Pangenome:
 
 
     def gen_protein_sequences_dict(self):
-        self.run.info('Exclude partial gene calls', self.exclude_partial_gene_calls, nl_after = 1)
+        self.run.info('Exclude partial gene calls', self.exclude_partial_gene_calls, nl_after=1)
 
         total_num_protein_sequences = 0
         total_num_excluded_protein_sequences = 0
@@ -274,11 +275,11 @@ class Pangenome:
             self.progress.end()
 
             self.run.info_single('%s is initialized with %s genes (%s were excluded)'
-                          % (genome_name, pp(len(g['gene_caller_ids'])), pp(len(g['excluded_gene_ids']))), cut_after = 120)
+                          % (genome_name, pp(len(g['gene_caller_ids'])), pp(len(g['excluded_gene_ids']))), cut_after=120)
 
             contigs_db.disconnect()
 
-        self.run.info('Num protein sequences', '%s' % pp(total_num_protein_sequences), nl_before = 1)
+        self.run.info('Num protein sequences', '%s' % pp(total_num_protein_sequences), nl_before=1)
         self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_protein_sequences))
 
 
@@ -299,7 +300,7 @@ class Pangenome:
         self.progress.end()
 
         # unique the FASTA file
-        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(combined_proteins_FASTA_path, store_frequencies_in_deflines = False)
+        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(combined_proteins_FASTA_path, store_frequencies_in_deflines=False)
 
         self.run.info('Num unique protein sequences', '%s' % pp(len(unique_proteins_names_dict)))
         self.run.info('Combined protein sequences FASTA', combined_proteins_FASTA_path)
@@ -309,8 +310,8 @@ class Pangenome:
 
 
     def run_diamond(self, unique_proteins_fasta_path, unique_proteins_names_dict):
-        diamond = Diamond(unique_proteins_fasta_path, run = self.run, progress = self.progress,
-                          num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
+        diamond = Diamond(unique_proteins_fasta_path, run=self.run, progress=self.progress,
+                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_proteins_names_dict
         diamond.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
@@ -326,8 +327,8 @@ class Pangenome:
         self.run.warning("You elected to use NCBI's blastp for protein search. Running blastp will be significantly\
                           slower than DIAMOND (although, anvi'o developers are convinced that you *are*\
                           doing the right thing, so, kudos to you).")
-        blast = BLAST(unique_proteins_fasta_path, run = self.run, progress = self.progress,
-                          num_threads = self.num_threads, overwrite_output_destinations = self.overwrite_output_destinations)
+        blast = BLAST(unique_proteins_fasta_path, run=self.run, progress=self.progress,
+                          num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         blast.names_dict = unique_proteins_names_dict
         blast.log_file_path = self.log_file_path
@@ -346,7 +347,7 @@ class Pangenome:
 
 
     def run_mcl(self, mcl_input_file_path):
-        mcl = MCL(mcl_input_file_path, run = self.run, progress = self.progress, num_threads = self.num_threads)
+        mcl = MCL(mcl_input_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
         mcl.inflation = self.mcl_inflation
         mcl.clusters_file_path = self.get_output_file_path('mcl-clusters.txt')
@@ -480,11 +481,11 @@ class Pangenome:
         self.progress.new('Generating view data')
         self.progress.update('...')
 
-        def store_file(data, path, headers = None):
+        def store_file(data, path, headers=None):
             if not headers:
                 headers = ['contig'] + sorted(data.values()[0].keys())
 
-            utils.store_dict_as_TAB_delimited_file(data, path, headers = headers)
+            utils.store_dict_as_TAB_delimited_file(data, path, headers=headers)
 
             return path
 
@@ -510,7 +511,7 @@ class Pangenome:
         #
         # STORING A COPY OF RAW DATA
         #
-        store_file(self.view_data, self.get_output_file_path('anvio-view-data-RAW.txt'), headers = ['contig'] + sorted(self.genomes.keys()))
+        store_file(self.view_data, self.get_output_file_path('anvio-view-data-RAW.txt'), headers=['contig'] + sorted(self.genomes.keys()))
         store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data-RAW.txt'))
         store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence-RAW.txt'))
 
@@ -534,7 +535,7 @@ class Pangenome:
         #
         # STORING FILTERED DATA
         #
-        view_data_file_path = store_file(self.view_data, self.get_output_file_path('anvio-view-data.txt'), headers = ['contig'] + sorted(self.genomes.keys()))
+        view_data_file_path = store_file(self.view_data, self.get_output_file_path('anvio-view-data.txt'), headers=['contig'] + sorted(self.genomes.keys()))
         additional_view_data_file_path = store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data.txt'))
         view_data_presence_absence_file_path = store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence.txt'))
 
@@ -571,7 +572,7 @@ class Pangenome:
 
             samples_info_dict[c['name']] = new_dict
 
-        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers = ['samples'] + headers)
+        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
 
         self.run.info("Anvi'o samples information", samples_info_file_path)
 
@@ -579,7 +580,7 @@ class Pangenome:
 
 
     def gen_ad_hoc_anvio_run(self, view_data_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path):
-        ad_hoc_run = summarizer.AdHocRunGenerator(view_data_file_path, run = self.run, progress = self.progress)
+        ad_hoc_run = summarizer.AdHocRunGenerator(view_data_file_path, run=self.run, progress=self.progress)
 
         ad_hoc_run.matrix_data_for_clustering = experimental_data_file_path
         ad_hoc_run.additional_view_data_file_path = additional_view_data_file_path
@@ -610,7 +611,7 @@ class Pangenome:
         self.check_params()
 
         self.run.log_file_path = self.log_file_path
-        self.run.info('Args', (str(self.args)), quiet = True)
+        self.run.info('Args', (str(self.args)), quiet=True)
 
 
     def store_protein_clusters(self, protein_clusters_dict):
@@ -636,7 +637,7 @@ class Pangenome:
                 d[unique_entry_id] = {'gene_caller_id': gene_caller_id, 'protein_cluster_id': PC, 'genome_name': genome_name, 'sequence': self.protein_sequences_dict[genome_name][int(gene_caller_id)]}
                 unique_entry_id += 1
 
-        utils.store_dict_as_TAB_delimited_file(d, protein_clusters_output_path, headers = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence'])
+        utils.store_dict_as_TAB_delimited_file(d, protein_clusters_output_path, headers=['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence'])
 
         self.progress.end()
 

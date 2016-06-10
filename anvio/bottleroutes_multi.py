@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     Multi-User routes for bottle web server.
 
@@ -56,7 +57,7 @@ def impersonate(request, userdb, response):
         if retval['data']['clearance'] == 'admin':
             imperson = userdb.get_user_for_login(request.forms.get('login'))
             if imperson['status'] == 'ok':
-                response.set_header('Set-Cookie', 'anvioSession='+imperson['data']["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
+                response.set_header('Set-Cookie', 'anvioSession=' + imperson['data']["token"] + '; path=/; max-age=' + str(60 * 60 * 24 * 14))
             return json.dumps(imperson)
 
 
@@ -120,7 +121,7 @@ def login_to_app(request, userdb, response):
     set_default_headers(response)
     retval = userdb.login_user(request.forms.get('login'), request.forms.get('password'))
     if retval['status'] == 'ok':
-        response.set_header('Set-Cookie', 'anvioSession='+retval['data']["token"]+'; path=/; max-age='+str(60 * 60 * 24 * 14))
+        response.set_header('Set-Cookie', 'anvioSession=' + retval['data']["token"] + '; path=/; max-age=' + str(60 * 60 * 24 * 14))
         
     return json.dumps(retval)
 
@@ -144,9 +145,9 @@ def set_view_cookie(request, userdb, response, login, name, private):
             redirect('/app/error.html?err=401')
             return
         else:
-            response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'|'+request.query.code+'; path=/;')
+            response.set_header('Set-Cookie', 'anvioView=' + login + '|' + name + '|' + request.query.code + '; path=/;')
     else:
-        response.set_header('Set-Cookie', 'anvioView='+login+'|'+name+'; path=/;')
+        response.set_header('Set-Cookie', 'anvioView=' + login + '|' + name + '; path=/;')
 
     return response
         
@@ -180,10 +181,10 @@ def get_current_project_archive(request, userdb, response):
 
 def debug(source, request):
     run.warning(None, header=source)
-    run.warning(request.forms.dict, 'Forms', lc = 'yellow')
-    run.warning(request.files.dict, 'Files', lc = 'yellow')
-    run.warning(request.headers.items(), 'Headers', lc = 'yellow')
-    run.warning(request.method, 'Method', lc = 'yellow')
+    run.warning(request.forms.dict, 'Forms', lc='yellow')
+    run.warning(request.files.dict, 'Files', lc='yellow')
+    run.warning(request.headers.items(), 'Headers', lc='yellow')
+    run.warning(request.method, 'Method', lc='yellow')
 
 
 def delete_project(request, userdb, response):
@@ -235,7 +236,7 @@ def receive_upload_file(request, userdb, response):
         return json.dumps(retval)
 
     # save the uploaded files to the project directory
-    basepath = userdb.users_data_dir + '/userdata/'+user['data']['path']+'/'+project['path']+'/'
+    basepath = userdb.users_data_dir + '/userdata/' + user['data']['path'] + '/' + project['path'] + '/'
 
 
     # tree and data fiels are mandatory
@@ -270,7 +271,7 @@ def receive_upload_file(request, userdb, response):
             return json.dumps({'status': 'error', 'message': "That one did not go as expected. Here is the error: %s" % e, "data": None})
 
     # all files are uploaded, do a sanity check
-    retval = userdb.get_the_interactive_object(basepath, read_only = False)
+    retval = userdb.get_the_interactive_object(basepath, read_only=False)
     if not retval['status'] == 'ok':
         # if the files are not ok, the project needs to be deleted
         userdb.delete_project(user['data'], project['name'])
@@ -300,10 +301,10 @@ def receive_additional_upload_file(request, userdb, response):
     if not project['status'] == 'ok':
         return json.dumps(project)
     
-    basepath = userdb.users_data_dir + '/userdata/'+user['path']+'/'+project['data']['path']+'/'
+    basepath = userdb.users_data_dir + '/userdata/' + user['path'] + '/' + project['data']['path'] + '/'
 
     fileType = 'additionalFile'
-    validFileType = { 'additionalFile': True, 'dataFile': True, 'treeFile': True, 'fastaFile': True, 'samplesOrderFile': True, 'samplesInformationFile': True }
+    validFileType = {'additionalFile': True, 'dataFile': True, 'treeFile': True, 'fastaFile': True, 'samplesOrderFile': True, 'samplesInformationFile': True}
     if request.forms.get('type'):
         fileType = request.forms.get('type')
         if not validFileType[fileType]:
@@ -339,7 +340,7 @@ def receive_additional_upload_file(request, userdb, response):
             except Exception as e:
                 return json.dumps({'status': 'error', 'message': "That one did not go as expected. Here is the error: %s" % e, "data": None})
 
-    return '{ "status": "ok", "message": "file '+message+'", "data": null }'
+    return '{ "status": "ok", "message": "file ' + message + '", "data": null }'
 
 def admin_data(request, userdb, response):
     set_default_headers(response)
@@ -347,7 +348,7 @@ def admin_data(request, userdb, response):
     if user and user['status'] == 'ok':
         if user['data']['clearance'] == 'admin':
             filterhash = {}
-            fields = [ 'firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date', 'visit' ]
+            fields = ['firstname', 'lastname', 'login', 'email', 'login', 'accepted', 'affiliation', 'clearance', 'date', 'visit']
             for field in fields:
                 if field in request.query:
                     filterhash[field] = request.query[field]
@@ -378,7 +379,7 @@ def admin_project_data(request, userdb, response):
     if user['status'] == 'ok':
         if user['data']['clearance'] == 'admin':
             filterhash = {}
-            fields = [ 'name', 'user', 'path', 'description', 'views', 'metadata' ]
+            fields = ['name', 'user', 'path', 'description', 'views', 'metadata']
             for field in fields:
                 if field in request.query:
                     filterhash[field] = request.query[field]

@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """The library to merge multiple profiles.
 
 The default client of this library is under bin/anvi-merge"""
@@ -49,7 +50,7 @@ except ImportError, e:
 
 
 class MultipleRuns:
-    def __init__(self, args, run = run, progress = progress):
+    def __init__(self, args, run=run, progress=progress):
         self.progress = progress
         self.run = run
 
@@ -122,7 +123,7 @@ class MultipleRuns:
 
 
     def sanity_check(self):
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists = self.overwrite_output_destinations)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
 
         if not len(self.input_runinfo_paths) > 1:
             raise ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
@@ -146,7 +147,7 @@ class MultipleRuns:
 
         # test open the contigs database (and learn its hash while doing it) to make sure we don't have
         # a deal breaker just yet
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet = True)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
         contigs_db_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
 
@@ -228,10 +229,10 @@ class MultipleRuns:
                                       re-profile everything you are trying to merge, and run merger again."
 
         if presence.count(True) == len(self.input_runinfo_dicts.values()):
-            self.run.info(runinfo_variable, True, quiet = True)
+            self.run.info(runinfo_variable, True, quiet=True)
         elif presence.count(False) == len(self.input_runinfo_dicts.values()):
             # none has it
-            self.run.info(runinfo_variable, False, quiet = True)
+            self.run.info(runinfo_variable, False, quiet=True)
             return
         else:
             # some weird shit must have happened.
@@ -243,10 +244,10 @@ class MultipleRuns:
     def merge_variable_nts_tables(self):
         self.is_all_samples_have_it('variable_nts_table')
 
-        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         for runinfo in self.input_runinfo_dicts.values():
-            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
+            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
             sample_profile_db.disconnect()
 
@@ -260,10 +261,10 @@ class MultipleRuns:
     def merge_variable_aas_tables(self):
         self.is_all_samples_have_it('AA_frequencies_table')
 
-        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         for runinfo in self.input_runinfo_dicts.values():
-            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
+            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
             sample_profile_db.disconnect()
 
@@ -278,13 +279,13 @@ class MultipleRuns:
         self.is_all_samples_have_it('gene_coverages_table')
 
         # create an instance from genes
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         # fill "genes" instance from all samples
         for runinfo in self.input_runinfo_dicts.values():
             sample_id = runinfo['sample_id']
 
-            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet = True)
+            sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
             for g in sample_gene_profiles.values():
                 gene_coverages_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
@@ -297,7 +298,7 @@ class MultipleRuns:
         self.is_all_samples_have_it('split_coverage_values')
 
         output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.h5')
-        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new = True)
+        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
         # fill coverages in from all samples
         for runinfo in self.input_runinfo_dicts.values():
@@ -344,7 +345,7 @@ class MultipleRuns:
         self.sanity_check()
         self.set_sample_id()
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists = self.overwrite_output_destinations)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.overwrite_output_destinations)
 
         # init profile database
         self.profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
@@ -451,7 +452,7 @@ class MultipleRuns:
         # store everything
         runinfo_serialized = os.path.join(self.output_directory, 'RUNINFO.mcp')
         self.run.info('runinfo', runinfo_serialized)
-        self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
+        self.run.store_info_dict(runinfo_serialized, strip_prefix=self.output_directory)
 
         # run CONCOCT, if otherwise is not requested:
         if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
@@ -483,7 +484,7 @@ class MultipleRuns:
         essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
         auxiliary_fields = [f for f in self.atomic_data_fields if constants.IS_AUXILIARY_FIELD(f)]
 
-        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         # setting standard view table structure and types
         view_table_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
@@ -504,7 +505,7 @@ class MultipleRuns:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating view data tables')
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet = True)
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
                 self.progress.update('Processing %s for %s ...' % (essential_field, target))
@@ -574,16 +575,16 @@ class MultipleRuns:
             for config_name in self.clustering_configs:
                 config_path = self.clustering_configs[config_name]
 
-                config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
+                config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
 
                 try:
-                    newick = clustering.order_contigs_simple(config, progress = self.progress)
+                    newick = clustering.order_contigs_simple(config, progress=self.progress)
                 except Exception as e:
                     self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                     self.progress.end()
                     continue
 
-                dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == constants.merged_default, run = self.run)
+                dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default=config_name == constants.merged_default, run=self.run)
 
 
     def get_split_parents(self):

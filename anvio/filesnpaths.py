@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """File/Path operations"""
 
 import os
@@ -31,7 +32,7 @@ __status__ = "Development"
 
 def is_proper_newick(newick_data):
     try:
-        return Tree(newick_data, format = 1)
+        return Tree(newick_data, format=1)
     except Exception, e:
         raise FilesNPathsError, "Your tree doesn't seem to be properly formatted. Here is what ete2 had\
                                  to say about this: '%s'. Pity :/" % e
@@ -168,7 +169,7 @@ def is_output_dir_writable(dir_path):
     return True
 
 
-def is_file_tab_delimited(file_path, separator = '\t', expected_number_of_fields = None):
+def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
@@ -266,7 +267,7 @@ def get_num_lines_in_file(file_path):
     return num_lines
 
 
-def check_output_directory(output_directory, ok_if_exists = False):
+def check_output_directory(output_directory, ok_if_exists=False):
     if not output_directory:
         raise FilesNPathsError, "Sorry. You must declare an output directory path."
 
@@ -278,7 +279,7 @@ def check_output_directory(output_directory, ok_if_exists = False):
     return output_directory
 
 
-def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists = False):
+def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists=False):
     if os.path.exists(output_directory) and delete_if_exists:
         try:
             run.warning('filesnpaths::gen_output_directory: the client asked the existing directory \

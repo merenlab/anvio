@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Relations with the console output, Progress and Run classes"""
 
 import os
@@ -51,7 +52,7 @@ def remove_spaces(text):
 
 
 class Progress:
-    def __init__(self, verbose = True):
+    def __init__(self, verbose=True):
         self.pid = None
         self.verbose = verbose
         self.terminal_width = None
@@ -135,7 +136,7 @@ class Progress:
 
 
 class Run:
-    def __init__(self, log_file_path = None, verbose = True, width = 45):
+    def __init__(self, log_file_path=None, verbose=True, width=45):
         self.log_file_path = log_file_path
 
         self.info_dict = {}
@@ -153,7 +154,7 @@ class Run:
         with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line))
 
 
-    def write(self, line, quiet = False):
+    def write(self, line, quiet=False):
         if self.log_file_path:
             self.log(line)
 
@@ -161,7 +162,7 @@ class Run:
             sys.stderr.write(line)
 
 
-    def info(self, key, value, quiet = False, display_only = False, nl_before = 0, nl_after = 0, lc = 'cyan', mc = 'yellow'):
+    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow'):
         if not display_only:
             self.info_dict[key] = value
 
@@ -176,10 +177,10 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
 
-        self.write(info_line, quiet = quiet)
+        self.write(info_line, quiet=quiet)
 
 
-    def info_single(self, message, mc = 'yellow', nl_before = 0, nl_after = 0, cut_after = 80):
+    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80):
         if type(message) == str:
             message = remove_spaces(message)
 
@@ -193,7 +194,7 @@ class Run:
         self.write(message_line)
 
 
-    def warning(self, message, header='WARNING', lc = 'red', raw = False):
+    def warning(self, message, header='WARNING', lc='red', raw=False):
         if type(message) == str:
             message = remove_spaces(message)
 
@@ -207,7 +208,7 @@ class Run:
         self.write((header_line + message_line) if message else header_line)
 
 
-    def store_info_dict(self, destination, strip_prefix = None):
+    def store_info_dict(self, destination, strip_prefix=None):
         if strip_prefix:
             # mostly to get rid of output_dir prefix in output file names.
             # surprisingly enough, this is the best place to do it. live 

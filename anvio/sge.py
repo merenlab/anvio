@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Module to submit/track jobs for SUN Grid Engine"""
 
 import os

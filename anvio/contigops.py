@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Classes and functions for handling, storing, and retrieving atomic data from contigs and splits"""
 
 import anvio
@@ -17,7 +18,7 @@ progress.verbose = False
 try:
     from anvio.columnprofile import ColumnProfile
 except ImportError:
-    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc = 'gray', nl_after = 1)
+    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc='gray', nl_after=1)
     from anvio.variability import ColumnProfile
 
 
@@ -31,8 +32,8 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-variability_test_class_default = VariablityTestFactory(params = {'b': 2, 'm': 1.45, 'c': 0.05})
-variability_test_class_null = VariablityTestFactory(params = None) # get everything for every coverage level
+variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
+variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
 
 
 def set_contigs_abundance(contigs):
@@ -111,15 +112,15 @@ class Contig:
 
             split.auxiliary = Auxiliary(split,
                                         bam,
-                                        parent_outlier_positions = self.coverage.outlier_positions,
-                                        min_coverage = self.min_coverage_for_variability,
-                                        report_variability_full = self.report_variability_full)
+                                        parent_outlier_positions=self.coverage.outlier_positions,
+                                        min_coverage=self.min_coverage_for_variability,
+                                        report_variability_full=self.report_variability_full)
 
             counter += 1
 
 
 class Split:
-    def __init__(self, name, sequence, parent, order, start = 0, end = 0):
+    def __init__(self, name, sequence, parent, order, start=0, end=0):
         self.name = name
         self.sequence = sequence
         self.parent = parent
@@ -147,7 +148,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions, min_coverage = 10, report_variability_full = False):
+    def __init__(self, split, bam, parent_outlier_positions, min_coverage=10, report_variability_full=False):
         self.v = []
         self.rep_seq = ''
         self.split = split
@@ -181,11 +182,11 @@ class Auxiliary:
             base_in_contig = self.split.sequence[pos_in_split]
 
             cp = ColumnProfile(column,
-                               reference = base_in_contig,
-                               coverage = coverage,
-                               split_name = self.split.name,
-                               pos = pos_in_split,
-                               test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
+                               reference=base_in_contig,
+                               coverage=coverage,
+                               split_name=self.split.name,
+                               pos=pos_in_split,
+                               test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
             if cp['departure_from_reference']:
                 ratios.append((cp['departure_from_reference'], cp['coverage']), )

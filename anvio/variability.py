@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Classes to make sense of single nucleotide variation"""
 
@@ -22,7 +23,7 @@ __email__ = "a.murat.eren@gmail.com"
 class VariablityTestFactory:
     """an experimental class to make sense whether the nucleotide variation in a column
        is meaningful beyond sequencing errors, given the coverage of that position."""
-    def __init__(self, params = {'b': 3, 'm': 1.45, 'c': 0.05}):
+    def __init__(self, params={'b': 3, 'm': 1.45, 'c': 0.05}):
         self.params = params
         self.coverage_upper_limit = 500
 
@@ -44,7 +45,7 @@ class VariablityTestFactory:
         # https://www.desmos.com/calculator/qwocua4zi5
         # and/or https://i.imgur.com/zd04pui.png
         b, m, c = self.params['b'], self.params['m'], self.params['c']
-        y = ((1 / b) ** ((coverage ** (1/b)) - m)) + c
+        y = ((1 / b) ** ((coverage ** (1 / b)) - m)) + c
         return y
 
 

@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """
     Classes to compute completeness estimates based on the information stored in search tables in the
@@ -31,7 +32,7 @@ progress = terminal.Progress()
 
 
 class Completeness:
-    def __init__(self, contigs_db_path, source = None, run = run, progress = progress):
+    def __init__(self, contigs_db_path, source=None, run=run, progress=progress):
         # hi db
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
@@ -98,7 +99,7 @@ class Completeness:
                 self.splits_unique_gene_id_occurs[gene_unique_identifier].append(entry['split'])
 
 
-    def get_info_for_splits(self, split_names, min_e_value = 1e-5):
+    def get_info_for_splits(self, split_names, min_e_value=1e-5):
         hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner

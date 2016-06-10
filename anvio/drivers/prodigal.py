@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class Prodigal:
-    def __init__(self, progress = progress, run = run):
+    def __init__(self, progress=progress, run=run):
         self.progress = progress
         self.run = run
 
@@ -106,7 +106,7 @@ class Prodigal:
 
         log_file_path = os.path.join(output_dir, '00_log.txt')
 
-        self.run.warning('', header = 'Finding ORFs in contigs', lc = 'green')
+        self.run.warning('', header='Finding ORFs in contigs', lc='green')
         self.run.info('Genes', self.genes_in_contigs)
         self.run.info('Proteins', self.proteins_in_contigs)
         self.run.info('Log file', log_file_path)
@@ -141,6 +141,6 @@ class Prodigal:
 
         self.progress.end()
 
-        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_prodigal_version, len(gene_calls_dict)), nl_after = 1)
+        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_prodigal_version, len(gene_calls_dict)), nl_after=1)
 
         return gene_calls_dict, protein_sequences_dict

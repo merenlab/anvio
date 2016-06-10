@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Exceptions"""
 
@@ -26,7 +27,7 @@ def remove_spaces(text):
 
 
 class AnvioError(Exception, object):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         Exception.__init__(self)
         return
 
@@ -45,48 +46,48 @@ class AnvioError(Exception, object):
 
 
 class ConfigError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Config Error'
         AnvioError.__init__(self)
 
 
 class RefineError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Refine Error'
         AnvioError.__init__(self)
 
 
 class TerminalError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Terminal Error'
         AnvioError.__init__(self)
 
 
 class FilesNPathsError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'File/Path Error'
         AnvioError.__init__(self)
 
 class DictIOError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Dict IO Error'
         AnvioError.__init__(self)
 
 
 class SamplesError(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Samples Info Error'
         AnvioError.__init__(self)
 
 
 class HDF5Error(AnvioError):
-    def __init__(self, e = None):
+    def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'HDF5 Error'
         AnvioError.__init__(self)

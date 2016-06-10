@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
 import os
@@ -35,7 +36,7 @@ run = terminal.Run()
 
 class InputHandler(ProfileSuperclass, ContigsSuperclass):
     """The class that loads everything for the interactive interface. Wow. Such glory."""
-    def __init__(self, args, external_clustering = None):
+    def __init__(self, args, external_clustering=None):
         self.args = args
         self.views = {}
         self.states_table = None
@@ -107,13 +108,13 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # here is where the big deal stuff takes place:
         if not self.mode and self.manual_mode:
             self.mode = 'manual'
-            self.run.info('Mode', self.mode, mc = 'red')
+            self.run.info('Mode', self.mode, mc='red')
             self.load_manual_mode(args)
         elif self.mode == 'refine':
             self.load_full_mode(args)
         elif self.collection_name or self.list_collections:
             self.mode = 'collection'
-            self.run.info('Mode', self.mode, mc = 'green')
+            self.run.info('Mode', self.mode, mc='green')
             self.load_collection_mode(args)
         else:
             self.mode = 'full'
@@ -123,7 +124,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
         # being filled within the self.load_manual_mode function based on the headers of the view data.
         if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception = self.manual_mode)
+            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception=self.manual_mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -161,7 +162,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
         if self.mode == 'full':
-            self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer = self.split_hmm_layers)
+            self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
 
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
@@ -289,10 +290,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.progress.new('Accessing HMM hits')
         self.progress.update('...')
-        self.hmm_access = SequencesForHMMHits(self.contigs_db_path, sources = set(['Campbell_et_al']))
+        self.hmm_access = SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
         self.progress.end()
 
-        completeness = Completeness(args.contigs_db, source = 'Campbell_et_al')
+        completeness = Completeness(args.contigs_db, source='Campbell_et_al')
         if not len(completeness.sources):
             raise ConfigError, "HMM's were not run for this contigs database :/"
 
@@ -422,7 +423,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         # if the user wants to see available views, show them and exit.
         if self.show_views:
-            run.warning('', header = 'Available views (%d)' % len(self.views), lc = 'green')
+            run.warning('', header='Available views (%d)' % len(self.views), lc='green')
             for view in self.views:
                 run.info(view,
                          'Via "%s" table' % self.views[view]['table_name'],
@@ -432,7 +433,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             sys.exit()
 
         if self.show_states:
-            run.warning('', header = 'Available states (%d)' % len(self.states_table.states), lc = 'green')
+            run.warning('', header='Available states (%d)' % len(self.states_table.states), lc='green')
             for state in self.states_table.states:
                 run.info(state,
                          'Last modified %s' % self.states_table.states[state]['last_modified'],
@@ -454,7 +455,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
             self.views['user_view'] = {'table_name': 'NA',
                                        'header': additional_view_columns,
-                                       'dict': utils.get_TAB_delimited_file_as_dictionary(self.additional_view_path, column_mapping = column_mapping)}
+                                       'dict': utils.get_TAB_delimited_file_as_dictionary(self.additional_view_path, column_mapping=column_mapping)}
 
         # if the user specifies a view, set it as default:
         if self.view:

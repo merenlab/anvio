@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """
     user management db operations.
 """
@@ -42,7 +43,7 @@ progress = terminal.Progress()
 
 
 class UsersDB:
-    def __init__(self, client_version, users_db_path, ignore_version = False, run = run, progress = progress):
+    def __init__(self, client_version, users_db_path, ignore_version=False, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -87,7 +88,7 @@ class UsersDB:
 
 
     def get_meta_value(self, key):
-        row = self.execute("SELECT value FROM self WHERE key=?", (key, ), fetch = 'one')
+        row = self.execute("SELECT value FROM self WHERE key=?", (key, ), fetch='one')
 
         if not row:
             raise ConfigError, "A value for '%s' does not seem to be set in table 'self'." % key
@@ -105,15 +106,15 @@ class UsersDB:
         return val
 
 
-    def fetchone(self, query, variable_tuple = None):
-        return self.execute(query, variable_tuple, fetch = "one")
+    def fetchone(self, query, variable_tuple=None):
+        return self.execute(query, variable_tuple, fetch="one")
 
 
-    def fetchall(self, query, variable_tuple = None):
-        return self.execute(query, variable_tuple, fetch = "all")
+    def fetchall(self, query, variable_tuple=None):
+        return self.execute(query, variable_tuple, fetch="all")
 
 
-    def execute(self, query, variable_tuple = None, fetch = "none"):
+    def execute(self, query, variable_tuple=None, fetch="none"):
         self.connect()
 
         ret_val = True
@@ -148,7 +149,7 @@ class UsersDB:
 
 
 class UserMGMT:
-    def __init__(self, args, client_version, ignore_version=False, mailer = None, run = run, progress = progress):
+    def __init__(self, args, client_version, ignore_version=False, mailer=None, run=run, progress=progress):
         self.args = args
         self.orig_args = copy.deepcopy(args)
         self.run = run
@@ -163,7 +164,7 @@ class UserMGMT:
 
         # create an instance from the DB class
         self.users_db_path = os.path.join(self.users_data_dir, 'USERS.db')
-        self.users_db = UsersDB(client_version, self.users_db_path, ignore_version = ignore_version, run = self.run, progress = self.progress)
+        self.users_db = UsersDB(client_version, self.users_db_path, ignore_version=ignore_version, run=self.run, progress=self.progress)
 
         # figure out the hostname.
         self.hostname = "localhost"
@@ -201,7 +202,7 @@ class UserMGMT:
 
             user_projects = []
             for project in projects:
-                user_projects.append({ "name": project['name'], "description": project["description"], "views": [], "metadata": {}, "files": {} })
+                user_projects.append({"name": project['name'], "description": project["description"], "views": [], "metadata": {}, "files": {}})
                 views = self.users_db.fetchall("SELECT name, public, token, user FROM views WHERE project=?", (project['name'], ))
                 for r in views:
                     user_projects[len(user_projects) - 1]['views'].append({"name": r['name'], "public": r['public'], "token": r['token'], "user": r["user"]})
@@ -219,7 +220,7 @@ class UserMGMT:
                         head = ""
                         with open(fname) as cfile:
                             head = cfile.read(1024)
-                        user_projects[len(user_projects) - 1]['files'][fn] = { 'top': head, 'size': stats.st_size, 'created': datetime.fromtimestamp(stats.st_mtime).isoformat() }
+                        user_projects[len(user_projects) - 1]['files'][fn] = {'top': head, 'size': stats.st_size, 'created': datetime.fromtimestamp(stats.st_mtime).isoformat()}
                 
             user['projects'] = user_projects
 
@@ -233,15 +234,15 @@ class UserMGMT:
     def create_user(self, firstname, lastname, email, login, password, affiliation, ip, clearance="user"):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
-            return { 'status': 'error', 'message': "You must pass a firstname, lastname, email login and password to create a user", 'data': None }
+            return {'status': 'error', 'message': "You must pass a firstname, lastname, email login and password to create a user", 'data': None}
 
         # check if the login name is already taken
         if self.users_db.fetchone('SELECT login FROM users WHERE login=?', (login, )):
-            return { 'status': 'error', 'message': "Login '%s' is already taken." % login, 'data': None }
+            return {'status': 'error', 'message': "Login '%s' is already taken." % login, 'data': None}
 
         # check if the email is already taken
         if self.users_db.fetchone('SELECT email FROM users WHERE email=?', (email, )):
-            return { 'status': 'error', 'message': "Email '%s' is already taken." % email, 'data': None }
+            return {'status': 'error', 'message': "Email '%s' is already taken." % email, 'data': None}
         
         # calculate path
         path = hashlib.md5(login).hexdigest()
@@ -269,34 +270,34 @@ class UserMGMT:
             messageText = "Dear %s,\n\nPlease click the following link to activate your anvi'server account:\n\n        %s\n\n\nThank you for your interest." % (firstname, confirmation_link)
 
             self.mailer.send(email, messageSubject, messageText)
-            return { 'status': 'ok', 'message': "User request created", 'data': None }
+            return {'status': 'ok', 'message': "User request created", 'data': None}
         else:
             if self.args.validate_users_automatically:
                 # because there is no SMTP configuration, we will just go ahead and validate the user.
                 self.run.info_single('A new user, "%s", has been created (and validated automatically).' % login)
                 return self.accept_user(login, token)
             else:
-                return { 'status': 'warning', 'message': "There is no smtp configuration and automatic user validation is disabled. User %s cannot be created" % login, 'data': None }
+                return {'status': 'warning', 'message': "There is no smtp configuration and automatic user validation is disabled. User %s cannot be created" % login, 'data': None}
 
 
     def get_user_for_email(self, email):
         if not email:
-            return { 'status': 'error', 'message': "You must pass an email to retrieve a user entry", 'data': None }
+            return {'status': 'error', 'message': "You must pass an email to retrieve a user entry", 'data': None}
 
         user = self.users_db.fetchone("SELECT * FROM users WHERE email=?", (email, ))
 
         if not user:
-            return { 'status': 'error', 'message': 'No user has been found for email address "%s"' % email, 'data': None }
+            return {'status': 'error', 'message': 'No user has been found for email address "%s"' % email, 'data': None}
 
         # check if the user has a project set
         user = self.complete_user(user)
         
-        return { 'status': 'ok', 'message': None, 'data': user }
+        return {'status': 'ok', 'message': None, 'data': user}
     
 
     def get_user_for_login(self, login, internal=False):
         if not login:
-            return { 'status': 'error', 'message': "You must pass a login to retrieve a user entry", 'data': None }
+            return {'status': 'error', 'message': "You must pass a login to retrieve a user entry", 'data': None}
 
         user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (login, ))
 
@@ -309,13 +310,13 @@ class UserMGMT:
             # check if the user has a project set
             user = self.complete_user(user, internal)
         
-            return { 'status': 'ok', 'message': None, 'data': user }
+            return {'status': 'ok', 'message': None, 'data': user}
         else:
-            return { 'status': 'error', 'message': "User not found for login %s" % login, 'data': None }
+            return {'status': 'error', 'message': "User not found for login %s" % login, 'data': None}
 
-    def get_user_for_token(self, token, record = False):
+    def get_user_for_token(self, token, record=False):
         if not token:
-            return { 'status': 'error', 'message': "You must pass a token to retrieve a user entry", 'data': None }
+            return {'status': 'error', 'message': "You must pass a token to retrieve a user entry", 'data': None}
 
         user = self.users_db.fetchone("SELECT * FROM users WHERE token=?", (token, ))
 
@@ -327,14 +328,14 @@ class UserMGMT:
             # check if the user has a project set
             user = self.complete_user(user, False, record)
             
-            return { 'status': 'ok', 'message': None, 'data': user }
+            return {'status': 'ok', 'message': None, 'data': user}
         else:
-            return { 'status': 'error', 'message': "invalid token", 'data': None }
+            return {'status': 'error', 'message': "invalid token", 'data': None}
 
 
     def reset_password(self, user):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to reset a password", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to reset a password", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -354,19 +355,19 @@ class UserMGMT:
         # send the user a mail with the new password
         email = user['email']
         messageSubject = "anvio password reset"
-        messageText = "You have requested your password for your anvi'o account to be reset.\n\nYour new password is:\n\n"+password+"\n\nPlease log into anvi'o with these credentials and change your password.";
+        messageText = "You have requested your password for your anvi'o account to be reset.\n\nYour new password is:\n\n" + password + "\n\nPlease log into anvi'o with these credentials and change your password.";
 
         self.mailer.send(email, messageSubject, messageText)
 
-        return { 'status': 'ok', 'message': "User password reset, message sent to %s" % email, 'data': None }
+        return {'status': 'ok', 'message': "User password reset, message sent to %s" % email, 'data': None}
 
 
     def change_password(self, user, password):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to change a password", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to change a password", 'data': None}
 
         if not password:
-            return { 'status': 'error', 'message': "You must select a password", 'data': None }
+            return {'status': 'error', 'message': "You must select a password", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -380,24 +381,24 @@ class UserMGMT:
         # update the user entry in the DB
         self.users_db.execute("UPDATE users SET password=? WHERE login=?", (cpassword, user['login'], ))
 
-        return { 'status': 'ok', 'message': "New password set", 'data': None }
+        return {'status': 'ok', 'message': "New password set", 'data': None}
 
 
     def change_clearance(self, login, clearance, user):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to change clearance", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to change clearance", 'data': None}
 
         if not login:
-            return { 'status': 'error', 'message': "You must pass a user to change clearance for", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to change clearance for", 'data': None}
 
         if not clearance:
-            return { 'status': 'error', 'message': "You must pass clearance to change to", 'data': None }
+            return {'status': 'error', 'message': "You must pass clearance to change to", 'data': None}
 
-        valid_clearance = { "admin": True,
-                            "user": True }
+        valid_clearance = {"admin": True,
+                            "user": True}
 
         if not valid_clearance[clearance]:
-            return { 'status': 'error', 'message': "invalid clearance selected", 'data': None }
+            return {'status': 'error', 'message': "invalid clearance selected", 'data': None}
         
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -406,20 +407,20 @@ class UserMGMT:
                 return user
 
         if not user['clearance'] == 'admin':
-            return { 'status': 'error', 'message': "You must be an admin to change clearance", 'data': None }
+            return {'status': 'error', 'message': "You must be an admin to change clearance", 'data': None}
             
         # update the user entry in the DB
         self.users_db.execute("UPDATE users SET clearance=? WHERE login=?", (clearance, login, ))
 
-        return { 'status': 'ok', 'message': "New clearance set", 'data': None }
+        return {'status': 'ok', 'message': "New clearance set", 'data': None}
 
 
-    def accept_user(self, login = None, token = None):
+    def accept_user(self, login=None, token=None):
         if not login:
-            return { 'status': 'error', 'message': "You must pass a login to accept a user", 'data': None }
+            return {'status': 'error', 'message': "You must pass a login to accept a user", 'data': None}
 
         if not token:
-            return { 'status': 'error', 'message': "You must pass a token to accept a user", 'data': None }
+            return {'status': 'error', 'message': "You must pass a token to accept a user", 'data': None}
 
         # get user from the database
         user = self.get_user_for_login(login, True)
@@ -438,17 +439,17 @@ class UserMGMT:
             if not os.path.exists(path):
                 os.makedirs(path)
 
-            return { 'status': 'ok', 'message': "User confirmed", 'data': None }
+            return {'status': 'ok', 'message': "User confirmed", 'data': None}
         else:
-            return { 'status': 'error', 'message': "Invalid token for user '%s'." % user['login'], 'data': None }
+            return {'status': 'error', 'message': "Invalid token for user '%s'." % user['login'], 'data': None}
 
 
     def login_user(self, login, password):
         if not login:
-            return { 'status': 'error', 'message': "You must pass a login", 'data': None }
+            return {'status': 'error', 'message': "You must pass a login", 'data': None}
 
         if not password:
-            return { 'status': 'error', 'message': "You must pass a password", 'data': None }
+            return {'status': 'error', 'message': "You must pass a password", 'data': None}
         
         # get the user from the db
         user = self.get_user_for_login(login, True)
@@ -458,13 +459,13 @@ class UserMGMT:
             user = None
 
         if not user:
-            return { 'status': 'error', 'message': "Login or password invalid", 'data': None }
+            return {'status': 'error', 'message': "Login or password invalid", 'data': None}
 
         # verify the password
         valid = crypt.crypt(password, user['password']) == user['password']
 
         if not valid:
-            return { 'status': 'error', 'message': "Login or password invalid", 'data': None }
+            return {'status': 'error', 'message': "Login or password invalid", 'data': None}
 
         # generate a new token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
@@ -477,12 +478,12 @@ class UserMGMT:
         # set the user token
         user["token"] = token
 
-        return { 'status': 'ok', 'message': "Login successful", 'data': user }
+        return {'status': 'ok', 'message': "Login successful", 'data': user}
 
 
     def logout_user(self, login):
         if not login:
-            return { 'status': 'error', 'message': "You must pass a login to log out a user", 'data': None }
+            return {'status': 'error', 'message': "You must pass a login to log out a user", 'data': None}
 
         # get the user from the db
         user = self.get_user_for_login(login)
@@ -492,21 +493,21 @@ class UserMGMT:
             user = None
 
         if not user:
-            return { 'status': 'error', 'message': "user not found", 'data': None }
+            return {'status': 'error', 'message': "user not found", 'data': None}
 
         # remove the token from the DB
         self.users_db.execute("UPDATE users SET token='' WHERE login=?", (login, ))
 
-        return { 'status': 'ok', 'message': "User %s logged out" % login, 'data': None }
+        return {'status': 'ok', 'message': "User %s logged out" % login, 'data': None}
 
     def user_list(self, offset=0, limit=25, order='lastname', dir='ASC', filter={}):
         filterwords = []
         for field in filter.keys():
-            filterwords.append(field+" LIKE '"+filter[field].replace("\\","\\\\").replace("'", "\'")+"'")
+            filterwords.append(field + " LIKE '" + filter[field].replace("\\", "\\\\").replace("'", "\'") + "'")
 
         where_phrase = ""
         if len(filterwords):
-            where_phrase = " WHERE "+" AND ".join(filterwords)
+            where_phrase = " WHERE " + " AND ".join(filterwords)
 
         query = "SELECT users.*, COUNT(projects.name) AS projects FROM users LEFT OUTER JOIN projects ON users.login=projects.user" \
                  + where_phrase + " GROUP BY users.login ORDER BY " + order + " " + dir + " LIMIT " + str(limit) + " OFFSET " + str(offset)
@@ -519,9 +520,9 @@ class UserMGMT:
 
         count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM users " + where_phrase)
 
-        data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
+        data = {"limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter}
         
-        return { 'status': 'ok', 'message': None, 'data': data }
+        return {'status': 'ok', 'message': None, 'data': data}
 
     def delete_user(self, login, user):
         if user.has_key('status'):
@@ -531,22 +532,22 @@ class UserMGMT:
                 return user
 
         if not login:
-            return { 'status': 'error', 'message': "You must pass a user to delete", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to delete", 'data': None}
 
         if not user['clearance'] == 'admin':
-            return { 'status': 'error', 'message': "You must be an administrator to delete a user", 'data': None }
+            return {'status': 'error', 'message': "You must be an administrator to delete a user", 'data': None}
 
         # get the user entry from the db
         user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (login, ))
 
         if not user:
-            return { 'status': 'error', 'message': "user not found", 'data': None }
+            return {'status': 'error', 'message': "user not found", 'data': None}
         
         # delete the user directory
         if not user["path"]:
-            return { 'status': 'error', 'message': "user path not found", 'data': None }
+            return {'status': 'error', 'message': "user path not found", 'data': None}
             
-        shutil.rmtree(self.users_data_dir + '/userdata/'+ user["path"], ignore_errors=True)
+        shutil.rmtree(self.users_data_dir + '/userdata/' + user["path"], ignore_errors=True)
 
         # get all project rowids for this user
         projects = self.users_db.fetchall("SELECT rowid FROM projects WHERE user=?", (user['login'], ))
@@ -557,7 +558,7 @@ class UserMGMT:
             for p in projects:
                 selectString = selectString + str(p['rowid'])
                 
-            self.users_db.execute("DELETE FROM metadata WHERE project IN ("+selectString+")")
+            self.users_db.execute("DELETE FROM metadata WHERE project IN (" + selectString + ")")
 
             # delete all views
             self.users_db.execute("DELETE FROM views WHERE user=?", (user['login'], ))
@@ -568,17 +569,17 @@ class UserMGMT:
         # delete the user entry
         self.users_db.execute("DELETE FROM users WHERE login=?", (user['login'], ))
 
-        return { 'status': 'ok', 'message': 'user deleted', 'data': None }
+        return {'status': 'ok', 'message': 'user deleted', 'data': None}
         
     ######################################
     # PROJECTS
     ######################################
     
-    def create_project(self, user, pname, description = ""):
+    def create_project(self, user, pname, description=""):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to create a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to create a project", 'data': None}
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to create a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a project name to create a project", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -593,17 +594,17 @@ class UserMGMT:
         if not os.path.exists(path):
             os.makedirs(path)
             self.users_db.execute("INSERT INTO projects (name, path, user, description) VALUES (?, ?, ?, ?)", (pname, ppath, user['login'], description, ))
-            return { 'status': 'ok', 'message': None, 'data': { "name": pname, "path": ppath, "user": user['login'] } }
+            return {'status': 'ok', 'message': None, 'data': {"name": pname, "path": ppath, "user": user['login']}}
         else:
-            return { 'status': 'error', 'message': "You already have a project of that name", 'data': None }
+            return {'status': 'error', 'message': "You already have a project of that name", 'data': None}
 
         
     def get_project(self, user, projectname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to retrieve a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to retrieve a project", 'data': None}
 
         if not projectname:
-            return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
+            return {'status': 'error', 'message': "You must pass a project name", 'data': None}
         
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -614,15 +615,15 @@ class UserMGMT:
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
 
         if project:
-            return { 'status': 'ok', 'message': None, 'data': project }
+            return {'status': 'ok', 'message': None, 'data': project}
         else:
-            return { 'status': 'error', 'message': "project not found", 'data': None }
+            return {'status': 'error', 'message': "project not found", 'data': None}
         
     def set_project(self, user, pname):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to set the project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to set the project", 'data': None}
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to set the project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a project name to set the project", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -634,16 +635,16 @@ class UserMGMT:
         
         if project:
             self.users_db.execute("UPDATE users SET project=? WHERE login=?", (pname, user['login'], ))
-            return { 'status': 'ok', 'message': "project set", 'data': None }
+            return {'status': 'ok', 'message': "project set", 'data': None}
         else:
-            return { 'status': 'error', 'message': "the user does not own this project", 'data': None }
+            return {'status': 'error', 'message': "the user does not own this project", 'data': None}
 
 
     def delete_project(self, user, pname, uname=None):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to delete a project", 'data': None}
         if not pname:
-            return { 'status': 'error', 'message': "You must pass a project name to delete a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a project name to delete a project", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -655,13 +656,13 @@ class UserMGMT:
             if user['clearance'] == 'admin':
                 user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (uname, ))
                 if not user:
-                    return { 'status': 'error', 'message': "user not found", 'data': None }
+                    return {'status': 'error', 'message': "user not found", 'data': None}
             else:
-                return { 'status': 'error', 'message': "Only admins may delete other users projects", 'data': None }
+                return {'status': 'error', 'message': "Only admins may delete other users projects", 'data': None}
             
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
-        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + ppath
+        path = self.users_data_dir + '/userdata/' + user["path"] + '/' + ppath
         
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
         
@@ -675,14 +676,14 @@ class UserMGMT:
             if os.path.exists(path):
                 shutil.rmtree(path, ignore_errors=True)
             
-            return { 'status': 'ok', 'message': "project deleted", 'data': None }
+            return {'status': 'ok', 'message': "project deleted", 'data': None}
         else:
-            return { 'status': 'error', 'message': "the user does not own this project", 'data': None }
+            return {'status': 'error', 'message': "the user does not own this project", 'data': None}
 
 
     def update_project(self, user, params):
         if not user:
-            return { 'status': 'error', 'message': "You must pass a user to delete a project", 'data': None }
+            return {'status': 'error', 'message': "You must pass a user to delete a project", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -695,19 +696,19 @@ class UserMGMT:
         if project:
             self.users_db.execute("UPDATE projects SET description=? WHERE name=?", (params['description'], params['project'], ))
 
-            return { 'status': 'ok', 'message': "project updated", 'data': params }
+            return {'status': 'ok', 'message': "project updated", 'data': params}
         else:
-            return { 'status': 'error', 'message': 'project not found', 'data': None }
+            return {'status': 'error', 'message': 'project not found', 'data': None}
 
 
     def project_list(self, offset=0, limit=25, order='name', dir='ASC', filter={}):
         filterwords = []
         for field in filter.keys():
-            filterwords.append(field+" LIKE '"+filter[field].replace("\\","\\\\").replace("'", "\'")+"'")
+            filterwords.append(field + " LIKE '" + filter[field].replace("\\", "\\\\").replace("'", "\'") + "'")
 
         where_phrase = ""
         if len(filterwords):
-            where_phrase = " WHERE "+" AND ".join(filterwords)
+            where_phrase = " WHERE " + " AND ".join(filterwords)
 
         query = "SELECT name, user, path, description FROM projects" \
                  + where_phrase + " ORDER BY " + order + " " + dir + " LIMIT " + str(limit) + " OFFSET " + str(offset)
@@ -715,35 +716,35 @@ class UserMGMT:
 
         count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM projects" + where_phrase)
 
-        data = { "limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter }
+        data = {"limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter}
         
-        return { 'status': 'ok', 'message': None, 'data': data }
+        return {'status': 'ok', 'message': None, 'data': data}
 
 
     def project_admin_details(self, projectname, login):
         if not projectname:
-            return { 'status': 'error', 'message': "You must pass a project name", 'data': None }
+            return {'status': 'error', 'message': "You must pass a project name", 'data': None}
 
         # get base project data
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (login, projectname, ))
         if not project:
-            return { 'status': 'error', 'message': 'project not found', 'data': None }
+            return {'status': 'error', 'message': 'project not found', 'data': None}
 
         # get user data for the project
         user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (login, ))
         if not user:
-            return { 'status': 'error', 'message': 'user not found', 'data': None }
+            return {'status': 'error', 'message': 'user not found', 'data': None}
         del user['password']
 
         # get views for the project
         views = self.users_db.fetchall("SELECT name, public, token FROM views WHERE project=?", (projectname, ))
 
         # examine files of the project
-        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
-        filenames = [ "data", "fasta", "tree", "additionalData", "samplesInformation", "samplesOrder" ]
+        path = self.users_data_dir + '/userdata/' + user["path"] + '/' + project['path'] + "/"
+        filenames = ["data", "fasta", "tree", "additionalData", "samplesInformation", "samplesOrder"]
         dataFiles = {}
         for fn in filenames:
-            fullfn = path+fn+"File"
+            fullfn = path + fn + "File"
             if os.access(fullfn, os.R_OK):
                 with open(fullfn, 'r') as content_file:
                     content = content_file.read()
@@ -752,9 +753,9 @@ class UserMGMT:
                 dataFiles[fn] = None
         
         # construct return structure
-        projectData = { "name": project['name'], "description": project['description'], "user": user, "views": views, "files": dataFiles }
+        projectData = {"name": project['name'], "description": project['description'], "user": user, "views": views, "files": dataFiles}
 
-        return { 'status': 'ok', 'message': None, 'data': projectData }
+        return {'status': 'ok', 'message': None, 'data': projectData}
 
 
     def get_current_project(self, request):
@@ -771,17 +772,17 @@ class UserMGMT:
             user = retval["user"]
             project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
             if not project:
-                return { 'status': 'error', 'message': 'project not found', 'data': None }
+                return {'status': 'error', 'message': 'project not found', 'data': None}
         else:
             project = retval["project"]
             user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
             if not user:
-                return { 'status': 'error', 'message': 'user not found', 'data': None }
+                return {'status': 'error', 'message': 'user not found', 'data': None}
         
         # construct return structure
-        projectData = { "name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"] }
+        projectData = {"name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"]}
 
-        return { 'status': 'ok', 'message': None, 'data': projectData }
+        return {'status': 'ok', 'message': None, 'data': projectData}
 
     def get_current_project_files(self, request, include_db_files=False):
         retval = self.set_user_data(request, True)
@@ -797,15 +798,15 @@ class UserMGMT:
             user = retval["user"]
             project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
             if not project:
-                return { 'status': 'error', 'message': 'project not found', 'data': None }
+                return {'status': 'error', 'message': 'project not found', 'data': None}
         else:
             project = retval["project"]
             user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
             if not user:
-                return { 'status': 'error', 'message': 'user not found', 'data': None }
+                return {'status': 'error', 'message': 'user not found', 'data': None}
 
         # get files of the project
-        path = self.users_data_dir + '/userdata/'+ user["path"] + '/' + project['path'] + "/"
+        path = self.users_data_dir + '/userdata/' + user["path"] + '/' + project['path'] + "/"
         filenames = ['data', 'fasta', 'tree', 'additionalData', 'samplesInformation', 'samplesOrder']
         if include_db_files:
             filenames += ['profile.db', 'samples.db']
@@ -824,9 +825,9 @@ class UserMGMT:
                 dataFiles[fn] = None
 
         # construct return structure
-        projectData = { "name": project['name'], "path": project['path'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles }
+        projectData = {"name": project['name'], "path": project['path'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"], "files": dataFiles}
 
-        return { 'status': 'ok', 'message': None, 'data': projectData }
+        return {'status': 'ok', 'message': None, 'data': projectData}
 
     def get_current_project_archive(self, request):
         project_files = self.get_current_project_files(request=request, include_db_files=True)
@@ -850,7 +851,7 @@ class UserMGMT:
         view = self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (login, vname, ))
 
         if not view:
-            return { 'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None }
+            return {'status': 'error', 'message': "a view with name %s does not exist" % vname, 'data': None}
 
         # get the project for this view
         project = self.users_db.fetchone("SELECT * FROM projects WHERE name=?", (view['project'], ))
@@ -867,7 +868,7 @@ class UserMGMT:
                 user = None
 
             if not user:
-                return { 'status': 'error', 'message': "Could not find a user for project %s" % view['project'], 'data': None }
+                return {'status': 'error', 'message': "Could not find a user for project %s" % view['project'], 'data': None}
             
             view['path'] = user['path'] + '/' + path
             view['project_data'] = project
@@ -875,25 +876,25 @@ class UserMGMT:
             # the project is gone, clean up this reference
             self.users_db.execute("DELETE FROM views WHERE name=?", (vname, ))
 
-            return { 'status': 'error', 'message': "the project for this view no longer exists", 'data': None }
+            return {'status': 'error', 'message': "the project for this view no longer exists", 'data': None}
 
         # check if we have a token and if so see if it matches
         if token:
             if view['token'] == token:
-                return { 'status': 'ok', 'message': None, 'data': view }
+                return {'status': 'ok', 'message': None, 'data': view}
             else:
-                return { 'status': 'error', 'message': "invalid token", 'data': None }
+                return {'status': 'error', 'message': "invalid token", 'data': None}
 
         # otherwise check if the view is public
         if view['public'] == 1:
-            return { 'status': 'ok', 'message': None, 'data': view }
+            return {'status': 'ok', 'message': None, 'data': view}
         else:
-            return { 'status': 'error', 'message': "a token is required to access this view", 'data': None }
+            return {'status': 'error', 'message': "a token is required to access this view", 'data': None}
 
 
     def delete_view(self, user, vname):
         if not user:
-            return { 'status': 'error', 'message': "You must provide a user to delete a view", 'data': None }
+            return {'status': 'error', 'message': "You must provide a user to delete a view", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -903,16 +904,16 @@ class UserMGMT:
         
         # get the view
         if not self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (user['login'], vname, )):
-            return { 'status': 'error', 'message': "a view with name %s does not exist for this user" % vname, 'data': None }
+            return {'status': 'error', 'message': "a view with name %s does not exist for this user" % vname, 'data': None}
 
         self.users_db.execute("DELETE FROM views WHERE user=? AND name=?", (user['login'], vname, ))
 
-        return { 'status': 'ok', 'message': "view deleted", 'data': None }
+        return {'status': 'ok', 'message': "view deleted", 'data': None}
 
 
     def create_view(self, user, vname, pname, public=1):
         if not user:
-            return { 'status': 'error', 'message': "You must provide a user to create a view", 'data': None }
+            return {'status': 'error', 'message': "You must provide a user to create a view", 'data': None}
 
         if user.has_key('status'):
             if user['status'] == 'ok':
@@ -922,15 +923,15 @@ class UserMGMT:
         
         # check if the view name is valid
         if not re.match("^[A-Za-z0-9_-]+$", vname):
-            return { 'status': 'error', 'message': "Name contains invalid characters. Only letters, digits, dash and underscore are allowed.", 'data': None }
+            return {'status': 'error', 'message': "Name contains invalid characters. Only letters, digits, dash and underscore are allowed.", 'data': None}
 
         # check if the view name is unique
         if self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (user['login'], vname, )):
-            return { 'status': 'error', 'message': "you already have a view of that name", 'data': None }
+            return {'status': 'error', 'message': "you already have a view of that name", 'data': None}
 
         # check if the project is owned by the user
         if not self.users_db.fetchone("SELECT * FROM projects WHERE name=? AND user=?", (pname, user['login'])):
-            return { 'status': 'error', 'message': "You do not own this project", 'data': None }
+            return {'status': 'error', 'message': "You do not own this project", 'data': None}
 
         # create a token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
@@ -938,7 +939,7 @@ class UserMGMT:
         # create the db entry
         self.users_db.execute("INSERT INTO views (name, user, project, public, token) values (?, ?, ?, ?, ?)", (vname, user['login'], pname, public, token, ))
 
-        return { 'status': 'ok', 'message': None, 'data': { 'project': pname, 'user': user['login'], 'name': vname, 'token': token, 'public': public } }
+        return {'status': 'ok', 'message': None, 'data': {'project': pname, 'user': user['login'], 'name': vname, 'token': token, 'public': public}}
 
     def view_exists(self, login, viewname):
         if not login:
@@ -959,7 +960,7 @@ class UserMGMT:
     # REQUEST SECTION
     ######################################
 
-    def get_the_interactive_object(self, base_path, title = "Unknown Title", read_only = True):
+    def get_the_interactive_object(self, base_path, title="Unknown Title", read_only=True):
         """Helper function to get an interactive object that is ready to be launched"""
         args = copy.deepcopy(self.args)
         args.title = title
@@ -968,23 +969,23 @@ class UserMGMT:
         J = lambda f: os.path.join(base_path, f)
         F = lambda f: J(f) if os.path.exists(J(f)) else None
 
-        args.tree       = F('treeFile')
+        args.tree = F('treeFile')
         args.fasta_file = F('fastaFile')
-        args.view_data  = F('dataFile')
+        args.view_data = F('dataFile')
         args.samples_db = F('samples.db')
         args.profile_db = J('profile.db')
 
         args.samples_information_db = F('samples.db')
-        args.additional_layers      = F('additionalFile')
+        args.additional_layers = F('additionalFile')
 
         try:
             d = interactive.InputHandler(args)
-            return { "status": "ok", "message": None, "data": {"d": d, "args": args}}
+            return {"status": "ok", "message": None, "data": {"d": d, "args": args}}
         except Exception, e:
-            return { "status": "error", "message": e.e, "data": None }
+            return {"status": "error", "message": e.e, "data": None}
 
 
-    def check_user(self, request, projectOnly = False):
+    def check_user(self, request, projectOnly=False):
         # check if we have a cookie
         if request.get_cookie('anvioSession'):
 
@@ -994,20 +995,20 @@ class UserMGMT:
                 user = retval['data']
                 if user.has_key('project_path'):
                     if projectOnly:
-                        return { "status": "ok", "message": None, "data": { "user": user, "projectname": user["project"] } }
+                        return {"status": "ok", "message": None, "data": {"user": user, "projectname": user["project"]}}
                     
                     basepath = os.path.join(self.users_data_dir, 'userdata', user['path'], user['project_path'])
 
-                    return self.get_the_interactive_object(basepath, title = user['project'], read_only = False)
+                    return self.get_the_interactive_object(basepath, title=user['project'], read_only=False)
                 else:
-                    return { "status": "error", "message": "user has no project", "data": None }
+                    return {"status": "error", "message": "user has no project", "data": None}
             else:
-                return { "status": "error", "message": "session invalid, please relog", "data": None }
+                return {"status": "error", "message": "session invalid, please relog", "data": None}
         else:
-            return { "status": "ok", "message": "no cookie", "data": None }
+            return {"status": "ok", "message": "no cookie", "data": None}
 
 
-    def check_view(self, request, projectOnly = False):
+    def check_view(self, request, projectOnly=False):
         if request.get_cookie('anvioView'):
             p = request.get_cookie('anvioView').split('|')
             p2 = None
@@ -1018,17 +1019,17 @@ class UserMGMT:
                 return view
             else:
                 if projectOnly:
-                    return { "status": "ok", "message": None, "data": { "project": view["data"]["project_data"] } }
+                    return {"status": "ok", "message": None, "data": {"project": view["data"]["project_data"]}}
                     
                 view = view["data"]
                 basepath = os.path.join(self.users_data_dir, 'userdata', view['path'])
 
-                return self.get_the_interactive_object(basepath, title = view['project'], read_only = True)
+                return self.get_the_interactive_object(basepath, title=view['project'], read_only=True)
         else:
-            return { "status": "ok", "message": "no cookie", "data": None }
+            return {"status": "ok", "message": "no cookie", "data": None}
 
 
-    def set_user_data(self, request, projectOnly = False):
+    def set_user_data(self, request, projectOnly=False):
         retval = self.check_view(request, projectOnly)
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
@@ -1037,7 +1038,7 @@ class UserMGMT:
         if retval["status"] == "error" or (retval["status"] == "ok" and retval["data"]):
             return retval
 
-        return { "status": "error", "message": "data not available", "data": None }
+        return {"status": "error", "message": "data not available", "data": None}
 
     
 def dict_factory(cursor, row):

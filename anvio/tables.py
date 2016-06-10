@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """ Table schemas for databases."""
 
 from anvio.constants import codon_to_AA

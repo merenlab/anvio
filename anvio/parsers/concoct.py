@@ -18,7 +18,7 @@ __status__ = "Development"
 
 
 class CONCOCT(Parser):
-    def __init__(self, input_files, contigs = 'False'):
+    def __init__(self, input_files, contigs='False'):
         if type(input_files) != type(list()):
             input_files = [input_files]
 

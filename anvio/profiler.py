@@ -1,4 +1,5 @@
 # coding: utf-8
+# pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
 import os
@@ -79,7 +80,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError, "No contigs database, no profilin'. Bye."
 
         # Initialize contigs db
-        dbops.ContigsSuperclass.__init__(self, self.args, r = self.run, p = self.progress)
+        dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
         self.init_contig_sequences()
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
@@ -109,12 +110,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                 tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
-                                                                   ok_if_exists = self.overwrite_output_destinations)
+                                                                   ok_if_exists=self.overwrite_output_destinations)
 
         self.progress.new('Initializing')
 
         self.progress.update('Creating the output directory ...')
-        filesnpaths.gen_output_directory(self.output_directory, self.progress, delete_if_exists = self.overwrite_output_destinations)
+        filesnpaths.gen_output_directory(self.output_directory, self.progress, delete_if_exists=self.overwrite_output_destinations)
 
         self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
@@ -160,7 +161,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
-        self.run.info('profile_db', self.profile_db_path, display_only = True)
+        self.run.info('profile_db', self.profile_db_path, display_only=True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
         self.run.info('cmd_line', utils.get_cmd_line())
@@ -211,7 +212,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
         self.run.info('runinfo', runinfo_serialized)
-        self.run.store_info_dict(runinfo_serialized, strip_prefix = self.output_directory)
+        self.run.store_info_dict(runinfo_serialized, strip_prefix=self.output_directory)
 
         if self.bam:
             self.bam.close()
@@ -222,12 +223,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_AA_frequencies(self):
         if self.skip_SNV_profiling or self.skip_AA_frequencies:
             # there is nothing to generate really..
-            self.run.info('AA_frequencies_table', False, quiet = True)
+            self.run.info('AA_frequencies_table', False, quiet=True)
             return
 
         self.progress.new('Computing AA frequencies at variable positions')
 
-        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         aa_frequencies = bamops.AAFrequencies()
 
@@ -266,17 +267,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_aas_table.store()
         self.progress.end()
-        self.run.info('AA_frequencies_table', True, quiet = True)
+        self.run.info('AA_frequencies_table', True, quiet=True)
 
 
     def generate_variabile_positions_table(self):
         if self.skip_SNV_profiling:
             # there is nothing to generate really..
-            self.run.info('variable_nts_table', False, quiet = True)
+            self.run.info('variable_nts_table', False, quiet=True)
             return
 
         self.progress.new('NT Variability')
-        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         for contig in self.contigs.values():
             for split in contig.splits:
@@ -317,11 +318,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table.store()
         self.progress.end()
-        self.run.info('variable_nts_table', True, quiet = True)
+        self.run.info('variable_nts_table', True, quiet=True)
 
 
     def generate_gene_coverages_table(self):
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress = self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
 
         self.progress.new('Profiling genes')
         num_contigs = len(self.contigs)
@@ -337,12 +338,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         gene_coverages_table.store()
         self.progress.end()
-        self.run.info('gene_coverages_table', True, quiet = True)
+        self.run.info('gene_coverages_table', True, quiet=True)
 
 
     def store_split_coverages(self):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new = True)
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
 
         self.progress.new('Storing split coverages')
 
@@ -359,8 +360,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         split_coverage_values.close()
 
-        self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only = True)
-        self.run.info('split_coverage_values', True, quiet = True)
+        self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only=True)
+        self.run.info('split_coverage_values', True, quiet=True)
 
 
     def set_sample_id(self):
@@ -452,7 +453,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             utils.check_contig_names(self.contig_names)
 
-            for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse = True):
+            for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
                 print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
 
         else:
@@ -505,7 +506,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = bamops.BAMFileObject(self.input_file_path, run = self.run, progress = self.progress).get()
+        self.bam = bamops.BAMFileObject(self.input_file_path, run=self.run, progress=self.progress).get()
         self.num_reads_mapped = self.bam.mapped
         self.progress.end()
 
@@ -515,7 +516,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         utils.check_contig_names(self.contig_names)
 
         self.run.info('input_bam', self.input_file_path)
-        self.run.info('output_dir', self.output_directory, display_only = True)
+        self.run.info('output_dir', self.output_directory, display_only=True)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
@@ -543,8 +544,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                     prior to mapping, which is described here: %s"\
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
 
-        self.run.info('num_contigs_after_M', self.num_contigs, display_only = True)
-        self.run.info('num_contigs', self.num_contigs, quiet = True)
+        self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
+        self.run.info('num_contigs', self.num_contigs, quiet=True)
         self.run.info('num_splits', self.num_splits)
         self.run.info('total_length', self.total_length)
 
@@ -570,15 +571,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         utils.check_contig_names(self.contig_names)
 
         self.run.info('input_bam', None)
-        self.run.info('output_dir', self.output_directory, display_only = True)
+        self.run.info('output_dir', self.output_directory, display_only=True)
         self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(self.num_contigs))
 
         # check for the -M parameter.
         self.remove_contigs_that_are_shorter_than_min_contig_length()
 
-        self.run.info('num_contigs_after_M', self.num_contigs, display_only = True)
-        self.run.info('num_contigs', self.num_contigs, quiet = True)
+        self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
+        self.run.info('num_contigs', self.num_contigs, quiet=True)
         self.run.info('num_splits', self.num_splits)
         self.run.info('total_length', self.total_length)
 
@@ -590,7 +591,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db.disconnect()
 
 
-    def generate_output_destination(self, postfix, directory = False):
+    def generate_output_destination(self, postfix, directory=False):
         return_path = os.path.join(self.output_directory, postfix)
 
         if directory == True:
@@ -678,16 +679,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, self.output_directory, db_paths = self.database_paths, row_ids_of_interest = self.split_names)
+            config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
 
             try:
-                newick = clustering.order_contigs_simple(config, progress = self.progress)
+                newick = clustering.order_contigs_simple(config, progress=self.progress)
             except Exception as e:
                 self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 self.progress.end()
                 continue
 
-            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default = config_name == default_clustering, run = self.run)
+            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default=config_name == default_clustering, run=self.run)
 
 
     def check_args(self):

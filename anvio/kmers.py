@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Simple KMers class to compute kmer frequecies
 
    This module should not be used for k > 4.
@@ -28,7 +29,7 @@ def rev_comp(seq):
 
 
 class KMers:
-    def __init__(self, k = 4, alphabet = 'ATCG', consider_rev_comps = True):
+    def __init__(self, k=4, alphabet='ATCG', consider_rev_comps=True):
         self.kmers = {}
         self.alphabet = alphabet
         self.consider_rev_comps = consider_rev_comps
@@ -52,7 +53,7 @@ class KMers:
         self.kmers[k] = kmers
 
 
-    def get_kmer_frequency(self, sequence, dist_metric_safe = False):
+    def get_kmer_frequency(self, sequence, dist_metric_safe=False):
         k = self.k
         sequence = sequence.upper()
 

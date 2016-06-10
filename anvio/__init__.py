@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
@@ -12,7 +13,7 @@ import pkg_resources
 # on systems working with multiple Python installations that are managed through modules):
 try:
     if sys.version_info < (2, 7, 5):
-        v =  '.'.join([str(x) for x in sys.version_info[0:3]])
+        v = '.'.join([str(x) for x in sys.version_info[0:3]])
         sys.stderr.write("Your active Python version is '%s'. Anything less than '2.7.5' will not do it for anvi'o :/\n" % v)
         sys.exit(-1)
 except Exception:
@@ -893,7 +894,7 @@ D = {
 def A(param_id):
     return D[param_id][0]
 
-def K(param_id, params_dict = {}):
+def K(param_id, params_dict={}):
     kwargs = copy.deepcopy(D[param_id][1])
     for key in params_dict:
         kwargs[key] = params_dict[key]
@@ -925,7 +926,7 @@ def set_version():
 
 
 def print_version():
-    run.info("Anvi'o version", __version__, mc = 'green')
+    run.info("Anvi'o version", __version__, mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
     run.info("Samples information DB version", __samples__version__)

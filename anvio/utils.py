@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
@@ -51,7 +52,7 @@ def rev_comp(seq):
 
 
 class Multiprocessing:
-    def __init__(self, target_function, num_thread = None):
+    def __init__(self, target_function, num_thread=None):
         self.cpu_count = multiprocessing.cpu_count()
         self.num_thread = num_thread or (self.cpu_count - (int(round(self.cpu_count / 10.0)) or 1))
         self.target_function = target_function
@@ -59,7 +60,7 @@ class Multiprocessing:
         self.manager = multiprocessing.Manager()
 
 
-    def get_data_chunks(self, data_array, spiral = False):
+    def get_data_chunks(self, data_array, spiral=False):
         data_chunk_size = (len(data_array) / self.num_thread) or 1
         data_chunks = []
         
@@ -81,10 +82,10 @@ class Multiprocessing:
         return data_chunks
 
                 
-    def run(self, args, name = None):
-        t = multiprocessing.Process(name = name,
-                                    target = self.target_function,
-                                    args = args)
+    def run(self, args, name=None):
+        t = multiprocessing.Process(name=name,
+                                    target=self.target_function,
+                                    args=args)
         self.processes.append(t)
         t.start()
 
@@ -101,7 +102,7 @@ class Multiprocessing:
         return self.manager.Value('i', 0)
 
 
-    def run_processes(self, processes_to_run, progress = Progress(verbose=False)):
+    def run_processes(self, processes_to_run, progress=Progress(verbose=False)):
         tot_num_processes = len(processes_to_run)
         sent_to_run = 0
         while 1:
@@ -127,7 +128,7 @@ class Multiprocessing:
             time.sleep(1)
 
 
-def get_available_port_num(start = 8080, look_upto_next_num_ports = 100, ip='0.0.0.0'):
+def get_available_port_num(start=8080, look_upto_next_num_ports=100, ip='0.0.0.0'):
     """Starts from 'start' and incrementally looks for an available port
        until 'start + look_upto_next_num_ports', and returns the first
        available one."""
@@ -143,7 +144,7 @@ def is_port_in_use(port, ip='0.0.0.0'):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = sock.connect_ex((ip, port))
 
-    if(result == 0) :
+    if(result == 0):
         in_use = True
 
     sock.close()
@@ -173,7 +174,7 @@ def is_program_exists(program):
 
 def run_command(cmdline):
     try:
-        ret_val = subprocess.call(cmdline, shell = True)
+        ret_val = subprocess.call(cmdline, shell=True)
         if ret_val < 0:
             raise ConfigError, "command was terminated"
         else:
@@ -189,12 +190,12 @@ def get_command_output_from_shell(cmd_line):
         out_bytes = subprocess.check_output(cmd_line.split(), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         out_bytes = e.output
-        ret_code  = e.returncode
+        ret_code = e.returncode
 
     return out_bytes, ret_code
 
 
-def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = []):
+def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]):
     filesnpaths.is_output_file_writable(output_path)
 
     num_fields = len(a[0])
@@ -220,7 +221,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns = 
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers = None, file_obj = None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None):
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
 
@@ -259,7 +260,7 @@ def is_all_columns_present_in_TAB_delim_file(columns, file_path):
     return False if len([False for c in columns if c not in columns]) else True
 
 
-def HTMLColorToRGB(colorstring, scaled = True):
+def HTMLColorToRGB(colorstring, scaled=True):
     """ convert #RRGGBB to an (R, G, B) tuple """
     colorstring = colorstring.strip()
     if colorstring[0] == '#': colorstring = colorstring[1:]
@@ -303,15 +304,15 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
-def get_names_order_from_newick_tree(newick_tree, newick_format = 1):
+def get_names_order_from_newick_tree(newick_tree, newick_format=1):
     filesnpaths.is_proper_newick(newick_tree)
     
-    tree = Tree(newick_tree, format = newick_format)
+    tree = Tree(newick_tree, format=newick_format)
 
     return [n.name for n in tree.get_leaves()]
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return = [], transpose = False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -453,7 +454,7 @@ def concatenate_files(dest_file, file_list):
     return dest_file
 
 
-def get_split_start_stops(contig_length, split_length, gene_start_stops = None):
+def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
     """Wrapper funciton for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
     if gene_start_stops:
         return get_split_start_stops_with_gene_calls(contig_length, split_length, gene_start_stops)
@@ -626,7 +627,7 @@ def get_DNA_sequence_translated(sequence):
     translated_sequence = ''
 
     for i in range(0, len(sequence), 3):
-        single_letter_code = AA_to_single_letter_code[codon_to_AA[sequence[i:i+3]]]
+        single_letter_code = AA_to_single_letter_code[codon_to_AA[sequence[i:i + 3]]]
 
         if not single_letter_code:
             single_letter_code = 'X'
@@ -703,7 +704,7 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id
 
 
-def is_this_name_OK_for_database(variable_name, content, allowed_chars = allowed_chars.replace('.', '')):
+def is_this_name_OK_for_database(variable_name, content, allowed_chars=allowed_chars.replace('.', '')):
     if content[0] in digits:
         raise ConfigError, "Sorry, '%s' can't start with a digit. Long story. Please specify a sample name\
                             that starts with an ASCII letter." % variable_name
@@ -714,7 +715,7 @@ def is_this_name_OK_for_database(variable_name, content, allowed_chars = allowed
                             dash ('-') character." % variable_name
 
 
-def check_contig_names(contig_names, dont_raise = False):
+def check_contig_names(contig_names, dont_raise=False):
     all_characters_in_contig_names = set(''.join(contig_names))
     characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
     if len(characters_anvio_doesnt_like):
@@ -747,7 +748,7 @@ def get_FASTA_file_as_dictionary(file_path):
     return d
 
 
-def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path = None, store_frequencies_in_deflines = True):
+def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=None, store_frequencies_in_deflines=True):
     filesnpaths.is_file_exists(input_file_path)
 
     if not output_fasta_path:
@@ -767,13 +768,13 @@ def unique_FASTA_file(input_file_path, output_fasta_path = None, names_file_path
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
 
-    input_fasta = u.SequenceSource(input_file_path, unique = True)
+    input_fasta = u.SequenceSource(input_file_path, unique=True)
     output_fasta = u.FastaOutput(output_fasta_path)
     names_file = open(names_file_path, 'w')
 
     names_dict = {}
     while input_fasta.next():
-        output_fasta.store(input_fasta, split = False, store_frequencies = store_frequencies_in_deflines)
+        output_fasta.store(input_fasta, split=False, store_frequencies=store_frequencies_in_deflines)
         names_file.write('%s\t%s\n' % (input_fasta.id, ','.join(input_fasta.ids)))
 
         names_dict[input_fasta.id] = input_fasta.ids
@@ -801,20 +802,20 @@ def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
     return tabular_output_path
 
 
-def store_dict_as_FASTA_file(d, output_file_path, wrap_from = 200):
+def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     filesnpaths.is_output_file_writable(output_file_path)
     output = open(output_file_path, 'w')
 
     for key in d:
         output.write('>%s\n' % key)
-        output.write('%s\n' % textwrap.fill(d[key], wrap_from, break_on_hyphens = False))
+        output.write('%s\n' % textwrap.fill(d[key], wrap_from, break_on_hyphens=False))
 
     output.close()
     return True
 
-def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict = None,
-                               unit_mapping_dict = None, project = None, sample_size=8, unit_size=2,
-                               skip_sample_labels = False, skip_unit_labels = False):
+def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=None,
+                               unit_mapping_dict=None, project=None, sample_size=8, unit_size=2,
+                               skip_sample_labels=False, skip_unit_labels=False):
     """A function that generates an XML network description file for Gephi.
     
        Two minimum required inputs are `units`, and `samples_dict`.
@@ -891,7 +892,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict 
 
         if sample_mapping_dict and sample_mapping_dict[sample].has_key('colors'):
             output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
-                                             HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled = False))
+                                             HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled=False))
 
         if sample_mapping_categories:
             output.write('''        <attvalues>\n''')
@@ -959,10 +960,10 @@ def is_ascii_only(text):
     return True
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict_to_append = None, column_names = None,\
-                                        column_mapping = None, indexing_field = 0, separator = '\t', no_header = False,\
-                                        ascii_only = False, only_expected_fields = False, assign_none_for_missing = False,\
-                                        none_value = None):
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
+                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
+                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
+                                        none_value=None):
     """Takes a file path, returns a dictionary."""
 
     if expected_fields and not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
@@ -974,7 +975,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields = None, dict
                             find in the file."
 
     filesnpaths.is_file_exists(file_path)
-    filesnpaths.is_file_tab_delimited(file_path, separator = separator)
+    filesnpaths.is_file_tab_delimited(file_path, separator=separator)
 
     f = open(file_path, 'rU')
 
@@ -1128,7 +1129,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
                                 or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
 
-        genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names = ['gene', 'accession', 'hmmsource'])
+        genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
@@ -1166,8 +1167,8 @@ def RepresentsFloat(s):
 
 class Mailer:
     def __init__(self, from_address='admin@localhost', server_address='localhost', server_port=25,
-                 init_tls=False, username = None, password = None, run = Run(verbose = False),
-                 progress = Progress(verbose=False)):
+                 init_tls=False, username=None, password=None, run=Run(verbose=False),
+                 progress=Progress(verbose=False)):
         self.from_address = from_address
         self.server_address = server_address
         self.server_port = server_port
@@ -1183,12 +1184,12 @@ class Mailer:
 
         self.config_template = {
                 'SMTP': {
-                        'from_address'   : {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_address' : {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_port'    : {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0, 'required': 'an integer'},
-                        'init_tls'       : {'mandatory': True, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-                        'username'       : {'mandatory': True, 'test': lambda x: str(x)},
-                        'password'       : {'mandatory': True, 'test': lambda x: str(x)},
+                        'from_address': {'mandatory': True, 'test': lambda x: str(x)},
+                        'server_address': {'mandatory': True, 'test': lambda x: str(x)},
+                        'server_port': {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0, 'required': 'an integer'},
+                        'init_tls': {'mandatory': True, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
+                        'username': {'mandatory': True, 'test': lambda x: str(x)},
+                        'password': {'mandatory': True, 'test': lambda x: str(x)},
                     },
             }
 
@@ -1232,7 +1233,7 @@ class Mailer:
                 else:
                     raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section)
 
-        self.run.warning('', header="SMTP Configuration is read", lc = 'cyan')
+        self.run.warning('', header="SMTP Configuration is read", lc='cyan')
         for option, value in config.items(section):
             self.run.info(option, value if option != 'password' else '*' * len(value))
             setattr(self, option, value)
