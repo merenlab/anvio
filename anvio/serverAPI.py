@@ -110,7 +110,7 @@ class AnviServerAPI:
 
         try:
             response_object = self.methods[method](url, data=data, headers=headers, cookies=cookies, files=files)
-        except Exception, e:
+        except Exception as e:
             raise AnviServerError, "Something went wrong while trying to connect to the host %s. Here is a more\
                                 detailed and uglier report: '''%s'''" % (self.hostname, e)
 

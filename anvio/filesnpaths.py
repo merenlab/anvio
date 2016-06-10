@@ -33,7 +33,7 @@ __status__ = "Development"
 def is_proper_newick(newick_data):
     try:
         return Tree(newick_data, format=1)
-    except Exception, e:
+    except Exception as e:
         raise FilesNPathsError, "Your tree doesn't seem to be properly formatted. Here is what ete2 had\
                                  to say about this: '%s'. Pity :/" % e
 
@@ -202,7 +202,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
 def is_file_json_formatted(file_path):
     try:
         json.load(open(file_path, 'rU'))
-    except ValueError, e:
+    except ValueError as e:
         raise FilesNPathsError, "File '%s' does seem to be a properly formatted JSON\
                             file ('%s', cries the library)." % (file_path, e)
 
@@ -214,7 +214,7 @@ def is_file_fasta_formatted(file_path):
 
     try:
         f = u.SequenceSource(file_path)
-    except u.FastaLibError, e:
+    except u.FastaLibError as e:
         raise FilesNPathsError, "Someone is not happy with your FASTA file '%s' (this is\
                             what the lib says: '%s'." % (file_path, e)
 

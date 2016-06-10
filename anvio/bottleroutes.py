@@ -219,7 +219,7 @@ def store_refined_bins(args, r, request, response):
 
     try:
         r.store_refined_bins(data, bins_info_dict)
-    except RefineError, e:
+    except RefineError as e:
         return json.dumps({'status': -1, 'message': e.clear_text()})
 
     message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_name)
@@ -309,7 +309,7 @@ def get_sequence_for_gene_call(args, d, request, response, gene_callers_id):
 
     try:
         gene_calls_tuple = d.get_sequences_for_gene_callers_ids([gene_callers_id])
-    except Exception, e:
+    except Exception as e:
         return json.dumps({'error': "Something went wrong when I tried to access to that gene: '%s' :/" % e})
 
     entry = gene_calls_tuple[1][gene_callers_id]
@@ -325,7 +325,7 @@ def get_sequence_for_split(args, d, request, response, split_name):
     try:
         sequence = d.split_sequences[split_name]
         header = split_name
-    except Exception, e:
+    except Exception as e:
         return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
 
     return json.dumps({'sequence': sequence, 'header': header})

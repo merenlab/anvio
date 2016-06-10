@@ -42,7 +42,7 @@ __CONCOCT_IS_AVAILABLE__ = False
 try:
     import anvio.concoct as concoct
     __CONCOCT_IS_AVAILABLE__ = True
-except ImportError, e:
+except ImportError as e:
     run.warning("The CONCOCT module could not be imported :( Anvi'o will still be able to perform\
                  the merging, however, the unsupervised binning results will not be available to\
                  you in the resulting merged profile database. This is what the module was upset about:\
