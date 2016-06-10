@@ -966,12 +966,13 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                         none_value=None):
     """Takes a file path, returns a dictionary."""
 
-    if expected_fields and not isinstance(expected_fields, list) and not isinstance(expected_fields, set):
+    if expected_fields and (not isinstance(expected_fields, list) and not isinstance(expected_fields, set)):
         raise ConfigError, "'expected_fields' variable must be a list (or a set)."
 
+    if only_expected_fields and not expected_fields:
         raise ConfigError, "'only_expected_fields' variable guarantees that there are no more fields present\
                             in the input file but the ones requested with 'expected_fields' variable. If you\
-                            need to use this flag, you must also be explicit abou twhat fields you expect to\
+                            need to use this flag, you must also be explicit about what fields you expect to\
                             find in the file."
 
     filesnpaths.is_file_exists(file_path)
@@ -1008,6 +1009,13 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                     to have these: '%s', however it had these: '%s'" % (file_path,
                                                                                         ', '.join(expected_fields),
                                                                                         ', '.join(columns[1:]))
+
+    if only_expected_fields:
+        for field in columns:
+            if field not in expected_fields:
+                raise ConfigError, "There are more fields in the file '%s' than the expected fields :/\
+                                    Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
+                                    funciton is called with `only_expected_fields` flag turned on."
 
     d = {}
     line_counter = 0
