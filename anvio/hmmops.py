@@ -25,7 +25,7 @@ progress = terminal.Progress()
 
 class SequencesForHMMHits:
     def __init__(self, contigs_db_path, sources=set([]), run=run, progress=progress):
-        if type(sources) != type(set([])):
+        if not isinstance(sources, type(set([]))):
             raise ConfigError, "'sources' variable has to be a set instance."
 
         self.sources = set([s for s in sources if s])
@@ -160,7 +160,7 @@ class SequencesForHMMHits:
     def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if type(wrap) != int:
+        if not isinstance(wrap, int):
             raise ConfigError, '"wrap" has to be an integer instance'
 
         f = open(output_file_path, 'w')

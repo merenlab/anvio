@@ -101,7 +101,7 @@ class DB:
 
         val = rows[0][0]
 
-        if type(val) == type(None):
+        if isinstance(val, type(None)):
             return None
 
         try:

@@ -42,7 +42,7 @@ class SuppressAllOutput(object):
 
 
 def remove_spaces(text):
-    while 1:
+    while True:
         if text.find("  ") > -1:
             text = text.replace("  ", " ")
         else:
@@ -166,9 +166,9 @@ class Run:
         if not display_only:
             self.info_dict[key] = value
 
-        if type(value) == str:
+        if isinstance(value, str):
             value = remove_spaces(value)
-        if type(value) == int:
+        if isinstance(value, int):
             value = pretty_print(value)
 
         label = constants.get_pretty_name(key)
@@ -181,7 +181,7 @@ class Run:
 
 
     def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80):
-        if type(message) == str:
+        if isinstance(message, str):
             message = remove_spaces(message)
 
         if cut_after:
@@ -195,7 +195,7 @@ class Run:
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False):
-        if type(message) == str:
+        if isinstance(message, str):
             message = remove_spaces(message)
 
         message_line = ''
@@ -225,7 +225,7 @@ class Run:
 
 def pretty_print(n):
     """Pretty print function for very big integers"""
-    if type(n) != int:
+    if not isinstance(n, int):
         return n
 
     ret = []

@@ -105,7 +105,7 @@ class Multiprocessing:
     def run_processes(self, processes_to_run, progress=Progress(verbose=False)):
         tot_num_processes = len(processes_to_run)
         sent_to_run = 0
-        while 1:
+        while True:
             NumRunningProceses = lambda: len([p for p in self.processes if p.is_alive()])
 
             if NumRunningProceses() < self.num_thread and processes_to_run:
@@ -247,7 +247,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                     as a TAB-delimited file :/ You ask for '%s', but it is not\
                                     even a key in the dictionary" % (header)
 
-            line.append(str(val) if type(val) != type(None) else '')
+            line.append(str(val) if not isinstance(val, type(None)) else '')
 
         f.write('%s\n' % '\t'.join(line))
 
@@ -1081,7 +1081,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 def get_filtered_dict(input_dict, item, accepted_values_set):
     # removes any entry from d, where the value of the 'item' of items in d does not match
     # with 'accepted_values'
-    if type(accepted_values_set) != type(set([])):
+    if not isinstance(accepted_values_set, type(set([]))):
         raise ConfigError, "get_filtered_dict: values must be type of set([])."
 
     filtered_dict = {}
@@ -1096,7 +1096,7 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
 
 
 def get_HMM_sources_dictionary(source_dirs=[]):
-    if type(source_dirs) != type([]):
+    if not isinstance(source_dirs, type([])):
         raise ConfigError, "source_dirs parameter must be a list (get_HMM_sources_dictionary)."
 
     sources = {}

@@ -95,7 +95,7 @@ class UsersDB:
 
         val = row['value']
 
-        if type(val) == type(None):
+        if isinstance(val, type(None)):
             return None
 
         try:

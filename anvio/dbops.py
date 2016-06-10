@@ -558,7 +558,7 @@ class ContigsSuperclass(object):
 
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if type(wrap) != int:
+        if not isinstance(wrap, int):
             raise ConfigError, '"wrap" has to be an integer instance'
         if wrap == 0:
             wrap = None
@@ -1691,7 +1691,7 @@ class TablesForGeneCalls(Table):
 
 
     def check_gene_calls_dict(self, gene_calls_dict):
-        if type(gene_calls_dict) != type({}):
+        if not isinstance(gene_calls_dict, type({})):
             raise ConfigError, "Gene calls dict must be a dict instance :/"
 
         try:

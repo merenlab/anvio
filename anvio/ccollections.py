@@ -247,7 +247,7 @@ class GetSequentialBlocksOfSplits:
 
 
     def process(self):
-        while 1:
+        while True:
             if not self.l:
                 break
 

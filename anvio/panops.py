@@ -127,13 +127,13 @@ class Pangenome:
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
-        if type(self.maxbit) != float:
+        if not isinstance(self.maxbit, float):
             raise ConfigError, "maxbit value must be of type float :("
 
         if self.maxbit < 0 or self.maxbit > 1:
             raise ConfigError, "Well. maxbit must be between 0 and 1. Yes. Very boring."
 
-        if type(self.min_percent_identity) != float:
+        if not isinstance(self.min_percent_identity, float):
             raise ConfigError, "Minimum percent identity value must be of type float :("
 
         if self.min_percent_identity < 0 or self.min_percent_identity > 100:
@@ -595,13 +595,13 @@ class Pangenome:
     def sanity_check(self):
         self.check_programs()
 
-        if type(self.mcl_inflation) != float:
+        if not isinstance(self.mcl_inflation, float):
             raise ConfigError, "Well, MCL likes its inflation parameter in 'float' form..."
 
         if self.mcl_inflation > 100 or self.mcl_inflation < 0.1:
             raise ConfigError, "MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0."
 
-        if type(self.genomes) != type({}):
+        if not isinstance(self.genomes, type({})):
             raise ConfigError, "self.genomes must be a dict. Anvi'o needs an adult :("
 
         if len(self.genomes) < 2:
