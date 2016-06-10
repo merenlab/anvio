@@ -236,10 +236,10 @@ class SequenceSource():
         plt.ylabel('number of sequences')
         plt.xlabel('sequence length')
 
-        if xtickstep == None:
+        if xtickstep is None:
             xtickstep = (max_seq_len / 50) or 1
 
-        if ytickstep == None:
+        if ytickstep is None:
             ytickstep = max(seq_len_distribution) / 20 or 1
 
         plt.xticks(range(xtickstep, max_seq_len + 1, xtickstep), rotation=90, size='xx-small')
@@ -263,7 +263,7 @@ class SequenceSource():
                max(sequence_lengths)),\
             va='center', alpha=0.8, size='x-large')
 
-        if dest == None:
+        if dest is None:
             dest = self.fasta_file_path
 
         try:
