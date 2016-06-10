@@ -47,6 +47,13 @@ complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
 
 nucleotides = 'ATCGN'
 
+AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D',
+                                    'Cys': 'C', 'Gln': 'Q', 'Glu': 'E', 'Gly': 'G',
+                                    'His': 'H', 'Ile': 'I', 'Leu': 'L', 'Lys': 'K',
+                                    'Met': 'M', 'Phe': 'F', 'Pro': 'P', 'STP': '*',
+                                    'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
+                                    'Val': 'V'})
+
 codon_to_AA = Counter({'ATA':'Ile', 'ATC':'Ile', 'ATT':'Ile', 'ATG':'Met',
                        'ACA':'Thr', 'ACC':'Thr', 'ACG':'Thr', 'ACT':'Thr',
                        'AAC':'Asn', 'AAT':'Asn', 'AAA':'Lys', 'AAG':'Lys',
