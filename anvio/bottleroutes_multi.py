@@ -24,13 +24,13 @@ def set_default_headers(response):
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
-    
+
 
 def server_version(request, userdb, response):
     set_default_headers(response)
     return json.dumps({"database": anvio.__users_db_version__, "server": anvio.__version__})
 
-    
+
 def get_user(request, userdb, response):
     # check if we have a cookie
     if request.get_cookie('anvioSession'):
@@ -44,7 +44,7 @@ def get_user(request, userdb, response):
 
     else:
         return False
-    
+
 def get_user_by_token(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.get_user_for_token(request.forms.get('token'), request.forms.get('verbose')))
@@ -65,7 +65,7 @@ def change_clearance(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.change_clearance(request.forms.get('user'), request.forms.get('clearance'), get_user(request, userdb, response)))
 
-    
+
 def request_account(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.create_user(request.forms.get('firstname'), request.forms.get('lastname'), request.forms.get('email'), request.forms.get('login'), request.forms.get('password'), request.forms.get('affiliation'), request.environ.get('REMOTE_ADDR'), ))
@@ -78,7 +78,7 @@ def accept_user(request, userdb, response):
     else:
         redirect('/app/accountBAD.html')
 
-        
+
 def delete_user(request, userdb, response):
     set_default_headers(response)
     user = get_user(request, userdb, response)
@@ -86,7 +86,7 @@ def delete_user(request, userdb, response):
         return json.dumps(userdb.delete_user(request.forms.get('user'), user))
     else:
         return '{ "status": "error", "data": null, "message": "you must be logged in as an admin to delete a user" }'
-    
+
 def reset_password(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.get_user_for_email(request.forms.get('email')))
@@ -107,7 +107,7 @@ def check_availability(request, userdb, response):
         else:
             return '{ "status": "ok", "message": null, "data": "login" }'
 
-        
+
 def change_password(request, userdb, response):
     set_default_headers(response)
     user = userdb.get_user_for_login(request.forms.get('login'))
@@ -116,13 +116,13 @@ def change_password(request, userdb, response):
     else:
         return json.dumps(user)
 
-    
+
 def login_to_app(request, userdb, response):
     set_default_headers(response)
     retval = userdb.login_user(request.forms.get('login'), request.forms.get('password'))
     if retval['status'] == 'ok':
         response.set_header('Set-Cookie', 'anvioSession=' + retval['data']["token"] + '; path=/; max-age=' + str(60 * 60 * 24 * 14))
-        
+
     return json.dumps(retval)
 
 
@@ -132,14 +132,14 @@ def logout_from_app(request, userdb, response):
 
 def set_view_cookie(request, userdb, response, login, name, private):
     # get the absolute path for static directory under anvio
-    
+
     static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
     response = static_file('index.html', root=static_dir)
 
     if not userdb.view_exists(login, name):
         redirect('/app/error.html?err=404')
         return
-    
+
     if private:
         if not request.query.code:
             redirect('/app/error.html?err=401')
@@ -150,7 +150,7 @@ def set_view_cookie(request, userdb, response, login, name, private):
         response.set_header('Set-Cookie', 'anvioView=' + login + '|' + name + '; path=/;')
 
     return response
-        
+
 
 def set_project(request, userdb, response):
     set_default_headers(response)
@@ -201,12 +201,12 @@ def share_project(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.create_view(get_user(request, userdb, response), request.forms.get('name'), request.forms.get('project'), request.forms.get('public')))
 
-    
+
 def delete_share(request, userdb, response):
     set_default_headers(response)
     return json.dumps(userdb.delete_view(get_user(request, userdb, response), request.forms.get('name')))
-    
-    
+
+
 def receive_upload_file(request, userdb, response):
     set_default_headers(response)
     user = get_user(request, userdb, response)
@@ -293,14 +293,14 @@ def receive_additional_upload_file(request, userdb, response):
     user = get_user(request, userdb, response)
     if not user:
         return '{ "status": "error", "message": "you need to be logged in to upload additional data", "data": null }'
-    
+
     user = user['data']
 
     project = userdb.get_project(user, request.forms.get('project'))
 
     if not project['status'] == 'ok':
         return json.dumps(project)
-    
+
     basepath = userdb.users_data_dir + '/userdata/' + user['path'] + '/' + project['data']['path'] + '/'
 
     fileType = 'additionalFile'
@@ -309,13 +309,13 @@ def receive_additional_upload_file(request, userdb, response):
         fileType = request.forms.get('type')
         if not validFileType[fileType]:
             return '{ "status": "error", "message": "Invalid file type selected for upload", "data": null }'
-        
+
     message = 'added'
     filePath = basepath + fileType
     if os.path.isfile(filePath):
         os.remove(filePath)
         message = 'updated'
-        
+
     request.files.get('uploadFile').save(filePath)
 
     # check if this is a samples order or samples info file in which case the samples.db needs to be
@@ -358,21 +358,21 @@ def admin_data(request, userdb, response):
             order = 'lastname'
             direction = 'ASC'
             if 'offset' in request.query:
-                offset = request.query['offset'] 
+                offset = request.query['offset']
             if 'limit' in request.query:
                 limit = request.query['limit']
             if 'order' in request.query:
-                order = request.query['order'] 
+                order = request.query['order']
             if 'direction' in request.query:
-                direction = request.query['direction'] 
-                                
+                direction = request.query['direction']
+
             return json.dumps(userdb.user_list(offset, limit, order, direction, filterhash))
         else:
             return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'
     else:
         return '{ "status": "error", "message": "You need to be logged in to view this data", "data": null }'
 
-    
+
 def admin_project_data(request, userdb, response):
     set_default_headers(response)
     user = get_user(request, userdb, response)
@@ -389,14 +389,14 @@ def admin_project_data(request, userdb, response):
             order = 'name'
             direction = 'ASC'
             if 'offset' in request.query:
-                offset = request.query['offset'] 
+                offset = request.query['offset']
             if 'limit' in request.query:
                 limit = request.query['limit']
             if 'order' in request.query:
-                order = request.query['order'] 
+                order = request.query['order']
             if 'direction' in request.query:
-                direction = request.query['direction'] 
-                                
+                direction = request.query['direction']
+
             return json.dumps(userdb.project_list(offset, limit, order, direction, filterhash))
         else:
             return '{ "status": "error", "message": "You need to be an administrator to view this data", "data": null }'

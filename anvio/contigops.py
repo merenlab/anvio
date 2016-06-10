@@ -157,7 +157,7 @@ class Auxiliary:
         self.competing_nucleotides = {}
         self.min_coverage = min_coverage
         self.column_profile = self.split.column_profiles
-        self.report_variability_full = report_variability_full 
+        self.report_variability_full = report_variability_full
 
         self.run(bam)
 

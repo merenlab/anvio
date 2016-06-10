@@ -48,7 +48,7 @@ config_template = {
 
 
 def RepresentsInt(s):
-    try: 
+    try:
         int(s)
         return True
     except ValueError:
@@ -121,8 +121,8 @@ class ClusteringConfiguration:
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, section, 'ratio', int)
             m['path'] = self.matrix_paths[alias]
-            m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True 
-            m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False 
+            m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True
+            m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False
             # next two variables are necessary to follow the order of vectors
             m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], self.row_ids_of_interest)
             self.matrices_dict[alias] = m
@@ -152,7 +152,7 @@ class ClusteringConfiguration:
         self.num_matrices = len(self.matrices)
         self.multiple_matrices = self.num_matrices > 1
 
-        # following section will be irrelevant for a while (this is tied to working on 
+        # following section will be irrelevant for a while (this is tied to working on
         # the clustering.order_contigs_experimental() function:
         #if not self.multiple_matrices:
         #    # there is only one matrix, we don't expect to see a ratio.

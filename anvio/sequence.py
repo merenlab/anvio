@@ -29,14 +29,14 @@ class Composition:
     def report(self):
         s = self.sequence
         raw_length = len(s)
-        
+
         self.A = s.count('A')
         self.T = s.count('T')
         self.C = s.count('C')
         self.G = s.count('G')
         self.N = raw_length - (self.A + self.T + self.C + self.G)
         length = raw_length - self.N
-    
+
         if not length:
             # sequence is composed of only N's
             self.GC_content = 0.0
@@ -103,7 +103,7 @@ def get_indices_for_outlier_values(c):
 
 def get_list_of_outliers(values, threshold=1.5):
     """
-    Returns a boolean array with True if values are outliers and False 
+    Returns a boolean array with True if values are outliers and False
     otherwise.
 
     Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
@@ -124,7 +124,7 @@ def get_list_of_outliers(values, threshold=1.5):
     ----------
         Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
         Handle Outliers", The ASQC Basic References in Quality Control:
-        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. 
+        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
 
         http://www.sciencedirect.com/science/article/pii/S0022103113000668
     """

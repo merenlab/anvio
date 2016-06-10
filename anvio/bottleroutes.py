@@ -36,7 +36,7 @@ def state_autoload(d, response):
     # see --state parameter.
     set_default_headers(response)
 
-    return json.dumps(d.state)    
+    return json.dumps(d.state)
 
 
 def state_all(d, response):
@@ -146,7 +146,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
         p['start_in_contig'] = d.genes_in_contigs_dict[gene_callers_id]['start']
         p['stop_in_contig'] = d.genes_in_contigs_dict[gene_callers_id]['stop']
         p['complete_gene_call'] = 'No' if d.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
-        p['length'] = p['stop_in_contig'] - p['start_in_contig'] 
+        p['length'] = p['stop_in_contig'] - p['start_in_contig']
         p['functions'] = d.gene_function_calls_dict[gene_callers_id] if d.gene_function_calls_dict.has_key(gene_callers_id) else None
 
         for level in levels_occupied:
@@ -256,7 +256,7 @@ def gen_summary(args, d, request, response, collection_name):
         return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
-    
+
     url = "http://%s:%d/summary/%s/index.html" % (args.ip_address, args.port_number, collection_name)
     return json.dumps({'url': url})
 

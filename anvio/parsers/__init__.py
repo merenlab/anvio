@@ -12,7 +12,7 @@
 
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.myrastgui import MyRastGUI
-from anvio.parsers.myrastcmdline import MyRastCMDLine 
+from anvio.parsers.myrastcmdline import MyRastCMDLine
 from anvio.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
 from anvio.parsers.hmmscan import HMMScan
 from anvio.parsers.concoct import CONCOCT

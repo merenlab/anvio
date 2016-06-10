@@ -99,7 +99,7 @@ class AnviServerAPI:
 
 
     def request(self, target, data={}, files={}, method='POST', continue_on_error=False):
-        if method not in self.methods: 
+        if method not in self.methods:
             raise AnviServerError, "Unknown method: '%s'" % method
 
         url = self.URL(target)

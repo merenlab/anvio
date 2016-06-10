@@ -68,7 +68,7 @@ class SGE:
                 sge.binary = ... (full path to the binary file)
                 sge.command = 'perl %(binary)s %(part)s'
                 sge.wild_card_for_partial_results = "results.01.phymm*part-*.txt"
-                
+
                 try:
                     sge._run()
                 except ConfigError, e:
@@ -105,7 +105,7 @@ class SGE:
         self.input_file_path = None
         self.merged_results_file_path = None
         self.num_entries_per_file = 10
-        self.tmp_dir = None 
+        self.tmp_dir = None
         self.wild_card_for_partial_results = None
 
         self.progress = Progress()
@@ -189,29 +189,29 @@ class SGE:
     def clusterize(self, parts):
         # create a 8 digits random identifier for cluster jobs:
         identifier = ''.join(random.choice(string.ascii_uppercase) for x in range(10))
-    
+
         for part in parts:
             command = self.command % {'binary': self.binary, 'part': part}
-    
+
             # create sh file
             shell_script = part + '.sh'
             open(shell_script, 'w').write(QSUB_SCRIPT % {'log': part + '.log',
                                                          'identifier': identifier,
                                                          'command': command})
-    
+
             # submit script to cluster
             utils.run_command('qsub %s' % shell_script)
-    
+
 
         while True:
             qstat_info = self.get_qstat_info(identifier)
             total_processes = sum(qstat_info.values())
             if total_processes == 0:
                 break
-    
+
             self.progress.update('Qstat Info :: Total Jobs: %s, %s' % (pp(total_processes),
                        ', '.join(['%s: %s' % (x, pp(qstat_info[x])) for x in qstat_info])))
-    
+
             time.sleep(5)
 
         return True
@@ -222,24 +222,24 @@ class SGE:
             proc = subprocess.Popen(['qstat'], stdout=subprocess.PIPE)
         except OSError, e:
             raise ConfigError, "qstat command was failed for the following reason: '%s'" % (e)
-    
+
         qstat_state_codes = {'Pending': ['qw', 'hqw', 'hRwq'],
                              'Running': ['r', 't', 'Rr', 'Rt'],
                              'Suspended': ['s', 'ts', 'S', 'tS', 'T', 'tT'],
                              'Error': ['Eqw', 'Ehqw', 'EhRqw'],
                              'Deleted': ['dr', 'dt', 'dRr', 'dRt', 'ds', 'dS', 'dT', 'dRs', 'dRS', 'dRT']}
-    
+
         info_dict = {'Pending': 0, 'Running': 0, 'Suspended': 0, 'Error': 0, 'Deleted': 0}
         line_no = 0
-    
+
         while True:
             line = proc.stdout.readline()
-    
+
             # skip the first two lines
             if line_no < 2:
                 line_no += 1
                 continue
-    
+
             if line != '':
                 id, priority, name, user, state = line.strip().split()[0:5]
                 if name == job_identifier:
@@ -251,10 +251,10 @@ class SGE:
                     if not found:
                         raise ConfigError, "Unknown state for qstat: '%s' (known states: '%s')"\
                                  % (state, ', '.join(info_dict.keys()))
-    
+
                 line_no += 1
             else:
                 break
-    
+
         return info_dict
 

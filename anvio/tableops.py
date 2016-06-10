@@ -61,7 +61,7 @@ class Table(object):
         database = db.DB(self.db_path, version)
         self.db_type = database.get_meta_value('db_type')
 
-        if not simple and self.db_type == 'contigs': 
+        if not simple and self.db_type == 'contigs':
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
             # and contigs db calls.
             self.split_length = database.get_meta_value('split_length')

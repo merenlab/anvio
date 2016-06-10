@@ -63,14 +63,14 @@ class Multiprocessing:
     def get_data_chunks(self, data_array, spiral=False):
         data_chunk_size = (len(data_array) / self.num_thread) or 1
         data_chunks = []
-        
+
         if len(data_array) <= self.num_thread:
             return [[chunk] for chunk in data_array]
 
         if spiral:
             for i in range(0, self.num_thread):
                 data_chunks.append([data_array[j] for j in range(i, len(data_array), self.num_thread)])
-            
+
             return data_chunks
         else:
             for i in range(0, self.num_thread):
@@ -81,7 +81,7 @@ class Multiprocessing:
 
         return data_chunks
 
-                
+
     def run(self, args, name=None):
         t = multiprocessing.Process(name=name,
                                     target=self.target_function,
@@ -97,7 +97,7 @@ class Multiprocessing:
     def get_empty_shared_dict(self):
         return self.manager.dict()
 
-    
+
     def get_shared_integer(self):
         return self.manager.Value('i', 0)
 
@@ -107,7 +107,7 @@ class Multiprocessing:
         sent_to_run = 0
         while 1:
             NumRunningProceses = lambda: len([p for p in self.processes if p.is_alive()])
-            
+
             if NumRunningProceses() < self.num_thread and processes_to_run:
                 for i in range(0, self.num_thread - NumRunningProceses()):
                     if len(processes_to_run):
@@ -306,7 +306,7 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1):
     filesnpaths.is_proper_newick(newick_tree)
-    
+
     tree = Tree(newick_tree, format=newick_format)
 
     return [n.name for n in tree.get_leaves()]
@@ -373,9 +373,9 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
-    
+
     while fasta.next():
-        ids.append(fasta.id) 
+        ids.append(fasta.id)
 
     return ids
 
@@ -474,7 +474,7 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
 
     non_coding_positions_in_contig = set(range(0, contig_length))
 
-    # trim from the beginning and the end. we don't want to end up creating very short pieces 
+    # trim from the beginning and the end. we don't want to end up creating very short pieces
     non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(0, int(split_length / 2))))
     non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
 
@@ -559,7 +559,7 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
     that represents all parents as keys, and ordered splits as items.
 
     split_ids is a set of split IDs, splits_basic_info comes from the contigs database:
- 
+
      >>> contigs_db = dbops.ContigsDatabase(contigs_db_path)
      >>> splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
      >>> znnotation_db.disconnect()
@@ -817,9 +817,9 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
                                unit_mapping_dict=None, project=None, sample_size=8, unit_size=2,
                                skip_sample_labels=False, skip_unit_labels=False):
     """A function that generates an XML network description file for Gephi.
-    
+
        Two minimum required inputs are `units`, and `samples_dict`.
-       
+
        Simply, `samples_dict` is a dictionary that shows the distribution of `units` and their
        frequencies across samples. Here is an example `units` variable (which is a type of `list`):
 
@@ -923,7 +923,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
         output.write('''    </node>\n''')
 
     output.write('''</nodes>\n''')
-    
+
     edge_id = 0
     output.write('''<edges>\n''')
     for sample in samples:
@@ -947,7 +947,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
     output.write('''</edges>\n''')
     output.write('''</graph>\n''')
     output.write('''</gexf>\n''')
-    
+
     output.close()
 
 
@@ -1034,7 +1034,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                 except ValueError:
                     raise ConfigError, "Mapping funciton '%s' did not like the value '%s' in column number %d\
                                         of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path)
-            line_fields = updated_line_fields 
+            line_fields = updated_line_fields
 
         if indexing_field == -1:
             entry_name = 'line__%09d__' % line_counter
@@ -1150,7 +1150,7 @@ def get_missing_programs_for_hmm_analysis():
 
 
 def RepresentsInt(s):
-    try: 
+    try:
         int(s)
         return True
     except ValueError:
@@ -1158,7 +1158,7 @@ def RepresentsInt(s):
 
 
 def RepresentsFloat(s):
-    try: 
+    try:
         float(s)
         return True
     except ValueError:
@@ -1290,7 +1290,7 @@ class Mailer:
             raise ConfigError, "Something went wrong while trying to connet send your e-mail :(\
                                 This is what we know about the problem: %s" % e
 
-        
+
         self.progress.update('Disconnecting ..')
         self.disconnect()
         self.progress.end()

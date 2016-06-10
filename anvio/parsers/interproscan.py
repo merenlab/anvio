@@ -19,7 +19,7 @@ class InterProScan(Parser):
         input_file_path = input_file_paths[0]
         files_expected = {'matrix': input_file_path}
 
-        files_structure = {'matrix': 
+        files_structure = {'matrix':
                                 {'col_names': ['gene_callers_id', 'hash', 'length', 'source', 'accession', 'function', 'start', 'stop', 'e_value', 'status', 'date'],
                                  'col_mapping': [int, str, int, str, str, str, int, int, str, str, str],
                                  'indexing_field': -1,
@@ -35,6 +35,6 @@ class InterProScan(Parser):
             try:
                 d[entry]['e_value'] = float(d[entry]['e_value'])
             except:
-                d[entry]['e_value'] = None 
+                d[entry]['e_value'] = None
 
         return d

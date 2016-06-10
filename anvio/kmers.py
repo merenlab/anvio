@@ -34,14 +34,14 @@ class KMers:
         self.alphabet = alphabet
         self.consider_rev_comps = consider_rev_comps
         self.k = k
-        
+
         self.get_kmers()
 
     def get_kmers(self):
         k = self.k
         arg = [self.alphabet] * k
         kmers = set()
-        
+
         for item in itertools.product(*arg):
             kmer = ''.join(item)
             if self.consider_rev_comps:
@@ -49,7 +49,7 @@ class KMers:
                     kmers.add(kmer)
             else:
                 kmers.add(kmer)
-        
+
         self.kmers[k] = kmers
 
 
@@ -62,13 +62,13 @@ class KMers:
 
         if not self.kmers.has_key(k):
             self.get_kmers(k)
-        
+
         kmers = self.kmers[k]
 
         frequencies = Counter({})
         for i in range(0, len(sequence) - (k - 1)):
             kmer = sequence[i:i + k]
-            
+
             if self.consider_rev_comps:
                 if kmer in kmers:
                     frequencies[kmer] += 1

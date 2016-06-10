@@ -10,7 +10,7 @@ class DefaultMatrix(Parser):
         matrix_txt = input_file_paths[0]
         files_expected = {'matrix': matrix_txt}
 
-        files_structure = {'matrix': 
+        files_structure = {'matrix':
                                 {'col_names': ['prot', 'contig', 'start', 'stop', 'direction', 'figfam', 'function', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species'],
                                  'col_mapping': [str, str, int, int, str, str, str, str, str, str, str, str, str],
                                  }

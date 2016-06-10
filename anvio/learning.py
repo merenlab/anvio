@@ -7,7 +7,7 @@ import numpy as np
 import sklearn.ensemble
 
 import anvio
-import anvio.utils as utils 
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 

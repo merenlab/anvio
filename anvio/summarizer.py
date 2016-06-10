@@ -126,12 +126,12 @@ class Summarizer(DatabasesMetaclass):
                                 'collection_name': self.collection_name,
                                 'total_nts_in_collection': 0,
                                 'num_contigs_in_collection': 0,
-                                'anvio_version': __version__, 
+                                'anvio_version': __version__,
                                 'profile': self.p_meta,
                                 'contigs': self.a_meta,
                                 'gene_coverages_data_available': self.gene_coverages_data_available,
                                 'completeness_data_available': self.completeness_data_available,
-                                'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available, 
+                                'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available,
                                 'percent_contigs_nts_described_by_collection': 0.0,
                                 'percent_profile_nts_described_by_collection': 0.0,
                                 'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']),
@@ -139,7 +139,7 @@ class Summarizer(DatabasesMetaclass):
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
                                     }
 
-        # I am not sure whether this is the best place to do this, 
+        # I am not sure whether this is the best place to do this,
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
@@ -186,7 +186,7 @@ class Summarizer(DatabasesMetaclass):
             self.summary['collection'][bin_id]['color'] = bins_info_dict[bin_id]['html_color'] or '#212121'
             self.summary['collection'][bin_id]['source'] = bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
-            self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs'] 
+            self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
             self.progress.end()
 
         # bins are computed, add some relevant meta info:
@@ -419,7 +419,7 @@ class Bin:
 
     def summarize_hmm_hits(self):
         """Make sense of everything there is to make sense of regarding hmm hits.
-        
+
            Unfortunately this is *VERY* complicated. Here we try to make sense of any
            HMM collection with respect to nubmer of hits that happens to be in splits
            associated with this bin, and split - hit associations. This function fills
@@ -568,7 +568,7 @@ class Bin:
 
     def store_contigs_fasta(self):
         """Storing contig sequences.
-        
+
            This is not an easy problem. We split contigs into smaller sequences at the beginning. Only
            a part of a given contig may be used during the binning process. On the other hand we can't
            simply store sequences of splits, whenever possible, we must store the entire sequence of
@@ -597,7 +597,7 @@ class Bin:
         self.bin_info_dict['num_contigs'] = 0
 
         # this dict will keep all the contig ids found in this bin with split names ordered:
-        contigs_represented = utils.get_contigs_splits_dict(self.split_ids, self.summary.splits_basic_info) 
+        contigs_represented = utils.get_contigs_splits_dict(self.split_ids, self.summary.splits_basic_info)
 
         # now it is time to go through each contig found in contigs_represented to
         # figure out what fraction of the contig is in fact in this bin
@@ -659,7 +659,7 @@ class Bin:
 
         self.bin_info_dict['taxon_calls'] = []
         self.bin_info_dict['taxon'] = 'Unknown'
- 
+
         if not self.summary.a_meta['taxonomy_source']:
             return
 
@@ -705,7 +705,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
             self.contigs_db = contigs_db_path
 
     args = Args()
-    run = run 
+    run = run
     progress = progress
     run.verbose = False
     progress.verbose = False
@@ -771,7 +771,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
 
 class AdHocRunGenerator:
     """From a matrix file to full-blown anvi'o interface.
-    
+
        This is a class to take in a view data matrix at minimum, and create all
        necessary files for an anvi'o interactive interface call in manual mode."""
 

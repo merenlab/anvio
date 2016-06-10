@@ -184,7 +184,7 @@ class MultipleRuns:
             # so we carry over this information into the runinfo dict for merged runs:
             self.run.info(k, v.pop())
 
-        # get split names from one of the profile databases. split names must be identical across all 
+        # get split names from one of the profile databases. split names must be identical across all
         self.split_names = sorted(list(dbops.get_split_names_in_profile_db(self.input_runinfo_dicts.values()[0]['profile_db'])))
 
         # make sure all runs were profiled using the same contigs database (if one used):

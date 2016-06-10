@@ -421,13 +421,13 @@ class GetReadsFromBAM:
                 for entry in bam_file_object.fetch(contig_id, start, stop):
                     '''
                     here's what's available in the entry object:
-                    
+
                     ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
                      'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
-                     'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired', 
+                     'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
                      'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
                      'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm',
-                     'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend', 
+                     'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend',
                      'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
                      'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
                      'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
@@ -522,7 +522,7 @@ class ReadsMappingToARange:
                         if not L.read_unique_id in read_ids:
                             data.append(L)
                             read_ids.add(L.read_unique_id)
-            
+
             self.progress.end()
             bam_file_object.close()
 
