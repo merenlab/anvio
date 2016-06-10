@@ -24,7 +24,7 @@ class CONCOCT(Parser):
 
         files_expected = {'clusters': input_files[0]}
 
-        files_structure = {'clusters': 
+        files_structure = {'clusters':
                                 {'col_names': ['split', 'bin_name'],
                                  'col_mapping': [str, str],
                                  'separator': ',',
@@ -44,6 +44,6 @@ class CONCOCT(Parser):
 
         for entry in c.values():
             clusters_dict[entry['bin_name']].append(entry['split'])
-            
+
         return clusters_dict
 

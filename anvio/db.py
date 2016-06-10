@@ -44,7 +44,7 @@ class DB:
             self.create_self()
             self.set_version(client_version)
         else:
-            
+
             self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 raise ConfigError, "It seems the database '%s' was generated when your client was at version %s,\
@@ -214,7 +214,7 @@ class DB:
 
     def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
         """This is similar to get_table_as_dict, but much less general.
-        
+
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
            In some cases the programmer may like to access to only a small fraction of entries in a table
            by using `WHERE column = value` notation, which is not possible with the more generalized

@@ -33,7 +33,7 @@ class SuppressAllOutput(object):
         sys.stdout.flush()
         self.old_stdout = sys.stdout
         sys.stdout = open('/dev/null', 'a+', 0)
- 
+
     def __exit__(self, exc_type, exc_value, traceback):
         sys.stderr.flush()
         sys.stderr = self.old_stderr
@@ -61,7 +61,7 @@ class Progress:
         self.get_terminal_width()
         self.color_prefix = '\033[0;30m\033[46m'
         self.color_postfix = '\033[0m'
-        
+
         self.currently_shown = None
 
 
@@ -86,7 +86,7 @@ class Progress:
 
     def write(self, c):
         surpass = self.terminal_width - len(c)
-        
+
         if surpass < 0:
             c = c[0:-(-surpass + 5)] + ' (...)'
         else:
@@ -104,7 +104,7 @@ class Progress:
     def clear(self):
         if not self.verbose:
             return
-        null = '\r' + ' ' * (self.terminal_width) 
+        null = '\r' + ' ' * (self.terminal_width)
         sys.stderr.write(null)
         sys.stderr.write('\r')
         sys.stderr.flush()
@@ -211,7 +211,7 @@ class Run:
     def store_info_dict(self, destination, strip_prefix=None):
         if strip_prefix:
             # mostly to get rid of output_dir prefix in output file names.
-            # surprisingly enough, this is the best place to do it. live 
+            # surprisingly enough, this is the best place to do it. live
             # and learn :/
             self.info_dict = dictio.strip_prefix_from_dict_values(self.info_dict, strip_prefix)
 

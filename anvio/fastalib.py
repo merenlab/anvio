@@ -67,7 +67,7 @@ class ReadFasta:
                 sys.stderr.flush()
             self.ids.append(self.fasta.id)
             self.sequences.append(self.fasta.seq)
-    
+
         sys.stderr.write('\n')
 
     def close(self):
@@ -81,12 +81,12 @@ class SequenceSource():
         self.compressed = True if self.fasta_file_path.endswith('.gz') else False
         self.lazy_init = lazy_init
         self.allow_mixed_case = allow_mixed_case
-        
+
         self.pos = 0
         self.id = None
         self.seq = None
         self.ids = []
-        
+
         self.unique = unique
         self.unique_hash_dict = {}
         self.unique_hash_list = []
@@ -101,7 +101,7 @@ class SequenceSource():
             raise FastaLibError, "File '%s' does not seem to be a FASTA file." % self.fasta_file_path
 
         self.file_pointer.seek(0)
-        
+
         if self.lazy_init:
             self.total_seq = None
         else:
@@ -129,7 +129,7 @@ class SequenceSource():
 
         self.total_unique = len(self.unique_hash_dict)
         self.reset()
- 
+
     def next(self):
         if self.unique:
             return self.next_unique()
@@ -140,7 +140,7 @@ class SequenceSource():
         if self.unique:
             if self.total_unique > 0 and self.pos < self.total_unique:
                 hash_entry = self.unique_hash_dict[self.unique_hash_list[self.pos]]
-                
+
                 self.pos += 1
                 self.seq = hash_entry['seq'] if self.allow_mixed_case else hash_entry['seq'].upper()
                 self.id = hash_entry['id']
@@ -156,7 +156,7 @@ class SequenceSource():
         self.seq = None
         self.id = self.file_pointer.readline()[1:].strip()
         sequence = ''
-        
+
         while 1:
             line = self.file_pointer.readline()
             if not line:
@@ -200,57 +200,57 @@ class SequenceSource():
         import matplotlib.gridspec as gridspec
 
         sequence_lengths = []
-    
+
         self.reset()
-    
+
         while self.next():
             if self.pos % 10000 == 0 or self.pos == 1:
                 sys.stderr.write('\r[fastalib] Reading: %s' % (self.pos))
                 sys.stderr.flush()
             sequence_lengths.append(len(self.seq))
-        
+
         self.reset()
-    
+
         sys.stderr.write('\n')
-    
+
         if not max_seq_len:
             max_seq_len = max(sequence_lengths) + (int(max(sequence_lengths) / 100.0) or 10)
-    
+
         seq_len_distribution = [0] * (max_seq_len + 1)
-    
+
         for l in sequence_lengths:
             seq_len_distribution[l] += 1
-    
+
         fig = plt.figure(figsize=(16, 12))
         plt.rcParams.update({'axes.linewidth': 0.9})
         plt.rc('grid', color='0.50', linestyle='-', linewidth=0.1)
-    
+
         gs = gridspec.GridSpec(10, 1)
-    
+
         ax1 = plt.subplot(gs[0:8])
         plt.grid(True)
         plt.subplots_adjust(left=0.05, bottom=0.03, top=0.95, right=0.98)
-    
+
         plt.plot(seq_len_distribution, color='black', alpha=0.3)
         plt.fill_between(range(0, max_seq_len + 1), seq_len_distribution, y2=0, color='black', alpha=0.15)
         plt.ylabel('number of sequences')
         plt.xlabel('sequence length')
-    
+
         if xtickstep == None:
             xtickstep = (max_seq_len / 50) or 1
-    
+
         if ytickstep == None:
             ytickstep = max(seq_len_distribution) / 20 or 1
-    
+
         plt.xticks(range(xtickstep, max_seq_len + 1, xtickstep), rotation=90, size='xx-small')
         plt.yticks(range(0, max(seq_len_distribution) + 1, ytickstep),
                    [y for y in range(0, max(seq_len_distribution) + 1, ytickstep)],
                    size='xx-small')
         plt.xlim(xmin=0, xmax=max_seq_len)
         plt.ylim(ymin=0, ymax=max(seq_len_distribution) + (max(seq_len_distribution) / 20.0))
-    
+
         plt.figtext(0.5, 0.96, '%s' % (title), weight='black', size='xx-large', ha='center')
-    
+
         ax1 = plt.subplot(gs[9])
         plt.rcParams.update({'axes.edgecolor': 20})
         plt.grid(False)
@@ -262,7 +262,7 @@ class SequenceSource():
                min(sequence_lengths),\
                max(sequence_lengths)),\
             va='center', alpha=0.8, size='x-large')
-    
+
         if dest == None:
             dest = self.fasta_file_path
 
@@ -270,30 +270,30 @@ class SequenceSource():
             plt.savefig(dest + '.pdf')
         except:
             plt.savefig(dest + '.png')
-    
+
         try:
             plt.show()
         except:
             pass
-    
+
         return
- 
+
 
 class QualSource:
     def __init__(self, quals_file_path, lazy_init=True):
         self.quals_file_path = quals_file_path
         self.name = None
         self.lazy_init = lazy_init
-        
+
         self.pos = 0
         self.id = None
         self.quals = None
         self.quals_int = None
         self.ids = []
-        
+
         self.file_pointer = open(self.quals_file_path)
         self.file_pointer.seek(0)
-        
+
         if self.lazy_init:
             self.total_quals = None
         else:
@@ -307,7 +307,7 @@ class QualSource:
         self.quals_int = None
 
         qualscores = ''
-        
+
         while 1:
             line = self.file_pointer.readline()
             if not line:

@@ -18,11 +18,13 @@ __status__ = "Development"
 
 
 def write_serialized_object(obj, output_file_path):
+    """Write serialized object on disk"""
     with gzip.GzipFile(output_file_path, 'w') as output_file:
         cPickle.dump(obj, output_file)
 
 
 def read_serialized_object(input_file_path):
+    """Read serialized object from disk"""
     try:
         with gzip.open(input_file_path, 'rb') as input_file:
             data = input_file.read()
@@ -36,18 +38,12 @@ def read_serialized_object(input_file_path):
         raise DictIOError, "The input file ('%s') does not seem to be a cPickle object." % (input_file_path)
 
 
-def strip_prefix_from_dict_values(d, prefix):
-    for key in d.keys():
+def strip_prefix_from_dict_values(input_dict, prefix):
+    """Remove a given prefix from every item in a dict"""
+    for key in input_dict.keys():
         if key in ['output_dir', 'input_bam']:
             continue
-        if isinstance(d[key], str) and d[key].startswith(prefix):
-            d[key] = d[key][len(prefix):].strip('/')
+        if isinstance(input_dict[key], str) and input_dict[key].startswith(prefix):
+            input_dict[key] = input_dict[key][len(prefix):].strip('/')
 
-    return d
-
-
-def reset_output_dir(runinfo_dict_path, old_output_dir, new_output_dir):
-    runinfo_dict = read_serialized_object(runinfo_dict_path)
-    runinfo_dict['output_dir'] = new_output_dir
-    write_serialized_object(runinfo_dict, runinfo_dict_path)
-    return runinfo_dict
+    return input_dict

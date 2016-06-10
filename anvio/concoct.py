@@ -67,7 +67,7 @@ class CONCOCT:
         self.lengths = {}
         self.kmers = {}
         self.coverages = {}
-        
+
         self.debug = args.debug
 
         self.progress.new('Init')

@@ -9,10 +9,10 @@ class MyRastGUI(Parser):
     def __init__(self, input_file_paths, splits_taxonomy_table_structure):
         files_expected = {'functions': 'functions.tbl', 'gene_otus': 'gene_otus.tbl', 'peg': 'peg.tbl'}
 
-        files_structure = {'functions': 
+        files_structure = {'functions':
                                 {'col_names': ['prot', 'figfam', 'field3', 'field4', 'field5', 'function'],
                                  'col_mapping': [str, str, int, int, int, str]},
-                           'gene_otus': 
+                           'gene_otus':
                                 {'col_names': ['prot', 't_species'],
                                  'col_mapping': None},
                            'peg':

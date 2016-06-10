@@ -247,7 +247,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
                                 % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
-    
+
             gene_call = self.genes_in_contigs_dict[gene_caller_id]
             contig_name = gene_call['contig']
             aa_frequencies_dict = aa_frequencies.process_gene_call(self.bam, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
@@ -308,7 +308,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                             # first, we will store the gene_caller_id that corresponds to this nt position, and then we will store the
                             # order of the corresponding codon in the gene for this nt position.
                             gene_caller_id = corresponding_gene_caller_ids[0]
-                            column_profile['corresponding_gene_call'] = gene_caller_id 
+                            column_profile['corresponding_gene_call'] = gene_caller_id
                             column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_caller_id, contig.name, pos_in_contig)
 
                             # save this information for later use
@@ -608,7 +608,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # So we start with essential stats. In the section below, we will simply go through each contig
         # in the BAM file and populate the contigs dictionary for the first time.
         for i in range(0, len(self.contig_names)):
-        
+
             contig_name = self.contig_names[i]
 
             contig = contigops.Contig(contig_name)
@@ -623,7 +623,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                                       len(self.contig_names),
                                                                       pp(int(contig.length))))
 
-            # populate contig with empty split objects and 
+            # populate contig with empty split objects and
             for split_name in self.contig_name_to_splits[contig_name]:
                 s = self.splits_basic_info[split_name]
                 split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]

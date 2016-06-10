@@ -286,9 +286,9 @@ class ContigsSuperclass(object):
 
     def get_nt_position_info(self, contig_name, pos_in_contig):
         """This function returns a tuple with three items for each nucleotide position.
-        
+
             (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon)
-        
+
         See `init_nt_position_info_dict` for more info."""
 
         if not self.nt_positions_info:
@@ -1229,7 +1229,7 @@ class ContigsDatabase:
 
 class SamplesInformationDatabase:
     """To create an empty samples information database and/or access one.
-    
+
        The purpose of this database is to deal with sample-specific information. Such as
        how should samples be organized in the interactive interface, or what environmental
        data available about them?
@@ -1562,7 +1562,7 @@ class AA_counts(ContigsSuperclass):
 
         for e in collection_dict.values():
             split_name_per_bin_dict[e['bin_name']].add(e['split'])
-        
+
         for bin_name in bin_names_of_interest:
             self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names=set(split_name_per_bin_dict[bin_name]))['AA_counts']
 
@@ -1855,7 +1855,7 @@ class TablesForGeneCalls(Table):
                         genes_in_splits.add(split_name, start, stop, self.gene_calls_dict_id_to_db_unique_id[gene_callers_id], self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
 
 
-                # here we identify genes that are associated with a split even if one base of the gene spills into 
+                # here we identify genes that are associated with a split even if one base of the gene spills into
                 # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
                 # scenario:
                 #
@@ -2029,7 +2029,7 @@ class TablesForHMMHits(Table):
                         start_in_split = (split_start if hit_start < split_start else hit_start) - split_start
                         stop_in_split = (split_stop if hit_stop > split_stop else hit_stop) - split_start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
-                        
+
                         db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, percentage_in_split, hit['source']])
                         db_entries_for_splits.append(db_entry)
 
@@ -2242,7 +2242,7 @@ class TableForSplitsTaxonomy(Table):
 
 
     def sanity_check(self):
-        # check whether input matrix dict 
+        # check whether input matrix dict
         keys_found = ['prot'] + self.genes_dict.values()[0].keys()
         missing_keys = [key for key in t.splits_taxonomy_table_structure[1:] if key not in keys_found]
         if len(missing_keys):

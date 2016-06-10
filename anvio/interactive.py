@@ -240,7 +240,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         self.split_names_ordered = self.views[self.default_view]['dict'].keys()
 
-        # we assume that the sample names are the header of the view data, so we might as well set it up: 
+        # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
@@ -328,7 +328,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 d['dict'][bin_id] = {}
                 for header in d['header']:
                      d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in self.collection[bin_id]])
-                     
+
             self.p_meta['available_clusterings'].append(view)
             self.p_meta['clusterings'][view] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'])}
 
@@ -465,7 +465,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
             self.default_view = self.view
 
-        self.p_meta['clusterings'] = self.clusterings 
+        self.p_meta['clusterings'] = self.clusterings
 
         if self.tree:
             entry_id = os.path.basename(self.tree).split('.')[0]
@@ -497,7 +497,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.state:
             if not self.state in self.states_table.states:
                 raise ConfigError, "The requested state ('%s') is not available for this run. Please see\
-                                          available states by running this program with --show-states flag." % self.state               
+                                          available states by running this program with --show-states flag." % self.state
 
 
     def check_names_consistency(self):

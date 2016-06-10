@@ -28,7 +28,7 @@ class MyRastCMDLine_DO_NOT_USE(Parser):
     def __init__(self, input_file_paths, splits_taxonomy_table_structure):
         files_expected = {'svr_output': 'svr_assign_to_dna_using_figfams.txt'}
 
-        files_structure = {'svr_output': 
+        files_structure = {'svr_output':
                                 {'col_names': ['contig', 'field1', 'prot', 'function', 't_species'],
                                  'col_mapping': [str, int, str, str, str],
                                  'indexing_field': 2}}

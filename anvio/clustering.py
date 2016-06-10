@@ -129,7 +129,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, cluster
         output_directory = os.path.dirname(output_file_name)
         if not os.access(output_directory, os.W_OK):
             raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
-    
+
     id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
 
     vectors = np.array(vectors)
@@ -139,7 +139,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, cluster
 
     tree = get_clustering_as_tree(vectors, clustering_distance, clustering_method, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
-   
+
     if output_file_name:
         open(output_file_name, 'w').write(newick.strip() + '\n')
 

@@ -50,7 +50,7 @@ class SamplesInformation:
 
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
         self.samples_information_default_layer_order = open(samples_information_path, 'rU').readline().strip().split('\t')[1:]
- 
+
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet=self.quiet)
 
 
@@ -70,7 +70,7 @@ class SamplesInformation:
 
     def convert_samples_information_dict(self, samples_information_dict_from_file):
         """Create aliases for each user-declared sample attribute.
-        
+
            It is important to note that each attribute becomes a database field, and
            databases have limitations on those names that leave no room for creativity.
            For instance, anvi'o uses "X;Y;Z" notation to define a field for bar charts.
@@ -106,7 +106,7 @@ class SamplesInformation:
 
         if not self.samples_information_default_layer_order:
             pass
- 
+
         self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet=self.quiet)
 
 

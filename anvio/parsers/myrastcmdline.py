@@ -18,11 +18,11 @@ class MyRastCMDLine(Parser):
     def __init__(self, input_file_paths, taxonomy_table_structure):
         files_expected = {'functions': 'svr_assign_using_figfams.txt', 'genes': 'svr_call_pegs.txt'}
 
-        files_structure = {'functions': 
+        files_structure = {'functions':
                                 {'col_names': ['t_species', 'field2', 'prot', 'function'],
                                  'col_mapping': [str, int, str, str],
                                  'indexing_field': 2},
-                           'genes': 
+                           'genes':
                                 {'type': 'fasta'}, }
 
         self.taxonomy_table_structure = taxonomy_table_structure

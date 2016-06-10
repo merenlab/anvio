@@ -54,11 +54,11 @@ class Pangenome:
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
         self.PC_min_occurrence = A('min_occurrence')
-        self.mcl_inflation = A('mcl_inflation') 
-        self.sensitive = A('sensitive') 
-        self.maxbit = A('maxbit') 
-        self.use_ncbi_blast = A('use_ncbi_blast') 
-        self.exclude_partial_gene_calls = A('exclude_partial_gene_calls') 
+        self.mcl_inflation = A('mcl_inflation')
+        self.sensitive = A('sensitive')
+        self.maxbit = A('maxbit')
+        self.use_ncbi_blast = A('use_ncbi_blast')
+        self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
 
         self.genomes = {}
 
@@ -123,7 +123,7 @@ class Pangenome:
 
         if not self.log_file_path:
             self.log_file_path = self.get_output_file_path('log.txt')
-        
+
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
@@ -368,7 +368,7 @@ class Pangenome:
         # here we perform an initial pass on the blast results to fill the dict that will hold
         # the bit score for each gene when it was blasted against itself. this dictionary
         # will then be used to calculate the 'maxbit' value between two genes, which I learned
-        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines maxbit as 
+        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines maxbit as
         # 'bit score between target and query / min(selfbit for query, selbit for target)'. This
         # heuristic approach provides a mean to set a cutoff to eliminate weak matches between
         # two genes. maxbit value reaches to 1 for hits between two genes that are almost identical.
@@ -655,7 +655,7 @@ class Pangenome:
         # get all protein sequences:
         self.gen_protein_sequences_dict()
 
-        # first we will export all proteins 
+        # first we will export all proteins
         unique_proteins_FASTA_path, unique_proteins_names_dict = self.gen_combined_proteins_unique_FASTA()
 
         # run search

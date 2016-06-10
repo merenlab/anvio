@@ -106,14 +106,14 @@ def is_proper_samples_order_file(file_path):
                                 of them, and the other must be blank.' % attribute
         if not basic and not newick:
             raise SamplesError, 'For the attribute %s, there is no organization defined (neither newick, nor\
-                                 basic). Is this a test or something? :/' % attribute    
+                                 basic). Is this a test or something? :/' % attribute
 
         if newick:
             try:
                 tree = is_proper_newick(newick)
             except:
                 raise SamplesError, 'The newick entry for the attribute %s deos not seem to be a properly\
-                                     formatted newick :/' % attribute 
+                                     formatted newick :/' % attribute
             samples = [n.name for n in tree.get_leaves()]
             num_samples_described_in_newick_organizations.append(len(samples))
             sample_names_described_by_each_organization.append(samples)

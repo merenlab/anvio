@@ -118,7 +118,7 @@ class UsersDB:
         self.connect()
 
         ret_val = True
-        
+
         if variable_tuple:
             response = self.cursor.execute(query, variable_tuple)
         else:
@@ -130,7 +130,7 @@ class UsersDB:
             ret_val = response.fetchone()
         else:
             self.conn.commit()
-            
+
         self.disconnect()
 
         return ret_val
@@ -221,16 +221,16 @@ class UserMGMT:
                         with open(fname) as cfile:
                             head = cfile.read(1024)
                         user_projects[len(user_projects) - 1]['files'][fn] = {'top': head, 'size': stats.st_size, 'created': datetime.fromtimestamp(stats.st_mtime).isoformat()}
-                
+
             user['projects'] = user_projects
 
         # remove sensitive data
         if not internal:
             del user['password']
-        
+
         return user
 
-    
+
     def create_user(self, firstname, lastname, email, login, password, affiliation, ip, clearance="user"):
         # check if all arguments were passed
         if not (firstname and lastname and email and login and password):
@@ -243,7 +243,7 @@ class UserMGMT:
         # check if the email is already taken
         if self.users_db.fetchone('SELECT email FROM users WHERE email=?', (email, )):
             return {'status': 'error', 'message': "Email '%s' is already taken." % email, 'data': None}
-        
+
         # calculate path
         path = hashlib.md5(login).hexdigest()
 
@@ -258,7 +258,7 @@ class UserMGMT:
 
         # get the current date
         entrydate = date.fromtimestamp(time.time()).isoformat()
-        
+
         # create the user entry in the DB
         p = (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, entrydate, )
         self.users_db.execute("INSERT INTO users (firstname, lastname, email, login, password, path, token, accepted, affiliation, ip, clearance, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", p)
@@ -291,9 +291,9 @@ class UserMGMT:
 
         # check if the user has a project set
         user = self.complete_user(user)
-        
+
         return {'status': 'ok', 'message': None, 'data': user}
-    
+
 
     def get_user_for_login(self, login, internal=False):
         if not login:
@@ -306,10 +306,10 @@ class UserMGMT:
             if not user['token']:
                 user['token'] = user['login'] + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
                 self.users_db.execute("UPDATE users SET token=? WHERE login=?", (user['token'], user['login'], ))
-                
+
             # check if the user has a project set
             user = self.complete_user(user, internal)
-        
+
             return {'status': 'ok', 'message': None, 'data': user}
         else:
             return {'status': 'error', 'message': "User not found for login %s" % login, 'data': None}
@@ -324,10 +324,10 @@ class UserMGMT:
             # if record is true, remember the login time and return verbose userdata
             if record:
                 self.users_db.execute("UPDATE users SET visit=? WHERE login=?", (datetime.fromtimestamp(time.time()).isoformat(), user['login'], ))
-                
+
             # check if the user has a project set
             user = self.complete_user(user, False, record)
-            
+
             return {'status': 'ok', 'message': None, 'data': user}
         else:
             return {'status': 'error', 'message': "invalid token", 'data': None}
@@ -342,7 +342,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         # generate random password
         password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
 
@@ -374,7 +374,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         # crypt password
         cpassword = crypt.crypt(password, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(2)))
 
@@ -399,7 +399,7 @@ class UserMGMT:
 
         if not valid_clearance[clearance]:
             return {'status': 'error', 'message': "invalid clearance selected", 'data': None}
-        
+
         if user.has_key('status'):
             if user['status'] == 'ok':
                 user = user['data']
@@ -408,7 +408,7 @@ class UserMGMT:
 
         if not user['clearance'] == 'admin':
             return {'status': 'error', 'message': "You must be an admin to change clearance", 'data': None}
-            
+
         # update the user entry in the DB
         self.users_db.execute("UPDATE users SET clearance=? WHERE login=?", (clearance, login, ))
 
@@ -430,7 +430,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         if user['token'] == token:
             self.users_db.execute("UPDATE users SET accepted=1 WHERE login=?", (login, ))
 
@@ -450,7 +450,7 @@ class UserMGMT:
 
         if not password:
             return {'status': 'error', 'message': "You must pass a password", 'data': None}
-        
+
         # get the user from the db
         user = self.get_user_for_login(login, True)
         if user['status'] == 'ok':
@@ -521,7 +521,7 @@ class UserMGMT:
         count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM users " + where_phrase)
 
         data = {"limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter}
-        
+
         return {'status': 'ok', 'message': None, 'data': data}
 
     def delete_user(self, login, user):
@@ -542,11 +542,11 @@ class UserMGMT:
 
         if not user:
             return {'status': 'error', 'message': "user not found", 'data': None}
-        
+
         # delete the user directory
         if not user["path"]:
             return {'status': 'error', 'message': "user path not found", 'data': None}
-            
+
         shutil.rmtree(self.users_data_dir + '/userdata/' + user["path"], ignore_errors=True)
 
         # get all project rowids for this user
@@ -557,7 +557,7 @@ class UserMGMT:
             selectString = "";
             for p in projects:
                 selectString = selectString + str(p['rowid'])
-                
+
             self.users_db.execute("DELETE FROM metadata WHERE project IN (" + selectString + ")")
 
             # delete all views
@@ -570,11 +570,11 @@ class UserMGMT:
         self.users_db.execute("DELETE FROM users WHERE login=?", (user['login'], ))
 
         return {'status': 'ok', 'message': 'user deleted', 'data': None}
-        
+
     ######################################
     # PROJECTS
     ######################################
-    
+
     def create_project(self, user, pname, description=""):
         if not user:
             return {'status': 'error', 'message': "You must pass a user to create a project", 'data': None}
@@ -586,7 +586,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
         path = self.users_data_dir + '/userdata/' + user["path"] + '/' + ppath
@@ -598,27 +598,27 @@ class UserMGMT:
         else:
             return {'status': 'error', 'message': "You already have a project of that name", 'data': None}
 
-        
+
     def get_project(self, user, projectname):
         if not user:
             return {'status': 'error', 'message': "You must pass a user to retrieve a project", 'data': None}
 
         if not projectname:
             return {'status': 'error', 'message': "You must pass a project name", 'data': None}
-        
+
         if user.has_key('status'):
             if user['status'] == 'ok':
                 user = user['data']
             else:
                 return user
-        
+
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], projectname, ))
 
         if project:
             return {'status': 'ok', 'message': None, 'data': project}
         else:
             return {'status': 'error', 'message': "project not found", 'data': None}
-        
+
     def set_project(self, user, pname):
         if not user:
             return {'status': 'error', 'message': "You must pass a user to set the project", 'data': None}
@@ -632,7 +632,7 @@ class UserMGMT:
                 return user
 
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
-        
+
         if project:
             self.users_db.execute("UPDATE users SET project=? WHERE login=?", (pname, user['login'], ))
             return {'status': 'ok', 'message': "project set", 'data': None}
@@ -659,23 +659,23 @@ class UserMGMT:
                     return {'status': 'error', 'message': "user not found", 'data': None}
             else:
                 return {'status': 'error', 'message': "Only admins may delete other users projects", 'data': None}
-            
+
         # create a path name for the project
         ppath = hashlib.md5(pname).hexdigest()
         path = self.users_data_dir + '/userdata/' + user["path"] + '/' + ppath
-        
+
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], pname, ))
-        
+
         if project:
             if user['project'] == project['name']:
                 self.users_db.execute("UPDATE users SET project=? WHERE login=?", (None, user['login'], ))
-                
+
             self.users_db.execute("DELETE FROM projects WHERE user=? AND name=? ", (user['login'], pname, ))
             self.users_db.execute("DELETE FROM views WHERE project=? ", (pname, ))
 
             if os.path.exists(path):
                 shutil.rmtree(path, ignore_errors=True)
-            
+
             return {'status': 'ok', 'message': "project deleted", 'data': None}
         else:
             return {'status': 'error', 'message': "the user does not own this project", 'data': None}
@@ -692,7 +692,7 @@ class UserMGMT:
                 return user
 
         project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user['login'], params['project'], ))
-        
+
         if project:
             self.users_db.execute("UPDATE projects SET description=? WHERE name=?", (params['description'], params['project'], ))
 
@@ -717,7 +717,7 @@ class UserMGMT:
         count = self.users_db.fetchone("SELECT COUNT(*) AS num FROM projects" + where_phrase)
 
         data = {"limit": limit, "offset": offset, "total": count['num'], "data": table, "order": order, "dir": dir, "filter": filter}
-        
+
         return {'status': 'ok', 'message': None, 'data': data}
 
 
@@ -751,7 +751,7 @@ class UserMGMT:
                     dataFiles[fn] = content
             else:
                 dataFiles[fn] = None
-        
+
         # construct return structure
         projectData = {"name": project['name'], "description": project['description'], "user": user, "views": views, "files": dataFiles}
 
@@ -764,10 +764,10 @@ class UserMGMT:
             return retval
         else:
             retval = retval["data"]
-        
+
         user = None
         project = None
-        
+
         if 'projectname' in retval:
             user = retval["user"]
             project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
@@ -778,7 +778,7 @@ class UserMGMT:
             user = self.users_db.fetchone("SELECT * FROM users WHERE login=?", (project["user"], ))
             if not user:
                 return {'status': 'error', 'message': 'user not found', 'data': None}
-        
+
         # construct return structure
         projectData = {"name": project['name'], "description": project['description'], "user": user["firstname"] + " " + user["lastname"]}
 
@@ -790,10 +790,10 @@ class UserMGMT:
             return retval
         else:
             retval = retval["data"]
-        
+
         user = None
         project = None
-        
+
         if 'projectname' in retval:
             user = retval["user"]
             project = self.users_db.fetchone("SELECT * FROM projects WHERE user=? AND name=?", (user["login"], retval["projectname"], ))
@@ -856,10 +856,10 @@ class UserMGMT:
         # get the project for this view
         project = self.users_db.fetchone("SELECT * FROM projects WHERE name=?", (view['project'], ))
 
-        if project:           
+        if project:
             # create the path and add it to the return structure
             path = project['path']
-            
+
             # get the user of the project
             user = self.get_user_for_login(project['user'])
             if user['status'] == 'ok':
@@ -869,7 +869,7 @@ class UserMGMT:
 
             if not user:
                 return {'status': 'error', 'message': "Could not find a user for project %s" % view['project'], 'data': None}
-            
+
             view['path'] = user['path'] + '/' + path
             view['project_data'] = project
         else:
@@ -901,7 +901,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         # get the view
         if not self.users_db.fetchone("SELECT * FROM views WHERE user=? AND name=?", (user['login'], vname, )):
             return {'status': 'error', 'message': "a view with name %s does not exist for this user" % vname, 'data': None}
@@ -920,7 +920,7 @@ class UserMGMT:
                 user = user['data']
             else:
                 return user
-        
+
         # check if the view name is valid
         if not re.match("^[A-Za-z0-9_-]+$", vname):
             return {'status': 'error', 'message': "Name contains invalid characters. Only letters, digits, dash and underscore are allowed.", 'data': None}
@@ -935,7 +935,7 @@ class UserMGMT:
 
         # create a token
         token = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
-        
+
         # create the db entry
         self.users_db.execute("INSERT INTO views (name, user, project, public, token) values (?, ?, ?, ?, ?)", (vname, user['login'], pname, public, token, ))
 
@@ -996,7 +996,7 @@ class UserMGMT:
                 if user.has_key('project_path'):
                     if projectOnly:
                         return {"status": "ok", "message": None, "data": {"user": user, "projectname": user["project"]}}
-                    
+
                     basepath = os.path.join(self.users_data_dir, 'userdata', user['path'], user['project_path'])
 
                     return self.get_the_interactive_object(basepath, title=user['project'], read_only=False)
@@ -1020,7 +1020,7 @@ class UserMGMT:
             else:
                 if projectOnly:
                     return {"status": "ok", "message": None, "data": {"project": view["data"]["project_data"]}}
-                    
+
                 view = view["data"]
                 basepath = os.path.join(self.users_data_dir, 'userdata', view['path'])
 
@@ -1040,10 +1040,10 @@ class UserMGMT:
 
         return {"status": "error", "message": "data not available", "data": None}
 
-    
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
-            
+
     return d

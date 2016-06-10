@@ -228,7 +228,7 @@ class GetSplitNamesInBins:
 
 class GetSequentialBlocksOfSplits:
     """A simple class to identify longest stretches in a list of integers.
-    
+
        >>> sequentials = SequentialBlocksOfSplits([1, 2, 3, 5, 6, 9])
        >>> print sequentials.blocks
            [[1, 2, 3], [5, 6], [9]]

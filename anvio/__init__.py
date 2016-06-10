@@ -280,7 +280,7 @@ D = {
     'delimiter': (
             ['--delimiter'],
             {'metavar': 'CHAR',
-             'default': ',', 
+             'default': ',',
              'help': "The delimiter to parse multiple input terms. The default is '%(default)s'."}
                 ),
     'wrap': (

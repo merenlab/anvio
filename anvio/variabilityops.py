@@ -42,7 +42,7 @@ class VariabilitySuper(object):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
-        self.data = {} 
+        self.data = {}
 
         self.splits_of_interest = set([])
         self.samples_of_interest = set([])
@@ -416,7 +416,7 @@ class VariabilitySuper(object):
             # find how many samples it occurs:
             num_occurrence = len(entry_ids)
 
-            # if the number of samples it occurs more 
+            # if the number of samples it occurs more
             scatter = num_occurrence if num_occurrence < num_samples - num_occurrence else num_samples - num_occurrence
             if scatter < self.min_scatter:
                 entry_ids_to_remove.update(entry_ids)
@@ -545,7 +545,7 @@ class VariabilitySuper(object):
         self.apply_advanced_filters()
 
         if self.quince_mode: # will be very costly...
-            self.recover_base_frequencies_for_all_samples() 
+            self.recover_base_frequencies_for_all_samples()
 
         self.filter_based_on_minimum_coverage_in_each_sample()
 
@@ -682,7 +682,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(self.data)))
-        self.run.info('Output File', self.args.output_file) 
+        self.run.info('Output File', self.args.output_file)
         self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
 
 
@@ -750,7 +750,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                           'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
                                                           'sample_id': sample_name,
                                                           'split_name': split_name,
-                                                          'contig_name': contig_name, 
+                                                          'contig_name': contig_name,
                                                           'corresponding_gene_call': corresponding_gene_call,
                                                           'codon_order_in_gene': codon_order_in_gene,
                                                           'departure_from_reference': 0,
@@ -812,7 +812,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(self.data)))
-        self.run.info('Output File', self.args.output_file) 
+        self.run.info('Output File', self.args.output_file)
         self.run.info('Num AA positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
 
 
