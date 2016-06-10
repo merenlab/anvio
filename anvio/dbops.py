@@ -951,9 +951,17 @@ class ContigsDatabase:
         split_length = A('split_length')
         kmer_size = A('kmer_size')
         skip_gene_calling = A('skip_gene_calling')
+        external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         debug = A('debug')
- 
+
+        if external_gene_calls:
+            filesnpaths.is_file_exists(external_gene_calls)
+
+        if external_gene_calls and skip_gene_calling:
+            raise ConfigError, "You provided a file for external gene calls, and used requested gene calling to be\
+                                skipped. Please make up your mind."
+
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
 
         # just take a quick look at the first defline to make sure this FASTA file complies with anvi'o's
@@ -1046,7 +1054,12 @@ class ContigsDatabase:
             self.db.disconnect()
 
             gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug = debug)
-            gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
+
+            # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
+            if external_gene_calls:
+                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(external_gene_calls)
+            else:
+                gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
 
             # reconnect and learn about what's done
             self.db = db.DB(self.db_path, anvio.__contigs__version__)
@@ -1675,6 +1688,71 @@ class TablesForGeneCalls(Table):
             filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
 
 
+    def check_gene_calls_dict(self, gene_calls_dict):
+        if type(gene_calls_dict) != type({}):
+            raise ConfigError, "Gene calls dict must be a dict instance :/"
+
+        try:
+            map(int, gene_calls_dict.keys())
+        except ValueError:
+            raise ConfigError, "Keys of a gene calls dict must be integers!"
+
+        if False in map(lambda x: x['direction'] in ['f', 'r'], gene_calls_dict.values()):
+            raise ConfigError, "The values in 'direction' column can't be anything but 'f' (for forward)\
+                                or 'r' (for reverse). You have other stuff, and it is not cool."
+
+        if False in map(lambda x: x['stop'] > x['start'], gene_calls_dict.values()):
+            raise ConfigError, "For each gene call, the stop position must be bigger than the start position.\
+                                Your gene calls dict does not conform to that. If you have reverse gene calls\
+                                you must use the 'direction' column to declare that."
+
+        if False in map(lambda x: (x['stop'] - float(x['start'])) % 3.0 == 0, gene_calls_dict.values()):
+            raise ConfigError, "Something is wrong with your gene calls. For every gene call, the (stop - start)\
+                                should be multiply of 3. It is not the case for all, which is a deal breaker."
+
+
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple = True)
+
+        self.set_next_available_id(t.genes_in_contigs_table_name)
+
+        # take care of gene calls dict
+        gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
+                                                                     expected_fields = t.genes_in_contigs_table_structure,
+                                                                     only_expected_fields = True,
+                                                                     column_mapping = [int, str, int, int, str, int, str, str])
+
+        # recover protein sequences. during this operation we are going to have to read all contig sequences
+        # into the damn memory. anvi'o is doing a pretty bad job with memory management :(
+        protein_sequences = {}
+
+        contig_sequences = {}
+        fasta = u.SequenceSource(self.contigs_fasta)
+        while fasta.next():
+            contig_sequences[fasta.id] = fasta.seq
+        fasta.close()
+
+        for gene_callers_id in gene_calls_dict:
+            gene_call = gene_calls_dict[gene_callers_id]
+            contig_name = gene_call['contig']
+
+            if contig_name not in contig_sequences:
+                raise ConfigError, "You are in big trouble :( The contig name '%s' in your external gene callers file\
+                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name
+
+            sequence = contig_sequences[contig_name][gene_call['start']:gene_call['stop']]
+            if gene_call['direction'] == 'r':
+                sequence = utils.rev_comp(sequence)
+
+            protein_sequences[gene_callers_id] = utils.get_DNA_sequence_translated(sequence)
+
+        # get a unique_id conversion dict
+        self.set_gene_calls_dict_id_to_db_unique_id(gene_calls_dict)
+
+        # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
+        self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
+
+
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller = 'prodigal'):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple = True)
 
@@ -1682,6 +1760,9 @@ class TablesForGeneCalls(Table):
 
         # get gene calls and protein sequences
         gene_calls_dict, protein_sequences = self.run_gene_caller(gene_caller)
+
+        # make sure the returning gene calls dict is proper
+        self.check_gene_calls_dict(gene_calls_dict)
 
         # get a unique_id conversion dict
         self.set_gene_calls_dict_id_to_db_unique_id(gene_calls_dict)
