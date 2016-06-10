@@ -38,7 +38,7 @@ class AnviServerError(Exception):
 
 class AnviServerAPI:
     def __init__(self, args):
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         # server variables:
         self.user = A('user')
@@ -142,7 +142,7 @@ class AnviServerAPI:
 
         response = self.request('login', data)
 
-        if [t for t in ['token', 'firstname', 'lastname'] if not response['data'].has_key(t)]:
+        if [t for t in ['token', 'firstname', 'lastname'] if t not in response['data']]:
             raise AnviServerError, 'The response from the server for a login request was not what the\
                                 API was expecting to get. Something weird is happening.'
 

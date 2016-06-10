@@ -67,7 +67,7 @@ class Coverage:
             coverage_profile[pileupcolumn.pos] = pileupcolumn.n
 
         for i in range(split.start, split.end):
-            if coverage_profile.has_key(i):
+            if i in coverage_profile:
                 self.c.append(coverage_profile[i])
             else:
                 self.c.append(0)

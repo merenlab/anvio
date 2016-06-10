@@ -120,13 +120,13 @@ class Completeness:
             percentage = entry['percentage_in_split']
             gene_unique_id = hmm_hit['gene_unique_identifier']
 
-            if info_dict[source].has_key(gene_unique_id):
+            if gene_unique_id in info_dict[source]:
                 info_dict[source][gene_unique_id]['percentage'] += percentage
             else:
                 info_dict[source][gene_unique_id] = {}
                 info_dict[source][gene_unique_id] = {'gene_name': gene_name, 'percentage': percentage, 'e_value': e_value}
 
-            if gene_name_to_unique_id[source].has_key(gene_name):
+            if gene_name in gene_name_to_unique_id[source]:
                 gene_name_to_unique_id[source][gene_name].add(gene_unique_id)
             else:
                 gene_name_to_unique_id[source][gene_name] = set([gene_unique_id])

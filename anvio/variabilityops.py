@@ -47,7 +47,7 @@ class VariabilitySuper(object):
         self.splits_of_interest = set([])
         self.samples_of_interest = set([])
 
-        A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
@@ -304,7 +304,7 @@ class VariabilitySuper(object):
         unique_pos_identifier_str_occurrences = {}
         for entry_id in self.data:
             v = self.data[entry_id]
-            if unique_pos_identifier_str_occurrences.has_key(v['unique_pos_identifier_str']):
+            if v['unique_pos_identifier_str'] in unique_pos_identifier_str_occurrences:
                 unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] += 1
             else:
                 unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] = 1
@@ -498,7 +498,7 @@ class VariabilitySuper(object):
         self.progress.update('Generating positions in splits dictionary ...')
         positions_in_splits = {}
         for split_name, position in splits_and_positions:
-            if not positions_in_splits.has_key(split_name):
+            if split_name not in positions_in_splits:
                 positions_in_splits[split_name] = set([])
 
             positions_in_splits[split_name].add(position)
@@ -615,13 +615,13 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             d = splits_to_consider[v['split_name']]
             u = split_pos_to_unique_pos_identifier[v['split_name']]
 
-            if d.has_key(p):
+            if p in d:
                 d[p].remove(v['sample_id'])
             else:
                 d[p] = copy.deepcopy(samples_wanted)
                 d[p].remove(v['sample_id'])
 
-            if not u.has_key(p):
+            if p not in u:
                 u[p] = v['unique_pos_identifier']
 
         counter = 0
@@ -723,7 +723,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
             d = splits_to_consider[v['split_name']]
 
-            if d.has_key(gene_codon_key):
+            if gene_codon_key in d:
                 d[gene_codon_key].remove(v['sample_id'])
             else:
                 d[gene_codon_key] = copy.deepcopy(samples_wanted)
@@ -827,7 +827,7 @@ class VariabilityNetwork:
         self.samples_information_dict = None
         self.data = None
 
-        A = lambda x, t: t(args.__dict__[x]) if args.__dict__.has_key(x) else None
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.input_file_path = A('input_file', null)
         self.samples_information_path = A('samples_information', null)

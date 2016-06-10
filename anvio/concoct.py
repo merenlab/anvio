@@ -55,7 +55,7 @@ class CONCOCT:
         self.run = r
         self.progress = p
 
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.num_clusters_requested = A('num_clusters_requested ') or 80
@@ -125,7 +125,7 @@ class CONCOCT:
 
         for split_name in self.clusters:
             bin_id = self.clusters[split_name]
-            if data.has_key(bin_id):
+            if bin_id in data:
                 data[bin_id].add(split_name)
             else:
                 data[bin_id] = set([split_name])

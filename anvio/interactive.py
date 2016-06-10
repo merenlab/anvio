@@ -43,7 +43,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta = {}
         self.title = 'Unknown Project'
 
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.mode = A('mode')
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
@@ -632,14 +632,14 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([additional_layers_dict[split_name][header] if additional_layers_dict.has_key(split_name) else None for header in additional_layer_headers])
+                json_entry.extend([additional_layers_dict[split_name][header] if split_name in additional_layers_dict else None for header in additional_layer_headers])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
                     if self.split_hmm_layers:
-                        json_entry.extend([self.hmm_searches_dict[split_name][header] if self.hmm_searches_dict.has_key(split_name) else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
+                        json_entry.extend([self.hmm_searches_dict[split_name][header] if split_name in self.hmm_searches_dict else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
-                        json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if self.hmm_searches_dict.has_key(split_name) else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
+                        json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if split_name in self.hmm_searches_dict else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
 
                 # (8) send it along!
                 json_object.append(json_entry)

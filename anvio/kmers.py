@@ -60,7 +60,7 @@ class KMers:
         if len(sequence) < k:
             return None
 
-        if not self.kmers.has_key(k):
+        if k not in self.kmers:
             self.get_kmers(k)
 
         kmers = self.kmers[k]

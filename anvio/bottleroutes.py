@@ -147,7 +147,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
         p['stop_in_contig'] = d.genes_in_contigs_dict[gene_callers_id]['stop']
         p['complete_gene_call'] = 'No' if d.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
         p['length'] = p['stop_in_contig'] - p['start_in_contig']
-        p['functions'] = d.gene_function_calls_dict[gene_callers_id] if d.gene_function_calls_dict.has_key(gene_callers_id) else None
+        p['functions'] = d.gene_function_calls_dict[gene_callers_id] if gene_callers_id in d.gene_function_calls_dict else None
 
         for level in levels_occupied:
             level_ok = True

@@ -199,7 +199,7 @@ class Auxiliary:
         self.variation_density = len(ratios) * 1000.0 / self.split.length
 
         for i in range(self.split.start, self.split.end):
-            if self.column_profile.has_key(i):
+            if i in self.column_profile:
                 self.rep_seq += self.column_profile[i]['reference']
                 self.v.append(self.column_profile[i]['departure_from_reference'])
                 self.competing_nucleotides[self.column_profile[i]['pos']] = self.column_profile[i]['competing_nts']
