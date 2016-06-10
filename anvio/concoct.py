@@ -1,4 +1,5 @@
 # -*- coding: utf-8
+# pylint: disable=line-too-long
 """Anvi'o - CONCOCT interface for unsupervised clustering
 
    There are two classes in this file, `CONCOCT` and `CONCOCT_INTERFACE`.
@@ -50,12 +51,14 @@ progress = terminal.Progress()
 
 
 class CONCOCT:
-    def __init__(self, args, r = run, p = progress):
+    def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
-        self.profile_db_path = args.profile_db
-        self.contigs_db_path = args.contigs_db
-        self.num_clusters_requested = args.num_clusters_requested or 80
+
+        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.num_clusters_requested = A('num_clusters_requested ') or 80
 
         dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
@@ -76,13 +79,13 @@ class CONCOCT:
             self.progress.end()
             raise ConfigError, 'CONCOCT can only be used to cluster merged runs...'
 
-        self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest = profile_db.samples)
+        self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest=profile_db.samples)
         profile_db.disconnect()
 
         self.progress.update('accessing the profile database ...')
-        contigs_db = dbops.ContigsDatabase(args.contigs_db, quiet = True)
-        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest = self.coverages.keys())
-        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest = self.coverages.keys())
+        contigs_db = dbops.ContigsDatabase(args.contigs_db, quiet=True)
+        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest=self.coverages.keys())
+        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest=self.coverages.keys())
         contigs_db.disconnect()
 
         self.progress.update('computing split lengths ...')
@@ -93,7 +96,7 @@ class CONCOCT:
 
 
     def cluster(self):
-        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters = self.num_clusters_requested).cluster()
+        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters=self.num_clusters_requested).cluster()
 
         # be nice.
         return self.clusters
@@ -112,10 +115,10 @@ class CONCOCT:
         utils.store_dict_as_TAB_delimited_file(clusters_dict, output_file_path, ['contig', 'concoct_bin'])
         self.progress.end()
 
-        self.run.info('CONCOCT results in txt', output_file_path, display_only = True)
+        self.run.info('CONCOCT results in txt', output_file_path, display_only=True)
 
 
-    def store_clusters_in_db(self, collection_name = 'CONCOCT'):
+    def store_clusters_in_db(self, collection_name='CONCOCT'):
        # convert id -> bin mapping dict into a bin -> ids dict
         data = {}
         bin_info_dict = {}
@@ -134,11 +137,11 @@ class CONCOCT:
         c = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
         c.append(collection_name, data, bin_info_dict)
 
-        self.run.info('CONCOCT results in db', self.profile_db_path, display_only = True)
+        self.run.info('CONCOCT results in db', self.profile_db_path, display_only=True)
 
 
 class CONCOCT_INTERFACE():
-    def __init__(self, kmers, coverages, lengths, debug, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
+    def __init__(self, kmers, coverages, lengths, debug, NClusters=80, kmer_length=4, read_length=100, bNormaliseByContig=True, nc=0.90, r=run, p=progress):
         self.run = r
         self.progress = p
 
@@ -163,50 +166,50 @@ class CONCOCT_INTERFACE():
         self.contig_names = coverages.keys()
         self.NC = len(coverages.keys())
 
-        cov_array = np.zeros((self.NC,NS))
-        kmer_array = np.zeros((self.NC,NK))
+        cov_array = np.zeros((self.NC, NS))
+        kmer_array = np.zeros((self.NC, NK))
 
         self.progress.update('Setting up kmer and coverage arrays ...')
         p = 0
         for k in self.contig_names:
             vk = kmers[k]
             valuesk = [vk[x] for x in kmer_names]
-            kmer_array[p,:] = valuesk[:]
+            kmer_array[p, :] = valuesk[:]
 
             vc = coverages[k]
             valuesc = [vc[x] for x in sample_names]
-            cov_array[p,:] = valuesc[:]
+            cov_array[p, :] = valuesc[:]
             p = p + 1
 
         #this is not really valid since split contigs have inherited composition in Anvio
         contig_lengths = kmer_array.sum(axis=1) + kmer_length - 1
-        kmer_array = kmer_array + np.ones((self.NC,NK))
+        kmer_array = kmer_array + np.ones((self.NC, NK))
         kmer_row_sums = kmer_array.sum(axis=1)
         kmer_array = np.log(kmer_array / kmer_row_sums[:, np.newaxis])
 
-        cov_array = cov_array + (read_length/contig_lengths)[:,np.newaxis]
+        cov_array = cov_array + (read_length / contig_lengths)[:, np.newaxis]
 
         #normalise by Sample maybe weight by contig length in future
         cov_col_sums = cov_array.sum(axis=0)
-        cov_array = cov_array/cov_col_sums[np.newaxis,:]
+        cov_array = cov_array / cov_col_sums[np.newaxis, :]
 
         if bNormaliseByContig:
             cov_row_sums = cov_array.sum(axis=1)
-            cov_array = cov_array/cov_row_sums[:,np.newaxis]
-            cov_row_sums=cov_row_sums.reshape((cov_array.shape[0],1))
-            cov_array = np.append(cov_array,cov_row_sums,1)
+            cov_array = cov_array / cov_row_sums[:, np.newaxis]
+            cov_row_sums = cov_row_sums.reshape((cov_array.shape[0], 1))
+            cov_array = np.append(cov_array, cov_row_sums, 1)
 
         cov_array = np.log(cov_array)
 
         self.progress.update('Joining coverage and composition arrays ...')
-        self.original_data = np.concatenate((kmer_array,cov_array),axis=1)
+        self.original_data = np.concatenate((kmer_array, cov_array), axis=1)
 
         self.progress.update('Performing PCA ...')
         pca_object = PCA(n_components=nc).fit(self.original_data)
         self.transformed_data = pca_object.transform(self.original_data)
 
         self.NClusters = NClusters
-        self.assign = np.zeros((self.NC),dtype=np.int32)
+        self.assign = np.zeros((self.NC), dtype=np.int32)
 
         self.progress.end()
         self.run.info('CONCOCT INIT', 'Complete for %d splits' % len(self.contig_names))
