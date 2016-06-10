@@ -726,6 +726,13 @@ D = {
                       can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
                       etc). Use this flag if you would like to skip this step"}
                 ),
+    'num-clusters-requested': (
+            ['--num-clusters-requested'],
+            {'metavar': 'INT',
+             'default': 80,
+             'type': int,
+             'help': "How many clusters do you request? Default is %(default)d."}
+             ),
     'overwrite-output-destinations': (
             ['-W', '--overwrite-output-destinations'],
             {'default': False,

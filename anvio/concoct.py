@@ -55,6 +55,7 @@ class CONCOCT:
         self.progress = p
         self.profile_db_path = args.profile_db
         self.contigs_db_path = args.contigs_db
+        self.num_clusters_requested = args.num_clusters_requested or 80
 
         dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
@@ -92,7 +93,9 @@ class CONCOCT:
 
 
     def cluster(self):
-        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug).cluster()
+        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters = self.num_clusters_requested).cluster()
+
+        # be nice.
         return self.clusters
 
 
@@ -138,6 +141,9 @@ class CONCOCT_INTERFACE():
     def __init__(self, kmers, coverages, lengths, debug, NClusters = 80, kmer_length = 4, read_length = 100, bNormaliseByContig = True, nc = 0.90, r = run, p = progress):
         self.run = r
         self.progress = p
+
+        if NClusters < 2 or NClusters > 2000:
+            raise ConfigError, "Number of clusters requested must be between 2 and 2,000."
 
         self.progress.new('CONCOCT')
 
@@ -207,13 +213,14 @@ class CONCOCT_INTERFACE():
 
 
     def cluster(self):
+        self.run.info('CONCOCT VGBMM', 'Requesting %d clusters' % (self.NClusters))
+
         self.progress.new('VBGMM')
         self.progress.update('Clustering ...')
-
         vbgmm.fit(self.transformed_data, self.assign, self.NClusters, self.debug)
-
         self.progress.end()
-        self.run.info('CONCOCT VGBMM', 'Done with %d clusters' % (len(set(self.assign))))
+
+        self.run.info('CONCOCT VGBMM', 'Returning %d final clusters' % (len(set(self.assign))))
 
         # construct and return a results dictionary:
         bin_name_conversion_dict = {}
