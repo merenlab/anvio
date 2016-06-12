@@ -151,21 +151,12 @@
                  * Instance an SVGPoint object with given event coordinates.
                  */
                 getEventPoint = function (evt) {
-                    var p = root.createSVGPoint(),
-                        offsetX = evt.offsetX,
-                        offsetY = evt.offsetY,
-                        offset,
-                        ctm,
-                        matrix;
+                    var p = root.createSVGPoint();
 
-                    if (typeof offsetX === "undefined" || typeof offsetY === "undefined") {
-                        offset = offsetIsBroken ? $parent.offset() : recentOffset;
-                        offsetX = evt.pageX - offset.left;
-                        offsetY = evt.pageY - offset.top;
-                    }
+                    var offset = offsetIsBroken ? $parent.offset() : recentOffset;
 
-                    p.x = offsetX;
-                    p.y = offsetY;
+                    p.x = evt.pageX - offset.left;
+                    p.y = evt.pageY - offset.top;
 
                     return p;
                 },
