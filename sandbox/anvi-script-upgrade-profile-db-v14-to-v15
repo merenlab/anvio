@@ -17,7 +17,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False):
+def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_runinfo = False):
     if profile_db_path is None:
         raise ConfigError, "No profile database is given."
 
@@ -53,14 +53,15 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False):
     runinfo_path = P('RUNINFO.cp') if E(P('RUNINFO.cp')) else None
     runinfo_path = P('RUNINFO.mcp') if E(P('RUNINFO.mcp')) else None
 
-    if not runinfo_path:
-        raise ConfigError, "I can't find the runinfo file around this profile :("
+    if not skip_runinfo:
+        if not runinfo_path:
+            raise ConfigError, "I can't find the runinfo file around this profile :("
 
-    runinfo = dictio.read_serialized_object(runinfo_path)
-    if not runinfo.has_key('blank'):
-        runinfo['blank'] = False
+        runinfo = dictio.read_serialized_object(runinfo_path)
+        if not runinfo.has_key('blank'):
+            runinfo['blank'] = False
 
-        dictio.write_serialized_object(runinfo, runinfo_path)
+            dictio.write_serialized_object(runinfo, runinfo_path)
 
     # add the new value
     profile_db.set_meta_value('blank', False)
@@ -81,11 +82,12 @@ if __name__ == '__main__':
 
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 14)')
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    parser.add_argument('--skip-runinfo', default=False, action="store_true", help = "Do not bother trying to upgrade the runinfo file")
 
     args = parser.parse_args()
 
     try:
-        update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it)
+        update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
     except ConfigError, e:
         print e
         sys.exit(-1)
