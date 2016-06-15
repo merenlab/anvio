@@ -15,11 +15,14 @@ run = Run()
 progress = Progress()
 progress.verbose = False
 
-try:
-    from anvio.columnprofile import ColumnProfile
-except ImportError:
-    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc='gray', nl_after=1)
-    from anvio.variability import ColumnProfile
+# I am taking this part of the code out until we find a better way to utilize the
+# C extension
+#try:
+#    from anvio.columnprofile import ColumnProfile
+#except ImportError:
+#    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc='gray', nl_after=1)
+#    from anvio.variability import ColumnProfile
+from anvio.variability import ColumnProfile
 
 
 __author__ = "A. Murat Eren"
@@ -188,7 +191,7 @@ class Auxiliary:
                                pos=pos_in_split,
                                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
-            if cp['departure_from_reference']:
+            if cp['worth_reporting']:
                 ratios.append((cp['departure_from_reference'], cp['coverage']), )
                 cp['pos_in_contig'] = pos_in_contig
                 cp['cov_outlier_in_split'] = pos_in_split in self.split.coverage.outlier_positions
