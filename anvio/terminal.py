@@ -166,9 +166,11 @@ class Run:
         if not display_only:
             self.info_dict[key] = value
 
-        if isinstance(value, str):
+        if isinstance(value, bool):
+            pass
+        elif isinstance(value, str):
             value = remove_spaces(value)
-        if isinstance(value, int):
+        elif isinstance(value, int):
             value = pretty_print(value)
 
         label = constants.get_pretty_name(key)
