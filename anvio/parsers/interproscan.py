@@ -26,7 +26,7 @@ class InterProScan(Parser):
                                  'no_header': True},
                             }
 
-        Parser.__init__(self, 'MyRastCMDLine', input_file_paths, files_expected, files_structure)
+        Parser.__init__(self, 'InterProScan', input_file_paths, files_expected, files_structure)
 
 
     def get_dict(self):
