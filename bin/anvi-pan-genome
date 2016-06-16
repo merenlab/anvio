@@ -40,7 +40,7 @@ if __name__ == '__main__':
                                                     anvi'o contigs database for each one of them.")
     groupA.add_argument('-e', '--external-genomes', metavar = 'FILE', default = None,
                         help = "A two-column TAB-delimited flat text file that lists anvi'o contigs databases. The first item\
-                                in the header line should read 'name', and the second should read 'contigs_db'. Each line in the\
+                                in the header line should read 'name', and the second should read 'contigs_db_path'. Each line in the\
                                 file should describe a single entry, where the first column is the name of the genome (or MAG), and\
                                 the second column is the anvi'o contigs database generated for this genome.")
 
