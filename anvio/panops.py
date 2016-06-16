@@ -631,7 +631,7 @@ class Pangenome:
                 try:
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
-                    raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
+                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
                                         additional genomes without cleaning the previous work directory. Sounds familiar?"
 
                 d[unique_entry_id] = {'gene_caller_id': gene_caller_id, 'protein_cluster_id': PC, 'genome_name': genome_name, 'sequence': self.protein_sequences_dict[genome_name][int(gene_caller_id)]}
