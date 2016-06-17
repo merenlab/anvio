@@ -11,18 +11,14 @@
 # Please read the COPYING file.
 
 from anvio.parsers.defaultmatrix import DefaultMatrix
-from anvio.parsers.myrastgui import MyRastGUI
-from anvio.parsers.myrastcmdline import MyRastCMDLine
-from anvio.parsers.myrastcmdline_do_not_use import MyRastCMDLine_DO_NOT_USE
+from anvio.parsers.centrifuge import Centrifuge
 from anvio.parsers.hmmscan import HMMScan
 from anvio.parsers.concoct import CONCOCT
 from anvio.parsers.interproscan import InterProScan
 
 parser_modules = {}
 parser_modules['taxonomy'] = {"default_matrix": DefaultMatrix,
-                                 "myrast_gui": MyRastGUI,
-                                 "myrast_cmdline": MyRastCMDLine,
-                                 "myrast_cmdline_dont_use": MyRastCMDLine_DO_NOT_USE}
+                              "centrifuge": Centrifuge}
 parser_modules['functions'] = {"interproscan": InterProScan}
 parser_modules['search'] = {"hmmscan": HMMScan}
 parser_modules['collections'] = {"concoct": CONCOCT}
