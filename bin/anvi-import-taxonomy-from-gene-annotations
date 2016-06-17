@@ -26,48 +26,34 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def get_genes_dict(args):
+def main(args):
+    # make sure we have the parser
+    if not args.parser:
+        raise ConfigError, "You really need to specify a parser."
+
     if args.parser not in parser_modules['taxonomy']:
-        raise ConfigError, "Anvi'o does not know what to do with '%s'. You must use one of the available parsers\
-                            to make sense of genes (well, open reading frames) found in your contigs (please see\
-                            the documentation for a more detailed explanation): %s"\
+        raise ConfigError, "Anvi'o does not know what to do with '%s'. You must use one of the available taxonomy\
+                            parsers so anvi'o can make sense of your input data. Here is what anvi'o has to parse\
+                            incoming taxonomy (you should take a look at the documentation if you are not sure\
+                            how to deal with this situation, because it is not that hard, in fact (or, you know\
+                            you can send an e-mail to us)): %s"\
                                                  % (args.parser, ', '.join(parser_modules['taxonomy']))
     if not args.input_files:
         raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
                             parser you chose. Please see the documentation for details."
 
+    parser = parser_modules['taxonomy'][args.parser](args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
+    genes_taxonomy_dict, taxon_names_dict = parser.process()
 
-    parser = parser_modules['taxonomy'][args.parser](args.input_files, t.splits_taxonomy_table_structure)
-    genes_dict = parser.get_annotations_dict()
-
-    if not len(genes_dict):
-        raise ConfigError, "Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong.\
+    if not len(genes_taxonomy_dict):
+        raise ConfigError, "Your parser (%s) returned an empty result for your input file. Something must have gone wrong.\
                             Maybe you selected a wrong parser, or the input file format has changed between when this\
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
                             you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
 
-    return genes_dict
 
-
-def main(args):
-    # make sure we have the parser
-    if args.parser:
-        genes_dict = get_genes_dict(args)
-    else:
-        if len(args.input_files) != 1:
-            raise ConfigError, "When you are using a simple gene calls matrix file to import taxonomy, you can't use more than\
-                                one file as an input."
-
-        input_matrix = args.input_files[0]
-        genes_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix, 
-                                                                expected_fields = ['gene_id', 'contig', 'direction', 'start',
-                                                                                   'stop', 't_phylum', 't_order', 't_class',
-                                                                                   't_family', 't_genus', 't_species'],
-                                                                column_mapping  = [str, str, str, int, int, str, str, str, str, str, str],
-                                                                only_expected_fields = True)
-
-    tables_for_splits_taxonomy = dbops.TableForSplitsTaxonomy(args.contigs_db, run, progress)
-    tables_for_splits_taxonomy.create(genes_dict, args.parser)
+    tables_for_taxonomy = dbops.TablesForTaxonomy(args.contigs_db, run, progress)
+    tables_for_taxonomy.create(genes_taxonomy_dict, taxon_names_dict, args.parser)
 
 
 if __name__ == '__main__':
