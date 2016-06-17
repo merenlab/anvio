@@ -1,0 +1,18 @@
+name	taxID	taxRank	genomeSize	numReads	numUniqueReads	abundance
+Enterobacter cloacae	550	species	5123200	1	1	0.0
+Bacillus cereus	1396	species	6217228	1	0	0.0
+Bacillus thuringiensis	1428	species	6903565	1	0	0.0
+Clostridium butyricum	1492	species	9246221	1	0	0.0
+Peptoclostridium difficile	1496	species	5577074	1	0	0.0
+Bifidobacterium adolescentis	1680	species	2089645	25	13	0.855536
+Homo sapiens	9606	species	3231297122	2	2	0.0
+Peptoclostridium difficile 630	272563	leaf	8572939	2	0	0.0
+Lachnoclostridium phytofermentans ISDg	357809	leaf	4847594	1	1	0.0
+Bifidobacterium adolescentis ATCC 15703	367928	leaf	2089645	7	4	0.144464
+Clostridium carboxidivorans P7	536227	leaf	5752782	1	0	0.0
+Bacillus megaterium QM B1551	545693	leaf	5523192	1	1	0.0
+Peptoclostridium difficile CD196	645462	leaf	4110554	1	0	0.0
+Desulfotomaculum ruminis DSM 2154	696281	leaf	3969014	1	1	0.0
+Brachyspira pilosicoli 95/1000	759914	leaf	2586443	1	0	0.0
+Listeria monocytogenes SLCC2540	879089	leaf	2976958	1	0	0.0
+Fusobacterium hwasookii ChDC F206	1307443	leaf	2430523	1	0	0.0
