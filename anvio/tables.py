@@ -12,7 +12,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "5"
+contigs_db_version = "6"
 profile_db_version = "15"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
@@ -61,12 +61,19 @@ gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
 gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'   ,   'text'  , 'numeric']
 
-# tables for taxonomy at the split-level
+# tables for taxonomy
+
+taxon_names_table_name                 = 'taxon_names'
+taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+taxon_names_table_types                = [ 'numeric',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
 splits_taxonomy_table_name             = 'splits_taxonomy'
-splits_taxonomy_table_structure        = ['split', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-splits_taxonomy_table_types            = [ 'str' ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+splits_taxonomy_table_structure        = ['split', 'taxon_id',]
+splits_taxonomy_table_types            = [ 'text',  'numeric',]
 
+genes_taxonomy_table_name              = 'genes_taxonomy'
+genes_taxonomy_table_structure         = ['gene_callers_id', 'taxon_id',]
+genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
 # the followitn three tables keep hmm hits. they require the gene calls to be made.
 
