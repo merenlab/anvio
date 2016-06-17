@@ -61,6 +61,7 @@ class Summarizer(DatabasesMetaclass):
         self.progress = p
 
         DatabasesMetaclass.__init__(self, args, self.run, self.progress)
+        self.init_splits_taxonomy()
 
         # databases initiated, let's make sure we have gene covereges data avaialable.
         if self.gene_coverages_dict:
@@ -665,7 +666,10 @@ class Bin:
 
         taxon_calls_counter = Counter()
         for split_id in self.split_ids:
-            taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]['t_species']] += 1
+            if split_id in self.summary.splits_taxonomy_dict:
+                taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]] += 1
+            else:
+                taxon_calls_counter['None'] += 1
 
         taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key=lambda x: int(x[1]), reverse=True)
 

@@ -82,6 +82,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.collections = ccollections.Collections()
 
         ContigsSuperclass.__init__(self, self.args)
+        self.init_splits_taxonomy()
 
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
@@ -618,7 +619,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
                 # (2)
                 if self.splits_taxonomy_dict:
-                    json_entry.extend([self.splits_taxonomy_dict[split_name]['t_species']])
+                    if split_name in self.splits_taxonomy_dict:
+                        json_entry.extend([self.splits_taxonomy_dict[split_name]])
+                    else:
+                        json_entry.extend([None])
 
                 # (3)
                 if self.genes_in_splits_summary_dict:
