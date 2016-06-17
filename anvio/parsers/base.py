@@ -4,6 +4,10 @@
 """
 
 import os
+import hashlib
+
+import anvio.tables as t
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
@@ -77,6 +81,52 @@ class Parser(object):
                                              column_mapping=self.files_structure[alias]['col_mapping'],
                                              indexing_field=indexing_field, separator=separator,
                                              ascii_only=True)
+
+class TaxonomyHelper(object):
+    """This is the class that takes an annotations dictionary, and returns
+       genes_taxonomy, and taxon names dicts.
+
+       annotations dictionary must contain t_species, t_genus,
+       t_family, t_class, t_order, and t_phylum as keys for each
+       gene call:
+
+            annotations_dict[gene_call_id]['t_species'] = 'Bifidobacterium longum'
+
+       the purpose of this class is to return to dictionaries that removes the
+       redundancy of taxon names, by creating a dict that contains each unique
+       taaxonomy found, and a secondary dict that associates each gene call with
+       the names dictionary.
+       """
+    def __init__(self, annotations_dict, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
+        self.annotations_dict = annotations_dict
+
+
+    def get_genes_taxonomy_and_taxon_names_dicts(self):
+        """Return genes_taxonomy_dict, and taxon_names_dict"""
+        genes_taxonomy_dict = {}
+        taxon_names_dict = {}
+        hash_to_taxon_name_id = {}
+        taxon_name_id_counter = 1
+
+        taxon_names = t.taxon_names_table_structure[1:]
+
+        for gene_callers_id in self.annotations_dict:
+            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][taxon] or '' for taxon in taxon_names)).hexdigest()
+
+            if t_hash in hash_to_taxon_name_id:
+                taxon_name_id = hash_to_taxon_name_id[t_hash]
+            else:
+                hash_to_taxon_name_id[t_hash] = taxon_name_id_counter
+                taxon_names_dict[taxon_name_id_counter] = self.annotations_dict[gene_callers_id]
+                taxon_name_id = taxon_name_id_counter
+
+                taxon_name_id_counter += 1
+
+            genes_taxonomy_dict[gene_callers_id] = taxon_name_id
+
+        return genes_taxonomy_dict, taxon_names_dict
 
 
 if __name__ == "__main__":
