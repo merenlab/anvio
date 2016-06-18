@@ -6,7 +6,6 @@ import sys
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.parsers import parser_modules
@@ -59,8 +58,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='AnalyzegeneanCreate and store information into a anvio contigs database using\
-                                                  available parsers for various gene contigs resources.')
+    parser = argparse.ArgumentParser(description="Import taxonomy information into an anvi'o contigs database.")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
