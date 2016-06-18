@@ -2318,7 +2318,7 @@ class TablesForTaxonomy(Table):
                                 %s gene caller ids that do not appear to be in the database. This is a step you must\
                                 be very careful to make sure you are not importing annotations for genes that have\
                                 nothing to do with your contigs database. To make sure of that, you should always work\
-                                with `anvi-get-sequences-for-gene-calls` or `anvi-export-protein-sequences` programs\
+                                with `anvi-get-dna-sequences-for-gene-calls` or `anvi-get-aa-sequences-for-gene-calls` programs\
                                 to get the data to annotate. For instance one of the gene caller ids you have in your\
                                 input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes\
                                 sense to you, because it definitely does not make any sense to anvi'o :("\
