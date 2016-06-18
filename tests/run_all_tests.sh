@@ -33,7 +33,7 @@ INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser ..."
-anvi-import-taxonomy-from-gene-annotations -c test-output/CONTIGS.db -p centrifuge -i example_files_for_centrifuge_taxonomy/*
+anvi-import-taxonomy -c test-output/CONTIGS.db -p centrifuge -i example_files_for_centrifuge_taxonomy/*
 
 INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles ..."
 anvi-populate-search-table -c test-output/CONTIGS.db --num-threads 2
