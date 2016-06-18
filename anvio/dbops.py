@@ -2385,7 +2385,7 @@ class TablesForTaxonomy(Table):
                     for taxon_name_id in taxon_name_ids:
                         d[taxon_name_id] += 1
 
-                    most_frequent_taxon_name_id, occurrence = d.most_common[0]
+                    most_frequent_taxon_name_id, occurrence = d.most_common()[0]
                     splits_dict[split_name] = most_frequent_taxon_name_id
 
                 num_splits_with_taxonomy += 1
