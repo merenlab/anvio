@@ -192,12 +192,13 @@ function lineMouseEnterHandler(event) {
     }
     else
     {  
+        var _x = (p.ancestor) ? p.ancestor.xy.x : p.xy.x;
         drawPhylogramRectangle('tree_bin',
             'hover',
-            p.ancestor.xy.x,
+             _x,
             (p1.xy.y + p2.xy.y) / 2,
             p2.xy.y - p1.xy.y + height_per_leaf,
-            total_radius - p.ancestor.xy.x,
+            total_radius - _x,
             bin_color,
             0.3,
             false);
@@ -473,33 +474,11 @@ function updateSingleBackgroundGlobals()
     }
     else // circlephylogram
     {
-        var root = document.getElementById('line0');
+        var root = document.getElementById('line_origin');
         var rect = root.getBoundingClientRect();
 
-        var angle = id_to_node_map[0].angle;
-
-        var halfPI = Math.PI / 2;
-
-        if (angle < halfPI)
-        {
-            origin_x = rect.left;
-            origin_y = rect.top;
-        }
-        else if (angle < 2 * halfPI)
-        {
-            origin_x = rect.left + rect.width;
-            origin_y = rect.top;
-        }
-        else if (angle < 3 * halfPI)
-        {
-            origin_x = rect.left + rect.width;
-            origin_y = rect.top + rect.height;
-        }
-        else // 4 * halfPI
-        {
-            origin_x = rect.left;
-            origin_y = rect.top + rect.height;
-        }
+        origin_x = rect.left;
+        origin_y = rect.top;
     }
 }
 
@@ -515,7 +494,6 @@ function getNodeFromEvent(event)
         {
             var _y = event.clientY - origin_y;
             var _x = event.clientX - origin_x;
-
             var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
             if (angle < 0)
                 angle = 2 * Math.PI + angle;

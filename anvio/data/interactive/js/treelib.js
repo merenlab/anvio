@@ -1563,37 +1563,99 @@ CirclePhylogramDrawer.prototype.Draw = function() {
 function draw_tree(settings) {
     var tree_draw_timer = new BasicTimer('tree_draw');
 
+    var width = parseFloat(settings['tree-width']);
+    var height = parseFloat(settings['tree-height']);
+    var radius = parseFloat(settings['tree-radius']);
+
+    if (width == 0)
+        width = VIEWER_WIDTH;
+    if (height == 0)
+        height = VIEWER_HEIGHT;
+
+    if (radius == 0)
+        radius = (height > width) ? height : width;
+
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = {};
 
-    var t = new Tree();
-
-    newick = newick.trim(newick);
-    t.Parse(newick, settings['edge-normalization']);
-
-    if (t.error != 0) {
-        toastr.error('Error while parsing tree data.');
-        return;
-    }
-
-    var n = new NodeIterator(t.root);
-    var q = n.Begin();
-
-    order_counter = 0;
-    while (q != null)
+    if (clusteringData.constructor === Array)
     {
-        label_to_node_map[q.label] = q;
-        id_to_node_map[q.id] = q;
-        
-        if (q.IsLeaf()) {
-            q.order = order_counter++;
-            order_to_node_map[q.order] = q;
+        leaf_count = clusteringData.length;
+        hasTree = false;
+        var t = new Tree();
+        t.root = clusteringData;
+
+        var angle_min = parseFloat(settings['angle-min']);
+        var angle_max = parseFloat(settings['angle-max']);
+        height_per_leaf = width / (leaf_count - 1);
+        angle_per_leaf = Math.toRadians(angle_max - angle_min) / leaf_count;
+
+        for (var i=0; i < leaf_count; i++)
+        {
+            var leaf_name = clusteringData[i];
+            var leaf_node = new Node(leaf_name);
+            
+            leaf_node.id = i+1;
+            leaf_node.order = i;
+            leaf_node.child_nodes = [leaf_node.id];
+
+            if (settings['tree-type']=='phylogram') {
+                leaf_node.xy = {};
+                leaf_node.xy.x = 0;
+                leaf_node.xy.y = height_per_leaf * i;
+            } 
+            else 
+            {
+                leaf_node.angle = angle_per_leaf / 2 + Math.toRadians(angle_min) + angle_per_leaf * i;
+                pt = [];
+                pt['x'] = radius * Math.cos(leaf_node.angle);
+                pt['y'] = radius * Math.sin(leaf_node.angle);
+                leaf_node.backarc = [];
+                leaf_node.backarc['x'] = pt['x'];
+                leaf_node.backarc['y'] = pt['y'];
+            }
+
+            id_to_node_map[leaf_node.id] = leaf_node;
+            label_to_node_map[leaf_name] = leaf_node;
+            order_to_node_map[i] = leaf_node;
+
+            t.nodes[i] = leaf_node;
+            t.num_leaves++;
+        }
+    }
+    else
+    {
+        hasTree = true;
+        var t = new Tree();
+
+        clusteringData = clusteringData.trim(clusteringData);
+        t.Parse(clusteringData, settings['edge-normalization']);
+
+        if (t.error != 0) {
+            toastr.error('Error while parsing tree data.');
+            return;
         }
 
-        q=n.Next();
+        var n = new NodeIterator(t.root);
+        var q = n.Begin();
+
+        order_counter = 0;
+        while (q != null)
+        {
+            label_to_node_map[q.label] = q;
+            id_to_node_map[q.id] = q;
+            
+            if (q.IsLeaf()) {
+                q.order = order_counter++;
+                order_to_node_map[q.order] = q;
+            }
+
+            q=n.Next();
+        }
+        leaf_count = t.num_leaves;
     }
-    leaf_count = t.num_leaves;
+
 
     // generate tooltip text before normalization
     layerdata_dict = new Array();
@@ -1799,69 +1861,64 @@ function draw_tree(settings) {
     }
 
     $('#draw_delta_time').html('barsizes done (took <b>' + tree_draw_timer.getDeltaSeconds('barsizes')['deltaSecondsPrev'] + '</b> seconds).');
-
-    t.ComputeWeights(t.root);
-    var td = null;
-
-    // create new bin
     createBin('svg', 'viewport');
     createBin('viewport', 'tree_bin');
     createBin('tree_bin', 'tree');
+    drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
 
-    var width = settings['tree-width'];
-    var height = settings['tree-height'];
-    var radius = settings['tree-radius'];
+    if (settings['tree-type'] == 'phylogram')
+        $('#tree_bin').attr('transform', 'rotate(90)'); 
 
-    if (width == 0)
-        width = VIEWER_WIDTH;
-    if (height == 0)
-        height = VIEWER_HEIGHT;
+    if (hasTree) 
+    {
+        t.ComputeWeights(t.root);
+        var td = null;
 
-    switch (settings['tree-type']) {
-        case 'phylogram':
-            if (t.has_edge_lengths) {
-                td = new PhylogramTreeDrawer();
-            } else {
-                td = new RectangleTreeDrawer();
-            }
+        switch (settings['tree-type']) {
+            case 'phylogram':
+                if (t.has_edge_lengths) {
+                    td = new PhylogramTreeDrawer();
+                } else {
+                    td = new RectangleTreeDrawer();
+                }
 
-            td.Init(t, {
-                svg_id: 'tree',
-                width: height,
-                height: width,
-                fontHeight: 10,
-                root_length: 0.1
-            });
-            $('#tree_bin').attr('transform', 'rotate(90)'); // height and width swapped because of this.
+                td.Init(t, {
+                    svg_id: 'tree',
+                    width: height,
+                    height: width,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
 
-            // calculate height per leaf
-            height_per_leaf = width / (t.num_leaves - 1);
-            break;
+                // calculate height per leaf
+                height_per_leaf = width / (t.num_leaves - 1);
+                break;
 
-        case 'circlephylogram':
-            if (t.has_edge_lengths) {
-                td = new CirclePhylogramDrawer();
-            } else {
+            case 'circlephylogram':
+                if (t.has_edge_lengths) {
+                    td = new CirclePhylogramDrawer();
+                } else {
 
-                td = new CircleTreeDrawer();
-            }
-            td.Init(t, {
-                svg_id: 'tree',
-                width: (radius == 0) ? VIEWER_WIDTH : radius,
-                height: (radius == 0) ? VIEWER_HEIGHT : radius,
-                fontHeight: 10,
-                root_length: 0.1
-            });
+                    td = new CircleTreeDrawer();
+                }
+                td.Init(t, {
+                    svg_id: 'tree',
+                    width: (radius == 0) ? VIEWER_WIDTH : radius,
+                    height: (radius == 0) ? VIEWER_HEIGHT : radius,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
 
-            // calculate angle per leaf
-            var angle_min = parseFloat(settings['angle-min']);
-            var angle_max = parseFloat(settings['angle-max']);
-            angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
-            break;
+                // calculate angle per leaf
+                var angle_min = parseFloat(settings['angle-min']);
+                var angle_max = parseFloat(settings['angle-max']);
+                angle_per_leaf = Math.toRadians(angle_max - angle_min) / t.num_leaves;
+                break;
+        }
+
+        td.CalcCoordinates();
+        td.Draw();
     }
-
-    td.CalcCoordinates();
-    td.Draw();
 
     // calculate max radius of tree
     layer_boundaries = new Array();
@@ -1869,55 +1926,70 @@ function draw_tree(settings) {
     var tree_max_x = 0;
     var tree_max_y = 0;
 
-    var n = new NodeIterator(t.root);
-    var q = n.Begin();
+    if (hasTree)
+    {
+        var n = new NodeIterator(t.root);
+        var q = n.Begin();
 
-    switch (settings['tree-type']) {
-        case 'phylogram':
-            while (q != null)
-            {
-                if (q.xy.x > tree_max_x)
-                    tree_max_x = q.xy.x;
-                if (q.xy.y > tree_max_y)
-                    tree_max_y = q.xy.y;
+        switch (settings['tree-type']) {
+            case 'phylogram':
+                while (q != null)
+                {
+                    if (q.xy.x > tree_max_x)
+                        tree_max_x = q.xy.x;
+                    if (q.xy.y > tree_max_y)
+                        tree_max_y = q.xy.y;
 
-                // childs
-                var _n = new NodeIterator(q);
-                var _q = _n.Begin();
+                    // childs
+                    var _n = new NodeIterator(q);
+                    var _q = _n.Begin();
 
-                q.child_nodes = [];
-                while (_q != null) {
-                    q.child_nodes.push(_q.id);
-                    _q = _n.Next();
+                    q.child_nodes = [];
+                    while (_q != null) {
+                        q.child_nodes.push(_q.id);
+                        _q = _n.Next();
+                    }
+                    // end of childs
+                    q = n.Next();
+
                 }
-                // end of childs
-                q = n.Next();
+                layer_boundaries.push( [0, tree_max_x] );
 
-            }
-            layer_boundaries.push( [0, tree_max_x] );
+                break;
 
-            break;
+            case 'circlephylogram':
+                while (q != null) 
+                {
+                    if (q.radius > tree_radius)
+                        tree_radius = q.radius;
 
-        case 'circlephylogram':
-            while (q != null) 
-            {
-                if (q.radius > tree_radius)
-                    tree_radius = q.radius;
+                    // childs
+                    var _n = new NodeIterator(q);
+                    var _q = _n.Begin();
 
-                // childs
-                var _n = new NodeIterator(q);
-                var _q = _n.Begin();
-
-                q.child_nodes = [];
-                while (_q != null) {
-                    q.child_nodes.push(_q.id);
-                    _q = _n.Next();
+                    q.child_nodes = [];
+                    while (_q != null) {
+                        q.child_nodes.push(_q.id);
+                        _q = _n.Next();
+                    }
+                    // end of childs
+                    q = n.Next();
                 }
-                // end of childs
-                q = n.Next();
-            }
-            layer_boundaries.push( [0, tree_radius] );
-            break;
+                layer_boundaries.push( [0, tree_radius] );
+                break;
+        }
+    }
+    else
+    {
+        if (settings['tree-type'] == 'circlephylogram') {
+            layer_boundaries.push([0, radius]);
+        }
+        else
+        {
+            tree_max_y = width;
+            tree_max_x = 0;
+            layer_boundaries.push([0, 0]);
+        }
     }
 
     margin = parseFloat(settings['layer-margin']);
@@ -2092,7 +2164,7 @@ function draw_tree(settings) {
                 if (q.IsLeaf()) {
                     odd_even_flag = odd_even_flag * -1;
 
-                    if (odd_even_flag > 0)
+                    if (odd_even_flag > 0 && hasTree)
                         drawStraightGuideLine('guide_lines', q.id, q.xy, tree_max_x);
 
                     for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -2195,7 +2267,7 @@ function draw_tree(settings) {
                     odd_even_flag = odd_even_flag * -1;
 
                     // draw guidelines for every other leaf.
-                    if (odd_even_flag > 0)
+                    if (odd_even_flag > 0 && hasTree)
                         drawGuideLine('guide_lines', q.id, q.angle, q.radius, beginning_of_layers);
 
                     for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -2464,13 +2536,14 @@ function draw_tree(settings) {
     }
 
     // draw title
+    var legend_top = total_radius + parseFloat(settings['layer-margin']) + parseFloat(settings['outer-ring-height']) * 2;
     switch (settings['tree-type']) {
         case 'phylogram':
-            drawLegend(total_radius, 0 - td.settings.height, 0);
-            drawTitle(-150, -0.5 * td.settings.height, settings);
+            drawLegend(legend_top, 0 - VIEWER_HEIGHT, 0);
+            drawTitle(-150, -0.5 * VIEWER_HEIGHT, settings);
             break;
         case 'circlephylogram':
-            drawLegend(total_radius, 0 - total_radius, total_radius - 40);
+            drawLegend(legend_top, 0 - total_radius, total_radius - 40);
             drawTitle(-1 * total_radius - 150, 0, settings);
             break;
     }
@@ -2746,6 +2819,9 @@ function redrawBins()
 
 function rebuildIntersections()
 {
+    if (!hasTree)
+        return;
+
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
 
         // delete extra intersections
