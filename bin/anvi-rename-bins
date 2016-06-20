@@ -3,6 +3,7 @@
 
 import sys
 import copy
+import numpy
 import operator
 
 import anvio
@@ -42,6 +43,7 @@ def main(args):
     min_completion_for_MAG = A('min_completion_for_MAG')
     max_redundancy_for_MAG = A('max_redundancy_for_MAG')
     size_for_MAG = A('size_for_MAG')
+    use_SCG_averages = A('use_SCG_averages')
     dry_run = A('dry_run')
 
     dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
@@ -82,6 +84,10 @@ def main(args):
         raise ConfigError, "In most cases anvi'o relies on single-copy gene collection by Campbell et al., and it seems the contigs database\
                             does not contain HMM hits for that resource :/ Bad news."
 
+    if not use_SCG_averages:
+        run.warning('As per your request, this run will use average competion and redundancy estimates\
+                     recovered from all single-copy core gene collections.')
+
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
 
     collection_dict = collections.get_collection_dict(collection_name)
@@ -90,12 +96,20 @@ def main(args):
     MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
     for bin_name in collection_dict:
-        d = completeness.get_info_for_splits(set(collection_dict[bin_name]))['Campbell_et_al']
+        if use_SCG_averages:
+            d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
+            percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d])
+            percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d])
+        else:
+            campbell_et_all = completeness.get_info_for_splits(set(collection_dict[bin_name]))['Campbell_et_al']
+            percent_completion = campbell_et_all['percent_complete']
+            percent_redundancy = campbell_et_all['percent_redundancy']
+
         size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
-        substantive_completion = d['percent_complete'] - d['percent_redundancy']
+        substantive_completion = percent_completion - percent_redundancy
 
         if call_MAGs:
-            if d['percent_redundancy'] < max_redundancy_for_MAG and (d['percent_complete'] >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
+            if percent_redundancy < max_redundancy_for_MAG and (percent_completion >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
                 MAGs_sorted_by_completion.append((bin_name, substantive_completion, 'MAG'),)
             else:
                 bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
@@ -129,9 +143,9 @@ def main(args):
         run.info('Rename', 'Renaming is done for %d bins in collection "%s".' % (len(collection_dict), collection_name))
     else:
         run.warning('This was a dry run, which means nothing is updated in the profile database.\
-                          Please take a look at the report filen and see whether things worked out the\
-                          way you wanted them to. If all looks alright, you will need to run the previous\
-                          commandline without the --dry-run flag.')
+                     Please take a look at the report filen and see whether things worked out the\
+                     way you wanted them to. If all looks alright, you will need to run the previous\
+                     commandline without the --dry-run flag.')
 
     run.info('Report', '%s' % (report_file_path))
 
@@ -163,6 +177,12 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run', {'help': 'When used does NOT update the\
                                 profile database, just creates the report file so you can view how things\
                                 will be renamed.'}))
+    groupC.add_argument('--use-SCG-averages', default=False, action="store_true", \
+                        help = "By default anvi'o will use the single-copy core gene collection by Campbell et al.\
+                                for completion and redundancy estiamtes for ordering of bins and/or to call some of\
+                                them MAGs (see '--call-MAGs'). If you use this flag, it will use all avialble\
+                                single-copy core gene collections and will average their independent completion\
+                                and redundancy estimates.")
     groupC.add_argument('--call-MAGs', default=False, action="store_true", \
                         help = "This program by default rename your bins as 'PREFIX_Bin_00001', 'PREFIX_Bin_00002'\
                                 and so on. If you use this flag, it will name the ones that meet the criteria\
