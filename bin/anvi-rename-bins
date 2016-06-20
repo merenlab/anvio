@@ -32,17 +32,22 @@ pp = terminal.pretty_print
 
 def main(args):
     A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
-    profile_db = A('profile_db')
-    contigs_db = A('contigs_db')
+    profile_db_path = A('profile_db')
+    contigs_db_path = A('contigs_db')
     list_collections = A('list_collections')
     collection_name = A('collection_name')
     prefix = A('prefix')
     report_file_path = A('report_file')
+    call_MAGs = A('call_MAGs')
+    min_completion_for_MAG = A('min_completion_for_MAG')
+    max_redundancy_for_MAG = A('max_redundancy_for_MAG')
+    size_for_MAG = A('size_for_MAG')
+    dry_run = A('dry_run')
 
-    dbops.is_profile_db_and_contigs_db_compatible(profile_db, contigs_db)
+    dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
     collections = ccollections.Collections()
-    collections.populate_collections_dict(profile_db, anvio.__profile__version__)
+    collections.populate_collections_dict(profile_db_path, anvio.__profile__version__)
 
     if list_collections:
         collections.list_collections()
@@ -67,7 +72,7 @@ def main(args):
     if  collection_name not in collections.collections_dict:
         raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name
 
-    completeness = Completeness(contigs_db)
+    completeness = Completeness(contigs_db_path)
 
     if not len(completeness.sources):
         raise ConfigError, "HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
@@ -77,20 +82,34 @@ def main(args):
         raise ConfigError, "In most cases anvi'o relies on single-copy gene collection by Campbell et al., and it seems the contigs database\
                             does not contain HMM hits for that resource :/ Bad news."
 
+    contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
+
     collection_dict = collections.get_collection_dict(collection_name)
     bins_info_dict = collections.get_bins_info_dict(collection_name)
 
+    MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
     for bin_name in collection_dict:
         d = completeness.get_info_for_splits(set(collection_dict[bin_name]))['Campbell_et_al']
-        bins_sorted_by_completion.append((bin_name, d['percent_complete'] - d['percent_redundancy']),)
+        size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
+        substantive_completion = d['percent_complete'] - d['percent_redundancy']
 
+        if call_MAGs:
+            if d['percent_redundancy'] < max_redundancy_for_MAG and (d['percent_complete'] >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
+                MAGs_sorted_by_completion.append((bin_name, substantive_completion, 'MAG'),)
+            else:
+                bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+        else:
+            bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+
+    MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
+
     report = open(report_file_path, 'w')
     report.write('old_bin_name\tnew_bin_name\n')
     counter = 1
-    for bin_name, _ in bins_sorted_by_completion:
-        new_bin_name = '%s_bin_%05d' % (prefix, counter)
+    for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+        new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
         collection_dict.pop(bin_name)
 
@@ -103,33 +122,64 @@ def main(args):
         counter += 1
     report.close()
 
-    # update tables with new bin names.
-    collections_table = dbops.TablesForCollections(profile_db, anvio.__profile__version__)
-    collections_table.append(collection_name, collection_dict, bins_info_dict)
+    # if this is not a dry run, update tables with new bin names.
+    if not dry_run:
+        collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
+        collections_table.append(collection_name, collection_dict, bins_info_dict)
+        run.info('Rename', 'Renaming is done for %d bins in collection "%s".' % (len(collection_dict), collection_name))
+    else:
+        run.warning('This was a dry run, which means nothing is updated in the profile database.\
+                          Please take a look at the report filen and see whether things worked out the\
+                          way you wanted them to. If all looks alright, you will need to run the previous\
+                          commandline without the --dry-run flag.')
 
-    run.info('Rename', 'Renaming is done for %d bins in collection "%s".' % (len(collection_dict), collection_name))
     run.info('Report', '%s' % (report_file_path))
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Rename all bins in a given collection.')
+    parser = argparse.ArgumentParser(description='Rename all bins in a given collection (so they have pretty names).')
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    parser.add_argument('--prefix', default = None,
-                        help = "Prefix for the bin names. Must be a single word, composed\
-                                of digits and numbers. The use of the underscore character is OK,\
-                                but that's about it (fine, the use of the dash character is OK, too\
-                                but no more!). If the prefix is 'PREFIX', each bin will be renamed\
-                                as 'PREFIX_Bin_00001, PREFIX_bin_00002', and so on, in the order of\
-                                percent completion minus percent redundancy.")
-    parser.add_argument('--report-file', metavar = 'REPORT_FILE_PATH', default = None, \
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "Standard stuff")
+    groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")
+    groupC = parser.add_argument_group('MAG OPTIONS', "If you want to call some bins 'MAGs' because you are so cool")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupB.add_argument('--prefix', default = None,
+                  help = "Prefix for the bin names. Must be a single word, composed\
+                          of digits and numbers. The use of the underscore character is OK,\
+                          but that's about it (fine, the use of the dash character is OK, too\
+                          but no more!). If the prefix is 'PREFIX', each bin will be renamed\
+                          as 'PREFIX_XXX_00001, PREFIX_XXX_00002', and so on, in the order of\
+                          percent completion minus percent redundancy (what we call, 'substantive\
+                          completion'). The 'XXX' part will either be 'Bin', or 'MAG depending on\
+                          other parameters you use. Keep reading.")
+    groupB.add_argument('--report-file', metavar = 'REPORT_FILE_PATH', default = None, \
                         help = "This file will report each name change event, so you can trace back\
                                 the original names of renamed bins later.")
-    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupB.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupB.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run', {'help': 'When used does NOT update the\
+                                profile database, just creates the report file so you can view how things\
+                                will be renamed.'}))
+    groupC.add_argument('--call-MAGs', default=False, action="store_true", \
+                        help = "This program by default rename your bins as 'PREFIX_Bin_00001', 'PREFIX_Bin_00002'\
+                                and so on. If you use this flag, it will name the ones that meet the criteria\
+                                described by MAG-related flags as 'PREFIX_MAG_00001', 'PREFIX_MAG_00002', and\
+                                so on. The ones that do not get to be named as MAGs will remain as bins.")
+    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, metavar='[0-100]', choices=range(0, 101), \
+                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their completion estimate is\
+                              above this (the default is %(default)d), and the redundancy estimate is\
+                              less than --max-redundancy-for-MAG.")
+    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, metavar='[0-100]', choices=range(0, 101), \
+                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
+                              below this (the default is %(default)d) and the completion estimate is above\
+                              --min-completion-for-MAG.")
+    groupC.add_argument('--size-for-MAG', default=2, type=float, metavar='0.1-10 Mbp', choices=[x / 10.0 for x in range(1, 101)], \
+                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate\
+                              is less than --max-redundancy-for-MAG, and the size is larger than this (the\
+                              default is %(default)d Mbp), regarldless of the completion.")
 
     args = parser.parse_args()
 
