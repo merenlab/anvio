@@ -412,7 +412,7 @@ function onTreeClusteringChange() {
                     cache: false,
                     url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        clusteringData = get_newick_leaf_order(data);
+                        clusteringData = data;
                         $('#trees_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false); 
                         waitingDialog.hide();
