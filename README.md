@@ -4,7 +4,7 @@
 
 Please see the project page for installation and usage information: 
 
-* [http://merenlab.org/projects/anvio/](http://merenlab.org/projects/anvio/)
+* [http://merenlab.org/software/anvio/](http://merenlab.org/software/anvio/)
 
 # Others on anvi'o
 
