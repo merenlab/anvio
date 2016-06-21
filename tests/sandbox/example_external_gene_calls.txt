@@ -1,5 +1,4 @@
 gene_callers_id	contig	start	stop	direction	partial	source	version
-0	204_10M_MERGED.PERFECT.gz.keep_contig_878	0	933	f	1	external gene caller	v1.0
 1	204_10M_MERGED.PERFECT.gz.keep_contig_878	1113	1677	f	0	external gene caller	v1.0
 2	204_10M_MERGED.PERFECT.gz.keep_contig_878	1698	2142	f	0	external gene caller	v1.0
 3	204_10M_MERGED.PERFECT.gz.keep_contig_878	2229	3447	f	0	external gene caller	v1.0
@@ -28,7 +27,6 @@ gene_callers_id	contig	start	stop	direction	partial	source	version
 26	204_10M_MERGED.PERFECT.gz.keep_contig_6515	4080	5202	f	0	external gene caller	v1.0
 27	204_10M_MERGED.PERFECT.gz.keep_contig_6515	5194	5926	f	0	external gene caller	v1.0
 28	204_10M_MERGED.PERFECT.gz.keep_contig_6515	5918	7970	f	0	external gene caller	v1.0
-29	204_10M_MERGED.PERFECT.gz.keep_contig_6515	8092	9487	f	0	external gene caller	v1.0
 30	204_10M_MERGED.PERFECT.gz.keep_contig_6515	9587	10565	f	0	external gene caller	v1.0
 31	204_10M_MERGED.PERFECT.gz.keep_contig_6515	10693	11737	f	0	external gene caller	v1.0
 32	204_10M_MERGED.PERFECT.gz.keep_contig_6515	11769	12315	f	1	external gene caller	v1.0
