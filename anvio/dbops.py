@@ -607,6 +607,30 @@ class ContigsSuperclass(object):
         self.run.info('Output', output_file_path)
 
 
+    def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.a_meta['taxonomy_source']:
+            raise ConfigError, "There is no taxonomy source in the contigs database :/"
+
+        if not len(self.splits_taxonomy_dict):
+            self.init_splits_taxonomy()
+
+        if not len(self.splits_taxonomy_dict):
+            raise ConfigError, "The splits taxonomy is empty. There is nothing to report. Could it be\
+                                possible the taxonomy caller you used did not assign any taxonomy to\
+                                anything?"
+
+        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
+
+        output = open(output_file_path, 'w')
+        for split_name in sorted(self.splits_taxonomy_dict.keys()):
+            output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
+        output.close()
+
+        self.run.info("Output", output_file_path)
+
+
 class ProfileSuperclass(object):
     def __init__(self, args, r=run, p=progress):
         self.args = args
