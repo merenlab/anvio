@@ -27,6 +27,14 @@ def remove_short_contigs_from_fasta(args):
     filesnpaths.is_output_file_writable(args.output)
     filesnpaths.is_file_exists(args.contigs_fasta)
 
+    if args.input_ids:
+        filesnpaths.is_file_exists(args.input_ids)
+        input_ids = set([l.split('\t')[0].strip() for l in open(args.input_ids).readlines()])
+        run.info('Input IDs to remove', '%d found' % len(input_ids))
+    else:
+        input_ids = set([])
+
+
     output = u.FastaOutput(args.output)
     fasta = u.SequenceSource(args.contigs_fasta)
 
@@ -44,6 +52,11 @@ def remove_short_contigs_from_fasta(args):
 
         total_num_nucleotides += l
         total_num_contigs += 1
+
+        if input_ids and fasta.id.split()[0] in input_ids:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
 
         if len(fasta.seq) < args.min_len:
             total_num_nucleotides_removed += l
@@ -71,9 +84,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Remove short contigs from a given FASTA file")
 
     parser.add_argument('contigs_fasta')
-    parser.add_argument('-l', '--min-len', type=int, required=True, metavar='MIN_LENGTH',
+    parser.add_argument('-l', '--min-len', type=int, default=0, metavar='MIN_LENGTH',
                         help="Minimum length of contigs to keep (contigs shorter than this value\
-                              will not be included in the output file).")
+                              will not be included in the output file). The default is %(default)d,\
+                              so nothing will be removed if you do not declare a minimum size.")
+    parser.add_argument('-i', '--input-ids', required=False, metavar='TXT FILE',
+                        help="IDs to remove from the FASTA file.")
     parser.add_argument('-o', '--output', required=True, metavar='FASTA FILE',
                         help="Output file path.")
     parser.add_argument('--simplify-names', default=False, action="store_true",
