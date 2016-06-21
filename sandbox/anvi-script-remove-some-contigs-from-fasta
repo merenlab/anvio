@@ -81,7 +81,7 @@ def remove_short_contigs_from_fasta(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Remove short contigs from a given FASTA file")
+    parser = argparse.ArgumentParser(description="Remove contigs from a given FASTA file")
 
     parser.add_argument('contigs_fasta')
     parser.add_argument('-l', '--min-len', type=int, default=0, metavar='MIN_LENGTH',
