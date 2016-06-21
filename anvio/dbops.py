@@ -1721,8 +1721,6 @@ class TablesForGeneCalls(Table):
         self.contigs_fasta = contigs_fasta
         self.debug = debug
 
-        self.gene_calls_dict_id_to_db_unique_id = {}
-
         is_contigs_db(self.db_path)
 
         if self.contigs_fasta:
@@ -1756,8 +1754,6 @@ class TablesForGeneCalls(Table):
     def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
 
-        self.set_next_available_id(t.genes_in_contigs_table_name)
-
         # take care of gene calls dict
         gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
                                                                      expected_fields=t.genes_in_contigs_table_structure,
@@ -1788,9 +1784,6 @@ class TablesForGeneCalls(Table):
 
             protein_sequences[gene_callers_id] = utils.get_DNA_sequence_translated(sequence)
 
-        # get a unique_id conversion dict
-        self.set_gene_calls_dict_id_to_db_unique_id(gene_calls_dict)
-
         # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
 
@@ -1798,23 +1791,14 @@ class TablesForGeneCalls(Table):
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
 
-        self.set_next_available_id(t.genes_in_contigs_table_name)
-
         # get gene calls and protein sequences
         gene_calls_dict, protein_sequences = self.run_gene_caller(gene_caller)
 
         # make sure the returning gene calls dict is proper
         self.check_gene_calls_dict(gene_calls_dict)
 
-        # get a unique_id conversion dict
-        self.set_gene_calls_dict_id_to_db_unique_id(gene_calls_dict)
-
         # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
-
-
-    def set_gene_calls_dict_id_to_db_unique_id(self, gene_calls_dict):
-        self.gene_calls_dict_id_to_db_unique_id = dict([(entry_id, self.next_id(t.genes_in_contigs_table_name)) for entry_id in gene_calls_dict])
 
 
     def run_gene_caller(self, gene_caller='prodigal'):
@@ -1842,13 +1826,17 @@ class TablesForGeneCalls(Table):
     def populate_genes_in_contigs_table(self, gene_calls_dict, protein_sequences):
         contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
+        # we know there is nothing there, but lets make double sure
+        contigs_db._exec('''DELETE FROM %s''' % (t.genes_in_contigs_table_name))
+        contigs_db._exec('''DELETE FROM %s''' % (t.gene_protein_sequences_table_name))
+
         self.progress.new('Processing')
         self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
 
-        db_entries = [tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
+        db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
         contigs_db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
 
-        db_entries = [tuple([self.gene_calls_dict_id_to_db_unique_id[entry_id]] + [protein_sequences[entry_id]]) for entry_id in gene_calls_dict]
+        db_entries = [tuple([entry_id] + [protein_sequences[entry_id]]) for entry_id in gene_calls_dict]
         contigs_db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, db_entries)
 
         self.progress.end()
@@ -1861,7 +1849,6 @@ class TablesForGeneCalls(Table):
         self.init_gene_calls_dict()
 
         genes_in_splits = GenesInSplits()
-
         # build a dictionary for fast access to all proteins identified within a contig
         gene_calls_in_contigs_dict = {}
         for gene_callers_id in self.gene_calls_dict:
@@ -1892,8 +1879,7 @@ class TablesForGeneCalls(Table):
                 for gene_callers_id in gene_calls_in_contigs_dict[contig]:
                     if self.gene_calls_dict[gene_callers_id]['stop'] > start and self.gene_calls_dict[gene_callers_id]['start'] < stop:
                         gene_start_stops.append((self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop']), )
-                        genes_in_splits.add(split_name, start, stop, self.gene_calls_dict_id_to_db_unique_id[gene_callers_id], self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
-
+                        genes_in_splits.add(split_name, start, stop, gene_callers_id, self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
 
                 # here we identify genes that are associated with a split even if one base of the gene spills into
                 # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
