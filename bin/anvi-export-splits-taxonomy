@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Takes a contigs database, and export taxonomy information from it."""
+
+import sys
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+def main(args):
+    c = dbops.ContigsSuperclass(args)
+    c.gen_TAB_delimited_file_for_split_taxonomies(args.output_file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Export taxonomy for splits found in an anvi'o contigs database")
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
+    args = parser.parse_args()
+    
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(2)
