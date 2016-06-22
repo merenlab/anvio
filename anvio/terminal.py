@@ -191,7 +191,7 @@ class Run:
         else:
             message_line = c("* %s\n" % str(message), mc)
 
-        message_line = ('\n' * nl_before) + message_line + ('\n' * nl_before)
+        message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 
         self.write(message_line)
 
