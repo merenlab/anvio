@@ -174,6 +174,9 @@ class ContigsSuperclass(object):
 
 
     def init_splits_taxonomy(self, t_level = 't_species'):
+        if not self.contigs_db_path:
+            return
+
         self.progress.new('Initializing splits taxonomy')
         self.progress.update('...')
 
