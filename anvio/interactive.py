@@ -311,7 +311,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # the one we have. that will be LOVELY.
         self.load_full_mode(args)
 
-        self.p_meta['default_clustering'] = 'mean_coverage'
+        self.p_meta['default_clustering'] = 'mean_coverage' if self.p_meta['merged'] else 'single'
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
 
