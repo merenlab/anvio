@@ -293,7 +293,7 @@ function initData () {
 
             // make layers and samples table sortable
             var _notFirstSelector = ''
-            if (mode != 'manual') {
+            if (mode != 'manual' && mode != 'server') {
                 _notFirstSelector = ':not(:first)';
             }
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
