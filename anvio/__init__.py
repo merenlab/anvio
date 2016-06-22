@@ -259,6 +259,22 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the profile database and quit."}
                 ),
+    'gene-names': (
+            ['--gene-names'],
+            {'metavar': 'HMM HIT NAME',
+             'help': "Get sequences only for a specific gene name. Each name should be separated from\
+                      each other by a comma character. For instance, if you want to get back only RecA\
+                      and Ribosomal_L27, you can type '--gene-names RecA,Ribosomal_L27', and you will\
+                      get any and every hit that matches these names in any source. If you would like\
+                      to see a list of available gene names, you can use '--list-available-gene-names'\
+                      flag."}
+                ),
+    'list-available-gene-names': (
+            ['-L', '--list-available-gene-names'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available gene names in HMM sources selection and quit."}
+                ),
     'search-terms': (
             ['--search-terms'],
             {'metavar': 'SEARCH_TERMS',
