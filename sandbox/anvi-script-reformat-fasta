@@ -5,13 +5,14 @@ import sys
 
 import anvio
 import anvio.fastalib as u
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__copyright__ = "Copyright 2016, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -24,8 +25,14 @@ progress = terminal.Progress()
 
 
 def remove_short_contigs_from_fasta(args):
-    filesnpaths.is_output_file_writable(args.output)
+    filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_file_exists(args.contigs_fasta)
+
+    report_file = open(args.report_file, 'w') if args.report_file and args.simplify_names else None
+    prefix = args.prefix if args.prefix else None
+
+    if prefix:
+        utils.is_this_name_OK_for_database('prefix', prefix)
 
     if args.input_ids:
         filesnpaths.is_file_exists(args.input_ids)
@@ -34,12 +41,11 @@ def remove_short_contigs_from_fasta(args):
     else:
         input_ids = set([])
 
-
-    output = u.FastaOutput(args.output)
+    output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
 
     run.info('Input', args.contigs_fasta)
-    run.info('Output', args.output)
+    run.info('Output', args.output_file)
     run.info('Minimum length', args.min_len)
 
     total_num_nucleotides = 0
@@ -64,10 +70,21 @@ def remove_short_contigs_from_fasta(args):
             continue
 
         if args.simplify_names:
-            output.write_id('c_%012d' % fasta.pos)
+            if prefix:
+                defline = '%s_%012d' % (prefix, fasta.pos)
+            else:
+                defline = 'c_%012d' % fasta.pos
+
+            output.write_id(defline)
             output.write_seq(fasta.seq, split = False)
+
+            if report_file:
+                report_file.write('%s\t%s\n' % (defline, fasta.id))
         else:
             output.store(fasta, split = False)
+
+    if report_file:
+        report_file.close()
 
     fasta.close()
     output.close()
@@ -81,7 +98,8 @@ def remove_short_contigs_from_fasta(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Remove contigs from a given FASTA file")
+    parser = argparse.ArgumentParser(description="Reformat FASTA file (remove contigs based on length, or based on a given list of\
+                                                  deflines, and/or generate an output with simpler names)")
 
     parser.add_argument('contigs_fasta')
     parser.add_argument('-l', '--min-len', type=int, default=0, metavar='MIN_LENGTH',
@@ -90,10 +108,19 @@ if __name__ == '__main__':
                               so nothing will be removed if you do not declare a minimum size.")
     parser.add_argument('-i', '--input-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file.")
-    parser.add_argument('-o', '--output', required=True, metavar='FASTA FILE',
+    parser.add_argument('-o', '--output-file', required=True, metavar='FASTA FILE',
                         help="Output file path.")
     parser.add_argument('--simplify-names', default=False, action="store_true",
                         help="Edit deflines to make sure they contigs have simple names.")
+    parser.add_argument('--prefix', default=None, metavar="PREFIX",
+                        help="Use this parameter if you would like to Add a prefix to your contig\
+                              names while simplifying them. The prefix must be a single word (you\
+                              can use underscor character, but nothing more!).")
+    parser.add_argument('-r', '--report-file', required=False, metavar='REPORT FILE',
+                        help="Report file path. When you run this program with `--simplify-names`\
+                              flag, all changes to deflines will be reported in this file\
+                              in case you need to go back to this information later. It is not\
+                              mandatory to declare one, but it is a very good idea to have it.")
 
 
     args = parser.parse_args()
