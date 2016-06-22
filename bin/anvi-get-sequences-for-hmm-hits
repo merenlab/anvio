@@ -13,6 +13,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
@@ -36,11 +37,20 @@ progress = terminal.Progress()
 
 def main(args):
     if args.list_available_hmm_sources:
-        info_table = SequencesForHMMHits(args.contigs_db).search_info_table
+        info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
         for source in info_table:
             t = info_table[source]
             run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
         sys.exit(0)
+
+    if args.list_available_gene_names:
+        info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
+        for source in info_table:
+            t = info_table[source]
+            run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
+        sys.exit(0)
+
+    gene_names = set([g.strip() for g in args.gene_names.split(',')]) if args.gene_names else set([])
 
     if args.profile_db and not args.collection_name:
         raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
@@ -56,14 +66,26 @@ def main(args):
     s = SequencesForHMMHits(args.contigs_db, sources = sources)
 
     hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits(splits_dict)
-    run.info('Result', '%d genes for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+    run.info('Num hits', '%d found for %d source(s)' % (len(hmm_sequences_dict), len(sources)))
+
+    if len(gene_names):
+        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', gene_names)
+        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+
+    if not hmm_sequences_dict:
+        raise ConfigError, "Your selections resulted in 0 hits. There is nothing to report. Are you\
+                            sure you have the right set of gene names and sources? If you\
+                            select an HMM source, and then use gene names that belong to another\
+                            source, the intersection of the two can be empty. Just saying."
+
+    run.info('Result', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
     s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, args.output_file)
     run.info('Output', args.output_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Get sequences for all HMM hits in a given bin")
+    parser = argparse.ArgumentParser(description="Get sequences for HMM hits")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
@@ -71,8 +93,10 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     parser.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
     parser.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    parser.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('list-available-hmm-sources'), **anvio.K('list-available-hmm-sources'))
+    parser.add_argument(*anvio.A('list-available-gene-names'), **anvio.K('list-available-gene-names'))
 
     args = parser.parse_args() 
     
