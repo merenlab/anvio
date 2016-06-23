@@ -58,7 +58,7 @@ class CONCOCT:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
-        self.num_clusters_requested = A('num_clusters_requested ') or 80
+        self.num_clusters_requested = A('num_clusters_requested') or 80
 
         dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
