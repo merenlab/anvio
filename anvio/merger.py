@@ -54,7 +54,7 @@ class MultipleRuns:
         self.progress = progress
         self.run = run
 
-        self.max_num_splits_for_hierarchical_clustering = 25000
+        self.max_num_splits_for_hierarchical_clustering = 20000
 
         self.sample_id = args.sample_name
         self.merged_sample_ids = []
@@ -173,7 +173,7 @@ class MultipleRuns:
                      ('min_mean_coverage', 'Minimum mean coverage (-C)'),
                      ('min_coverage_for_variability', 'Minimum coverage to report variability (-V)'),
                      ('report_variability_full', 'Report full variability (--report-variability-full)'),
-                     ('skip_AA_frequencies', 'Skip AA frequencies parameter (--skip-AA-frequencies)'),
+                     ('profile_AA_frequencies', 'Profile AA frequencies parameter (--profile-AA-frequencies)'),
                      ('skip_SNV_profiling', 'Skip SNV profiling parameter (--skip-SNV-profiling)')]:
             v = set([r[k] for r in self.input_runinfo_dicts.values()])
             if len(v) > 1:
@@ -361,7 +361,7 @@ class MultipleRuns:
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
         self.gene_coverages_computed = C('gene_coverages_computed')
-        self.AA_frequencies_profiled = not C('skip_AA_frequencies')
+        self.AA_frequencies_profiled = C('profile_AA_frequencies')
         self.SNVs_profiled = not C('skip_SNV_profiling')
         self.total_length = C('total_length')
 

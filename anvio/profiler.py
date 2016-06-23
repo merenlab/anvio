@@ -54,7 +54,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.report_variability_full = A('report_variability_full')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
-        self.skip_AA_frequencies = A('skip_AA_frequencies')
+        self.profile_AA_frequencies = A('profile_AA_frequencies')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.contig_names_of_interest = None
 
@@ -122,7 +122,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         if self.skip_SNV_profiling:
-            self.skip_AA_frequencies = True
+            self.profile_AA_frequencies = False
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -134,7 +134,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
-                       'AA_frequencies_profiled': not self.skip_AA_frequencies,
+                       'AA_frequencies_profiled': self.profile_AA_frequencies,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -146,8 +146,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
 
-        if self.skip_AA_frequencies:
-            self.run.warning('Amino acid linkmer ferquencies will not be characterized for this profile.')
+        if not self.profile_AA_frequencies:
+            self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
 
 
     def _run(self):
@@ -173,7 +173,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
-        self.run.info('skip_AA_frequencies', self.skip_AA_frequencies)
+        self.run.info('profile_AA_frequencies', self.profile_AA_frequencies)
         self.run.info('report_variability_full', self.report_variability_full)
         self.run.info('gene_coverages_computed', self.a_meta['genes_are_called'])
 
@@ -189,10 +189,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         elif self.serialized_profile_path:
             self.init_serialized_profile()
         else:
-            raise ConfigError, "What are you doing? :( You don't "
+            raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
 
-        self.generate_variabile_positions_table()
-        self.profile_AA_frequencies()
+        self.generate_variabile_nts_table()
+        self.generate_variabile_aas_table()
         self.generate_gene_coverages_table()
         self.store_split_coverages()
 
@@ -220,8 +220,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.quit()
 
 
-    def profile_AA_frequencies(self):
-        if self.skip_SNV_profiling or self.skip_AA_frequencies:
+    def generate_variabile_aas_table(self):
+        if self.skip_SNV_profiling or not self.profile_AA_frequencies:
             # there is nothing to generate really..
             self.run.info('AA_frequencies_table', False, quiet=True)
             return
@@ -270,7 +270,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('AA_frequencies_table', True, quiet=True)
 
 
-    def generate_variabile_positions_table(self):
+    def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
             # there is nothing to generate really..
             self.run.info('variable_nts_table', False, quiet=True)
