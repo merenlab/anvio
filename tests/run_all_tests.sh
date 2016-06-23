@@ -25,6 +25,10 @@ do
     echo
 done
 
+INFO "Reformat the contigs FASTA"
+anvi-script-reformat-fasta contigs.fa -o test-output/contigs.fa -l 0 --simplify-names --prefix test_prefix --report test-output/contigs-reformat-report.txt
+echo
+column -t test-output/contigs-reformat-report.txt 
 
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
@@ -55,7 +59,7 @@ anvi-profile -c test-output/CONTIGS.db -o test-output/BLANK-PROFILE -S BLANK --b
 for f in 6M 7M 9M
 do
     INFO "Profiling sample 204-$f ..."
-    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -c test-output/CONTIGS.db
+    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -c test-output/CONTIGS.db --profile-AA-frequencies
     echo
 done
 
