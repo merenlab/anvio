@@ -143,13 +143,14 @@ D = {
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
                 ),
-    'skip-AA-frequencies': (
-            ['--skip-AA-frequencies'],
+    'profile-AA-frequencies': (
+            ['--profile-AA-frequencies'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o characterizes linkmer frequencies for AA distribution in genes in contigs during\
-                      profiling. This flag allows the user to skip this step. Please remember that this functionality is\
-                      available only if genes calls are present in contigs database."}
+             'help': "Anvi'o can characterize linkmer frequencies for AA distribution in genes in contigs during\
+                      profiling. However, due to its computational complexity, this feature is by default off. Using\
+                      this flag you can go against the authority, and make anvi'o do it. Please remember that this\
+                      functionality is available only if genes calls are present in contigs database."}
                 ),
     'skip-mindful-splitting': (
             ['--skip-mindful-splitting'],
