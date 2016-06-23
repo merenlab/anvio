@@ -160,7 +160,7 @@ class LinkMersData:
             self.progress.new('Processing "%s" in "%s"' % (contig_name, sample_id))
             self.progress.update('Analyzing %d positions (stretching %d nts) ...' % (len(positions), max(positions) - min(positions)))
 
-        for pileupcolumn in bam_file_object.pileup(contig_name, min(positions) - 1, max(positions) + 1):
+        for pileupcolumn in bam_file_object.pileup(contig_name, min(positions), max(positions) + 1):
             if pileupcolumn.pos not in positions:
                 continue
 
