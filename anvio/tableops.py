@@ -93,6 +93,10 @@ class Table(object):
         database.disconnect()
 
 
+    def reset_next_available_id_for_table(self, table):
+        self.next_available_id[table] = 0
+
+
     def export_sequences_table_in_db_into_FASTA_file(self, table=t.contig_sequences_table_name, output_file_path=None):
         if self.db_type != 'contigs':
             return None
