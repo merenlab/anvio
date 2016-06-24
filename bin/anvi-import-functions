@@ -49,7 +49,8 @@ def get_functions_dict(args):
 
 
 def main(args):
-    # make sure we have the parser
+    drop_previous_annotations = args.drop_previous_annotations
+
     if args.parser:
         functions_dict = get_functions_dict(args)
     else:
@@ -59,12 +60,13 @@ def main(args):
 
         input_matrix = args.input_files[0]
         functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix, 
-                                                                    expected_fields = ['gene_callers_id', 'source', 'accesssion', 'function', 'e_value'],
+                                                                    expected_fields = ['gene_callers_id', 'source', 'accession', 'function', 'e_value'],
                                                                     column_mapping  = [int, str, str, str, float],
-                                                                    only_expected_fields = True)
+                                                                    only_expected_fields = True,
+                                                                    indexing_field = -1)
 
     gene_function_calls_table = dbops.TableForGeneFunctions(args.contigs_db, run, progress)
-    gene_function_calls_table.create(functions_dict)
+    gene_function_calls_table.create(functions_dict, drop_previous_annotations_first = drop_previous_annotations)
 
 
 if __name__ == '__main__':
@@ -75,17 +77,17 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
     parser.add_argument('-p', '--parser', default = None,
-                        help = 'Parser to make sense of the input files. There are %d parsers readily available: %s.\
-                                It is OK if you do not select a parser, but in that case there will be no additional\
-                                contigs available except the identification of single-copy genes in your contigs\
-                                for later use. Using a parser will not prevent the analysis of single-copy genes,\
-                                but make anvio more powerful to help you make sense of your results. Please see the\
-                                documentation, or get in touch with the developers if you have any questions\
-                                regarding parsers.' % (len(parser_modules['functions']), parser_modules['functions'].keys()))
+                        help = "Parser to make sense of the input files (if you need one). There are currently\
+                                %d parsers readily available: %s. IT IS OK if you do not select a parser if you\
+                                have a standard, TAB-delimited input file for funcitonal annotation of genes. If\
+                                this is not like 2018 and everything is already outdated, you should be able to\
+                                go to this address and learn everything you need like a boss: http://goo.gl/7vVo7g"\
+                                            % (len(parser_modules['functions']), parser_modules['functions'].keys()))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
-                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
-                                process that you generate before running anvio. Please see the documentation for details.')
+                        help = 'One or more input files should follow this parameter. The way these files will be handled\
+                                will depend on which parser you selected (if you did select any).')
 
+    parser.add_argument(*anvio.A('drop-previous-annotations'), **anvio.K('drop-previous-annotations'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
