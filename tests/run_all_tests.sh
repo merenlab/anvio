@@ -148,16 +148,16 @@ INFO "Getting back the sequence for gene call 3 ..."
 anvi-get-dna-sequences-for-gene-calls -c test-output/CONTIGS.db --gene-caller-ids 3 -o test-output/Sequence_for_gene_caller_id_3.fa
 
 INFO "Show all available HMM sources ..."
-anvi-get-sequences-for-hmm-hits -c test-output/CONTIGS.db -o /dev/null -l
+anvi-get-dna-sequences-for-hmm-hits -c test-output/CONTIGS.db -o /dev/null -l
 
 INFO "Show available gene names in HMM sources ..."
-anvi-get-sequences-for-hmm-hits -c test-output/CONTIGS.db -o /dev/null -L
+anvi-get-dna-sequences-for-hmm-hits -c test-output/CONTIGS.db -o /dev/null -L
 
 INFO "Get sequences for HMM hits for a bin in a collection ..."
-anvi-get-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
+anvi-get-dna-sequences-for-hmm-hits -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -C CONCOCT -b Bin_1 -o test-output/hmm_hits_sequences_in_Bin_1.txt
 
 INFO "Get all ABC transporter hits defined in an HMM source ..."
-anvi-get-sequences-for-hmm-hits -c test-output/CONTIGS.db -o test-output/ABC_transporter_hits_in_external_hmm_profile.txt --gene-names ABC_tran --hmm-source external_hmm_profile
+anvi-get-dna-sequences-for-hmm-hits -c test-output/CONTIGS.db -o test-output/ABC_transporter_hits_in_external_hmm_profile.txt --gene-names ABC_tran --hmm-source external_hmm_profile
 
 INFO "Generate a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
