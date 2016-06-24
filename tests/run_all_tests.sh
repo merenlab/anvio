@@ -48,6 +48,12 @@ anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
 INFO "Importing gene function calls using 'interproscan' parser ..."
 anvi-import-functions -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
 
+#INFO "Importing gene function calls INCREMENTALLY using a TAB-delimited default input matrix ..."
+#anvi-import-functions -c test-output/CONTIGS.db -i example_gene_functions_input_matrix.txt
+#
+#INFO "REPLACING gene function calls using a TAB-delimited default input matrix ..."
+#anvi-import-functions -c test-output/CONTIGS.db -i example_gene_functions_input_matrix.txt --drop-previous-annotations
+
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
 
