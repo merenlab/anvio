@@ -2428,7 +2428,7 @@ class TableForGeneFunctions(Table):
 
         self.set_next_available_id(t.gene_function_calls_table_name)
 
-    def create(self, functions_dict):
+    def create(self, functions_dict, drop_previous_annotations_first = False):
         self.sanity_check()
 
         # oepn connection
@@ -2437,17 +2437,49 @@ class TableForGeneFunctions(Table):
         gene_function_sources = set([v['source'] for v in functions_dict.values()])
         unique_num_genes = len(set([v['gene_callers_id'] for v in functions_dict.values()]))
 
-        # test whether there are already genes tables populated
-        gene_function_sources_in_db = contigs_db.meta['gene_function_sources']
-        if gene_function_sources_in_db:
-            self.run.warning('Previous function calls for genes will be replaced with incoming data\
-                             which contains %d hits originating %d sources: %s' % \
-                             (len(functions_dict), len(gene_function_sources), ', '.join(gene_function_sources)))
-            contigs_db.db._exec('''DELETE FROM %s''' % (t.gene_function_calls_table_name))
+        # are there any previous annotations in the db:
+        gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'].split(',')) if contigs_db.meta['gene_function_sources'] else None
 
-        # set the sources
-        contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
-        contigs_db.db.set_meta_value('gene_function_sources', ','.join(gene_function_sources))
+        # here we will do some magic. there are mulitple scenarios to consider here:
+        #
+        # - this may be the first time the user importing funcitons into the db. easy-peasy,
+        #   gene_function_sources_in_db is None, just import stuff.
+        # - there may already be some functions in the db, and the user want to get rid of them first:
+        #   gene_function_sources_in_db is not None, but drop_previous_annotations_first is True.
+        #   kill the table, import stuff.
+        # - there are already some functiosn in the db, and the user wants to add more: fine. now,
+        #   gene_function_sources_in_db is not None, and drop_previous_annotations_first is False.
+        #   keep the table, add new stuff in, let Table superclass take care of incoming IDs like
+        #   a champ.
+        if not gene_function_sources_in_db:
+            # nothing to do here (case #1):  set the sources and continue
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources)))
+
+        elif gene_function_sources_in_db and drop_previous_annotations_first:
+            self.run.warning("As per your request, anvi'o is REPLACING the previous function calls from %d sources\
+                              with the incoming data, which contains %d entries originating from %d sources: %s" \
+                                    % (len(gene_function_sources_in_db), len(functions_dict),
+                                       len(gene_function_sources), ', '.join(gene_function_sources)))
+
+            # clean the table and reset the next available ids
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.gene_function_calls_table_name))
+            self.reset_next_available_id_for_table(t.gene_function_calls_table_name)
+
+            # set the sources
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(gene_function_sources))
+
+        elif gene_function_sources_in_db and not drop_previous_annotations_first:
+            self.run.warning("It seems there have already been functions in the db from %d sources. Fine. Anvi'o\
+                              will populate this database INCREMENTALLY with the additional %d entries originating\
+                              from %d sources in the incoming data: %s" \
+                                    % (len(gene_function_sources_in_db), len(functions_dict),
+                                       len(gene_function_sources), ', '.join(gene_function_sources)))
+
+            # set the sources
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
 
         # push the data
         db_entries = [tuple([self.next_id(t.gene_function_calls_table_name)] + [functions_dict[v][h] for h in t.gene_function_calls_table_structure[1:]]) for v in functions_dict]
