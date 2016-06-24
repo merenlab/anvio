@@ -152,6 +152,13 @@ D = {
                       this flag you can go against the authority, and make anvi'o do it. Please remember that this\
                       functionality is available only if genes calls are present in contigs database."}
                 ),
+    'drop-previous-annotations': (
+            ['--drop-previous-annotations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want anvi'o to remove all previous functional annotations for your genes,\
+                      and then import the new data. The default behavior is to add the new annotations incrementally."}
+                ),
     'skip-mindful-splitting': (
             ['--skip-mindful-splitting'],
             {'default': False,
