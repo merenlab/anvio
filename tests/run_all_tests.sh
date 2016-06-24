@@ -46,7 +46,7 @@ INFO "Populating HMM hits tables in the latest contigs database using a mock HMM
 anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
 
 INFO "Importing gene function calls using 'interproscan' parser ..."
-anvi-import-functional-annotation-of-genes -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
+anvi-import-functions -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'
