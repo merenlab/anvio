@@ -73,10 +73,10 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='A script to export anvio tables as TAB-delimited matrices.')
+    parser = argparse.ArgumentParser(description="Export anvi'o database tables as TAB-delimited text files.")
 
     parser.add_argument('db_path', metavar = 'DB',
-                        help = 'Database to read.')
+                        help = "Anvi'o database to read from.")
 
     parser.add_argument(*anvio.A('table'), **anvio.K('table'))
     parser.add_argument(*anvio.A('list'), **anvio.K('list'))
