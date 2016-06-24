@@ -1,0 +1,89 @@
+gene_callers_id	source	accession	function	e_value
+1	Pfam	PF01132	Elongation factor P (EF-P) OB domain	4e-23
+1	Pfam	PF08207	Elongation factor P (EF-P) KOW-like domain	3e-25
+1	Pfam	PF09285	Elongation factor P, C-terminal	3.1e-24
+1	TIGRFAM	TIGR00038	efp: translation elongation factor P	1.5e-75
+2	Pfam	PF01029	NusB family	2.5e-30
+2	TIGRFAM	TIGR01951	nusB: transcription antitermination factor NusB	1.5e-36
+3	Pfam	PF00117	Glutamine amidotransferase class-I	2e-36
+3	Pfam	PF00988	Carbamoyl-phosphate synthase small chain, CPSase domain	1.2e-48
+3	TIGRFAM	TIGR01368	CPSaseIIsmall: carbamoyl-phosphate synthase, small subunit	1.5e-132
+4	Pfam	PF02142	MGS-like domain	8.8e-14
+4	Pfam	PF02786	Carbamoyl-phosphate synthase L chain, ATP binding domain	5.6e-66
+4	Pfam	PF02786	Carbamoyl-phosphate synthase L chain, ATP binding domain	7.9e-37
+4	Pfam	PF02787	Carbamoyl-phosphate synthetase large chain, oligomerisation domain	1.4e-31
+4	TIGRFAM	TIGR01369	CPSaseII_lrg: carbamoyl-phosphate synthase, large subunit	0
+5	TIGRFAM	TIGR02127	pyrF_sub2: orotidine 5'-phosphate decarboxylase	1.9e-59
+6	Pfam	PF00625	Guanylate kinase	5.7e-39
+6	TIGRFAM	TIGR03263	guanyl_kin: guanylate kinase	3.5e-62
+7	Pfam	PF00920	Dehydratase family	1.7e-208
+7	TIGRFAM	TIGR00110	ilvD: dihydroxy-acid dehydratase	1.3e-229
+8	Pfam	PF01192	RNA polymerase Rpb6	4.9e-13
+8	TIGRFAM	TIGR00690	rpoZ: DNA-directed RNA polymerase, omega subunit	1.7e-20
+9	Pfam	PF00438	S-adenosylmethionine synthetase, N-terminal domain	1.2e-36
+9	Pfam	PF02772	S-adenosylmethionine synthetase, central domain	3e-45
+9	Pfam	PF02773	S-adenosylmethionine synthetase, C-terminal domain	6.7e-68
+9	TIGRFAM	TIGR01034	metK: methionine adenosyltransferase	2.5e-169
+11	Pfam	PF13419	Haloacid dehalogenase-like hydrolase	2.8e-27
+11	TIGRFAM	TIGR01509	HAD-SF-IA-v3: HAD hydrolase, family IA, variant 3	1.2e-11
+12	Pfam	PF00551	Formyl transferase	1.4e-34
+12	Pfam	PF02911	Formyl transferase, C-terminal domain	3.2e-19
+12	TIGRFAM	TIGR00460	fmt: methionyl-tRNA formyltransferase	2.9e-70
+13	Pfam	PF12710	haloacid dehalogenase-like hydrolase	2.3e-14
+13	TIGRFAM	TIGR00338	serB: phosphoserine phosphatase SerB	4.9e-76
+13	TIGRFAM	TIGR01488	HAD-SF-IB: HAD phosphoserine phosphatase-like hydrolase, family IB	6e-29
+14	Pfam	PF00004	ATPase family associated with various cellular activities (AAA)	7.7e-45
+14	Pfam	PF16450	Proteasomal ATPase OB/ID domain	1.8e-34
+14	TIGRFAM	TIGR03689	pup_AAA: proteasome ATPase	1e-206
+15	Pfam	PF03136	Pup-ligase protein	6.8e-159
+15	TIGRFAM	TIGR03688	pupylate_PafA2: proteasome accessory factor PafA2	2e-192
+16	Pfam	PF00459	Inositol monophosphatase family	2.8e-24
+17	Pfam	PF05639	Pup-like protein	4.4e-15
+17	TIGRFAM	TIGR03687	pupylate_cterm: ubiquitin-like protein Pup	2.7e-16
+18	Pfam	PF03136	Pup-ligase protein	3.1e-137
+18	TIGRFAM	TIGR03686	pupylate_PafA: Pup--protein ligase	3.3e-172
+21	Pfam	PF00216	Bacterial DNA-binding protein	3.6e-27
+22	Pfam	PF03706	Lysylphosphatidylglycerol synthase TM region	2.9e-28
+22	TIGRFAM	TIGR00374	TIGR00374: TIGR00374 family protein	2.3e-18
+23	Pfam	PF01554	MatE	1.6e-14
+23	Pfam	PF01554	MatE	6.7e-31
+23	TIGRFAM	TIGR00797	matE: MATE efflux family protein	3.3e-61
+24	Pfam	PF01888	CbiD	1.8e-96
+24	TIGRFAM	TIGR00312	cbiD: cobalamin biosynthesis protein CbiD	7.7e-78
+25	Pfam	PF00590	Tetrapyrrole (Corrin/Porphyrin) Methylases	1.3e-43
+25	TIGRFAM	TIGR01465	cobM_cbiF: precorrin-4 C11-methyltransferase	1.4e-102
+26	Pfam	PF01890	Cobalamin synthesis G C-terminus	4.8e-34
+26	Pfam	PF11760	Cobalamin synthesis G N-terminal	5.2e-35
+26	Pfam	PF11761	Cobalamin biosynthesis central region	8.9e-08
+27	Pfam	PF00590	Tetrapyrrole (Corrin/Porphyrin) Methylases	5.1e-38
+27	TIGRFAM	TIGR01466	cobJ_cbiH: precorrin-3B C17-methyltransferase	1.5e-95
+28	Pfam	PF00590	Tetrapyrrole (Corrin/Porphyrin) Methylases	1.1e-07
+28	Pfam	PF02571	Precorrin-6x reductase CbiJ/CobK	4.9e-70
+28	Pfam	PF12847	Methyltransferase domain	1e-08
+28	TIGRFAM	TIGR00715	precor6x_red: precorrin-6x reductase	1.9e-48
+28	TIGRFAM	TIGR02469	CbiT: precorrin-6Y C5,15-methyltransferase (decarboxylating), CbiT subunit	9.8e-33
+29	Pfam	PF01656	CobQ/CobB/MinD/ParA nucleotide binding domain	6e-19
+29	Pfam	PF07685	CobB/CobQ-like glutamine amidotransferase domain	8.1e-20
+29	TIGRFAM	TIGR00379	cobB: cobyrinic acid a,c-diamide synthase	3.6e-108
+30	Pfam	PF03186	CobD/Cbib protein	4.8e-105
+30	TIGRFAM	TIGR00380	cobD: cobalamin biosynthesis protein CobD	3.2e-72
+31	Pfam	PF00155	Aminotransferase class I and II	2.7e-46
+32	Pfam	PF01656	CobQ/CobB/MinD/ParA nucleotide binding domain	8.4e-23
+33	Pfam	PF00005	ABC transporter	1.7e-20
+34	Pfam	PF02687	FtsX-like permease family	2.5e-13
+35	Pfam	PF01741	Large-conductance mechanosensitive channel, MscL	3.6e-39
+35	TIGRFAM	TIGR00220	mscL: large conductance mechanosensitive channel protein	1.3e-34
+36	Pfam	PF00005	ABC transporter	1.6e-08
+36	Pfam	PF00005	ABC transporter	5e-05
+37	Pfam	PF00440	Bacterial regulatory proteins, tetR family	4.5e-12
+38	Pfam	PF02535	ZIP Zinc transporter	1.1e-17
+41	Pfam	PF13425	O-antigen ligase like membrane protein	1.4e-20
+42	Pfam	PF01170	Putative RNA methylase family UPF0020	2.2e-07
+43	Pfam	PF01943	Polysaccharide biosynthesis protein	1.2e-19
+43	Pfam	PF14667	Polysaccharide biosynthesis C-terminal domain	4.6e-13
+44	Pfam	PF06445	GyrI-like small molecule binding domain	3.1e-13
+44	Pfam	PF13411	MerR HTH family regulatory protein	5.7e-14
+45	Pfam	PF00005	ABC transporter	4.8e-32
+45	Pfam	PF00664	ABC transporter transmembrane region	4.2e-46
+46	Pfam	PF00005	ABC transporter	3.3e-31
+46	Pfam	PF00664	ABC transporter transmembrane region	2.6e-47
