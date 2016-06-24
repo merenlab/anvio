@@ -81,7 +81,7 @@ if __name__ == '__main__':
                                 %d parsers readily available: %s. IT IS OK if you do not select a parser if you\
                                 have a standard, TAB-delimited input file for funcitonal annotation of genes. If\
                                 this is not like 2018 and everything is already outdated, you should be able to\
-                                go to this address and learn everything you need like a boss: http://goo.gl/7vVo7g"\
+                                go to this address and learn everything you need like a boss: http://merenlab.org/2016/06/18/importing-functions/"\
                                             % (len(parser_modules['functions']), parser_modules['functions'].keys()))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'One or more input files should follow this parameter. The way these files will be handled\
