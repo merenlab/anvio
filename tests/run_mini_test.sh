@@ -15,7 +15,7 @@ INFO "Initializing raw BAM files ..."
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam Sample-"$f".bam --output-file-prefix test-output/Sample-$f
+    anvi-init-bam SAMPLE-RAW-$f.bam --output-file-prefix test-output/SAMPLE-$f
     echo
 done
 
@@ -42,8 +42,8 @@ sqlite3 test-output/CONTIGS.db '.tables'
 # profiling generates individual directiorues uner test-output directory for each sample.
 for f in 01 02 03
 do
-    INFO "Profiling sample Sample-$f ..."
-    anvi-profile -i test-output/Sample-$f.bam -o test-output/Sample-$f -c test-output/CONTIGS.db
+    INFO "Profiling sample SAMPLE-$f ..."
+    anvi-profile -i test-output/SAMPLE-$f.bam -o test-output/SAMPLE-$f -c test-output/CONTIGS.db
     echo
 done
 
