@@ -24,7 +24,7 @@ INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f BAMs_SF/contigs.fa -o test-output/CONTIGS.db -L 100
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles ..."
-anvi-populate-search-table -c test-output/CONTIGS.db
+anvi-run-hmms -c test-output/CONTIGS.db
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 test-output/CONTIGS.db '.tables'

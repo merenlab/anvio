@@ -40,10 +40,10 @@ INFO "Populating taxonomy for splits table in the database using 'centrifuge' pa
 anvi-import-taxonomy -c test-output/CONTIGS.db -p centrifuge -i example_files_for_centrifuge_taxonomy/*
 
 INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles ..."
-anvi-populate-search-table -c test-output/CONTIGS.db --num-threads 2
+anvi-run-hmms -c test-output/CONTIGS.db --num-threads 2
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory ..."
-anvi-populate-search-table -c test-output/CONTIGS.db -H external_hmm_profile
+anvi-run-hmms -c test-output/CONTIGS.db -H external_hmm_profile
 
 INFO "Importing gene function calls using 'interproscan' parser ..."
 anvi-import-functions -c test-output/CONTIGS.db -i example_interpro_output.tsv -p interproscan
