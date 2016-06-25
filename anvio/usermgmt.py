@@ -982,7 +982,7 @@ class UserMGMT:
             d = interactive.InputHandler(args)
             return {"status": "ok", "message": None, "data": {"d": d, "args": args}}
         except Exception as e:
-            return {"status": "error", "message": e.e, "data": None}
+            return {"status": "error", "message": e, "data": None}
 
 
     def check_user(self, request, projectOnly=False):
