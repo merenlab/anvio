@@ -9,11 +9,12 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal 
 
+
 from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__copyright__ = "Copyright 2016, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -52,8 +53,8 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='This program deals with populating tables that store HMM hits in an\
-                                                  contigs database. See the documentation for more information.')
+    parser = argparse.ArgumentParser(description="This program deals with populating tables that store HMM hits in an\
+                                                  anvi'o contigs database.")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
