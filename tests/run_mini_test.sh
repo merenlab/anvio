@@ -13,9 +13,9 @@ anvi-profile --version
 
 INFO "Initializing raw BAM files ..."
 # init raw bam files.
-for f in 6M 7M 9M
+for f in 01 02 03
 do
-    anvi-init-bam 204_3contigs_"$f".bam --output-file-prefix test-output/204-$f
+    anvi-init-bam Sample-"$f".bam --output-file-prefix test-output/Sample-$f
     echo
 done
 
@@ -40,29 +40,29 @@ sqlite3 test-output/CONTIGS.db '.tables'
 
 # for each sample, run the profiling using the same split size used for the contigs database.
 # profiling generates individual directiorues uner test-output directory for each sample.
-for f in 6M 7M 9M
+for f in 01 02 03
 do
-    INFO "Profiling sample 204-$f ..."
-    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -c test-output/CONTIGS.db
+    INFO "Profiling sample Sample-$f ..."
+    anvi-profile -i test-output/Sample-$f.bam -o test-output/Sample-$f -c test-output/CONTIGS.db
     echo
 done
 
 
 INFO "Merging profiles ..."
 # merge samples
-anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db
+anvi-merge test-output/SAMPLE-*/RUNINFO.cp -o test-output/SAMPLES-MERGED -c test-output/CONTIGS.db
 
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-anvi-interactive -p test-output/204-MERGED/PROFILE.db \
+anvi-interactive -p test-output/SAMPLES-MERGED/PROFILE.db \
                  -c test-output/CONTIGS.db \
                  -s test-output/SAMPLES.db \
                  --split-hmm-layers
 
 INFO "Summarizing CONCOCT results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'CONCOCT'
+anvi-summarize -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/SAMPLES-MERGED-SUMMARY -C 'CONCOCT'
 
 

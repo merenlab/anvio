@@ -13,12 +13,11 @@ anvi-profile --version
 
 INFO "Initializing raw BAM files ..."
 # init raw bam files.
-for f in 6M 7M 9M
+for f in 01 02 03
 do
-    anvi-init-bam 204_3contigs_"$f".bam --output-file-prefix test-output/204-$f
+    anvi-init-bam SAMPLE-$f.bam -O test-output/SAMPLE-$f
     echo
 done
-
 
 INFO "Generating an EMPTY contigs database ..."
 anvi-gen-contigs-database -f contigs.fa -o test-output/CONTIGS.db -L 1000
@@ -40,34 +39,34 @@ sqlite3 test-output/CONTIGS.db '.tables'
 
 # for each sample, run the profiling using the same split size used for the contigs database.
 # profiling generates individual directiorues uner test-output directory for each sample.
-for f in 6M 7M 9M
+for f in 01 02 03
 do
-    INFO "Profiling sample 204-$f ..."
-    anvi-profile -i test-output/204-$f.bam -o test-output/204-$f -c test-output/CONTIGS.db
+    INFO "Profiling sample SAMPLE-$f ..."
+    anvi-profile -i test-output/SAMPLE-$f.bam -o test-output/SAMPLE-$f -c test-output/CONTIGS.db
     echo
 done
 
 
 INFO "Merging profiles ..."
 # merge samples
-anvi-merge test-output/204*/RUNINFO.cp -o test-output/204-MERGED -c test-output/CONTIGS.db --skip-concoct-binning
+anvi-merge test-output/SAMPLES*/RUNINFO.cp -o test-output/SAMPLES-MERGED -c test-output/CONTIGS.db --skip-concoct-binning
 
 INFO "Importing external binning results for splits into the profile database as 'SPLITS_IMPORTED'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
-                       -p test-output/204-MERGED/PROFILE.db \
+                       -p test-output/SAMPLES-MERGED/PROFILE.db \
                        -c test-output/CONTIGS.db \
                        --source-identifier 'SPLITS_IMPORTED' \
                        --colors example_files_for_external_binning_results/example_colors_file.txt
 
 INFO "Summarizing 'SPLITS_IMPORTED' results ..."
-anvi-summarize -p test-output/204-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/204-MERGED-SUMMARY -C 'SPLITS_IMPORTED'
+anvi-summarize -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/CONTIGS.db -o test-output/SAMPLES-MERGED-SUMMARY -C 'SPLITS_IMPORTED'
 
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o test-output/SAMPLES.db
 
 INFO "Firing up the interactive interface ..."
 # fire up the browser to show how does the merged samples look like.
-anvi-interactive -p test-output/204-MERGED/PROFILE.db \
+anvi-interactive -p test-output/SAMPLES-MERGED/PROFILE.db \
                  -c test-output/CONTIGS.db \
                  -s test-output/SAMPLES.db \
                  --split-hmm-layers
