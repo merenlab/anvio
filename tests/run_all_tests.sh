@@ -21,7 +21,7 @@ INFO "Initializing raw BAM files ..."
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam SAMPLE-RAW-$f.bam -O test-output/SAMPLE-$f
+    anvi-init-bam SAMPLE-RAW-$f.bam --output-file test-output/SAMPLE-$f.bam
     echo
 done
 
