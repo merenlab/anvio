@@ -194,7 +194,7 @@ def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', 
     return hcluster.to_tree(clustering_result)
 
 
-def get_tree_object_in_newick(tree, id_to_sample_dict):
+def get_tree_object_in_newick(tree, id_to_sample_dict=None):
     """i.e., tree = hcluster.to_tree(c_res)"""
 
     root = Tree()
@@ -212,7 +212,10 @@ def get_tree_object_in_newick(tree, id_to_sample_dict):
                 ch.dist = cl_dist
 
                 if ch_node.is_leaf():
-                    ch.name = id_to_sample_dict[ch_node.id]
+                    if id_to_sample_dict:
+                        ch.name = id_to_sample_dict[ch_node.id]
+                    else:
+                        ch.name = ch_node.id
                 else:
                     ch.name = 'Int' + str(ch_node.id)
 
