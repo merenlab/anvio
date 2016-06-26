@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.dictio as d
+import anvio.terminal as terminal 
+
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def show_contents(runinfo):
+    for key in runinfo:
+        run.info(key, runinfo[key])
+
+def main(args):
+    runinfo = d.read_serialized_object(args.runinfo)
+
+    if args.show_contents:
+        show_contents(runinfo)
+        sys.exit()
+
+    if not args.variable:
+        raise ConfigError, "You must set a variable to update using '--variable' parameter. To see a list of\
+                            all variables, run the program with '--show-contents' flag."
+
+    vals = [p for p in [args.set_bool, args.set_int, args.set_string, args.set_float] if not isinstance(p, type(None))]
+
+    if not len(vals):
+        raise ConfigError, "You must select one of the 'set-*' parameters."
+
+    if len(vals) > 1:
+        raise ConfigError, "You can only use one of the 'set-*' parameters."
+
+    val = vals[0]
+
+    if args.set_bool:
+        if val.lower() == 'false' or val == '0':
+            val = False
+        elif val.lower() == 'true' or val == '1':
+            val = True
+        else:
+            raise ConfigError, "Unintelligible value for --set-bool."
+
+    runinfo[args.variable] = val
+
+    d.write_serialized_object(runinfo, args.runinfo)
+
+    run.info_single('RUNINFO file has been updated. Following is the new content:')
+
+    show_contents(runinfo)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Add or Update the value of a variable in an anvi'o runinfo file")
+
+    parser.add_argument('runinfo', help="RUNINFO.cp or RUNINFO.mcp file to be updated")
+    parser.add_argument('--variable', type=str, help="Variable name to be added or updated.")
+    parser.add_argument('--show-contents', default=False, action='store_true', help="Show the contents of the RUNINFO\
+                                file and exit.")
+    parser.add_argument('--set-bool', type=str, help="Bool value to be set for the variable. Use 'true' or 'false'")
+    parser.add_argument('--set-int', type=int, help="Int value to be set for the variable.")
+    parser.add_argument('--set-string', type=str, help="String value to be set for the variable.")
+    parser.add_argument('--set-float', type=float, help="Float value to be set for the variable.")
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
+    except DictIOError, e:
+        print e
+        sys.exit(-3)
