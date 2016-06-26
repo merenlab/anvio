@@ -194,7 +194,7 @@ def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', 
     return hcluster.to_tree(clustering_result)
 
 
-def get_tree_object_in_newick(tree, id_to_sample_dict=None):
+def get_tree_object_in_newick_obsolete(tree, id_to_sample_dict=None):
     """i.e., tree = hcluster.to_tree(c_res)"""
 
     root = Tree()
@@ -224,6 +224,47 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
                 to_visit.append(ch_node)
 
     return root.write(format=1)
+
+
+def get_tree_object_in_newick(tree, id_to_sample_dict=None):
+    """i.e., tree = hcluster.to_tree(c_res)"""
+
+    new_tree = Tree()
+    new_tree.dist = 0
+    new_tree.name = "root"
+
+    node_id = 0
+    node_id_to_node_in_old_tree = {node_id: tree}
+    node_id_to_node_in_new_tree = {node_id: new_tree}
+
+    node_ids_to_visit_in_old_tree = [node_id]
+
+    while node_ids_to_visit_in_old_tree:
+        node_id_in_old_tree = node_ids_to_visit_in_old_tree.pop()
+        node_in_old_tree = node_id_to_node_in_old_tree[node_id_in_old_tree]
+        cl_dist = node_in_old_tree.dist / 2.0
+
+        for ch_node_in_old_tree in [node_in_old_tree.left, node_in_old_tree.right]:
+            if ch_node_in_old_tree:
+                ch_for_new_tree = Tree()
+                ch_for_new_tree.dist = cl_dist
+
+                node_id += 1
+                node_id_to_node_in_new_tree[node_id] = ch_for_new_tree
+
+                if ch_node_in_old_tree.is_leaf():
+                    if id_to_sample_dict:
+                        ch_for_new_tree.name = id_to_sample_dict[ch_node_in_old_tree.id]
+                    else:
+                        ch_for_new_tree.name = ch_node_in_old_tree.id
+                else:
+                    ch_for_new_tree.name = 'Int' + str(ch_node_in_old_tree.id)
+
+                node_id_to_node_in_new_tree[node_id_in_old_tree].add_child(ch_for_new_tree)
+                node_id_to_node_in_old_tree[node_id] = ch_node_in_old_tree
+                node_ids_to_visit_in_old_tree.append(node_id)
+
+    return new_tree.write(format=1)
 
 
 def order_contigs_simple(config, progress=progress, run=run, debug=False):
