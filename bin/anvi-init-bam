@@ -22,40 +22,41 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+progress = terminal.Progress()
+run = terminal.Run()
 pp = terminal.pretty_print 
 
 
-def init_bam_file(input_file_path, output_file_path = None, already_sorted = False):
-        progress = terminal.Progress()
-        run = terminal.Run()
+def init_bam_file(input_file_path, output_file_path = None):
+    """sort and index a BAM file"""
 
-        input_file_path = os.path.abspath(input_file_path)
-        if output_file_path:
-            output_file_path = os.path.abspath(output_file_path)
-        else:
-            output_file_path = input_file_path + '-sorted'
+    input_file_path = os.path.abspath(input_file_path)
 
-        filesnpaths.is_file_exists(input_file_path)
-        filesnpaths.is_output_file_writable(output_file_path)
+    if output_file_path:
+        output_file_path = os.path.abspath(output_file_path)
+        if not output_file_path.endswith('.bam'):
+            raise ConfigError, "The output file should end with extension '.bam'."
+    else:
+        output_file_path = input_file_path + '-sorted.bam'
 
-        if not already_sorted:
-            progress.new('SORT')
-            progress.update('Sorting BAM File... May take a while depending on the size.')
-            pysam.sort(input_file_path, output_file_path)
-            progress.end()
-            run.info('Sorted BAM File', output_file_path)
-            sorted_file_path = output_file_path + '.bam'
-            if not os.path.exists(sorted_file_path):
-                raise ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
-        else:
-            sorted_file_path = input_file_path
+    filesnpaths.is_file_exists(input_file_path)
+    filesnpaths.is_output_file_writable(output_file_path)
 
+    progress.new('SORT')
+    progress.update('Sorting BAM File... May take a while depending on the size.')
 
-        progress.new('INDEX')
-        progress.update('Indexing BAM File...')
-        pysam.index(sorted_file_path)
-        progress.end()
-        run.info('Indexed BAM File', sorted_file_path, mc='green')
+    pysam.sort("-o", output_file_path, input_file_path)
+    progress.end()
+
+    run.info('Sorted BAM File', output_file_path)
+    if not os.path.exists(output_file_path):
+        raise ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
+
+    progress.new('INDEX')
+    progress.update('Indexing BAM File...')
+    pysam.index(output_file_path)
+    progress.end()
+    run.info('BAM File Index', output_file_path + '.bai', mc='green')
 
 
 if __name__ == '__main__':
@@ -64,17 +65,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sort/Index BAM files')
     parser.add_argument('input_file', metavar = 'BAM_FILE',
                         help = 'BAM file to analyze')
-    parser.add_argument('--sorted', action = 'store_true', default = False,
-                        help = 'Flag to define whether BAM file is already sorted')
 
-    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.parse_args()
 
     try:
         sys.exit(init_bam_file(input_file_path = args.input_file,
-                               output_file_path = args.output_file_prefix,
-                               already_sorted = args.sorted))
+                               output_file_path = args.output_file,))
     except ConfigError, e:
         print e
         sys.exit(-1)
