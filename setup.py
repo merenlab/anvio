@@ -35,7 +35,7 @@ setup(
 
     packages = find_packages(),
 
-    install_requires = ['bottle>=0.12.7', 'pysam==0.8.4', 'ete2>=2.2', 'scipy', 'scikit-learn>=0.15', 'django>=1.7', 'cython>=0.21a1', 'h5py>=2.5.0', 'cherrypy>=4.0.0', 'requests>=2.9.1'],
+    install_requires = ['bottle>=0.12.9', 'pysam==0.9.1', 'ete2>=2.3.10', 'scipy>=0.17.1', 'scikit-learn>=0.17.1', 'django>=1.9.7', 'h5py>=2.6.0', 'cherrypy>=6.0.2', 'requests>=2.10.0'],
 
     cmdclass = {'build_ext': build_ext},
     ext_modules = [
