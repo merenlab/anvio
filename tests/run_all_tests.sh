@@ -74,6 +74,9 @@ INFO "Merging profiles ..."
 # merge samples
 anvi-merge test-output/SAMPLE-*/RUNINFO.cp -o test-output/SAMPLES-MERGED -c test-output/CONTIGS.db
 
+INFO "Add a new variable into the RUNINFO file of the merged profile ..."
+anvi-script-update-runinfo-variable test-output/SAMPLES-MERGED/RUNINFO.mcp --variable TEST-VARIABLE --set-bool true
+
 INFO "Generating coverages and sequences files for splits (for external binning) ..."
 anvi-export-splits-and-coverages -c test-output/CONTIGS.db -p test-output/SAMPLES-MERGED/PROFILE.db
 
