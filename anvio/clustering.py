@@ -120,8 +120,8 @@ def get_newick_tree_data_for_dict(d):
     return newick
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name=None, clustering_distance='euclidean',
-                         clustering_method='complete', norm='l1', progress=progress, transpose=False):
+def get_newick_tree_data(observation_matrix_path, output_file_name=None, method='ward', metric='euclidean',
+                         norm='l1', progress=progress, transpose=False):
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
 
@@ -138,7 +138,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, cluster
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
 
-    tree = get_clustering_as_tree(vectors, clustering_distance, clustering_method, progress)
+    tree = get_clustering_as_tree(vectors, method, metric, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
 
     if output_file_name:
