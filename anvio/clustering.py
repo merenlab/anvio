@@ -3,7 +3,6 @@
 """Clustering operations and helper functions"""
 
 import os
-import hcluster
 import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
@@ -182,6 +181,14 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
 
 
 def get_clustering_as_tree_obsolete(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
+    try:
+        import hcluster
+    except ImportError:
+        raise ConfigError, "This is an obsolete function requires an obsolete module. If you\
+                            still want to play with it, you can. But you've got to get hcluster\
+                            installed. Run this in your terminal, and make sure you get no errors:\
+                            python -c 'import hcluster'"
+
     if ward:
         progress.update('Clustering data with Ward linkage and euclidean distances')
         clustering_result = hcluster.ward(vectors)
