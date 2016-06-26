@@ -3,10 +3,10 @@
 """Clustering operations and helper functions"""
 
 import os
-import hcluster
 import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
+from scipy.cluster import hierarchy
 
 import anvio
 import anvio.utils as utils
@@ -119,8 +119,8 @@ def get_newick_tree_data_for_dict(d):
     return newick
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name=None, clustering_distance='euclidean',
-                         clustering_method='complete', norm='l1', progress=progress, transpose=False):
+def get_newick_tree_data(observation_matrix_path, output_file_name=None, method='ward', metric='euclidean',
+                         norm='l1', progress=progress, transpose=False):
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
 
@@ -137,7 +137,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, cluster
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
 
-    tree = get_clustering_as_tree(vectors, clustering_distance, clustering_method, progress)
+    tree = get_clustering_as_tree(vectors, method, metric, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
 
     if output_file_name:
@@ -180,7 +180,15 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
     return normalizer.fit_transform(vectors)
 
 
-def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
+def get_clustering_as_tree_obsolete(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
+    try:
+        import hcluster
+    except ImportError:
+        raise ConfigError, "This is an obsolete function requires an obsolete module. If you\
+                            still want to play with it, you can. But you've got to get hcluster\
+                            installed. Run this in your terminal, and make sure you get no errors:\
+                            python -c 'import hcluster'"
+
     if ward:
         progress.update('Clustering data with Ward linkage and euclidean distances')
         clustering_result = hcluster.ward(vectors)
@@ -194,8 +202,8 @@ def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', 
     return hcluster.to_tree(clustering_result)
 
 
-def get_tree_object_in_newick(tree, id_to_sample_dict):
-    """i.e., tree = hcluster.to_tree(c_res)"""
+def get_tree_object_in_newick_obsolete(tree, id_to_sample_dict=None):
+    """Take a tree object, and create a newick formatted representation of it"""
 
     root = Tree()
     root.dist = 0
@@ -212,7 +220,10 @@ def get_tree_object_in_newick(tree, id_to_sample_dict):
                 ch.dist = cl_dist
 
                 if ch_node.is_leaf():
-                    ch.name = id_to_sample_dict[ch_node.id]
+                    if id_to_sample_dict:
+                        ch.name = id_to_sample_dict[ch_node.id]
+                    else:
+                        ch.name = ch_node.id
                 else:
                     ch.name = 'Int' + str(ch_node.id)
 
@@ -221,6 +232,57 @@ def get_tree_object_in_newick(tree, id_to_sample_dict):
                 to_visit.append(ch_node)
 
     return root.write(format=1)
+
+
+def get_clustering_as_tree(vectors, method='ward', metric='euclidean', progress=progress):
+    progress.update('Clustering data with "%s" linkage using "%s" distance' % (method, metric))
+    linkage = hierarchy.linkage(vectors, method=method, metric=metric)
+
+    progress.update('Recovering the tree from the clustering result')
+    tree = hierarchy.to_tree(linkage, rd=False)
+
+    return tree
+
+
+def get_tree_object_in_newick(tree, id_to_sample_dict=None):
+    """Take a tree object, and create a newick formatted representation of it"""
+
+    new_tree = Tree()
+    new_tree.dist = 0
+    new_tree.name = "root"
+
+    node_id = 0
+    node_id_to_node_in_old_tree = {node_id: tree}
+    node_id_to_node_in_new_tree = {node_id: new_tree}
+
+    node_ids_to_visit_in_old_tree = [node_id]
+
+    while node_ids_to_visit_in_old_tree:
+        node_id_in_old_tree = node_ids_to_visit_in_old_tree.pop()
+        node_in_old_tree = node_id_to_node_in_old_tree[node_id_in_old_tree]
+        cl_dist = node_in_old_tree.dist / 2.0
+
+        for ch_node_in_old_tree in [node_in_old_tree.left, node_in_old_tree.right]:
+            if ch_node_in_old_tree:
+                ch_for_new_tree = Tree()
+                ch_for_new_tree.dist = cl_dist
+
+                node_id += 1
+                node_id_to_node_in_new_tree[node_id] = ch_for_new_tree
+
+                if ch_node_in_old_tree.is_leaf():
+                    if id_to_sample_dict:
+                        ch_for_new_tree.name = id_to_sample_dict[ch_node_in_old_tree.id]
+                    else:
+                        ch_for_new_tree.name = ch_node_in_old_tree.id
+                else:
+                    ch_for_new_tree.name = 'Int' + str(ch_node_in_old_tree.id)
+
+                node_id_to_node_in_new_tree[node_id_in_old_tree].add_child(ch_for_new_tree)
+                node_id_to_node_in_old_tree[node_id] = ch_node_in_old_tree
+                node_ids_to_visit_in_old_tree.append(node_id)
+
+    return new_tree.write(format=1)
 
 
 def order_contigs_simple(config, progress=progress, run=run, debug=False):
