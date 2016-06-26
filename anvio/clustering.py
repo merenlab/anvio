@@ -7,6 +7,7 @@ import hcluster
 import numpy as np
 from sklearn import manifold
 from sklearn import preprocessing
+from scipy.cluster import hierarchy
 
 import anvio
 import anvio.utils as utils
@@ -180,7 +181,7 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
     return normalizer.fit_transform(vectors)
 
 
-def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
+def get_clustering_as_tree_obsolete(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
     if ward:
         progress.update('Clustering data with Ward linkage and euclidean distances')
         clustering_result = hcluster.ward(vectors)
@@ -195,7 +196,7 @@ def get_clustering_as_tree(vectors, ward=True, clustering_distance='euclidean', 
 
 
 def get_tree_object_in_newick_obsolete(tree, id_to_sample_dict=None):
-    """i.e., tree = hcluster.to_tree(c_res)"""
+    """Take a tree object, and create a newick formatted representation of it"""
 
     root = Tree()
     root.dist = 0
@@ -226,8 +227,18 @@ def get_tree_object_in_newick_obsolete(tree, id_to_sample_dict=None):
     return root.write(format=1)
 
 
+def get_clustering_as_tree(vectors, method='ward', metric='euclidean', progress=progress):
+    progress.update('Clustering data with "%s" linkage using "%s" distance' % (method, metric))
+    linkage = hierarchy.linkage(vectors, method=method, metric=metric)
+
+    progress.update('Recovering the tree from the clustering result')
+    tree = hierarchy.to_tree(linkage, rd=False)
+
+    return tree
+
+
 def get_tree_object_in_newick(tree, id_to_sample_dict=None):
-    """i.e., tree = hcluster.to_tree(c_res)"""
+    """Take a tree object, and create a newick formatted representation of it"""
 
     new_tree = Tree()
     new_tree.dist = 0
