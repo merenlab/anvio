@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import glob
+import shutil
+import signal
+import subprocess
+
+import anvio
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+tests = {'default': 'run_mini_test.sh',
+         'full': 'run_all_tests.sh'}
+
+
+def __catch_sig(signum, frame):
+    """We need to press CTRL+C to kill the server that is run by this script in a\
+       subprocess, but then we don't want the script itself to catch it. This is\
+       a workaround to avoid that."""
+    pass
+
+
+def main(args):
+    tests_dir_path = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '../tests'))
+
+    test_files_found = [os.path.basename(p) for p in glob.glob(os.path.join(tests_dir_path, '*.sh'))]
+    for test in tests:
+        if tests[test] not in test_files_found:
+            raise FilesNPathsError, "Anvi'o failed to locate the test file for '%s' ('%s')... What a\
+                                     terrible start :( (it was looking for it under '%s')." \
+                                                % (test, tests[test], tests_dir_path)
+
+    temporary_output_dir = filesnpaths.get_temp_directory_path()
+
+    os.chdir(tests_dir_path)
+
+    try:
+        subprocess.call('./%s %s' % (tests['full' if args.full else 'default'], temporary_output_dir), shell=True)
+    except KeyboardInterrupt:
+        pass
+
+    print
+    print "Anvi'o's self-test is done, and", 
+    if args.debug:
+        print 'the temporary output files are still here: %s\n' % temporary_output_dir
+    else:
+        shutil.rmtree(temporary_output_dir)
+        print 'the temporary output files are cleaned.\n'
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="A script for anvi'o to test itself")
+
+    parser.add_argument('--full', default=False, action='store_true',
+                        help="By default this program executes a mini run to test most basic functions. The use of this\
+                              flag will make you see lots and lots of output.")
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="This program will create a temporary output directory to store all output files, and will\
+                              clean after itself by deleting it. The use of this flag will make sure the temporary output\
+                              files do not go anywhere so you can play with them further..")
+
+    args = parser.parse_args()
+
+    try:
+        signal.signal(signal.SIGINT, __catch_sig)
+        main(args)
+    except FilesNPathsError as e:
+        print e
+        sys.exit(-1)
