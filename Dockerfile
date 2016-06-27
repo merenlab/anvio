@@ -27,14 +27,13 @@ RUN apt-get update \
     && make -C /tmp/build/Prodigal-2.6.2/ \
     && cp /tmp/build/Prodigal-2.6.2/prodigal /usr/bin/ \
     && pip install \
-        cython==0.23 \
-        bottle==0.12.8 \
-        hcluster==0.2.0 \
-        ete2==2.3.6 \
-        scikit-learn==0.16.1 \
-        django==1.8.4 \
-        pysam==0.8.3 \
-        h5py==2.5.0 \
+        cython==0.24 \
+        bottle==0.12.9 \
+        ete2==2.3.10 \
+        scikit-learn==0.17.1 \
+        django==1.9.7 \
+        pysam==0.9.1 \
+        h5py==2.6.0 \
     && pip install anvio==$ANVIO_VERSION \
     && apt-get remove -y \
         binutils \
