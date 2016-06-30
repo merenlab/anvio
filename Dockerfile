@@ -1,6 +1,6 @@
 FROM ubuntu:trusty
- 
-ENV ANVIO_VERSION 2.0.0
+
+ENV ANVIO_VERSION 2.0.1
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -18,6 +18,10 @@ RUN apt-get update \
         python-scipy \
         sqlite3 \
         wget \
+        libblas-dev \
+        liblapack-dev \
+        libatlas-base-dev \
+        gfortran \
         zlib1g-dev \
         libhdf5-serial-dev \
         libhdf5-dev \
@@ -46,8 +50,6 @@ RUN apt-get update \
         patch \
     && apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-COPY tests /anvio-tests
 
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /etc/profile.d/prompt.sh
 
