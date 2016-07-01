@@ -69,7 +69,7 @@ def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database to version 2 to version 3')
+    parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version 5 to version 6')
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     args = parser.parse_args()
