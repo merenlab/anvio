@@ -20,12 +20,15 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree')
+
+parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree.')
 parser.add_argument('input_matrix', metavar = 'PATH', default = None,
                     help = 'Input matrix')
 
 parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
+parser.add_argument(*anvio.A('distance'), **anvio.K('distance'))
+parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
 args = parser.parse_args()
 
@@ -34,6 +37,7 @@ if not args.output_file:
 
 run.info('Input matrix file', args.input_matrix)
 progress.new('Analyzing input file')
-clustering.get_newick_tree_data(args.input_matrix, args.output_file, transpose = args.transpose, progress = progress)
+clustering.get_newick_tree_data(args.input_matrix, args.output_file, linkage = args.linkage,
+                                distance = args.distance, transpose = args.transpose, progress = progress)
 progress.end()
 run.info('Output newick', args.output_file)
