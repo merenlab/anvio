@@ -560,6 +560,31 @@ D = {
                       interfaces. Please consider using a short and descriptive single-word\
                       (if you do not do that you will make anvi'o complain)."}
                 ),
+    'distance': (
+            ['--distance'],
+            {'metavar': 'DISTANCE_METRIC',
+             'type': str,
+             'default': 'euclidean',
+             'help': "The distance metric for the hierarchical clustering. The default distance\
+                      metric is '%(default)s'. You can find the full list of distance metrics\
+                      either by making a mistake (such as entering a non-existent distance metric\
+                      and making anvi'o upset), or by taking a look at the help menu of the\
+                      hierarchy.distance.pdist function in the scipy.cluster module."}
+                ),
+    'linkage': (
+            ['--linkage'],
+            {'metavar': 'LINKAGE_METHOD',
+             'type': str,
+             'default': 'ward',
+             'help': "The linkage method for the hierarchical clustering. The default linkage\
+                      method is '%(default)s', because that is the best one. It really is. We talked\
+                      to a lot of people and they were all like 'this is the best one available' and\
+                      it is just all out there. Honestly it is so good that we will build a wall around it\
+                      and make other linkage methods pay for it. But if you want to see a full\
+                      list of available ones you can check the hierarcy.linkage function in\
+                      the scipy.cluster module. Up tp you really. But then you can't use %(default)s\
+                      anymore, and you would have to leave anvi'o right now."}
+                ),
     'output-dir': (
             ['-o', '--output-dir'],
             {'metavar': 'DIR_PATH',
