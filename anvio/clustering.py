@@ -18,6 +18,16 @@ with terminal.SuppressAllOutput():
     from ete2 import Tree
 
 
+distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
+                    'euclidean', 'minkowski', 'cityblock', 'sqeuclidean', 'cosine', 'correlation',\
+                    'hamming', 'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
+                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'braycurtis', 'yule',\
+                    'matching', 'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
+                    'sokalsneath', 'wminkowski']
+
+linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
+
+
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
@@ -111,6 +121,18 @@ def synchronize(current_root, control):
                 new_root_sister.name += control
 
 
+def is_linkage_method_OK(linkage):
+    if linkage not in linkage_methods:
+        raise ConfigError, "Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here\
+                            is a list of all the available ones: %s" % (linkage, ', '.join(linkage_methods))
+
+
+def is_distance_metric_OK(distance):
+    if distance not in distance_metrics:
+        raise ConfigError, "Distance '%s' is not one of the metrics anvi'o recognizes :/ Here\
+                            is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics))
+
+
 def get_newick_tree_data_for_dict(d):
     matrix_file = filesnpaths.get_temp_file_path()
     utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + d[d.keys()[0]].keys())
@@ -119,8 +141,11 @@ def get_newick_tree_data_for_dict(d):
     return newick
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name=None, method='ward', metric='euclidean',
+def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage='ward', distance='euclidean',
                          norm='l1', progress=progress, transpose=False):
+
+    is_linkage_method_OK(linkage)
+    is_distance_metric_OK(distance)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
 
@@ -137,7 +162,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, method=
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
 
-    tree = get_clustering_as_tree(vectors, method, metric, progress)
+    tree = get_clustering_as_tree(vectors, linkage, distance, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
 
     if output_file_name:
@@ -180,63 +205,12 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
     return normalizer.fit_transform(vectors)
 
 
-def get_clustering_as_tree_obsolete(vectors, ward=True, clustering_distance='euclidean', clustering_method='complete', progress=progress):
-    try:
-        import hcluster
-    except ImportError:
-        raise ConfigError, "This is an obsolete function requires an obsolete module. If you\
-                            still want to play with it, you can. But you've got to get hcluster\
-                            installed. Run this in your terminal, and make sure you get no errors:\
-                            python -c 'import hcluster'"
+def get_clustering_as_tree(vectors, linkage='ward', distance='euclidean', progress=progress):
+    is_linkage_method_OK(linkage)
+    is_distance_metric_OK(distance)
 
-    if ward:
-        progress.update('Clustering data with Ward linkage and euclidean distances')
-        clustering_result = hcluster.ward(vectors)
-    else:
-        progress.update('Computing distance matrix using "%s" distance' % clustering_distance)
-        distance_matrix = hcluster.pdist(vectors, clustering_distance)
-        progress.update('Clustering data with "%s" linkage' % clustering_method)
-        clustering_result = hcluster.linkage(distance_matrix, method=clustering_method)
-
-    progress.update('Returning results')
-    return hcluster.to_tree(clustering_result)
-
-
-def get_tree_object_in_newick_obsolete(tree, id_to_sample_dict=None):
-    """Take a tree object, and create a newick formatted representation of it"""
-
-    root = Tree()
-    root.dist = 0
-    root.name = "root"
-    item2node = {tree: root}
-
-    to_visit = [tree]
-    while to_visit:
-        node = to_visit.pop()
-        cl_dist = node.dist / 2.0
-        for ch_node in [node.left, node.right]:
-            if ch_node:
-                ch = Tree()
-                ch.dist = cl_dist
-
-                if ch_node.is_leaf():
-                    if id_to_sample_dict:
-                        ch.name = id_to_sample_dict[ch_node.id]
-                    else:
-                        ch.name = ch_node.id
-                else:
-                    ch.name = 'Int' + str(ch_node.id)
-
-                item2node[node].add_child(ch)
-                item2node[ch_node] = ch
-                to_visit.append(ch_node)
-
-    return root.write(format=1)
-
-
-def get_clustering_as_tree(vectors, method='ward', metric='euclidean', progress=progress):
-    progress.update('Clustering data with "%s" linkage using "%s" distance' % (method, metric))
-    linkage = hierarchy.linkage(vectors, method=method, metric=metric)
+    progress.update('Clustering data with "%s" linkage using "%s" distance' % (linkage, distance))
+    linkage = hierarchy.linkage(vectors, metric=distance, method=linkage)
 
     progress.update('Recovering the tree from the clustering result')
     tree = hierarchy.to_tree(linkage, rd=False)
