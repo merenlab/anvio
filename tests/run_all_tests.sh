@@ -89,6 +89,9 @@ anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLE
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 
+INFO "Cluster contigs in the newly generated coverages file using 'canberra' distance, and 'complete' linkage"
+anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt --distance canberra --linkage complete -o $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs_CANB_COMP.newick
+
 INFO "Generating network descriptions for samples based on ORFs and functions"
 # generate gene and function networks for the merge
 anvi-gen-network -r $output_dir/SAMPLES-MERGED/RUNINFO.mcp -c $output_dir/CONTIGS.db
