@@ -26,6 +26,10 @@ blank_default = "tnf-splits"
 single_default = "tnf"
 merged_default = "tnf-cov"
 
+# default methods for hierarchical cluster analyses
+distance_metric_default = 'euclidean'
+linkage_method_default = 'average'
+
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
