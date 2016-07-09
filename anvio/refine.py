@@ -51,6 +51,9 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 
+        dbops.is_contigs_db(self.contigs_db_path)
+        dbops.is_profile_db(self.profile_db_path)
+
         self.database_paths = {'CONTIGS.db': self.contigs_db_path,
                                'PROFILE.db': self.profile_db_path}
         self.is_merged = None
@@ -97,10 +100,12 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.init()
 
         clusterings = self.cluster_splits_of_interest()
-        default_clustering = constants.merged_default if self.is_merged else constants.single_default
+        default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
+
+        default_clustering_id = dbops.get_default_clustering_id(default_clustering_class, clusterings)
 
         d = interactive.InputHandler(self.args, external_clustering={'clusterings': clusterings,
-                                                                        'default_clustering': default_clustering})
+                                                                     'default_clustering': default_clustering_id})
 
         # set a more appropriate title
         bins = sorted(list(self.bins))
@@ -180,15 +185,14 @@ class RefineBins(dbops.DatabasesMetaclass):
             config = ClusteringConfiguration(config_path, self.input_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names_of_interest)
 
             try:
-                newick = clustering.order_contigs_simple(config, progress=self.progress)
+                clustering_id, newick = clustering.order_contigs_simple(config, progress=self.progress)
             except Exception as e:
                 self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 self.progress.end()
                 continue
 
-            clusterings[config_name] = {'newick': newick}
+            clusterings[clustering_id] = {'newick': newick}
 
         self.run.info('available_clusterings', clusterings.keys())
-        self.run.info('default_clustering', constants.merged_default)
 
         return clusterings
