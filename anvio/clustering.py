@@ -11,6 +11,7 @@ from scipy.cluster import hierarchy
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -19,11 +20,10 @@ with terminal.SuppressAllOutput():
 
 
 distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
-                    'euclidean', 'minkowski', 'cityblock', 'sqeuclidean', 'cosine', 'correlation',\
                     'hamming', 'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
                     'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'braycurtis', 'yule',\
                     'matching', 'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
-                    'sokalsneath', 'wminkowski']
+                    'sokalsneath', 'minkowski']
 
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
 
@@ -121,6 +121,19 @@ def synchronize(current_root, control):
                 new_root_sister.name += control
 
 
+def is_distance_and_linkage_compatible(distance, linkage):
+    is_linkage_method_OK(linkage)
+    is_distance_metric_OK(distance)
+
+    if distance == 'yule' and linkage != 'single':
+        raise ConfigError, "The cistance metric 'yule' will only work with the linkage 'single' :/"
+
+    try:
+        hierarchy.linkage([(1, 0), (0, 1), (1, 1)], metric=distance, method=linkage)
+    except Exception as exception:
+        raise ConfigError, "Someone is upset here: %s" % exception
+
+
 def is_linkage_method_OK(linkage):
     if linkage not in linkage_methods:
         raise ConfigError, "Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here\
@@ -133,19 +146,22 @@ def is_distance_metric_OK(distance):
                             is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics))
 
 
-def get_newick_tree_data_for_dict(d):
+def get_newick_tree_data_for_dict(d, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
+    is_distance_and_linkage_compatible(distance, linkage)
+
     matrix_file = filesnpaths.get_temp_file_path()
     utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + d[d.keys()[0]].keys())
-    newick = get_newick_tree_data(matrix_file)
+
+    newick = get_newick_tree_data(matrix_file, distance=distance, linkage=linkage)
+
     os.remove(matrix_file)
     return newick
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage='ward', distance='euclidean',
-                         norm='l1', progress=progress, transpose=False):
+def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage=constants.linkage_method_default,
+                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
 
-    is_linkage_method_OK(linkage)
-    is_distance_metric_OK(distance)
+    is_distance_and_linkage_compatible(distance, linkage)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
 
@@ -205,9 +221,8 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
     return normalizer.fit_transform(vectors)
 
 
-def get_clustering_as_tree(vectors, linkage='ward', distance='euclidean', progress=progress):
-    is_linkage_method_OK(linkage)
-    is_distance_metric_OK(distance)
+def get_clustering_as_tree(vectors, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, progress=progress):
+    is_distance_and_linkage_compatible(distance, linkage)
 
     progress.update('Clustering data with "%s" linkage using "%s" distance' % (linkage, distance))
     linkage = hierarchy.linkage(vectors, metric=distance, method=linkage)
@@ -259,7 +274,14 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
     return new_tree.write(format=1)
 
 
-def order_contigs_simple(config, progress=progress, run=run, debug=False):
+def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
+    """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
+    
+       By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
+       and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
+       are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
+       parameter, they overwrite both system defaults and config preferences.
+    """
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
 
@@ -293,14 +315,21 @@ def order_contigs_simple(config, progress=progress, run=run, debug=False):
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
     progress.update('Clustering ...')
-    tree = get_clustering_as_tree(config.combined_vectors, progress=progress)
+
+    distance = distance if distance else (config.distance or constants.distance_metric_default)
+    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
+
+    tree = get_clustering_as_tree(config.combined_vectors, linkage, distance, progress=progress)
     newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
+
     progress.end()
 
     if config.output_file_path:
         open(config.output_file_path, 'w').write(newick + '\n')
 
-    return newick
+    clustering_id = ':'.join([config.name, distance, linkage])
+
+    return (clustering_id, newick)
 
 
 def order_contigs_experimental(config, progress=progress, run=run, debug=False):
