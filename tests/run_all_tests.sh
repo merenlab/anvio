@@ -99,8 +99,11 @@ anvi-gen-network -r $output_dir/SAMPLES-MERGED/RUNINFO.mcp -c $output_dir/CONTIG
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
 
-INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, and add the resulting tree into the database as 'EXP-ORG-DB'"
-anvi-experimental-organization example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db --name EXP-ORG-DB
+INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, and add the resulting tree into the database as 'experimental'"
+anvi-experimental-organization example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db --name experimental
+
+INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, but overwrite linkage method and distance metric"
+anvi-experimental-organization example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db --name experimental --distance canberra --linkage complete
 
 INFO "Importing external binning results for splits into the contigs database as 'SPLITS_IMPORTED_INTO_CONTIGS_DB'"
 anvi-import-collection example_files_for_external_binning_results/external_binning_of_splits.txt \
