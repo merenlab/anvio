@@ -303,3 +303,11 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
         raise FilesNPathsError, "You do not have write permission for the output directory: '%s'" % output_directory
 
     return output_directory
+
+
+def get_name_from_file_path(file_path, postfix_separator="."):
+    """Return a decent name for a given file at file at `file_path`"""
+
+    splits = os.path.basename(os.path.abspath(file_path)).split(postfix_separator)
+
+    return splits[0] if len(splits) in [1, 2] else '.'.join(splits[:-1])
