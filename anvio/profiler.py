@@ -56,7 +56,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_AA_frequencies = A('profile_AA_frequencies')
         self.gen_serialized_profile = A('gen_serialized_profile')
-        self.contig_names_of_interest = None
+        self.distance = A('distance') or constants.distance_metric_default
+        self.linkage = A('linkage') or constants.linkage_method_default
+
+        # make sure early on that both the distance and linkage is OK.
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         # whehther the profile database is a blank (without any BAM files or reads):
         self.blank = A('blank_profile')
@@ -68,6 +72,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             filesnpaths.is_file_exists(args.contigs_of_interest)
             self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                            if c.strip() and not c.startswith('#')])
+        else:
+            self.contig_names_of_interest = None
 
         self.progress = terminal.Progress()
         self.run = terminal.Run(width=35)
@@ -682,13 +688,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
             config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
 
             try:
-                newick = clustering.order_contigs_simple(config, progress=self.progress)
+                clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=self.progress)
             except Exception as e:
                 self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 self.progress.end()
                 continue
 
-            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default=config_name == default_clustering, run=self.run)
+            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, distance=self.distance, linkage=self.linkage, \
+                                                    make_default=config_name == default_clustering, run=self.run)
 
 
     def check_args(self):
