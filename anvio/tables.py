@@ -13,7 +13,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "6"
-profile_db_version = "15"
+profile_db_version = "16"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
 users_db_version = "1"
@@ -97,8 +97,8 @@ hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text
 ####################################################################################################
 
 clusterings_table_name               = 'clusterings'
-clusterings_table_structure          = ['clustering', 'newick' ]
-clusterings_table_types              = [   'str'    ,  'str'   ]
+clusterings_table_structure          = ['clustering', 'newick']
+clusterings_table_types              = [   'str'    ,  'str'  ]
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
