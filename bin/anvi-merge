@@ -7,6 +7,7 @@ import argparse
 
 import anvio
 import anvio.merger as merger
+import anvio.constants as constants
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -31,6 +32,13 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
     parser.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
     parser.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
+    parser.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
+                      'The distance metric for the hierarchical clustering. If you do not use this flag,\
+                       the default distance metric will be used for each clustering configuration\
+                       which is "%s".' % constants.distance_metric_default}))
+    parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
+                      'The same story with the `--distance`, except, the system default for this one\
+                       is %s.' % constants.linkage_method_default}))
     parser.add_argument(*anvio.A('skip-concoct-binning'), **anvio.K('skip-concoct-binning'))
     parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
