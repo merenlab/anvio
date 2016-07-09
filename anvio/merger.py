@@ -54,29 +54,30 @@ class MultipleRuns:
         self.progress = progress
         self.run = run
 
-        self.max_num_splits_for_hierarchical_clustering = 20000
+        self.max_num_splits_for_hierarchical_clustering = constants.max_num_splits_for_hierarchical_clustering
 
-        self.sample_id = args.sample_name
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.sample_id = A('sample_name')
+        self.contigs_db_path = A('contigs_db')
+        self.input_runinfo_paths = A('input')
+        self.output_directory = A('output_dir')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
+        self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
+        self.skip_concoct_binning = A('skip_concoct_binning')
+        self.overwrite_output_destinations = A('overwrite_output_destinations')
+        self.debug = A('debug')
+
+        self.split_names = None
         self.merged_sample_ids = []
         self.input_runinfo_dicts = {}
-        self.input_runinfo_paths = args.input
-        self.split_names = None
         self.normalization_multiplier = {}
         self.profiles = []
-        self.output_directory = args.output_dir
-        self.skip_hierarchical_clustering = args.skip_hierarchical_clustering
-        self.enforce_hierarchical_clustering = args.enforce_hierarchical_clustering
-        self.skip_concoct_binning = args.skip_concoct_binning
 
-        self.contigs_db_path = args.contigs_db
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
 
         self.database_paths = {'CONTIGS.db': self.contigs_db_path}
-
-        self.overwrite_output_destinations = args.overwrite_output_destinations
-        self.debug = args.debug
 
 
     def read_runinfo_dict(self, path):
