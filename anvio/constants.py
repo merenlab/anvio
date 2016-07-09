@@ -26,6 +26,8 @@ blank_default = "tnf-splits"
 single_default = "tnf"
 merged_default = "tnf-cov"
 
+max_num_splits_for_hierarchical_clustering = 20000
+
 # default methods for hierarchical cluster analyses
 distance_metric_default = 'euclidean'
 linkage_method_default = 'average'
