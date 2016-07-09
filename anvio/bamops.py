@@ -279,7 +279,7 @@ class LinkMers:
         self.linkmers = LinkMersData(self.run, self.progress)
 
         for input_file in self.input_file_paths:
-            sample_id = '.'.join(os.path.basename(input_file).split('.')[:-1])
+            sample_id = filesnpaths.get_name_from_file_path(input_file)
             bam_file_object = BAMFileObject(input_file).get()
 
             self.run.info('input_bam_path', input_file)
@@ -411,7 +411,7 @@ class GetReadsFromBAM:
         # shall go through each bam file the user is interested, and get those short reads
         # that map to regions of interest:
         for bam_file_path in self.input_bam_files:
-            bam_file_name = '.'.join(os.path.basename(bam_file_path).split('.')[:-1])
+            bam_file_name = filesnpaths.get_name_from_file_path(bam_file_path)
 
             bam_file_object = BAMFileObject(bam_file_path).get()
 
@@ -494,7 +494,7 @@ class ReadsMappingToARange:
         for input_bam_path in input_bam_paths:
             bam_file_object = BAMFileObject(input_bam_path).get()
 
-            sample_id = '.'.join(os.path.basename(input_bam_path).split('.')[:-1])
+            sample_id = filesnpaths.get_name_from_file_path(input_bam_path)
 
             self.run.warning('', header="Working on '%s'" % sample_id, lc='cyan')
 

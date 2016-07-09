@@ -314,7 +314,7 @@ class Pangenome:
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_proteins_names_dict
-        diamond.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
+        diamond.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_proteins_fasta_path))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
@@ -332,7 +332,7 @@ class Pangenome:
 
         blast.names_dict = unique_proteins_names_dict
         blast.log_file_path = self.log_file_path
-        blast.target_db_path = self.get_output_file_path('.'.join(unique_proteins_fasta_path.split('.')[:-1]))
+        blast.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_proteins_fasta_path))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
 
