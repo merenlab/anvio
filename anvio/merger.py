@@ -66,6 +66,11 @@ class MultipleRuns:
         self.skip_concoct_binning = A('skip_concoct_binning')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
+        self.distance = A('distance') or constants.distance_metric_default
+        self.linkage = A('linkage') or constants.linkage_method_default
+
+        # make sure early on that both the distance and linkage is OK.
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.split_names = None
         self.merged_sample_ids = []
@@ -579,13 +584,15 @@ class MultipleRuns:
                 config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
 
                 try:
-                    newick = clustering.order_contigs_simple(config, progress=self.progress)
+                    clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=self.progress)
                 except Exception as e:
                     self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                     self.progress.end()
                     continue
 
-                dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, make_default=config_name == constants.merged_default, run=self.run)
+                _, distance, linkage = clustering_id.split(':')
+
+                dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == constants.merged_default, run=self.run)
 
 
     def get_split_parents(self):
