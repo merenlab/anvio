@@ -575,7 +575,7 @@ D = {
             ['--linkage'],
             {'metavar': 'LINKAGE_METHOD',
              'type': str,
-             'default': 'ward',
+             'default': 'average',
              'help': "The linkage method for the hierarchical clustering. The default linkage\
                       method is '%(default)s', because that is the best one. It really is. We talked\
                       to a lot of people and they were all like 'this is the best one available' and\
