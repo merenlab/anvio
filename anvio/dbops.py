@@ -11,7 +11,6 @@ import copy
 import random
 import hashlib
 import datetime
-import operator
 import textwrap
 from itertools import chain
 from collections import Counter
@@ -2530,7 +2529,6 @@ class GenesInSplits:
 #
 ####################################################################################################
 
-
 def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
@@ -2662,9 +2660,12 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
-def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering_newick, make_default=False, run=run):
+def add_hierarchical_clustering_to_db(profile_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
     is_profile_db(profile_db_path)
-    utils.is_this_name_OK_for_database('clustering_id', clustering_id)
+    utils.is_this_name_OK_for_database('clustering_name', clustering_name)
+
+    # replace clustering id with a text that contains distance and linkage information
+    clustering_id = ':'.join([clustering_name, distance, linkage])
 
     profile_db = ProfileDatabase(profile_db_path)
 
@@ -2674,8 +2675,8 @@ def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering
         available_clusterings = []
 
     if clustering_id in available_clusterings:
-        run.warning('Clustering for the ID "%s" is already in the database. Its content will be replaced with\
-                     the new result.' % clustering_id)
+        run.warning('Clustering for "%s" (with %s distance and %s linkage) is already in the database. Its content will\
+                     be replaced with the new one.' % (clustering_name, distance, linkage))
 
         profile_db.db._exec('''DELETE FROM %s where clustering = "%s"''' % (t.clusterings_table_name, clustering_id))
     else:
@@ -2711,4 +2712,44 @@ def add_hierarchical_clustering_to_db(profile_db_path, clustering_id, clustering
     profile_db.disconnect()
 
     run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_id)
+
+
+def get_default_clustering_id(default_clustering_requested, clusterings_dict, progress=progress, run=run):
+    """Get the proper default clustering given the desired default with respect to available clusterings.
+    
+       This is tricky. We have some deault clusterings defined in the constants. For instance, for the
+       merged profiles we want the default to be 'tnf-cov', for single profiles we want it to be 'tnf',
+       etc. The problem is that these defaults do not indicate any distance metric or linkages,
+       even though anvi'o allows users to define those variables freely in cluster configurations.
+
+       A clustering dict can contain multiple clustrings. The purpose of this function is to take the
+       desired default into consideration, but then find a working one if it is not available, or there
+       are multiple ones in the dict.
+    """
+
+    if not clusterings_dict:
+        raise ConfigError, "You requested to get the default clustering given the clustering dictionary,\
+                            but the clustering dict is empty :/ "
+
+    matching_clustering_ids = [clustering for clustering in clusterings_dict if clustering.lower().startswith(default_clustering_requested.lower())]
+
+    if not len(matching_clustering_ids):
+        default_clustering = clusterings_dict.keys()[0]
+        run.warning('`get_default_clustering_id` function is concerned, because nothing in the clusterings\
+                     dict matched to the desired default clustring class "%s". So it literally set "%s"\
+                     (a class of "%s") randomly as the default. Good luck :/' % (default_clustering_requested,
+                                                                                 default_clustering,
+                                                                                 default_clustering.split(':')[0]))
+        return default_clustering
+    elif len(matching_clustering_ids) == 1:
+        return matching_clustering_ids[0]
+    else:
+        default_clustering = matching_clustering_ids[0]
+        run.warning('`get_default_clustering_id` function is concerned, because there were multiple entries\
+                     in the clusterings dict matched to the desired default clustring class "%s". So it set\
+                     the first of all %d matching clusterings, which happened to be the "%s", as the\
+                     default. We hope that will not screw up your mojo :/' % (default_clustering_requested,
+                                                                              len(matching_clustering_ids),
+                                                                              default_clustering))
+        return default_clustering
 
