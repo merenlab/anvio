@@ -31,9 +31,12 @@ __status__ = "Development"
 
 config_template = {
     'general': {
+                'name': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
                 'output_file': {'mandatory': False, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
                 'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                                    'required': "an integer value between 1 and 256"},
+                'distance': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
+                'linkage': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
@@ -102,6 +105,10 @@ class ClusteringConfiguration:
         else:
             self.output_file_name = None
             self.output_file_path = None
+
+        self.name = self.get_option(config, 'general', 'name', str) or filesnpaths.get_name_from_file_path(self.config_file_path)
+        self.distance = self.get_option(config, 'general', 'distance', str)
+        self.linkage = self.get_option(config, 'general', 'linkage', str)
 
         self.num_components = self.get_option(config, 'general', 'num_components', int)
         self.seed = self.get_option(config, 'general', 'seed', int)
