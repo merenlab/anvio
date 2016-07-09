@@ -61,8 +61,15 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
-groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help': "When you use default input parameters\
-                                anvi'o display allows you to have .... MORE LATER"}))
+groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
+                                "If you have a collection in your profile database, you can use this flag to start the\
+                                interactive interface with a tree showing your bins in your collection, instead of each\
+                                split. This is very useful when you have imported your external binning results into\
+                                anvi'o, and want to see the distribution of your bins across samples. In these cases\
+                                anvi'o will cluster your bins and based on multiple metrics. Because this particular\
+                                clustering will be done on the fly within anvi'o interactive class, you get to define\
+                                a disntance metric and a linkage method using --linkage and --distance parameters if\
+                                you want!"}))
 groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
 groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
 groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
@@ -81,6 +88,12 @@ groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
 groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
+                                'The distance metric for the hierarchical clustering. Only relevant if you are running\
+                                 the interactive interface in "collection" mode. The default is "%(default)s".'}))
+groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
+                                'The linkage method for the hierarchical clustering. Only relevant if you are running\
+                                 the interactive interface in "collection" mode. The default is "%(default)s".'}))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))

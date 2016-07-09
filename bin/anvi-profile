@@ -29,6 +29,8 @@ if __name__ == '__main__':
                                 length of the file and parameters used for profiling.')
 
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but can be useful if/when declared.')
+    groupX = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Do you want your splits to be clustered? Yes? No?\
+                                        Maybe?")
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
@@ -38,7 +40,6 @@ if __name__ == '__main__':
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
     groupI.add_argument(*anvio.A('blank-profile'), **anvio.K('blank-profile'))
-    groupM.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
@@ -46,6 +47,14 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupM.add_argument(*anvio.A('profile-AA-frequencies'), **anvio.K('profile-AA-frequencies'))
     groupM.add_argument(*anvio.A('gen-serialized-profile'), **anvio.K('gen-serialized-profile'))
+    groupX.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
+    groupX.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
+                            'The distance metric for the hierarchical clustering. Only relevant if you are\
+                             using `--cluster-contigs` flag. The default is "%(default)s".'}))
+    groupX.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
+                            'The linkage method for the hierarchical clustering. Just like the distance metric\
+                             this is only relevant if you are using it with `--cluster-contigs` flag. The\
+                             default is "%(default)s".'}))
     groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
     groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
