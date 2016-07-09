@@ -19,6 +19,7 @@ try:
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
+import anvio.constants as constants
 
 # a comprehensive arguments dictionary that provides easy access from various programs that interface anvi'o modules:
 D = {
@@ -564,7 +565,7 @@ D = {
             ['--distance'],
             {'metavar': 'DISTANCE_METRIC',
              'type': str,
-             'default': 'euclidean',
+             'default': constants.distance_metric_default,
              'help': "The distance metric for the hierarchical clustering. The default distance\
                       metric is '%(default)s'. You can find the full list of distance metrics\
                       either by making a mistake (such as entering a non-existent distance metric\
@@ -575,7 +576,7 @@ D = {
             ['--linkage'],
             {'metavar': 'LINKAGE_METHOD',
              'type': str,
-             'default': 'average',
+             'default': constants.linkage_method_default,
              'help': "The linkage method for the hierarchical clustering. The default linkage\
                       method is '%(default)s', because that is the best one. It really is. We talked\
                       to a lot of people and they were all like 'this is the best one available' and\
