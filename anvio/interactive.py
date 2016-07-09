@@ -9,13 +9,14 @@ import numpy
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.hmmops import SequencesForHMMHits
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_default_clustering_id
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
 
@@ -64,6 +65,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
         self.list_collections = A('list_collections')
+        self.distance = A('distance') or constants.distance_metric_default
+        self.linkage = A('linkage') or constants.linkage_method_default
+
+        # make sure early on that both the distance and linkage is OK.
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.split_names_ordered = None
         self.additional_layers = None
@@ -208,9 +214,11 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
-        self.p_meta['default_clustering'] = 'default'
-        self.p_meta['available_clusterings'] = ['default']
-        self.p_meta['clusterings'] = {'default': {'newick': ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])}}
+
+        clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+        self.p_meta['default_clustering'] = clustering_id
+        self.p_meta['available_clusterings'] = [clustering_id]
+        self.p_meta['clusterings'] = {clustering_id: {'newick': ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])}}
 
         self.default_view = self.p_meta['default_view']
 
@@ -311,7 +319,6 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         # the one we have. that will be LOVELY.
         self.load_full_mode(args)
 
-        self.p_meta['default_clustering'] = 'mean_coverage' if self.p_meta['merged'] else 'single'
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
 
@@ -330,14 +337,18 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 for header in d['header']:
                      d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in self.collection[bin_id]])
 
-            self.p_meta['available_clusterings'].append(view)
-            self.p_meta['clusterings'][view] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'])}
+            clustering_id = ':'.join([view, self.distance, self.linkage])
+            self.p_meta['available_clusterings'].append(clustering_id)
+            self.p_meta['clusterings'][clustering_id] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'], distance=self.distance, linkage=self.linkage)}
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
             d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name'])
 
             views_for_collection[view] = d
+
+        default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
+        self.p_meta['default_clustering'] = get_default_clustering_id(default_clustering_class, self.p_meta['clusterings'])
 
         # replace self.views with the new view:
         self.views = views_for_collection
@@ -469,15 +480,15 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.p_meta['clusterings'] = self.clusterings
 
         if self.tree:
-            entry_id = os.path.basename(self.tree).split('.')[0]
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
             if not self.p_meta['clusterings']:
-                self.p_meta['default_clustering'] = entry_id
-                self.p_meta['available_clusterings'] = [entry_id]
-                self.p_meta['clusterings'] = {entry_id: {'newick': open(os.path.abspath(self.tree)).read()}}
-                run.info('Additional Tree', "Splits will be organized based on '%s'." % entry_id)
+                self.p_meta['default_clustering'] = clustering_id
+                self.p_meta['available_clusterings'] = [clustering_id]
+                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
+                run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
             else:
-                self.p_meta['clusterings'][entry_id] = {'newick': open(os.path.abspath(self.tree)).read()}
-                run.info('Additional Tree', "'%s' has been added to available trees." % entry_id)
+                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+                run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
         # set title
         if self.title:
