@@ -58,69 +58,6 @@ def set_null_ratios_for_matrices(config):
     return config
 
 
-def depth(current_root):
-    """
-    current_root: represent for root, used in for loops.
-    diff: distance between farthest_node and current_root.
-    first_dist : in the beginning value for compare distances
-    dist : distance between current node and root node in for loop.
-
-    """
-
-    diff = 0
-
-    if current_root.get_sisters():
-        node_sister = current_root.get_sisters()[0]
-        farthest_node = current_root
-
-        if current_root.get_children():
-            farthest_node = current_root.get_children()[0]
-
-        first_dist = farthest_node.get_distance(current_root, topology_only=True)
-
-        # node variable is current root
-        for cr_node in current_root.traverse("preorder"):
-            # it's mean, all the cr_node children visited.
-            if cr_node == node_sister:
-                break
-
-            # finding farthest_node to current_root
-            else:
-                dist = cr_node.get_distance(current_root, topology_only=True)
-
-                if dist > first_dist:
-                    farthest_node = cr_node
-                    first_dist = dist
-
-        diff = farthest_node.get_distance(current_root)
-
-    return diff
-
-
-def synchronize(current_root, control):
-        # If the node modified in previous step. modified by node's sister.
-        if not current_root.name.endswith(control):
-            # this control catch root node.
-            if current_root.get_sisters():
-                new_root_sister = current_root.get_sisters()[0]
-
-                current_node_depth = depth(current_root)
-                sister_node_depth = depth(new_root_sister)
-
-                if current_node_depth > sister_node_depth:
-                    diff = current_node_depth - sister_node_depth
-                    new_root_sister.dist += diff
-
-                elif current_node_depth < sister_node_depth:
-                    diff = sister_node_depth - current_node_depth
-                    current_root.dist += diff
-
-                # "_!$!" added into node names, cause this function modify the couples
-                # but for loop in main function, send nodes one by one, not both of.
-                current_root.name += control
-                new_root_sister.name += control
-
-
 def is_distance_and_linkage_compatible(distance, linkage):
     is_linkage_method_OK(linkage)
     is_distance_metric_OK(distance)
