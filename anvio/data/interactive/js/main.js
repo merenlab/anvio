@@ -456,7 +456,12 @@ function getComboBoxContent(default_item, available_items){
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
     $.each(available_items, function(index, value) {
-        text_val = getPrettyName(index);
+        if (index.indexOf(':') == -1) {
+            text_val = getPrettyName(index);
+        } else {
+            text_val = getClusteringPrettyName(index);
+        }
+
         if(index == default_item)
         {
             combo += combo_item
