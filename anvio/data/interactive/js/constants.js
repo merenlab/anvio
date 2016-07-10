@@ -191,6 +191,14 @@ function getPrettyName(name)
     return name;
 }
 
+function getClusteringPrettyName(name) 
+{
+    var name_parts = name.split(':').map(getPrettyName);
+
+    // build -> $clustering (D: $distance; L: $linkage)
+    return name_parts[0] + ' (D: ' + name_parts[1] + '; L: ' + name_parts[2] + ')';
+}
+
 function getNamedLayerDefaults(layer, attribute, default_value)
 {
     if (typeof default_value == "string" && default_value.charAt(0) != '#'){

@@ -33,7 +33,7 @@ function drawTitle(top, left, settings) {
     top -= 3 * _font_size;
     drawText('viewport', {'x': left, 'y': top}, document.title, 2 * _font_size + 'px', 'center');
     top += 2 * _font_size;
-    var _sub_title = "Tree order: " + settings['order-by'] + " | ";
+    var _sub_title = "Tree order: " + getClusteringPrettyName(settings['order-by']) + " | ";
     _sub_title    += "Current view: " + settings['current-view'] + " | ";
     _sub_title    += "Sample order: " + settings['samples-order'];
 
