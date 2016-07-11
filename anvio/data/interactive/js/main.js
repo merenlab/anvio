@@ -305,14 +305,14 @@ function initData () {
 
             available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
-            for (order in samples_order_dict)
+            available_orders.forEach(function(order)
             {
                 var order_name = order;
                 if (samples_order_dict[order]['newick'] != null && samples_order_dict[order]['newick'] != '')
                     order_name += " (tree)";
 
                 $('#samples_order').append(new Option(order_name, order));
-            }
+            });
             buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
