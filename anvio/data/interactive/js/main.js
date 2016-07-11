@@ -308,7 +308,7 @@ function initData () {
             for (order in samples_order_dict)
             {
                 var order_name = order;
-                if (samples_order_dict[order]['newick'] != '')
+                if (samples_order_dict[order]['newick'] != null && samples_order_dict[order]['newick'] != '')
                     order_name += " (tree)";
 
                 $('#samples_order').append(new Option(order_name, order));
