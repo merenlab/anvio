@@ -616,7 +616,7 @@ function drawSamplesTree(settings, sample_xy)
     createBin('samples', 'samples_tree');
     var samples_order = settings['samples-order'];
 
-    if (!samples_order_dict.hasOwnProperty(samples_order) || samples_order_dict[samples_order]['newick'] == '')
+    if (!samples_order_dict.hasOwnProperty(samples_order) || samples_order_dict[samples_order]['newick'] == null || samples_order_dict[samples_order]['newick'] == '')
         return;
 
     var newick = samples_order_dict[samples_order]['newick'];
