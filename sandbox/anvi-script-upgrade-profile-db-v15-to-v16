@@ -46,20 +46,21 @@ def update_profile_db_from_v15_to_v16(profile_db_path, just_do_it = False):
     available_clusterings = []
     clusterings = profile_db.get_table_as_dict('clusterings')
 
-    profile_db._exec('''DELETE FROM clusterings''')
+    if clusterings:
+        profile_db._exec('''DELETE FROM clusterings''')
 
-    for entry in clusterings:
-        clustering_id = ':'.join([entry, 'euclidean', 'ward'])
-        clustering_newick = clusterings[entry]['newick']
-        profile_db._exec('''INSERT INTO clusterings VALUES (?,?)''', tuple([clustering_id, clustering_newick]))
-        available_clusterings.append(clustering_id)
+        for entry in clusterings:
+            clustering_id = ':'.join([entry, 'euclidean', 'ward'])
+            clustering_newick = clusterings[entry]['newick']
+            profile_db._exec('''INSERT INTO clusterings VALUES (?,?)''', tuple([clustering_id, clustering_newick]))
+            available_clusterings.append(clustering_id)
 
-    profile_db.remove_meta_key_value_pair('available_clusterings')
-    profile_db.set_meta_value('available_clusterings', ','.join(available_clusterings))
+        profile_db.remove_meta_key_value_pair('available_clusterings')
+        profile_db.set_meta_value('available_clusterings', ','.join(available_clusterings))
 
-    default_clustering = profile_db.get_meta_value('default_clustering')
-    profile_db.remove_meta_key_value_pair('default_clustering')
-    profile_db.set_meta_value('default_clustering', ':'.join([default_clustering, 'euclidean', 'ward']))
+        default_clustering = profile_db.get_meta_value('default_clustering')
+        profile_db.remove_meta_key_value_pair('default_clustering')
+        profile_db.set_meta_value('default_clustering', ':'.join([default_clustering, 'euclidean', 'ward']))
 
     # set the version
     profile_db.remove_meta_key_value_pair('version')
