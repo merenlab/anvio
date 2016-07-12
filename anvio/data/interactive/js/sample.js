@@ -708,7 +708,7 @@ function drawSamplesTree(settings, sample_xy)
         }
 
         // set mouse events for each line in the samples tree
-        var mouseEnterHandler = function() {
+        var mouseMoveHandler = function() {
             var id = this.id.match(/\d+/);
             var node = samples_id_to_node_map[id];
 
@@ -754,7 +754,7 @@ function drawSamplesTree(settings, sample_xy)
         };
 
         _lines.forEach(function(_line) {
-            _line.addEventListener('mouseenter', mouseEnterHandler);
+            _line.addEventListener('mousemove', mouseMoveHandler);
             _line.addEventListener('click', mouseClickHandler);
             _line.addEventListener('mouseout', mouseOutHandler);
         });
