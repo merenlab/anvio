@@ -39,6 +39,7 @@ var id_to_node_map = new Array();
 var label_to_node_map = {};
 var order_to_node_map = {};
 var leaf_count;
+var samples_id_to_node_map;
 
 var angle_per_leaf;
 var height_per_leaf;
