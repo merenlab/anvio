@@ -708,7 +708,7 @@ function drawSamplesTree(settings, sample_xy)
         }
 
         // set mouse events for each line in the samples tree
-        var mouseMoveHandler = function() {
+        var mouseEnterHandler = function() {
             var id = this.id.match(/\d+/);
             var node = samples_id_to_node_map[id];
 
@@ -717,7 +717,7 @@ function drawSamplesTree(settings, sample_xy)
 
             while (_q != null)
             {
-                $('#samples_tree #line'+_q.id).css('stroke', '#FF0000').css('stroke-width', '3px');
+                $('#samples_tree #line'+_q.id+':not(.clone)').css('stroke', '#FF0000').css('stroke-width', '3px');
                 _q = _n.Next();
             }
         };
@@ -750,13 +750,24 @@ function drawSamplesTree(settings, sample_xy)
         };
 
         var mouseOutHandler = function() {
-            $('#samples_tree path').css('stroke', LINE_COLOR).css('stroke-width', '1px');
+            $('#samples_tree path:not(.clone)').css('stroke', LINE_COLOR).css('stroke-width', '1px');
         };
 
+        var samples_parent_node = document.getElementById('samples_tree');
+
         _lines.forEach(function(_line) {
-            _line.addEventListener('mousemove', mouseMoveHandler);
-            _line.addEventListener('click', mouseClickHandler);
-            _line.addEventListener('mouseout', mouseOutHandler);
+            clone_line = _line.cloneNode(true);
+            samples_parent_node.appendChild(clone_line);// _line);
+
+            clone_line.style['stroke-width'] = '10px';
+            clone_line.style['stroke-opacity'] = '0';
+            clone_line.classList.add('clone');
+
+            clone_line.addEventListener('mouseenter', mouseEnterHandler);
+            clone_line.addEventListener('click', mouseClickHandler);
+            clone_line.addEventListener('mouseout', mouseOutHandler);
+
+            _line.style['pointer-events'] = 'none';
         });
 
         q=n.Next();
