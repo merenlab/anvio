@@ -321,6 +321,8 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(line);
+
+    return line;
 }
 
 //--------------------------------------------------------------------------------------------------

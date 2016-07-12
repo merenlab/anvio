@@ -629,8 +629,11 @@ function drawSamplesTree(settings, sample_xy)
     var q = n.Begin();
 
     var sample_y = -1;
+    samples_id_to_node_map = new Array();
     while (q != null)
     {
+        samples_id_to_node_map[q.id] = q;
+
         if (q.IsLeaf())
         {
             if (!sample_xy.hasOwnProperty(q.label))
@@ -663,6 +666,8 @@ function drawSamplesTree(settings, sample_xy)
 
     while (q != null)
     {
+        var _lines = [];
+
         if (q.IsLeaf())
         {
             var p0 = q.xy
@@ -672,7 +677,7 @@ function drawSamplesTree(settings, sample_xy)
                 p1['y'] = anc.xy['y'];
                 p1['x'] = p0['x'];
 
-                drawLine('samples_tree', q, p0, p1);
+                _lines.push(drawLine('samples_tree', q, p0, p1));
             }
         }
         else
@@ -687,7 +692,7 @@ function drawSamplesTree(settings, sample_xy)
             if (anc) {
                 p1['y'] = anc.xy['y'];
                 p1['x'] = p0['x'];
-                drawLine('samples_tree', q, p0, p1);
+                _lines.push(drawLine('samples_tree', q, p0, p1));
             }
 
             // vertical line
@@ -699,8 +704,61 @@ function drawSamplesTree(settings, sample_xy)
             p1['y'] = p0['y'];
             p1['x'] = pr['x'];
 
-            drawLine('samples_tree', q, p0, p1);
+            _lines.push(drawLine('samples_tree', q, p0, p1));
         }
+
+        // set mouse events for each line in the samples tree
+        var mouseEnterHandler = function() {
+            var id = this.id.match(/\d+/);
+            var node = samples_id_to_node_map[id];
+
+            var _n = new NodeIterator(node);
+            var _q = _n.Begin();
+
+            while (_q != null)
+            {
+                $('#samples_tree #line'+_q.id).css('stroke', '#FF0000').css('stroke-width', '3px');
+                _q = _n.Next();
+            }
+        };
+
+        var mouseClickHandler = function() {
+            var id = this.id.match(/\d+/);
+            var node = samples_id_to_node_map[id];
+
+            var _n = new NodeIterator(node);
+            var _q = _n.Begin();
+
+            $('#table_layers').find('.layer_selectors').prop('checked', false);
+            while (_q != null)
+            {
+                if (_q.IsLeaf()) {
+
+                    if(_q.label){ 
+                        $('#table_layers').find('.titles').each(
+                            function(index, obj){
+                                if (_q.label.toLowerCase() == obj.title.toLowerCase())
+                                {
+                                    $(obj).parent().find('.layer_selectors').prop('checked','checked');
+                                }
+                            }
+                        );
+                    }
+                }
+                _q = _n.Next();
+            }
+        };
+
+        var mouseOutHandler = function() {
+            $('#samples_tree path').css('stroke', LINE_COLOR).css('stroke-width', '1px');
+        };
+
+        _lines.forEach(function(_line) {
+            _line.addEventListener('mouseenter', mouseEnterHandler);
+            _line.addEventListener('click', mouseClickHandler);
+            _line.addEventListener('mouseout', mouseOutHandler);
+        });
+
         q=n.Next();
     }
 }
