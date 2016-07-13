@@ -2565,7 +2565,10 @@ function draw_tree(settings) {
     var samples_tree = document.getElementById('samples_tree');
 
     tree_bin.addEventListener('click', lineClickHandler, false);
-    samples_tree.addEventListener('click', lineClickHandler, false);
+    if (samples_tree)
+    {
+        samples_tree.addEventListener('click', lineClickHandler, false);
+    }
     tree_bin.addEventListener('contextmenu', lineContextMenuHandler, false);
     tree_bin.addEventListener('mouseover',lineMouseEnterHandler, false);
     tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);
