@@ -704,70 +704,18 @@ function drawSamplesTree(settings, sample_xy)
             p1['y'] = p0['y'];
             p1['x'] = pr['x'];
 
-            _lines.push(drawLine('samples_tree', q, p0, p1));
+            _lines.push(drawLine('samples_tree', q, p0, p1, true));
         }
 
-        // set mouse events for each line in the samples tree
-        var mouseEnterHandler = function() {
-            var id = this.id.match(/\d+/);
-            var node = samples_id_to_node_map[id];
-
-            var _n = new NodeIterator(node);
-            var _q = _n.Begin();
-
-            while (_q != null)
-            {
-                $('#samples_tree #line'+_q.id+':not(.clone)').css('stroke', '#FF0000').css('stroke-width', '3px');
-                _q = _n.Next();
-            }
-        };
-
-        var mouseClickHandler = function() {
-            var id = this.id.match(/\d+/);
-            var node = samples_id_to_node_map[id];
-
-            var _n = new NodeIterator(node);
-            var _q = _n.Begin();
-
-            $('#table_layers').find('.layer_selectors').prop('checked', false);
-            while (_q != null)
-            {
-                if (_q.IsLeaf()) {
-
-                    if(_q.label){ 
-                        $('#table_layers').find('.titles').each(
-                            function(index, obj){
-                                if (_q.label.toLowerCase() == obj.title.toLowerCase())
-                                {
-                                    $(obj).parent().find('.layer_selectors').prop('checked','checked');
-                                }
-                            }
-                        );
-                    }
-                }
-                _q = _n.Next();
-            }
-        };
-
-        var mouseOutHandler = function() {
-            $('#samples_tree path:not(.clone)').css('stroke', LINE_COLOR).css('stroke-width', '1px');
-        };
-
-        var samples_parent_node = document.getElementById('samples_tree');
-
         _lines.forEach(function(_line) {
-            clone_line = _line.cloneNode(true);
-            samples_parent_node.appendChild(clone_line);// _line);
-
-            clone_line.style['stroke-width'] = '10px';
-            clone_line.style['stroke-opacity'] = '0';
-            clone_line.classList.add('clone');
-
-            clone_line.addEventListener('mouseenter', mouseEnterHandler);
-            clone_line.addEventListener('click', mouseClickHandler);
-            clone_line.addEventListener('mouseout', mouseOutHandler);
-
-            _line.style['pointer-events'] = 'none';
+            _line.setAttribute('id', 'samples_' + _line.getAttribute('id'));
+            var new_line = drawLine('samples_tree', {'id': 0}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0});
+            new_line.setAttribute('id', _line.getAttribute('id') + '_clone');
+            new_line.setAttribute('d', _line.getAttribute('d'));
+            new_line.classList.add('clone');
+            new_line.style['stroke-width'] = '20px';
+            new_line.style['stroke-opacity'] = '0';
+            new_line.setAttribute('pointer-events', 'all');
         });
 
         q=n.Next();
@@ -800,5 +748,7 @@ function drawGradientBackground(start)
     rect.setAttribute('width', total_radius - start);
     rect.setAttribute('height', total_radius);
     rect.setAttribute('stroke-width', '0px');
+    rect.setAttribute('pointer-events', 'none');
+
     document.getElementById('samples').appendChild(rect);
 }

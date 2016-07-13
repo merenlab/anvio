@@ -96,6 +96,7 @@ var unique_session_id;
 var ping_timer;
 var autoload_state;
 var mode;
+var samples_tree_hover = false;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------

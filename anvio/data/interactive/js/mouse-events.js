@@ -30,7 +30,36 @@ function getBinId() {
 function lineClickHandler(event) {
     if (dragging || drawing_zoom)
         return;
-    
+
+    if (event.target.parentNode.id == 'samples_tree')
+    {
+        var id = event.target.id.match(/\d+/);
+        var node = samples_id_to_node_map[id];
+
+        var _n = new NodeIterator(node);
+        var _q = _n.Begin();
+
+        $('#table_layers').find('.layer_selectors').prop('checked', false);
+        while (_q != null)
+        {
+            if (_q.IsLeaf()) {
+
+                if(_q.label){ 
+                    $('#table_layers').find('.titles').each(
+                        function(index, obj){
+                            if (_q.label.toLowerCase() == obj.title.toLowerCase())
+                            {
+                                $(obj).parent().find('.layer_selectors').prop('checked','checked');
+                            }
+                        }
+                    );
+                }
+            }
+            _q = _n.Next();
+        }
+        return;
+    }
+
     var p = getNodeFromEvent(event);
 
     if (p.id == 0)
@@ -297,7 +326,50 @@ function lineMouseLeaveHandler(event) {
 function mouseMoveHandler(event) {
     if (drawing_zoom)
         return;
-    
+
+    if (event.target.parentNode.id == 'samples_tree' || samples_tree_hover) 
+    {
+        var samples_tree = document.getElementById('samples_tree');
+        for (var i=0; i < samples_tree.childNodes.length; i++)
+        {
+            var obj = samples_tree.childNodes[i];
+            if (obj.className == 'clone') {
+                continue;
+            }
+            obj.style['stroke'] = LINE_COLOR;
+            obj.style['stroke-width'] = '1px';
+
+        }
+        samples_tree_hover = false;
+    }
+
+    if (event.target.parentNode.id == 'samples_tree')
+    {
+        var id = event.target.id.match(/\d+/);
+        var node = samples_id_to_node_map[id[0]];
+        var _n = new NodeIterator(node);
+        var _q = _n.Begin();
+
+        while (_q != null)
+        {
+            var lineobj = document.getElementById('samples_line' + _q.id);
+            if (lineobj)
+            {
+                lineobj.style['stroke-width'] = '3px';
+                lineobj.style['stroke'] = '#FF0000';
+            }
+            var lineobj = document.getElementById('samples_arc' + _q.id);
+            if (lineobj)
+            {
+                lineobj.style['stroke-width'] = '3px';
+                lineobj.style['stroke'] = '#FF0000';
+            }
+            _q = _n.Next();
+        }
+        samples_tree_hover = true;
+        return;
+    }
+
     if (event.target.id == 'path_samples')
     {   
         // samples tooltip
