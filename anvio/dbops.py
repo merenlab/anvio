@@ -309,7 +309,9 @@ class ContigsSuperclass(object):
 
         if not self.nt_positions_info:
             raise ConfigError, "get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
-                                Anvi'o needs an adult :("
+                                This may happen if you don't have the '.h5' file for your contigs database in the same\
+                                directory with your contigs database. But if you do have it there, then anvi'o really\
+                                needs an adult :("
 
         if not self.nt_positions_info.is_known_contig(contig_name):
             return (0, 0, 0)
