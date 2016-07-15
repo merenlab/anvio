@@ -66,6 +66,8 @@ class VariabilitySuper(object):
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
         self.genes_of_interest_path = A('genes_of_interest', null)
+        self.include_contig_names_in_output = A('include_contig_names', null)
+        self.include_split_names_in_output = A('include_split_names', null)
 
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -674,7 +676,13 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio', 'contig_name', 'split_name', 'unique_pos_identifier_str']
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
+
+        if self.include_contig_names_in_output:
+            new_structure.append('contig_name')
+
+        if self.include_split_names_in_output:
+            new_structure.append('split_name')
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
@@ -804,7 +812,14 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def report(self):
         self.progress.new('Reporting')
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio', 'contig_name', 'split_name', 'unique_pos_identifier_str']
+        # FIXME: there is some redundancy that can be removed here (see the similar step in the report function of other engines):
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
+
+        if self.include_contig_names_in_output:
+            new_structure.append('contig_name')
+
+        if self.include_split_names_in_output:
+            new_structure.append('split_name')
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
