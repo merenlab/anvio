@@ -569,6 +569,31 @@ class VariabilitySuper(object):
 
         return unique_pos_identifier_to_codon_order_in_gene
 
+    def report(self):
+        self.progress.new('Reporting')
+
+        if self.engine == 'NT':
+            table_structure = t.variable_nts_table_structure
+        elif self.engine == 'AA':
+            table_structure = t.variable_aas_table_structure
+
+        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
+
+        if self.include_contig_names_in_output:
+            new_structure.append('contig_name')
+
+        if self.include_split_names_in_output:
+            new_structure.append('split_name')
+
+        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
+
+        utils.store_dict_as_TAB_delimited_file(self.data, self.args.output_file, new_structure)
+        self.progress.end()
+
+        self.run.info('Num entries reported', pp(len(self.data)))
+        self.run.info('Output File', self.args.output_file)
+        self.run.info('Num %s positions reported' % self.engine, pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
+
 
 class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     """This is the main class to make sense and report variability for a given set of splits,
@@ -671,27 +696,6 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     next_available_entry_id += 1
 
         self.progress.end()
-
-
-    def report(self):
-        self.progress.new('Reporting')
-
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
-
-        if self.include_contig_names_in_output:
-            new_structure.append('contig_name')
-
-        if self.include_split_names_in_output:
-            new_structure.append('split_name')
-
-        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-
-        utils.store_dict_as_TAB_delimited_file(self.data, self.args.output_file, new_structure)
-        self.progress.end()
-
-        self.run.info('Num entries reported', pp(len(self.data)))
-        self.run.info('Output File', self.args.output_file)
-        self.run.info('Num nt positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
 
 
 class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
@@ -807,28 +811,6 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     next_available_entry_id += 1
 
         self.progress.end()
-
-
-    def report(self):
-        self.progress.new('Reporting')
-
-        # FIXME: there is some redundancy that can be removed here (see the similar step in the report function of other engines):
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
-
-        if self.include_contig_names_in_output:
-            new_structure.append('contig_name')
-
-        if self.include_split_names_in_output:
-            new_structure.append('split_name')
-
-        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-
-        utils.store_dict_as_TAB_delimited_file(self.data, self.args.output_file, new_structure)
-        self.progress.end()
-
-        self.run.info('Num entries reported', pp(len(self.data)))
-        self.run.info('Output File', self.args.output_file)
-        self.run.info('Num AA positions reported', pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
 
 
 class VariabilityNetwork:
