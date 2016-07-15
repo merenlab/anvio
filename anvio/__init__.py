@@ -525,6 +525,21 @@ D = {
                       of it will increase the file size dramatically, however it is inevitable for some statistical approaches\
                       (as well as for some beautiful visualizations)."}
                 ),
+    'include-contig-names': (
+            ['--include-contig-names'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like contig names for each variable position to be included in the\
+                      output file as a column. By default, we do not include contig names since they can practically\
+                      double the output file size without any actual benefit in most cases."}
+                ),
+    'include-split-names': (
+            ['--include-split-names'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like split names for each variable position to be included in the\
+                      output file as a column."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
