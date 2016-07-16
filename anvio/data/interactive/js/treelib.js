@@ -2360,41 +2360,33 @@ function draw_tree(settings) {
                                 if (!numeric_cache.hasOwnProperty(layer_index)){
                                     numeric_cache[layer_index] = [];
                                 }
-                                    var ox = 0;
-    var oy = 0;
-        start_angle = q.angle - angle_per_leaf / 2;
-        end_angle = q.angle + angle_per_leaf / 2;
-        inner_radius =layer_boundaries[layer_index][0];
-        outer_radius = layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex];
 
-                                // calculate points
-                                var ax = ox + Math.cos(start_angle) * inner_radius;
-                                var ay = ox + Math.sin(start_angle) * inner_radius;
+                                start_angle = q.angle - angle_per_leaf / 2;
+                                end_angle = q.angle + angle_per_leaf / 2;
+                                inner_radius = layer_boundaries[layer_index][0];
+                                outer_radius = layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex];
 
-                                var bx = ox + Math.cos(end_angle) * inner_radius;
-                                var by = ox + Math.sin(end_angle) * inner_radius;
-
-                                var cx = ox + Math.cos(end_angle) * outer_radius;
-                                var cy = ox + Math.sin(end_angle) * outer_radius;
-
-                                var dx = ox + Math.cos(start_angle) * outer_radius;
-                                var dy = ox + Math.sin(start_angle) * outer_radius;
-
-                                // generate path string
                                 if (numeric_cache[layer_index].length == 0)
                                 {
+                                    var ax = Math.cos(start_angle) * inner_radius;
+                                    var ay = Math.sin(start_angle) * inner_radius;
+
                                     numeric_cache[layer_index].push("M", ax, ay);
                                 }
-                                numeric_cache[layer_index].push( // start point
-                                    //"A", inner_radius, inner_radius, 0, 0, 1, bx, by, // inner arc
-                                    "L", dx, dy, // line 1
-                                    "A", outer_radius, outer_radius, 0, 0, 0, cx, cy); // close path line 2
 
+                                var cx = Math.cos(end_angle) * outer_radius;
+                                var cy = Math.sin(end_angle) * outer_radius;
 
+                                var dx = Math.cos(start_angle) * outer_radius;
+                                var dy = Math.sin(start_angle) * outer_radius;
+
+                                numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 0, cx, cy);
 
                                 if (q.order == leaf_count-1) {
-                                    numeric_cache[layer_index].push("L", bx, by, "A", inner_radius, inner_radius, 0, 1, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], "Z");
+                                    var bx = Math.cos(end_angle) * inner_radius;
+                                    var by = Math.sin(end_angle) * inner_radius;
 
+                                    numeric_cache[layer_index].push("L", bx, by, "A", inner_radius, inner_radius, 0, 1, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], "Z");
                                 }
                                 if (layerdata_dict[q.label][pindex] > 0) {
 
@@ -2518,23 +2510,14 @@ function draw_tree(settings) {
             }
         }
         else if (isNumerical) {
-
-                var pie = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                //numeric_cache[layer_index].push('Z');
-
-                pie.setAttribute('stroke-width', '0');
-                //pie.setAttribute('stroke', '#000000');
-                //pie.setAttribute('vector-effect', 'non-scaling-stroke');
-    pie.setAttribute('shape-rendering', 'auto');
-    pie.setAttribute('pointer_events', 'none');
-
-                //pie.setAttribute('fill', 'none');
-                pie.setAttribute('d', numeric_cache[layer_index].join(' '));
-
-                var assx = document.getElementById('layer_' + layer_index);
-                //console.log(pie);
-                assx.appendChild(pie);
-
+                var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('stroke-width', '0');
+                path.setAttribute('shape-rendering', 'auto');
+                path.setAttribute('pointer-events', 'none');
+                path.setAttribute('fill', layers[pindex]['color']);
+                path.setAttribute('d', numeric_cache[layer_index].join(' '));
+                var layer_group = document.getElementById('layer_' + layer_index);
+                layer_group.appendChild(path);
         }
     }
 
