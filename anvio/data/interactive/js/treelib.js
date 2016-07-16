@@ -2357,49 +2357,54 @@ function draw_tree(settings) {
                             }
                             else
                             {
-                                if (!numeric_cache.hasOwnProperty(layer_index)){
-                                    numeric_cache[layer_index] = [];
-                                }
-
-                                start_angle = q.angle - angle_per_leaf / 2;
-                                end_angle = q.angle + angle_per_leaf / 2;
-                                inner_radius = layer_boundaries[layer_index][0];
-                                outer_radius = layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex];
-
-                                if (numeric_cache[layer_index].length == 0)
+                                if (settings['optimize-speed'])
                                 {
-                                    var ax = Math.cos(start_angle) * inner_radius;
-                                    var ay = Math.sin(start_angle) * inner_radius;
+                                    if (!numeric_cache.hasOwnProperty(layer_index)){
+                                        numeric_cache[layer_index] = [];
+                                    }
 
-                                    numeric_cache[layer_index].push("M", ax, ay);
+                                    start_angle = q.angle - angle_per_leaf / 2;
+                                    end_angle = q.angle + angle_per_leaf / 2;
+                                    inner_radius = layer_boundaries[layer_index][0];
+                                    outer_radius = layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex];
+
+                                    if (numeric_cache[layer_index].length == 0)
+                                    {
+                                        var ax = Math.cos(start_angle) * inner_radius;
+                                        var ay = Math.sin(start_angle) * inner_radius;
+
+                                        numeric_cache[layer_index].push("M", ax, ay);
+                                    }
+
+                                    var cx = Math.cos(end_angle) * outer_radius;
+                                    var cy = Math.sin(end_angle) * outer_radius;
+
+                                    var dx = Math.cos(start_angle) * outer_radius;
+                                    var dy = Math.sin(start_angle) * outer_radius;
+
+                                    numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 0, cx, cy);
+
+                                    if (q.order == leaf_count-1) {
+                                        var bx = Math.cos(end_angle) * inner_radius;
+                                        var by = Math.sin(end_angle) * inner_radius;
+
+                                        numeric_cache[layer_index].push("L", bx, by, "A", inner_radius, inner_radius, 0, 1, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], "Z");
+                                    }
                                 }
-
-                                var cx = Math.cos(end_angle) * outer_radius;
-                                var cy = Math.sin(end_angle) * outer_radius;
-
-                                var dx = Math.cos(start_angle) * outer_radius;
-                                var dy = Math.sin(start_angle) * outer_radius;
-
-                                numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 0, cx, cy);
-
-                                if (q.order == leaf_count-1) {
-                                    var bx = Math.cos(end_angle) * inner_radius;
-                                    var by = Math.sin(end_angle) * inner_radius;
-
-                                    numeric_cache[layer_index].push("L", bx, by, "A", inner_radius, inner_radius, 0, 1, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], "Z");
-                                }
-                                if (layerdata_dict[q.label][pindex] > 0) {
-
-/*                                    drawPie('layer_' + layer_index,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[layer_index][0], 
-                                        layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex],
-                                        0,
-                                        color,
-                                        1,
-                                        false);*/
+                                else
+                                {
+                                    if (layerdata_dict[q.label][pindex] > 0) {
+                                        drawPie('layer_' + layer_index,
+                                            q.id,
+                                            q.angle - angle_per_leaf / 2,
+                                            q.angle + angle_per_leaf / 2,
+                                            layer_boundaries[layer_index][0], 
+                                            layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex],
+                                            0,
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
                         }
@@ -2509,7 +2514,7 @@ function draw_tree(settings) {
                 }
             }
         }
-        else if (isNumerical) {
+        else if (isNumerical && (settings['optimize-speed']) && layers[pindex]['type'] != 'intensity') {
                 var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.setAttribute('stroke-width', '0');
                 path.setAttribute('shape-rendering', 'auto');
