@@ -2388,7 +2388,13 @@ function draw_tree(settings) {
                                         var bx = Math.cos(end_angle) * inner_radius;
                                         var by = Math.sin(end_angle) * inner_radius;
 
-                                        numeric_cache[layer_index].push("L", bx, by, "A", inner_radius, inner_radius, 0, 1, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], "Z");
+                                        var _min = Math.toRadians(settings['angle-min']);
+                                        var _max = Math.toRadians(settings['angle-max']);
+                                        var large_arc_flag = (_max - _min > Math.PI) ? 1:0;
+
+                                        numeric_cache[layer_index].push("L", bx, by, 
+                                            "A", inner_radius, inner_radius, 0, large_arc_flag, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], 
+                                            "Z");
                                     }
                                 }
                                 else
