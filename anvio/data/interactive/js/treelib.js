@@ -2245,18 +2245,41 @@ function draw_tree(settings) {
                             }
                             else
                             {
-                                if (layerdata_dict[q.label][pindex] > 0) {
-                                    var color = layers[pindex]['color'];
+                                if (settings['optimize-speed'])
+                                {
+                                    if (!numeric_cache.hasOwnProperty(layer_index)){
+                                        numeric_cache[layer_index] = [];
+                                    }
 
-                                     drawPhylogramRectangle('layer_' + layer_index,
-                                        q.id,
-                                        layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex],
-                                        q.xy['y'],
-                                        height_per_leaf,
-                                        layerdata_dict[q.label][pindex],
-                                        color,
-                                        1,
-                                        false);
+                                    if (numeric_cache[layer_index].length == 0)
+                                    {
+                                        numeric_cache[layer_index].push("M", layer_boundaries[layer_index][1], q.xy['y'] - height_per_leaf / 2);
+                                    }
+
+                                    numeric_cache[layer_index].push("L", layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex], q.xy['y'] - height_per_leaf / 2, 
+                                        "L", layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex], q.xy['y'] + height_per_leaf / 2);
+
+                                    if (q.order == leaf_count-1) {
+                                        numeric_cache[layer_index].push("L", layer_boundaries[layer_index][1], q.xy['y'] + height_per_leaf / 2,
+                                            "Z");
+                                    }
+                                }
+                                else
+                                {
+                                    // x y height width
+                                    if (layerdata_dict[q.label][pindex] > 0) {
+                                        var color = layers[pindex]['color'];
+
+                                         drawPhylogramRectangle('layer_' + layer_index,
+                                            q.id,
+                                            layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex],
+                                            q.xy['y'],
+                                            height_per_leaf,
+                                            layerdata_dict[q.label][pindex],
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
                         }
