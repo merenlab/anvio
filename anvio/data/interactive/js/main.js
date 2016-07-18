@@ -1873,7 +1873,7 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('tree-type'))
-                                $('#tree_type').val(state['tree-type']);
+                                $('#tree_type').val(state['tree-type']).trigger('change');
                             if (state.hasOwnProperty('angle-min'))
                                 $('#angle-min').val(state['angle-min']);
                             if (state.hasOwnProperty('tree-height'))
