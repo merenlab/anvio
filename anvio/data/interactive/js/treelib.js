@@ -2405,7 +2405,7 @@ function draw_tree(settings) {
                                     var dx = Math.cos(start_angle) * outer_radius;
                                     var dy = Math.sin(start_angle) * outer_radius;
 
-                                    numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 0, cx, cy);
+                                    numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 1, cx, cy);
 
                                     if (q.order == leaf_count-1) {
                                         var bx = Math.cos(end_angle) * inner_radius;
