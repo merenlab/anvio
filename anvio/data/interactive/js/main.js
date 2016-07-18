@@ -67,6 +67,7 @@ var categorical_data_colors = {};
 var stack_bar_colors = {};
 
 var context_menu_target_id = 0;
+var context_menu_layer_id = 0;
 
 var layerdata_title = {};
 var layerdata_dict;
