@@ -73,7 +73,7 @@ def experimental_organization(args):
         open(args.output_file, 'w').write(newick + '\n')
         run.info('Output', args.output_file, mc='green')
 
-    if args.profile_db:
+    if args.profile_db and not args.skip_store_in_db:
         dbops.add_hierarchical_clustering_to_db(args.profile_db, args.name, newick, distance=distance, linkage=linkage, run = run)
 
 
