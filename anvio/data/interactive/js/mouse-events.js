@@ -31,7 +31,7 @@ function lineClickHandler(event) {
     if (dragging || drawing_zoom)
         return;
 
-    if (event.target.parentNode.id == 'samples_tree')
+    if (event.target.parentNode && event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
         var node = samples_id_to_node_map[id];
