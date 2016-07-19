@@ -78,11 +78,8 @@ class Collections:
         c = self.collections_dict[collection_name]
 
         database = db.DB(c['source_db_path'], c['source_db_version'])
-        collections_splits_table = database.get_table_as_dict(t.collections_splits_table_name)
+        collection_dict_from_db = database.get_some_rows_from_table_as_dict(t.collections_splits_table_name, 'collection_name="%s"' % collection_name)
         database.disconnect()
-
-        # FIXME: this could be resolved with a WHERE clause in the SQL query:
-        collection_dict_from_db = utils.get_filtered_dict(collections_splits_table, 'collection_name', set([collection_name]))
 
         collection_dict_to_return = {}
 
