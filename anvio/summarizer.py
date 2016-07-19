@@ -99,12 +99,11 @@ class Summarizer(DatabasesMetaclass):
 
 
     def process(self):
-        # learn who you are:
-        collection_dict = self.collections.get_collection_dict(self.collection_name)
-        bins_info_dict = self.collections.get_bins_info_dict(self.collection_name)
-
         # init profile data for colletion.
-        self.init_collection_profile(collection_dict)
+        collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
+
+        # let bin names known to all
+        bin_ids = self.collection_profile.keys()
 
         # load completeness information if available
         self.completeness = completeness.Completeness(self.contigs_db_path)
@@ -122,8 +121,8 @@ class Summarizer(DatabasesMetaclass):
         # set up the initial summary dictionary
         self.summary['meta'] = {'quick': self.quick,
                                 'output_directory': self.output_directory,
-                                'collection': collection_dict.keys(),
-                                'num_bins': len(collection_dict.keys()),
+                                'collection': bin_ids,
+                                'num_bins': len(bin_ids),
                                 'collection_name': self.collection_name,
                                 'total_nts_in_collection': 0,
                                 'num_contigs_in_collection': 0,
@@ -175,7 +174,6 @@ class Summarizer(DatabasesMetaclass):
             self.summary['meta']['hmm_items'] = dict([(hmm_search_source, self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         # summarize bins:
-        bin_ids = collection_dict.keys()
         for i in range(0, len(bin_ids)):
             bin_id = bin_ids[i]
             self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(bin_ids)))
