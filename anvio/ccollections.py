@@ -75,7 +75,8 @@ class Collections:
 
 
     def get_trimmed_dicts(self, collection_name, split_names = set([])):
-        """Returns collection_dict and bins_info_dict with splits matching split_names.
+        """Returns collection_dict, bins_info_dict for splits matching split_names, and
+        split names that are in the db, but not binned in the collection..
 
         Any bin that does not have any splits left after removal simply is removed
         from the dictionary"""
