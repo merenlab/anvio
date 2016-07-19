@@ -95,10 +95,18 @@ class Collections:
         bins_with_zero_splits_in_profile_db = []
         bin_ids_in_collection = collection_dict.keys()
         for bin_id in bin_ids_in_collection:
-            if not len([split_name for split_name in collection_dict[bin_id] if split_name in split_names]):
+            # good split names are the ones that appear in `split_names` user sent. so here we will replace
+            # the content of each bin with only split names that are 'good' in that sense. in practice, this
+            # will ensure that the collection dict will not contain any split name that does not appear in
+            # the profile database (i.e., a relevant need can be seen in the `load_collection_mode` function
+            # in the interactive.py)
+            good_split_names = set([split_name for split_name in collection_dict[bin_id] if split_name in split_names])
+            if not len(good_split_names):
                 bins_with_zero_splits_in_profile_db.append(bin_id)
                 collection_dict.pop(bin_id)
                 bins_info_dict.pop(bin_id)
+            else:
+                collection_dict[bin_id] = good_split_names
 
         self.progress.end()
 
