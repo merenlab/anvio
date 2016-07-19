@@ -65,7 +65,7 @@
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
                   <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
-                  <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" onclick="this.style['color'] = '#337ab7';"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
+                  <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
                   <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
                   <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                   <li role="presentation" class="dropdown-submenu pull-right">
@@ -172,6 +172,13 @@
                                     <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                     <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
                                     <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                </div>
+                        </div> 
+
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="optimize-speed">Optimize speed:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
                                 </div>
                         </div> 
 
@@ -685,8 +692,10 @@
 
     <!-- DEFAULT RIGHT CLICK MENU -->
     <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Select</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove</a></li>
+        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
+        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
+        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
+        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
         <li class="divider"></li>
         <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect');">Inspect</a></li>
         <li class="divider"></li>
@@ -699,8 +708,10 @@
 
     <!-- COLLECTION MODE RIGHT CLICK MENU -->
     <ul id="collection_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Select</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove</a></li>
+        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
+        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
+        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
+        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
         <li class="divider"></li>
         <li class="menuItemRefineBin"><a href="#" onclick="menu_callback('refine_bin');">Refine this bin</a></li>
         <li class="divider"></li>
@@ -745,6 +756,32 @@
             container: 'body'
         });
     });
+
+    document.body.addEventListener('keydown', function(ev) {
+        if (document.activeElement instanceof HTMLInputElement)
+        {
+            // shortcuts should not work if user is entering text to input.
+            return false;
+        }
+
+        if (ev.keyCode >= 49 && ev.keyCode < 54)
+        {
+            var targetTabNumber = ev.keyCode - 49;
+            var targetTab = $('.nav-tabs a').eq(targetTabNumber);
+
+            if (!$(targetTab).parent().hasClass('disabled'))
+            {
+                $(targetTab).tab('show');
+            }
+        }
+    });
+
+    $('.nav-tabs a').on('shown.bs.tab', function (e) {
+        if (e.target.hash == '#bin_settings')
+        {
+            $('a[href="#bin_settings"]').css('color', '#337ab7');
+        }
+    })
 
     // open all links in a new tab
     $("body a[href^='http']").attr("target","_blank");

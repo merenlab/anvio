@@ -31,7 +31,7 @@ function lineClickHandler(event) {
     if (dragging || drawing_zoom)
         return;
 
-    if (event.target.parentNode.id == 'samples_tree')
+    if (event.target.parentNode && event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
         var node = samples_id_to_node_map[id];
@@ -119,6 +119,21 @@ function lineContextMenuHandler(event) {
         } else {
             $('#default_right_click_menu').show();
             $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        }
+
+        context_menu_layer_id = event.target.parentNode.id.match(/\d+/);
+        var is_layer_selected = $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').is(':checked')
+
+        if (is_layer_selected) {
+            $('#default_right_click_menu #unselect_layer').show();
+            $('#default_right_click_menu #select_layer').hide();
+            $('#collection_mode_right_click_menu #unselect_layer').show();
+            $('#collection_mode_right_click_menu #select_layer').show();
+        } else {
+            $('#default_right_click_menu #select_layer').show();
+            $('#default_right_click_menu #unselect_layer').hide();
+            $('#collection_mode_right_click_menu #select_layer').show();
+            $('#collection_mode_right_click_menu #unselect_layer').show();
         }
 
         if (bin_id > 0) {
@@ -471,6 +486,13 @@ function menu_callback(action, param) {
         case 'remove':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
             lineContextMenuHandler(fake_event);
+            break;
+
+        case 'select_layer':
+            $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').prop('checked', true);
+            break;
+        case 'unselect_layer':
+            $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').prop('checked', false);
             break;
 
         case 'get_split_sequence':

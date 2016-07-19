@@ -2160,6 +2160,8 @@ function draw_tree(settings) {
         }
     }
 
+    var numeric_cache = {};
+
     switch (settings['tree-type']) {
         case 'phylogram':
             while (q != null) {
@@ -2243,18 +2245,41 @@ function draw_tree(settings) {
                             }
                             else
                             {
-                                if (layerdata_dict[q.label][pindex] > 0) {
-                                    var color = layers[pindex]['color'];
+                                if (settings['optimize-speed'])
+                                {
+                                    if (!numeric_cache.hasOwnProperty(layer_index)){
+                                        numeric_cache[layer_index] = [];
+                                    }
 
-                                     drawPhylogramRectangle('layer_' + layer_index,
-                                        q.id,
-                                        layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex],
-                                        q.xy['y'],
-                                        height_per_leaf,
-                                        layerdata_dict[q.label][pindex],
-                                        color,
-                                        1,
-                                        false);
+                                    if (numeric_cache[layer_index].length == 0)
+                                    {
+                                        numeric_cache[layer_index].push("M", layer_boundaries[layer_index][1], q.xy['y'] - height_per_leaf / 2);
+                                    }
+
+                                    numeric_cache[layer_index].push("L", layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex], q.xy['y'] - height_per_leaf / 2, 
+                                        "L", layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex], q.xy['y'] + height_per_leaf / 2);
+
+                                    if (q.order == leaf_count-1) {
+                                        numeric_cache[layer_index].push("L", layer_boundaries[layer_index][1], q.xy['y'] + height_per_leaf / 2,
+                                            "Z");
+                                    }
+                                }
+                                else
+                                {
+                                    // x y height width
+                                    if (layerdata_dict[q.label][pindex] > 0) {
+                                        var color = layers[pindex]['color'];
+
+                                         drawPhylogramRectangle('layer_' + layer_index,
+                                            q.id,
+                                            layer_boundaries[layer_index][1] - layerdata_dict[q.label][pindex],
+                                            q.xy['y'],
+                                            height_per_leaf,
+                                            layerdata_dict[q.label][pindex],
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
                         }
@@ -2355,17 +2380,60 @@ function draw_tree(settings) {
                             }
                             else
                             {
-                                if (layerdata_dict[q.label][pindex] > 0) {
-                                    drawPie('layer_' + layer_index,
-                                        q.id,
-                                        q.angle - angle_per_leaf / 2,
-                                        q.angle + angle_per_leaf / 2,
-                                        layer_boundaries[layer_index][0], 
-                                        layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex],
-                                        0,
-                                        color,
-                                        1,
-                                        false);
+                                if (settings['optimize-speed'])
+                                {
+                                    if (!numeric_cache.hasOwnProperty(layer_index)){
+                                        numeric_cache[layer_index] = [];
+                                    }
+
+                                    start_angle = q.angle - angle_per_leaf / 2;
+                                    end_angle = q.angle + angle_per_leaf / 2;
+                                    inner_radius = layer_boundaries[layer_index][0];
+                                    outer_radius = layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex];
+
+                                    if (numeric_cache[layer_index].length == 0)
+                                    {
+                                        var ax = Math.cos(start_angle) * inner_radius;
+                                        var ay = Math.sin(start_angle) * inner_radius;
+
+                                        numeric_cache[layer_index].push("M", ax, ay);
+                                    }
+
+                                    var cx = Math.cos(end_angle) * outer_radius;
+                                    var cy = Math.sin(end_angle) * outer_radius;
+
+                                    var dx = Math.cos(start_angle) * outer_radius;
+                                    var dy = Math.sin(start_angle) * outer_radius;
+
+                                    numeric_cache[layer_index].push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 1, cx, cy);
+
+                                    if (q.order == leaf_count-1) {
+                                        var bx = Math.cos(end_angle) * inner_radius;
+                                        var by = Math.sin(end_angle) * inner_radius;
+
+                                        var _min = Math.toRadians(settings['angle-min']);
+                                        var _max = Math.toRadians(settings['angle-max']);
+                                        var large_arc_flag = (_max - _min > Math.PI) ? 1:0;
+
+                                        numeric_cache[layer_index].push("L", bx, by, 
+                                            "A", inner_radius, inner_radius, 0, large_arc_flag, 0, numeric_cache[layer_index][1], numeric_cache[layer_index][2], 
+                                            "Z");
+                                    }
+                                }
+                                else
+                                {
+                                    if (layerdata_dict[q.label][pindex] > 0) {
+                                        drawPie('layer_' + layer_index,
+                                            q.id,
+                                            q.angle - angle_per_leaf / 2,
+                                            q.angle + angle_per_leaf / 2,
+                                            layer_boundaries[layer_index][0], 
+                                            layer_boundaries[layer_index][0] + layerdata_dict[q.label][pindex],
+                                            0,
+                                            color,
+                                            1,
+                                            false);
+                                    }
                                 }
                             }
                         }
@@ -2377,6 +2445,8 @@ function draw_tree(settings) {
             break;
     }
 
+    //console.log(numeric_cache);
+
     // cluster categorical items and draw them
     
     for (var i = 0; i < settings['layer-order'].length; i++) {
@@ -2385,6 +2455,8 @@ function draw_tree(settings) {
 
         var isParent      = (layer_types[pindex] == 0) ? true : false;
         var isCategorical = (layer_types[pindex] == 2) ? true : false;
+        var isNumerical = (layer_types[pindex] == 3) ? true : false;
+
 
         if (isParent || isCategorical)
         {
@@ -2470,6 +2542,16 @@ function draw_tree(settings) {
                         false);
                 }
             }
+        }
+        else if (isNumerical && (settings['optimize-speed']) && layers[pindex]['type'] != 'intensity') {
+                var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('stroke-width', '0');
+                path.setAttribute('shape-rendering', 'auto');
+                path.setAttribute('pointer-events', 'none');
+                path.setAttribute('fill', layers[pindex]['color']);
+                path.setAttribute('d', numeric_cache[layer_index].join(' '));
+                var layer_group = document.getElementById('layer_' + layer_index);
+                layer_group.appendChild(path);
         }
     }
 
