@@ -769,8 +769,13 @@ class ProfileSuperclass(object):
         return d
 
 
-    def init_collection_profile(self, collection):
+    def init_collection_profile(self, collection_name):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
+
+        collection = self.collections.get_collection_dict(collection_name)
+        bins_info = self.collections.get_bins_info_dict(collection_name)
+
+        self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
 
         table_names = [] if self.p_meta['blank'] else [table_name for table_name in t.atomic_data_table_structure[1:-1]]
 
@@ -779,21 +784,25 @@ class ProfileSuperclass(object):
         # anonymous function to convert single profile table dicts compatible with merged ones (#155):
         SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in d[s].values()])) for s in d])
 
-        # get coverage_table_data temporarily to learn split names. it sucks to do it this way, but before init_split_sequences()
-        # is called, there is no other way really. and calling init_split_sequences() before this is also not feasible. so, here
-        # we are.
-        if self.p_meta['merged']:
-            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
-        else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest="mean_coverage", omit_parent_column=True))
-
-        self.split_names_not_binned = set(coverage_table_data.keys())
-
+        self.progress.update('Identifying split names that are in the profile db but do not appear in any bin ...')
+        self.split_names_in_profile_db_but_not_binned = copy.deepcopy(self.split_names)
         for bin_id in collection:
-            self.split_names_not_binned -= set(collection[bin_id])
-            self.collection_profile[bin_id] = {}
+            self.split_names_in_profile_db_but_not_binned -= set(collection[bin_id])
+
+        self.progress.update('Identifying bin names that do not have any splits that appear in the profile database ...')
+        bins_with_zero_splits_in_profile_db = []
+        bin_ids_in_collection = collection.keys()
+        for bin_id in bin_ids_in_collection:
+            if not len([split_name for split_name in collection[bin_id] if split_name in self.split_names]):
+                bins_with_zero_splits_in_profile_db.append(bin_id)
+                collection.pop(bin_id)
+                bins_info.pop(bin_id)
+            else:
+                # the bin is OK, add an entry for it into the profile dictionary:
+                self.collection_profile[bin_id] = {}
 
         for table_name in table_names:
+            self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
             else:
@@ -815,8 +824,12 @@ class ProfileSuperclass(object):
 
                 self.collection_profile[bin_id][table_name] = averages
 
-
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
+        if self.p_meta['merged']:
+            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
+        else:
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest="mean_coverage", omit_parent_column=True))
+
         self.bin_percent_recruitment_per_sample = {}
         if self.p_meta['blank']:
             pass
@@ -829,11 +842,24 @@ class ProfileSuperclass(object):
                     bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
                     percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
 
-                splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_not_binned])
+                splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_in_profile_db_but_not_binned])
                 percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
                 self.bin_percent_recruitment_per_sample[sample] = percents
 
+        self.progress.end()
         profile_db.disconnect()
+
+        if len(bins_with_zero_splits_in_profile_db):
+            self.run.warning('Some of the bins in this collection (precisely %d of %d total) did not contain any\
+                              that appeared in the profile database. There are multiple reasons for why this can\
+                              happen. But one of the common scenario could be this: You imported an external\
+                              collection, and some of the bins you have in that collection contain a small number\
+                              of contigs that were too short to make it into the merged profile. Well, if you would\
+                              like to figure out what might be the scenario for your experiment, here is the list of\
+                              bin names that did not go through: %s.' \
+                                % (len(bins_with_zero_splits_in_profile_db), len(collection), ", ".join(bins_with_zero_splits_in_profile_db)))
+
+        return collection, bins_info
 
 
     def load_views(self, splits_of_interest=None):
