@@ -758,7 +758,7 @@
     });
 
     document.body.addEventListener('keydown', function(ev) {
-        if (document.activeElement instanceof HTMLInputElement)
+        if (document.activeElement !== document.body)
         {
             // shortcuts should not work if user is entering text to input.
             return false;
