@@ -12,6 +12,8 @@ this information from the database, and presents it as an intuitive data structu
 for the client.
 """
 
+import copy
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -70,6 +72,46 @@ class Collections:
                                 a programmer and accessing to the collections from your program, here is a reminder for you:\
                                 are you sure `populate_collections_dict` was called for whatever database you are trying to\
                                 get collections from?' % collection_name
+
+
+    def get_trimmed_dicts(self, collection_name, split_names = set([])):
+        """Returns collection_dict and bins_info_dict with splits matching split_names.
+
+        Any bin that does not have any splits left after removal simply is removed
+        from the dictionary"""
+
+        self.progress.new('Recovering collection information for "%s" ...' % collection_name)
+
+        collection_dict = self.get_collection_dict(collection_name)
+        bins_info_dict = self.get_bins_info_dict(collection_name)
+
+        self.progress.update('Identifying split names that are in the profile db but do not appear in any bin ...')
+        split_names_in_db_but_missing_in_collection = copy.deepcopy(split_names)
+        for bin_id in collection_dict:
+            split_names_in_db_but_missing_in_collection -= set(collection_dict[bin_id])
+
+        self.progress.update('Identifying bin names that do not have any splits that appear in the profile database ...')
+        bins_with_zero_splits_in_profile_db = []
+        bin_ids_in_collection = collection_dict.keys()
+        for bin_id in bin_ids_in_collection:
+            if not len([split_name for split_name in collection_dict[bin_id] if split_name in split_names]):
+                bins_with_zero_splits_in_profile_db.append(bin_id)
+                collection_dict.pop(bin_id)
+                bins_info_dict.pop(bin_id)
+
+        self.progress.end()
+
+        if len(bins_with_zero_splits_in_profile_db):
+            self.run.warning('Some of the bins in this collection (precisely %d of %d total) did not contain any\
+                              that appeared in the profile database. There are multiple reasons for why this can\
+                              happen. But one of the common scenario could be this: You imported an external\
+                              collection, and some of the bins you have in that collection contain a small number\
+                              of contigs that were too short to make it into the merged profile. Well, if you would\
+                              like to figure out what might be the scenario for your experiment, here is the list of\
+                              bin names that did not go through: %s.' \
+                                % (len(bins_with_zero_splits_in_profile_db), len(collection_dict), ", ".join(bins_with_zero_splits_in_profile_db)))
+
+        return (collection_dict, bins_info_dict, split_names_in_db_but_missing_in_collection)
 
 
     def get_collection_dict(self, collection_name):
