@@ -67,6 +67,7 @@ var categorical_data_colors = {};
 var stack_bar_colors = {};
 
 var context_menu_target_id = 0;
+var context_menu_layer_id = 0;
 
 var layerdata_title = {};
 var layerdata_dict;
@@ -859,6 +860,7 @@ function serializeSettings(use_layer_names) {
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
     state['max-font-size'] = $('#max_font_size').val();
+    state['optimize-speed'] = $('#optimize_speed').is(':checked');
 
     // sync views object and layers table
     syncViews();
@@ -1872,7 +1874,7 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('tree-type'))
-                                $('#tree_type').val(state['tree-type']);
+                                $('#tree_type').val(state['tree-type']).trigger('change');
                             if (state.hasOwnProperty('angle-min'))
                                 $('#angle-min').val(state['angle-min']);
                             if (state.hasOwnProperty('tree-height'))
@@ -1894,6 +1896,8 @@ function loadState()
                                 $('#outer-ring-height').val(state['outer-ring-height']);
                             if (state.hasOwnProperty('edge-normalization'))
                                 $('#edge_length_normalization').prop('checked', state['edge-normalization']);
+                            if (state.hasOwnProperty('optimize-speed'))
+                                $('#optimize_speed').prop('checked', state['optimize-speed']);
                             if (state.hasOwnProperty('custom-layer-margin')) {
                                 $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
                             }
