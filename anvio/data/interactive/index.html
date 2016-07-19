@@ -65,7 +65,7 @@
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
                   <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
-                  <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" onclick="this.style['color'] = '#337ab7';"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
+                  <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
                   <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
                   <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                   <li role="presentation" class="dropdown-submenu pull-right">
@@ -756,6 +756,32 @@
             container: 'body'
         });
     });
+
+    document.body.addEventListener('keydown', function(ev) {
+        if (document.activeElement instanceof HTMLInputElement)
+        {
+            // shortcuts should not work if user is entering text to input.
+            return false;
+        }
+
+        if (ev.keyCode >= 49 && ev.keyCode < 54)
+        {
+            var targetTabNumber = ev.keyCode - 49;
+            var targetTab = $('.nav-tabs a').eq(targetTabNumber);
+
+            if (!$(targetTab).parent().hasClass('disabled'))
+            {
+                $(targetTab).tab('show');
+            }
+        }
+    });
+
+    $('.nav-tabs a').on('shown.bs.tab', function (e) {
+        if (e.target.hash == '#bin_settings')
+        {
+            $('a[href="#bin_settings"]').css('color', '#337ab7');
+        }
+    })
 
     // open all links in a new tab
     $("body a[href^='http']").attr("target","_blank");
