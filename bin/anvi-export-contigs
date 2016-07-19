@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to export a FASTA file of contigs from the contigs database."""
+
+import sys
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.fastalib as fastalib
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+import anvio.errors
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+def main(args):
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    contigs_db = db.DB(args.contigs_db, anvio.__contigs__version__)
+    contig_sequences_dict = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+    contigs_db.disconnect()
+
+    contigs_fasta = fastalib.FastaOutput(args.output_file)
+
+    for contig_name in sorted(contig_sequences_dict.keys()):
+        contigs_fasta.write_id(contig_name)
+        contigs_fasta.write_seq(contig_sequences_dict[contig_name]['sequence'], split = False)
+
+    run.info('Contigs FASTA', contigs_fasta)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Export contigs from an anvi'o contigs database")
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
