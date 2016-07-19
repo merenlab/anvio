@@ -40,7 +40,7 @@ def main(args):
         contigs_fasta.write_id(contig_name)
         contigs_fasta.write_seq(contig_sequences_dict[contig_name]['sequence'], split = False)
 
-    run.info('Contigs FASTA', contigs_fasta)
+    run.info('Contigs FASTA', args.output_file)
 
 
 if __name__ == '__main__':
