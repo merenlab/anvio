@@ -16,7 +16,8 @@ import anvio.ccollections as ccollections
 
 from anvio.hmmops import SequencesForHMMHits
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_default_clustering_id
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
+from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
 
@@ -311,7 +312,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                                 and redundancy of bins. The bad news is that Campbell et al is not among the available HMM sources in your\
                                 contigs database :/ Why? Why?"
 
-        self.collection = self.collections.get_collection_dict(self.collection_name)
+        # we are about to request a collections dict that contains only split names that appear in the
+        # profile database:
+        self.collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))[0]
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
