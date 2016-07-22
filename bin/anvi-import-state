@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import datetime
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    filesnpaths.is_file_json_formatted(args.state)
+    utils.is_this_name_OK_for_database(args.name)
+
+    states_table = dbops.TablesForStates(args.profile_db, anvio.__profile__version__)
+
+    name = args.name
+    content = open(args.state).read()
+    last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+
+    states_table.store_state(name, content, last_modified)
+
+    run.info('Done', 'State "%s" is added to the database' % args.name)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Import an anvi'o state into a profile database.")
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument('-s', '--state', metavar="STATE_FILE", default = None, required = True,
+                        help = "JSON serializable anvi'o state file.")
+    parser.add_argument('-n', '--name', metavar = 'STATE_NAME', default = None, required = True,
+                        help = 'State name.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
