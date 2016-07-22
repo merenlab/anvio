@@ -1776,6 +1776,7 @@ class TablesForGeneCalls(Table):
             contig_sequences[fasta.id] = fasta.seq
         fasta.close()
 
+        number_of_impartial_gene_calls = 0
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
             contig_name = gene_call['contig']
@@ -1784,14 +1785,23 @@ class TablesForGeneCalls(Table):
                 raise ConfigError, "You are in big trouble :( The contig name '%s' in your external gene callers file\
                                     does not appear to be in the contigs FASTA file. How did this happen?" % contig_name
 
+            if gene_call['partial']:
+                protein_sequences[gene_callers_id] = ''
+                number_of_impartial_gene_calls += 1
+                continue
+
             sequence = contig_sequences[contig_name][gene_call['start']:gene_call['stop']]
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
 
-            protein_sequences[gene_callers_id] = utils.get_DNA_sequence_translated(sequence)
+            protein_sequences[gene_callers_id] = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
 
         # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
+
+        if number_of_impartial_gene_calls:
+            self.run.warning('%d of your %d gene calls were impartial, hence the translated protein sequences for those\
+                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
 
 
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
