@@ -618,11 +618,12 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
-def get_DNA_sequence_translated(sequence):
+def get_DNA_sequence_translated(sequence, gene_callers_id):
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
-        raise ConfigError, "This sequence does not have proper number of nucleotides to be translated :/"
+        raise ConfigError, "The sequence corresponds to the gene callers id '%s' does not seem to\
+                            have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence)
 
     translated_sequence = ''
 
