@@ -96,7 +96,13 @@ class CONCOCT:
 
 
     def cluster(self):
-        self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters=self.num_clusters_requested).cluster()
+        try:
+            self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters=self.num_clusters_requested).cluster()
+        except Exception as e:
+            self.run.warning("CONCOCT is upset :/ There will be no CONCOCT binning results for you. Before\
+                              anvi'o continues with whatever it was doing before this, here is how what CONCOCT\
+                              failed in case you want to go after this: %s" % e)
+            return {}
 
         # be nice.
         return self.clusters
@@ -122,6 +128,10 @@ class CONCOCT:
        # convert id -> bin mapping dict into a bin -> ids dict
         data = {}
         bin_info_dict = {}
+
+        if not len(self.clusters):
+            self.run.info('CONCOCT results in db', 'Nope. CONCOCT clusters are empty. Skipping!', mc='red', display_only=True)
+            return
 
         for split_name in self.clusters:
             bin_id = self.clusters[split_name]
