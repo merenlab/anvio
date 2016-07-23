@@ -100,8 +100,8 @@ class CONCOCT:
             self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters=self.num_clusters_requested).cluster()
         except Exception as e:
             self.run.warning("CONCOCT is upset :/ There will be no CONCOCT binning results for you. Before\
-                              anvi'o continues with whatever it was doing before this, here is how what CONCOCT\
-                              failed in case you want to go after this: %s" % e)
+                              anvi'o continues with whatever it was doing before this, here is why CONCOCT\
+                              failed in case you want to go after this: '%s'" % e)
             return {}
 
         # be nice.
