@@ -347,6 +347,12 @@ D = {
              'action': 'store_true',
              'help': "Show available collections and exit."}
                 ),
+    'list-states': (
+            ['--list-states'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Show available states and exit."}
+                ),
     'show-views': (
             ['--show-views'],
             {'default': False,
