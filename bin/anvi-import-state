@@ -27,6 +27,7 @@ progress = terminal.Progress()
 
 
 def main(args):
+    dbops.is_profile_db(args.profile_db)
     filesnpaths.is_file_json_formatted(args.state)
     utils.is_this_name_OK_for_database('--name', args.name)
 
