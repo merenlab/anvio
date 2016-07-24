@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    dbops.is_profile_db(args.profile_db)
+
+    states = dbops.TablesForStates(args.profile_db, anvio.__profile__version__).states
+
+    if not len(states):
+        raise ConfigError, "But there are no states in this profile database :/"
+
+    if args.list_states:
+        run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(states)), lc='yellow')
+        for state_name in states:
+            run.info_single('%s (last modified on %s)' % (state_name, states[state_name]['last_modified']))
+
+        sys.exit()
+
+    if not args.output_file:
+        raise ConfigError, "You should provide an output file name (and in fact a state name, too, in case\
+                            you haven't. You can see all available state names using '--list-states' flag)."
+
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    if not args.state:
+        raise ConfigError, "Sorry! you need to provide state name. Yes. You don't know what states ara available?\
+                            did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for\
+                            maybe."
+
+    if not args.state in states:
+        raise ConfigError, "The state name '%s' does not seem to appear in this profile database. But we have %s instead:\
+                            %s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(states.keys())))
+
+    open(args.output_file, 'w').write(states[args.state]['content'])
+    run.info('Output', args.output_file)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Export an anvi'o state into a profile database.")
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument('-s', '--state', metavar="STATE_NAME", default = None,
+                        help = "The state name to export.")
+    parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
