@@ -1,0 +1,337 @@
+{
+    "version": "0.2.1",
+    "tree-type": "circlephylogram",
+    "order-by": "tnf-cov:euclidean:average",
+    "current-view": "mean_coverage",
+    "angle-min": "0",
+    "angle-max": "270",
+    "tree-radius": "1312",
+    "tree-height": "0",
+    "tree-width": "0",
+    "layer-margin": "15",
+    "outer-ring-height": "60",
+    "edge-normalization": false,
+    "custom-layer-margin": true,
+    "show-grid-for-bins": false,
+    "grid-color": "#FFFFFF",
+    "grid-width": "1",
+    "samples-order": "test_order_01",
+    "max-font-size": "60",
+    "optimize-speed": true,
+    "layer-order": [
+        "__parent__",
+        "taxonomy",
+        "num_genes",
+        "avg_gene_length",
+        "ratio_coding",
+        "length",
+        "gc_content",
+        "SAMPLE_01",
+        "SAMPLE_02",
+        "SAMPLE_03",
+        "hmmx_external_hmm_genes_ABC_tran",
+        "hmmx_external_hmm_genes_MFS_1"
+    ],
+    "categorical_data_colors": {
+        "taxonomy": {
+            "null": "#ffffff",
+            "Bifidobacterium": "#b3f296"
+        }
+    },
+    "stack_bar_colors": {},
+    "layers": {
+        "taxonomy": {
+            "color": "#000000",
+            "height": "30",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#DDDDDD"
+        },
+        "num_genes": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "avg_gene_length": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ratio_coding": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "length": {
+            "color": "#414141",
+            "height": "80",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "gc_content": {
+            "color": "#004a0f",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "SAMPLE_01": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "60",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "SAMPLE_02": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "SAMPLE_03": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "__parent__": {
+            "height": "50",
+            "margin": "15"
+        },
+        "hmmx_external_hmm_genes_ABC_tran": {
+            "color": "#882222",
+            "height": "70",
+            "margin": "60",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "hmmx_external_hmm_genes_MFS_1": {
+            "color": "#882222",
+            "height": "70",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        }
+    },
+    "views": {
+        "mean_coverage": {
+            "taxonomy": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            },
+            "num_genes": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "4",
+                    "disabled": false
+                }
+            },
+            "avg_gene_length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2436",
+                    "disabled": false
+                }
+            },
+            "ratio_coding": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.999206034140532",
+                    "disabled": false
+                }
+            },
+            "length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "6267",
+                    "disabled": false
+                }
+            },
+            "gc_content": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.648471615720524",
+                    "disabled": false
+                }
+            },
+            "SAMPLE_01": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.0218065950416015",
+                    "disabled": false
+                }
+            },
+            "SAMPLE_02": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1.5942290376606973",
+                    "disabled": false
+                }
+            },
+            "SAMPLE_03": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.2831750895147276",
+                    "disabled": false
+                }
+            },
+            "__parent__": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            },
+            "hmmx_external_hmm_genes_ABC_tran": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "hmmx_external_hmm_genes_MFS_1": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0",
+                    "disabled": false
+                }
+            }
+        }
+    },
+    "samples-categorical-colors": {
+        "visits": {
+            "even": "#bdbdbd",
+            "odd": "#2b2b2b"
+        }
+    },
+    "samples-stack-bar-colors": {
+        "bars!bar1;bar2;bar3": [
+            "#0095ff",
+            "#ff0000",
+            "#3ab800"
+        ]
+    },
+    "samples-layer-order": [
+        "num_reads",
+        "percent_mapped_reads",
+        "visits",
+        "bars!bar1;bar2;bar3"
+    ],
+    "samples-layers": {
+        "num_reads": {
+            "data-type": "numeric",
+            "height": 500,
+            "margin": 15,
+            "normalization": "none",
+            "color": "#3277c7",
+            "min": {
+                "value": 0,
+                "disabled": false
+            },
+            "max": {
+                "value": 10000,
+                "disabled": false
+            },
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "percent_mapped_reads": {
+            "data-type": "numeric",
+            "height": 500,
+            "margin": 15,
+            "normalization": "none",
+            "color": "#6dc732",
+            "min": {
+                "value": 0,
+                "disabled": false
+            },
+            "max": {
+                "value": 95,
+                "disabled": false
+            },
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "visits": {
+            "data-type": "categorical",
+            "height": 80,
+            "margin": 15,
+            "min": {
+                "value": null,
+                "disabled": false
+            },
+            "max": {
+                "value": null,
+                "disabled": false
+            }
+        },
+        "bars!bar1;bar2;bar3": {
+            "data-type": "stack-bar",
+            "height": 500,
+            "margin": 15,
+            "normalization": "none",
+            "min": {
+                "value": null,
+                "disabled": false
+            },
+            "max": {
+                "value": null,
+                "disabled": false
+            }
+        }
+    }
+}
