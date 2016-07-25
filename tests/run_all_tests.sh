@@ -218,6 +218,12 @@ INFO "Get AA counts for five genes"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db --gene-caller-ids sample_gene_call_ids.txt -o $output_dir/aa_counts_for_five_genes.txt
 column -t $output_dir/aa_counts_for_five_genes.txt
 
+INFO "Importing a state file into the merged profile"
+anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state example_state.json --name default
+
+INFO "Exporting the state named 'default' from the merged profile"
+anvi-export-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state default -o $output_dir/SAMPLES-MERGED/default_state.json
+
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
