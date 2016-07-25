@@ -68,6 +68,9 @@ anvi-merge $output_dir/SAMPLE-*/RUNINFO.cp -o $output_dir/SAMPLES-MERGED -c $out
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D samples-information.txt -R samples-order.txt -o $output_dir/SAMPLES.db
 
+INFO "Importing a state file into the merged profile"
+anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state example_state.json --name default
+
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
