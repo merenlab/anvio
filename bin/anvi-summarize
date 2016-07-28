@@ -35,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    parser.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
     parser.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
