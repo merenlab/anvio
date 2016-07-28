@@ -52,6 +52,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
+        self.taxonomic_level = A('taxonomic_level')
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
         self.samples_information_db_path = A('samples_information_db')
@@ -89,7 +90,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.collections = ccollections.Collections()
 
         ContigsSuperclass.__init__(self, self.args)
-        self.init_splits_taxonomy()
+        self.init_splits_taxonomy(self.taxonomic_level)
 
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
