@@ -61,7 +61,6 @@ class Summarizer(DatabasesMetaclass):
         self.progress = p
 
         DatabasesMetaclass.__init__(self, args, self.run, self.progress)
-        self.init_splits_taxonomy()
 
         # databases initiated, let's make sure we have gene covereges data avaialable.
         if self.gene_coverages_dict:
@@ -82,8 +81,11 @@ class Summarizer(DatabasesMetaclass):
             self.output_directory = args.output_dir
             self.quick = args.quick_summary
             self.debug = args.debug
+            self.taxonomic_level = args.taxonomic_level
 
         self.sanity_check()
+
+        self.init_splits_taxonomy(self.taxonomic_level)
 
         filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
 
