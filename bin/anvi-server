@@ -67,22 +67,10 @@ args = parser.parse_args()
 # setup defaults
 args.manual_mode = True
 
-port = args.port_number
-ip = args.ip_address
-
-# only get a port if it was not passed as a parameter
-if not port:
-    port = utils.get_available_port_num(start=8080, ip=ip)
-
-if not port:
-    run.info_single("Anvi'o failed to find a port number that is available :(", mc='red', nl_after = 1)
-    sys.exit(-1)
-
-if utils.is_port_in_use(port):
-    run.info_single('It seems another application is already using the port number %d :/' % port, mc='red', nl_after = 1)
-    sys.exit(-1)
-
 try:
+    ip = args.ip_address
+    port = utils.get_port_num(args.port_number, ip, run=run)
+
     if args.smtp_config_file:
         mailer = utils.Mailer(run = run, progress = progress)
         mailer.init_from_config(args.smtp_config_file)
