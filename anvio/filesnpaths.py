@@ -200,6 +200,8 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
 
 
 def is_file_json_formatted(file_path):
+    is_file_exists(file_path)
+
     try:
         json.load(open(file_path, 'rU'))
     except ValueError as e:
