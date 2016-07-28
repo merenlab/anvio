@@ -677,10 +677,10 @@ D = {
     'port-number': (
             ['-P', '--port-number'],
             {'metavar': 'INT',
-             'default': 8080,
+             'default': None,
              'type': int,
-             'help': "Port number to use for communication. If nothing is declared, anvi'o will try to find\
-                      a suitable port number."}
+             'help': "Port number to use for anvi'o services. If nothing is declared, anvi'o will try to find\
+                      a suitable port number, starting from the default port number, %d." % constants.default_port_number}
                 ),
     'user': (
             ['--user'],
