@@ -172,9 +172,13 @@ class ContigsSuperclass(object):
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
-    def init_splits_taxonomy(self, t_level = 't_species'):
+    def init_splits_taxonomy(self, t_level = 't_genus'):
         if not self.contigs_db_path:
             return
+
+        if t_level not in t.taxon_names_table_structure[1:]:
+            raise ConfigError, "Pretty close. But the taxonomic level '%s' is not known to anvi'o. How about\
+                                one of these: %s." % (t_level, ','.join(t.taxon_names_table_structure[1:]))
 
         self.progress.new('Initializing splits taxonomy')
         self.progress.update('...')
@@ -191,6 +195,9 @@ class ContigsSuperclass(object):
 
         contigs_db.disconnect()
         self.progress.end()
+
+        if len(splits_taxonomy_table):
+            self.run.info('Taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
     def init_contig_sequences(self, min_contig_length=0):
