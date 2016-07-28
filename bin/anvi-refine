@@ -79,18 +79,12 @@ groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
 args = parser.parse_args()
 
-port = args.port_number
-ip = args.ip_address
-
-port = utils.get_available_port_num(start = port, ip=ip)
-
-if not port:
-    run.info_single('anvio failed to find a port number that is available :(', mc='red')
-    sys.exit(-1)
-
 unique_session_id = random.randint(0,9999999999)
 
 try:
+    ip = args.ip_address
+    port = utils.get_port_num(args.port_number, ip, run=run)
+
     r = refine.RefineBins(args)
     d = r.refine()
 except ConfigError, e:
