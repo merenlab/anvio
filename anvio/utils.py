@@ -127,7 +127,34 @@ class Multiprocessing:
             time.sleep(1)
 
 
-def get_available_port_num(start=8080, look_upto_next_num_ports=100, ip='0.0.0.0'):
+def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
+    """Get a port number for the `ip` address."""
+
+    try:
+        port_num = int(port_num) if port_num else 0
+    except Exception as e:
+        raise ConfigError, "Not a happy port number :/ %s." % e
+
+    if not port_num:
+        port_num = get_next_available_port_num(constants.default_port_number)
+
+        if not port_num:
+            raise ConfigError, "Anvi'o searched a bunch of port numbers starting from %d, but failed\
+                                to find an available one for you. Maybe you should specify one :/"
+    else:
+        if is_port_in_use(port_num):
+            raise ConfigError, "The port number %d seems to be in use :/" % port_num
+
+    if os.getuid() and port_num < 1024:
+        run.warning("Using the port number %d requires superuser priviliges, which your user does not\
+                     seem to have. Since anvi'o does not know anything about your system configuraiton,\
+                     you are free to go for now. But be prepared for a failed attempt to use this port\
+                     number to serve stuff." % port_num)
+
+    return port_num
+
+
+def get_next_available_port_num(start=constants.default_port_number, look_upto_next_num_ports=100, ip='0.0.0.0'):
     """Starts from 'start' and incrementally looks for an available port
        until 'start + look_upto_next_num_ports', and returns the first
        available one."""
