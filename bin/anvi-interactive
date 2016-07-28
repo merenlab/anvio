@@ -19,7 +19,6 @@ from bottle import run as run_server
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.interactive as interactive
 import anvio.bottleroutes as routes
 
@@ -106,7 +105,7 @@ unique_session_id = random.randint(0,9999999999)
 
 try:
     ip = args.ip_address
-    port = utils.get_port_num(args.port_number, ip, run=run)
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
 
     d = interactive.InputHandler(args)
 except ConfigError, e:
@@ -285,13 +284,13 @@ if args.dry_run:
     sys.exit()
 
 try:
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
 
     if not args.server_only:
-        webbrowser.open_new("http://%s:%d" % (ip, port))
+        webbrowser.open_new("http://%s:%d" % (ip, args.port_number))
 
-    run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % port, 'green', nl_before = 1, nl_after=1)
+    run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % args.port_number, 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
     run.warning('The server is being terminated.', header='Please wait...')
