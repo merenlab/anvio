@@ -83,7 +83,7 @@ unique_session_id = random.randint(0,9999999999)
 
 try:
     ip = args.ip_address
-    port = utils.get_port_num(args.port_number, ip, run=run)
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
 
     r = refine.RefineBins(args)
     d = r.refine()
@@ -243,9 +243,9 @@ if args.dry_run:
     sys.exit()
 
 try:
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
-    webbrowser.open_new("http://%s:%d" % (ip, port))
+    webbrowser.open_new("http://%s:%d" % (ip, args.port_number))
     run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:

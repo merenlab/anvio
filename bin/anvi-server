@@ -69,7 +69,7 @@ args.manual_mode = True
 
 try:
     ip = args.ip_address
-    port = utils.get_port_num(args.port_number, ip, run=run)
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
 
     if args.smtp_config_file:
         mailer = utils.Mailer(run = run, progress = progress)
@@ -433,18 +433,10 @@ if args.dry_run:
     sys.exit()
 
 try:
-    if os.getuid() and port < 1024:
-        run.warning("Running the server through the port number %d requires root priviliges,\
-                     which your user does not seem to have. This may result in permission\
-                     issues. That being said, anvi'o does not know anything about your system\
-                     configuraiton, so if you have set things up properly, please ignore this\
-                     note and accept our apologies. Otherwise, be prepared for a failed attempt\
-                     to get this server running :)" % port)
-
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
 
-    run.info_single("Anvi'o is serving on port %d." % port, 'green', nl_before = 1, nl_after=1)
+    run.info_single("Anvi'o is serving on port %d." % args.port_number, 'green', nl_before = 1, nl_after=1)
     server_process.join()
 except KeyboardInterrupt:
     run.warning("The server is being terminated.", header='Please wait...')
