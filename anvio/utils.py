@@ -18,13 +18,12 @@ from email.mime.text import MIMEText
 
 import anvio
 import anvio.fastalib as u
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run, Progress, SuppressAllOutput
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
-from anvio.constants import IS_ESSENTIAL_FIELD, allowed_chars, digits, complements
-from anvio.constants import codon_to_AA, codon_to_AA_RC, AA_to_single_letter_code
 
 with SuppressAllOutput():
     from ete2 import Tree
@@ -48,7 +47,7 @@ run = Run()
 run.verbose = False
 
 def rev_comp(seq):
-    return seq.translate(complements)[::-1]
+    return seq.translate(constants.complements)[::-1]
 
 
 class Multiprocessing:
@@ -333,7 +332,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     if cols_to_return:
         fields_of_interest = [columns.index(col) for col in cols_to_return]
     else:
-        fields_of_interest = [f for f in range(0, len(columns)) if IS_ESSENTIAL_FIELD(columns[f])]
+        fields_of_interest = [f for f in range(0, len(columns)) if constants.IS_ESSENTIAL_FIELD(columns[f])]
 
     # update columns:
     columns = [columns[i] for i in fields_of_interest]
@@ -628,7 +627,7 @@ def get_DNA_sequence_translated(sequence, gene_callers_id):
     translated_sequence = ''
 
     for i in range(0, len(sequence), 3):
-        single_letter_code = AA_to_single_letter_code[codon_to_AA[sequence[i:i + 3]]]
+        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
 
         if not single_letter_code:
             single_letter_code = 'X'
@@ -659,10 +658,10 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # if concensus sequence contains shitty characters, we will not continue
-        if reference_codon_sequence not in codon_to_AA:
+        if reference_codon_sequence not in constants.codon_to_AA:
             continue
         # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
-        conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
+        conv_dict = constants.codon_to_AA_RC if gene_call['direction'] == 'r' else constants.codon_to_AA
 
         list_of_AAs.append(conv_dict[reference_codon_sequence])
 
@@ -692,25 +691,25 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 
 def check_sample_id(sample_id):
     if sample_id:
-        if sample_id[0] in digits:
+        if sample_id[0] in constants.digits:
             raise ConfigError, "Sample names can't start with digits. Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you may want to check '-s' parameter to set\
                                 a sample name if your client permits (otherwise you are going to have to edit\
                                 your input files))."
 
-        allowed_chars_for_samples = allowed_chars.replace('-', '').replace('.', '')
+        allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
             raise ConfigError, "Sample name ('%s') contains characters that anvio does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
                                 digits, and the underscore character ('_')." % sample_id
 
 
-def is_this_name_OK_for_database(variable_name, content, allowed_chars=allowed_chars.replace('.', '')):
-    if content[0] in digits:
+def is_this_name_OK_for_database(variable_name, content, allowed_chars=constants.allowed_chars.replace('.', '')):
+    if content[0] in constants.digits:
         raise ConfigError, "Sorry, '%s' can't start with a digit. Long story. Please specify a sample name\
                             that starts with an ASCII letter." % variable_name
 
-    if len([c for c in content if c not in allowed_chars]):
+    if len([c for c in content if c not in constants.allowed_chars]):
         raise ConfigError, "Well, '%s' parameter contains characters that anvi'o does not like :/ Please\
                             limit the characters to ASCII letters, digits, the underscore ('_'), and the\
                             dash ('-') character." % variable_name
@@ -718,7 +717,7 @@ def is_this_name_OK_for_database(variable_name, content, allowed_chars=allowed_c
 
 def check_contig_names(contig_names, dont_raise=False):
     all_characters_in_contig_names = set(''.join(contig_names))
-    characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in allowed_chars]
+    characters_anvio_doesnt_like = [c for c in all_characters_in_contig_names if c not in constants.allowed_chars]
     if len(characters_anvio_doesnt_like):
         if dont_raise:
             return False
@@ -1109,7 +1108,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         raise ConfigError, "source_dirs parameter must be a list (get_HMM_sources_dictionary)."
 
     sources = {}
-    allowed_chars_for_proper_sources = allowed_chars.replace('.', '').replace('-', '')
+    allowed_chars_for_proper_sources = constants.allowed_chars.replace('.', '').replace('-', '')
     PROPER = lambda w: not len([c for c in w if c not in allowed_chars_for_proper_sources]) \
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
