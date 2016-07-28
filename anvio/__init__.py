@@ -19,7 +19,10 @@ try:
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
+
+import anvio.tables as tables
 import anvio.constants as constants
+
 
 # a comprehensive arguments dictionary that provides easy access from various programs that interface anvi'o modules:
 D = {
@@ -241,6 +244,14 @@ D = {
              'help': "When declared, this flag tells the interface to split every gene found in HMM\
                       searches that were performed against non-singlecopy gene HMM profiles into\
                       their own layer. Please see the documentation for details."}
+                ),
+    'taxonomic-level': (
+            ['--taxonomic-level'],
+            {'default': 't_genus',
+             'type': str,
+             'choices': tables.taxon_names_table_structure[1:],
+             'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the\
+                      anvi'o ontigs database contains taxonomic annotations."}
                 ),
     'show-outlier-snvs': (
             ['--show-outlier-SNVs'],
