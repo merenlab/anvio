@@ -258,8 +258,8 @@ def gen_summary(args, d, request, response, collection_name):
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
 
-    url = "http://%s:%d/summary/%s/index.html" % (args.ip_address, args.port_number, collection_name)
-    return json.dumps({'url': url})
+    path = "summary/%s/index.html" % (collection_name)
+    return json.dumps({'path': path})
 
 
 def send_summary_static(args, d, request, response, collection_name, filename):
