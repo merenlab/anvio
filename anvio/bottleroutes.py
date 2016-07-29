@@ -244,6 +244,7 @@ def gen_summary(args, d, request, response, collection_name):
     summarizer_args.profile_db = d.profile_db_path
     summarizer_args.contigs_db = d.contigs_db_path
     summarizer_args.collection_name = collection_name
+    summarizer_args.taxonomic_level = d.taxonomic_level
     summarizer_args.list_collections = None
     summarizer_args.debug = None
     summarizer_args.quick_summary = False
