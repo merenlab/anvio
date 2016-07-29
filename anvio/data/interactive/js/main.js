@@ -1485,9 +1485,11 @@ function generateSummary() {
             } else {
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
-                // data['url']
 
-                $('#summary_link').html("Summary link: <a href='" + data['url'] + "' target='_blank'>" + data['url'] + "</a>");
+                // generate a full url using the window origin and collection path:
+                var summary_url = window.location.origin + '/' + data['path'];
+
+                $('#summary_link').html("Summary link: <a href='" + summary_url + "' target='_blank'>" + summary_url + "</a>");
                 $('#modSummaryResult').modal('show');
             }
         }
