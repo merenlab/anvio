@@ -529,6 +529,13 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         splits_in_tree_but_not_in_database = splits_in_tree - splits_in_database if splits_in_database else set([])
         splits_in_additional_view_but_not_in_tree = splits_in_additional_view - splits_in_tree if splits_in_additional_view else set([])
 
+        if splits_in_additional_view_but_not_in_tree:
+            raise ConfigError, "There are some split names in your additional view data file ('%s') that are missing from\
+                                split names characterized in the database. There are in fact %d of them. For instance,\
+                                here is a random split name that is in your additional view data, yet not in the database:\
+                                '%s'. This is not going to work for anvi'o :/" \
+                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop())
+
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
             example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
@@ -551,23 +558,14 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             if len(splits_only_in_additional_layers):
                 one_example = splits_only_in_additional_layers[-1]
                 num_all = len(splits_only_in_additional_layers)
-                run.warning("Some of the contigs in your addtional view data file does not\
-                            appear to be in anywhere else. Additional view data file is not\
-                            required to list all contigs (which means, there may be contigs\
-                            in the database that are not in the additional view data file),\
-                            however, finding contigs that are only in the additional view data\
-                            file usually means trouble. anvio will continue, but please\
-                            go back and check your files if you think there may be something\
-                            wrong. Here is a random contig name that was only in the\
-                            view data file: '%s'. And there were %d of them in total. You\
-                            are warned!" % (one_example, num_all))
+                run.warning("Some of the contigs in your addtional view data file does not appear to be in anywhere else.\
+                             Additional layers file is not required to have data for all items (which means, there may be\
+                             items in view dictionaries that are not in the additional view data file), however, finding\
+                             items that are only in the additional layers file usually means trouble. Anvi'o will continue,\
+                             but please go back and check your files if you think there may be something wrong. Here is a\
+                             random item name that was only in your file: '%s'. And there were %d of them in total. So you\
+                             are warned!" % (one_example, num_all))
 
-        if splits_in_additional_view_but_not_in_tree:
-            raise ConfigError, "There are some split names in your additional view data file ('%s') that are missing from\
-                                split names characterized in the database. There are in fact %d of them. For instance,\
-                                here is a random split name that is in your additional view data, yet not in the database:\
-                                '%s'. This is not going to work for anvi'o :/" \
-                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop())
 
     def prune_view_dicts(self):
         self.progress.new('Pruning view dicts')
