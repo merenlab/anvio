@@ -15,6 +15,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.sequence as sequence
+import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -792,6 +793,10 @@ class AdHocRunGenerator:
         self.samples_info_file_path = None
         self.samples_order_file_path = None
 
+        # for clustering
+        self.distance = None
+        self.linkage = None
+
         self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
         self.delete_output_directory_if_exists = False
 
@@ -799,6 +804,11 @@ class AdHocRunGenerator:
 
 
     def sanity_check(self):
+        self.distance = self.distance or constants.distance_metric_default
+        self.linkage = self.linkage or constants.linkage_method_default
+
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
+
         filesnpaths.is_file_tab_delimited(self.view_data_path)
         if self.tree_file_path:
             filesnpaths.is_proper_newick(self.tree_file_path)
@@ -866,9 +876,9 @@ class AdHocRunGenerator:
         self.tree_file_path = self.get_output_file_path('tree.txt')
 
         if self.matrix_data_for_clustering:
-            clustering.get_newick_tree_data(self.matrix_data_for_clustering, self.tree_file_path)
+            clustering.get_newick_tree_data(self.matrix_data_for_clustering, self.tree_file_path, distance = self.distance, linkage=self.linkage)
         else:
-            clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path)
+            clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
 
         self.progress.end()
 
@@ -879,7 +889,7 @@ class AdHocRunGenerator:
         self.progress.new('Hierarchical clustering of the (transposed) view data')
         self.progress.update('..')
 
-        newick = clustering.get_newick_tree_data(data_file_path, transpose=True)
+        newick = clustering.get_newick_tree_data(data_file_path, transpose=True, distance = self.distance, linkage=self.linkage)
 
         samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
         samples_order = open(samples_order_file_path, 'w')
