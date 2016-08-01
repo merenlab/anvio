@@ -51,19 +51,21 @@ def main(args):
         departure_from_consensus = float(entry['departure_from_consensus'])
 
         if unique_pos_identifier not in data_dict:
-            data_dict[unique_pos_identifier] = dict(zip(samples + ['Competing_NTs'], [0.0] * len(samples) + [None]))
+            data_dict[unique_pos_identifier] = dict(zip(samples + ['Competing NTs', 'Position in codon'], [0.0] * len(samples) + [None, None]))
 
         if departure_from_consensus > 0.01:
-            data_dict[unique_pos_identifier]['Competing_NTs'] = entry['competing_nts']
+            data_dict[unique_pos_identifier]['Competing NTs'] = entry['competing_nts']
 
         if departure_from_consensus > args.min_departure_from_consensus and departure_from_consensus < args.max_departure_from_consensus:
             data_dict[unique_pos_identifier][sample] = departure_from_consensus
+
+        data_dict[unique_pos_identifier]['Position in codon'] = {0: None, 1: '1st', 2: '2nd', 3: '3rd'}[int(entry['base_pos_in_codon'])]
 
     temp_clustering_data_file_path = filesnpaths.get_temp_file_path()
     temp_view_data_file_path = filesnpaths.get_temp_file_path()
 
     utils.store_dict_as_TAB_delimited_file(data_dict, temp_clustering_data_file_path, headers = ['contig'] + samples)
-    utils.store_dict_as_TAB_delimited_file(data_dict, temp_view_data_file_path, headers = ['contig'] + samples + ['Competing_NTs'])
+    utils.store_dict_as_TAB_delimited_file(data_dict, temp_view_data_file_path, headers = ['contig'] + samples + ['Competing NTs', 'Position in codon'])
 
     g = summarizer.AdHocRunGenerator(temp_view_data_file_path)
     g.linkage = 'ward'
