@@ -910,6 +910,12 @@ D = {
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
                 ),
+    'collection': (
+            ['--collection'],
+            {'metavar': 'NAME',
+             'help': "Automatically load a collection and draw tree. To see a list of available collections,\
+                      use --list-collections flag."}
+                ),
     'full-report': (
             ['--full-report'],
             {'metavar': 'FILE_NAME',

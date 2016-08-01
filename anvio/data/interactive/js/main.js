@@ -96,6 +96,7 @@ var current_state_name = "";
 var unique_session_id;
 var ping_timer;
 var autoload_state;
+var autoload_collection;
 var mode;
 var samples_tree_hover = false;
 //---------------------------------------------------------
@@ -207,6 +208,7 @@ function initData () {
         var sampleInformationResponse = [ response.sampleInformation ];
         var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
         var stateAutoloadResponse = [ response.stateAutoload ];
+        var collectionAutoloadResponse = [ response.collectionAutoload ];
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
             unique_session_id = sessionIdResponse[0];
@@ -269,6 +271,9 @@ function initData () {
 
             // if --state parameter given, autoload given state.
             autoload_state = stateAutoloadResponse[0];
+
+            // if --collection parameter given, autoload given collection.
+            autoload_collection = collectionAutoloadResponse[0];
 
             /* 
             //  Clusterings
@@ -981,6 +986,12 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
+
+                if (autoload_collection !== null)
+                {
+                    loadCollection(autoload_collection);
+                    autoload_collection = null
+                }
             },
         });
 }
@@ -1556,13 +1567,19 @@ function showCollectionDetails(list) {
     });
 }
 
-function loadCollection() {
+function loadCollection(default_collection) {
     if ($.isEmptyObject(label_to_node_map)) {
         toastr.warning('You should draw tree before load collection.');
         return;
     }
 
-    var collection = $('#loadCollection_list').val();
+    var collection;
+    if (default_collection) {
+        collection = default_collection;
+    } else {
+        collection = $('#loadCollection_list').val();
+    }
+
     if (collection === null) {
         toastr.warning('Please select a collection.');
         return;

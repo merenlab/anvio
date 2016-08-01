@@ -64,6 +64,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
         self.state = A('state')
+        self.collection = A('collection')
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
         self.list_collections = A('list_collections')
