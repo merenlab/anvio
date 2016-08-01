@@ -36,7 +36,7 @@ def state_autoload(d, response):
     # see --state parameter.
     set_default_headers(response)
 
-    return json.dumps(d.state)
+    return json.dumps(d.state_autoload)
 
 
 def state_all(d, response):

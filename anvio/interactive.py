@@ -63,8 +63,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
-        self.state = A('state')
-        self.collection = A('collection')
+        self.state_autoload = A('state_autoload')
+        self.collection_autoload = A('collection_autoload')
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
         self.list_collections = A('list_collections')
@@ -141,8 +141,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.p_meta['available_clusterings'] = self.clusterings.keys()
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
-        if not self.state and 'default' in self.states_table.states:
-            self.state = 'default'
+        if not self.state_autoload and 'default' in self.states_table.states:
+            self.state_autoload = 'default'
 
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
@@ -511,10 +511,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                               outdated anvi'o run. You can convert your SUMMARY.cp into an auxiliary data file\
                               by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
 
-        if self.state:
-            if not self.state in self.states_table.states:
+        if self.state_autoload:
+            if not self.state_autoload in self.states_table.states:
                 raise ConfigError, "The requested state ('%s') is not available for this run. Please see\
-                                          available states by running this program with --show-states flag." % self.state
+                                          available states by running this program with --show-states flag." % self.state_autoload
 
 
     def check_names_consistency(self):
