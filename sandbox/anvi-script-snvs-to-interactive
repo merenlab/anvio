@@ -45,36 +45,38 @@ def main(args):
     run.info('Num samples', pp(len(samples)))
 
     data_dict = {}
+    additional_data_dict = {}
     for entry in profile.values():
         unique_pos_identifier = entry['unique_pos_identifier']
         sample = entry['sample_id']
         departure_from_consensus = float(entry['departure_from_consensus'])
 
         if unique_pos_identifier not in data_dict:
-            data_dict[unique_pos_identifier] = dict(zip(samples + ['Competing NTs', 'Position in codon'], [0.0] * len(samples) + [None, None]))
+            data_dict[unique_pos_identifier] = dict(zip(samples, [0.0] * len(samples)))
+            additional_data_dict[unique_pos_identifier] = {'Competing NTs': None, 'Position in codon': None}
 
         if departure_from_consensus > 0.01:
-            data_dict[unique_pos_identifier]['Competing NTs'] = entry['competing_nts']
+            additional_data_dict[unique_pos_identifier]['Competing NTs'] = entry['competing_nts']
 
         if departure_from_consensus > args.min_departure_from_consensus and departure_from_consensus < args.max_departure_from_consensus:
             data_dict[unique_pos_identifier][sample] = departure_from_consensus
 
-        data_dict[unique_pos_identifier]['Position in codon'] = {0: None, 1: '1st', 2: '2nd', 3: '3rd'}[int(entry['base_pos_in_codon'])]
+        additional_data_dict[unique_pos_identifier]['Position in codon'] = {0: None, 1: '1st', 2: '2nd', 3: '3rd'}[int(entry['base_pos_in_codon'])]
 
-    temp_clustering_data_file_path = filesnpaths.get_temp_file_path()
     temp_view_data_file_path = filesnpaths.get_temp_file_path()
+    temp_additional_data_file_path = filesnpaths.get_temp_file_path()
 
-    utils.store_dict_as_TAB_delimited_file(data_dict, temp_clustering_data_file_path, headers = ['contig'] + samples)
-    utils.store_dict_as_TAB_delimited_file(data_dict, temp_view_data_file_path, headers = ['contig'] + samples + ['Competing NTs', 'Position in codon'])
+    utils.store_dict_as_TAB_delimited_file(data_dict, temp_view_data_file_path, headers = ['contig'] + samples)
+    utils.store_dict_as_TAB_delimited_file(additional_data_dict, temp_additional_data_file_path, headers = ['contig'] + ['Competing NTs', 'Position in codon'])
 
     g = summarizer.AdHocRunGenerator(temp_view_data_file_path)
     g.linkage = 'ward'
-    g.matrix_data_for_clustering = temp_clustering_data_file_path
+    g.additional_view_data_file_path = temp_additional_data_file_path
     g.output_directory = args.output_dir
     g.generate()
 
     os.remove(temp_view_data_file_path)
-    os.remove(temp_clustering_data_file_path)
+    os.remove(temp_additional_data_file_path)
 
 if __name__ == '__main__':
     import argparse
