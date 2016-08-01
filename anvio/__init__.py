@@ -904,14 +904,14 @@ D = {
                       the contig name, and the second column should be the comma-separated list of integers for nucleotide\
                       positions."}
                 ),
-    'state': (
-            ['--state'],
+    'state-autoload': (
+            ['--state-autoload'],
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
                 ),
-    'collection': (
-            ['--collection'],
+    'collection-autoload': (
+            ['--collection-autoload'],
             {'metavar': 'NAME',
              'help': "Automatically load a collection and draw tree. To see a list of available collections,\
                       use --list-collections flag."}
