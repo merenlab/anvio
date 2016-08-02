@@ -187,6 +187,18 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             raise ConfigError, "When you want to use the interactive interface in manual mode, you must\
                                 not use a contigs database."
 
+        # if the user is using an existing profile database, we need to make sure that it is not associated
+        # with a contigs database, since it would mean that it is a full anvi'o profile database and should
+        # not be included in manual operations.
+        if os.path.exists(self.profile_db_path):
+            profile_db = ProfileDatabase(self.profile_db_path)
+            if profile_db.meta['contigs_db_hash']:
+                raise ConfigError, "Well. It seems the profile database is associated with a contigs database,\
+                                    which means using it in manual mode is not the best way to use it. Probably\
+                                    what you wanted to do is to let the manual mode create a new profile database\
+                                    for you. Simply type in a new profile database path (it can be a file name\
+                                    that doesn't exist)."
+
         if not self.profile_db_path:
             raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
                                 to declare a profile database. The profile database in this mode only used to\
