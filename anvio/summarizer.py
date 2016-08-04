@@ -894,7 +894,7 @@ class AdHocRunGenerator:
         samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
         samples_order = open(samples_order_file_path, 'w')
         samples_order.write('attributes\tbasic\tnewick\n')
-        samples_order.write('protein_clusters\t\t%s\n' % newick)
+        samples_order.write('view_data\t\t%s\n' % newick)
         samples_order.close()
 
         self.progress.end()
