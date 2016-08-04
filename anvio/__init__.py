@@ -264,6 +264,12 @@ D = {
                       and tells anvi'o to show anything and everything reported (There may or may not\
                       be some historical data on this here: https://github.com/meren/anvio/issues/309)."}
                 ),
+    'hmm-source': (
+            ['--hmm-source'],
+            {'metavar': 'SOURCE NAME',
+             'help': "Use a specific HMM source. You can use '--list-available-hmm-sources' flag to see\
+                      a list of available resources. The default is '%(default)s'."}
+                ),
     'hmm-sources': (
             ['--hmm-sources'],
             {'metavar': 'SOURCE NAME',
@@ -277,7 +283,7 @@ D = {
             ['-l', '--list-available-hmm-sources'],
             {'default': False,
              'action': 'store_true',
-             'help': "List available HMM sources in the profile database and quit."}
+             'help': "List available HMM sources in the contigs database and quit."}
                 ),
     'gene-names': (
             ['--gene-names'],
