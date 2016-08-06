@@ -33,6 +33,9 @@ progress = terminal.Progress()
 
 class Completeness:
     def __init__(self, contigs_db_path, source=None, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+
         # hi db
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
@@ -97,6 +100,12 @@ class Completeness:
                 self.splits_unique_gene_id_occurs[gene_unique_identifier] = [entry['split']]
             else:
                 self.splits_unique_gene_id_occurs[gene_unique_identifier].append(entry['split'])
+
+
+    def list_hmm_sources(self):
+        self.run.warning('', 'HMM SOURCES FOUND', lc='yellow')
+        for source in self.sources:
+            self.run.info_single(source)
 
 
     def get_info_for_splits(self, split_names, min_e_value=1e-5):
