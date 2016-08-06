@@ -51,9 +51,16 @@ def main(args):
     if not len(completeness.sources):
         raise ConfigError, "HMM's were not run for this contigs database :/"
 
-    if not 'Campbell_et_al' in completeness.sources:
-        raise ConfigError, "This classifier uses Campbell et al. single-copy gene collections, and it is not among the available HMM sources in your\
-                            contigs database :/ Bad news."
+    if args.list_available_hmm_sources:
+        completeness.list_hmm_sources()
+        sys.exit()
+
+    if not args.hmm_source:
+        raise ConfigError, "No HMM source ... You shouldn't never seen this error :("
+
+    if not args.hmm_source in completeness.sources:
+        raise ConfigError, "It seems '%s' is not an HMM source that existst in your database :/ You can see what is available\
+                            using the flag `--list-available-hmm-sources`."
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 
@@ -67,8 +74,10 @@ def main(args):
     else:
         run.warning(None, header = 'Genome in "%s"' % os.path.basename(args.contigs_db), lc = 'green')
 
+    run.info_single("Completion and redundancy estimates originate from the HMM source '%s'" % args.hmm_source, nl_before=1, nl_after=1)
+
     for bin_id in collection:
-        c = completeness.get_info_for_splits(set(collection[bin_id]))['Campbell_et_al']
+        c = completeness.get_info_for_splits(set(collection[bin_id]))[args.hmm_source]
         percent_completion = c['percent_complete']
         percent_redundancy = c['percent_redundancy']
         total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
@@ -82,12 +91,14 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Get info draft')
+    parser = argparse.ArgumentParser(description='Provides information about each bin in a given collection.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source', {'default': 'Campbell_et_al'}))
+    parser.add_argument(*anvio.A('list-available-hmm-sources'), **anvio.K('list-available-hmm-sources'))
 
     args = parser.parse_args()
 
