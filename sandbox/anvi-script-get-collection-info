@@ -51,7 +51,7 @@ def main(args):
     if not len(completeness.sources):
         raise ConfigError, "HMM's were not run for this contigs database :/"
 
-    if args.list_available_hmm_sources:
+    if args.list_hmm_sources:
         completeness.list_hmm_sources()
         sys.exit()
 
@@ -60,7 +60,7 @@ def main(args):
 
     if not args.hmm_source in completeness.sources:
         raise ConfigError, "It seems '%s' is not an HMM source that existst in your database :/ You can see what is available\
-                            using the flag `--list-available-hmm-sources`."
+                            using the flag `--list-hmm-sources`."
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source', {'default': 'Campbell_et_al'}))
-    parser.add_argument(*anvio.A('list-available-hmm-sources'), **anvio.K('list-available-hmm-sources'))
+    parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
 
     args = parser.parse_args()
 

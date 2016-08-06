@@ -267,7 +267,7 @@ D = {
     'hmm-source': (
             ['--hmm-source'],
             {'metavar': 'SOURCE NAME',
-             'help': "Use a specific HMM source. You can use '--list-available-hmm-sources' flag to see\
+             'help': "Use a specific HMM source. You can use '--list-hmm-sources' flag to see\
                       a list of available resources. The default is '%(default)s'."}
                 ),
     'hmm-sources': (
@@ -277,10 +277,10 @@ D = {
                       sources by separating them from each other with a comma character (i.e., \
                       '--hmm-sources source_1,source_2,source_3'). If you would like to see a list\
                       of available sources in the contigs database, run this program with\
-                      '--list-available-hmm-sources' flag."}
+                      '--list-hmm-sources' flag."}
                 ),
-    'list-available-hmm-sources': (
-            ['-l', '--list-available-hmm-sources'],
+    'list-hmm-sources': (
+            ['-l', '--list-hmm-sources'],
             {'default': False,
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
