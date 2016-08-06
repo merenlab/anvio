@@ -5,7 +5,9 @@ import os
 import sys
 
 import anvio
+import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.completeness import Completeness
@@ -28,6 +30,9 @@ pp = terminal.pretty_print
 
 
 def main(args):
+    if args.output_file:
+        filesnpaths.is_output_file_writable(args.output_file)
+
     collections = ccollections.Collections()
     collections.populate_collections_dict(args.contigs_db, anvio.__contigs__version__)
     if args.profile_db:
@@ -69,13 +74,14 @@ def main(args):
     else:
         collection = {os.path.basename(args.contigs_db[:-3]): contigs_db.splits_basic_info.keys()}
 
+    run.info_single("Completion and redundancy estimates originate from the HMM source '%s'" % args.hmm_source, nl_before=1, nl_after=1)
+
     if args.collection_name:
         run.warning(None, header = 'Bins in collection "%s"' % args.collection_name, lc = 'green')
     else:
         run.warning(None, header = 'Genome in "%s"' % os.path.basename(args.contigs_db), lc = 'green')
 
-    run.info_single("Completion and redundancy estimates originate from the HMM source '%s'" % args.hmm_source, nl_before=1, nl_after=1)
-
+    results_dict = {}
     for bin_id in collection:
         c = completeness.get_info_for_splits(set(collection[bin_id]))[args.hmm_source]
         percent_completion = c['percent_complete']
@@ -83,9 +89,15 @@ def main(args):
         total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
         num_splits = len(collection[bin_id])
 
+        results_dict[bin_id] = {'percent_completion': percent_completion, 'percent_redundancy': percent_redundancy, 'num_splits': num_splits, 'total_length': total_length}
+
         print "%s :: PC: %.2f%%, PR: %.2f%%, N: %s, S: %s" % (bin_id, percent_completion, percent_redundancy, pp(num_splits), pp(total_length))
 
     print
+
+    if args.output_file:
+        utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length'])
+        run.info('Output', args.output_file)
 
 
 if __name__ == '__main__':
@@ -99,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source', {'default': 'Campbell_et_al'}))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.parse_args()
 
