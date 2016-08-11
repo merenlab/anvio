@@ -770,6 +770,20 @@ function drawSamplesTree(settings, sample_xy)
         new_line.style['stroke-opacity'] = '0';
         new_line.setAttribute('pointer-events', 'all');
     });
+
+    // draw guide lines for samples tree
+    if (use_edge_lengths) {
+        for (var i=0; i < t.nodes.length; i++) {
+            q = t.nodes[i];
+            if (q.IsLeaf())
+            {
+                var _line = drawLine('samples_tree', q, q.xy, {'x': q.xy['x'], 'y': samples_top + samples_height});
+                _line.setAttribute('id', _line.getAttribute + '_guide');
+                _line.style['stroke-opacity'] = '0.2';
+                _line.setAttribute('stroke-dasharray', '1,1');
+            }
+        }
+    }
 }
 
 function drawGradientBackground(start)
