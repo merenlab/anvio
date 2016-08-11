@@ -2615,7 +2615,7 @@ function draw_tree(settings) {
         {
             //draw samples layers
             createBin('viewport', 'samples');
-            drawSamplesLayers(settings);
+            drawSamples();
         }
     }
 
@@ -2644,13 +2644,7 @@ function draw_tree(settings) {
     // tree bin = tree + layers
     // bind events
     var tree_bin = document.getElementById('tree_bin');
-    var samples_tree = document.getElementById('samples_tree');
-
     tree_bin.addEventListener('click', lineClickHandler, false);
-    if (samples_tree)
-    {
-        samples_tree.addEventListener('click', lineClickHandler, false);
-    }
     tree_bin.addEventListener('contextmenu', lineContextMenuHandler, false);
     tree_bin.addEventListener('mouseover',lineMouseEnterHandler, false);
     tree_bin.addEventListener('mouseout', lineMouseLeaveHandler, false);

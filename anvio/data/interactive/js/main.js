@@ -921,6 +921,9 @@ function serializeSettings(use_layer_names) {
     state['samples-categorical-colors'] = samples_categorical_colors;
     state['samples-stack-bar-colors'] = samples_stack_bar_colors;
     state['samples-order'] = $('#samples_order').val();
+    state['samples-edge-length-normalization'] = $('#samples_edge_length_normalization').is(':checked');
+    state['samples-ignore-branch-length'] = $('#samples_ignore_branch_length').is(':checked');
+    state['samples-tree-height'] = $('#samples_tree_height').val();
 
     state['samples-layer-order'] = [];
     state['samples-layers'] = {};
@@ -1930,6 +1933,15 @@ function loadState()
                             if (state.hasOwnProperty('show-grid-for-bins')) {
                                 $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
                                 redrawBins();
+                            }
+                            if (state.hasOwnProperty('samples-edge-length-normalization')) {
+                                $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
+                            }
+                            if (state.hasOwnProperty('samples-ignore-branch-length')) {
+                                $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
+                            }
+                            if (state.hasOwnProperty('samples-tree-height')) {
+                                $('#samples_tree_height').val(state['samples-tree-height']);
                             }
 
                             // reload layers
