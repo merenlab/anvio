@@ -302,6 +302,16 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     });    
 }
 
+function drawSamples() {
+    $('#samples').empty(); 
+    drawSamplesLayers(serializeSettings());
+    var samples_tree = document.getElementById('samples_tree');
+    if (samples_tree)
+    {
+        samples_tree.addEventListener('click', lineClickHandler, false);
+    }
+}
+
 function drawSamplesLayers(settings) {
     var samples_layer_max = {};
     var samples_layer_min = {};
@@ -621,15 +631,57 @@ function drawSamplesTree(settings, sample_xy)
 
     var newick = samples_order_dict[samples_order]['newick'];
     var t = new Tree();
-    t.Parse(newick, false);
+    t.Parse(newick, settings['samples-edge-length-normalization']);
     t.ComputeDepths();
-    t.ComputeWeights();
+    t.ComputeWeights(t.root);
+
+    var use_edge_lengths = t.has_edge_lengths;
+    if (settings['samples-ignore-branch-length'])
+    {
+        use_edge_lengths = false;
+    }
+
+    if (use_edge_lengths)
+    {
+        max_path_length = 0;
+        var n = new PreorderIterator(t.root);
+        var q = n.Begin();
+        while (q != null) {
+            var d = q.edge_length;
+            if (d < 0.00001) {
+                d = 0.0;
+            }
+            if (q != t.root) {
+                q.path_length = q.ancestor.path_length + d;
+            }
+
+            max_path_length = Math.max(max_path_length, q.path_length);
+            q = n.Next();
+        }
+
+        var n = new NodeIterator(t.root);
+        var q = n.Begin();
+    } else {
+        var max_depth = t.root.depth;
+        max_path_length = max_depth;
+
+        for (var i=0; i < t.nodes.length; i++)
+        {
+            var n = t.nodes[i];
+            if (n != t.root)
+            {
+                n.path_length = max_depth - n.depth;
+            }
+        }
+    }
+
+    var samples_top = -1;
+    var samples_height = parseInt(settings['samples-tree-height']);
+
+    samples_id_to_node_map = new Array();
 
     var n = new NodeIterator(t.root);
     var q = n.Begin();
-
-    var sample_y = -1;
-    samples_id_to_node_map = new Array();
     while (q != null)
     {
         samples_id_to_node_map[q.id] = q;
@@ -644,19 +696,19 @@ function drawSamplesTree(settings, sample_xy)
                 return;
             }
 
-            q.xy = sample_xy[q.label];
-            if (sample_y == -1)
+            if (samples_top == -1)
             {
-                sample_y = q.xy['y'];
+                samples_top = sample_xy[q.label]['y'] - samples_height;
             }
+            q.xy['x'] = sample_xy[q.label]['x'];
+            q.xy['y'] = samples_top + (samples_height * q.path_length/max_path_length);
         }
         else
         {
             var pl = q.child.xy;
             var pr = q.child.GetRightMostSibling().xy;
-            
             q.xy['x'] = pl['x'] + (pr['x'] - pl['x']) / 2;
-            q.xy['y'] = sample_y - (q.depth * 100);
+            q.xy['y'] = samples_top + (samples_height * q.path_length/max_path_length);
         }
         q=n.Next();
     }
@@ -664,10 +716,9 @@ function drawSamplesTree(settings, sample_xy)
     var n = new NodeIterator(t.root);
     var q = n.Begin();
 
+    var _lines = [];
     while (q != null)
     {
-        var _lines = [];
-
         if (q.IsLeaf())
         {
             var p0 = q.xy
@@ -706,20 +757,19 @@ function drawSamplesTree(settings, sample_xy)
 
             _lines.push(drawLine('samples_tree', q, p0, p1, true));
         }
-
-        _lines.forEach(function(_line) {
-            _line.setAttribute('id', 'samples_' + _line.getAttribute('id'));
-            var new_line = drawLine('samples_tree', {'id': 0}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0});
-            new_line.setAttribute('id', _line.getAttribute('id') + '_clone');
-            new_line.setAttribute('d', _line.getAttribute('d'));
-            new_line.classList.add('clone');
-            new_line.style['stroke-width'] = '20px';
-            new_line.style['stroke-opacity'] = '0';
-            new_line.setAttribute('pointer-events', 'all');
-        });
-
         q=n.Next();
     }
+
+    _lines.forEach(function(_line) {
+        _line.setAttribute('id', 'samples_' + _line.getAttribute('id'));
+        var new_line = drawLine('samples_tree', {'id': 0}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0});
+        new_line.setAttribute('id', _line.getAttribute('id') + '_clone');
+        new_line.setAttribute('d', _line.getAttribute('d'));
+        new_line.classList.add('clone');
+        new_line.style['stroke-width'] = '20px';
+        new_line.style['stroke-opacity'] = '0';
+        new_line.setAttribute('pointer-events', 'all');
+    });
 }
 
 function drawGradientBackground(start)
