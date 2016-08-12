@@ -31,10 +31,26 @@ def main(args):
     output_file_path = args.output_file if args.output_file else 'search_results.txt'
     filesnpaths.is_output_file_writable(output_file_path)
 
-    if args.gene_caller_ids:
-        gene_caller_ids = [i.strip() for i in args.gene_caller_ids.split(args.delimiter)]
+    gene_caller_ids_is_a_file = False
+    try:
+        filesnpaths.is_file_exists(args.gene_caller_ids)
+        gene_caller_ids_is_a_file = True
+    except:
+        pass
+
+    if gene_caller_ids_is_a_file:
+        try:
+            gene_caller_ids = [int(l.strip()) for l in open(args.gene_caller_ids).readlines()]
+        except:
+            raise ConfigError, "The gene caller ids parameter (%s) you used matched a file name in this directory\
+                                however, anvi'o couldn't make much sense of it :/ Anvi'o certainly hopes this\
+                                error makes some sense to you." % args.gene_caller_ids
+            sys.exit()
     else:
-        gene_caller_ids = []
+        if args.gene_caller_ids:
+            gene_caller_ids = [i.strip() for i in args.gene_caller_ids.split(args.delimiter)]
+        else:
+            gene_caller_ids = []
 
     c.gen_FASTA_file_of_sequences_for_gene_caller_ids(gene_caller_ids, args.output_file, args.wrap)
 
