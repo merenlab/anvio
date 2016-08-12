@@ -48,7 +48,7 @@ def main(args):
             sys.exit()
     else:
         if args.gene_caller_ids:
-            gene_caller_ids = [i.strip() for i in args.gene_caller_ids.split(args.delimiter)]
+            gene_caller_ids = [i.strip().split('\t')[0] for i in args.gene_caller_ids.split(args.delimiter)]
         else:
             gene_caller_ids = []
 
