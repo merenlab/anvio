@@ -36,7 +36,8 @@ def main(args):
     profile_db_path = A('profile_db')
     contigs_db_path = A('contigs_db')
     list_collections = A('list_collections')
-    collection_name = A('collection_name')
+    collection_name_to_read = A('collection_to_read')
+    collection_name_to_write = A('collection_to_write')
     prefix = A('prefix')
     report_file_path = A('report_file')
     call_MAGs = A('call_MAGs')
@@ -57,7 +58,7 @@ def main(args):
 
     if not prefix:
         raise ConfigError, "Anvi'o is having hard time believing that you called this function without\
-                            a prefix to rename bins in collection '%s'." % collection_name
+                            a prefix to rename bins in the collection '%s'." % collection_name_to_read
 
     utils.is_this_name_OK_for_database('prefix', prefix)
 
@@ -68,11 +69,25 @@ def main(args):
 
     filesnpaths.is_output_file_writable(report_file_path)
 
-    if not collection_name:
-        raise ConfigError, "You must provide a collection name."
+    if collection_name_to_read == collection_name_to_write:
+        raise ConfigError, "Well :( Collection name to read from can't be identical to the collection name\
+                            you want to use to store updated bin names. You know. It kinda defeats the purpose."
 
-    if  collection_name not in collections.collections_dict:
-        raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name
+    if not collection_name_to_read:
+        raise ConfigError, "You must provide a collection name to read from."
+
+    if not collection_name_to_write:
+        raise ConfigError, "You must provide a new collection name to write updated bin names."
+
+    utils.is_this_name_OK_for_database('collection name two write', collection_name_to_write)
+
+    if  collection_name_to_read not in collections.collections_dict:
+        raise ConfigError, "%s is not a valid collection name, because it doesn't exist :(. See a\
+                            list of available ones with '--list-collections' flag" % collection_name_to_read
+
+    if  collection_name_to_write in collections.collections_dict:
+        raise ConfigError, "The new collection name %s is already in the database. You must choose a new\
+                            collection name." % collection_name_to_write
 
     completeness = Completeness(contigs_db_path)
 
@@ -90,8 +105,8 @@ def main(args):
 
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
 
-    collection_dict = collections.get_collection_dict(collection_name)
-    bins_info_dict = collections.get_bins_info_dict(collection_name)
+    collection_dict = collections.get_collection_dict(collection_name_to_read)
+    bins_info_dict = collections.get_bins_info_dict(collection_name_to_read)
 
     MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
@@ -139,8 +154,9 @@ def main(args):
     # if this is not a dry run, update tables with new bin names.
     if not dry_run:
         collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
-        collections_table.append(collection_name, collection_dict, bins_info_dict)
-        run.info('Rename', 'Renaming is done for %d bins in collection "%s".' % (len(collection_dict), collection_name))
+        collections_table.append(collection_name_to_write, collection_dict, bins_info_dict)
+        run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
+                            name "%s".' % (len(collection_dict), collection_name_to_read, collection_name_to_write))
     else:
         run.warning('This was a dry run, which means nothing is updated in the profile database.\
                      Please take a look at the report filen and see whether things worked out the\
@@ -160,7 +176,11 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('MAG OPTIONS', "If you want to call some bins 'MAGs' because you are so cool")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupA.add_argument('--collection-to-read', default = None,
+                  help = "Collection name to read from. Anvi'o will not overwrite an existing collection, instead,\
+                          it will create a copy of your collection with new bin names.")
+    groupA.add_argument('--collection-to-write', default = None,
+                  help = "The new collection name. Give it a nice, fancy name.")
     groupB.add_argument('--prefix', default = None,
                   help = "Prefix for the bin names. Must be a single word, composed\
                           of digits and numbers. The use of the underscore character is OK,\
