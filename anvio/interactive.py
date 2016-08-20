@@ -144,6 +144,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if not self.state_autoload and 'default' in self.states_table.states:
             self.state_autoload = 'default'
 
+        if not self.collection_autoload and 'default' in self.collections.collections_dict:
+            self.collection_autoload = 'default'
+
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
                 raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
