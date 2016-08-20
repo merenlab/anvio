@@ -2099,9 +2099,15 @@ class TablesForCollections(Table):
         self.set_next_available_id(t.collections_splits_table_name)
 
 
+    def delete(self, collection_name):
+        utils.is_this_name_OK_for_database('collection name', collection_name)
+
+        # remove any pre-existing information for 'collection_name'
+        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
+
+
     def append(self, collection_name, collection_dict, bins_info_dict=None):
-        if not len(collection_name):
-            raise ConfigError, 'Collection name cannot be empty.'
+        utils.is_this_name_OK_for_database('collection name', collection_name)
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
@@ -2110,7 +2116,7 @@ class TablesForCollections(Table):
                                     entry in the bins informaiton dict. There is something wrong with your input :/'
 
         # remove any pre-existing information for 'collection_name'
-        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
+        self.delete(collection_name)
 
         num_splits_in_collection_dict = sum([len(splits) for splits in collection_dict.values()])
         splits_in_collection_dict = set(list(chain.from_iterable(collection_dict.values())))
