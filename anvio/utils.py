@@ -732,6 +732,9 @@ def check_sample_id(sample_id):
 
 
 def is_this_name_OK_for_database(variable_name, content, allowed_chars=constants.allowed_chars.replace('.', '')):
+    if not content:
+        raise ConfigError, "But the '%s' is empty? Come on :(" % variable_name
+
     if content[0] in constants.digits:
         raise ConfigError, "Sorry, '%s' can't start with a digit. Long story. Please specify a sample name\
                             that starts with an ASCII letter." % variable_name
