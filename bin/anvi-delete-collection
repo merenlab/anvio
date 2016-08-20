@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import copy
+import numpy
+import operator
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
+
+from anvio.completeness import Completeness
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def main(args):
+    A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+    profile_db_path = A('profile_db')
+    list_collections = A('list_collections')
+    collection_name = A('collection_name')
+
+    collections = ccollections.Collections()
+    collections.populate_collections_dict(profile_db_path, anvio.__profile__version__)
+
+    if list_collections:
+        collections.list_collections()
+        sys.exit()
+
+    if not collection_name:
+        raise ConfigError, "So you are asking anvi'o to delete a collection from the profile database\
+                            without actually providing a collection name. Very cute. You are free to\
+                            go ahead and try again."
+
+    if collection_name not in collections.collections_dict:
+        raise ConfigError, "The collection name '%s' is not in this database :/"
+
+    collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
+    collections_table.delete(collection_name)
+    run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Remove a collection from a given profile database.')
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
