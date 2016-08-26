@@ -2,18 +2,12 @@
 # -*- coding: utf-8
 
 import sys
-import copy
-import numpy
-import operator
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
-from anvio.completeness import Completeness
 from anvio.errors import ConfigError, FilesNPathsError
 
 
