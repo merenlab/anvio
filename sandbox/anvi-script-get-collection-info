@@ -64,8 +64,8 @@ def main(args):
         raise ConfigError, "No HMM source ... You shouldn't never seen this error :("
 
     if not args.hmm_source in completeness.sources:
-        raise ConfigError, "It seems '%s' is not an HMM source that existst in your database :/ You can see what is available\
-                            using the flag `--list-hmm-sources`."
+        raise ConfigError, "It seems '%s' is not an HMM source that exists in your database :/ You can see what is available\
+                            using the flag `--list-hmm-sources`." % args.hmm_source
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 
