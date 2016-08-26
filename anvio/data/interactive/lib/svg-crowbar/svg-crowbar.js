@@ -1,4 +1,10 @@
-function svgCrowbar() {
+function svgCrowbar(options) {
+  var defaults = {
+    'include-styles': false,
+  }
+
+  var options = $.extend(defaults, options);
+
   var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
 
   window.URL = (window.URL || window.webkitURL);
@@ -40,7 +46,10 @@ function svgCrowbar() {
     });
 
     documents.forEach(function(doc) {
-      var styles = getStyles(doc);
+      var styles = "";
+      if (options['include-styles']) {
+        styles = getStyles(doc);
+      }
       var newSources = getSources(doc, styles);
       // because of prototype on NYT pages
       for (var i = 0; i < newSources.length; i++) {
