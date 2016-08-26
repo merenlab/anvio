@@ -143,17 +143,22 @@ INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FA
 anvi-get-short-reads-from-bam -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_2 -o $output_dir/short_reads_for_Bin_2.fasta $output_dir/*bam
 
 INFO "Rename bins in collection 'cmdline_concoct'"
-anvi-rename-bins -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db --prefix 'PSAMPLES' -C cmdline_concoct --report-file $output_dir/renaming-report.txt
+anvi-rename-bins -c $output_dir/CONTIGS.db \
+                 -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                 --prefix 'PSAMPLES' \
+                 --collection-to-read "cmdline_concoct" \
+                 --collection-to-write "cmdline_concoct_RENAMED" \
+                 --report-file $output_dir/renaming-report.txt
 
 echo
 column -t $output_dir/renaming-report.txt
 echo
 
 INFO "Summarizing CONCOCT results"
-anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'cmdline_concoct'
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'cmdline_concoct_RENAMED'
 
 INFO "Generate a variabilty profile for PSAMPLES_Bin_00001 using a collection id"
-anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode
+anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode
 
 INFO "Generate a variabilty profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
