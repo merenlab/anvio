@@ -44,7 +44,7 @@ def main(args):
                             go ahead and try again."
 
     if collection_name not in collections.collections_dict:
-        raise ConfigError, "The collection name '%s' is not in this database :/"
+        raise ConfigError, "The collection name '%s' is not in this database :/" % collection_name
 
     collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
     collections_table.delete(collection_name)
