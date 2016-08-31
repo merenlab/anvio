@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio.db as db
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal 
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+current_version = '6'
+next_version    = '7'
+
+def update_contigs_db(contigs_db_path, just_do_it = False):
+    if contigs_db_path is None:
+        raise ConfigError, "No database path is given."
+
+    # make sure someone is not being funny
+    dbops.is_contigs_db(contigs_db_path)
+
+    # make sure the version is 2
+    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    if str(contigs_db.get_version()) != current_version:
+        raise ConfigError, "Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version
+
+    if not just_do_it:
+        try:
+            run.warning("This script will try to upgrade your contigs database from v%s to v%s. It happens to be that this\
+                         upgrade will in fact remove every HMM hits from your database, and you will need to re-run your\
+                         `anvi-run-hmms` program on your contigs database to get them back :( We are very sorry for the\
+                         inconvenience, but this change will make anvi'o more suitable for certain operations going\
+                         forward. If you are OK with this, just press ENTER to continue. If you want to cancel the\
+                         upgrade, press CTRL+C now. If you want to avoid this message the next time, use '--just-do-it'\
+                         flag." % (current_version, next_version))
+            raw_input("Press ENTER to continue...\n")
+        except:
+            print
+            sys.exit()
+
+    progress.new("Trying to upgrade the contigs database")
+    progress.update('...')
+
+    # drop the old tables:
+    try:
+        contigs_db._exec('''DROP TABLE %s''' % (t.hmm_hits_info_table_name))
+        contigs_db._exec('''DROP TABLE %s''' % (t.hmm_hits_table_name))
+        contigs_db._exec('''DROP TABLE %s''' % (t.hmm_hits_splits_table_name))
+    except:
+        pass
+    contigs_db.commit()
+
+    # create new empty ones
+    contigs_db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
+    contigs_db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
+    contigs_db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
+
+    # set the version
+    contigs_db.remove_meta_key_value_pair('version')
+    contigs_db.set_version(next_version)
+
+    # bye
+    contigs_db.disconnect()
+
+    # bye
+    progress.end()
+    run.info_single("The contigs database successfully upgraded from version %s to %s!" % (current_version, next_version))
+    run.warning("You no longer have any HMM hits in this contigs database. Don't forget to run `anvi-run-hmms` on it!")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    args = parser.parse_args()
+
+    try:
+        update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
