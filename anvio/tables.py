@@ -12,7 +12,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "6"
+contigs_db_version = "7"
 profile_db_version = "16"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
@@ -78,8 +78,8 @@ genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 # the followitn three tables keep hmm hits. they require the gene calls to be made.
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
-hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'genes']
-hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    , 'text' ]      #           This one here is the id that apperas in gene_calls table
+hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apperas in gene_calls table
                                                                                          #         /
 hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
 hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
