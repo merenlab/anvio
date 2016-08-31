@@ -25,4 +25,4 @@ if len(sources):
         run.info('HMM profiles',
                  '%d source%s been loaded: %s' % (len(sources),
                                                   's have' if len(sources) > 1 else ' has',
-                                                  ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes'])) for s in sources])))
+                                                  ', '.join(['%s (%d genes, domain: %s)' % (s, len(sources[s]['genes']), sources[s]['domain']) for s in sources])))
