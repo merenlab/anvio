@@ -1,1 +1,1 @@
-singlecopy
+singlecopy:bacteria
