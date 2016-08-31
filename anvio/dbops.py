@@ -1986,6 +1986,8 @@ class TablesForHMMHits(Table):
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
             hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      kind_of_search,
+                                                      domain,
                                                       all_genes_searched_against,
                                                       hmm_model,
                                                       reference)
