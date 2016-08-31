@@ -71,11 +71,13 @@ class Completeness:
 
         self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table])
 
-
         # we're done with the db
         contigs_db.disconnect()
 
         self.sources = info_table.keys()
+        self.domains = set([info_table[source]['domain'] for source in self.sources])
+        self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
+        self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
         if source:
             if source not in self.sources:
