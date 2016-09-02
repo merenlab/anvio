@@ -733,6 +733,9 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
         seq = ''.join([e['sequence'] for e in c.contig_sequences.values()])
         candidate_gene_caller_ids = c.genes_in_contigs_dict.keys()
 
+    info_dict['gc_content'] = sequence.Composition(seq).GC_content
+    info_dict['total_length'] = len(seq)
+
     gene_caller_ids = set([])
     excluded_gene_ids = set([])
     for gene_caller_id in candidate_gene_caller_ids:
@@ -747,9 +750,6 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in gene_caller_ids])
     info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
     info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
-
-    info_dict['gc_content'] = sequence.Composition(seq).GC_content
-    info_dict['total_length'] = len(seq)
 
     # get completeness / contamination estimates
     if split_names:
