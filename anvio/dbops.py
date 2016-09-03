@@ -885,7 +885,6 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
 #
 ####################################################################################################
 
-
 class ProfileDatabase:
     """To create an empty profile database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True):
@@ -921,14 +920,7 @@ class ProfileDatabase:
 
 
     def create(self, meta_values={}):
-        if os.path.exists(self.db_path):
-            raise ConfigError, "anvio will not overwrite an existing profile database. Please choose a different name\
-                                or remove the existing database ('%s') first." % (self.db_path)
-
-        if not self.db_path.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
-                                for imposing their views on how local databases should be named, and are humbled by your\
-                                cooperation."
+        is_db_ok_to_create(self.db_path, 'profile')
 
         self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
 
@@ -1008,6 +1000,8 @@ class ContigsDatabase:
         skip_mindful_splitting = A('skip_mindful_splitting')
         debug = A('debug')
 
+        is_db_ok_to_create(self.db_path, 'contigs')
+
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
 
@@ -1034,10 +1028,6 @@ class ContigsDatabase:
         if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
             raise ConfigError, "Every contig in the input FASTA file must have a unique ID. You know..."
 
-        if os.path.exists(self.db_path):
-            raise ConfigError, "Anvi'o will not overwrite an existing contigs database. Please choose a different name\
-                                or remove the existing database ('%s') first." % (self.db_path)
-
         if not split_length:
             raise ConfigError, "Creating a new contigs database requires split length information to be\
                                 provided. But the ContigsDatabase class was called to create one without this\
@@ -1045,12 +1035,6 @@ class ContigsDatabase:
 
         if not os.path.exists(contigs_fasta):
             raise ConfigError, "Creating a new contigs database requires a FASTA file with contigs to be provided."
-
-
-        if not self.db_path.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
-                                for imposing their views on how local databases should be named, and are humbled by your\
-                                cooperation."
 
         try:
             split_length = int(split_length)
@@ -1345,17 +1329,10 @@ class SamplesInformationDatabase:
                                 database. Neither samples information, nor samples order file has been passed to\
                                 the class :("
 
-        if os.path.exists(self.db_path):
-            raise ConfigError, "Anvi'o will not overwrite an existing samples information database. Please choose a\
-                                different name or remove the existing database ('%s') first." % (self.db_path)
+        is_db_ok_to_create(self.db_path, 'samples')
 
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
         samples.populate_from_input_files(samples_information_path, samples_order_path)
-
-        if not self.db_path.lower().endswith('.db'):
-            raise ConfigError, "Please make sure your output file name has a '.db' extension. anvio developers apologize\
-                                for imposing their views on how local databases should be named, and are humbled by your\
-                                cooperation."
 
         self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
 
@@ -2601,6 +2578,17 @@ def is_samples_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'samples_information':
         raise ConfigError, "'%s' is not an anvi'o samples database." % db_path
+
+
+def is_db_ok_to_create(db_path, db_type):
+    if os.path.exists(db_path):
+        raise ConfigError, "Anvi'o will not overwrite an existing %s database. Please choose a different name\
+                            or remove the existing database ('%s') first." % (db_type, db_path)
+
+    if not db_path.lower().endswith('.db'):
+        raise ConfigError, "Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
+                            apologize for imposing their views on how anvi'o databases should be named, and are\
+                            humbled by your cooperation." % db_type
 
 
 def get_db_type(db_path):
