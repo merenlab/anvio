@@ -951,7 +951,7 @@ class ProfileDatabase:
 
         self.disconnect()
 
-        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Profile database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):
