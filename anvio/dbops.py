@@ -2616,6 +2616,12 @@ def is_profile_db(db_path):
         raise ConfigError, "'%s' is not an anvi'o profile database." % db_path
 
 
+def is_pan_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'pan':
+        raise ConfigError, "'%s' is not an anvi'o pan database." % db_path
+
+
 def is_samples_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'samples_information':
