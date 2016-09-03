@@ -499,7 +499,7 @@ class Pangenome:
                 try:
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
-                    raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
+                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
                                         additional genomes without cleaning the previous work directory. Sounds familiar?"
                 self.view_data[PC][genome_name] += 1
                 self.view_data_presence_absence[PC][genome_name] = 1
