@@ -958,6 +958,78 @@ class ProfileDatabase:
         self.db.disconnect()
 
 
+class PanDatabase:
+    """To create an empty pan database, and/or access to one."""
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+        if os.path.exists(self.db_path):
+            is_pan_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__pan__version__)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in ['num_genomes', 'min_percent_identity', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls']:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls']:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in ['min_percent_identity', 'maxbit', 'mcl_inflation']:
+                try:
+                    self.meta[key] = float(self.meta[key])
+                except:
+                    pass
+
+            self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
+            self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
+            self.genomes = self.internal_genomes + self.external_genomes
+
+            self.run.info('Pan database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+            self.run.info('Genomes', '%d found' % len(self.genomes), quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def create(self, meta_values={}):
+        is_db_ok_to_create(self.db_path, 'pan')
+
+        self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+
+        # creating empty default tables
+        self.db.create_table(t.pan_protein_clusters_table_name, t.pan_protein_clusters_table_structure, t.pan_protein_clusters_table_types)
+
+        self.db.set_meta_value('db_type', 'pan')
+
+        self.disconnect()
+
+        self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
