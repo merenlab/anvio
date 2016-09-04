@@ -14,9 +14,20 @@ __email__ = "a.murat.eren@gmail.com"
 
 contigs_db_version = "6"
 profile_db_version = "16"
+pan_db_version = "1"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
 users_db_version = "1"
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
+#
+####################################################################################################
+
+pan_protein_clusters_table_name        = 'protein_sequences'
+pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence']
+pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,    'str'  ]
 
 
 ####################################################################################################
