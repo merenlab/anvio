@@ -32,6 +32,12 @@ D = {
              'required': True,
              'help': "Anvi'o profile database"}
                 ),
+    'genomes-storage': (
+            ['-g', '--genomes-storage'],
+            {'metavar': "GENOMES_STORAGE",
+             'required': False,
+             'help': "Anvi'o genomes storage file"}
+                ),
     'serialized-profile': (
             ['-d', '--serialized-profile'],
             {'metavar': "PROFILE",
