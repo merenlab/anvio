@@ -1008,14 +1008,19 @@ class PanDatabase:
 
         self.db.set_meta_value('creation_date', time.time())
 
+        # know thyself
+        pan_db_hash = '%08x' % random.randrange(16**8)
+        self.db.set_meta_value('pan_db_hash', pan_db_hash)
+        self.db.set_meta_value('db_type', 'pan')
+
         # creating empty default tables
         self.db.create_table(t.pan_protein_clusters_table_name, t.pan_protein_clusters_table_structure, t.pan_protein_clusters_table_types)
-
-        self.db.set_meta_value('db_type', 'pan')
 
         self.disconnect()
 
         self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+
+        return pan_db_hash
 
 
     def disconnect(self):
