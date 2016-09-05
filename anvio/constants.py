@@ -34,6 +34,12 @@ max_num_splits_for_hierarchical_clustering = 20000
 distance_metric_default = 'euclidean'
 linkage_method_default = 'average'
 
+# this is to have a common language across multiple modules when genomes (whether they are MAGs,
+# SAGs, or isolate genomes):
+essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_complete', 'percent_redundancy',
+                         'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
+
+
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
