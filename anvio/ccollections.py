@@ -215,9 +215,14 @@ class GetSplitNamesInBins:
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
 
+        if not self.profile_db_path:
+            raise ConfigError, "You didn't provide a profile database path. When you clearly should have :/\
+                                This is GetSplitNamesInBins speaking. Has her eyes on you."
+
         if self.bin_ids_file_path and self.bin_id:
             raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
                                 you would like to focus. Not both :/'
+
         if (not self.bin_ids_file_path) and (not self.bin_id):
             raise ConfigError, "You must either use a file to list all the bin ids (-B) you would like to\
                                 focus on, or declare a single bin id (-b) from your collection. You have\
@@ -240,7 +245,7 @@ class GetSplitNamesInBins:
 
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError, 'The collection id "%s" does not seem to be in the profile database. These are the\
-                                collections that are available through this profile database: %s.'\
+                                collections that are available through this profile database: "%s".'\
                                                     % (self.collection_name, ', '.join(self.collections.collections_dict))
 
         self.collection_dict = self.collections.get_collection_dict(self.collection_name)
@@ -250,9 +255,8 @@ class GetSplitNamesInBins:
         bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
         if len(bins_that_does_not_exist_in_collection):
             raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
-                                "%s". Here is a list of bins that are missing: %s'\
+                                "%s". Here is a list of bins that are missing: "%s"'\
                                         % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection))
-
 
 
     def get_split_names_only(self):
