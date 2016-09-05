@@ -7,7 +7,6 @@
 """
 
 import os
-import sys
 import copy
 import hashlib
 
@@ -16,7 +15,6 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -42,7 +40,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class GenomeStorage:
+class GenomeStorage(object):
     def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -101,6 +99,7 @@ class GenomeStorage:
                     path = self.genomes[genome_name][db_path_var]
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
+
                 # while we are going through all genomes and reconstructing self.genomes for the first time,
                 # let's add the 'name' attribute in it as well.'
                 self.genomes[genome_name]['name'] = genome_name
@@ -113,13 +112,21 @@ class GenomeStorage:
             self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
 
 
-    def init_genomes_data_storage(self, storage_path):
+    def init_genomes_data_storage(self):
         """Initializes an existing genomes storage by reading everything about genomes of interest"""
 
-        filesnpaths.is_file_exists(storage_path)
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.storage_path = A('genomes_storage')
 
-        print 'init!'
-        sys.exit()
+        filesnpaths.is_proper_genomes_storage_file(self.storage_path)
+
+        self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, db_hash = None, ignore_hash = True)
+
+        self.genomes = self.genomes_storage.get_genomes_dict()
+        self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
+        self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
+
+        self.run.info('Genomes storage', 'Initialized with %d genomes (storage hash: %s)' % (self.genomes_storage.num_genomes, self.genomes_storage.unique_hash))
 
 
     def create_genomes_data_storage(self):
@@ -134,10 +141,15 @@ class GenomeStorage:
         self.init_internal_genomes()
         self.init_external_genomes()
 
+        # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
+        # split is added or removed to any of these genomes will change this signature. since we will tie this information
+        # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
+        # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
         storage_hash = hashlib.sha224('_'.join(self.genomes[genome_name]['genome_hash'] for genome_name in self.genomes)).hexdigest()[0:8]
+
         self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, storage_hash, create_new=True)
 
-        # some silly stuff for fun
+        # some silly stuff for later fun
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
 
@@ -178,7 +190,7 @@ class GenomeStorage:
 
             contigs_db.disconnect()
 
-        self.run.info('HD5 File is ready', '%s (hash: %s)' % (self.storage_path, storage_hash))
+        self.run.info('The new genomes storage', '%s (signature: %s)' % (self.storage_path, storage_hash))
         self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(self.genomes)), pp(len(self.internal_genome_names)), pp(len(self.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
@@ -190,6 +202,7 @@ class GenomeStorage:
         self.progress.new('Initializing external genomes')
         for genome_name in self.external_genome_names:
             c = self.genomes[genome_name]
+            c['external_genome'] = True
 
             self.progress.update('working on %s' % (genome_name))
 
@@ -230,10 +243,10 @@ class GenomeStorage:
             for genome_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]:
                 self.progress.update('working on %s' % (genome_name))
                 c = self.genomes[genome_name]
+                c['external_genome'] = False
 
                 dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
-                c['genome_hash'] = self.get_genome_hash_for_internal_genome(c)
                 self.hash_to_genome_name[c['genome_hash']] = genome_name
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
@@ -292,8 +305,10 @@ class GenomeStorage:
         return split_names_of_interest
 
 
-class Pangenome:
+class Pangenome(GenomeStorage):
     def __init__(self, args=None, run=run, progress=progress):
+        GenomeStorage.__init__(self, args, run, progress)
+
         self.args = args
         self.run = run
         self.progress = progress
@@ -312,8 +327,6 @@ class Pangenome:
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
 
         self.log_file_path = None
-
-        self.genomes = {}
 
         # to be filled during init:
         self.protein_sequences_dict = {}
@@ -384,85 +397,11 @@ class Pangenome:
                                 pretty cute, too." % self.min_percent_identity
 
 
-        if len([c for c in self.genomes.values() if 'contigs_db_path' not in c]):
+        if len([c for c in self.genomes.values() if 'genome_hash' not in c]):
             raise ConfigError, "self.genomes does not seem to be a properly formatted dictionary for\
                                 the anvi'o class Pangenome."
 
-        for genome_name in self.genomes:
-            if not os.path.exists(self.genomes[genome_name]['contigs_db_path']):
-                raise ConfigError, "The contigs database for genome %s is not where the input data suggested where\
-                                    it would be.." % genome_name
-            if genome_name in self.internal_genome_names and not os.path.exists(self.genomes[genome_name]['profile_db_path']):
-                raise ConfigError, "The profile database for genome %s is not where the input data suggested where\
-                                    it would be.." % genome_name
-
         self.pan_db_path = self.get_output_file_path('pan.db')
-
-
-    def init_genomes(self):
-        self.init_genomes_data_storage()
-        self.init_external_genomes()
-        self.init_internal_genomes()
-
-
-    def gen_protein_sequences_dict(self):
-        self.run.info('Exclude partial gene calls', self.exclude_partial_gene_calls, nl_after=1)
-
-        total_num_protein_sequences = 0
-        total_num_excluded_protein_sequences = 0
-
-        for genome_name in self.genomes:
-            self.progress.new('Reading protein seqeunces into memory')
-            self.progress.update('...')
-            g = self.genomes[genome_name]
-
-            self.protein_sequences_dict[genome_name] = {}
-
-            self.progress.update('Working on %s ...' % genome_name)
-            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
-            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
-
-            total_num_excluded_protein_sequences += len(g['excluded_gene_ids'])
-
-            for gene_caller_id in g['gene_caller_ids']:
-                self.protein_sequences_dict[genome_name][gene_caller_id] = protein_sequences_dict[gene_caller_id]['sequence']
-                total_num_protein_sequences += 1
-
-            self.progress.end()
-
-            self.run.info_single('%s is initialized with %s genes (%s were excluded)'
-                          % (genome_name, pp(len(g['gene_caller_ids'])), pp(len(g['excluded_gene_ids']))), cut_after=120)
-
-            contigs_db.disconnect()
-
-        self.run.info('Num protein sequences', '%s' % pp(total_num_protein_sequences), nl_before=1)
-        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_protein_sequences))
-
-
-    def gen_combined_proteins_unique_FASTA(self):
-        self.progress.new('Storing combined protein sequences')
-        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa')
-        output_file = open(combined_proteins_FASTA_path, 'w')
-
-        for genome_name in self.genomes:
-            g = self.genomes[genome_name]
-            self.progress.update('Working on %s ...' % genome_name)
-
-            for gene_caller_id in g['gene_caller_ids']:
-                output_file.write('>%s_%d\n' % (g['genome_hash'], gene_caller_id))
-                output_file.write('%s\n' % self.protein_sequences_dict[genome_name][gene_caller_id])
-
-        output_file.close()
-        self.progress.end()
-
-        # unique the FASTA file
-        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(combined_proteins_FASTA_path, store_frequencies_in_deflines=False)
-
-        self.run.info('Num unique protein sequences', '%s' % pp(len(unique_proteins_names_dict)))
-        self.run.info('Combined protein sequences FASTA', combined_proteins_FASTA_path)
-        self.run.info('Unique protein sequences FASTA', unique_proteins_FASTA_path)
-
-        return unique_proteins_FASTA_path, unique_proteins_names_dict
 
 
     def run_diamond(self, unique_proteins_fasta_path, unique_proteins_names_dict):
@@ -803,19 +742,19 @@ class Pangenome:
 
 
     def process(self):
+        # initialize genomes. this function will be handled by the superclass, and
+        # populate `self.genomes` very conveniently.
+        self.init_genomes_data_storage()
+
+        # check sanity
         self.sanity_check()
 
         # gen pan_db
         self.generate_pan_db()
 
-        # initialize genomes
-        self.init_genomes()
-
         # get all protein sequences:
-        self.gen_protein_sequences_dict()
-
-        # first we will export all proteins
-        unique_proteins_FASTA_path, unique_proteins_names_dict = self.gen_combined_proteins_unique_FASTA()
+        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa')
+        unique_proteins_FASTA_path, unique_proteins_names_dict = self.genomes_storage.gen_combined_protein_sequences_FASTA(combined_proteins_FASTA_path, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
 
         # run search
         blastall_results = self.run_search(unique_proteins_FASTA_path, unique_proteins_names_dict)
