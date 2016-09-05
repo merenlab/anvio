@@ -57,7 +57,7 @@ def is_proper_genomes_storage_file(storage_path):
 
     fp = h5py.File(storage_path, 'r')
 
-    if '/data/genomes' not in fp or '/info/genomes' in fp:
+    if '/data/genomes' not in fp or '/info/genomes' not in fp:
         raise FilesNPathsError, "The file '%s' does not seem to be a proper genomes storage file. If you are not just\
                                  sending random HDF5 files as parameters to mock anvi'o and you are certain that this\
                                  is a geniune genomes storage file, then something may have gone wrong during the\
