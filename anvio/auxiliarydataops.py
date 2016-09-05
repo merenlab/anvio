@@ -6,7 +6,9 @@ import h5py
 import numpy as np
 
 import anvio
+import anvio.tables as t
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import HDF5Error
@@ -134,3 +136,81 @@ class AuxiliaryDataForNtPositions(HDF5_IO):
             return []
 
         return self.get_integer_list('/data/nt_position_info/%s' % contig_name)
+
+
+class GenomesDataStorage(HDF5_IO):
+    """A class to handle HDF5 operations to store and access protein sequnces in pan genome analyses.
+    
+       An example:
+
+           >>> x = a.GenomesDataStorage('test.h5', 'unique_hash', create_new=True)
+           >>> x.add_gene_call_data('genome_name', int_gene_caller_id,
+                                    sequence = 'IMLQWIVIIYFLVINLVLFSMMGYDKKQAKRGNWRIPERRLLTIGLVGGGLGGLMGQKKFHHKTQKPVFALCYSIGVIAMISCIYLTFK',
+                                    partial = 0,
+                                    functions = [('PFAM', 'PFAM FUNC_1'), ('TIGRFAM', 'sik')],
+                                    taxonomy_dict = {'t_phylum': 'phy', 't_class': 'clas', 't_order': 'ord', 't_family': None, 't_genus': 'genus', 't_species': 'sp'})
+           >>> x.close()
+           >>> x = a.GenomesDataStorage('test.h5', 'unique_hash')
+           >>> x.get_gene_sequence('genome_name', int_gene_caller_id)
+           IMLQWIVIIYFLVINLVLFSMMGYDKKQAKRGNWRIPERRLLTIGLVGGGLGGLMGQKKFHHKTQKPVFALCYSIGVIAMISCIYLTFK
+    """
+
+    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.essential_genome_info = constants.essential_genome_info + ['genome_hash']
+
+
+    def is_known_genome(self, genome_name, throw_exception=True):
+        if not self.path_exists('/info/genomes/%s' % genome_name):
+            if throw_exception:
+                raise HDF5Error, 'The database at "%s" does not know anything about "%s" :(' % (self.file_path, genome_name)
+            else:
+                return False
+
+
+    def is_known_gene_call(self, genome_name, gene_caller_id):
+        if not self.path_exists('/data/genomes/%s/%d' % (genome_name, gene_caller_id)):
+            raise HDF5Error, 'The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id)
+
+
+    def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
+        """Add a gene call in a genome into the database"""
+        self.fp['/data/genomes/%s/%d/sequence' % (genome_name, int(gene_caller_id))] = sequence
+
+        if taxonomy_dict:
+            for t_level in t.taxon_names_table_structure[1:]:
+                self.fp['/data/genomes/%s/%d/taxonomy/%s' % (genome_name, int(gene_caller_id), t_level)] = taxonomy_dict[t_level] or ''
+
+        for source, function in functions:
+            self.fp['/data/genomes/%s/%d/functions/%s' % (genome_name, gene_caller_id, source)] = function
+
+
+    def is_partial_gene_call(self, genome_name, gene_caller_id):
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        d = self.fp['data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)]
+
+        return d.value
+
+
+    def get_gene_sequence(self, genome_name, gene_caller_id):
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        d = self.fp['data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)]
+
+        return d.value
+
+
+    def add_genome(self, genome_name, info_dict):
+        if self.is_known_genome(genome_name, throw_exception=False):
+            raise "Genome '%s' is already in this data storage :/" % genome_name
+
+        for key in self.essential_genome_info:
+            self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
