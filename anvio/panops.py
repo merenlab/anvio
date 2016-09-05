@@ -7,6 +7,7 @@
 """
 
 import os
+import sys
 import copy
 import hashlib
 
@@ -15,9 +16,11 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
@@ -87,6 +90,17 @@ class Pangenome:
                     path = self.genomes[genome_name][db_path_var]
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
+                # while we are going through all genomes and reconstructing self.genomes for the first time,
+                # let's add the 'name' attribute in it as well.'
+                self.genomes[genome_name]['name'] = genome_name
+
+        # add hashes for each genome in the self.genomes dict. this will allow us to see whether the HDF file already contains
+        # all the information we need.
+        for genome_name in self.external_genome_names:
+            self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
+        for genome_name in self.internal_genome_names:
+            self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
+
 
         # to be filled during init:
         self.hash_to_genome_name = {}
@@ -94,6 +108,23 @@ class Pangenome:
         self.view_data = {}
         self.view_data_presence_absence = {}
         self.additional_view_data = {}
+
+
+    def generate_pan_db(self):
+        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
+                       'external_genome_names': ','.join(self.external_genome_names),
+                       'num_genomes': len(self.genomes),
+                       'min_percent_identity': self.min_percent_identity,
+                       'pc_min_occurrence': self.PC_min_occurrence,
+                       'mcl_inflation': self.mcl_inflation,
+                       'use_ncbi_blast': self.use_ncbi_blast,
+                       'diamond_sensitive': self.sensitive,
+                       'maxbit': self.maxbit,
+                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls
+                      }
+
+        pan_db = dbops.PanDatabase(self.pan_db_path, quiet=False)
+        self.pan_db_hash = pan_db.create(meta_values)
 
 
     def get_output_file_path(self, file_name):
@@ -153,27 +184,88 @@ class Pangenome:
                 raise ConfigError, "The profile database for genome %s is not where the input data suggested where\
                                     it would be.." % genome_name
 
+        self.pan_db_path = self.get_output_file_path('pan.db')
+        self.pan_h5_path = self.get_output_file_path('genomes.h5')
+
+
+    def init_existing_genomes_storage(self):
+        """Initializes an existing genomes storage by reading everything about genomes of interest"""
+        sys.exit()
+
+    def create_new_genomes_storage(self):
+        """Creates an HDF5 file storing all genome related information for later access."""
+
+        pan_h5 = auxiliarydataops.GenomesDataStorage(self.pan_h5_path, self.pan_db_hash, create_new=True)
+        num_gene_calls_added_total = 0
+        num_partial_gene_calls_total = 0
+
+        # this will populate self.genomes with relevant data that can be learned about these genomes such as 'avg_gene_length',
+        # 'num_splits', 'num_contigs', 'num_genes', 'percent_redundancy', 'gene_caller_ids', 'total_length', 'partial_gene_calls',
+        # 'percent_complete', 'num_genes_per_kb', 'gc_content'.
+        self.init_internal_genomes()
+        self.init_external_genomes()
+
+        for genome_name in self.genomes:
+            self.progress.new('Initializing genomes')
+            self.progress.update('%s ...' % genome_name)
+            g = self.genomes[genome_name]
+
+            pan_h5.add_genome(genome_name, g)
+
+            num_gene_calls_added = 0
+            num_partial_gene_calls = 0
+
+            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+
+            for gene_caller_id in g['gene_caller_ids']:
+                partial_gene_call = gene_caller_id in g['partial_gene_calls']
+                pan_h5.add_gene_call_data(genome_name, gene_caller_id, sequence=protein_sequences_dict[gene_caller_id]['sequence'], partial=partial_gene_call)
+
+                num_gene_calls_added += 1
+                if partial_gene_call:
+                    num_partial_gene_calls += 1
+
+            self.progress.end()
+
+            self.run.info_single('%s is stored with %s genes (%s of which were partial)' % (genome_name, pp(num_gene_calls_added), pp(num_partial_gene_calls)), cut_after=120)
+            num_gene_calls_added_total += num_gene_calls_added
+            num_partial_gene_calls_total += num_partial_gene_calls
+
+            contigs_db.disconnect()
+
+        self.run.info('HD5 File is ready', '%s (hash: %s)' % (self.pan_db_path, self.pan_db_hash))
+        self.run.info('Total protein sequences added', '%s' % pp(num_gene_calls_added_total))
+        self.run.info('Partial protein sequences', '%s' % pp(num_partial_gene_calls_total))
+
+        pan_h5.close()
+
+
+    def init_genomes_data_storage(self):
+        if os.path.exists(self.pan_h5_path):
+            self.init_existing_genomes_storage()
+        else:
+            self.create_new_genomes_storage()
+            self.init_existing_genomes_storage()
+
 
     def init_external_genomes(self):
         self.progress.new('Initializing external genomes')
         for genome_name in self.external_genome_names:
             c = self.genomes[genome_name]
-            c['name'] = genome_name
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], exclude_partial_gene_calls=self.exclude_partial_gene_calls)
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'])
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
 
-            c['genome_entry_hash'] = c['contigs_db_hash']
-
-            self.hash_to_genome_name[c['genome_entry_hash']] = genome_name
+            self.hash_to_genome_name[c['genome_hash']] = genome_name
         self.progress.end()
 
         # if two contigs db has the same hash, we are kinda f'd:
-        if len(set([self.genomes[genome_name]['genome_entry_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
+        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
             raise ConfigError, 'Not all hash values are unique across all contig databases you provided. Something\
                                 very fishy is going on :/'
 
@@ -204,34 +296,21 @@ class Pangenome:
 
                 dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
-                # set name
-                c['name'] = genome_name
+                c['genome_hash'] = self.get_genome_hash_for_internal_genome(c)
+                self.hash_to_genome_name[c['genome_hash']] = genome_name
 
-                collection_dict = self.collections.get_collection_dict(c['collection_id'])
-                bins_info_dict = self.collections.get_bins_info_dict(c['collection_id'])
+                split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
-                if c['bin_id'] not in bins_info_dict:
-                    self.progress.end()
-                    raise ConfigError, "You betrayed us :( Genome %s does not appear to be a valid bin in collection %s in %s"\
-                                % (c['bin_id'], c['collection_id'], c['profile_db_path'])
-
-
-                split_names_of_interest = collection_dict[c['bin_id']]
-                if not len(split_names_of_interest):
-                    raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (c['bin_id'], c['collection_id'])
-
-
-                contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names=split_names_of_interest, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
-                for key in contigs_db_summary:
-                    c[key] = contigs_db_summary[key]
-
-                # set hash
-                c['genome_entry_hash'] = hashlib.sha224('_'.join([split_names_of_interest[0], split_names_of_interest[-1], c['contigs_db_hash']])).hexdigest()
-                self.hash_to_genome_name[c['genome_entry_hash']] = genome_name
+                # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
+                # which returns a partial summary from the contigs database focusing only those splits. a small workaround
+                # to be able to use the same funciton for bins in collections:
+                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names=split_names_of_interest)
+                for key in summary_from_contigs_db_summary:
+                    c[key] = summary_from_contigs_db_summary[key]
 
         self.progress.end()
 
-        if len(set([self.genomes[genome_name]['genome_entry_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
+        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
             raise ConfigError, "Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
                                 wrong with your workflow :/ Please let the developers know if you can't figure this one out"
 
@@ -244,7 +323,40 @@ class Pangenome:
         self.run.info('Internal genomes', '%d have been initialized.' % len(self.internal_genome_names))
 
 
+    def get_genome_hash_for_external_genome(self, entry):
+        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
+        genome_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
+
+        return genome_hash
+
+
+    def get_genome_hash_for_internal_genome(self, entry):
+        split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
+        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
+        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']])).hexdigest()[0:12]
+        contigs_db.disconnect()
+
+        return genome_hash
+
+
+    def get_split_names_of_interest_for_internal_genome(self, entry):
+        # get splits of interest:
+        class Args: pass
+        args = Args()
+        args.profile_db = entry['profile_db_path']
+        args.collection_name = entry['collection_id']
+        args.bin_id = entry['bin_id']
+        split_names_of_interest = list(ccollections.GetSplitNamesInBins(args).get_split_names_only())
+
+        if not len(split_names_of_interest):
+            raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (entry['bin_id'], entry['collection_id'])
+
+        return split_names_of_interest
+
+
     def init_genomes(self):
+        self.init_genomes_data_storage()
         self.init_external_genomes()
         self.init_internal_genomes()
 
@@ -293,7 +405,7 @@ class Pangenome:
             self.progress.update('Working on %s ...' % genome_name)
 
             for gene_caller_id in g['gene_caller_ids']:
-                output_file.write('>%s_%d\n' % (g['genome_entry_hash'], gene_caller_id))
+                output_file.write('>%s_%d\n' % (g['genome_hash'], gene_caller_id))
                 output_file.write('%s\n' % self.protein_sequences_dict[genome_name][gene_caller_id])
 
         output_file.close()
@@ -648,6 +760,9 @@ class Pangenome:
 
     def process(self):
         self.sanity_check()
+
+        # gen pan_db
+        self.generate_pan_db()
 
         # initialize genomes
         self.init_genomes()
