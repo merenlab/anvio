@@ -29,7 +29,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Create a genome storage from internal or external genomes for a pan genome analysis.")
 
-    groupC = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-genomes.h5'.")
+    groupC = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.h5'. This is primarily due to the fact\
+                                                  that there are other .h5 files used throughout anvi'o and it would be better to\
+                                                  distinguish this very special file from them.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     groupA = parser.add_argument_group('EXTERNAL GENOMES', "External genomes listed as anvi'o contigs databases. As in, you have one\
