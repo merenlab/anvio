@@ -63,6 +63,13 @@ def is_proper_genomes_storage_file(storage_path):
                                  is a geniune genomes storage file, then something may have gone wrong during the\
                                  process that attempted to create it :/" % (storage_path)
 
+    if len(fp['/info/genomes']) != len(fp['/data/genomes']):
+        raise FilesNPathsError, "The file '%s' has different number of genomes for data (%d) and information (%d) sections. This\
+                                 would have never ever happened if things had gone properly when you generated the file. With its\
+                                 current form, there is nothing anvi'o can do with this file :( Sorry about the cryptic and\
+                                 not-quite-helpful error message..." % (storage_path, len(fp['/data/genomes']), len(fp['/info/genomes']))
+
+
     return True
 
 
