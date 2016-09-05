@@ -194,7 +194,7 @@ class GenomesDataStorage(HDF5_IO):
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        d = self.fp['data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)]
+        d = self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)]
 
         return d.value
 
@@ -203,7 +203,7 @@ class GenomesDataStorage(HDF5_IO):
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        d = self.fp['data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)]
+        d = self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)]
 
         return d.value
 
