@@ -702,7 +702,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, exclude_partial_gene_calls=True):
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None):
     """Returns an info dict for a given contigs db"""
 
     class Args:
@@ -727,27 +727,22 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
         split_names = set(split_names)
         c.init_split_sequences()
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        candidate_gene_caller_ids = set([e['gene_callers_id'] for e in c.genes_in_splits.values() if e['split'] in split_names])
+        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in c.genes_in_splits.values() if e['split'] in split_names])
     else:
         c.init_contig_sequences()
         seq = ''.join([e['sequence'] for e in c.contig_sequences.values()])
-        candidate_gene_caller_ids = c.genes_in_contigs_dict.keys()
+        info_dict['gene_caller_ids'] = c.genes_in_contigs_dict.keys()
 
     info_dict['gc_content'] = sequence.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)
 
-    gene_caller_ids = set([])
-    excluded_gene_ids = set([])
-    for gene_caller_id in candidate_gene_caller_ids:
-        if c.genes_in_contigs_dict[gene_caller_id]['partial'] and exclude_partial_gene_calls:
-            excluded_gene_ids.add(gene_caller_id)
-        else:
-            gene_caller_ids.add(gene_caller_id)
+    info_dict['partial_gene_calls'] = set([])
+    for gene_caller_id in info_dict['gene_caller_ids']:
+        if c.genes_in_contigs_dict[gene_caller_id]['partial']:
+            info_dict['partial_gene_calls'].add(gene_caller_id)
 
-    info_dict['gene_caller_ids'] = gene_caller_ids
-    info_dict['excluded_gene_ids'] = excluded_gene_ids
-    info_dict['num_genes'] = len(gene_caller_ids)
-    info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in gene_caller_ids])
+    info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
+    info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in info_dict['gene_caller_ids']])
     info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
     info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
 
@@ -770,6 +765,16 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
 
         info_dict['AA_counts'] = AA_counts_dict['AA_counts']
         info_dict['total_AAs'] = AA_counts_dict['total_AAs']
+
+
+    missing_keys = [key for key in constants.essential_genome_info if key not in info_dict]
+    if len(missing_keys):
+        raise ConfigError, "We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
+                            produce a dictionary that meets the requirements defined in the constants module of anvi'o\
+                            for 'essential genome info'. But when I look at the resulting dictionary this funciton is\
+                            about to return, I can see it is missing some stuff :/ This is not a user error, but it needs\
+                            the attention of an anvi'o developer. Here are the keys that should have been in the results\
+                            but missing: '%s'" % (', '.join(missing_keys))
 
     return info_dict
 
