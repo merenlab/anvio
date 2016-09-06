@@ -29,7 +29,7 @@ pp = terminal.pretty_print
 
 
 class HDF5_IO(object):
-    def __init__(self, file_path, unique_hash, create_new = False, ignore_hash = False):
+    def __init__(self, file_path, unique_hash, create_new=False, ignore_hash=False):
         self.file_path = file_path
 
         if create_new:
@@ -42,14 +42,19 @@ class HDF5_IO(object):
 
             self.fp = h5py.File(self.file_path, 'w')
             self.fp.attrs['hash'] = unique_hash
-            self.fp.attrs['version'] = anvio.__hdf5__version__
+            self.fp.attrs['version'] = self.version
         else:
             filesnpaths.is_file_exists(self.file_path)
             self.fp = h5py.File(self.file_path, 'r')
 
-            if self.fp.attrs['version'] != anvio.__hdf5__version__:
-                raise HDF5Error, "The database at '%s' is at version '%s', however your cliend is at\
-                                  version '%s'. Bad news." % (self.file_path, self.fp.attrs['version'], anvio.__hdf5__version__)
+            if self.fp.attrs['version'] != self.version:
+                raise HDF5Error, "The data file for %s ('%s') is at version '%s', however, your client is at\
+                                  version '%s'. This is bad news, because your version of anvi'o can't work with\
+                                  this file. You can regenerate the data file using the current version of anvi'o,\
+                                  or look around to see whether there is an upgrade script is available (a good start\
+                                  would be to type 'anvi-script-upgrade-' and then click TAB key twice). Otherwise you\
+                                  may want to consider sending an e-mail to the anvi'o developers to find out what's up.\
+                                  We heard that they love them some e-mails." % (self.db_type, self.file_path, self.fp.attrs['version'], self.version)
 
             if not ignore_hash and self.fp.attrs['hash'] != unique_hash:
                 raise HDF5Error, "The database at '%s' does not seem to be compatible with the client :/\
@@ -58,7 +63,7 @@ class HDF5_IO(object):
             self.unique_hash = self.fp.attrs['hash']
 
 
-    def add_integer_list(self, path, l, data_type = 'uint16'):
+    def add_integer_list(self, path, l, data_type='uint16'):
         """Add an array into the the HDF5 file.
         
             >>> h = HDF5_IO('test.h5')
@@ -87,6 +92,9 @@ class HDF5_IO(object):
 class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
     def __init__(self, file_path, db_hash, create_new = False, ignore_hash = False, run=run, progress=progress, quiet = False):
+        self.db_type = 'auxiliary data for coverages'
+        self.version = anvio.__hdf5__version__
+
         HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
 
         self.quiet = quiet
@@ -117,6 +125,9 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
 class AuxiliaryDataForNtPositions(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
     def __init__(self, file_path, db_hash, create_new = False, run=run, progress=progress, quiet = False):
+        self.db_type = 'auxiliary data for nt positions'
+        self.version = anvio.__hdf5__version__
+
         HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new)
 
         self.quiet = quiet
@@ -156,6 +167,9 @@ class GenomesDataStorage(HDF5_IO):
     """
 
     def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+        self.version = anvio.__genomes_storage_version__
+        self.db_type = 'genomes data storage'
+
         HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
 
         self.run = run
@@ -184,6 +198,7 @@ class GenomesDataStorage(HDF5_IO):
     def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
         """Add a gene call in a genome into the database"""
         self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)] = sequence
+        #self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
         self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)] = partial
 
         if taxonomy_dict:
