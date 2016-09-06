@@ -26,9 +26,9 @@ users_db_version = "1"
 #
 ####################################################################################################
 
-pan_protein_clusters_table_name        = 'protein_sequences'
-pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence']
-pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,    'str'  ]
+pan_protein_clusters_table_name        = 'protein_clusters'
+pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name']
+pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ]
 
 
 ####################################################################################################
