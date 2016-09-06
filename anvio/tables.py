@@ -17,6 +17,7 @@ profile_db_version = "16"
 pan_db_version = "1"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
+genomes_storage_hdf5_db_vesion = "2"
 users_db_version = "1"
 
 ####################################################################################################
