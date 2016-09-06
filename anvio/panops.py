@@ -711,35 +711,29 @@ class Pangenome(GenomeStorage):
 
 
     def store_protein_clusters(self, protein_clusters_dict):
-        self.progress.new('Storing protein clusters')
+        self.progress.new('Storing protein clusters in the database')
         self.progress.update('...')
 
-        protein_clusters_output_path = self.get_output_file_path('protein-clusters.txt')
-
-        self.progress.end()
-        d = {}
+        table_for_protein_clusters = dbops.TableForProteinClusters(self.pan_db_path, run=self.run, progress=self.progress)
 
         PCs = protein_clusters_dict.keys()
 
-        unique_entry_id = 0
         for PC in PCs:
             for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
                 try:
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
+                    self.progress.end()
                     raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
                                         additional genomes without cleaning the previous work directory. Sounds familiar?"
 
-                d[unique_entry_id] = {'gene_caller_id': gene_caller_id, 'protein_cluster_id': PC, 'genome_name': genome_name, 'sequence': self.protein_sequences_dict[genome_name][int(gene_caller_id)]}
-                unique_entry_id += 1
-
-        utils.store_dict_as_TAB_delimited_file(d, protein_clusters_output_path, headers=['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'sequence'])
+                table_for_protein_clusters.add({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name})
 
         self.progress.end()
 
-        self.run.info('protein clusters info', protein_clusters_output_path)
+        table_for_protein_clusters.store()
 
-        return protein_clusters_output_path
+        self.run.info('protein clusters info', '%d PCs stored in the database' % len(PCs))
 
 
     def process(self):
