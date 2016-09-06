@@ -181,6 +181,9 @@ class GenomesDataStorage(HDF5_IO):
         if not create_new:
             self.num_genomes = len(self.fp['/info/genomes'])
 
+        self.D = lambda genome_name: self.fp['/data/genomes/%s' % genome_name]
+        self.G = lambda gene_callers_id, genome_data: genome_data['%d' % gene_callers_id]
+
 
     def is_known_genome(self, genome_name, throw_exception=True):
         if not self.path_exists('/info/genomes/%s' % genome_name):
@@ -198,7 +201,7 @@ class GenomesDataStorage(HDF5_IO):
     def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
         """Add a gene call in a genome into the database"""
         self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)] = sequence
-        #self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
+        self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
         self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)] = partial
 
         if taxonomy_dict:
@@ -242,10 +245,18 @@ class GenomesDataStorage(HDF5_IO):
             genomes_dict[d] = {}
 
         for genome_name in genomes_dict:
+            # add every key-value pair we know of in to the dict:
             for key in self.fp['/info/genomes/%s' % genome_name]:
                 genomes_dict[genome_name][key] = self.fp['/info/genomes/%s/%s' % (genome_name, key)].value
 
+            # add in AA sequence lengths dict for each gene caller uisng '/data/genomes':
+            genomes_dict[genome_name]['gene_lengths'] = {}
+            genome_data = self.D(genome_name)
+            for gene_caller_id in genome_data:
+                genomes_dict[genome_name]['gene_lengths'][int(gene_caller_id)] = genome_data[gene_caller_id]['length'].value
+
         return genomes_dict
+
 
     def gen_combined_protein_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
@@ -257,24 +268,21 @@ class GenomesDataStorage(HDF5_IO):
 
         output_file = open(output_file_path, 'w')
 
-        D = lambda genome_name: self.fp['/data/genomes/%s' % genome_name]
-        G = lambda gene_callers_id: genome_data['%d' % gene_callers_id]
-
         for genome_name in genomes:
             self.progress.new('Storing protein sequences')
             self.progress.update('%s ...' % genome_name)
 
-            genome_data = D(genome_name)
-            gene_caller_ids = sorted([int(i[0]) for i in D(genome_name).items()])
+            genome_data = self.D(genome_name)
+            gene_caller_ids = sorted([int(i[0]) for i in genome_data.items()])
 
             for gene_caller_id in gene_caller_ids:
-                partial = G(gene_caller_id)['partial'].value
+                partial = self.G(gene_caller_id, genome_data)['partial'].value
 
                 if exclude_partial_gene_calls and partial:
                     total_num_excluded_protein_sequences += 1
                     continue
 
-                sequence = G(gene_caller_id)['sequence'].value
+                sequence = self.G(gene_caller_id, genome_data)['sequence'].value
 
                 output_file.write('>%s_%d\n' % (genomes[genome_name]['genome_hash'], int(gene_caller_id)))
                 output_file.write('%s\n' % sequence)
