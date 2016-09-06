@@ -126,6 +126,9 @@ class GenomeStorage(object):
         self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
         self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
 
+        for genome_name in self.genomes:
+            self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
+
         self.run.info('Genomes storage', 'Initialized with %d genomes (storage hash: %s)' % (self.genomes_storage.num_genomes, self.genomes_storage.unique_hash))
 
 
@@ -211,7 +214,6 @@ class GenomeStorage(object):
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
 
-            self.hash_to_genome_name[c['genome_hash']] = genome_name
         self.progress.end()
 
         # if two contigs db has the same hash, we are kinda f'd:
@@ -246,8 +248,6 @@ class GenomeStorage(object):
                 c['external_genome'] = False
 
                 dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
-
-                self.hash_to_genome_name[c['genome_hash']] = genome_name
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
@@ -504,6 +504,7 @@ class Pangenome(GenomeStorage):
         # although they were in the FASTA file the target database were built from. so we will make sure they are not
         # missing from self_bit_scores dict, or mcl_input (additional mcl inputs will be stored in the following dict)
         additional_mcl_input_lines = {}
+
         for id_without_self_search in ids_without_self_search:
             entry_hash, gene_caller_id = id_without_self_search.split('_')
 
