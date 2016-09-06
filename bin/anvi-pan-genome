@@ -8,7 +8,7 @@ import anvio
 import anvio.panops as panops
 import anvio.terminal as terminal
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError, FilesNPathsError, HDF5Error
 
 
 __author__ = "A. Murat Eren"
@@ -90,5 +90,8 @@ if __name__ == '__main__':
         print e
         sys.exit(-1)
     except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
+    except HDF5Error, e:
         print e
         sys.exit(-2)
