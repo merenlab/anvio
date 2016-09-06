@@ -2568,6 +2568,46 @@ class TablesForTaxonomy(Table):
                                             % (self.source, num_splits_with_taxonomy, num_splits_processed,
                                                num_splits_with_taxonomy * 100.0 / num_splits_processed))
 
+
+class TableForProteinClusters(Table):
+    """A class to populte  protein clusters tabel in a given pan db.
+
+      Here is an example:
+
+        >>> table = TableForProteinClusters(db_path)
+        >>> for ...:
+        >>>     table.add({'gene_caller_id': gene_caller_id, 'protein_cluster_id': protein_cluster_id, 'genome_name': genome_name})
+        >>> table.store()
+    """
+
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        is_pan_db(db_path)
+
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, anvio.__pan__version__, run, progress)
+
+        self.set_next_available_id(t.pan_protein_clusters_table_name)
+
+        self.entries = []
+
+
+    def add(self, entry_dict):
+        self.entries.append([entry_dict[key] for key in t.pan_protein_clusters_table_structure[1:]])
+
+
+    def store(self):
+        self.delete_contents_of_table(t.pan_protein_clusters_table_name, warning=False)
+
+        db_entries = [tuple([self.next_id(t.pan_protein_clusters_table_name)] + entry) for entry in self.entries]
+        pan_db = PanDatabase(self.db_path)
+        pan_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_protein_clusters_table_name, db_entries)
+        pan_db.disconnect()
+
+
 class TableForGeneFunctions(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
