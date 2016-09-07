@@ -8,6 +8,7 @@ import pysam
 import shutil
 
 import anvio
+import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.dictio as dictio
@@ -99,7 +100,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
 
-        self.atomic_contig_split_data = contigops.AtomicContigSplitData(self.progress)
+        self.atomic_data = contigops.AtomicContigSplitData(self.progress)
 
         # following variable will be populated during the profiling, and its content will eventually
         # be stored in t.variable_nts_table_name
@@ -202,16 +203,24 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_gene_coverages_table()
         self.store_split_coverages()
 
-        # here we store atomic data for contigs and splits into the database:
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
-        self.atomic_contig_split_data.store_atomic_data_for_contigs_and_splits(self.sample_id, self.contigs, profile_db.db)
-        profile_db.disconnect()
+        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
+        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
+        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
+        # function create_new_view defined in the class TablesForViews.
+        view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
+        dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_splits',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name='single')
 
-        # the only view for the single PROFILE database is ready, and already
-        # set as the default view. store the info in the db:
-        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__)
-        views_table.append('single', 'atomic_data_splits')
-        views_table.store()
+        dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_contigs',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name=None)
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
