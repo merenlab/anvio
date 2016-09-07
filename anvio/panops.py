@@ -604,16 +604,9 @@ class Pangenome(GenomeStorage):
 
         self.progress.end()
 
-        #
-        # STORING A COPY OF RAW DATA
-        #
-        store_file(self.view_data, self.get_output_file_path('anvio-view-data-RAW.txt'), headers=['contig'] + sorted(self.genomes.keys()))
-        store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data-RAW.txt'))
-        store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence-RAW.txt'))
-
-        #
-        # FILTERING BASED ON OCCURRENCE
-        #
+        ########################################################################################
+        #                           FILTERING BASED ON OCCURRENCE
+        ########################################################################################
         PCs_of_interest = set([])
         for PC in PCs:
             if self.additional_view_data[PC]['num_genomes_pc_has_hits'] >= self.PC_min_occurrence:
@@ -628,24 +621,40 @@ class Pangenome(GenomeStorage):
         if self.PC_min_occurrence > 1:
             self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clusters_dict) - len(PCs_of_interest))))
 
-        #
-        # STORING FILTERED DATA
-        #
-        view_data_file_path = store_file(self.view_data, self.get_output_file_path('anvio-view-data.txt'), headers=['contig'] + sorted(self.genomes.keys()))
-        additional_view_data_file_path = store_file(self.additional_view_data, self.get_output_file_path('anvio-additional-view-data.txt'))
-        view_data_presence_absence_file_path = store_file(self.view_data_presence_absence, self.get_output_file_path('anvio-view-data-presence-absence.txt'))
+        ########################################################################################
+        #                           STORING FILTERED DATA IN THE DB
+        ########################################################################################
+        table_structure=['PC'] + sorted(self.genomes.keys()),
+        table_types=['text'] + ['numeric'] * len(self.genomes),
+        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+                                        data_dict=self.view_data,
+                                        table_name='PC_frequencies',
+                                        table_structure=table_structure,
+                                        table_types=table_types,
+                                        view_name = 'PC_frequencies')
 
-        # here's where we finalize experimental data for clustering
+        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+                                        data_dict=self.view_data_presence_absence,
+                                        table_name='PC_presence_absence',
+                                        table_structure=table_structure,
+                                        table_types=table_types,
+                                        view_name = 'PC_presence_absence')
+
+        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+                                        data_dict=self.additional_view_data,
+                                        table_name='additional_data',
+                                        table_structure=['PC', 'num_genomes_pc_has_hits', 'num_genes_in_pc'],
+                                        table_types=['text', 'numeric', 'numeric'],
+                                        view_name = None)
+
+        # FIXME: the 1 million dollar qeustion: can we do this through clustering configurations?
+        # would it make meren fall in love with anvi'o? soon!
         experimental_data = copy.deepcopy(self.view_data_presence_absence)
         for PC in self.additional_view_data:
             for i in range(0, int(len(self.genomes) / 2)):
                 experimental_data[PC]['num_genomes_pc_has_hits_%d' % i] = self.additional_view_data[PC]['num_genomes_pc_has_hits']
-        experimental_data_file_path = utils.store_dict_as_TAB_delimited_file(experimental_data, self.get_output_file_path('anvio-experimental-data-for-clustering.txt'))
 
-        self.run.info("Anvi'o view data for protein clusters", view_data_file_path)
-        self.run.info("Anvi'o additional view data", additional_view_data_file_path)
-
-        return view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path
+        return True
 
 
     def gen_samples_info_file(self):
