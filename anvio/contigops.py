@@ -218,8 +218,8 @@ class AtomicContigSplitData:
         self.progress = p
 
 
-    def store_atomic_data_for_contigs_and_splits(self, sample_id, contigs, db):
-        self.progress.new('Storing atomic_data')
+    def get_data(self, sample_id, contigs):
+        self.progress.new('Generating atomic_data')
         self.progress.update('...')
 
         num_contigs = pp(len(contigs))
@@ -247,21 +247,6 @@ class AtomicContigSplitData:
 
             cur_contig += 1
 
-
-        self.progress.update("Generating tables ...")
-        gen_atomic_data_tables_for_contigs_and_splits(self.atomic_data_splits, self.atomic_data_contigs, db)
         self.progress.end()
 
-
-
-def gen_atomic_data_tables_for_contigs_and_splits(atomic_data_splits, atomic_data_contigs, db):
-    # all objects are ready, creating tables next.
-    db.create_table('atomic_data_splits', t.atomic_data_table_structure, t.atomic_data_table_types)
-    db_entries = [tuple([split] + [atomic_data_splits[split][h] for h in t.atomic_data_table_structure[1:]]) for split in atomic_data_splits]
-    db._exec_many('''INSERT INTO atomic_data_splits VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
-
-    db.create_table('atomic_data_contigs', t.atomic_data_table_structure, t.atomic_data_table_types)
-    db_entries = [tuple([split] + [atomic_data_contigs[atomic_data_splits[split]['__parent__']][h] for h in t.atomic_data_table_structure[1:]]) for split in atomic_data_splits]
-    db._exec_many('''INSERT INTO atomic_data_contigs VALUES (?,?,?,?,?,?,?,?,?,?)''', db_entries)
-
-    db.commit()
+        return self.atomic_data_splits, self.atomic_data_contigs
