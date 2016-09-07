@@ -1013,8 +1013,17 @@ class PanDatabase:
         self.db.set_meta_value('pan_db_hash', pan_db_hash)
         self.db.set_meta_value('db_type', 'pan')
 
-        # creating empty default tables
+        # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_protein_clusters_table_name, t.pan_protein_clusters_table_structure, t.pan_protein_clusters_table_types)
+
+        # creating empty default tables for standard anvi'o profiles
+        self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
+        self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
         self.disconnect()
 
