@@ -1485,26 +1485,55 @@ class KMerTablesForContigsAndSplits:
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
 
 
-class TableForViews(Table):
+class TablesForViews(Table):
     def __init__(self, db_path, version, run=run, progress=progress):
         self.db_path = db_path
 
         Table.__init__(self, self.db_path, version, run, progress)
 
-        self.db_entries = []
 
+    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None):
+        """Creates a new view table, and adds an entry for it into the 'views' table.
 
-    def append(self, view_id, target_table):
-        self.db_entries.append((view_id, target_table),)
+        Entries in 'views' table appear in various places in the interface. However, we also generate
+        view tables to store the type of data we do not wish to display on interfaces, but be able
+        access from various other modules. A good example to this is the clustering recipes. When we
+        profile a sample, we treat every stplit as their own entity with respect to their mean coverage.
+        Although it is great for visualization purposes, it is not useful for clustering purposes since in
+        most cases we wish splits to stay together in clustering output. Hence, we create a mean_coverage_splits
+        table, where each split holds their own coverage, and we create a mean_coverage_contigs table where each
+        split has the coverage of their parent. Clearly the second table is not useful to display. When a table
+        is not added as an entry to the 'views' table, then it only exists in the database for other purposes
+        than displaying it.
 
+        If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
+        """
 
-    def remove(self, view_id, target_table):
-        self.db_entries.remove((view_id, target_table), )
-
-
-    def store(self):
         profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, self.db_entries)
+
+        views_in_db = profile_db.db.get_table_as_dict(t.views_table_name)
+
+        if view_name and view_name in views_in_db:
+            raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db, called %s\
+                                precisely, you can't create another one, before you get rid of the existing one."
+
+        # first create the data table:
+        profile_db.db.drop_table(table_name)
+        profile_db.db.create_table(table_name, table_structure, table_types)
+        db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+
+        if view_name:
+            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
+
+        profile_db.disconnect()
+
+
+    def remove(self, view_name, table_names_to_blank=[]):
+        profile_db = ProfileDatabase(self.db_path)
+        profile_db.db._exec('''DELETE FROM %s WHERE view_id == %s''' % (t.views_table_name, view_name))
+        for table_name in table_names_to_blank:
+            profile_db.db._exec('''DELETE FROM %s''' % table_name)
         profile_db.disconnect()
 
 
