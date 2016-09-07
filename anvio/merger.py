@@ -518,23 +518,23 @@ class MultipleRuns:
 
                 target_table = '_'.join([essential_field, target])
 
-                m = {}
+                data_dict = {}
                 for split_name in self.split_names:
-                    m[split_name] = {'__parent__': self.split_parents[split_name]}
+                    data_dict[split_name] = {'__parent__': self.split_parents[split_name]}
 
                     for sample_id in self.merged_sample_ids:
                         if essential_field == 'normalized_coverage':
-                            m[split_name][sample_id] = self.normalized_coverages[target][split_name][sample_id]
+                            data_dict[split_name][sample_id] = self.normalized_coverages[target][split_name][sample_id]
                         elif essential_field == 'max_normalized_ratio':
-                            m[split_name][sample_id] = self.max_normalized_ratios[target][split_name][sample_id]
+                            data_dict[split_name][sample_id] = self.max_normalized_ratios[target][split_name][sample_id]
                         elif essential_field == 'relative_abundance':
-                            m[split_name][sample_id] = self.get_relative_abundance_of_split(target, sample_id, split_name)
+                            data_dict[split_name][sample_id] = self.get_relative_abundance_of_split(target, sample_id, split_name)
                         else:
-                            m[split_name][sample_id] = self.atomic_data_for_each_run[target][sample_id][split_name][essential_field]
+                            data_dict[split_name][sample_id] = self.atomic_data_for_each_run[target][sample_id][split_name][essential_field]
 
-                # variable 'm' for the essential field is now ready to be its own table:
+                # variable 'data_dict' for the essential field is now ready to be its own table:
                 profile_db.db.create_table(target_table, view_table_structure, view_table_types)
-                db_entries = [tuple([split_name] + [m[split_name][h] for h in view_table_structure[1:]]) for split_name in self.split_names]
+                db_entries = [tuple([split_name] + [data_dict[split_name][h] for h in view_table_structure[1:]]) for split_name in self.split_names]
                 profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(view_table_structure))), db_entries)
 
                 if target == 'splits':
