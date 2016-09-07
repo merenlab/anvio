@@ -52,6 +52,21 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
+class DBClassFactory:
+    """Factory pattern to get the appropriate class for a given anvi'o db type"""
+    def __init__(self):
+        self.DB_CLASSES = {'profile': ProfileDatabase,
+                           'contigs': ContigsDatabase,
+                           'pan': PanDatabase}
+
+    def get(self, db_type):
+        if db_type not in self.DB_CLASSES:
+            raise ConfigError, "DBClassFactory speaking. I do not know a class for database type\
+                                %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES))
+
+        return self.DB_CLASSES[db_type]
+
+
 class ContigsSuperclass(object):
     def __init__(self, args, r=run, p=progress):
         self.run = r
@@ -1637,8 +1652,10 @@ class KMerTablesForContigsAndSplits:
 
 
 class TablesForViews(Table):
-    def __init__(self, db_path, version, run=run, progress=progress):
+    def __init__(self, db_path, version, db_type = "profile", run=run, progress=progress):
         self.db_path = db_path
+
+        self.DB_CLASS = DBClassFactory().get(db_type=db_type)
 
         Table.__init__(self, self.db_path, version, run, progress)
 
@@ -1660,32 +1677,32 @@ class TablesForViews(Table):
         If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
         """
 
-        profile_db = ProfileDatabase(self.db_path)
+        anvio_db = self.DB_CLASS(self.db_path)
 
-        views_in_db = profile_db.db.get_table_as_dict(t.views_table_name)
+        views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
 
         if view_name and view_name in views_in_db:
             raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db, called %s\
                                 precisely, you can't create another one, before you get rid of the existing one."
 
         # first create the data table:
-        profile_db.db.drop_table(table_name)
-        profile_db.db.create_table(table_name, table_structure, table_types)
+        anvio_db.db.drop_table(table_name)
+        anvio_db.db.create_table(table_name, table_structure, table_types)
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
 
         if view_name:
-            profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
+            anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
 
-        profile_db.disconnect()
+        anvio_db.disconnect()
 
 
     def remove(self, view_name, table_names_to_blank=[]):
-        profile_db = ProfileDatabase(self.db_path)
-        profile_db.db._exec('''DELETE FROM %s WHERE view_id == %s''' % (t.views_table_name, view_name))
+        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db.db._exec('''DELETE FROM %s WHERE view_id == %s''' % (t.views_table_name, view_name))
         for table_name in table_names_to_blank:
-            profile_db.db._exec('''DELETE FROM %s''' % table_name)
-        profile_db.disconnect()
+            anvio_db.db._exec('''DELETE FROM %s''' % table_name)
+        anvio_db.disconnect()
 
 
 class TableForVariability(Table):
@@ -3050,4 +3067,3 @@ def get_default_clustering_id(default_clustering_requested, clusterings_dict, pr
                                                                               len(matching_clustering_ids),
                                                                               default_clustering))
         return default_clustering
-
