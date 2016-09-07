@@ -490,8 +490,6 @@ class MultipleRuns:
         essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
         auxiliary_fields = [f for f in self.atomic_data_fields if constants.IS_AUXILIARY_FIELD(f)]
 
-        views_table = dbops.TableForViews(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
-
         # setting standard view table structure and types
         view_table_structure = ['contig'] + self.merged_sample_ids + auxiliary_fields
         view_table_types = ['text'] + ['numeric'] * len(self.merged_sample_ids) + ['text']
@@ -511,12 +509,9 @@ class MultipleRuns:
                 self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating view data tables')
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
                 self.progress.update('Processing %s for %s ...' % (essential_field, target))
-
-                target_table = '_'.join([essential_field, target])
 
                 data_dict = {}
                 for split_name in self.split_names:
@@ -532,25 +527,20 @@ class MultipleRuns:
                         else:
                             data_dict[split_name][sample_id] = self.atomic_data_for_each_run[target][sample_id][split_name][essential_field]
 
-                # variable 'data_dict' for the essential field is now ready to be its own table:
-                profile_db.db.create_table(target_table, view_table_structure, view_table_types)
-                db_entries = [tuple([split_name] + [data_dict[split_name][h] for h in view_table_structure[1:]]) for split_name in self.split_names]
-                profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (target_table, ','.join(['?'] * len(view_table_structure))), db_entries)
-
-                if target == 'splits':
-                    views_table.append(essential_field, target_table)
+                # time to store the data for this view in the profile database
+                table_name = '_'.join([essential_field, target])
+                dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+                                                data_dict=data_dict,
+                                                table_name=table_name,
+                                                table_structure=view_table_structure,
+                                                table_types=view_table_types,
+                                                view_name=essential_field if target == 'splits' else None)
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
-            views_table.remove('variability', 'variability_splits')
-            profile_db.db._exec('''DELETE FROM variability_splits''')
-            profile_db.db._exec('''DELETE FROM variability_contigs''')
+            dbops.TablesForViews().remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
-        profile_db.disconnect()
         self.progress.end()
-
-        # store views in the database
-        views_table.store()
 
 
     def bin_contigs_concoct(self):
