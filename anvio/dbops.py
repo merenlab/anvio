@@ -2847,17 +2847,25 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
-def add_hierarchical_clustering_to_db(profile_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
-    is_profile_db(profile_db_path)
+def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run, db_type='profile'):
+    """Adds a new clustering into an anvi'o db"""
+
+    # let's learn who we are dealing with:
+    DB_CLASS = DBClassFactory().get(db_type=db_type)
+
     utils.is_this_name_OK_for_database('clustering_name', clustering_name)
 
     # replace clustering id with a text that contains distance and linkage information
     clustering_id = ':'.join([clustering_name, distance, linkage])
 
-    profile_db = ProfileDatabase(profile_db_path)
+    anvio_db = DB_CLASS(anvio_db_path)
+
+    if t.clusterings_table_name not in anvio_db.db.get_table_names():
+        raise ConfigError, "You can't a new clustering result into this %s database (%s). You know why? Becasue it doesn't\
+                            have a table for 'clusterings' :(" % (db_type, anvio_db_path)
 
     try:
-        available_clusterings = profile_db.db.get_meta_value('available_clusterings').split(',')
+        available_clusterings = anvio_db.db.get_meta_value('available_clusterings').split(',')
     except:
         available_clusterings = []
 
@@ -2865,38 +2873,38 @@ def add_hierarchical_clustering_to_db(profile_db_path, clustering_name, clusteri
         run.warning('Clustering for "%s" (with %s distance and %s linkage) is already in the database. Its content will\
                      be replaced with the new one.' % (clustering_name, distance, linkage))
 
-        profile_db.db._exec('''DELETE FROM %s where clustering = "%s"''' % (t.clusterings_table_name, clustering_id))
+        anvio_db.db._exec('''DELETE FROM %s where clustering = "%s"''' % (t.clusterings_table_name, clustering_id))
     else:
         available_clusterings.append(clustering_id)
 
-    profile_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, tuple([clustering_id, clustering_newick]))
+    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, tuple([clustering_id, clustering_newick]))
 
     try:
-        profile_db.db.remove_meta_key_value_pair('available_clusterings')
+        anvio_db.db.remove_meta_key_value_pair('available_clusterings')
     except:
         pass
-    profile_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
+    anvio_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
 
     try:
-        profile_db.db.remove_meta_key_value_pair('contigs_clustered')
+        anvio_db.db.remove_meta_key_value_pair('contigs_clustered')
     except:
         pass
-    profile_db.db.set_meta_value('contigs_clustered', True)
+    anvio_db.db.set_meta_value('contigs_clustered', True)
 
     try:
-        profile_db.db.get_meta_value('default_clustering')
+        anvio_db.db.get_meta_value('default_clustering')
         default_clustering_is_set = True
     except:
         default_clustering_is_set = False
 
     if make_default or not default_clustering_is_set:
         try:
-            profile_db.db.remove_meta_key_value_pair('default_clustering')
+            anvio_db.db.remove_meta_key_value_pair('default_clustering')
         except:
             pass
-        profile_db.db.set_meta_value('default_clustering', clustering_id)
+        anvio_db.db.set_meta_value('default_clustering', clustering_id)
 
-    profile_db.disconnect()
+    anvio_db.disconnect()
 
     run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_id)
 
