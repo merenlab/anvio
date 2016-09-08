@@ -206,7 +206,7 @@ def main(args):
 
     run.info('Report', '%s' % (report_file_path))
     run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
-                        name "%s".' % (len(collection_dict), collection_name_to_read, collection_name_to_write))
+                        name "%s".' % (counter, collection_name_to_read, collection_name_to_write))
 
 
 if __name__ == '__main__':
