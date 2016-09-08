@@ -32,7 +32,7 @@ progress = terminal.Progress()
 
 
 class Completeness:
-    def __init__(self, contigs_db_path, source=None, run=run, progress=progress):
+    def __init__(self, contigs_db_path, source_requested=None, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -79,14 +79,14 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
-        if source:
-            if source not in self.sources:
-                raise ConfigError, 'Source "%s" is not one of the single-copy gene sources found in the database.' % source
+        if source_requested:
+            if source_requested not in self.sources:
+                raise ConfigError, 'Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested
 
             # filter out sources that are not requested
-            self.sources = [source]
-            self.genes_in_db = {source: self.genes_in_db[source]}
-            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source]))
+            self.sources = [source_requested]
+            self.genes_in_db = {source_requested: self.genes_in_db[source_requested]}
+            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source_requested]))
 
         self.unique_gene_id_to_gene_name = {}
         self.splits_unique_gene_id_occurs = {}
