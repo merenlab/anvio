@@ -1,0 +1,4 @@
+[general]
+
+[PresenceAbsenceData !PAN.db::PC_presence_absence]
+normalize = False
