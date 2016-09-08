@@ -180,7 +180,7 @@ class ClusteringConfiguration:
         #                            components under the general section ("num_components").'
 
 
-    def print_summary(self, r):
+    def print_summary(self, r=run):
         r.info_single('Summary of the config file:', mc='green', nl_before=2)
         r.warning('', header='General')
         r.info('Input directory', self.input_directory)
