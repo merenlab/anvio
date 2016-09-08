@@ -7,7 +7,7 @@
 """
 
 import os
-import copy
+import math
 import hashlib
 
 import anvio
@@ -15,7 +15,9 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.summarizer as summarizer
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
@@ -23,6 +25,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
+from anvio.clusteringconfuguration import ClusteringConfiguration
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -326,6 +329,10 @@ class Pangenome(GenomeStorage):
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
 
+        # when it is time to organize PCs
+        self.linkage = A('linkage') or constants.linkage_method_default
+        self.distance = A('distance') or constants.distance_metric_default
+
         self.log_file_path = None
 
         # to be filled during init:
@@ -573,7 +580,7 @@ class Pangenome(GenomeStorage):
         return mcl_input_file_path
 
 
-    def gen_data_from_protein_clusters(self, protein_clusters_dict):
+    def process_protein_clusters(self, protein_clusters_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
@@ -624,8 +631,8 @@ class Pangenome(GenomeStorage):
         ########################################################################################
         #                           STORING FILTERED DATA IN THE DB
         ########################################################################################
-        table_structure=['PC'] + sorted(self.genomes.keys()),
-        table_types=['text'] + ['numeric'] * len(self.genomes),
+        table_structure=['PC'] + sorted(self.genomes.keys())
+        table_types=['text'] + ['numeric'] * len(self.genomes)
         dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
                                         data_dict=self.view_data,
                                         table_name='PC_frequencies',
@@ -647,14 +654,55 @@ class Pangenome(GenomeStorage):
                                         table_types=['text', 'numeric', 'numeric'],
                                         view_name = None)
 
-        # FIXME: the 1 million dollar qeustion: can we do this through clustering configurations?
-        # would it make meren fall in love with anvi'o? soon!
-        experimental_data = copy.deepcopy(self.view_data_presence_absence)
-        for PC in self.additional_view_data:
-            for i in range(0, int(len(self.genomes) / 2)):
-                experimental_data[PC]['num_genomes_pc_has_hits_%d' % i] = self.additional_view_data[PC]['num_genomes_pc_has_hits']
 
-        return True
+        ########################################################################################
+        #             CHEATING THE SYSTEM FOR AN ENHANCED CLUSTERING CONFIGURATION
+        ########################################################################################
+        # so we want to use the clustering configurations for pan genomomic analyses to order
+        # protein clusters. however, we want to add something into the clustering configuraiton
+        # file, which depends on the number of genomes we have. this addition is 'num_genomes_pc_has_hits'
+        # data, which pulls together protein clusters that are distributed across genomes similarly based
+        # on this extra bit of inofrmation. becasue the clustering configurations framework in anvi'o
+        # does not allow us to have variable information in these recipes, we are going to generate one
+        # on the fly to have a more capable one.
+
+        for config_name in constants.clustering_configs['pan']:
+            config_path = constants.clustering_configs['pan'][config_name]
+
+            # now we have the config path. we first get a temporary file path:
+            enhanced_config_path = filesnpaths.get_temp_file_path()
+
+            # setup the additional section based on the number of genomes we have:
+            if config_name == 'presence-absence':
+                additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\n""" \
+                                        % ','.join(['num_genomes_pc_has_hits'] * (int(round(math.sqrt(len(self.genomes))))))
+            elif config_name == 'frequency':
+                additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\nlog=True\n""" \
+                                        % ','.join(['num_genes_in_pc'] * (int(round(math.sqrt(len(self.genomes))))))
+
+            # write the content down in to file at the new path:
+            open(enhanced_config_path, 'w').write(open(config_path).read() + additional_config_section)
+
+            # use it to generate a clustering configuration instance:
+            clustering_configuration = ClusteringConfiguration(enhanced_config_path, self.output_dir, db_paths={'PAN.db': self.pan_db_path})
+
+            try:
+                clustering_id, newick = clustering.order_contigs_simple(clustering_configuration, distance=self.distance, linkage=self.linkage, progress=self.progress)
+            except Exception as e:
+                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
+                self.progress.end()
+                continue
+
+            _, distance, linkage = clustering_id.split(':')
+
+            dbops.add_hierarchical_clustering_to_db(self.pan_db_path,
+                                                    config_name,
+                                                    newick,
+                                                    distance=distance,
+                                                    linkage=linkage,
+                                                    make_default=config_name == constants.pan_default,
+                                                    run=self.run,
+                                                    db_type='pan')
 
 
     def gen_samples_info_file(self):
@@ -772,14 +820,11 @@ class Pangenome(GenomeStorage):
         # store protein clusters, and gene calls in them
         self.store_protein_clusters(protein_clusters_dict)
 
-        # create view data from protein clusters
-        view_data_file_path, view_data_presence_absence_file_path, additional_view_data_file_path, experimental_data_file_path = self.gen_data_from_protein_clusters(protein_clusters_dict)
+        # populate the pan db with results
+        self.process_protein_clusters(protein_clusters_dict)
 
-        # gen samples info and order files
-        samples_info_file_path = self.gen_samples_info_file()
-
-        # gen ad hoc anvi'o run
-        self.gen_ad_hoc_anvio_run(view_data_presence_absence_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path)
+        # FIXME: gen samples info and order files
+        # samples_info_file_path = self.gen_samples_info_file()
 
         # done
         self.run.info('log file', self.run.log_file_path)
