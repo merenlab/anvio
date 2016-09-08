@@ -1,0 +1,5 @@
+[general]
+
+[PresenceAbsenceData !PAN.db::PC_frequencies]
+normalize = False
+log = True
