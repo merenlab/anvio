@@ -6,6 +6,7 @@
     contigs database.
 """
 
+import numpy
 from collections import Counter
 
 import anvio
@@ -110,7 +111,26 @@ class Completeness:
             self.run.info_single(source)
 
 
-    def get_info_for_splits(self, split_names, min_e_value=1e-5):
+    def get_best_matching_domain(self, d):
+        """Returns the domain that gives the highest (completion - redundancy) estimate.
+
+           The input dict is the output of 'get_info_for_splits' (the prameter `d`)
+        """
+
+        domain_specific_estimates = []
+
+        for domain in self.domains:
+            percent_completion = numpy.mean([d[s]['percent_complete'] for s in d if d[s]['domain'] == domain])
+            percent_redundancy = numpy.mean([d[s]['percent_redundancy'] for s in d if d[s]['domain'] == domain])
+
+            domain_specific_estimates.append((percent_completion - percent_redundancy, domain), )
+
+        domain_specific_estimates.sort(reverse=True)
+
+        return domain_specific_estimates[0][1]
+
+
+    def get_info_for_splits(self, split_names, min_e_value=1e-5, domain_aware=True):
         hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
@@ -145,7 +165,7 @@ class Completeness:
         # here we generate the results information
         results_dict = {}
         for source in self.sources:
-            results_dict[source] = {}
+            results_dict[source] = {'domain': self.source_to_domain[source]}
 
         for source in self.sources:
             genes_count = Counter([v['gene_name'] for v in info_dict[source].values()])
