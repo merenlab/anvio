@@ -7,6 +7,7 @@ import sys
 import anvio
 import anvio.panops as panops
 import anvio.terminal as terminal
+import anvio.constants as constants
 
 from anvio.errors import ConfigError, FilesNPathsError, HDF5Error
 
@@ -81,6 +82,14 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
+    groupE = parser.add_argument_group("ORGANIZING PCs", "These are stuff that will change the clustering dendrogram of your PCs.")
+    groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
+                      'The distance metric for the clustering of PCs. If you do not use this flag,\
+                       the default distance metric will be used for each clustering configuration\
+                       which is "%s".' % constants.distance_metric_default}))
+    groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
+                      'The same story with the `--distance`, except, the system default for this one\
+                       is %s.' % constants.linkage_method_default}))
     args = parser.parse_args()
 
     try:
