@@ -27,6 +27,7 @@ default_port_number = 8080
 blank_default = "tnf-splits"
 single_default = "tnf"
 merged_default = "tnf-cov"
+pan_default="presence-absence"
 
 max_num_splits_for_hierarchical_clustering = 20000
 
