@@ -46,7 +46,17 @@ def main(args):
     size_for_MAG = A('size_for_MAG')
     use_SCG_averages = A('use_SCG_averages')
     use_highest_completion_score = A('use_highest_completion_score')
+    skip_using_domains = A('skip_using_domains')
     dry_run = A('dry_run')
+
+    if skip_using_domains and not use_SCG_averages:
+        raise ConfigError, "The flag --skip-using-domains can only be used together with --use-SCG-averages."
+
+    domain_aware = False if skip_using_domains else True
+
+    if not domain_aware:
+        run.warning("You want to use SCG averages, but you don't want the domain specific ones. OK. Anvi'o\
+                     assumes you read the help menu, and you know what you are doing.")
 
     if use_SCG_averages and use_highest_completion_score:
         raise ConfigError, "You can't use both `--use-SCG-averages` and `--use-highest-completion-score`"
@@ -101,7 +111,7 @@ def main(args):
 
     if use_SCG_averages:
         run.warning('As per your request, this run will use average completion and redundancy estimates\
-                     recovered from ALL single-copy core gene collections.')
+                     recovered from %s single-copy core gene collections.' % ('domain-specific' if domain_aware else 'ALL'))
 
     elif use_highest_completion_score:
         run.warning('As per your request, this run will use the completion and redundancy estimate\
@@ -121,11 +131,22 @@ def main(args):
 
     MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
+    total_num_bins = len(collection_dict)
+    counter = 1
+    progress.new('Sorting out bins')
     for bin_name in collection_dict:
+        progress.update('%d in %d' % (counter, total_num_bins))
         if use_SCG_averages:
+
             d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
-            percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d])
-            percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d])
+
+            if domain_aware:
+                domain = completeness.get_best_matching_domain(d)
+                percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d if d[scg_collection]['domain'] == domain])
+                percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d if d[scg_collection]['domain'] == domain])
+            else:
+                percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d])
+                percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d])
         elif use_highest_completion_score:
             d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
 
@@ -148,9 +169,19 @@ def main(args):
                 bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
         else:
             bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+        counter += 1
 
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
+    progress.end()
+
+    if dry_run:
+        run.warning('This was a dry run, which means nothing is updated in the profile database.\
+                     Please take a look at the report filen and see whether things worked out the\
+                     way you wanted them to. If all looks alright, you will need to run the previous\
+                     commandline without the --dry-run flag.')
+        return
+
 
     report = open(report_file_path, 'w')
     report.write('old_bin_name\tnew_bin_name\n')
@@ -167,21 +198,15 @@ def main(args):
         report.write('%s\t%s\n' % (bin_name, new_bin_name))
 
         counter += 1
+
     report.close()
 
-    # if this is not a dry run, update tables with new bin names.
-    if not dry_run:
-        collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
-        collections_table.append(collection_name_to_write, collection_dict, bins_info_dict)
-        run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
-                            name "%s".' % (len(collection_dict), collection_name_to_read, collection_name_to_write))
-    else:
-        run.warning('This was a dry run, which means nothing is updated in the profile database.\
-                     Please take a look at the report filen and see whether things worked out the\
-                     way you wanted them to. If all looks alright, you will need to run the previous\
-                     commandline without the --dry-run flag.')
+    collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
+    collections_table.append(collection_name_to_write, collection_dict, bins_info_dict)
 
     run.info('Report', '%s' % (report_file_path))
+    run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
+                        name "%s".' % (len(collection_dict), collection_name_to_read, collection_name_to_write))
 
 
 if __name__ == '__main__':
@@ -243,6 +268,13 @@ if __name__ == '__main__':
                                 them MAGs (see '--call-MAGs'). If you use this flag, it will use all avialble\
                                 single-copy core gene collections and will average their independent completion\
                                 and redundancy estimates.")
+    groupD.add_argument('--skip-using-domains', default=False, action="store_true", \
+                        help = "When you use SCG averages to identify MAGs, anvi'o will by default find the best matching\
+                                domain for a given MAG (i.e., bacterial or archaeal), and rely on the averages for SCGs\
+                                that belong to that domain. Using this flag you can skip that, and take the average of\
+                                completiong and redundancy estimates that come from every SCG collection, which would be\
+                                somewhat ridiculous since the default SCGs include both bacterial and archaeal collections\
+                                and averaging all of them for a given bin will definitely underestimate completion.")
     groupD.add_argument('--use-highest-completion-score', default=False, action="store_true", \
                         help = "If you use this flag, instead of `--use-SCG-averages`, anvi'o will take the SCG collection\
                                 that estimates the highest completion for a given bin. This will affect how MAGs are called.\
