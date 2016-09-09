@@ -21,7 +21,10 @@
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
 var genomes;
+var gene_caller_ids;
 var gene_caller_ids_in_genomes;
+var gene_aa_sequences_for_gene_caller_ids;
+var previous_pc_name;
 var next_pc_name;
 var index;
 var total;
@@ -89,56 +92,7 @@ function loadAll() {
 
 
 function createDisplay(state){
-    var genomes_ordered;
-
-    genomes_ordered = state['layer-order'].filter(function (value) { if (genomes.indexOf(value)>-1) return true; return false; });
-
-    var visible_genomes = 0;
-    for (i in genomes_ordered)
-    {
-      var genome_id = genomes_ordered[i];
-
-      if (parseFloat(state['layers'][genome_id]['height']) > 0)
-        visible_genomes++;
-    }
-
-    var margin = {top: 20, right: 50, bottom: 150, left: 50};
-    var width = VIEWER_WIDTH * .80;
-    var chartHeight = 200;
-    var height = (chartHeight * visible_genomes + 400);
-    var contextHeight = 50;
-    var contextWidth = width;
-
-    var svg = d3.select("#chart-container").append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", (height + margin.top + margin.bottom));
-
-    $('#chart-container').css("width", (width + 150) + "px");
-    
-    var proteinclusters = [];
-    
-    var genomesCount = genomes.length;
-    
-    var j=0;
-    for(var i = 0; i < genomesCount; i++){
-        var genome_index = genomes.indexOf(genomes_ordered[i]);
-
-        if (parseFloat(state['layers'][genomes_ordered[i]]['height']) == 0)
-          continue;
-
-        proteinclusters.push(new Chart({
-                        genome_name: genomes[genome_index],
-                        gene_caller_ids_in_genome: gene_caller_ids_in_genomes[genome_name],
-                        id: j++,
-                        width: width,
-                        height: chartHeight,
-                        svg: svg,
-                        margin: margin,
-                        showBottomAxis: (j == visible_genomes - 1),
-                        color: state['layers'][genomes[genome_index]]['color']
-                }));
-        
-    }
+    // magic happens here.
 }
 
 
@@ -230,120 +184,3 @@ function show_sequence(gene_id) {
     });
 }
 
-var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
-
-function Chart(options){
-    this.genome_name = options.genome_name;
-    this.gene_caller_ids_in_genome = options.gene_caller_ids_in_genome
-    this.id = options.id;
-    this.width = options.width;
-    this.height = options.height;
-    this.svg = options.svg;
-    this.margin = options.margin;
-    this.showBottomAxis = options.showBottomAxis;
-    this.color = options.color;
-
-    console.log(this_genome_name)
-
-    var num_data_points = this.variability_a.length;
-
-    this.yScale = d3.scale.linear()
-                            .range([this.height,0])
-                            .domain([0, 20]);
-
-    this.yScaleLine = d3.scale.linear()
-                            .range([this.height, 0])
-                            .domain([0, 20]);
-    
-    var xS = this.xScale;
-    var yS = this.yScale;
-    var ySL = this.yScaleLine;
-    
-    this.area = d3.svg.area()
-                            .x(function(d, i) { return xS(i); })
-                            .y0(this.height)
-                            .y1(function(d) { return yS(d); });
-
-    this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
-                            .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
-                            .interpolate('step-before');
-
-    /*
-        Assign it a class so we can assign a fill color
-        And position it on the page
-    */
-    this.chartContainer = this.svg.append("g")
-                        .attr('class',this.genome_name.toLowerCase())
-                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
-
-    this.lineContainer = this.svg.append("g")
-                        .attr('class',this.genome_name.toLowerCase())
-                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
-
-    this.textContainer = this.svg.append("g")
-                        .attr('class',this.genome_name.toLowerCase())
-                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
-
-    /* Add both into the page */
-    this.lineContainer.append("path")
-        .data([this.variability_b])
-        .attr("class", "line")
-        .attr("name", "first_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
-
-    this.lineContainer.append("path")
-        .data([this.variability_c])
-        .attr("class", "line")
-        .attr("name", "second_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
-
-    this.lineContainer.append("path")
-        .data([this.variability_d])
-        .attr("class", "line")
-        .attr("name", "third_pos")
-        .style("fill", '#004400')
-        .attr("d", this.line);
-
-    this.lineContainer.append("path")
-        .data([this.variability_a])
-        .attr("class", "line")
-        .attr("name", "outside_gene")
-        .style("stroke", '#666666')
-        .style("stroke-width", "0.2")
-        .attr("d", this.line);
-
-
-
-    
-    this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
-
-    if(this.id == 0){
-        this.chartContainer.append("g")
-                    .attr("class", "x axis top")
-                    .attr("transform", "translate(0,0)")
-                    .call(this.xAxisTop);
-    }
-    
-        
-    this.yAxis = d3.svg.axis().scale(this.yScale).orient("left").ticks(5);
-    this.yAxisLine = d3.svg.axis().scale(this.yScaleLine).orient("right").ticks(5);
-        
-    this.chartContainer.append("g")
-                   .attr("class", "y axis")
-                   .attr("transform", "translate(-15,0)")
-                   .call(this.yAxis);
-
-    this.lineContainer.append("g")
-                   .attr("class", "y axis")
-                   .attr("transform", "translate(" + (this.width + 15) + ",0)")
-                   .call(this.yAxisLine);
-
-    this.chartContainer.append("text")
-                   .attr("class","country-title")
-                   .attr("transform", "translate(0,20)")
-                   .text(this.genome_name);
-    
-}
