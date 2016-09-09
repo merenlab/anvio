@@ -238,6 +238,10 @@ class GenomesDataStorage(HDF5_IO):
             self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
 
 
+    def get_storage_hash(self):
+        return self.fp.attrs['hash']
+
+
     def get_genomes_dict(self):
         genomes_dict = {}
 
