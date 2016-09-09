@@ -116,6 +116,9 @@ function lineContextMenuHandler(event) {
         if (mode == "collection") {
             $('#collection_mode_right_click_menu').show();
             $('#collection_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else if (mode == "pan"){
+            $('#pan_mode_right_click_menu').show();
+            $('#pan_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
             $('#default_right_click_menu').show();
             $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -129,11 +132,15 @@ function lineContextMenuHandler(event) {
             $('#default_right_click_menu #select_layer').hide();
             $('#collection_mode_right_click_menu #unselect_layer').show();
             $('#collection_mode_right_click_menu #select_layer').show();
+            $('#pan_mode_right_click_menu #unselect_layer').show();
+            $('#pan_mode_right_click_menu #select_layer').show();
         } else {
             $('#default_right_click_menu #select_layer').show();
             $('#default_right_click_menu #unselect_layer').hide();
             $('#collection_mode_right_click_menu #select_layer').show();
             $('#collection_mode_right_click_menu #unselect_layer').show();
+            $('#pan_mode_right_click_menu #select_layer').show();
+            $('#pan_mode_right_click_menu #unselect_layer').show();
         }
 
         if (bin_id > 0) {
@@ -144,12 +151,16 @@ function lineContextMenuHandler(event) {
                 $('#default_right_click_menu #remove').hide();
                 $('#collection_mode_right_click_menu #select').show();
                 $('#collection_mode_right_click_menu #remove').hide();
+                $('#pan_mode_right_click_menu #select').show();
+                $('#pan_mode_right_click_menu #remove').hide();
             }
             else {
                 $('#default_right_click_menu #select').hide();
                 $('#default_right_click_menu #remove').show();
                 $('#collection_mode_right_click_menu #select').hide();
                 $('#collection_mode_right_click_menu #remove').show();
+                $('#pan_mode_right_click_menu #select').hide();
+                $('#pan_mode_right_click_menu #remove').show();
             }
         }
         else {
@@ -157,6 +168,8 @@ function lineContextMenuHandler(event) {
             $('#default_right_click_menu #remove').hide();
             $('#collection_mode_right_click_menu #select').hide();
             $('#collection_mode_right_click_menu #remove').hide();
+            $('#pan_mode_right_click_menu #select').hide();
+            $('#pan_mode_right_click_menu #remove').hide();
         }
 
         return false;
@@ -533,8 +546,7 @@ function menu_callback(action, param) {
             });
             break;
 
-       
-        case 'inspect':
+        case 'inspect_contig':
             $.ajax({
                 type: 'POST',
                 cache: false,
@@ -546,7 +558,21 @@ function menu_callback(action, param) {
                 }
             });
             break;
+
+        case 'inspect_protein_cluster':
+            $.ajax({
+                type: 'POST',
+                cache: false,
+                async: false,
+                url: "/data/proteinclusters/set_state?timestamp=" + new Date().getTime(), 
+                data: {state: JSON.stringify(serializeSettings(true), null, 4)},
+                success: function() {
+                    window.open('proteinclusters.html?id=' + item_name, '_blank');
+                }
+            });
+            break;
     }
+
 }
 
 // globals related single background

@@ -277,6 +277,17 @@
                             </div>
                         </div>
 
+                        <div class="pan-mode">
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load collection of PCs</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection of PCs</button>
+                            </div>
+                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                            </div>
+                        </div>
+
+
                         <div class="collection-mode">
                             <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
@@ -711,10 +722,11 @@
     <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
         <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
+        <li class="divider"></li>
         <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
         <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
         <li class="divider"></li>
-        <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect');">Inspect</a></li>
+        <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect_contig');">Inspect</a></li>
         <li class="divider"></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_split_sequence');">Show split sequence</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
@@ -727,6 +739,7 @@
     <ul id="collection_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
         <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
+        <li class="divider"></li>
         <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
         <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
         <li class="divider"></li>
@@ -735,6 +748,19 @@
         <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'RecA');">RecA</a></li>
         <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_S3_C');">Ribosomal S3</a></li>
         <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_L10');">Ribosomal L10</a></li>
+    </ul>
+
+    <!-- COLLECTION MODE RIGHT CLICK MENU -->
+    <ul id="pan_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
+        <li id="select"><a href="#" onclick="menu_callback('select');">Add PC to bin</a></li>
+        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove PC from bin</a></li>
+        <li class="divider"></li>
+        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
+        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
+        <li class="divider"></li>
+        <li class="menuItemInspectProteinCluster"><a href="#" onclick="menu_callback('inspect_protein_cluster');">Inspect PC</a></li>
+        <li class="divider"></li>
+        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'RecA');">Yo!</a></li>
     </ul>
 
     <!-- AREA ZOOM -->
