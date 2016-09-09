@@ -703,9 +703,6 @@ class PanSuperclass(object):
         # create an instance of states table
         self.states_table = TablesForStates(self.pan_db_path, anvio.__pan__version__, db_type='pan')
 
-        self.progress.update('Loading protein clusters')
-        self.init_protein_clusters()
-
         self.progress.update('Accessing the auxiliary data file')
         if not args.genomes_storage:
             self.genomes_storage_is_available = False
@@ -740,8 +737,8 @@ class PanSuperclass(object):
 
             if protein_cluster_id not in self.protein_clusters:
                 self.protein_clusters[protein_cluster_id] = {}
-                for genome_name in self.genome_names:
-                    self.protein_clusters[protein_cluster_id][genome_name] = []
+                for g in self.genome_names:
+                    self.protein_clusters[protein_cluster_id][g] = []
 
             self.protein_clusters[protein_cluster_id][genome_name].append(gene_callers_id)
 
