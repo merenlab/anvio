@@ -1,0 +1,277 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Entry point to the interactive interface for pan genomes.
+
+The massage of the data is being taken care of in the interactive module,
+and this file implements the bottle callbacks."""
+
+import os
+import sys
+import json
+import argparse
+import webbrowser
+import random
+
+from multiprocessing import Process
+from bottle import route, static_file, redirect, request, BaseRequest, response
+from bottle import run as run_server
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+import anvio.bottleroutes as routes
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+# get the absolute path for static directory under anvio
+static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
+
+# setup the command line user interface
+parser = argparse.ArgumentParser(description="Start an anvi'o server to display a pan-genome")
+
+groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
+groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
+groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
+groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                       the interface.")
+groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                   nice to have).")
+groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+
+groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
+groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
+groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+
+groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
+groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
+groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
+groupD.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
+groupD.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
+
+groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
+groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+
+groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+
+args = parser.parse_args()
+
+unique_session_id = random.randint(0,9999999999)
+
+try:
+    ip = args.ip_address
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
+
+    args.mode = 'pan'
+    d = interactive.InputHandler(args)
+except ConfigError, e:
+    print e
+    sys.exit(-1)
+except FilesNPathsError, e:
+    print e
+    sys.exit(-2)
+except DictIOError, e:
+    print e
+    sys.exit(-3)
+except SamplesError, e:
+    print e
+    sys.exit(-4)
+except HDF5Error, e:
+    print e
+    sys.exit(-5)
+
+
+#######################################################################################################################
+# bottle callbacks start
+#######################################################################################################################
+
+def set_default_headers(response):
+    response.set_header('Content-Type', 'application/json')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+@route('/')
+def redirect_to_app():
+    redirect('/app/index.html')
+
+@route('/app/:filename#.*#')
+def send_static(filename):
+    set_default_headers(response)
+    return static_file(filename, root=static_dir)
+
+@route('/data/<name>')
+def send_data(name):
+    set_default_headers(response)
+    if name == "init":
+        return json.dumps( { "title": d.title,
+                             "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
+                             "views": (d.default_view, dict(zip(d.views.keys(), d.views.keys()))),
+                             "contigLengths": dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info]),
+                             "defaultView": d.views[d.default_view],
+                             "mode": d.mode,
+                             "readOnly": args.read_only,
+                             "binPrefix": "PCB_",
+                             "sessionId": unique_session_id,
+                             "samplesOrder": d.samples_order_dict,
+                             "sampleInformation": d.samples_information_dict,
+                             "sampleInformationDefaultLayerOrder": d.samples_information_default_layer_order,
+                             "stateAutoload": d.state_autoload,
+                             "collectionAutoload": d.collection_autoload,
+                             "noPing": False,
+                             "inspectionAvailable": d.auxiliary_profile_data_available,
+                             "sequencesAvailable": True if d.split_sequences else False})
+    elif name == "clusterings":
+        return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
+    elif name == "views":
+        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        return json.dumps((d.default_view, available_views), )
+    elif name == "default_view":
+        return json.dumps(d.views[d.default_view])
+    elif name == "contig_lengths":
+        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
+        return json.dumps(split_lengths)
+    elif name == "title":
+        return json.dumps(d.title)
+    elif name == "mode":
+        return json.dumps(d.mode)
+    elif name == "read_only":
+        return json.dumps(args.read_only)
+    elif name == "bin_prefix":
+        return json.dumps("PCB_")
+    elif name == "session_id":
+        return json.dumps(unique_session_id)
+    elif name == "samples_order":
+        return json.dumps(d.samples_order_dict)
+    elif name == "samples_information":
+        return json.dumps(d.samples_information_dict)
+    elif name == "samples_information_default_layer_order":
+        return json.dumps(d.samples_information_default_layer_order)
+    elif name == "is_inspection_available":
+        return json.dumps(d.auxiliary_profile_data_available)
+    elif name == "is_inspection_available":
+        return json.dumps(True if d.split_sequences else False)
+
+
+@route('/data/view/<view_id>')
+def get_view_data(view_id):
+    return routes.get_view_data(args, d, request, response, view_id)
+
+@route('/tree/<tree_id>')
+def get_tree(tree_id):
+    return routes.get_tree(args, d, request, response, tree_id)
+
+@route('/data/charts/<split_name>')
+def charts(split_name):
+    return routes.charts(d, split_name, show_outlier_SNVs = args.show_outlier_SNVs)
+
+state_for_charts = {}
+
+@route('/data/charts/set_state', method='POST')
+def set_state():
+    global state_for_charts
+    state_for_charts = request.forms.get('state')
+
+@route('/data/charts/get_state')
+def get_parent_state():
+    set_default_headers(response)
+    return state_for_charts
+
+@route('/data/hmm/<bin_name>/<gene_name>')
+def get_hmm_hit_from_bin(bin_name, gene_name):
+    return routes.get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name)
+
+@route('/data/contig/<split_name>')
+def get_sequence_for_split(split_name):
+    return routes.get_sequence_for_split(args, d, request, response, split_name)
+
+@route('/data/gene/<gene_callers_id>')
+def get_sequence_for_gene_call(gene_callers_id):
+    return routes.get_sequence_for_gene_call(args, d, request, response, gene_callers_id)
+
+@route('/data/collections')
+def collections():
+    return routes.get_collections(args, d, request, response)
+
+@route('/data/collection/<collection_source>')
+def get_collection_dict(collection_source):
+    return routes.get_collection_dict(args, d, request, response, collection_source)
+
+@route('/summary/<collection_name>/:filename#.*#')
+def send_summary_static(collection_name, filename):
+    return routes.send_summary_static(args, d, request, response, collection_name, filename)
+
+@route('/summarize/<collection_name>')
+def gen_summary(collection_name):
+    return routes.gen_summary(args, d, request, response, collection_name)
+
+@route('/store_collection', method='POST')
+def store_collections_dict():
+    return routes.store_collections_dict(args, d, request, response)
+
+@route('/data/completeness', method='POST')
+def completeness():
+    return routes.completeness(d, request)
+
+@route('/state/autoload')
+def state_autoload():
+    return routes.state_autoload(d, response)
+
+@route('/state/all')
+def state_all():
+    return routes.state_all(d, response)
+
+@route('/state/get', method='POST')
+def get_state():
+    return routes.get_state(d, request, response)
+
+@route('/state/save', method='POST')
+def save_state():
+    return routes.save_state(args, d, request, response)
+
+#######################################################################################################################
+# bottle callbacks end
+#######################################################################################################################
+
+# increase maximum size of form data to 100 MB
+BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
+
+if args.dry_run:
+    run.info_single('Dry run, eh? Bye!', 'red', nl_before = 1, nl_after=1)
+    sys.exit()
+
+try:
+    server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
+    server_process.start()
+
+    if not args.server_only:
+        webbrowser.open_new("http://%s:%d" % (ip, args.port_number))
+
+    run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % args.port_number, 'green', nl_before = 1, nl_after=1)
+    server_process.join()
+except KeyboardInterrupt:
+    run.warning('The server is being terminated.', header='Please wait...')
+    server_process.terminate()
+    sys.exit(0)
