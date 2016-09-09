@@ -133,7 +133,7 @@ def main(args):
     bins_sorted_by_completion = []
     total_num_bins = len(collection_dict)
     counter = 1
-    progress.new('Sorting out bins')
+    progress.new('Going through bins in the collection %s' % collection_name_to_read)
     for bin_name in collection_dict:
         progress.update('%d in %d' % (counter, total_num_bins))
         if use_SCG_averages:
@@ -182,18 +182,18 @@ def main(args):
                      commandline without the --dry-run flag.')
         return
 
+    new_collection_dict = {}
+    new_bins_info_dict = {}
 
     report = open(report_file_path, 'w')
     report.write('old_bin_name\tnew_bin_name\n')
     counter = 1
     for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
-        collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
-        collection_dict.pop(bin_name)
+        new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
 
         if bins_info_dict.has_key(bin_name):
-            bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
-            bins_info_dict.pop(bin_name)
+            new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
         report.write('%s\t%s\n' % (bin_name, new_bin_name))
 
@@ -202,7 +202,7 @@ def main(args):
     report.close()
 
     collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
-    collections_table.append(collection_name_to_write, collection_dict, bins_info_dict)
+    collections_table.append(collection_name_to_write, new_collection_dict, new_bins_info_dict)
 
     run.info('Report', '%s' % (report_file_path))
     run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
