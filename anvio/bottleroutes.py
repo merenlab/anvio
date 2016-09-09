@@ -97,6 +97,62 @@ def completeness(d, request):
     return json.dumps({'stats': completeness_sources, 'averages': completeness_averages, 'refs': d.completeness.http_refs})
 
 
+def get_index_total_previous_and_next_items(d, item_name):
+    previous_item_name = None
+    next_item_name = None
+    index = None
+    total = None
+
+    index_of_item = d.displayed_item_names_ordered.index(item_name)
+    if index_of_item:
+        previous_item_name = d.displayed_item_names_ordered[index_of_item - 1]
+    if (index_of_item + 1) < len(d.displayed_item_names_ordered):
+        next_item_name = d.displayed_item_names_ordered[index_of_item + 1]
+
+    index = index_of_item + 1
+    total = len(d.displayed_item_names_ordered)
+
+    return index, total, previous_item_name, next_item_name 
+
+def inspect_pc(d, pc_name):
+    data = {'pc_name': pc_name,
+            'genomes': [],
+            'index': None,
+            'gene_caller_ids': [],
+            'gene_caller_ids_in_genomes': {},
+            'gene_aa_sequences_for_gene_caller_ids': {},
+            'previous_pc_name': None,
+            'next_pc_name': None,
+            'index': None,
+            'total': None
+            }
+
+    if pc_name not in d.protein_clusters:
+        return data
+
+    if not d.genomes_storage_is_available:
+        return data
+
+    # add the list of gene caller ids associated with this protein cluster into `data`:
+    for genome_name in d.protein_clusters[pc_name]:
+        for gene_callers_id in d.protein_clusters[pc_name][genome_name]:
+            data['gene_caller_ids'].append((gene_callers_id, genome_name), )
+
+    # the dict that explains the distribution of genes in genomes:
+    data['gene_caller_ids_in_genomes'] = d.protein_clusters[pc_name]
+
+    # add the list of genomes into data:
+    data['genomes'] = sorted(data['gene_caller_ids_in_genomes'].keys())
+
+    # get some contextual stuff
+    data['index'], data['total'], data['previous_pc_name'], data['next_pc_name'] = get_index_total_previous_and_next_items(d, pc_name)
+
+    for gene_callers_id, genome_name in data['gene_caller_ids']:
+        data['gene_aa_sequences_for_gene_caller_ids'][gene_callers_id] = d.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+
+    return json.dumps(data)
+
+
 def charts(d, split_name, show_outlier_SNVs=False):
     data = {'layers': [],
              'index': None,
@@ -115,14 +171,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
     if not d.auxiliary_profile_data_available:
         return data
 
-    index_of_split = d.split_names_ordered.index(split_name)
-    if index_of_split:
-        data['previous_contig_name'] = d.split_names_ordered[index_of_split - 1]
-    if (index_of_split + 1) < len(d.split_names_ordered):
-        data['next_contig_name'] = d.split_names_ordered[index_of_split + 1]
-
-    data['index'] = index_of_split + 1
-    data['total'] = len(d.split_names_ordered)
+    data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = get_index_total_previous_and_next_items(d, split_name)
 
     layers = sorted(d.p_meta['samples'])
 
