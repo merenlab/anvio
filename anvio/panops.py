@@ -124,6 +124,7 @@ class GenomeStorage(object):
         filesnpaths.is_proper_genomes_storage_file(self.storage_path)
 
         self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, db_hash = None, ignore_hash = True)
+        self.genomes_storage_hash = self.genomes_storage.get_storage_hash()
 
         self.genomes = self.genomes_storage.get_genomes_dict()
         self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
@@ -311,6 +312,7 @@ class GenomeStorage(object):
 class Pangenome(GenomeStorage):
     def __init__(self, args=None, run=run, progress=progress):
         GenomeStorage.__init__(self, args, run, progress)
+        self.init_genomes_data_storage()
 
         self.args = args
         self.run = run
@@ -349,14 +351,15 @@ class Pangenome(GenomeStorage):
                        'min_percent_identity': self.min_percent_identity,
                        'pc_min_occurrence': self.PC_min_occurrence,
                        'mcl_inflation': self.mcl_inflation,
+                       'default_view': 'PC_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
                        'diamond_sensitive': self.sensitive,
                        'maxbit': self.maxbit,
-                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls
+                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
+                       'genomes_storage_hash': self.genomes_storage_hash
                       }
 
-        pan_db = dbops.PanDatabase(self.pan_db_path, quiet=False)
-        self.pan_db_hash = pan_db.create(meta_values)
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
 
 
     def get_output_file_path(self, file_name):
@@ -794,10 +797,6 @@ class Pangenome(GenomeStorage):
 
 
     def process(self):
-        # initialize genomes. this function will be handled by the superclass, and
-        # populate `self.genomes` very conveniently.
-        self.init_genomes_data_storage()
-
         # check sanity
         self.sanity_check()
 
