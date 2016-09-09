@@ -183,21 +183,21 @@ def get_view_data(view_id):
 def get_tree(tree_id):
     return routes.get_tree(args, d, request, response, tree_id)
 
-@route('/data/charts/<split_name>')
-def charts(split_name):
-    return routes.charts(d, split_name, show_outlier_SNVs = args.show_outlier_SNVs)
+@route('/data/proteinclusters/<pc_name>')
+def inspect_pc(pc_name):
+    return routes.inspect_pc(d, pc_name)
 
-state_for_charts = {}
+state_for_pcs = {}
 
-@route('/data/charts/set_state', method='POST')
+@route('/data/proteinclusters/set_state', method='POST')
 def set_state():
-    global state_for_charts
-    state_for_charts = request.forms.get('state')
+    global state_for_pcs
+    state_for_pcs = request.forms.get('state')
 
-@route('/data/charts/get_state')
+@route('/data/proteinclusters/get_state')
 def get_parent_state():
     set_default_headers(response)
-    return state_for_charts
+    return state_for_pcs
 
 @route('/data/hmm/<bin_name>/<gene_name>')
 def get_hmm_hit_from_bin(bin_name, gene_name):
