@@ -76,7 +76,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
-        self.split_names_ordered = None
+        self.displayed_item_names_ordered = None
         self.additional_layers = None
         self.auxiliary_profile_data_available = False
 
@@ -169,11 +169,11 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     flag for single profiles to access to this functionality. Please read the help\
                                     menu for anvi-profile, and/or refer to the tutorial."
 
-        # self.split_names_ordered is going to be the 'master' names list. everything else is going to
+        # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        self.split_names_ordered = utils.get_names_order_from_newick_tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
+        self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
 
-        # now we knot what splits we are interested in (self.split_names_ordered), we can get rid of all the
+        # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
 
@@ -182,7 +182,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
         if self.mode == 'full':
-            self.init_non_singlecopy_gene_hmm_sources(self.split_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
+            self.init_non_singlecopy_gene_hmm_sources(self.displayed_item_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
 
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
@@ -272,7 +272,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
 
-        self.split_names_ordered = self.views[self.default_view]['dict'].keys()
+        self.displayed_item_names_ordered = self.views[self.default_view]['dict'].keys()
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
@@ -285,7 +285,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
             self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
 
-            names_missing_in_FASTA = set(self.split_names_ordered) - set(self.split_sequences.keys())
+            names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
             if num_names_missing_in_FASTA:
                 raise ConfigError, 'Some of the names in your view data does not have corresponding entries in the\
@@ -293,7 +293,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop())
 
             # setup a mock splits_basic_info dict
-            for split_id in self.split_names_ordered:
+            for split_id in self.displayed_item_names_ordered:
                 self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
                                                     'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
 
@@ -403,7 +403,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.split_sequences = None
         self.splits_taxonomy_dict = {}
         self.genes_in_splits_summary_dict = {}
-        self.split_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
+        self.displayed_item_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
 
         # set the title:
         R = lambda x: x.replace('-', ' ').replace('_', ' ')
@@ -417,6 +417,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         PanSuperclass.__init__(self, args)
 
+        self.genomes_storage.get_gene_sequence
         self.init_protein_clusters()
         self.init_additional_layer_data()
 
@@ -547,7 +548,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.skip_check_names:
             return
 
-        splits_in_tree = set(self.split_names_ordered)
+        splits_in_tree = set(self.displayed_item_names_ordered)
         splits_in_view_data = set(self.views[self.default_view]['dict'].keys())
         splits_in_database = set(self.split_sequences) if self.split_sequences else None
         splits_in_additional_view = set(self.views['user_view']['dict'].keys()) if self.additional_view_path else None
@@ -598,7 +599,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.new('Pruning view dicts')
         self.progress.update('...')
         splits_in_views = set(self.views.values()[0]['dict'].keys())
-        splits_to_remove = splits_in_views - set(self.split_names_ordered)
+        splits_to_remove = splits_in_views - set(self.displayed_item_names_ordered)
 
         for view in self.views:
             self.progress.update('processing view "%s"' % view)
