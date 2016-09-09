@@ -657,6 +657,112 @@ class ContigsSuperclass(object):
         self.run.info("Output", output_file_path)
 
 
+class PanSuperclass(object):
+    def __init__(self, args, r=run, p=progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.genome_names = []
+        self.protein_clusters = {}
+        self.clusterings = {}
+        self.views = {}
+        self.collection_profile = {}
+
+        try:
+            self.pan_db_path = args.pan_db
+        except:
+            self.run.warning('PanSuperclass class called with args without pan_db_path member! Returning prematurely.')
+            return
+
+        filesnpaths.is_file_exists(self.pan_db_path)
+
+        self.progress.new('Initializing the pan database superclass')
+
+        self.progress.update('Creating an instance of the pan database')
+        pan_db = PanDatabase(self.pan_db_path)
+
+        self.progress.update('Setting profile self data dict')
+        self.p_meta = pan_db.meta
+
+        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+        self.p_meta['genome_names'] = sorted([s.strip() for s in self.p_meta['external_genome_names'].split(',') + self.p_meta['internal_genome_names'].split(',') if s])
+        self.p_meta['num_genomes'] = len(self.p_meta['genome_names'])
+        self.genome_names = self.p_meta['genome_names']
+
+        if self.p_meta['PCs_clustered']:
+            self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
+            self.clusterings = pan_db.db.get_table_as_dict(t.clusterings_table_name)
+        else:
+            self.p_meta['available_clusterings'] = None
+            self.p_meta['default_clustering'] = None
+            self.clusterings = None
+
+        pan_db.disconnect()
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.pan_db_path, anvio.__pan__version__, db_type='pan')
+
+        self.progress.update('Loading protein clusters')
+        self.init_protein_clusters()
+
+        self.progress.update('Accessing the auxiliary data file')
+        if not args.genomes_storage:
+            self.genomes_storage_is_available = False
+        else:
+            self.genomes_storage_is_available = True
+            self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage, self.p_meta['genomes_storage_hash'])
+
+        self.progress.end()
+
+        if self.genomes_storage_is_available:
+            self.run.info('Genomes storage', 'Found: %s (v. %s)' % (args.genomes_storage, anvio.__genomes_storage_version__))
+        self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
+
+
+    def init_additional_layer_data(self):
+        pan_db = PanDatabase(self.pan_db_path)
+        self.additional_layers_dict = pan_db.db.get_table_as_dict('additional_data')
+        pan_db.disconnect()
+
+        self.additional_layers_headers = self.additional_layers_dict.values()[0].keys()
+
+
+    def init_protein_clusters(self):
+        pan_db = PanDatabase(self.pan_db_path)
+
+        protein_clusters_long_list = pan_db.db.get_table_as_dict(t.pan_protein_clusters_table_name)
+
+        for entry in protein_clusters_long_list.values():
+            genome_name = entry['genome_name']
+            protein_cluster_id = entry['protein_cluster_id']
+            gene_callers_id = entry['gene_caller_id']
+
+            if protein_cluster_id not in self.protein_clusters:
+                self.protein_clusters[protein_cluster_id] = {}
+                for genome_name in self.genome_names:
+                    self.protein_clusters[protein_cluster_id][genome_name] = []
+
+            self.protein_clusters[protein_cluster_id][genome_name].append(gene_callers_id)
+
+        pan_db.disconnect()
+
+
+    def load_pan_views(self, splits_of_interest=None):
+        pan_db = PanDatabase(self.pan_db_path)
+
+        views_table = pan_db.db.get_table_as_dict(t.views_table_name)
+
+        for view in views_table:
+            table_name = views_table[view]['target_table']
+            self.views[view] = {'table_name': table_name,
+                                'header': pan_db.db.get_table_structure(table_name)[1:],
+                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+
+        pan_db.disconnect()
+
+
+
 class ProfileSuperclass(object):
     def __init__(self, args, r=run, p=progress):
         self.args = args
@@ -1018,8 +1124,6 @@ class PanDatabase:
         self.db.set_meta_value('creation_date', time.time())
 
         # know thyself
-        pan_db_hash = '%08x' % random.randrange(16**8)
-        self.db.set_meta_value('pan_db_hash', pan_db_hash)
         self.db.set_meta_value('db_type', 'pan')
 
         # creating empty default tables for pan specific operations:
@@ -1037,8 +1141,6 @@ class PanDatabase:
         self.disconnect()
 
         self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-
-        return pan_db_hash
 
 
     def disconnect(self):
@@ -2313,22 +2415,22 @@ class TablesForCollections(Table):
 
 
 class TablesForStates(Table):
-    def __init__(self, db_path, version):
+    def __init__(self, db_path, version, db_type='profile'):
         self.db_path = db_path
         self.version = version
         self.states = {}
 
         Table.__init__(self, self.db_path, self.version, run, progress)
 
+        self.DB_CLASS = DBClassFactory().get(db_type=db_type)
+
         self.init()
 
 
     def init(self):
-        is_profile_db(self.db_path)
-
-        profile_db = db.DB(self.db_path, self.version)
-        self.states = profile_db.get_table_as_dict(t.states_table_name)
-        profile_db.disconnect()
+        anvio_db = self.DB_CLASS(self.db_path)
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
+        anvio_db.disconnect()
 
 
     def get_state(self, state_id):
@@ -2343,11 +2445,11 @@ class TablesForStates(Table):
 
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
 
-        profile_db = db.DB(self.db_path, self.version)
-        profile_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
-        self.states = profile_db.get_table_as_dict(t.states_table_name)
+        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
 
-        profile_db.disconnect()
+        anvio_db.disconnect()
 
 
     def remove_state(self, state_id):
@@ -2886,10 +2988,10 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
     anvio_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
 
     try:
-        anvio_db.db.remove_meta_key_value_pair('contigs_clustered')
+        anvio_db.db.remove_meta_key_value_pair('PCs_clustered' if db_type == 'pan' else 'contigs_clustered')
     except:
         pass
-    anvio_db.db.set_meta_value('contigs_clustered', True)
+    anvio_db.db.set_meta_value('PCs_clustered' if db_type == 'pan' else 'contigs_clustered', True)
 
     try:
         anvio_db.db.get_meta_value('default_clustering')
