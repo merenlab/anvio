@@ -1,6 +1,6 @@
 @import url('normalize.css');
 
-#chart-container {
+#display-container {
     width: 1200px; //this is being overwritten though.
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
@@ -16,7 +16,7 @@
   border-top: 1px solid #ccc;
 }
 
-#chart-container h2 {
+#display-container h2 {
     color: #444;
     margin: 0 0 10px;
     font-weight: 300;
