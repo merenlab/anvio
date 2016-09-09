@@ -251,6 +251,9 @@ function initData () {
                 $('.server-mode').show();
             } else if (mode == 'full') {
                 $('.full-mode').show();
+            } else if (mode == 'pan') {
+                $('.pan-mode').show();
+                $('#fixed-navbar-div').css('background-color', 'orange');
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('#fixed-navbar-div').css('background-color', '#E2DEF2');
