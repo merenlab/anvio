@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.hmmops import SequencesForHMMHits
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
 from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
 from anvio.completeness import Completeness
@@ -36,7 +36,7 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-class InputHandler(ProfileSuperclass, ContigsSuperclass):
+class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     """The class that loads everything for the interactive interface. Wow. Such glory."""
     def __init__(self, args, external_clustering=None):
         self.args = args
@@ -47,8 +47,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.mode = A('mode')
+        self.pan_db_path = A('pan_db')
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        self.genomes_storage_path = A('genomes_storage')
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
@@ -81,6 +83,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.samples_information_dict = {}
         self.samples_order_dict = {}
         self.samples_information_default_layer_order = {}
+
+        self.additional_layers_dict = {}
+        self.additional_layers_headers = []
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -122,6 +127,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.load_manual_mode(args)
         elif self.mode == 'refine':
             self.load_full_mode(args)
+        elif self.mode == 'pan':
+            self.load_pan_mode(args)
         elif self.collection_name or self.list_collections:
             self.mode = 'collection'
             self.run.info('Mode', self.mode, mc='green')
@@ -403,6 +410,22 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         self.title = "Collection '%s' for %s" % (R(self.collection_name), R(self.p_meta['sample_id']))
 
 
+    def load_pan_mode(self, args):
+        if not self.pan_db_path:
+            raise ConfigError, "So you want to display a pan genome without a pan database? Anvi'o is\
+                                confused :/"
+
+        PanSuperclass.__init__(self, args)
+
+        self.init_protein_clusters()
+        self.init_additional_layer_data()
+
+        self.p_meta['clusterings'] = self.clusterings
+
+        self.load_pan_views()
+        self.default_view = self.p_meta['default_view']
+
+
     def load_full_mode(self, args):
         if not self.contigs_db_path:
             raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
@@ -588,10 +611,10 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
     def convert_view_data_into_json(self):
         '''This function's name must change to something more meaningful.'''
 
-        additional_layers_dict, additional_layer_headers = None, []
+        additional_layers_dict, additional_layers_headers = self.additional_layers_dict, self.additional_layers_headers
         if self.additional_layers_path:
-            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path)
-            additional_layer_headers = utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
+            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=additional_layers_dict, assign_none_for_missing=True)
+            additional_layers_headers = additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -620,8 +643,8 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             json_header.extend(view_headers)
 
             # (6) then add 'additional' headers as the outer ring:
-            if additional_layer_headers:
-                json_header.extend(additional_layer_headers)
+            if additional_layers_headers:
+                json_header.extend(additional_layers_headers)
 
             # (7) finally add hmm search results
             if self.hmm_searches_header:
@@ -653,7 +676,7 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([additional_layers_dict[split_name][header] if split_name in additional_layers_dict else None for header in additional_layer_headers])
+                json_entry.extend([additional_layers_dict[split_name][header] if split_name in additional_layers_dict else None for header in additional_layers_headers])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
