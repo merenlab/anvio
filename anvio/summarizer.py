@@ -387,24 +387,20 @@ class Bin:
     def access_completeness_scores(self):
         self.progress.update('Accessing completeness scores ...')
 
-        completeness = self.summary.completeness.get_info_for_splits(set(self.split_ids))
+        p_completion, p_redundancy, domain, domain_confidence, results_dict = self.summary.completeness.get_info_for_splits(set(self.split_ids))
 
-        self.bin_info_dict['completeness'] = completeness
+        self.bin_info_dict['completeness'] = results_dict
 
-        num_sources = len(completeness)
-
-        # set up for the average completeness / redundancy scores:
-        for k in ['percent_redundancy', 'percent_complete']:
-            self.bin_info_dict[k] = 0.0
-
-        # go through all single-copy gene reporting sources
-        for c in completeness.values():
-            for k in ['percent_redundancy', 'percent_complete']:
-                self.bin_info_dict[k] += c[k]
+        self.bin_info_dict['percent_redundancy'] = p_redundancy
+        self.bin_info_dict['percent_complete'] = p_completion
+        self.bin_info_dict['scg_domain'] = domain
+        self.bin_info_dict['scg_domain_confidence'] = domain_confidence
 
         for k in ['percent_redundancy', 'percent_complete']:
-            self.bin_info_dict[k] /= num_sources
             self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
+
+        self.store_data_in_file('scg_domain.txt', '%s' % self.bin_info_dict['scg_domain'])
+        self.store_data_in_file('scg_domain_confidence.txt', '%.2f' % self.bin_info_dict['scg_domain_confidence'])
 
 
     def store_profile_data(self):
