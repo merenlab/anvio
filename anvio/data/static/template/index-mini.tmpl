@@ -182,17 +182,21 @@
                 <thead id="tblHead_completeness_{{ bin }}">
                   <tr>
                     <th>Source</th>
+                    <th>SCG domain</th>
                     <th class="text-center">Percent completeness</th>
                     <th class="text-center">Percent redundancy</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for source in collection|lookup:bin|lookup:"completeness" %}
-                  <tr>
-                    <td><a href="{{ collection|lookup:bin|lookup:'files'|lookup:source }}">{{ source|humanize }}</a></td>
-                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_complete"|humanize_n }}%</td>
-                    <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:source|lookup:"percent_redundancy"|humanize_n }}%</td>
-                  </tr>
+                  {% for domain in collection|lookup:bin|lookup:"completeness" %}
+                      {% for source in collection|lookup:bin|lookup:"completeness"|lookup:domain %}
+                      <tr>
+                        <td>{{ source|humanize }}</td>
+                        <td>{{ domain|humanize }}</td>
+                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_complete"|humanize_f }}%</td>
+                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_redundancy"|humanize_f }}%</td>
+                      </tr>
+                      {% endfor %}
                   {% endfor %}
                 </tbody>
           </table>
