@@ -315,19 +315,9 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
 
-        self.progress.new('Accessing HMM hits')
-        self.progress.update('...')
-        self.hmm_access = SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
-        self.progress.end()
-
-        completeness = Completeness(args.contigs_db, source='Campbell_et_al')
+        completeness = Completeness(args.contigs_db)
         if not len(completeness.sources):
             raise ConfigError, "HMM's were not run for this contigs database :/"
-
-        if not 'Campbell_et_al' in completeness.sources:
-            raise ConfigError, "This 'collection' mode uses Campbell et al. single-copy gene collections to make sense of the completion\
-                                and redundancy of bins. The bad news is that Campbell et al is not among the available HMM sources in your\
-                                contigs database :/ Why? Why?"
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database:
@@ -391,14 +381,12 @@ class InputHandler(ProfileSuperclass, ContigsSuperclass):
             self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
 
             # get completeness estimate
-            c = completeness.get_info_for_splits(set(self.collection[bin_id]))['Campbell_et_al']
-            percent_completion = c['percent_complete']
-            percent_redundancy = c['percent_redundancy']
+            p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
-                self.views[view]['dict'][bin_id]['percent_completion'] = percent_completion
-                self.views[view]['dict'][bin_id]['percent_redundancy'] = percent_redundancy
+                self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
+                self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
 
             current_bin += 1
         self.progress.end()
