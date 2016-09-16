@@ -46,20 +46,13 @@ def main(args):
     size_for_MAG = A('size_for_MAG')
     use_SCG_averages = A('use_SCG_averages')
     use_highest_completion_score = A('use_highest_completion_score')
-    skip_using_domains = A('skip_using_domains')
     dry_run = A('dry_run')
-
-    if skip_using_domains and not use_SCG_averages:
-        raise ConfigError, "The flag --skip-using-domains can only be used together with --use-SCG-averages."
-
-    domain_aware = False if skip_using_domains else True
-
-    if not domain_aware:
-        run.warning("You want to use SCG averages, but you don't want the domain specific ones. OK. Anvi'o\
-                     assumes you read the help menu, and you know what you are doing.")
 
     if use_SCG_averages and use_highest_completion_score:
         raise ConfigError, "You can't use both `--use-SCG-averages` and `--use-highest-completion-score`"
+
+    if not use_SCG_averages and not use_highest_completion_score:
+        raise ConfigError, "You must choose one: `--use-SCG-averages`, or`--use-highest-completion-score`"
 
     dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
@@ -111,7 +104,7 @@ def main(args):
 
     if use_SCG_averages:
         run.warning('As per your request, this run will use average completion and redundancy estimates\
-                     recovered from %s single-copy core gene collections.' % ('domain-specific' if domain_aware else 'ALL'))
+                     recovered from all single-copy core gene collections.')
 
     elif use_highest_completion_score:
         run.warning('As per your request, this run will use the completion and redundancy estimate\
@@ -136,34 +129,26 @@ def main(args):
     progress.new('Going through bins in the collection %s' % collection_name_to_read)
     for bin_name in collection_dict:
         progress.update('%d in %d' % (counter, total_num_bins))
+        p_completion, p_redundancy, domain, domain_confidence, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
         if use_SCG_averages:
-
-            d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
-
-            if domain_aware:
-                domain = completeness.get_best_matching_domain(d)
-                percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d if d[scg_collection]['domain'] == domain])
-                percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d if d[scg_collection]['domain'] == domain])
-            else:
-                percent_completion = numpy.mean([d[scg_collection]['percent_complete'] for scg_collection in d])
-                percent_redundancy = numpy.mean([d[scg_collection]['percent_redundancy'] for scg_collection in d])
+            pass
         elif use_highest_completion_score:
-            d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
+            l = []
+            for domain in d:
+                for scg_collection_name in d[domain]:
+                    l.append((d[domain][scg_collection_name]['percent_complete'], domain, scg_collection_name),)
+            _, domain, scg_collection_name = sorted(l, reverse=True)[0]
 
-            scg_collection_name = sorted([(d[scg_collection]['percent_complete'], scg_collection) for scg_collection in d], reverse=True)[0][1]
-
-            percent_completion = d[scg_collection_name]['percent_complete']
-            percent_redundancy = d[scg_collection_name]['percent_redundancy']
+            p_completion = d[domain][scg_collection_name]['percent_complete']
+            p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
         else:
-            campbell_et_all = completeness.get_info_for_splits(set(collection_dict[bin_name]))['Campbell_et_al']
-            percent_completion = campbell_et_all['percent_complete']
-            percent_redundancy = campbell_et_all['percent_redundancy']
+            raise ConfigError, "WTF :( Something that shuold never happened just happened,"
 
         size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
-        substantive_completion = percent_completion - percent_redundancy
+        substantive_completion = p_completion - p_redundancy
 
         if call_MAGs:
-            if percent_redundancy < max_redundancy_for_MAG and (percent_completion >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
+            if p_redundancy < max_redundancy_for_MAG and (p_completion >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
                 MAGs_sorted_by_completion.append((bin_name, substantive_completion, 'MAG'),)
             else:
                 bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
@@ -263,25 +248,17 @@ if __name__ == '__main__':
                               default is %(default)d Mbp), regarldless of the completion.")
 
     groupD.add_argument('--use-SCG-averages', default=False, action="store_true", \
-                        help = "By default anvi'o will use the single-copy core gene collection by Campbell et al.\
-                                for completion and redundancy estiamtes for ordering of bins and/or to call some of\
-                                them MAGs (see '--call-MAGs'). If you use this flag, it will use all avialble\
-                                single-copy core gene collections and will average their independent completion\
-                                and redundancy estimates.")
-    groupD.add_argument('--skip-using-domains', default=False, action="store_true", \
-                        help = "When you use SCG averages to identify MAGs, anvi'o will by default find the best matching\
-                                domain for a given MAG (i.e., bacterial or archaeal), and rely on the averages for SCGs\
-                                that belong to that domain. Using this flag you can skip that, and take the average of\
-                                completiong and redundancy estimates that come from every SCG collection, which would be\
-                                somewhat ridiculous since the default SCGs include both bacterial and archaeal collections\
-                                and averaging all of them for a given bin will definitely underestimate completion.")
+                        help = "If you use this flag, anvi'o will use all avialble single-copy core gene collections, will\
+                                average their independent completion and redundancy estimates, will select the best matching\
+                                domain (i.e. arcaheal SCGs vs bacterial SCG), and use the resulting estimates numbers for\
+                                renaming purposes.")
     groupD.add_argument('--use-highest-completion-score', default=False, action="store_true", \
                         help = "If you use this flag, instead of `--use-SCG-averages`, anvi'o will take the SCG collection\
                                 that estimates the highest completion for a given bin. This will affect how MAGs are called.\
                                 For instance, if you have HMM hits in your contigs database for both bacterial and archaeal\
                                 single-copy gene collections, the completion score for a given archaeal bin with a bacterial\
                                 single-copy genes will be very low. This flag will select the collection with the highest\
-                                completion estimate, and use that instead of taking the average, or utulizing Campbell et al.")
+                                completion estimate, and use that instead of taking the average.")
     args = parser.parse_args()
 
     try:
