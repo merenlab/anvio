@@ -748,7 +748,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
 
     # get completeness / contamination estimates
-    p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
+    p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
     info_dict['percent_complete'] = p_completion
     info_dict['percent_redundancy'] = p_redundancy
