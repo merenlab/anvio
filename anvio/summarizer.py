@@ -748,14 +748,12 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     info_dict['total_length'] = len(seq)
 
     # get completeness / contamination estimates
-    if split_names:
-        comp = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names)
-    else:
-        comp = completeness.Completeness(contigs_db_path).get_info_for_splits(set(c.splits_basic_info.keys()))
+    p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
-    if 'Campbell_et_al' in comp:
-        info_dict['percent_complete'] = comp['Campbell_et_al']['percent_complete']
-        info_dict['percent_redundancy'] = comp['Campbell_et_al']['percent_redundancy']
+    info_dict['percent_complete'] = p_completion
+    info_dict['percent_redundancy'] = p_redundancy
+    info_dict['scg_domain'] = domain
+    info_dict['scg_domain_confidence'] = domain_confidence
 
     # lets get all amino acids used in all complete gene calls:
     if include_AA_counts:
