@@ -6,6 +6,8 @@
     contigs database.
 """
 
+import sys
+import numpy
 from collections import Counter
 
 import anvio
@@ -13,6 +15,7 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 
@@ -32,7 +35,7 @@ progress = terminal.Progress()
 
 
 class Completeness:
-    def __init__(self, contigs_db_path, source=None, run=run, progress=progress):
+    def __init__(self, contigs_db_path, source_requested=None, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -71,20 +74,22 @@ class Completeness:
 
         self.genes_in_db = dict([(s, info_table[s]['genes'].split(', ')) for s in info_table])
 
-
         # we're done with the db
         contigs_db.disconnect()
 
         self.sources = info_table.keys()
+        self.domains = set([info_table[source]['domain'] for source in self.sources])
+        self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
+        self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
-        if source:
-            if source not in self.sources:
-                raise ConfigError, 'Source "%s" is not one of the single-copy gene sources found in the database.' % source
+        if source_requested:
+            if source_requested not in self.sources:
+                raise ConfigError, 'Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested
 
             # filter out sources that are not requested
-            self.sources = [source]
-            self.genes_in_db = {source: self.genes_in_db[source]}
-            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source]))
+            self.sources = [source_requested]
+            self.genes_in_db = {source_requested: self.genes_in_db[source_requested]}
+            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source_requested]))
 
         self.unique_gene_id_to_gene_name = {}
         self.splits_unique_gene_id_occurs = {}
@@ -108,7 +113,56 @@ class Completeness:
             self.run.info_single(source)
 
 
+    def get_average_domain_completion_and_redundancy(self, d, domain):
+        """For a given results dict `d` obtained from 'get_info_for_splits', and a domain, returns
+           average percent completion and redundancy for the domain."""
+
+        percent_completion = numpy.mean([d[domain][s]['percent_complete'] for s in d[domain]])
+        percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
+            
+        return percent_completion, percent_redundancy
+
+
+    def get_best_matching_domain(self, d):
+        """Returns the domain that gives the highest (completion - redundancy) estimate.
+           Along with a confidence value associated with that estimation.
+
+           Confidence value is simply equals to (completion - redundancy) / 100.0
+
+           The input dict is the output of 'get_info_for_splits' (the prameter `d`)
+
+           It returns a tuple for best matching domain and how confident the matching is.
+        """
+
+        domain_specific_estimates = []
+
+        for domain in d:
+            percent_completion = numpy.mean([d[domain][s]['percent_complete'] for s in d[domain]])
+            percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
+
+            substantive_completion = percent_completion - percent_redundancy
+            domain_specific_estimates.append((substantive_completion, domain, substantive_completion / 100.0), )
+
+        domain_specific_estimates.sort(reverse=True)
+
+        best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][2]
+
+        return (best_matching_domain, domain_matching_confidence)
+
+
     def get_info_for_splits(self, split_names, min_e_value=1e-5):
+        """This function takes a bunch of split names, and returns three things:
+
+            - Average percent completion for best matching domain
+            - Average redundancy for best matching domain
+            - Best matching domain for this collection of splits,
+            - Domain matching confidence (see get_average_domain_completion_and_redundancy for details)
+            - And a comprehensive results dictionary that explains each HMM source in each domain,
+
+        For your convenience, you can call this function this way:
+        
+        p_completion, p_redundancy, domain, domain_confidence, results_dict = get_info_for_splits(s)
+        """
         hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
@@ -142,23 +196,30 @@ class Completeness:
 
         # here we generate the results information
         results_dict = {}
-        for source in self.sources:
-            results_dict[source] = {}
+        for domain in self.domains:
+            results_dict[domain] = {}
 
         for source in self.sources:
+            domain = self.source_to_domain[source]
+            results_dict[domain][source] = {'domain': domain, 'source': source}
+
             genes_count = Counter([v['gene_name'] for v in info_dict[source].values()])
 
             # report results
-            results_dict[source]['percent_complete'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
+            results_dict[domain][source]['percent_complete'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
 
             # report redundancy:
             genes_that_occur_multiple_times = [g for g in genes_count if genes_count[g] > 1]
-            results_dict[source]['percent_redundancy'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
+            results_dict[domain][source]['percent_redundancy'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
 
             # identify splits that contribute the same single_copy_gene
             redundants = {}
             for gene_name in genes_that_occur_multiple_times:
                 redundants[gene_name] = [self.splits_unique_gene_id_occurs[unique_gene_id] for unique_gene_id in gene_name_to_unique_id[source][gene_name]]
-            results_dict[source]['redundants'] = redundants
+            results_dict[domain][source]['redundants'] = redundants
 
-        return results_dict
+        best_matching_domain, domain_matching_confidence = self.get_best_matching_domain(results_dict)
+
+        percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+
+        return (percent_completion, percent_redundancy, best_matching_domain, domain_matching_confidence, results_dict)

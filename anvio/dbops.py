@@ -2010,10 +2010,13 @@ class TablesForHMMHits(Table):
 
         for source in sources:
             kind_of_search = sources[source]['kind']
+            domain = sources[source]['domain']
             all_genes_searched_against = sources[source]['genes']
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
             hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      kind_of_search,
+                                                      domain,
                                                       all_genes_searched_against,
                                                       hmm_model,
                                                       reference)
@@ -2024,7 +2027,7 @@ class TablesForHMMHits(Table):
                 parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt)
                 search_results_dict = parser.get_search_results()
 
-            self.append(source, reference, kind_of_search, all_genes_searched_against, search_results_dict)
+            self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
         if not self.debug:
             commander.clean_tmp_dirs()
@@ -2033,7 +2036,7 @@ class TablesForHMMHits(Table):
             os.remove(protein_sequences_fasta)
 
 
-    def append(self, source, reference, kind_of_search, all_genes, search_results_dict):
+    def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
@@ -2054,8 +2057,8 @@ class TablesForHMMHits(Table):
         contigs_db = ContigsDatabase(self.db_path)
 
         # push information about this search result into serach_info table.
-        db_entries = [source, reference, kind_of_search, ', '.join(all_genes)]
-        contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
+        db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
+        contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
 
         # then populate serach_data table for each contig.
         db_entries = []

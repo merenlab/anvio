@@ -1161,16 +1161,29 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
         kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
+        domain = None
+
+        if kind.count(':') == 1:
+            kind, domain = kind.split(':')
+
         if not PROPER(kind):
-            raise ConfigError, "'kind.txt' defines the kind of search this database offers. This file must contain a single\
+            raise ConfigError, "'kind.txt' defines the kind of search this database offers. The kind term must be a single\
                                 word that is at least three characters long, and must not contain any characters but\
                                 ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
                                 or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
+
+        if domain and not PROPER(domain):
+            raise ConfigError, "That's lovely that you decided to specify a domain extension for your HMM collection in the\
+                                'kind.txt'. Although, your domain term is not a good one, as it must be a single\
+                                word that is at least three characters long, and without any characters but\
+                                ASCII letters, digits, and underscore. Confused? That's fine. Send an e-mail to the anvi'o\
+                                developers, and they will help you!"
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
+                                             'domain': domain,
                                              'genes': genes.keys(),
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
