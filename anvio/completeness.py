@@ -218,6 +218,9 @@ class Completeness:
                 redundants[gene_name] = [self.splits_unique_gene_id_occurs[unique_gene_id] for unique_gene_id in gene_name_to_unique_id[source][gene_name]]
             results_dict[domain][source]['redundants'] = redundants
 
+        if not len(results_dict):
+            return (None, None, None, None, results_dict)
+
         best_matching_domain, domain_matching_confidence = self.get_best_matching_domain(results_dict)
 
         percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
