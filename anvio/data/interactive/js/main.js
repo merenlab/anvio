@@ -1217,19 +1217,12 @@ function updateComplateness(bin_id) {
 
             stats = completeness_info_dict['stats'];
             refs = completeness_info_dict['refs'];
+            averages = completeness_info_dict['averages'];
 
             completeness_dict[bin_id] = completeness_info_dict;
 
-            // it is sad that one liner with a list comprehension takes this much code in JS:
-            sum_completeness = 0.0;
-            sum_redundancy = 0.0;
-            for(source in stats){
-                sum_completeness += stats[source]['percent_complete'];
-                sum_redundancy += stats[source]['percent_redundancy'];
-            }
-
-            average_completeness = sum_completeness / Object.keys(stats).length;
-            average_redundancy = sum_redundancy / Object.keys(stats).length;
+            average_completeness = averages['percent_completion']
+            average_redundancy = averages['percent_redundancy']
 
             $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
             $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
@@ -1252,6 +1245,7 @@ function showCompleteness(bin_id, updateOnly) {
 
     var refs = completeness_dict[bin_id]['refs'];
     var stats = completeness_dict[bin_id]['stats'];
+    var averages = completeness_dict[bin_id]['averages'];
 
     var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
 
@@ -1259,10 +1253,16 @@ function showCompleteness(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">Percent complenetess</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetess</th></tr></thead><tbody>';
 
-    for (var source in stats)
-        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+    for (var source in stats){
+        if(stats[source]['domain'] != averages['domain'])
+            // if the source is not matching the best domain recovered
+            // don't show it in the interface
+            continue;
+
+        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+    }
 
     msg = msg + '</tbody></table>';
 
@@ -1287,6 +1287,9 @@ function showRedundants(bin_id, updateOnly) {
     var oddeven=0;
 
     for(var source in stats) {
+        if(stats[source]['domain'] != averages['domain'])
+            continue;
+
         oddeven++;
         var tabletext = '<div class="table-responsive col-md-6"><table style="margin-bottom: 10px;"><tr><td>';
         tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['redundants']).length + ')</h5></td></tr>';
