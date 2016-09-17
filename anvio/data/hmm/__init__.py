@@ -15,14 +15,14 @@ missing_programs = u.get_missing_programs_for_hmm_analysis()
 
 if len(sources):
     if len(missing_programs):
-        run.warning('anvio found one or more databases to perform single-copy gene analysis\
-                                             that may be useful for downstream analyses. However, this process require\
-                                             certain programs to be present in your system. Here is the command(s) anvio\
-                                             tried to access and failed: %s. Please see the documentation for system\
-                                             requirements.' % ', '.join(missing_programs))
+        run.warning("Anvi'o found one or more databases to perform single-copy gene analysis\
+                     that may be useful for downstream analyses. However, this process require\
+                     certain programs to be present in your system. Here is the command(s) anvio\
+                     tried to access and failed: %s. Please see the documentation for system\
+                     requirements." % ', '.join(missing_programs))
         sources = {}
     else:
         run.info('HMM profiles',
                  '%d source%s been loaded: %s' % (len(sources),
                                                   's have' if len(sources) > 1 else ' has',
-                                                  ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes'])) for s in sources])))
+                                                  ', '.join(['%s (%d genes, domain: %s)' % (s, len(sources[s]['genes']), sources[s]['domain']) for s in sources])))
