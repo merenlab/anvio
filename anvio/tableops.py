@@ -104,7 +104,7 @@ class Table(object):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
         else:
-            output_file_path = os.path.join(filesnpaths.get_temp_directory_path(), 'sequences.fa')
+            output_file_path = os.path.join(filesnpaths.get_temp_directory_path(), 'aa_sequences.fa')
 
         database = db.DB(self.db_path, self.version)
 
