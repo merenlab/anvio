@@ -17,6 +17,8 @@ import ConfigParser
 from email.mime.text import MIMEText
 
 import anvio
+import anvio.db as db
+import anvio.tables as t
 import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -843,6 +845,28 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     output.close()
     return True
 
+
+def export_contigs_from_contigs_db(contigs_db_path, output_file_path, rna_alphabet=True, split=True):
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+    contig_sequences_dict = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+    contigs_db.disconnect()
+
+    contigs_fasta = u.FastaOutput(output_file_path)
+
+    for contig_name in sorted(contig_sequences_dict.keys()):
+        sequence = contig_sequences_dict[contig_name]['sequence']
+
+        if rna_alphabet:
+            sequence = sequence.replace('T', 'U')
+
+        contigs_fasta.write_id(contig_name)
+        contigs_fasta.write_seq(sequence, split=split)
+
+    return True
+
+
 def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=None,
                                unit_mapping_dict=None, project=None, sample_size=8, unit_size=2,
                                skip_sample_labels=False, skip_unit_labels=False):
@@ -1133,7 +1157,58 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
     return filtered_dict
 
 
+def anvio_hmm_target_term_to_alphabet_and_context(target):
+    """Alphabet and context recovery from the target term in anvi'o HMM source directories."""
+    alphabet = None
+    context = None
+    fields = target.split(':')
+
+    if len(fields) == 2:
+        alphabet, context = fields
+    elif len(fields) == 1:
+        alphabet = fields[0]
+    else:
+        raise ConfigError, "HMM stuff is upset with you. There are unexpected number of fields in the target\
+                            file."
+
+    if alphabet not in ['AA', 'DNA', 'RNA']:
+        raise ConfigError, "The alphabet in the target file (%s) isnot one of the alphabets anvi'o knows how to\
+                            work with. Here is a list for you to choose from: 'DNA', 'RNA', or 'AA'" % alphabet
+
+    if context not in ['GENE', 'CONTIG', None]:
+        raise ConfigError, "The context you defined in the target file (%s) does not make any sense to anvi'o.\
+                            It would have, if you had chosen one of these: 'GENE', 'CONTIG'." % context
+
+    if alphabet == 'AA' and context == 'CONTIG':
+        raise ConfigError, "You can't use the AA alphabet with the CONTIGS context :/ You need to set your target\
+                            again. 'AA' or 'AA:GENE' would have worked much better."
+
+    if not context:
+        context = 'GENE'
+
+    return alphabet, context
+
+
 def get_HMM_sources_dictionary(source_dirs=[]):
+    """An anvi'o HMM source directory importer.
+
+       The directory must have five files:
+
+       - genes.hmm.gz: compressed HMM for each gene.
+       - genes.txt: three column file lists all gene names appear in the genes.hmm.gz, accession numbers if there
+                    are any, and HMM source for those.
+       - kind.txt: the kind of genes are there in this source. i.e., 'antibiotic_genes', or 'transporters'. the
+                   term 'singlecopy' is a special one, and should be used with a domain term: 'singlecopy:bacteria',
+                   'singlecopy:archaea', etc. Anvi'o utilizes single-copy sources to assess the completion of MAGs
+                   later.
+       - reference.txt: Where is it coming from?
+       - target.txt: the target term. see `anvio_hmm_target_term_to_alphabet_and_context` for details. 
+
+       For an example HMM source directory, take a look at an example in the codebase:
+
+                https://github.com/meren/anvio/tree/master/anvio/data/hmm/Campbell_et_al
+
+    """
     if not isinstance(source_dirs, type([])):
         raise ConfigError, "source_dirs parameter must be a list (get_HMM_sources_dictionary)."
 
@@ -1153,16 +1228,19 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source)
 
-        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz']:
+        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt']:
             if not os.path.exists(os.path.join(source, f)):
                 raise ConfigError, "Each search database directory must contain following files:\
-                                    'kind.txt', 'reference.txt', 'genes.txt', and 'genes.hmm.gz'. %s does not seem\
-                                    to be a proper source." % os.path.basename(source)
+                                    'kind.txt', 'reference.txt', 'genes.txt', 'target.txt', and\
+                                    'genes.hmm.gz'. %s does not seem to be a proper source." % \
+                                                os.path.basename(source)
 
         ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
         kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
-        domain = None
+        target = open(os.path.join(source, 'target.txt'), 'rU').readlines()[0].strip()
+        anvio_hmm_target_term_to_alphabet_and_context(target)
 
+        domain = None
         if kind.count(':') == 1:
             kind, domain = kind.split(':')
 
@@ -1185,6 +1263,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                              'kind': kind,
                                              'domain': domain,
                                              'genes': genes.keys(),
+                                             'target': target,
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
     return sources
