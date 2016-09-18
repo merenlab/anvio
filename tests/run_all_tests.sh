@@ -142,12 +142,13 @@ anvi-cluster-with-concoct -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_di
 INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file"
 anvi-get-short-reads-from-bam -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_2 -o $output_dir/short_reads_for_Bin_2.fasta $output_dir/*bam
 
-INFO "Rename bins in collection 'cmdline_concoct'"
+INFO "Rename bins in collection 'cmdline_concoct' using SCG averages"
 anvi-rename-bins -c $output_dir/CONTIGS.db \
                  -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --prefix 'PSAMPLES' \
                  --collection-to-read "cmdline_concoct" \
                  --collection-to-write "cmdline_concoct_RENAMED" \
+                 --use-SCG-averages \
                  --report-file $output_dir/renaming-report.txt
 
 echo
