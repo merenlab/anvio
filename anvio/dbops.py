@@ -576,7 +576,7 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         if not output_file_path:
             raise ConfigError, "gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
                                 Anvi'o does not know how you managed to come here, but please go back and come again."
@@ -603,8 +603,16 @@ class ContigsSuperclass(object):
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
             entry = sequences_dict[gene_callers_id]
-            header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
-            sequence = entry['sequence']
+
+            if simple_headers:
+                header = '%d' % (gene_callers_id)
+            else:
+                header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+
+            if rna_alphabet:
+                sequence = entry['sequence'].replace('T', 'U')
+            else:
+                sequence = entry['sequence']
 
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
@@ -1990,10 +1998,8 @@ class TablesForHMMHits(Table):
         self.set_next_available_id(t.hmm_hits_splits_table_name)
 
 
-    def populate_search_tables(self, sources={}, protein_sequences_fasta=None):
+    def populate_search_tables(self, sources={}):
         # if we end up generating a temporary file for protein sequences:
-        remove_fasta_file_upon_finish = False
-
         if not len(sources):
             import anvio.data.hmm
             sources = anvio.data.hmm.sources
@@ -2001,20 +2007,54 @@ class TablesForHMMHits(Table):
         if not sources:
             return
 
-        if not protein_sequences_fasta:
-            # creating a temporary fasta file for protein sequences:
-            protein_sequences_fasta = self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name)
-            remove_fasta_file_upon_finish = True
+        target_files_dict = {}
 
-        commander = HMMer(protein_sequences_fasta, num_threads_to_use=self.num_threads_to_use)
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        # here we will go through targets and populate target_files_dict based on what we find among them.
+        targets = set([s['target'] for s in sources.values()])
+        for target in targets:
+
+            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
+
+            self.run.info('Target found', '%s:%s' % (alphabet, context))
+
+            class Args: pass
+            args = Args()
+            args.contigs_db = self.db_path
+            contigs_db = ContigsSuperclass(args)
+
+            if context == 'GENE':
+                if alphabet == 'AA':
+                    target_files_dict['AA:GENE'] = os.path.join(tmp_directory_path, 'aa_gene_sequences.fa')
+                    self.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, output_file_path=target_files_dict['AA:GENE'])
+                else:
+                    target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
+                    contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                                               simple_headers=True,
+                                                                               rna_alphabet=True if alphabet=='RNA' else False)
+            elif context == 'CONTIG':
+                if alphabet == 'AA':
+                    pass # because you can't be here.
+                else:
+                    target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
+                    utils.export_contigs_from_contigs_db(self.db_path,
+                                                         target_files_dict['%s:CONTIG' % alphabet],
+                                                         rna_alphabet=True if alphabet=='RNA' else False)
+
+        commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use)
 
         for source in sources:
+            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
+
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
             all_genes_searched_against = sources[source]['genes']
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
+
             hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      '%s:%s' % (alphabet, context),
                                                       kind_of_search,
                                                       domain,
                                                       all_genes_searched_against,
@@ -2031,9 +2071,8 @@ class TablesForHMMHits(Table):
 
         if not self.debug:
             commander.clean_tmp_dirs()
-
-        if remove_fasta_file_upon_finish and not self.debug:
-            os.remove(protein_sequences_fasta)
+            for v in target_files_dict.values():
+                os.remove(v)
 
 
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
