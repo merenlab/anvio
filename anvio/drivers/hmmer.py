@@ -28,14 +28,13 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, protein_sequences_fasta, num_threads_to_use=1, progress=progress, run=run):
+    def __init__(self, target_files_dict, num_threads_to_use=1, progress=progress, run=run):
+        """A class to streamline HMM runs."""
         self.num_threads_to_use = num_threads_to_use
         self.progress = progress
         self.run = run
 
-        filesnpaths.is_file_fasta_formatted(protein_sequences_fasta)
-
-        self.protein_sequences_fasta = protein_sequences_fasta
+        self.target_files_dict = target_files_dict
 
         # hmm_scan_hits is the file to access later on for parsing:
         self.hmm_scan_output = None
@@ -45,10 +44,21 @@ class HMMer:
         self.tmp_dirs = []
 
 
-    def run_hmmscan(self, source, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+    def run_hmmscan(self, source, target, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+
+        if target not in self.target_files_dict:
+            raise ConfigError, "You have an unknown target :/ Target, which defines an alphabet and context\
+                                to clarify whether the HMM search is supposed to be done using alphabets DNA,\
+                                RNA, or AA sequences, and contexts of GENEs or CONTIGs. Yours is %s, and it\
+                                doesn't work for anvi'o." % target
+
+        if not self.target_files_dict[target]:
+            raise ConfigError, "HMMer class does not know about Sequences file for the target %s :/" % target
+
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')
+        self.run.info('Target', target)
         self.run.info('Domain', domain if domain else 'N\\A')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))
@@ -98,7 +108,7 @@ class HMMer:
                                            self.num_threads_to_use,
                                            self.hmm_scan_hits_shitty,
                                            hmm_file_path,
-                                           self.protein_sequences_fasta,
+                                           self.target_files_dict[target],
                                            log_file_path))
 
         with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
