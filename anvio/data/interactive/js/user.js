@@ -402,6 +402,16 @@ function uploadFileSelected (which) {
     // validate file contents
     var fileReader = new FileReader();
     var file = $('#'+which+'FileSelect')[0].files[0];
+
+    if (file.size > 1500000)
+    {
+        toastr.error('Sorry, current version does not support files larger than 1.5 MB.');
+
+        $('#'+which+'FileName').val("")
+        $('#'+which+'FileSelect').val("");
+        return;
+    }
+
     fileReader.onerror = function (error) {
         toastr.error('the file could not be opened');
     }
@@ -413,15 +423,17 @@ function uploadFileSelected (which) {
                 $('#'+which+'FileName')[0].value = file.name;
             } else {
                 toastr.error('file is not in newick tree format');
-            $('#'+which+'FileName')[0].value = "";
+                $('#'+which+'FileName').val("")
+                $('#'+which+'FileSelect').val("");
             }
         } else if (which == 'data') {
             if (isDataFile(fileContent)) {
                 toastr.info('valid data file');
-            $('#'+which+'FileName')[0].value = file.name;
+                $('#'+which+'FileName')[0].value = file.name;
             } else {
                 toastr.error('invalid data file');
-                $('#'+which+'FileName')[0].value = "";
+                $('#'+which+'FileName').val("")
+                $('#'+which+'FileSelect').val("");
             }
         } else if (which == 'fasta') {
             if (isFastaFile(fileContent)) {
@@ -429,7 +441,8 @@ function uploadFileSelected (which) {
                 $('#'+which+'FileName')[0].value = file.name;
             } else {
                 toastr.error('invalid FASTA file');
-                $('#'+which+'FileName')[0].value = "";
+                $('#'+which+'FileName').val("")
+                $('#'+which+'FileSelect').val("");
             }
         } else if (which == 'samplesOrder') {
             if (isSamplesOrderFile(fileContent)) {
@@ -437,7 +450,8 @@ function uploadFileSelected (which) {
                 $('#'+which+'FileName')[0].value = file.name;
             } else {
                 toastr.error('invalid samples order file');
-                $('#'+which+'FileName')[0].value = "";
+                $('#'+which+'FileName').val("")
+                $('#'+which+'FileSelect').val("");
             }
         } else if (which == 'samplesInformation') {
             if (isSamplesInfoFile(fileContent)) {
@@ -445,7 +459,8 @@ function uploadFileSelected (which) {
                 $('#'+which+'FileName')[0].value = file.name;
             } else {
                 toastr.error('invalid samples information file');
-                $('#'+which+'FileName')[0].value = "";
+                $('#'+which+'FileName').val("")
+                $('#'+which+'FileSelect').val("");
             }
         } else {
             $('#'+which+'FileName')[0].value = file.name;
