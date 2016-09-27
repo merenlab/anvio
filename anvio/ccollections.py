@@ -17,6 +17,7 @@ import copy
 import anvio
 import anvio.db as db
 import anvio.tables as t
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -45,8 +46,8 @@ class Collections:
         self.progress = p
 
 
-    def populate_collections_dict(self, db_path, version):
-        database = db.DB(db_path, version)
+    def populate_collections_dict(self, db_path):
+        database = db.DB(db_path, dbops.get_required_version_for_db(db_path))
         db_type = database.get_meta_value('db_type')
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
@@ -56,6 +57,8 @@ class Collections:
             read_only = True
         elif db_type == 'profile':
             read_only = False
+        elif db_type == 'pan':
+            read_only = False
         else:
             raise ConfigError, 'Collections class does not know about this "%s" database type :/' % db_type
 
@@ -63,7 +66,7 @@ class Collections:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
             self.collections_dict[collection_name]['read_only'] = read_only
             self.collections_dict[collection_name]['source_db_path'] = db_path
-            self.collections_dict[collection_name]['source_db_version'] = version
+            self.collections_dict[collection_name]['source_db_version'] = dbops.get_required_version_for_db(db_path)
 
 
     def sanity_check(self, collection_name):
@@ -241,7 +244,7 @@ class GetSplitNamesInBins:
             raise ConfigError, 'There is no bin to work with :/'
 
         self.collections = Collections()
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError, 'The collection id "%s" does not seem to be in the profile database. These are the\
