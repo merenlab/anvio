@@ -68,8 +68,8 @@ class Summarizer(DatabasesMetaclass):
             self.gene_coverages_data_available = True
 
         self.collections = ccollections.Collections()
-        self.collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.contigs_db_path)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         self.collection_name = None
 

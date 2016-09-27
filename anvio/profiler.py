@@ -208,14 +208,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
         # function create_new_view defined in the class TablesForViews.
         view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
-        dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_splits,
                                         table_name='atomic_data_splits',
                                         table_structure=t.atomic_data_table_structure,
                                         table_types=t.atomic_data_table_types,
                                         view_name='single')
 
-        dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_splits,
                                         table_name='atomic_data_contigs',
                                         table_structure=t.atomic_data_table_structure,
@@ -243,7 +243,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.new('Computing AA frequencies at variable positions')
 
-        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
         aa_frequencies = bamops.AAFrequencies()
 
@@ -292,7 +292,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             return
 
         self.progress.new('NT Variability')
-        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
         for contig in self.contigs.values():
             for split in contig.splits:
@@ -337,7 +337,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def generate_gene_coverages_table(self):
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
         self.progress.new('Profiling genes')
         num_contigs = len(self.contigs)
