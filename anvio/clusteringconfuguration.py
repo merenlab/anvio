@@ -40,8 +40,8 @@ config_template = {
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
-                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 1,
-                            'required': 'more than one, comma-separated column names'},
+                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 0,
+                            'required': 'one or more comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
                           'required': "an integer value between 1 and 256."},
                 'normalize': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
