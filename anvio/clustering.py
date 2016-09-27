@@ -83,13 +83,13 @@ def is_distance_metric_OK(distance):
                             is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics))
 
 
-def get_newick_tree_data_for_dict(d, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
+def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
     is_distance_and_linkage_compatible(distance, linkage)
 
     matrix_file = filesnpaths.get_temp_file_path()
     utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + d[d.keys()[0]].keys())
 
-    newick = get_newick_tree_data(matrix_file, distance=distance, linkage=linkage)
+    newick = get_newick_tree_data(matrix_file, transpose=transpose, distance=distance, linkage=linkage)
 
     os.remove(matrix_file)
     return newick
