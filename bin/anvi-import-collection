@@ -84,7 +84,7 @@ def main(args):
 
     data = {}
 
-    # populate the data ditionary
+    # populate the data dictionary
     for entry_name in input_data_file_content:
         bin_name = input_data_file_content[entry_name]['bin_name']
         if entry_name not in entry_names_overlap_between_input_and_db:
@@ -106,34 +106,37 @@ def main(args):
                                                                                      sum([len(v) for v in data.values()]),
                                                                                      len(data)), nl_before = 1)
 
-
-    if args.profile_db:
-        collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+    if args.pan_or_profile_db:
+        collections = dbops.TablesForCollections(args.pan_or_profile_db)
     else:
-        collections = dbops.TablesForCollections(args.contigs_db, anvio.__contigs__version__)
+        collections = dbops.TablesForCollections(args.contigs_db)
 
     collections.append(args.collection_name, data, bins_info_dict)
 
 
 def sanity_check(args):
-    if not args.profile_db and not args.contigs_db:
-        raise ConfigError, "You must at least provide an anvi'o' contigs database for this to work :("
+    if not args.pan_or_profile_db and not args.contigs_db:
+        raise ConfigError, "You must at least provide an anvi'o contigs database for this to work :("
 
-    if args.profile_db:
-        dbops.is_profile_db(args.profile_db)
+    if args.pan_or_profile_db:
+        dbops.is_pan_or_profile_db(args.pan_or_profile_db)
 
     if args.contigs_db:
         dbops.is_contigs_db(args.contigs_db)
+
+    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db: 
+        raise ConfigError, "There is no need to provide a contigs database when you are working with an anvi'o pan\
+                            database"
 
     if not args.contigs_db and args.contigs_mode:
         raise ConfigError, "There is no reason for you to use the `--contigs-mode` flag when you have\
                             not declared an anvi'o contigs database"
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
-    if args.profile_db:
-        profile_db = dbops.ProfileDatabase(args.profile_db)
+    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'profile':
+        pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
-        if profile_db.meta['contigs_db_hash'] and not args.contigs_db:
+        if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:
             raise ConfigError, "The profile database you provided is associated with an anvi'o contigs database (i.e.,\
                                 it is not 'blank' or an ad hoc profile database). In this case, you must provide a path\
                                 for the contigs database. Sorry :/"
@@ -146,7 +149,7 @@ def sanity_check(args):
                      the consistency of names you provide in the input file. So if you made a mistake while generating\
                      this collection, it probably will cause issues later on.")
 
-    if not args.profile_db:
+    if not args.pan_or_profile_db:
         run.warning("Since you haven't provided an anvi'o profile database, this program will add your collection into\
                      the contigs database you provided. If you use the same collection name later in one of your profile\
                      databases that will be generated from this contigs database, things may go South, and anvi'o would\
@@ -180,7 +183,7 @@ if __name__ == '__main__':
                         help = 'The input file that describes bin IDs for each split or contig.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
     parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
