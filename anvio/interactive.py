@@ -17,7 +17,7 @@ import anvio.ccollections as ccollections
 from anvio.hmmops import SequencesForHMMHits
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
-from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
+from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db, get_required_version_for_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
 
@@ -73,6 +73,14 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
 
+        if self.pan_db_path and self.profile_db_path:
+            raise ConfigError, "You can't set both a profile database and a pan database in arguments\
+                                you send to this class. What are you doing?"
+
+        # here we will set some generic paths for profile or pan dbs.
+        self.generic_db_path = self.profile_db_path or self.pan_db_path
+        self.generic_db_version = get_required_version_for_db(self.generic_db_path)
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
@@ -106,7 +114,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.contigs_db_path:
             self.completeness = Completeness(self.contigs_db_path)
-            self.collections.populate_collections_dict(self.contigs_db_path, anvio.__contigs__version__)
+            self.collections.populate_collections_dict(self.contigs_db_path)
         else:
             self.completeness = None
 
@@ -303,17 +311,17 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             profile_db.create({'db_type': 'profile', 'merged': True, 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
 
         # create an instance of states table
-        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
+        self.states_table = TablesForStates(self.profile_db_path)
 
         # also populate collections, if there are any
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.title:
             self.title = self.title
 
 
     def load_collection_mode(self, args):
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.list_collections:
             self.collections.list_collections()
@@ -426,6 +434,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.load_pan_views()
         self.default_view = self.p_meta['default_view']
 
+        self.collections.populate_collections_dict(self.pan_db_path)
+
 
     def load_full_mode(self, args):
         if not self.contigs_db_path:
@@ -443,13 +453,13 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # this stuff
         self.init_split_sequences(self.p_meta['min_contig_length'])
 
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         self.p_meta['self_path'] = self.profile_db_path
         self.p_meta['output_dir'] = os.path.join(os.getcwd(), os.path.dirname(self.profile_db_path))
 
         # create an instance of states table
-        self.states_table = TablesForStates(self.profile_db_path, anvio.__profile__version__)
+        self.states_table = TablesForStates(self.profile_db_path)
 
         # load views from the profile database
         if self.p_meta['blank']:

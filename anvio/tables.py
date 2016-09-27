@@ -20,6 +20,11 @@ auxiliary_hdf5_db_version = "1"
 genomes_storage_hdf5_db_vesion = "2"
 users_db_version = "1"
 
+versions_for_db_types = {'contigs': contigs_db_version,
+                         'profile': profile_db_version,
+                         'pan': pan_db_version}
+
+
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
