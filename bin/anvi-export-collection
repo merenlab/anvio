@@ -32,7 +32,7 @@ def main(args):
     dbops.is_profile_db(args.profile_db)
 
     c = ccollections.Collections(r = run, p = progress)
-    c.populate_collections_dict(args.profile_db, anvio.__profile__version__)
+    c.populate_collections_dict(args.profile_db)
 
     if args.list_collections:
         c.list_collections()

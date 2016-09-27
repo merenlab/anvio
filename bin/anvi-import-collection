@@ -108,9 +108,9 @@ def main(args):
 
 
     if args.profile_db:
-        collections = dbops.TablesForCollections(args.profile_db, anvio.__profile__version__)
+        collections = dbops.TablesForCollections(args.profile_db)
     else:
-        collections = dbops.TablesForCollections(args.contigs_db, anvio.__contigs__version__)
+        collections = dbops.TablesForCollections(args.contigs_db)
 
     collections.append(args.collection_name, data, bins_info_dict)
 

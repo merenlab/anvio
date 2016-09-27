@@ -27,7 +27,7 @@ progress = terminal.Progress()
 def main(args):
     dbops.is_profile_db(args.profile_db)
 
-    states = dbops.TablesForStates(args.profile_db, anvio.__profile__version__).states
+    states = dbops.TablesForStates(args.profile_db).states
 
     if not len(states):
         raise ConfigError, "But there are no states in this profile database :/"
