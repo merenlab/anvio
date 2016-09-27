@@ -144,7 +144,7 @@ class CONCOCT:
                                                             #  \
                                                             #    poor man's random color generator
 
-        c = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
+        c = dbops.TablesForCollections(self.profile_db_path)
         c.append(collection_name, data, bin_info_dict)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only=True)

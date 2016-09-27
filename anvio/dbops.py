@@ -701,7 +701,7 @@ class PanSuperclass(object):
         pan_db.disconnect()
 
         # create an instance of states table
-        self.states_table = TablesForStates(self.pan_db_path, anvio.__pan__version__, db_type='pan')
+        self.states_table = TablesForStates(self.pan_db_path)
 
         self.progress.update('Accessing the auxiliary data file')
         if not args.genomes_storage:
@@ -1657,12 +1657,12 @@ class KMerTablesForContigsAndSplits:
 
 
 class TablesForViews(Table):
-    def __init__(self, db_path, version, db_type = "profile", run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        self.DB_CLASS = DBClassFactory().get(db_type=db_type)
+        self.DB_CLASS = DBClassFactory().get(db_type=get_db_type(db_path))
 
-        Table.__init__(self, self.db_path, version, run, progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
 
     def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None):
@@ -1711,11 +1711,12 @@ class TablesForViews(Table):
 
 
 class TableForVariability(Table):
-    def __init__(self, db_path, version, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
+        self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, version, progress=self.progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
@@ -1863,11 +1864,12 @@ class AA_counts(ContigsSuperclass):
 
 
 class TableForAAFrequencies(Table):
-    def __init__(self, db_path, version, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
+        self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, version, progress=self.progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
@@ -1892,10 +1894,10 @@ class TableForGeneCoverages(Table):
     '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
        Simply, you create an instance from it, keep sending contig instances from contig.py::Contig class along with
        a list of inferred start/stop locations for each reading frame. Once you are done, you call create_gene_coverages_table.'''
-    def __init__(self, db_path, version, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, version, run, progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
         self.genes = []
         self.set_next_available_id(t.gene_coverages_table_name)
@@ -2289,11 +2291,10 @@ class TablesForHMMHits(Table):
 
 class TablesForCollections(Table):
     """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
-    def __init__(self, db_path, version, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
-        self.version = version
 
-        Table.__init__(self, self.db_path, version, run, progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
         # set these dudes so we have access to unique IDs:
         self.set_next_available_id(t.collections_bins_info_table_name)
@@ -2327,7 +2328,7 @@ class TablesForCollections(Table):
                                 your collections input. It is unclear to anvi'o how did you manage to do this, but we\
                                 cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict))
 
-        database = db.DB(self.db_path, self.version)
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # how many clusters are defined in 'collection_dict'?
         bin_names = collection_dict.keys()
@@ -2412,14 +2413,13 @@ class TablesForCollections(Table):
 
 
 class TablesForStates(Table):
-    def __init__(self, db_path, version, db_type='profile'):
+    def __init__(self, db_path):
         self.db_path = db_path
-        self.version = version
         self.states = {}
 
-        Table.__init__(self, self.db_path, self.version, run, progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
-        self.DB_CLASS = DBClassFactory().get(db_type=db_type)
+        self.DB_CLASS = DBClassFactory().get(db_type=get_db_type(self.db_path))
 
         self.init()
 
@@ -2804,20 +2804,22 @@ def is_contigs_db(db_path):
         raise ConfigError, "'%s' is not an anvi'o contigs database." % db_path
 
 
+def is_pan_or_profile_db(db_path):
+    if get_db_type(db_path) not in ['pan', 'profile']:
+        raise ConfigError, "'%s' is neither a pan nor a profile database :/ Someone is in trouble."
+
+
 def is_profile_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'profile':
         raise ConfigError, "'%s' is not an anvi'o profile database." % db_path
 
 
 def is_pan_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'pan':
         raise ConfigError, "'%s' is not an anvi'o pan database." % db_path
 
 
 def is_samples_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'samples_information':
         raise ConfigError, "'%s' is not an anvi'o samples database." % db_path
 
@@ -2833,7 +2835,19 @@ def is_db_ok_to_create(db_path, db_type):
                             humbled by your cooperation." % db_type
 
 
+def get_required_version_for_db(db_path):
+    db_type = get_db_type(db_path)
+
+    if db_type not in t.versions_for_db_types:
+        raise ConfigError, "Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
+                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type)
+
+    return t.versions_for_db_types[db_type]
+
+
 def get_db_type(db_path):
+    filesnpaths.is_file_exists(db_path)
+
     try:
         database = db.DB(db_path, None, ignore_version=True)
     except:
@@ -2946,10 +2960,11 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
-def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run, db_type='profile'):
+def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
     """Adds a new clustering into an anvi'o db"""
 
     # let's learn who we are dealing with:
+    db_type = get_db_type(anvio_db_path)
     DB_CLASS = DBClassFactory().get(db_type=db_type)
 
     utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name, stringent=False)

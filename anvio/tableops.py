@@ -41,6 +41,10 @@ progress = terminal.Progress()
 class Table(object):
     """Superclass for rudimentary needs and operations for contigs db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
+        if not db_path:
+            raise ConfigError, "Table superclass is being initiated without a db path, and it is very\
+                                very concerning :( Anvi'o needs an adult."
+
         if not os.path.exists(db_path):
             raise ConfigError, "Database ('%s') does not exist. You must create one first." % db_path
 

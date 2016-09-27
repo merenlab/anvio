@@ -93,7 +93,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
         self.collections = ccollections.Collections()
-        self.collections.populate_collections_dict(self.profile_db_path, anvio.__profile__version__)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
 
     def refine(self):
@@ -167,7 +167,7 @@ class RefineBins(dbops.DatabasesMetaclass):
             self.run.info('resulting bins info', bins_info_dict)
             self.run.info_single('')
 
-        collections = dbops.TablesForCollections(self.profile_db_path, anvio.__profile__version__)
+        collections = dbops.TablesForCollections(self.profile_db_path)
         collections.append(self.collection_name, collection_dict, bins_info_dict)
 
         self.run.info_single('"%s" collection is updated!' % self.collection_name)

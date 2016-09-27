@@ -250,7 +250,7 @@ class MultipleRuns:
     def merge_variable_nts_tables(self):
         self.is_all_samples_have_it('variable_nts_table')
 
-        variable_nts_table = dbops.TableForVariability(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
         for runinfo in self.input_runinfo_dicts.values():
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
@@ -267,7 +267,7 @@ class MultipleRuns:
     def merge_variable_aas_tables(self):
         self.is_all_samples_have_it('AA_frequencies_table')
 
-        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
         for runinfo in self.input_runinfo_dicts.values():
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
@@ -285,7 +285,7 @@ class MultipleRuns:
         self.is_all_samples_have_it('gene_coverages_table')
 
         # create an instance from genes
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, anvio.__profile__version__, progress=self.progress)
+        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
         # fill "genes" instance from all samples
         for runinfo in self.input_runinfo_dicts.values():
@@ -529,7 +529,7 @@ class MultipleRuns:
 
                 # time to store the data for this view in the profile database
                 table_name = '_'.join([essential_field, target])
-                dbops.TablesForViews(self.profile_db_path, anvio.__profile__version__ ).create_new_view(
+                dbops.TablesForViews(self.profile_db_path).create_new_view(
                                                 data_dict=data_dict,
                                                 table_name=table_name,
                                                 table_structure=view_table_structure,
@@ -603,7 +603,7 @@ class MultipleRuns:
             target_table = 'atomic_data_%s' % target
 
             for r in self.input_runinfo_dicts.values():
-                db = anvio.db.DB(r['profile_db'], anvio.__profile__version__)
+                db = anvio.db.DB(r['profile_db'], dbops.get_required_version_for_db(r['profile_db']))
                 atomic_data_table_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
