@@ -287,11 +287,11 @@ a{
 table {
   color: #333; /* Lighten up font color */
   font-family: Helvetica, Arial, sans-serif; /* Nicer font */
-  border-collapse:
-  collapse; border-spacing: 0;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-td, th { border: 1px solid #CCC; height: 30px;  } /* Make cells a bit taller */
+td, th { border: 0px solid #CCC; height: 30px; } /* Make cells a bit taller */
 
 th {
   background: #F3F3F3; /* Light grey background */
@@ -302,11 +302,17 @@ td {
   padding: 0px 10px;
 }
 
-tr:nth-child(even) {
-    background-color: #FAFAFA;
+.spacer {
+  padding: 0px 0px;
+  height: 3px;
 }
 
-tr:nth-child(odd) {
-    background-color: #FFFFFF;
+.sequence-background {
+  background-color: rgb(230,230,230);
+  border-radius: 15px;
+}
+
+#display-container > table {
+  margin-bottom: 20px;
 }
 
