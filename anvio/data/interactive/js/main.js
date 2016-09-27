@@ -304,7 +304,7 @@ function initData () {
 
             // make layers and samples table sortable
             var _notFirstSelector = ''
-            if (mode != 'manual' && mode != 'server') {
+            if (mode != 'manual' && mode != 'pan' && mode != 'server') {
                 _notFirstSelector = ':not(:first)';
             }
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
@@ -1205,7 +1205,7 @@ function updateBinsWindow(bin_list) {
 }
 
 function updateComplateness(bin_id) {
-    if (mode === 'manual' || mode === 'server'){ 
+    if (mode === 'manual' || mode === 'pan' || mode === 'server'){ 
         // there is nothing to do here
         return;
     }
@@ -1639,7 +1639,7 @@ function loadCollection(default_collection) {
 
                 for (index in data['data'][bin])
                 {
-                    if (mode === 'manual' || mode === 'server'){
+                    if (mode === 'manual' || mode === 'pan' || mode === 'server'){
                         contigs.push(data['data'][bin][index]);
                     } else if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
                         contigs.push(data['data'][bin][index]);
@@ -1648,7 +1648,7 @@ function loadCollection(default_collection) {
                     
                 }
 
-                if (mode === 'manual' || mode === 'server' || sum_contig_length >= threshold)
+                if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
                 {
                     if (!bins_cleared)
                     {
