@@ -249,6 +249,7 @@ class GenomesDataStorage(HDF5_IO):
             genomes_dict[d] = {}
 
         for genome_name in genomes_dict:
+            genomes_dict[genome_name]['name'] = genome_name
             # add every key-value pair we know of in to the dict:
             for key in self.fp['/info/genomes/%s' % genome_name]:
                 genomes_dict[genome_name][key] = self.fp['/info/genomes/%s/%s' % (genome_name, key)].value
