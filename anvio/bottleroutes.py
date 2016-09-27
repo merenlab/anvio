@@ -262,9 +262,9 @@ def store_collections_dict(args, d, request, response):
     for bin_name in data:
         bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
 
-    collections = dbops.TablesForCollections(d.profile_db_path, anvio.__profile__version__)
+    collections = dbops.TablesForCollections(d.generic_db_path, d.generic_db_version)
     collections.append(source, data, bins_info_dict)
-    d.collections.populate_collections_dict(d.profile_db_path, anvio.__profile__version__)
+    d.collections.populate_collections_dict(d.generic_db_path, d.generic_db_version)
     msg = "New collection '%s' with %d bin%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
     run.info_single(msg)
     return json.dumps(msg)
