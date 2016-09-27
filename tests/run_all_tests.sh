@@ -136,6 +136,9 @@ anvi-import-collection $output_dir/exported-collection.txt \
                        --collection-name 'CONTIGS_RE_IMPORTED' \
                        --bins-info $output_dir/exported-collection-info.txt
 
+INFO "Deleting the collection 'CONTIGS_RE_IMPORTED'"
+anvi-delete-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db -C CONTIGS_RE_IMPORTED
+
 INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
 anvi-cluster-with-concoct -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/anvio_concoct_clusters.txt --collection-name 'cmdline_concoct'
 
