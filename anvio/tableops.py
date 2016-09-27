@@ -168,17 +168,6 @@ class Table(object):
         database.disconnect()
 
 
-    def delete_contents_of_table(self, table_name, warning=True):
-        database = db.DB(self.db_path, self.version)
-
-        if warning:
-            self.run.warning('Contents of the table "%s" is being removed' % (table_name))
-
-        database._exec('''DELETE FROM %s''' % (table_name))
-
-        database.disconnect()
-
-
     def init_gene_calls_dict(self):
         if self.db_type != 'contigs':
             return None
