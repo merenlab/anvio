@@ -731,18 +731,18 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id
 
 
-def is_this_name_OK_for_database(variable_name, content, allowed_chars=constants.allowed_chars.replace('.', '')):
+def is_this_name_OK_for_database(variable_name, content):
     if not content:
-        raise ConfigError, "But the '%s' is empty? Come on :(" % variable_name
+        raise ConfigError, "But the %s is empty? Come on :(" % variable_name
 
     if content[0] in constants.digits:
-        raise ConfigError, "Sorry, '%s' can't start with a digit. Long story. Please specify a sample name\
+        raise ConfigError, "Sorry, %s can't start with a digit. Long story. Please specify a name\
                             that starts with an ASCII letter." % variable_name
 
-    if len([c for c in content if c not in constants.allowed_chars]):
-        raise ConfigError, "Well, '%s' parameter contains characters that anvi'o does not like :/ Please\
-                            limit the characters to ASCII letters, digits, the underscore ('_'), and the\
-                            dash ('-') character." % variable_name
+
+    if len([c for c in content if c not in constants.allowed_chars.replace('.', '').replace('-', '')]):
+        raise ConfigError, "Well, the %s contains characters that anvi'o does not like :/ Please limit the characters\
+                            to ASCII letters, digits, and the underscore ('_') character character." % variable_name
 
 
 def check_contig_names(contig_names, dont_raise=False):
