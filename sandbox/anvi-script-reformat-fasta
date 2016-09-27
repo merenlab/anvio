@@ -32,7 +32,7 @@ def remove_short_contigs_from_fasta(args):
     prefix = args.prefix if args.prefix else None
 
     if prefix:
-        utils.is_this_name_OK_for_database('prefix', prefix)
+        utils.is_this_name_OK_for_database('contig name prefix', prefix)
 
     if args.input_ids:
         filesnpaths.is_file_exists(args.input_ids)
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--simplify-names', default=False, action="store_true",
                         help="Edit deflines to make sure they contigs have simple names.")
     parser.add_argument('--prefix', default=None, metavar="PREFIX",
-                        help="Use this parameter if you would like to Add a prefix to your contig\
+                        help="Use this parameter if you would like to add a prefix to your contig\
                               names while simplifying them. The prefix must be a single word (you\
                               can use underscor character, but nothing more!).")
     parser.add_argument('-r', '--report-file', required=False, metavar='REPORT FILE',

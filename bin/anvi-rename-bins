@@ -67,7 +67,7 @@ def main(args):
         raise ConfigError, "Anvi'o is having hard time believing that you called this function without\
                             a prefix to rename bins in the collection '%s'." % collection_name_to_read
 
-    utils.is_this_name_OK_for_database('prefix', prefix)
+    utils.is_this_name_OK_for_database('prefix for bins', prefix)
 
     if not report_file_path:
         raise ConfigError, "You must provide an output file name to report file changes. It may or may not\
