@@ -34,9 +34,9 @@ def main(args):
         filesnpaths.is_output_file_writable(args.output_file)
 
     collections = ccollections.Collections()
-    collections.populate_collections_dict(args.contigs_db, anvio.__contigs__version__)
+    collections.populate_collections_dict(args.contigs_db)
     if args.profile_db:
-        collections.populate_collections_dict(args.profile_db, anvio.__profile__version__)
+        collections.populate_collections_dict(args.profile_db)
 
     if args.list_collections:
         collections.list_collections()
