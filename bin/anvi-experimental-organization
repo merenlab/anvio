@@ -44,7 +44,7 @@ def experimental_organization(args):
                             this tree. Please use the --name flag to provide one."
 
     if args.name:
-        u.is_this_name_OK_for_database('--name', args.name)
+        u.is_this_name_OK_for_database('--name parameter', args.name)
 
     if args.profile_db:
         profile_db = dbops.ProfileDatabase(args.profile_db)
