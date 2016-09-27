@@ -786,7 +786,9 @@ D = {
     'project-name': (
             ['-J', '--project-name'],
             {'metavar': 'PROJECT_NAME',
-             'help': "Name of the project. Please choose a short but descriptive name."}
+             'help': "Name of the project. Please choose a short but descriptive name (so anvi'o can use\
+                      it whenever she needs to name an output file, or add a new table in a database, or name\
+                      her first born)."}
                 ),
     'skip-hierarchical-clustering': (
             ['--skip-hierarchical-clustering'],
