@@ -49,7 +49,6 @@ function loadAll() {
         url: '/data/proteinclusters/' + pc_name,
         success: function(data) {
             pc_data = JSON.parse(data);
-
             genomes = pc_data.genomes;
             gene_caller_ids = pc_data.gene_caller_ids;
             gene_caller_ids_in_genomes = pc_data.gene_caller_ids_in_genomes;
@@ -58,8 +57,6 @@ function loadAll() {
             next_pc_name = pc_data.next_pc_name;
             index = pc_data.index;
             total = pc_data.total;
-
-            console.log(pc_data);
 
             if(genomes.length == 0){
                 console.log('Warning: no genomes returned')
@@ -82,7 +79,7 @@ function loadAll() {
               cache: false,
               url: '/data/proteinclusters/get_state?timestamp=' + new Date().getTime(),
               success: function(state) {
-                createDisplay(state);
+                createDisplay(state, pc_data);
               }
             });
         }
@@ -91,8 +88,40 @@ function loadAll() {
 }
 
 
-function createDisplay(state){
-    // magic happens here.
+function createDisplay(state, pc_data){
+    wrap = 80;
+    offset = 0;
+    while (true)
+    {
+        ignoreTable = true;
+        output = '<table align="center">';
+        for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
+        {
+            var layer = state['layer-order'][layer_id];
+
+            if (pc_data.genomes.indexOf(layer) === -1)
+                continue;
+
+            console.log(pc_data, layer, state);
+            output += '<tr><td>' + layer + '</td><td class="sequence-background">';
+
+            pc_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+                sequence = pc_data.gene_aa_sequences_for_gene_caller_ids[caller_id];
+                output += '<table class="gene-caller-table"><tr><td>' + caller_id + '</td>';
+                output += '<td><font face="monospace"><big>' + sequence.substr(offset, wrap) + '</big></font></td></table>';
+            });
+            output += '</td></tr><tr><td class="spacer"></td></tr>';
+
+            if (offset < sequence.length) {
+                ignoreTable = false;
+            }
+        }
+        if (ignoreTable) {
+            break;
+        }
+        offset += wrap;
+        $('#display-container').append(output + '</table>');
+    }
 }
 
 
