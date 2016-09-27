@@ -2302,14 +2302,14 @@ class TablesForCollections(Table):
 
 
     def delete(self, collection_name):
-        utils.is_this_name_OK_for_database('collection name', collection_name)
+        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         # remove any pre-existing information for 'collection_name'
         self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
 
 
     def append(self, collection_name, collection_dict, bins_info_dict=None):
-        utils.is_this_name_OK_for_database('collection name', collection_name)
+        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
@@ -2952,7 +2952,7 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
     # let's learn who we are dealing with:
     DB_CLASS = DBClassFactory().get(db_type=db_type)
 
-    utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name)
+    utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name, stringent=False)
 
     # replace clustering id with a text that contains distance and linkage information
     clustering_id = ':'.join([clustering_name, distance, linkage])
