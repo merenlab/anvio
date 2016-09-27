@@ -148,6 +148,9 @@ class GenomeStorage(object):
         self.init_internal_genomes()
         self.init_external_genomes()
 
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
+
         # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
         # split is added or removed to any of these genomes will change this signature. since we will tie this information
         # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
@@ -244,7 +247,7 @@ class GenomeStorage(object):
 
         for profile_db_path in unique_profile_db_path_to_internal_genome_name:
             self.collections = ccollections.Collections()
-            self.collections.populate_collections_dict(profile_db_path, anvio.__profile__version__)
+            self.collections.populate_collections_dict(profile_db_path)
 
             for genome_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]:
                 self.progress.update('working on %s' % (genome_name))
@@ -319,8 +322,9 @@ class Pangenome(GenomeStorage):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.num_threads = A('num_threads')
+        self.project_name = A('project_name')
         self.output_dir = A('output_dir')
+        self.num_threads = A('num_threads')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
@@ -362,8 +366,12 @@ class Pangenome(GenomeStorage):
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
 
 
-    def get_output_file_path(self, file_name):
+    def get_output_file_path(self, file_name, delete_if_exists=False):
         output_file_path = os.path.join(self.output_dir, file_name)
+
+        if delete_if_exists:
+            if os.path.exists(output_file_path):
+                os.remove(output_file_path)
 
         return output_file_path
 
@@ -378,6 +386,20 @@ class Pangenome(GenomeStorage):
 
 
     def check_params(self):
+        # check the project name:
+        if not self.project_name:
+            raise ConfigError, "Please set a project name, and be prepared to see it around as (1) anvi'o will use\
+                                that name to set the output directory and to name various output files such as the\
+                                databases that will be generated at the end of the process. If you set your own output\
+                                directory name, you can have multiple projects in it and all of those projects can use\
+                                the same intermediate files whenever possible."
+
+        utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
+
+        # if the user did not set a specific output directory name, use the project name
+        # for it:
+        self.output_dir = self.output_dir if self.output_dir else self.project_name
+
         # deal with the output directory:
         try:
             filesnpaths.is_file_exists(self.output_dir)
@@ -411,7 +433,7 @@ class Pangenome(GenomeStorage):
             raise ConfigError, "self.genomes does not seem to be a properly formatted dictionary for\
                                 the anvi'o class Pangenome."
 
-        self.pan_db_path = self.get_output_file_path('pan.db')
+        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
     def run_diamond(self, unique_proteins_fasta_path, unique_proteins_names_dict):
@@ -636,21 +658,21 @@ class Pangenome(GenomeStorage):
         ########################################################################################
         table_structure=['PC'] + sorted(self.genomes.keys())
         table_types=['text'] + ['numeric'] * len(self.genomes)
-        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+        dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data,
                                         table_name='PC_frequencies',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'PC_frequencies')
 
-        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+        dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data_presence_absence,
                                         table_name='PC_presence_absence',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'PC_presence_absence')
 
-        dbops.TablesForViews(self.pan_db_path, anvio.__pan__version__, db_type='pan').create_new_view(
+        dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.additional_view_data,
                                         table_name='additional_data',
                                         table_structure=['PC', 'num_genomes_pc_has_hits', 'num_genes_in_pc'],
@@ -678,7 +700,7 @@ class Pangenome(GenomeStorage):
             # setup the additional section based on the number of genomes we have:
             if config_name == 'presence-absence':
                 additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\n""" \
-                                        % ','.join(['num_genomes_pc_has_hits'] * (int(round(math.sqrt(len(self.genomes))))))
+                                        % ','.join(['num_genomes_pc_has_hits'] * (int(round(len(self.genomes) / 2))))
             elif config_name == 'frequency':
                 additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\nlog=True\n""" \
                                         % ','.join(['num_genes_in_pc'] * (int(round(math.sqrt(len(self.genomes))))))
@@ -708,9 +730,44 @@ class Pangenome(GenomeStorage):
                                                     db_type='pan')
 
 
+    def gen_samples_db(self):
+        samples_info_file_path = self.gen_samples_info_file()
+        samples_order_file_path = self.gen_samples_order_file()
+
+        samples_db_output_path = self.get_output_file_path(self.project_name + '-SAMPLES.db', delete_if_exists=True)
+
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
+        s.create(samples_info_file_path, samples_order_file_path)
+
+
+    def gen_samples_order_file(self):
+        self.progress.new('Samples DB')
+        self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
+
+        samples_order_file_path = self.get_output_file_path(self.project_name + '-samples-order.txt')
+        samples_order = open(samples_order_file_path, 'w')
+        samples_order.write('attributes\tbasic\tnewick\n')
+
+        for clustering_tuple in [('PC presence absence', self.view_data), ('PC frequencies', self.view_data_presence_absence)]:
+            v, d = clustering_tuple
+            newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
+            samples_order.write('%s\t\t%s\n' % (v, newick))
+
+        samples_order.close()
+
+        self.progress.end()
+
+        self.run.info("Anvi'o samples order", samples_order_file_path)
+
+        return samples_order_file_path
+
+
     def gen_samples_info_file(self):
+        self.progress.new('Samples DB')
+        self.progress.update('Generating the samples information file ..')
+
         samples_info_dict = {}
-        samples_info_file_path = self.get_output_file_path('anvio-samples-information.txt')
+        samples_info_file_path = self.get_output_file_path(self.project_name + '-samples-information.txt')
 
         # set headers
         headers = ['total_length']
@@ -730,6 +787,7 @@ class Pangenome(GenomeStorage):
 
         utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
 
+        self.progress.end()
         self.run.info("Anvi'o samples information", samples_info_file_path)
 
         return samples_info_file_path
@@ -822,8 +880,8 @@ class Pangenome(GenomeStorage):
         # populate the pan db with results
         self.process_protein_clusters(protein_clusters_dict)
 
-        # FIXME: gen samples info and order files
-        # samples_info_file_path = self.gen_samples_info_file()
+        # gen samples info and order files
+        self.gen_samples_db()
 
         # done
         self.run.info('log file', self.run.log_file_path)
