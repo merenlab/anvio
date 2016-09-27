@@ -38,6 +38,12 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'pan-or-profile-db': (
+            ['-p', '--pan-or-profile-db'],
+            {'metavar': "PAN_OR_PROFILE_DB",
+             'required': True,
+             'help': "Anvi'o pan or profile database"}
+                ),
     'genomes-storage': (
             ['-g', '--genomes-storage'],
             {'metavar': "GENOMES_STORAGE",
