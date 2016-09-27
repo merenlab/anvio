@@ -3080,7 +3080,7 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
     # let's learn who we are dealing with:
     DB_CLASS = DBClassFactory().get(db_type=db_type)
 
-    utils.is_this_name_OK_for_database('clustering_name', clustering_name)
+    utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name)
 
     # replace clustering id with a text that contains distance and linkage information
     clustering_id = ':'.join([clustering_name, distance, linkage])
