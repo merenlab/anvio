@@ -726,8 +726,7 @@ class Pangenome(GenomeStorage):
                                                     distance=distance,
                                                     linkage=linkage,
                                                     make_default=config_name == constants.pan_default,
-                                                    run=self.run,
-                                                    db_type='pan')
+                                                    run=self.run)
 
 
     def gen_samples_db(self):
