@@ -3,7 +3,6 @@
 
 import sys
 import copy
-import numpy
 import operator
 
 import anvio
@@ -57,7 +56,7 @@ def main(args):
     dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
     collections = ccollections.Collections()
-    collections.populate_collections_dict(profile_db_path, anvio.__profile__version__)
+    collections.populate_collections_dict(profile_db_path)
 
     if list_collections:
         collections.list_collections()
@@ -186,7 +185,7 @@ def main(args):
 
     report.close()
 
-    collections_table = dbops.TablesForCollections(profile_db_path, anvio.__profile__version__)
+    collections_table = dbops.TablesForCollections(profile_db_path)
     collections_table.append(collection_name_to_write, new_collection_dict, new_bins_info_dict)
 
     run.info('Report', '%s' % (report_file_path))
