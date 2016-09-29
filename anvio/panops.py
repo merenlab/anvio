@@ -622,7 +622,7 @@ class Pangenome(GenomeStorage):
         for PC in PCs:
             self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
-            self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0}
+            self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0, 'SCG': 0}
             for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
                 try:
                     genome_name = self.hash_to_genome_name[entry_hash]
@@ -632,6 +632,9 @@ class Pangenome(GenomeStorage):
                 self.view_data[PC][genome_name] += 1
                 self.view_data_presence_absence[PC][genome_name] = 1
                 self.additional_view_data[PC]['num_genes_in_pc'] += 1
+
+            self.additional_view_data[PC]['SCG'] = 1 if set(self.view_data[PC].values()) == set([1]) else 0
+
             self.additional_view_data[PC]['num_genomes_pc_has_hits'] = len([True for genome in self.view_data[PC] if self.view_data[PC][genome] > 0])
 
         self.progress.end()
@@ -672,12 +675,19 @@ class Pangenome(GenomeStorage):
                                         table_types=table_types,
                                         view_name = 'PC_presence_absence')
 
+        additional_data_structure = ['PC', 'num_genomes_pc_has_hits', 'num_genes_in_pc', 'SCG']
         dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.additional_view_data,
                                         table_name='additional_data',
-                                        table_structure=['PC', 'num_genomes_pc_has_hits', 'num_genes_in_pc'],
-                                        table_types=['text', 'numeric', 'numeric'],
+                                        table_structure=additional_data_structure,
+                                        table_types=['text', 'numeric', 'numeric', 'numeric'],
                                         view_name = None)
+
+        # add additional data structure to the self table, so we can have them initially ordered
+        # in the interface the way additional_data_structure suggests:
+        pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
+        pan_db.db.set_meta_value('additional_data_headers', ','.join(additional_data_structure[1:]))
+        pan_db.disconnect()
 
 
         ########################################################################################
