@@ -728,10 +728,15 @@ class PanSuperclass(object):
     def init_additional_layer_data(self):
         pan_db = PanDatabase(self.pan_db_path)
         self.additional_layers_dict = pan_db.db.get_table_as_dict('additional_data')
+        self.additional_layers_headers = pan_db.db.get_meta_value('additional_data_headers').split(',')
         pan_db.disconnect()
 
-        self.additional_layers_headers = self.additional_layers_dict.values()[0].keys()
+        if len([h for h in self.additional_layers_headers if h not in self.additional_layers_dict.values()[0].keys()]):
+            raise ConfigError, "Something that should never happen happened :( At least one additional data header that\
+                                appears in the self table of your pan database is not in the dictionary recovered for this\
+                                data from another table. Anvi'o needs an adult :("
 
+        self.additional_layers_dict.values()[0].keys()
 
     def init_protein_clusters(self):
         pan_db = PanDatabase(self.pan_db_path)
