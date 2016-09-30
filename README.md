@@ -1,4 +1,4 @@
-[![Gitter](https://badges.gitter.im/meren/anvio.svg)](https://gitter.im/meren/anvio?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+Plase do not install from `master` unless you want to experiment with our in-progress unstable version. [Releases page](https://github.com/meren/anvio/releases) lists all the stable releases of anvi'o.
 
 Please see the project page for installation manuals, user tutorials, and other sweets: 
 
