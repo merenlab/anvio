@@ -1,0 +1,4 @@
+name	contigs_db_path
+g01	01.db
+g02	02.db
+g03	03.db
