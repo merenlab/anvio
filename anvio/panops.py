@@ -281,6 +281,7 @@ class GenomeStorage(object):
 
 
     def get_genome_hash_for_external_genome(self, entry):
+        dbops.is_contigs_db(entry['contigs_db_path'])
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -289,6 +290,7 @@ class GenomeStorage(object):
 
 
     def get_genome_hash_for_internal_genome(self, entry):
+        dbops.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']])).hexdigest()[0:12]
@@ -298,12 +300,14 @@ class GenomeStorage(object):
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
+        dbops.is_profile_db(entry['profile_db_path'])
         # get splits of interest:
         class Args: pass
         args = Args()
         args.profile_db = entry['profile_db_path']
         args.collection_name = entry['collection_id']
         args.bin_id = entry['bin_id']
+
         split_names_of_interest = list(ccollections.GetSplitNamesInBins(args).get_split_names_only())
 
         if not len(split_names_of_interest):
