@@ -76,10 +76,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError, "You can't set both a profile database and a pan database in arguments\
                                 you send to this class. What are you doing?"
 
-        # here we will set some generic paths for profile or pan dbs.
-        self.generic_db_path = self.profile_db_path or self.pan_db_path
-        self.generic_db_version = get_required_version_for_db(self.generic_db_path)
-
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
