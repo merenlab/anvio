@@ -302,17 +302,7 @@ td {
   padding: 0px 10px;
 }
 
-.spacer {
-  padding: 0px 0px;
-  height: 3px;
-}
-
-.sequence-background {
-  background-color: rgb(230,230,230);
-  border-radius: 15px;
-}
-
-#display-container > table {
-  margin-bottom: 20px;
+#display-container {
+  text-align: center;
 }
 
