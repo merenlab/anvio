@@ -67,10 +67,10 @@ function loadAll() {
             position = index + " of " + total;
 
             if(next_pc_name)
-                next_str = '<a href="proteinclusters.html?pc=' + next_pc_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a href="proteinclusters.html?id=' + next_pc_name + '"> | next &gt;&gt;&gt;</a>';
 
             if(previous_pc_name)
-                prev_str = '<a href="proteinclusters.html?pc=' + previous_pc_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a href="proteinclusters.html?id=' + previous_pc_name + '">&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + pc_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
