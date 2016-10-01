@@ -89,39 +89,134 @@ function loadAll() {
 
 
 function createDisplay(state, pc_data){
-    wrap = 80;
-    offset = 0;
+    var SEQUENCE_WRAP = 80;
+    var SEQUENCE_FONT_SIZE = 18;
+    
+    var svg = document.getElementById('svg');
+
+    var y_cord = 0;
+    var offset = 0;
+
     while (true)
     {
         ignoreTable = true;
-        output = '<table align="center">';
+        var fragment = document.createDocumentFragment();
         for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
         {
             var layer = state['layer-order'][layer_id];
 
             if (pc_data.genomes.indexOf(layer) === -1)
                 continue;
+            
+            var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', 0);
+            rect.setAttribute('y', y_cord);
+            rect.setAttribute('fill', state['layers'][layer]['color']);
+            rect.setAttribute('opacity', 0.2);
+            rect.setAttribute('height', (Math.max(pc_data.gene_caller_ids_in_genomes[layer].length,1) * SEQUENCE_FONT_SIZE * 1.5) + 10);
+            rect.setAttribute('width', 400);
+            rect.setAttribute('class', 'sequenceBackground');
+            rect.setAttribute('rx', 10);
+            fragment.appendChild(rect);
 
-            console.log(pc_data, layer, state);
-            output += '<tr><td>' + layer + '</td><td class="sequence-background">';
+            var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', 0);
+            text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
+            text.setAttribute('font-size', "24px");
+            text.setAttribute('font-family', "Lato, Arial");
+            text.setAttribute('font-weight', '300')
+            text.setAttribute('style', 'alignment-baseline:central');
+            text.setAttribute('class', 'genomeTitle')
+            text.appendChild(document.createTextNode(layer));
+            fragment.appendChild(text);
+
+            sub_y_cord = y_cord + 5;
 
             pc_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
                 sequence = pc_data.gene_aa_sequences_for_gene_caller_ids[caller_id];
-                output += '<table class="gene-caller-table"><tr><td>' + caller_id + '</td>';
-                output += '<td><font face="monospace"><big>' + sequence.substr(offset, wrap) + '</big></font></td></table>';
-            });
-            output += '</td></tr><tr><td class="spacer"></td></tr>';
 
-            if (offset < sequence.length) {
-                ignoreTable = false;
-            }
+                var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', 0);
+                text.setAttribute('y', sub_y_cord);
+                text.setAttribute('font-size', SEQUENCE_FONT_SIZE);
+                text.setAttribute('font-family', "Lato, Arial");
+                text.setAttribute('font-weight', '300');
+                text.setAttribute('style', 'alignment-baseline:text-before-edge');
+                text.setAttribute('class', 'callerTitle')
+                text.appendChild(document.createTextNode(caller_id));
+                fragment.appendChild(text);
+
+                var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', 0);
+                text.setAttribute('y', sub_y_cord);
+                text.setAttribute('font-size', SEQUENCE_FONT_SIZE);
+                text.setAttribute('font-family', "monospace");
+                text.setAttribute('font-weight', '100');
+                text.setAttribute('style', 'alignment-baseline:text-before-edge');
+                text.setAttribute('class', 'sequence');
+                text.appendChild(document.createTextNode(sequence.substr(offset, SEQUENCE_WRAP)));
+                fragment.appendChild(text);
+
+                sub_y_cord = sub_y_cord + SEQUENCE_FONT_SIZE * 1.5;
+
+                if (offset < sequence.length) {
+                    ignoreTable = false;
+                }
+            });
+
+            y_cord = y_cord + parseFloat(rect.getAttribute('height')) + 5;
+
         }
         if (ignoreTable) {
             break;
+        } else {
+            svg.appendChild(fragment);
         }
-        offset += wrap;
-        $('#display-container').append(output + '</table>');
+        offset += SEQUENCE_WRAP;
+        y_cord = y_cord + 15;
     }
+
+    calculateLayout();
+}
+
+function calculateLayout() {
+    var HORIZONTAL_PADDING = 10;
+    var svg = document.getElementById('svg');
+
+    var max_genome_title_width = 0;
+    $('.genomeTitle').each(function(i, d) {
+        dwidth = d.getBBox().width;
+        if (dwidth > max_genome_title_width) {
+            max_genome_title_width = dwidth;
+        };
+    });
+
+    $('.sequenceBackground').attr('x', max_genome_title_width + HORIZONTAL_PADDING);
+    $('.callerTitle').attr('x', max_genome_title_width + (HORIZONTAL_PADDING * 2));
+
+    var max_caller_width = 0;
+    $('.callerTitle').each(function(i, d) {
+        dwidth = d.getBBox().width;
+        if (dwidth > max_caller_width) {
+            max_caller_width = dwidth;
+        };
+    });
+
+    $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+
+    var max_sequence_width = 0;
+    $('.sequence').each(function(i, d) {
+        dwidth = d.getBBox().width;
+        if (dwidth > max_sequence_width) {
+            max_sequence_width = dwidth;
+        };
+    });
+
+    $('.sequenceBackground').attr('width', max_caller_width + max_sequence_width + (HORIZONTAL_PADDING * 3));
+
+    bbox = svg.getBBox();
+    svg.setAttribute('width', bbox.width);
+    svg.setAttribute('height', bbox.height);
 }
 
 
