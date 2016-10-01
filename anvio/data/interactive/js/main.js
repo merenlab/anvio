@@ -235,6 +235,7 @@ function initData () {
 
             // hide all mode dependent divs:
             $('.full-mode').hide();
+            $('.pan-mode').hide();
             $('.collection-mode').hide();
             $('.manual-mode').hide();
             $('.server-mode').hide();
@@ -246,19 +247,22 @@ function initData () {
             if (mode == 'refine')
             {
                 $('.refine-mode').show();
-                $('#fixed-navbar-div').css('background-color', '#F3A2AD');
+                $('#fixed-navbar-div').css('background-image', 'url(images/refine-bg.png)');
             } else if (mode == 'server') {
                 $('.server-mode').show();
+                $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
             } else if (mode == 'full') {
                 $('.full-mode').show();
+                $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
             } else if (mode == 'pan') {
                 $('.pan-mode').show();
-                $('#fixed-navbar-div').css('background-color', 'orange');
+                $('#fixed-navbar-div').css('background-image', 'url(images/pan-bg.png)');
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
-                $('#fixed-navbar-div').css('background-color', '#E2DEF2');
+                $('#fixed-navbar-div').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
+                $('#fixed-navbar-div').css('background-image', 'url(images/manual-bg.png)');
             }
 
             if (readOnlyResponse[0] == true)
