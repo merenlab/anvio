@@ -262,9 +262,15 @@ def store_collections_dict(args, d, request, response):
     for bin_name in data:
         bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
 
-    collections = dbops.TablesForCollections(d.generic_db_path, d.generic_db_version)
+    # the db here is either a profile db, or a pan db, but it can't be both:
+    db_path = d.pan_db_path or d.profile_db_path
+    collections = dbops.TablesForCollections(db_path)
     collections.append(source, data, bins_info_dict)
-    d.collections.populate_collections_dict(d.generic_db_path, d.generic_db_version)
+
+    # a new collection is stored in the database, but the interactive object
+    # does not know about that and needs updatin'
+    d.collections.populate_collections_dict(db_path)
+
     msg = "New collection '%s' with %d bin%s been stored." % (source, len(data), 's have' if len(data) > 1 else ' has')
     run.info_single(msg)
     return json.dumps(msg)
