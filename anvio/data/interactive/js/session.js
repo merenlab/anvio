@@ -69,6 +69,10 @@ function checkCookie () {
 	    contentType: false,
 	    type : 'POST',
     	    data : formData,
+            error: function() {
+                user = null;
+                initContent();
+            },
     	    success : function(data) {
 		if (data.status == 'ok') {
 		    window.user = data.data;
