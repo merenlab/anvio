@@ -1700,8 +1700,9 @@ class TablesForViews(Table):
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
 
         if view_name and view_name in views_in_db:
-            raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db, called %s\
-                                precisely, you can't create another one, before you get rid of the existing one."
+            raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                                You can't create another one before you get rid of the existing one, because rules."\
+                                                                        % view_name
 
         # first create the data table:
         anvio_db.db.drop_table(table_name)
@@ -1717,7 +1718,7 @@ class TablesForViews(Table):
 
     def remove(self, view_name, table_names_to_blank=[]):
         anvio_db = self.DB_CLASS(self.db_path)
-        anvio_db.db._exec('''DELETE FROM %s WHERE view_id == %s''' % (t.views_table_name, view_name))
+        anvio_db.db._exec('''DELETE FROM %s WHERE view_id = "%s"''' % (t.views_table_name, view_name))
         for table_name in table_names_to_blank:
             anvio_db.db._exec('''DELETE FROM %s''' % table_name)
         anvio_db.disconnect()
