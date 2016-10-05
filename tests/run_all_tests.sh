@@ -66,6 +66,12 @@ sqlite3 $output_dir/CONTIGS.db '.tables'
 INFO "Generating a 'blank profile' with the newly generated contigs database"
 anvi-profile -c $output_dir/CONTIGS.db -o $output_dir/BLANK-PROFILE -S BLANK --blank-profile
 
+INFO "Importing a collection into the blank profile"
+anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/BLANK-PROFILE/PROFILE.db -C collection_blank collection_for_blank_profile.txt
+
+INFO "Summarizing the collection stored in the blank profile"
+anvi-summarize -c $output_dir/CONTIGS.db -p $output_dir/BLANK-PROFILE/PROFILE.db -C collection_blank -o $output_dir/BLANK-SUMMARY
+
 # for each sample, run the profiling using the same split size used for the contigs database.
 # profiling generates individual directiorues uner $output_dir directory for each sample.
 for f in 01 02 03
