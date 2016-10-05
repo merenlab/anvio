@@ -538,7 +538,7 @@ class MultipleRuns:
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
-            dbops.TablesForViews().remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
+            dbops.TablesForViews(self.profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
         self.progress.end()
 
