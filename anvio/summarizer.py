@@ -170,7 +170,7 @@ class Summarizer(DatabasesMetaclass):
         self.summary['files'] = {}
         self.summary['collection'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from ProfileSuperclass!
-        self.summary['collection_profile_items'] = self.collection_profile.values()[0].keys()
+        self.summary['collection_profile_items'] = [] if not len(self.collection_profile.values()) else self.collection_profile.values()[0].keys()
 
         # add hmm items for each seach type:
         if self.non_single_copy_gene_hmm_data_available:
@@ -210,7 +210,7 @@ class Summarizer(DatabasesMetaclass):
             utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
             # save merged matrices for bins x samples
-            for table_name in self.collection_profile.values()[0].keys():
+            for table_name in self.summary['collection_profile_items']:
                 d = {}
                 for bin_id in self.collection_profile:
                     d[bin_id] = self.collection_profile[bin_id][table_name]
