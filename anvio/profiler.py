@@ -222,6 +222,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         table_types=t.atomic_data_table_types,
                                         view_name=None)
 
+        # OK. if this is a blank profile, atomic_data_* tables will be completely empty. but having no
+        # split names in the profile database becomes very limiting for downstream analyses, so here
+        # we will generate a null atomic_data_splits table, only purpose of which will be to hold the
+        # split names
+        if self.blank:
+            # creating a null view_data_splits dict:
+            view_data_splits = dict(zip(self.split_names, [dict(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:])))] * len(self.split_names)))
+            dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
+            dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                           data_dict=view_data_splits,
+                                           table_name='atomic_data_splits',
+                                           table_structure=t.atomic_data_table_structure,
+                                           table_types=t.atomic_data_table_types,
+                                           view_name='single')
+
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
