@@ -16,7 +16,7 @@ INFO() {
 SETUP_WITH_OUTPUT_DIR() {
     if [ -z "$1"  ]
     then
-        output_dir="`pwd`/test-output"
+        output_dir="`pwd`/sandbox/test-output"
         rm -rf $output_dir
     else
         output_dir="$1/test-output"
