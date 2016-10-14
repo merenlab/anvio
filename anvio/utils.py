@@ -194,7 +194,7 @@ def is_program_exists(program):
             if IsExe(exe_file):
                 return True
 
-    raise ConfigError, "A anvio function needs '%s' to be installed on your system, but it doesn't seem to appear\
+    raise ConfigError, "An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear\
                         in your path :/ If you are certain you have it on your system (for instance you can run it\
                         by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
                         % (program, program)
