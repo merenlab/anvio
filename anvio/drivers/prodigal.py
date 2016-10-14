@@ -31,10 +31,10 @@ class Prodigal:
         self.run = run
 
         self.parser = None
-        self.installed_prodigal_version = None
-        self.ok_prodigal_versions = {'v2.6.3': self.__parser_1,
-                                     'v2.6.2': self.__parser_1,
-                                     'v2.60': self.__parser_1}
+        self.installed_version = None
+        self.available_parsers = {'v2.6.3': self.__parser_1,
+                                  'v2.6.2': self.__parser_1,
+                                  'v2.60': self.__parser_1}
 
         self.check_version()
 
@@ -60,7 +60,7 @@ class Prodigal:
 
         if not len(fields) != 8 or fields[6] not in ['1', '-1']:
             raise ConfigError, 'Somethings is wrong with this prodigal output :( The parser for the\
-                                version %s is failing to make sense of it.' % (self.installed_prodigal_version)
+                                version %s is failing to make sense of it.' % (self.installed_version)
 
         hit['direction'] = 'f' if fields[6] == '1' else 'r'
         hit['start'] = int(fields[2]) - 1
@@ -72,7 +72,7 @@ class Prodigal:
         hit['partial'] = False if additional_attributes[1] == 'partial=00' else True
 
         hit['source'] = 'prodigal'
-        hit['version'] = self.installed_prodigal_version
+        hit['version'] = self.installed_version
 
         return hit
 
@@ -83,15 +83,15 @@ class Prodigal:
         utils.is_program_exists('prodigal')
         output, ret_code = utils.get_command_output_from_shell('prodigal -v')
 
-        prodigal_version_found = output.split('\n')[1].split()[1].split(':')[0].lower()
+        version_found = output.split('\n')[1].split()[1].split(':')[0].lower()
 
-        if prodigal_version_found not in self.ok_prodigal_versions:
+        if version_found not in self.available_parsers:
             raise ConfigError, "The prodigal version installed on your system is not compatible\
                                 with any of the versions anvi'o can work with. Please install\
-                                any of the following versions: %s" % (', '.join(self.ok_prodigal_versions.keys()))
+                                any of the following versions: %s" % (', '.join(self.available_parsers.keys()))
 
-        self.installed_prodigal_version = prodigal_version_found
-        self.parser = self.ok_prodigal_versions[prodigal_version_found]
+        self.installed_version = version_found
+        self.parser = self.available_parsers[version_found]
 
 
     def process(self, fasta_file_path, output_dir):
@@ -142,6 +142,6 @@ class Prodigal:
 
         self.progress.end()
 
-        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_prodigal_version, len(gene_calls_dict)), nl_after=1)
+        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_version, len(gene_calls_dict)), nl_after=1)
 
         return gene_calls_dict, protein_sequences_dict
