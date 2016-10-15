@@ -30,15 +30,6 @@ var index;
 var total;
 
 
-function getUrlVars() {
-    var map = {};
-    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-        map[key] = value;
-    });
-    return map;
-}
-
-
 function loadAll() {
     pc_name = getUrlVars()["id"];
     document.title = pc_name + " detailed";
@@ -226,85 +217,3 @@ function removeGeneChart() {
     node.parentNode.removeChild(node);
   }
 }
-
-
-function get_gene_functions_table_html(gene){
-    functions_table_html = '<h2>Gene Call</h2>';
-    functions_table_html += '<table class="table table-striped" style="width: 600px; text-align: center;">';
-    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
-    functions_table_html += '<tbody>';
-    functions_table_html += '<tr><td>' + gene.gene_callers_id
-                          + '</td><td>' + gene.source
-                          + '</td><td>' + gene.length
-                          + '</td><td>' + gene.direction
-                          + '</td><td>' + gene.start_in_pc
-                          + '</td><td>' + gene.stop_in_pc
-                          + '</td><td>' + gene.complete_gene_call
-                          + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
-                          + '</td></tr></tbody></table>';
-
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
-
-    if(!gene.functions)
-        return functions_table_html;
-
-    functions_table_html += '<h2>Annotation</h2>';
-    functions_table_html += '<table class="table table-striped">';
-    functions_table_html += '<thead><th>Source</th><th>Hit</th><th>Score</th></thead>';
-    functions_table_html += '<tbody>';
-
-    for (function_source in gene.functions){
-        functions_table_html += '<tr>';
-
-        functions_table_html += '<td><b>' + function_source + '</b></td>';
-        if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + gene.functions[function_source][0] + '</td>';
-            functions_table_html += '<td><em>' + gene.functions[function_source][1] + '</em></td>';
-        } else {
-            functions_table_html += '<td>&nbsp;</td>';
-            functions_table_html += '<td>&nbsp;</td>';
-        }
-
-        functions_table_html += '</tr>';
-    }
-
-    functions_table_html += '</tbody></table>';
-
-    return functions_table_html;
-}
-
-
-function show_sequence(gene_id) {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/gene/' + gene_id + '?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            $('body').append('<div class="modal modal-sequence"> \
-                <div class="modal-dialog"> \
-                    <div class="modal-content"> \
-                        <div class="modal-header"> \
-                            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
-                            <h4 class="modal-title">Split Sequence</h4> \
-                        </div> \
-                        <div class="modal-body"> \
-                            <div class="col-md-12"> \
-                                <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>&gt;' + data['header'] + '\n' + data['sequence'] + '</textarea> \
-                            </div> \
-                        </div> \
-                        <div class="modal-footer"> \
-                            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
-                        </div> \
-                    </div> \
-                </div> \
-            </div>');
-            $('[data-toggle="popover"]').popover('hide');
-            $('.modal-sequence').modal('show');
-        }
-    });
-}
-
