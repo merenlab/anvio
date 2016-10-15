@@ -55,6 +55,8 @@ class GenomeStorage(object):
         self.genomes = {}
         self.hash_to_genome_name = {}
 
+        self.functions_are_available = False
+
 
     def load_genomes_descriptions(self):
         """Reads internal and external genome files, populates self.genomes"""
@@ -114,6 +116,33 @@ class GenomeStorage(object):
         for genome_name in self.internal_genome_names:
             self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
 
+        # check whether function calls are available for all genomes involved. we will primarily focus on COG functions and
+        # categories. Which means we will expect every contigs database to have annotations for COG_FUNCTION and COG_CATEGORY.
+        genomes_missing_functions = []
+        for genome_name in self.genomes:
+            g = self.genomes[genome_name]
+            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+            sources = contigs_db.meta['gene_function_sources']
+            contigs_db.disconnect()
+
+            if 'COG_FUNCTION' not in sources or 'COG_CATEGORY' not in sources:
+                genomes_missing_functions.append(genome_name)
+
+        if not len(genomes_missing_functions):
+            self.run.warning('COG_FUNCTION and COG_CATEGORY annotations are available for all genomes! This information will be stored in the\
+                              genomes storage file for later use. You did great!', header="Functions are found", lc="green")
+            self.functions_are_available = True
+        else:
+            all_missing_functions = False if len(genomes_missing_functions) < len(self.genomes) else True
+            warning_msg = 'It seems %s of the genomes you have are missing COG_FUNCTION and COG_CATEGORY annotations. Analyses using this storage\
+                           will have no functional information available. If you want to change this, you can read the documentation about\
+                           importing functions into contigs databases.' % ('all' if all_missing_functions else 'some')
+
+            if not all_missing_functions:
+                warning_msg += ' If you are interested, these are the genomes that needs functional annotation: %s.' % ', '.join(genomes_missing_functions)
+
+            self.run.warning(warning_msg)
+
 
     def init_genomes_data_storage(self):
         """Initializes an existing genomes storage by reading everything about genomes of interest"""
@@ -134,6 +163,19 @@ class GenomeStorage(object):
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
 
         self.run.info('Genomes storage', 'Initialized with %d genomes (storage hash: %s)' % (self.genomes_storage.num_genomes, self.genomes_storage.unique_hash))
+
+
+    def get_functions_dict_from_contigs_db(self, contigs_db_path):
+        if not self.functions_are_available:
+            return {}
+
+        class Args: pass
+        args = Args()
+        args.contigs_db = contigs_db_path
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+        contigs_super.init_functions(requested_sources=['COG_FUNCTION', 'COG_CATEGORY'])
+
+        return contigs_super.gene_function_calls_dict
 
 
     def create_genomes_data_storage(self):
@@ -158,6 +200,7 @@ class GenomeStorage(object):
         storage_hash = hashlib.sha224('_'.join(self.genomes[genome_name]['genome_hash'] for genome_name in self.genomes)).hexdigest()[0:8]
 
         self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, storage_hash, create_new=True)
+        self.genomes_storage.fp.attrs['functions_are_available'] = self.functions_are_available
 
         # some silly stuff for later fun
         num_gene_calls_added_total = 0
@@ -177,10 +220,25 @@ class GenomeStorage(object):
 
             contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
             protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+            contigs_db.disconnect()
+
+            functions_dict = self.get_functions_dict_from_contigs_db(g['contigs_db_path'])
+            FCAT = lambda: functions_dict[gene_caller_id]['COG_CATEGORY'] if gene_caller_id in functions_dict else None
+            FFUN = lambda: functions_dict[gene_caller_id]['COG_FUNCTION'] if gene_caller_id in functions_dict else None
 
             for gene_caller_id in g['gene_caller_ids']:
                 partial_gene_call = gene_caller_id in g['partial_gene_calls']
-                self.genomes_storage.add_gene_call_data(genome_name, gene_caller_id, sequence=protein_sequences_dict[gene_caller_id]['sequence'], partial=partial_gene_call)
+
+                if self.functions_are_available:
+                    functions = [('COG_CATEGORY', FCAT()[1] if FCAT() else ''), ('COG_FUNCTION', FFUN()[0] if FFUN() else '')]
+                else:
+                    functions = []
+
+                self.genomes_storage.add_gene_call_data(genome_name,
+                                                        gene_caller_id,
+                                                        sequence=protein_sequences_dict[gene_caller_id]['sequence'],
+                                                        partial=partial_gene_call,
+                                                        functions=functions)
 
                 num_gene_calls_added += 1
                 if partial_gene_call:
@@ -198,7 +256,6 @@ class GenomeStorage(object):
             num_gene_calls_added_total += num_gene_calls_added
             num_partial_gene_calls_total += num_partial_gene_calls
 
-            contigs_db.disconnect()
 
         self.run.info('The new genomes storage', '%s (signature: %s)' % (self.storage_path, storage_hash))
         self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(self.genomes)), pp(len(self.internal_genome_names)), pp(len(self.external_genome_names))))
