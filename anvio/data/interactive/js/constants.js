@@ -1,3 +1,81 @@
+var COG_categories = {
+    'A': '[A] RNA processing and modification',
+    'B': '[B] Chromatin Structure and dynamics',
+    'C': '[C] Energy production and conversion',
+    'D': '[D] Cell cycle control and mitosis',
+    'E': '[E] Amino Acid metabolism and transport',
+    'F': '[F] Nucleotide metabolism and transport',
+    'G': '[G] Carbohydrate metabolism and transport',
+    'H': '[H] Coenzyme metabolis',
+    'I': '[I] Lipid metabolism',
+    'J': '[J] Tranlsation',
+    'K': '[K] Transcription',
+    'L': '[L] Replication and repair',
+    'M': '[M] Cell wall/membrane/envelop biogenesis',
+    'N': '[N] Cell motility',
+    'O': '[O] Post-translational modification, protein turnover, chaperone functions',
+    'P': '[P] Inorganic ion transport and metabolism',
+    'Q': '[Q] Secondary Structure',
+    'T': '[T] Signal Transduction',
+    'U': '[U] Intracellular trafficing and secretion',
+    'V': '[V] Defense mechanisms',
+    'W': '[W] Extracellular structures',
+    'Y': '[Y] Nuclear structure',
+    'Z': '[Z] Cytoskeleton',
+    'R': '[R] General Functional Prediction only',
+    'S': '[S] Function Unknown'
+}
+
+var named_functional_sources = {
+    'EGGNOG (BACT)': {
+        'accession_decorator': '<a href="http://www.uniprot.org/uniprot/?query={ACCESSION}&sort=score" target="_blank">{ACCESSION}</a>',
+    },
+
+    'COG_CATEGORY': {
+        'annotation_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
+                                    return cogs.join('; ');
+                                }),
+    },
+
+    'KEGG_PATHWAYS': {
+        'annotation_decorator': (function (d) {
+                                    var maps = d.split(', ').map((function (m){return '<a href="http://www.genome.jp/dbget-bin/www_bget?' + m +'" target=_"blank">' + m + '</a>';}));
+                                    return maps.join(', ');
+                                }),
+    },
+
+    'GO_TERMS': {
+        'annotation_decorator': (function (d) {
+                                    var gos = d.split(', ').map((function (g){return '<a href="http://amigo.geneontology.org/amigo/term/' + g +'" target=_"blank">' + g + '</a>';}));
+                                    return gos.join(', ');
+                                }),
+    },
+}
+
+
+function decorateAccession(source, accession_id){
+    if (source in named_functional_sources){
+        if ('accession_decorator' in named_functional_sources[source]){
+            return named_functional_sources[source]['accession_decorator'].replace(/{ACCESSION}/g, accession_id);
+        }
+    }
+
+    return accession_id;
+}
+
+
+function decorateAnnotation(source, annotation){
+    if (source in named_functional_sources){
+        if ('annotation_decorator' in named_functional_sources[source]){
+            return named_functional_sources[source]['annotation_decorator'](annotation);
+        }
+    }
+
+    return annotation;
+}
+
+
 var named_layers = {
     '__parent__': {
         'pretty_name': 'Parent',
