@@ -16,7 +16,7 @@ import anvio.ccollections as ccollections
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
-from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db, get_required_version_for_db
+from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
 
