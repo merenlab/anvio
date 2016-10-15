@@ -11,6 +11,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.cogs as cogs
 
 from anvio.errors import ConfigError
 
@@ -27,6 +28,8 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+
+COGs_data = cogs.COGsData()
 
 
 class EggNOGMapper:
@@ -163,6 +166,14 @@ class EggNOGMapper:
                                                 (fields[0], self.gene_caller_id_prefix)
 
         self.add_entry(gene_callers_id, 'EGGNOG (%s)' % self.database.upper(), fields[1], fields[11], fields[2])
+
+        if fields[8]:
+            COG_ids=[og[:-4] for og in fields[8].split(',') if og.endswith('@NOG') and og.startswith('COG')]
+
+            if COG_ids:
+                annotations = '; '.join([COGs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in COGs_data.cogs])
+                self.add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, 0.0)
+
         if fields[10]:
             self.add_entry(gene_callers_id, 'COG_CATEGORY', '', fields[10], 0.0)
 
