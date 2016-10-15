@@ -1,0 +1,12 @@
+setup PFAM:
+
+cd /workspace/meren/PFAM/
+wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
+gzip -d Pfam-A.hmm.gz
+hmmpress Pfam-A.hmm
+
+run like this:
+
+time hmmscan --cpu 20 -o /dev/null --cut_ga --domtblout aa_sequences_01.pfam /workspace/meren/PFAM/Pfam-A.hmm aa_sequences_01.fa
+time hmmscan --cpu 20 -o /dev/null --cut_ga --domtblout aa_sequences_02.pfam /workspace/meren/PFAM/Pfam-A.hmm aa_sequences_02.fa
+time hmmscan --cpu 20 -o /dev/null --cut_ga --domtblout aa_sequences_03.pfam /workspace/meren/PFAM/Pfam-A.hmm aa_sequences_03.fa
