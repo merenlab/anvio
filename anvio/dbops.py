@@ -352,7 +352,7 @@ class ContigsSuperclass(object):
             return (0, 1, 3)
 
 
-    def init_functions(self):
+    def init_functions(self, requested_sources=[]):
         if not self.contigs_db_path:
             return
 
@@ -360,8 +360,21 @@ class ContigsSuperclass(object):
         self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        self.gene_function_call_sources = contigs_db.meta['gene_function_sources'].split(',') if contigs_db.meta['gene_function_sources'] else []
-        for hit in contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values():
+
+        if requested_sources:
+            missing_sources = [s for s in requested_sources if s not in contigs_db.meta['gene_function_sources']]
+            if len(missing_sources):
+                raise ConfigError, "Some of the functional sources you requested are missing from the contigs database '%s'. Here\
+                                    they are (or here it is, whatever): %s." % \
+                                                (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources]))
+
+            hits = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources]))).values()
+            self.gene_function_call_sources = requested_sources
+        else:
+            hits = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values()
+            self.gene_function_call_sources = contigs_db.meta['gene_function_sources']
+
+        for hit in hits:
             gene_callers_id = hit['gene_callers_id']
             source = hit['source']
             accession = hit['accession']
@@ -1182,6 +1195,8 @@ class ContigsDatabase:
 
             for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
                 self.meta[key] = int(self.meta[key])
+
+            self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
             if 'creation_date' not in self.meta:
                 raise ConfigError, "The contigs database ('%s') seems to be corrupted :/ This happens if the process that\
@@ -2754,7 +2769,7 @@ class TableForGeneFunctions(Table):
         unique_num_genes = len(set([v['gene_callers_id'] for v in functions_dict.values()]))
 
         # are there any previous annotations in the db:
-        gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'].split(',')) if contigs_db.meta['gene_function_sources'] else None
+        gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
         # here we will do some magic. there are mulitple scenarios to consider here:
         #
