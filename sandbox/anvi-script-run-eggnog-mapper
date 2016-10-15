@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import shutil
+
+import anvio
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.drivers.emapper import EggNOGMapper
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def main(args):
+    if args.annotation or args.use_version:
+        if not args.annotation or not args.use_version:
+            raise ConfigError, "If you would like to use a pre-existing annotation file to import from,\
+                                you must also declare a version."
+
+        emapper = EggNOGMapper(args.contigs_db, num_threads = 1, use_version=args.use_version)
+        emapper.populate_annotations_dict(args.annotation)
+        emapper.store_annotations_in_db(drop_previous_annotations=args.drop_previous_annotations)
+    else:
+        output_dir = filesnpaths.get_temp_directory_path()
+
+        emapper = EggNOGMapper(args.contigs_db, num_threads = args.num_threads)
+        emapper.process(output_dir, drop_previous_annotations=args.drop_previous_annotations)
+
+        if not args.debug:
+            shutil.rmtree(output_dir)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run eggnog-mapper on a contigs database, and store results')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {'default': None}))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+
+    parser.add_argument('--drop-previous-annotations', default=False, action="store_true",
+                        help='When declared, previous annotations in the database will be dropped.')
+    parser.add_argument('--annotation', default=None, metavar='EMAPPER_ANNOTATION_FILE',
+                        help="If you have an annotation file from a previous run, you can call this program to\
+                              import the contents of that file into the database instead of a run from scratch.\
+                              In that case, you must also use the `--use-version` parameter to clarify which\
+                              parser version should be used to parse it.")
+    parser.add_argument('--use-version', default='0.12.6', metavar="EMAPPER_VERSION",
+                        help='The version of eggnog-mapper that generated the annotation file.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
