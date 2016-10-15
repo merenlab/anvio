@@ -377,7 +377,7 @@ class ContigsSuperclass(object):
                     # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
                     continue
 
-            entry = ('%s :: %s' % (function if function else 'unknown', accession), e_value)
+            entry = (accession, '%s' % (function if function else 'unknown'), e_value)
             self.gene_function_calls_dict[gene_callers_id][source] = entry
 
         contigs_db.disconnect()
