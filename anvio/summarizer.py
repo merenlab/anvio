@@ -519,11 +519,14 @@ class Bin:
                     if gene_callers_id not in self.summary.gene_function_calls_dict:
                         # this gene did not get any functional annotation
                         d[gene_callers_id][source] = ''
+                        d[gene_callers_id][source + ' (ACCESSION)'] = ''
                         continue
 
                     if self.summary.gene_function_calls_dict[gene_callers_id][source]:
-                        d[gene_callers_id][source] = self.summary.gene_function_calls_dict[gene_callers_id][source][0]
+                        d[gene_callers_id][source + ' (ACCESSION)'] = self.summary.gene_function_calls_dict[gene_callers_id][source][0]
+                        d[gene_callers_id][source] = self.summary.gene_function_calls_dict[gene_callers_id][source][1]
                     else:
+                        d[gene_callers_id][source + ' (ACCESSION)'] = ''
                         d[gene_callers_id][source] = ''
 
             # finally add the sequence:
@@ -535,7 +538,8 @@ class Bin:
         output_file_obj = self.get_output_file_handle('functions.txt')
 
         if self.summary.gene_function_call_sources:
-            headers = ['prot'] + headers + self.summary.p_meta['samples'] + self.summary.gene_function_call_sources + ['sequence']
+            sources = [[source, source + ' (ACCESSION)'] for source in self.summary.gene_function_call_sources]
+            headers = ['prot'] + headers + self.summary.p_meta['samples'] + [item for sublist in sources for item in sublist] + ['sequence']
         else:
             headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence']
 
