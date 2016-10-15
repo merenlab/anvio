@@ -28,7 +28,17 @@ var COG_categories = {
 
 var named_functional_sources = {
     'EGGNOG (BACT)': {
-        'accession_decorator': '<a href="http://www.uniprot.org/uniprot/?query={ACCESSION}&sort=score" target="_blank">{ACCESSION}</a>',
+        'accession_decorator': (function (d) {
+                                    return '<a href="http://www.uniprot.org/uniprot/?query=' + d + '&sort=score" target="_blank">' + d + '</a>';
+                                }),
+
+    },
+
+    'COG_FUNCTION': {
+        'accession_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return cogs.join(', ');
+                                }),
     },
 
     'COG_CATEGORY': {
@@ -57,7 +67,7 @@ var named_functional_sources = {
 function decorateAccession(source, accession_id){
     if (source in named_functional_sources){
         if ('accession_decorator' in named_functional_sources[source]){
-            return named_functional_sources[source]['accession_decorator'].replace(/{ACCESSION}/g, accession_id);
+            return named_functional_sources[source]['accession_decorator'](accession_id);
         }
     }
 
