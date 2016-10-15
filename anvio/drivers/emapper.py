@@ -167,10 +167,10 @@ class EggNOGMapper:
             self.add_entry(gene_callers_id, 'COG_CATEGORY', '', fields[10], 0.0)
 
         if fields[5]:
-            self.add_entry(gene_callers_id, 'GO_TERMS', '', fields[5], 0.0)
+            self.add_entry(gene_callers_id, 'GO_TERMS', '', ', '.join(fields[5].split(',')), 0.0)
 
         if fields[6]:
-            self.add_entry(gene_callers_id, 'KEGG_PATHWAYS', '', fields[6], 0.0)
+            self.add_entry(gene_callers_id, 'KEGG_PATHWAYS', '', ', '.join(fields[6].split(',')), 0.0)
 
 
     def store_annotations_in_db(self, drop_previous_annotations=False):
