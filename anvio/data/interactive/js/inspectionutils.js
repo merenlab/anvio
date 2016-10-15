@@ -54,7 +54,7 @@ function getUrlVars() {
 
 function get_gene_functions_table_html(gene){
     functions_table_html = '<h2>Gene Call</h2>';
-    functions_table_html += '<table class="table table-striped" style="width: 600px; text-align: center;">';
+    functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
     functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
     functions_table_html += '<tr><td>' + gene.gene_callers_id
@@ -88,8 +88,8 @@ function get_gene_functions_table_html(gene){
 
         functions_table_html += '<td><b>' + function_source + '</b></td>';
         if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + gene.functions[function_source][0] + '</td>';
-            functions_table_html += '<td><em>' + gene.functions[function_source][1] + '</em></td>';
+            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
+            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
         } else {
             functions_table_html += '<td>&nbsp;</td>';
             functions_table_html += '<td>&nbsp;</td>';
