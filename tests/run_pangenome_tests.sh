@@ -19,8 +19,8 @@ anvi-script-FASTA-to-contigs-db 02.fa
 anvi-script-FASTA-to-contigs-db 03.fa
 
 INFO "Importing functions into the contigs database"
-anvi-script-run-eggnog-mapper -c 01.db --annotation aa_sequences_03.emapper.annotations --use-version 0.12.6
-anvi-script-run-eggnog-mapper -c 02.db --annotation aa_sequences_03.emapper.annotations --use-version 0.12.6
+anvi-script-run-eggnog-mapper -c 01.db --annotation aa_sequences_01.emapper.annotations --use-version 0.12.6
+anvi-script-run-eggnog-mapper -c 02.db --annotation aa_sequences_02.emapper.annotations --use-version 0.12.6
 anvi-script-run-eggnog-mapper -c 03.db --annotation aa_sequences_03.emapper.annotations --use-version 0.12.6
 
 INFO "Generating an anvi'o genomes storage"
