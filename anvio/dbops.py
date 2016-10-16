@@ -686,9 +686,13 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
+        self.protein_clusters_functions = {}
         self.clusterings = {}
         self.views = {}
         self.collection_profile = {}
+
+        self.genomes_storage_is_available = False
+        self.genomes_storage_has_functions = False
 
         try:
             self.pan_db_path = args.pan_db
@@ -725,11 +729,10 @@ class PanSuperclass(object):
         self.states_table = TablesForStates(self.pan_db_path)
 
         self.progress.update('Accessing the auxiliary data file')
-        if not args.genomes_storage:
-            self.genomes_storage_is_available = False
-        else:
+        if args.genomes_storage:
             self.genomes_storage_is_available = True
             self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage, self.p_meta['genomes_storage_hash'])
+            self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
         self.progress.end()
 
@@ -738,7 +741,30 @@ class PanSuperclass(object):
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
+    def init_protein_clusters_functions(self):
+        self.progress.new('Initializing protein clusters functions')
+        self.progress.update('...')
+        if not self.protein_clusters:
+            raise ConfigError, "init_protein_clusters_functions is speaking! You called this function before you initialized\
+                                protein clusters :/ One of us does not know what they're doing :("
+
+        if not self.genomes_storage_has_functions:
+            self.run.warning("Genomes storage does not have any info about gene functions. Certain parts of the pangenomic\
+                              workflow will not be accessible.")
+
+        for protein_cluster_id in self.protein_clusters:
+            self.protein_clusters_functions[protein_cluster_id] = {}
+            for genome_name in self.genome_names:
+                self.protein_clusters_functions[protein_cluster_id][genome_name] = {}
+                for gene_callers_id in self.protein_clusters[protein_cluster_id][genome_name]:
+                    self.protein_clusters_functions[protein_cluster_id][genome_name][gene_callers_id] = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
+
+        self.progress.end()
+
+
     def init_additional_layer_data(self):
+        self.progress.new('Initializing additional layer data')
+        self.progress.update('...')
         pan_db = PanDatabase(self.pan_db_path)
         self.additional_layers_dict = pan_db.db.get_table_as_dict('additional_data')
         self.additional_layers_headers = pan_db.db.get_meta_value('additional_data_headers').split(',')
@@ -751,7 +777,27 @@ class PanSuperclass(object):
 
         self.additional_layers_dict.values()[0].keys()
 
+        self.progress.end()
+
+
     def init_protein_clusters(self):
+        """Initializes the protein_clusters dictionary.
+
+           At the end, the structure of this dictionary looks like this:
+
+               {
+                'PC_1': {'Genome_1': [gene_1, gene_2, (...)],
+                         'Genome_2': [],
+                         'Genome_3': [gene_1, gene_2],
+                         (...)}
+                'PC_2': {(...)},
+                (...)
+               }
+        """
+
+        self.progress.new('Initializing protein clusters functions')
+        self.progress.update('...')
+
         pan_db = PanDatabase(self.pan_db_path)
 
         protein_clusters_long_list = pan_db.db.get_table_as_dict(t.pan_protein_clusters_table_name)
@@ -769,6 +815,7 @@ class PanSuperclass(object):
             self.protein_clusters[protein_cluster_id][genome_name].append(gene_callers_id)
 
         pan_db.disconnect()
+        self.progress.end()
 
 
     def load_pan_views(self, splits_of_interest=None):
@@ -783,7 +830,6 @@ class PanSuperclass(object):
                                 'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
 
         pan_db.disconnect()
-
 
 
 class ProfileSuperclass(object):
