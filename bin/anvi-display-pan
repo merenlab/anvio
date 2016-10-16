@@ -231,9 +231,9 @@ def gen_summary(collection_name):
 def store_collections_dict():
     return routes.store_collections_dict(args, d, request, response)
 
-@route('/data/completeness', method='POST')
-def completeness():
-    return routes.completeness(d, request)
+@route('/data/proteinclusterssummary', method='POST')
+def get_protein_clusters_summary():
+    return routes.get_protein_clusters_summary(d, request)
 
 @route('/state/autoload')
 def state_autoload():
