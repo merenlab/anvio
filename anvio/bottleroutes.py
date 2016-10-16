@@ -7,6 +7,8 @@
     anvi-interactive, or anvi-refine.
 """
 
+from collections import Counter
+
 import os
 import json
 import datetime
@@ -20,6 +22,16 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 
 from anvio.errors import RefineError
+
+
+__author__ = "Ozcan Esen"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = ["A. Murat Eren"]
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -68,6 +80,20 @@ def get_state(d, request, response):
         return json.dumps(state['content'])
 
     return json.dumps("")
+
+
+def get_protein_clusters_summary(d, request):
+    protein_cluster_ids = json.loads(request.forms.get('split_names'))
+    bin_name = json.loads(request.forms.get('bin_name'))
+
+    summary = d.get_functions_summary_for_PCs_list(protein_cluster_ids)
+
+    run.info_single('PC info has been requested for %d items in %s' % (len(protein_cluster_ids), bin_name))
+
+    return json.dumps({'functions': summary['functions'],
+                       'num_PCs': summary['num_PCs'],
+                       'genomes_contributing': summary['genomes_contributing'],
+                       'num_gene_calls': summary['num_gene_calls']})
 
 
 def completeness(d, request):
