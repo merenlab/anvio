@@ -85,6 +85,7 @@ var current_view = '';
 var layer_order;
 
 var completeness_dict = {};
+var PC_bins_summary_dict = {}
 
 var sort_column;
 var sort_order;
@@ -1201,12 +1202,36 @@ function updateBinsWindow(bin_list) {
         else
             $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
-        updateComplateness(bin_id);
+        if (mode === 'pan'){
+            updateProteinClustersBin(bin_id);
+        } else {
+            updateComplateness(bin_id);
+        }
+
         showContigNames(bin_id, true);
     }
 
     $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
 }
+
+
+function updateProteinClustersBin(bin_id) {
+    if (mode !== 'pan'){ 
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "/data/proteinclusterssummary",
+        cache: false,
+        data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
+        success: function(data){
+            PC_bins_summary_dict[bin_id] = JSON.parse(data);
+            console.log(PC_bins_summary_dict);
+        },
+    });
+}
+
 
 function updateComplateness(bin_id) {
     if (mode === 'manual' || mode === 'pan' || mode === 'server'){ 
