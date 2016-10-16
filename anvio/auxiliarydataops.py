@@ -240,7 +240,7 @@ class GenomesDataStorage(HDF5_IO):
         functions = {}
         d = self.fp['/data/genomes/%s/%d/functions' % (genome_name, gene_caller_id)]
         for source in d:
-            functions[source] = d[source].value
+            functions[source] = [f.strip() if f else 'UNKNOWN' for f in d[source].value.split(',')]
 
         return functions
 
