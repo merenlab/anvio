@@ -180,8 +180,7 @@ class GenomesDataStorage(HDF5_IO):
 
         if not create_new:
             self.num_genomes = len(self.fp['/info/genomes'])
-
-        self.functions_are_available = self.fp.attrs['functions_are_available']
+            self.functions_are_available = self.fp.attrs['functions_are_available']
 
         self.D = lambda genome_name: self.fp['/data/genomes/%s' % genome_name]
         self.G = lambda gene_callers_id, genome_data: genome_data['%d' % gene_callers_id]
