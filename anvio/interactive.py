@@ -422,6 +422,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.genomes_storage.get_gene_sequence
         self.init_protein_clusters()
+        self.init_protein_clusters_functions()
         self.init_additional_layer_data()
 
         self.p_meta['clusterings'] = self.clusterings
