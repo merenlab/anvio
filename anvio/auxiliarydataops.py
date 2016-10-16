@@ -181,6 +181,8 @@ class GenomesDataStorage(HDF5_IO):
         if not create_new:
             self.num_genomes = len(self.fp['/info/genomes'])
 
+        self.functions_are_available = self.fp.attrs['functions_are_available']
+
         self.D = lambda genome_name: self.fp['/data/genomes/%s' % genome_name]
         self.G = lambda gene_callers_id, genome_data: genome_data['%d' % gene_callers_id]
 
@@ -230,9 +232,22 @@ class GenomesDataStorage(HDF5_IO):
         return d.value
 
 
+    def get_gene_functions(self, genome_name, gene_caller_id):
+        if not self.functions_are_available:
+            raise HDF5Error, "Functions are not available for this genome storage, and you are calling GenomesStorage::get_gene_functions\
+                              when you really shoudln't :/"
+
+        functions = {}
+        d = self.fp['/data/genomes/%s/%d/functions' % (genome_name, gene_caller_id)]
+        for source in d:
+            functions[source] = d[source].value
+
+        return functions
+
+
     def add_genome(self, genome_name, info_dict):
         if self.is_known_genome(genome_name, throw_exception=False):
-            raise "Genome '%s' is already in this data storage :/" % genome_name
+            raise HDF5Error, "Genome '%s' is already in this data storage :/" % genome_name
 
         for key in self.essential_genome_info:
             self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
