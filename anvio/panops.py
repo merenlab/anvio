@@ -125,7 +125,7 @@ class GenomeStorage(object):
             sources = contigs_db.meta['gene_function_sources']
             contigs_db.disconnect()
 
-            if 'COG_FUNCTION' not in sources or 'COG_CATEGORY' not in sources:
+            if not sources or 'COG_FUNCTION' not in sources or 'COG_CATEGORY' not in sources:
                 genomes_missing_functions.append(genome_name)
 
         if not len(genomes_missing_functions):
