@@ -86,7 +86,7 @@ def get_protein_clusters_summary(d, request):
     protein_cluster_ids = json.loads(request.forms.get('split_names'))
     bin_name = json.loads(request.forms.get('bin_name'))
 
-    summary = d.get_functions_summary_for_PCs_list(protein_cluster_ids)
+    summary = d.get_summary_for_PCs_list(protein_cluster_ids)
 
     run.info_single('PC info has been requested for %d items in %s' % (len(protein_cluster_ids), bin_name))
 
