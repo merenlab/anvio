@@ -686,13 +686,15 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
-        self.protein_clusters_functions = {}
+        self.protein_clusters_function_sources = []
+        self.protein_clusters_functions_dict = {}
         self.clusterings = {}
         self.views = {}
         self.collection_profile = {}
 
         self.genomes_storage_is_available = False
         self.genomes_storage_has_functions = False
+        self.functions_initialized = False
 
         try:
             self.pan_db_path = args.pan_db
@@ -753,11 +755,16 @@ class PanSuperclass(object):
                               workflow will not be accessible.")
 
         for protein_cluster_id in self.protein_clusters:
-            self.protein_clusters_functions[protein_cluster_id] = {}
+            self.protein_clusters_functions_dict[protein_cluster_id] = {}
             for genome_name in self.genome_names:
-                self.protein_clusters_functions[protein_cluster_id][genome_name] = {}
+                self.protein_clusters_functions_dict[protein_cluster_id][genome_name] = {}
                 for gene_callers_id in self.protein_clusters[protein_cluster_id][genome_name]:
-                    self.protein_clusters_functions[protein_cluster_id][genome_name][gene_callers_id] = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
+                    self.protein_clusters_functions_dict[protein_cluster_id][genome_name][gene_callers_id] = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
+
+        # available functions
+        self.protein_clusters_function_sources = self.protein_clusters_functions_dict.values()[0].values()[0].values()[0].keys()
+
+        self.functions_initialized = True
 
         self.progress.end()
 
@@ -830,6 +837,51 @@ class PanSuperclass(object):
                                 'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
 
         pan_db.disconnect()
+
+
+    def get_functions_summary_for_PCs_list(self, protein_cluster_ids):
+        if not self.functions_initialized:
+            raise ConfigError, "Functions are not yet initialized in Pan superclass. How dare you call get_functions_summary_for_PCs_list!\
+                                Lol jk. But seriously though."
+
+        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'num_PCs': 0, 'functions': {}}
+        for source in self.protein_clusters_function_sources:
+            summary['functions'][source] = Counter({})
+
+        for protein_cluster_id in protein_cluster_ids:
+            single_summary = self.get_functions_summary_for_PC_id(protein_cluster_id)
+            summary['num_PCs'] += 1
+            summary['genomes_contributing'] = summary['genomes_contributing'].union(single_summary['genomes_contributing'])
+            summary['num_gene_calls'] += single_summary['num_gene_calls']
+            for source in self.protein_clusters_function_sources:
+                for function in single_summary['functions'][source]:
+                    summary['functions'][source][function] += single_summary['functions'][source][function]
+
+        summary['genomes_contributing'] = sorted(list(summary['genomes_contributing']))
+
+        return summary
+
+
+    def get_functions_summary_for_PC_id(self, protein_cluster_id):
+        if not self.functions_initialized:
+            raise ConfigError, "Functions are not yet initialized in Pan superclass. How dare you call get_functions_summary_for_PC_id!\
+                                Lol jk. But seriously though."
+
+        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'functions': {}}
+        for source in self.protein_clusters_function_sources:
+            summary['functions'][source] = Counter({})
+
+        functions_dict = self.protein_clusters_functions_dict[protein_cluster_id]
+        for genome_name in functions_dict:
+            if functions_dict[genome_name]:
+                summary['genomes_contributing'].add(genome_name)
+            for gene_callers_id in functions_dict[genome_name]:
+                summary['num_gene_calls'] += 1
+                for source in functions_dict[genome_name][gene_callers_id]:
+                    for function in functions_dict[genome_name][gene_callers_id][source]:
+                        summary['functions'][source][function] += 1
+
+        return summary
 
 
 class ProfileSuperclass(object):
