@@ -842,11 +842,11 @@ class PanSuperclass(object):
 
 
     def get_summary_for_PCs_list(self, protein_cluster_ids):
-        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'num_PCs': 0, 'functions': None}
+        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'num_PCs': 0, 'functions': {}}
 
         if self.functions_initialized:
             for source in self.protein_clusters_function_sources:
-                summary['functions'][source] = Counter({})
+                summary['functions'].update({source: Counter({})})
 
         for protein_cluster_id in protein_cluster_ids:
             single_summary = self.get_summary_for_PC_id(protein_cluster_id)
@@ -866,7 +866,7 @@ class PanSuperclass(object):
 
     def get_summary_for_PC_id(self, protein_cluster_id):
 
-        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'functions': None}
+        summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'functions': {}}
 
         for genome_name in self.protein_clusters[protein_cluster_id]:
             num_gene_calls = len(self.protein_clusters[protein_cluster_id][genome_name])
@@ -876,7 +876,7 @@ class PanSuperclass(object):
 
         if self.functions_initialized:
             for source in self.protein_clusters_function_sources:
-                summary['functions'][source] = Counter({})
+                summary['functions'].update({source: Counter({})})
 
             functions_dict = self.protein_clusters_functions_dict[protein_cluster_id]
             for genome_name in functions_dict:
