@@ -26,8 +26,8 @@ pp = terminal.pretty_print
 
 
 def main(args):
-    if args.annotation or args.use_version:
-        if not args.annotation or not args.use_version:
+    if args.annotation:
+        if not args.use_version:
             raise ConfigError, "If you would like to use a pre-existing annotation file to import from,\
                                 you must also declare a version."
 
