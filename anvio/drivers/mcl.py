@@ -69,15 +69,17 @@ class MCL:
 
         self.progress.new('MCL')
         self.progress.update('clustering (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('mcl %s --abc -I %f -o %s -te %d >> "%s" 2>&1' % (self.mcl_input_file_path,
-                                                                         self.inflation,
-                                                                         self.clusters_file_path,
-                                                                         self.num_threads,
-                                                                         self.run.log_file_path))
 
-        self.run.info('mcl cmd', cmd_line, quiet=True)
+        cmd_line = ['mcl', 
+                    self.mcl_input_file_path,
+                    '--abc',
+                    '-I', self.inflation,
+                    '-o', self.clusters_file_path,
+                    '-te', self.num_threads]
 
-        utils.run_command(cmd_line)
+        self.run.info('mcl cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+
+        utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 

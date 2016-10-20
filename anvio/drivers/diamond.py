@@ -88,14 +88,16 @@ class Diamond:
     def makedb(self):
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond makedb --in %s -d %s -p %d >> "%s" 2>&1' % (self.query_fasta,
-                                                                         self.target_db_path,
-                                                                         self.num_threads,
-                                                                         self.run.log_file_path))
 
-        self.run.info('diamond makedb cmd', cmd_line, quiet=True)
+        cmd_line = ['diamond',
+                    'makedb',
+                    '--in', self.query_fasta,
+                    '-d', self.target_db_path,
+                    '-p', self.num_threads]
 
-        utils.run_command(cmd_line)
+        self.run.info('diamond makedb cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+
+        utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
@@ -110,17 +112,22 @@ class Diamond:
 
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond blastp -q %s -d %s -a %s -t %s -p %d %s -k 1000000 >> "%s" 2>&1' % (self.query_fasta,
-                                                                                   self.target_db_path,
-                                                                                   self.search_output_path,
-                                                                                   self.tmp_dir,
-                                                                                   self.num_threads,
-                                                                                   '--sensitive' if self.sensitive else '',
-                                                                                   self.run.log_file_path))
 
-        self.run.info('diamond blastp cmd', cmd_line, quiet=True)
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-q', self.query_fasta,
+                    '-d', self.target_db_path,
+                    '-a', self.search_output_path,
+                    '-t', self.tmp_dir,
+                    '-p', self.num_threads,
+                    '-k', '1000000']
 
-        utils.run_command(cmd_line)
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+
+        self.run.info('diamond blastp cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+
+        utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
@@ -133,14 +140,17 @@ class Diamond:
     def view(self):
         self.progress.new('DIAMOND')
         self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
-        cmd_line = ('diamond view -a %s -o %s -p %d -k 1000000 >> "%s" 2>&1' % (self.search_output_path + '.daa',
-                                                                     self.tabular_output_path,
-                                                                     self.num_threads,
-                                                                     self.run.log_file_path))
 
-        self.run.info('diamond view cmd', cmd_line, quiet=True)
+        cmd_line = ['diamond',
+                    'view',
+                    '-a', self.search_output_path + '.daa',
+                    '-o', self.tabular_output_path,
+                    '-p', self.num_threads,
+                    '-k', '1000000']
 
-        utils.run_command(cmd_line)
+        self.run.info('diamond view cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+
+        utils.run_command(cmd_line, self.run.log_file_path)
 
         self.check_output(self.tabular_output_path, 'view')
 
