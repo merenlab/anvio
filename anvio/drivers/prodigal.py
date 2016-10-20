@@ -114,12 +114,9 @@ class Prodigal:
 
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
-        cmd_line = ('prodigal -i "%s" -o "%s" -a "%s" -p meta >> "%s" 2>&1' % (fasta_file_path,
-                                                                               self.genes_in_contigs,
-                                                                               self.proteins_in_contigs,
-                                                                               log_file_path))
-        with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
+
+        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.proteins_in_contigs, '-p', 'meta']
+        utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.proteins_in_contigs):
             self.progress.end()

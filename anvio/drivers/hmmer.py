@@ -87,9 +87,10 @@ class HMMer:
 
         self.progress.new('Processing')
         self.progress.update('Compressing the pfam model')
-        cmd_line = ('hmmpress "%s" >> "%s" 2>&1' % (hmm_file_path, log_file_path))
-        with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        ret_val = utils.run_command(cmd_line)
+
+        cmd_line = ['hmmpress', hmm_file_path]
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
         if ret_val:
             raise ConfigError, "The last call did not work quite well. Most probably the version of HMMER\
                                 you have installed is not up-to-date enough. Just to make sure what went\
@@ -102,17 +103,13 @@ class HMMer:
         self.progress.new('Processing')
         self.progress.update('Performing HMM scan ...')
 
-        cmd_line = ('hmmscan -o "%s" %s --cpu %d --tblout "%s" "%s" "%s" >> "%s" 2>&1' \
-                                        % (self.hmm_scan_output,
-                                           cut_off_flag,
-                                           self.num_threads_to_use,
-                                           self.hmm_scan_hits_shitty,
-                                           hmm_file_path,
-                                           self.target_files_dict[target],
-                                           log_file_path))
+        cmd_line = ['hmmscan',
+                    '-o', self.hmm_scan_output, cut_off_flag,
+                    '--cpu', self.num_threads_to_use,
+                    '--tblout', self.hmm_scan_hits_shitty,
+                    hmm_file_path, self.target_files_dict[target]]
 
-        with open(log_file_path, "a") as myfile: myfile.write('CMD: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
+        utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.hmm_scan_hits_shitty):
             raise ConfigError, "Something went wrong with hmmscan, and it failed to generate the\

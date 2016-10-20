@@ -256,24 +256,19 @@ class EggNOGMapper:
         aa_sequences_fp.close()
         del aa_sequences_list
 
-        cmd_line = ('%s -i %s --output %s' % (self.executable,
-                                              self.aa_sequences_file_name,
-                                              self.output_file_prefix))
+        cmd_line = [self.executable, '-i', self.aa_sequences_file_name, '--output', self.output_file_prefix]
 
         # num threads
-        cmd_line += ' --cpu %d' % self.num_threads if self.num_threads else ''
+        cmd_line.extend(['--cpu', self.num_threads]) if self.num_threads else None
 
         # usemem
-        cmd_line += ' --usemem' if self.usemem else ''
+        cmd_line.extend(['--usemem']) if self.usemem else None
 
         # database
-        cmd_line += ' --database %s' % self.database
-
-        cmd_line += ' >> "%s" 2>&1' % self.log_file_path
+        cmd_line.extend(['--database', self.database])
 
         self.progress.update('Running eggnog-mapper on %d sequences. This may take a while ...' % num_aa_sequences)
-        with open(self.log_file_path, "a") as myfile: myfile.write('CMD LINE: ' + cmd_line + '\n')
-        utils.run_command(cmd_line)
+        utils.run_command(cmd_line, self.log_file_path)
 
         if not os.path.exists(self.annotations_file_name):
             self.progress.end()
