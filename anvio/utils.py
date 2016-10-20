@@ -23,7 +23,7 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date
 from anvio.errors import ConfigError
 from anvio.sequence import Composition
 
@@ -200,9 +200,31 @@ def is_program_exists(program):
                         % (program, program)
 
 
-def run_command(cmdline):
+def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
+    filesnpaths.is_output_file_writable(log_file_path)
+
+    if remove_log_file_if_exists and os.path.exists(log_file_path):
+        os.remove(log_file_path)
+
+    if not cmdline or (not isinstance(cmdline, str) and not isinstance(cmdline, list)):
+        raise ConfigError, "You made utils::run_command upset. The parameter you sent to run kinda sucks. It should be string\
+                            or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function\
+                            is always False, therefore if you send a string type, it will be split into a list prior to being\
+                            sent to subprocess."
+
+    if isinstance(cmdline, str):
+        cmdline = map(lambda x: str(x), cmdline.split(' '))
+    else:
+        cmdline = map(lambda x: str(x), cmdline)
+
     try:
-        ret_val = subprocess.call(cmdline, shell=True)
+        if first_line_of_log_is_cmdline:
+            with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
+
+        log_file = open(log_file_path, 'a')
+        ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
+        log_file.close()
+
         if ret_val < 0:
             raise ConfigError, "command was terminated"
         else:
