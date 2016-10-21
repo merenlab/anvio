@@ -238,6 +238,7 @@ class EggNOGMapper:
         contigs_db.disconnect()
 
         # change the current work directory
+        work_dir = os.getcwd()
         os.chdir(output_dir)
 
         self.run.info('Work directory for temporary files', output_dir)
@@ -278,8 +279,11 @@ class EggNOGMapper:
                                 will have to remove it manually. Sorry about the inconvenience! Anvi'o developers know how much\
                                 it sucks when things just don't work." % os.path.join(output_dir, self.log_file_path)
 
+        self.progress.end()
+
         # we are done, and the annotations file is there.
         self.populate_annotations_dict(os.path.join(output_dir, self.annotations_file_name))
+        os.chdir(work_dir)
 
         # alright. store annotations into the database
         self.store_annotations_in_db(drop_previous_annotations=drop_previous_annotations)
