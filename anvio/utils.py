@@ -180,7 +180,7 @@ def is_port_in_use(port, ip='0.0.0.0'):
     return in_use
 
 
-def is_program_exists(program):
+def is_program_exists(program, dont_raise=False):
     IsExe = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
 
     fpath, fname = os.path.split(program)
@@ -194,6 +194,9 @@ def is_program_exists(program):
             exe_file = os.path.join(path, program)
             if IsExe(exe_file):
                 return True
+
+    if dont_raise:
+        return False
 
     raise ConfigError, "An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear\
                         in your path :/ If you are certain you have it on your system (for instance you can run it\
