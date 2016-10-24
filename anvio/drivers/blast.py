@@ -77,10 +77,10 @@ class BLAST:
         return self.search_output_path
 
 
-    def check_output(self, expected_output, process='diamond'):
+    def check_output(self, expected_output, process='blast'):
         if not os.path.exists(expected_output):
             self.progress.end()
-            raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
+            raise ConfigError, "Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing.\
                                 Please check the log file here: '%s." % (process, self.run.log_file_path)
 
 
@@ -98,6 +98,8 @@ class BLAST:
 
         expected_output = self.target_db_path + '.phr'
         self.check_output(expected_output, 'makeblastdb')
+
+        self.run.info('BLAST search db', self.target_db_path)
 
 
     def blastp(self):

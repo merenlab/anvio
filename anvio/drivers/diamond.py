@@ -104,7 +104,7 @@ class Diamond:
         expected_output = self.target_db_path + '.dmnd'
         self.check_output(expected_output, 'makedb')
 
-        self.run.info('Diamond temp search db', expected_output)
+        self.run.info('Diamond search db', expected_output)
 
 
     def blastp(self):
