@@ -258,6 +258,9 @@ function initData () {
             } else if (mode == 'pan') {
                 $('.pan-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/pan-bg.png)');
+
+                $('#completion_title').attr('title', 'PCs').html('PCs');
+                $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/collection-bg.png)');
@@ -1226,8 +1229,13 @@ function updateProteinClustersBin(bin_id) {
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
-            PC_bins_summary_dict[bin_id] = JSON.parse(data);
-            console.log(PC_bins_summary_dict);
+            data = JSON.parse(data);
+            PC_bins_summary_dict[bin_id] = data;
+            $('#completeness_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
+            $('#redundancy_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
+
+            $('#completeness_' + bin_id).attr("disabled", false);
+            $('#redundancy_' + bin_id).attr("disabled", false);
         },
     });
 }
