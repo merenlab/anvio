@@ -8,6 +8,7 @@ import sys
 import time
 import socket
 import shutil
+import urllib2
 import smtplib
 import textwrap
 import subprocess
@@ -1303,6 +1304,53 @@ def get_missing_programs_for_hmm_analysis():
         except ConfigError:
             missing_programs.append(p)
     return missing_programs
+
+
+def download_file(url, output_file_path, progress=progress, run=run):
+    """Downloads file.
+
+       We will have to revisit this function when the codebase is Python 3.* compatible.
+    """
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    try:
+        u = urllib2.urlopen(url)
+    except Exception, e:
+        raise ConfigError, "Something went wrong with your donwload attempt. Here is the\
+                            problem: '%s'" % e
+
+    meta = u.info()
+
+    try:
+        file_size = int(meta.getheaders("Content-Length")[0])
+    except:
+        raise ConfigError, "Anvi'o failed to determine the size of the file you want to download, and\
+                            decided to quit because it's programmers didn't put enough effort into their\
+                            coding to handle that case. If you end up having this error, please send them\
+                            an e-mail. It will make them feel so embarrassed, that they will fix this\
+                            right away."
+
+    f = open(output_file_path, 'wb')
+
+    progress.new('Downloading "%s"' % os.path.basename(output_file_path))
+    progress.update('...')
+
+    downloaded_size = 0
+    while True:
+        buffer = u.read(10000)
+
+        if buffer:
+            downloaded_size += len(buffer)
+            f.write(buffer)
+            progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+        else:
+            break
+
+    f.close()
+
+    progress.end()
+    run.info('Downloaded succesfully', output_file_path)
 
 
 def RepresentsInt(s):
