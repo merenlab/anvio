@@ -85,18 +85,18 @@ class SetupCOGs:
         filesnpaths.is_output_dir_writable(self.COG_data_dir)
 
         self.raw_files = {
-                #'cog2003-2014.csv': {
-                #    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
-                #    'func': self.format_p_id_to_cog_id_cPickle,
-                #    'formatted_file_name': 'PID-TO-CID.cPickle'},
-                #'cognames2003-2014.tab': {
-                #    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
-                #    'func': self.format_cog_names,
-                #    'formatted_file_name': 'COG.txt'},
-                #'fun2003-2014.tab': {
-                #    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
-                #    'func': self.format_categories,
-                #    'formatted_file_name': 'CATEGORIES.txt'},
+                'cog2003-2014.csv': {
+                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
+                    'func': self.format_p_id_to_cog_id_cPickle,
+                    'formatted_file_name': 'PID-TO-CID.cPickle'},
+                'cognames2003-2014.tab': {
+                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
+                    'func': self.format_cog_names,
+                    'formatted_file_name': 'COG.txt'},
+                'fun2003-2014.tab': {
+                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
+                    'func': self.format_categories,
+                    'formatted_file_name': 'CATEGORIES.txt'},
                 'prot2003-2014.fa.gz': {
                     'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
                     'func': self.format_protein_db,
