@@ -7,7 +7,7 @@ import anvio
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.cogs import SetupCOGs
+from anvio.cogs import COGsSetup
 
 
 __author__ = "A. Murat Eren"
@@ -35,8 +35,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        setup = SetupCOGs(args)
-        setup.process()
+        setup = COGsSetup(args)
+        setup.create()
     except ConfigError, e:
         print e
         sys.exit(-1)
