@@ -20,7 +20,7 @@ from anvio.drivers.blast import BLAST
 from anvio.errors import ConfigError
 
 # just to make sure things don't break too far when they do:
-COGs_DATA_VERSION='1'
+COG_DATA_VERSION='1'
 
 
 __author__ = "A. Murat Eren"
@@ -38,18 +38,17 @@ pp = terminal.pretty_print
 
 J = lambda x, y: os.path.join(x, y)
 
-COGs_PATH = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/COGs/COGs.txt')
-CATEGORIES_PATH = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/COGs/CATEGORIES.txt')
-
+class Args():
+    pass
 
 class COGsData:
     """A class to make sense of COG ids and categories"""
-    def __init__(self, COGs_path=COGs_PATH, categories_path=CATEGORIES_PATH):
-        filesnpaths.is_file_tab_delimited(COGs_path)
-        filesnpaths.is_file_tab_delimited(categories_path)
+    def __init__(self):
+        self.setup = COGsSetup()
+        essential_files = self.setup.get_essential_file_paths()
 
-        self.cogs = utils.get_TAB_delimited_file_as_dictionary(COGs_path, no_header=True, column_names=['COG', 'categories', 'annotation'])
-        self.categories = utils.get_TAB_delimited_file_as_dictionary(categories_path, no_header=True, column_names=['category', 'description'])
+        self.cogs = utils.get_TAB_delimited_file_as_dictionary(essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
+        self.categories = utils.get_TAB_delimited_file_as_dictionary(essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
 
         for cog in self.cogs:
             self.cogs[cog]['categories'] = [c.strip() for c in self.cogs[cog]['categories'].split(',')]
@@ -58,10 +57,10 @@ class COGsData:
             self.categories[cat] = self.categories[cat]['description']
 
 
-class SetupCOGs:
+class COGsSetup:
     """A class to download and setup the COG data from NCBI."""
-    def __init__(self, args, run=run, progress=progress):
-        self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COGs')
+    def __init__(self, args=Args(), run=run, progress=progress):
+        self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
 
@@ -75,40 +74,59 @@ class SetupCOGs:
         if not os.path.exists(self.COG_data_dir):
             try:
                 os.mkdir(self.COG_data_dir)
-                open(self.COG_data_dir_version, 'w').write(COGs_DATA_VERSION)
+                open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
             except Exception, e:
-                raise ConfigError, "So the COGs data directory is not there, and anvi'o wants to create one. But it didn't\
+                raise ConfigError, "So the COG data directory is not there, and anvi'o wants to create one. But it didn't\
                                     go that well. It could be due to permissions (which may require you to run this with sudo\
                                     or may need to ask your sys admin to do it for you since this is a one time operation), or\
                                     it could be due to something totally irrelevant. Here is the error message: '%s'" % e
 
-        filesnpaths.is_output_dir_writable(self.COG_data_dir)
-
-        self.raw_files = {
+        self.files = {
                 'cog2003-2014.csv': {
                     'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
                     'func': self.format_p_id_to_cog_id_cPickle,
+                    'type': 'essential',
                     'formatted_file_name': 'PID-TO-CID.cPickle'},
                 'cognames2003-2014.tab': {
                     'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
                     'func': self.format_cog_names,
+                    'type': 'essential',
                     'formatted_file_name': 'COG.txt'},
                 'fun2003-2014.tab': {
                     'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
                     'func': self.format_categories,
+                    'type': 'essential',
                     'formatted_file_name': 'CATEGORIES.txt'},
                 'prot2003-2014.fa.gz': {
                     'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
                     'func': self.format_protein_db,
+                    'type': 'database',
                     'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
         }
 
 
-    def process(self):
+    def get_essential_file_paths(self):
+        essential_files = {}
+        for v in self.files.values():
+            if v['type'] == 'essential':
+                essential_files[v['formatted_file_name']] = J(self.COG_data_dir, v['formatted_file_name'])
+
+        for file_name in essential_files:
+            if not os.path.exists(essential_files[file_name]):
+                raise ConfigError, "At least one essential formatted file that is necesary for COG operations is not where it should\
+                                    be ('%s'). You should run COG setup, with the flag `--reset` if necessary, to make sure things\
+                                    are in order." % essential_files[file_name]
+
+        return essential_files
+
+
+    def create(self):
         run.info('COG data dir', self.COG_data_dir)
 
+        filesnpaths.is_output_dir_writable(self.COG_data_dir)
+
         if self.reset:
-            run.warning('This program will remove everything in the COGs data directory, then download and reformat\
+            run.warning('This program will remove everything in the COG data directory, then download and reformat\
                          everything from scratch. Press ENTER to continue, or press CTRL + C to cancel if you are\
                          not OK with that.')
             self.wait_for_the_user()
@@ -116,15 +134,15 @@ class SetupCOGs:
             # OK. reset the crap out of it.
             shutil.rmtree(self.COG_data_dir)
             os.mkdir(self.COG_data_dir)
-            open(self.COG_data_dir_version, 'w').write(COGs_DATA_VERSION)
+            open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
         else:
             run.warning("This program will first check whether you have all the raw files, and then will attempt to\
                          regenerate everything that is necessary from them. Press ENTER to continue, or\
                          press CTRL + C to cancel if it doesn't sound right to you.")
             self.wait_for_the_user()
 
-        if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read() != COGs_DATA_VERSION:
-            raise ConfigError, "The version of your COGs data directory is different than what anvi'o hoping to see.\
+        if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read() != COG_DATA_VERSION:
+            raise ConfigError, "The version of your COG data directory is different than what anvi'o hoping to see.\
                                 It seems you need to (re)run anvi'o script to download and format COG data from NCBI."
 
         # get raw files
@@ -208,7 +226,7 @@ class SetupCOGs:
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COGs')
+            output_db_path = J(output_dir, 'COG')
             log_file_path = J(output_dir, 'log.txt')
 
             self.run.info('Diamond log', log_file_path)
@@ -229,7 +247,7 @@ class SetupCOGs:
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COGs')
+            output_db_path = J(output_dir, 'COG')
             log_file_path = J(output_dir, 'log.txt')
 
             self.run.info('BLAST log', log_file_path)
@@ -249,22 +267,22 @@ class SetupCOGs:
     def get_raw_data(self):
         if not os.path.exists(self.raw_NCBI_files_dir):
             os.mkdir(self.raw_NCBI_files_dir)
-            open(self.COG_data_dir_version, 'w').write(COGs_DATA_VERSION)
+            open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
 
-        for file_name in self.raw_files:
+        for file_name in self.files:
             file_path = J(self.raw_NCBI_files_dir, file_name)
             if not os.path.exists(file_path):
-                utils.download_file(self.raw_files[file_name]['url'], file_path, progress=progress, run=run)
+                utils.download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
 
 
     def setup_raw_data(self):
-        for file_name in self.raw_files:
+        for file_name in self.files:
             file_path = J(self.raw_NCBI_files_dir, file_name)
 
             if not os.path.exists(file_path):
                 raise ConfigError, "Something is wrong :/ Raw files are not in place..."
 
-            self.raw_files[file_name]['func'](file_path, J(self.COG_data_dir, self.raw_files[file_name]['formatted_file_name']))
+            self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
 
     def wait_for_the_user(self):
@@ -272,5 +290,4 @@ class SetupCOGs:
             raw_input("Press ENTER to continue...\n")
         except:
             sys.exit()
-
 
