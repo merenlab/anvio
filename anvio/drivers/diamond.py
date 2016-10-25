@@ -39,7 +39,7 @@ class Diamond:
 
         self.query_fasta = query_fasta
         self.target_db_path = 'diamond-target'
-        self.search_output_path = 'diamond-search-resuults'
+        self.search_output_path = 'diamond-search-results'
         self.tabular_output_path = 'diamond-search-results.txt'
 
         if not self.run.log_file_path:
@@ -164,4 +164,4 @@ class Diamond:
 
         self.progress.end()
 
-        self.run.info('Diamond %stabular output file' % ('un-uniqued' if len(self.names_dict) else ''), self.tabular_output_path)
+        self.run.info('Diamond %stabular output file' % ('un-uniqued' if self.names_dict else ''), self.tabular_output_path)
