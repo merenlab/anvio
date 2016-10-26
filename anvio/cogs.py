@@ -72,7 +72,7 @@ class COGs:
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError, "Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
                                 database formatted under the COGs data directory for that program :/ You may need to\
-                                re-run COGs setup. We are as confused as you are." 
+                                re-run COGs setup. We are as confused as you are."  % self.search_with
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError, "You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
