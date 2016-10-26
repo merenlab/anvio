@@ -11,6 +11,7 @@ import shutil
 
 import anvio
 import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -38,23 +39,185 @@ pp = terminal.pretty_print
 
 J = lambda x, y: os.path.join(x, y)
 
+
 class Args():
     pass
 
+
+class COGs:
+    """A class to run COGs"""
+    def __init__(self, args=Args(), run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.num_threads = A('num_threads')
+        self.contigs_db_path = A('contigs_db')
+        self.search_with = A('search_with')
+        self.temp_dir_path = A('temporary_dir_path')
+        self.sensitive = A('sensitive')
+
+        self.log_file_path = None
+        self.available_db_search_programs = [p for p in ['diamond', 'blastp'] if utils.is_program_exists(p, dont_raise=True)]
+        self.available_db_search_program_targets = COGsSetup().get_formatted_db_paths()
+
+        self.search_factory = {'diamond': self.search_with_diamond,
+                               'blastp': self.search_with_blastp}
+
+        self.hits = None # the search function will take care of this one.
+
+
+    def process(self, aa_sequences_file_path=None):
+        if self.search_with not in self.available_db_search_program_targets:
+            raise ConfigError, "Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
+                                database formatted under the COGs data directory for that program :/ You may need to\
+                                re-run COGs setup. We are as confused as you are." 
+
+        if not aa_sequences_file_path and not self.contigs_db_path:
+            raise ConfigError, "You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
+                                sequences"
+
+        if aa_sequences_file_path and self.contigs_db_path:
+            raise ConfigError, "You can't provide both an AA sequences file and a contigs database. Choose one!"
+
+        if self.contigs_db_path:
+            dbops.is_contigs_db(self.contigs_db_path)
+
+        if not self.temp_dir_path:
+            self.temp_dir_path = filesnpaths.get_temp_directory_path()
+            self.remove_temp_dir_path = True
+        else:
+            filesnpaths.is_file_exists(self.temp_dir_path)
+            filesnpaths.is_output_dir_writable(self.temp_dir_path)
+
+            self.run.warning("Because you set the temporary directory path by hand, anvi'o will not remove its content\
+                              when it is done. But she certainly hopes that you will clean those files later.")
+
+            self.remove_temp_dir_path = False
+
+        self.run.info('Directory to store temporary files', self.temp_dir_path)
+        self.run.info('Directory will be removed after the run', self.remove_temp_dir_path)
+
+        if not aa_sequences_file_path:
+            aa_sequences_file_path = dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, J(self.temp_dir_path, 'aa_sequences.fa'))
+
+        # do the search
+        search_results_tabular = self.search_factory[self.search_with](aa_sequences_file_path)
+
+        # convert the output to a hits dict
+        self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
+
+        # store hits into the contigs database
+        self.store_hits_into_contigs_db()
+
+        if self.remove_temp_dir_path:
+            shutil.rmtree(self.temp_dir_path)
+
+
+    def store_hits_into_contigs_db(self):
+        if not self.hits:
+            raise ConfigError, "COGs class has no hits to process. Did you forget to call search?"
+
+        cogs_data = COGsData()
+        cogs_data.init_p_id_to_cog_id_dict()
+
+        functions_dict = {}
+        self.__entry_id = 0
+
+
+        def add_entry(gene_callers_id, source, accession, function, e_value):
+            functions_dict[self.__entry_id] = {'gene_callers_id': int(gene_callers_id),
+                                        'source': source,
+                                        'accession': accession,
+                                        'function': function,
+                                        'e_value': float(e_value)}
+            self.__entry_id += 1
+
+
+        for gene_callers_id in self.hits:
+            ncbi_protein_id = self.hits[gene_callers_id]['hit']
+
+            COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
+
+            annotations = '; '.join([cogs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in cogs_data.cogs])
+
+            categories = set()
+            for COG_id in COG_ids:
+                for category in cogs_data.cogs[COG_id]['categories']:
+                    categories.add(category)
+
+            add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, self.hits[gene_callers_id]['evalue'])
+            add_entry(gene_callers_id, 'COG_CATEGORY', '', ', '.join(categories), 0.0)
+
+        # store hits in contigs db.
+        gene_function_calls_table = dbops.TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+        gene_function_calls_table.create(functions_dict)
+
+
+    def search_with_diamond(self, aa_sequences_file_path):
+        diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
+
+        diamond.target_db_path = self.available_db_search_program_targets['diamond']
+        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
+        diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
+        diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
+
+        diamond.sensitive = self.sensitive
+        diamond.max_target_seqs = 1
+
+        diamond.blastp()
+        diamond.view()
+
+        return diamond.tabular_output_path
+
+
+    def search_with_blastp(self, aa_sequences_file_path):
+        blast = BLAST(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
+
+        blast.target_db_path = self.available_db_search_program_targets['blastp']
+        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
+        blast.search_output_path = J(self.temp_dir_path, 'blast-search-results.txt')
+        blast.max_target_seqs = 1
+
+        blast.blastp()
+
+        return blast.search_output_path
+
+
 class COGsData:
     """A class to make sense of COG ids and categories"""
-    def __init__(self):
-        self.setup = COGsSetup()
-        essential_files = self.setup.get_essential_file_paths()
+    def __init__(self, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
 
-        self.cogs = utils.get_TAB_delimited_file_as_dictionary(essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
-        self.categories = utils.get_TAB_delimited_file_as_dictionary(essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
+        self.setup = COGsSetup()
+        self.essential_files = self.setup.get_essential_file_paths()
+
+        self.p_id_to_cog_id = {}
+
+        self.progress.new('Initializing COGs Data')
+        self.progress.update('Reading COG functions ...')
+        self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
+
+        self.progress.update('Reading COG categories ...')
+        self.categories = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
+        self.progress.end()
 
         for cog in self.cogs:
             self.cogs[cog]['categories'] = [c.strip() for c in self.cogs[cog]['categories'].split(',')]
 
         for cat in self.categories:
             self.categories[cat] = self.categories[cat]['description']
+
+
+    def init_p_id_to_cog_id_dict(self):
+        self.progress.new('Initializing COGs Data')
+        self.progress.update('Reading NCBI Protein ID to COG id converter ...')
+
+        self.p_id_to_cog_id = dictio.read_serialized_object(self.essential_files['PID-TO-CID.cPickle'])
+
+        self.progress.end()
 
 
 class COGsSetup:
@@ -103,6 +266,20 @@ class COGsSetup:
                     'type': 'database',
                     'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
         }
+
+
+    def get_formatted_db_paths(self):
+        formatted_db_paths = {}
+
+        diamond_db_path = J(self.COG_data_dir, 'DB_DIAMOND')
+        if os.path.exists(diamond_db_path):
+            formatted_db_paths['diamond'] = J(diamond_db_path, 'COG')
+
+        blast_db_path = J(self.COG_data_dir, 'DB_BLAST')
+        if os.path.exists(diamond_db_path):
+            formatted_db_paths['blastp'] = J(blast_db_path, 'COG')
+
+        return formatted_db_paths
 
 
     def get_essential_file_paths(self):
