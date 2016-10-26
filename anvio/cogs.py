@@ -160,7 +160,7 @@ class COGs:
                     categories.add(category)
 
                 # append annotation
-                annotations.append(cogs_data.cogs[COG_id])
+                annotations.append(cogs_data.cogs[COG_id]['annotation'])
 
             add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), '; '.join(annotations), self.hits[gene_callers_id]['evalue'])
             add_entry(gene_callers_id, 'COG_CATEGORY', '', ', '.join(categories), 0.0)
