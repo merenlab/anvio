@@ -6,12 +6,10 @@ import sys
 import argparse
 
 import anvio
-import anvio.tables as t
+import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tableops import Table
 
 
 __author__ = "A. Murat Eren"
@@ -28,14 +26,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    filesnpaths.is_file_exists(args.contigs_db)
-
-    class T(Table):
-        def __init__(self, db_path, version, run=run, progress=progress):
-            Table.__init__(self, db_path, version, run, progress)
-
-    h = T(args.contigs_db, anvio.__contigs__version__)
-    h.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, output_file_path = args.output_file)
+    dbops.export_aa_sequences_from_contigs_db(args.contigs_db, args.output_file)
 
 
 if __name__ == '__main__':
