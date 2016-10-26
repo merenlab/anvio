@@ -36,6 +36,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run NCBI COGs on stuff.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
+                        if you did not use the default directory.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
     parser.add_argument(*anvio.A('temporary-dir-path'), **anvio.K('temporary-dir-path'))
