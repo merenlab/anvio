@@ -711,6 +711,12 @@ D = {
                       cause lots and lots of output, so you may want to not use it if your intention is not\
                       debugging)."}
                 ),
+    'just-do-it': (
+            ['--just-do-it'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't bother me with questions or warnings, just do it."}
+                ),
     'ip-address': (
             ['-I', '--ip-address'],
             {'metavar': 'IP_ADDR',
