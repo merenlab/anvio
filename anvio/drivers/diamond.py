@@ -36,6 +36,8 @@ class Diamond:
         utils.is_program_exists('diamond')
 
         self.tmp_dir = tempfile.gettempdir()
+        self.evalue = 1e-05
+        self.max_target_seqs = 100000
 
         self.query_fasta = query_fasta
         self.target_db_path = 'diamond-target'
@@ -119,11 +121,15 @@ class Diamond:
                     '-d', self.target_db_path,
                     '-a', self.search_output_path,
                     '-t', self.tmp_dir,
-                    '-p', self.num_threads,
-                    '-k', '1000000']
+                    '-p', self.num_threads]
 
         cmd_line.append('--sensitive') if self.sensitive else None
 
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
 
         self.run.info('diamond blastp cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
 
@@ -145,8 +151,7 @@ class Diamond:
                     'view',
                     '-a', self.search_output_path + '.daa',
                     '-o', self.tabular_output_path,
-                    '-p', self.num_threads,
-                    '-k', '1000000']
+                    '-p', self.num_threads]
 
         self.run.info('diamond view cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
 
