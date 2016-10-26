@@ -232,6 +232,7 @@ class COGsSetup:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
+        self.just_do_it = A('just_do_it')
         self.reset = A('reset')
 
         if not os.path.exists(self.COG_data_dir):
@@ -304,8 +305,7 @@ class COGsSetup:
 
         if self.reset:
             run.warning('This program will remove everything in the COG data directory, then download and reformat\
-                         everything from scratch. Press ENTER to continue, or press CTRL + C to cancel if you are\
-                         not OK with that.')
+                         everything from scratch.')
             self.wait_for_the_user()
 
             # OK. reset the crap out of it.
@@ -314,8 +314,7 @@ class COGsSetup:
             open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
         else:
             run.warning("This program will first check whether you have all the raw files, and then will attempt to\
-                         regenerate everything that is necessary from them. Press ENTER to continue, or\
-                         press CTRL + C to cancel if it doesn't sound right to you.")
+                         regenerate everything that is necessary from them.")
             self.wait_for_the_user()
 
         if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read() != COG_DATA_VERSION:
@@ -463,8 +462,11 @@ class COGsSetup:
 
 
     def wait_for_the_user(self):
+        if self.just_do_it:
+            return
+
         try:
-            raw_input("Press ENTER to continue...\n")
+            raw_input("Press ENTER to continue, or press CTRL + C to cancel...\n")
         except:
             sys.exit()
 
