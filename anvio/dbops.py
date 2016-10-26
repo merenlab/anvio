@@ -352,7 +352,7 @@ class ContigsSuperclass(object):
             return (0, 1, 3)
 
 
-    def init_functions(self, requested_sources=[]):
+    def init_functions(self, requested_sources=[], dont_panic=False):
         if not self.contigs_db_path:
             return
 
@@ -361,18 +361,26 @@ class ContigsSuperclass(object):
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        if requested_sources:
-            missing_sources = [s for s in requested_sources if s not in contigs_db.meta['gene_function_sources']]
-            if len(missing_sources):
-                raise ConfigError, "Some of the functional sources you requested are missing from the contigs database '%s'. Here\
-                                    they are (or here it is, whatever): %s." % \
-                                                (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources]))
+        gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
-            hits = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources]))).values()
+        if requested_sources:
+            missing_sources = [s for s in requested_sources if s not in gene_function_sources_in_db]
+            if len(missing_sources):
+                if dont_panic:
+                    requested_sources = [s for s in requested_sources if s in gene_function_sources_in_db]
+                else:
+                    self.progress.end()
+                    raise ConfigError, "Some of the functional sources you requested are missing from the contigs database '%s'. Here\
+                                        they are (or here it is, whatever): %s." % \
+                                                    (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources]))
+
+            hits = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
+                                                                  '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
+                                                                  error_if_no_data=False).values()
             self.gene_function_call_sources = requested_sources
         else:
             hits = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values()
-            self.gene_function_call_sources = contigs_db.meta['gene_function_sources']
+            self.gene_function_call_sources = gene_function_sources_in_db
 
         for hit in hits:
             gene_callers_id = hit['gene_callers_id']
