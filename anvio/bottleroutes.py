@@ -107,7 +107,7 @@ def completeness(d, request):
 
     run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), bin_name))
 
-    p_completion, p_redundancy, domain, domain_confidence, results_dict = d.completeness.get_info_for_splits(set(split_names))
+    p_completion, p_redundancy, scg_domain, domain_confidence, results_dict = d.completeness.get_info_for_splits(set(split_names))
 
     # convert results_dict (where domains are the highest order items) into a dict that is compatible with the
     # previous format of the dict (where hmm scg source names are the higher order items).
@@ -117,7 +117,7 @@ def completeness(d, request):
 
     completeness_averages['percent_completion'] = p_completion
     completeness_averages['percent_redundancy'] = p_redundancy
-    completeness_averages['domain'] = domain
+    completeness_averages['domain'] = scg_domain
     completeness_averages['domain_confidence'] = domain_confidence
 
     return json.dumps({'stats': completeness_sources, 'averages': completeness_averages, 'refs': d.completeness.http_refs})
