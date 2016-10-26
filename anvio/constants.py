@@ -33,7 +33,7 @@ max_num_splits_for_hierarchical_clustering = 20000
 
 # default methods for hierarchical cluster analyses
 distance_metric_default = 'euclidean'
-linkage_method_default = 'average'
+linkage_method_default = 'ward'
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
