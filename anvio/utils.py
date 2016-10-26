@@ -860,8 +860,31 @@ def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
     shutil.move(tabular_output_path, tabular_output_path + '.unique')
     shutil.move(new_search_output_path, tabular_output_path)
 
-
     return tabular_output_path
+
+
+def get_BLAST_tabular_output_as_dict(tabular_output_path, target_id_parser_func=None, query_id_parser_func=None):
+    """Takes a BLAST output, returns a dict where each query appears only once!!
+
+       If there are multiple hits for a given query, the one with lower e-value.
+       remains in the dict.
+    """
+
+    results_dict = {}
+
+    for line in open(tabular_output_path):
+        fields = line.strip().split('\t')
+        query_id = fields[0] if not query_id_parser_func else query_id_parser_func(fields[0])
+        target_id = fields[1] if not target_id_parser_func else target_id_parser_func(fields[1])
+        e_value = float(fields[10])
+
+        if query_id in results_dict:
+            if e_value > results_dict[query_id]['evalue']:
+                continue
+
+        results_dict[query_id] = {'hit': target_id, 'evalue': e_value}
+
+    return results_dict 
 
 
 def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
