@@ -2861,6 +2861,7 @@ class TableForGeneFunctions(Table):
 
         self.set_next_available_id(t.gene_function_calls_table_name)
 
+
     def create(self, functions_dict, drop_previous_annotations_first = False):
         self.sanity_check()
 
@@ -3226,3 +3227,17 @@ def get_default_clustering_id(default_clustering_requested, clusterings_dict, pr
                                                                               len(matching_clustering_ids),
                                                                               default_clustering))
         return default_clustering
+
+
+def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path):
+    filesnpaths.is_file_exists(contigs_db_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    class T(Table):
+        def __init__(self, db_path, version, run=run, progress=progress):
+            Table.__init__(self, db_path, version, run, progress)
+
+    h = T(contigs_db_path, anvio.__contigs__version__)
+    h.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, output_file_path = output_file_path)
+
+    return output_file_path
