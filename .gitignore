@@ -6,4 +6,5 @@
 test-output/
 /*.egg-info/
 anvio/extensions/concoct/vbgmm.c
+anvio/data/misc/COG/
 smtp_config.ini
