@@ -42,6 +42,7 @@ class BLAST:
         self.query_fasta = query_fasta
         self.target_db_path = 'blast-target'
         self.search_output_path = 'blast-search-results.txt'
+        self.max_target_seqs = None
 
 
         if not self.run.log_file_path:
@@ -110,6 +111,9 @@ class BLAST:
                                                                                               self.evalue,
                                                                                               self.search_output_path,
                                                                                               self.num_threads))
+
+        if self.max_target_seqs:
+            cmd_line += ' -max_target_seqs %d' % self.max_target_seqs
 
         self.run.info('blast blastp cmd', cmd_line, quiet=True)
 
