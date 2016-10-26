@@ -1317,6 +1317,7 @@ function showRedundants(bin_id, updateOnly) {
         return;
 
     var stats = completeness_dict[bin_id]['stats'];
+    var averages = completeness_dict[bin_id]['averages'];
 
     var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
 
@@ -1327,7 +1328,7 @@ function showRedundants(bin_id, updateOnly) {
     var oddeven=0;
 
     for(var source in stats) {
-        if(stats[source]['domain'] != averages['domain'])
+        if(stats[source]['domain'] !== averages['domain'])
             continue;
 
         oddeven++;
