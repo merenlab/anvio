@@ -71,10 +71,7 @@ if __name__ == '__main__':
                                 it does not communicate many other important factors such as the alignment length between the two sequences and\
                                 its proportion to the entire length of those involved), we suggest you rely on 'maxbit' parameter. But you know\
                                 what? Maybe you shouldn't listen to anyone, and experiment on your own! The default is %(default)g percent.")
-    groupC.add_argument('--sensitive', default = False, action = 'store_true', help = "DIAMOND sensitivity. With this flag you can instruct\
-                                DIAMOND to be 'sensitive', rather than 'fast' during the search. It is likely the search will take\
-                                remarkably longer. But, hey, if you are doing it for your final analysis, maybe it should take longer and be\
-                                more accurate.")
+    groupC.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
 
     groupD = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
     groupD.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
