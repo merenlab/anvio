@@ -21,7 +21,7 @@ from anvio.drivers.blast import BLAST
 from anvio.errors import ConfigError
 
 # just to make sure things don't break too far when they do:
-COG_DATA_VERSION='1'
+COG_DATA_VERSION='2'
 
 
 __author__ = "A. Murat Eren"
@@ -134,25 +134,42 @@ class COGs:
                                         'e_value': float(e_value)}
             self.__entry_id += 1
 
+        # let's keep track of hits that match to missing COGs
+        hits_for_missing_cogs = 0
+        missing_cogs_found = set([])
 
         for gene_callers_id in self.hits:
             ncbi_protein_id = self.hits[gene_callers_id]['hit']
 
             COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
 
-            annotations = '; '.join([cogs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in cogs_data.cogs])
-
-            categories = set()
+            annotations = []
+            categories = set([])
             for COG_id in COG_ids:
+                # is missing?
+                if COG_id in cogs_data.missing_cogs:
+                    missing_cogs_found.add(COG_id)
+                    hits_for_missing_cogs += 1
+                    continue
+
+                # resolve categories
                 for category in cogs_data.cogs[COG_id]['categories']:
                     categories.add(category)
 
-            add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, self.hits[gene_callers_id]['evalue'])
+                # append annotation
+                annotations.append(cogs_data.cogs[COG_id])
+
+            add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), '; '.join(annotations), self.hits[gene_callers_id]['evalue'])
             add_entry(gene_callers_id, 'COG_CATEGORY', '', ', '.join(categories), 0.0)
 
         # store hits in contigs db.
         gene_function_calls_table = dbops.TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         gene_function_calls_table.create(functions_dict)
+
+        if len(missing_cogs_found):
+            self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit\
+                              were among the ones that were not described in the raw data. Here is the list of %d COG IDs that\
+                              were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
 
 
     def search_with_diamond(self, aa_sequences_file_path):
@@ -202,6 +219,10 @@ class COGsData:
 
         self.progress.update('Reading COG categories ...')
         self.categories = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
+
+        self.progress.update('Reading missing COG IDs ...')
+        self.missing_cogs = dictio.read_serialized_object(self.essential_files['MISSING_COG_IDs.cPickle'])
+
         self.progress.end()
 
         for cog in self.cogs:
@@ -268,6 +289,9 @@ class COGsSetup:
                     'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
         }
 
+        self.cogs_found_in_proteins_fasta = set([])
+        self.cogs_found_in_cog_names_file = set([])
+
 
     def get_formatted_db_paths(self):
         formatted_db_paths = {}
@@ -288,6 +312,9 @@ class COGsSetup:
         for v in self.files.values():
             if v['type'] == 'essential':
                 essential_files[v['formatted_file_name']] = J(self.COG_data_dir, v['formatted_file_name'])
+
+        # add the missing COG IDs file into the list:
+        essential_files['MISSING_COG_IDs.cPickle'] = J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle')
 
         for file_name in essential_files:
             if not os.path.exists(essential_files[file_name]):
@@ -327,6 +354,22 @@ class COGsSetup:
         # format raw files
         self.setup_raw_data()
 
+        # identify missing COGs
+        self.generate_missing_cog_ids_file()
+
+
+    def generate_missing_cog_ids_file(self):
+        missing_cog_ids = self.cogs_found_in_proteins_fasta.difference(self.cogs_found_in_cog_names_file)
+
+        if len(missing_cog_ids):
+            self.run.warning("%d of %d COG IDs that appear in the list of orthology domains file (which links protein IDs\
+                              to COG names), are missing from the COG names file (which links COG IDs to function names and\
+                              categoires). Because clearly even the files that are distributed together should not be expected to\
+                              be fully compatible. Anvi'o thanks everyone for their contributions." % \
+                                                        (len(missing_cog_ids), len(self.cogs_found_in_proteins_fasta)))
+
+        dictio.write_serialized_object(missing_cog_ids, J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
+
 
     def format_p_id_to_cog_id_cPickle(self, input_file_path, output_file_path):
         progress.new('Formatting protein ids to COG ids file')
@@ -338,6 +381,8 @@ class COGsSetup:
             fields = line.strip('\n').split(',')
             p_id = fields[0]
             COG = fields[6]
+
+            self.cogs_found_in_proteins_fasta.add(COG)
 
             if p_id in p_id_to_cog_id:
                 p_id_to_cog_id[p_id].append(COG)
@@ -357,6 +402,7 @@ class COGsSetup:
             if line.startswith('#'):
                 continue
             COG, function, name = line.strip('\n').split('\t')
+            self.cogs_found_in_cog_names_file.add(COG)
 
             # get rid of non-ascii chars:
             name = ''.join([i if ord(i) < 128 else '' for i in name])
@@ -446,6 +492,9 @@ class COGsSetup:
             open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
 
         for file_name in self.files:
+            if not 'url' in self.files[file_name]:
+                continue
+
             file_path = J(self.raw_NCBI_files_dir, file_name)
             if not os.path.exists(file_path):
                 utils.download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
@@ -454,6 +503,9 @@ class COGsSetup:
     def setup_raw_data(self):
         for file_name in self.files:
             file_path = J(self.raw_NCBI_files_dir, file_name)
+
+            if not 'func' in self.files[file_name]:
+                continue
 
             if not os.path.exists(file_path):
                 raise ConfigError, "Something is wrong :/ Raw files are not in place..."
