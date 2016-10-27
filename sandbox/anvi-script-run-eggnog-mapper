@@ -31,13 +31,14 @@ def main(args):
             raise ConfigError, "If you would like to use a pre-existing annotation file to import from,\
                                 you must also declare a version."
 
-        emapper = EggNOGMapper(args.contigs_db, num_threads = 1, use_version=args.use_version)
+        args.num_threads = 1
+        emapper = EggNOGMapper(args, use_version=args.use_version)
         emapper.populate_annotations_dict(args.annotation)
         emapper.store_annotations_in_db(drop_previous_annotations=args.drop_previous_annotations)
     else:
         output_dir = filesnpaths.get_temp_directory_path()
 
-        emapper = EggNOGMapper(args.contigs_db, num_threads = args.num_threads)
+        emapper = EggNOGMapper(args)
         emapper.process(output_dir, drop_previous_annotations=args.drop_previous_annotations)
 
         if not args.debug:
@@ -50,6 +51,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run eggnog-mapper on a contigs database, and store results')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
+                        if you did not use the default directory.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {'default': None}))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
