@@ -29,9 +29,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-COGs_data = cogs.COGsData()
-
-
 class EggNOGMapper:
     """An interface class between eggnog-mapper and anvi'o.
     
@@ -53,13 +50,28 @@ class EggNOGMapper:
         Happy? Good. Not happy? Write to me about it!
        """
 
-    def __init__(self, contigs_db_path = None, num_threads=None, database='bact', executable = 'emapper.py', usemem=True, use_version=None, progress=progress, run=run):
+    def __init__(self, args, database='bact', executable = 'emapper.py', usemem=True, use_version=None, progress=progress, run=run):
         self.executable = executable
         self.progress = progress
         self.run = run
 
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.num_threads = A('num_threads')
+        self.usemem = usemem
+
+
+        self.COGs_data = cogs.COGsData(args)
+
+        if not self.COGs_data.initialized:
+            raise ConfigError, "It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class\
+                                depends on it, so this is the end of the road for you. If you set up your COG directory to\
+                                a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you\
+                                never set up one, then maybe it is time for you to take a look at the program\
+                                `anvi-setup-ncbi-cogs`."
+
         try:
-            self.num_threads = int(num_threads) if num_threads else None
+            self.num_threads = int(self.num_threads) if self.num_threads else None
         except Exception, e:
             raise ConfigError, "Someone didn't like the number of threads, and said [%s]. Shame on you :/" % e
 
@@ -68,9 +80,6 @@ class EggNOGMapper:
         else:
             self.database = database
 
-        self.usemem = usemem
-
-        self.contigs_db_path = contigs_db_path
         if self.contigs_db_path:
             dbops.is_contigs_db(self.contigs_db_path)
 
@@ -171,7 +180,7 @@ class EggNOGMapper:
             COG_ids=[og[:-4] for og in fields[8].split(',') if og.endswith('@NOG') and og.startswith('COG')]
 
             if COG_ids:
-                annotations = '; '.join([COGs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in COGs_data.cogs])
+                annotations = '; '.join([self.COGs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in self.COGs_data.cogs])
                 self.add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, 0.0)
 
         if fields[10]:
