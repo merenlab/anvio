@@ -207,15 +207,27 @@ class COGs:
 
 class COGsData:
     """A class to make sense of COG ids and categories"""
-    def __init__(self, run=run, progress=progress):
+    def __init__(self, args=Args(), run=run, progress=progress, panic_on_failure_to_init=False):
         self.run = run
         self.progress = progress
 
-        self.setup = COGsSetup()
+        self.setup = COGsSetup(args)
         self.essential_files = self.setup.get_essential_file_paths()
 
-        self.p_id_to_cog_id = {}
+        self.cogs = None
+        self.p_id_to_cog_id = None
+        self.missing_cogs = None
+        self.categories = None
+        self.initialized = False
 
+        if self.essential_files:
+            self.init()
+        elif panic_on_failure_to_init:
+            raise ConfigError, "It seems you don't have your COG data set up on this system. Whatever you were\
+                                trying to do is not going to continue being done :( Sorry for the cryptic error."
+
+
+    def init(self):
         self.progress.new('Initializing COGs Data')
         self.progress.update('Reading COG functions ...')
         self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
@@ -233,6 +245,8 @@ class COGsData:
 
         for cat in self.categories:
             self.categories[cat] = self.categories[cat]['description']
+
+        self.initialized = True
 
 
     def init_p_id_to_cog_id_dict(self):
@@ -304,6 +318,10 @@ class COGsSetup:
 
 
     def get_essential_file_paths(self):
+        if not os.path.exists(self.COG_data_dir):
+            # the COG_data_dir is not there
+            return None
+
         essential_files = {}
         for v in self.files.values():
             if v['type'] == 'essential':
