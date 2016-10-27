@@ -752,7 +752,7 @@ class PanSuperclass(object):
 
 
     def init_protein_clusters_functions(self):
-        self.progress.new('Initializing protein clusters functions')
+        self.progress.new('Initializing functions for protein clusters')
         self.progress.update('...')
         if not self.protein_clusters:
             raise ConfigError, "init_protein_clusters_functions is speaking! You called this function before you initialized\
@@ -772,7 +772,8 @@ class PanSuperclass(object):
                     self.protein_clusters_functions_dict[protein_cluster_id][genome_name][gene_callers_id] = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
 
         # available functions
-        self.protein_clusters_function_sources = self.protein_clusters_functions_dict.values()[0].values()[0].values()[0].keys()
+        a_protein_cluster = self.protein_clusters_functions_dict.values()[0]
+        self.protein_clusters_function_sources = [v for v in a_protein_cluster.values() if v][0].values()[0].keys()
 
         self.functions_initialized = True
 
