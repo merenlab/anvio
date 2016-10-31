@@ -187,6 +187,10 @@ def get_tree(tree_id):
 def inspect_pc(pc_name):
     return routes.inspect_pc(d, pc_name)
 
+@route('/data/get_AA_sequences_for_PC/<pc_name>')
+def get_AA_sequences_for_PC(pc_name):
+    return routes.get_AA_sequences_for_PC(d, pc_name)
+
 state_for_pcs = {}
 
 @route('/data/proteinclusters/set_state', method='POST')
