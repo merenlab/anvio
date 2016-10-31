@@ -140,6 +140,24 @@ def get_index_total_previous_and_next_items(d, item_name):
 
     return index, total, previous_item_name, next_item_name 
 
+
+def get_AA_sequences_for_PC(d, pc_name):
+    data = {}
+
+    if pc_name not in d.protein_clusters:
+        return data
+
+    if not d.genomes_storage_is_available:
+        return data
+
+    # add the list of gene caller ids associated with this protein cluster into `data`:
+    for genome_name in d.protein_clusters[pc_name]:
+        for gene_callers_id in d.protein_clusters[pc_name][genome_name]:
+            data['%s_%s' % (genome_name, str(gene_callers_id))] = d.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+
+    return json.dumps(data)
+
+
 def inspect_pc(d, pc_name):
     data = {'pc_name': pc_name,
             'genomes': [],

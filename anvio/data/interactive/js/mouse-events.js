@@ -571,6 +571,25 @@ function menu_callback(action, param) {
                 }
             });
             break;
+
+        case 'get_AA_sequences_for_PC':
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/get_AA_sequences_for_PC/' + item_name + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    data = JSON.parse(data);
+
+                    var output = '';
+
+                    for (var key in data)
+                        output = output + ">" + key + "\n" + data[key] + "\n";
+
+                    $('#splitSequence').val(output);
+                    $('#modSplitSequence').modal('show');
+                }
+            });
+            break;
     }
 
 }
