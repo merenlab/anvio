@@ -2090,7 +2090,7 @@ class TablesForGeneCalls(Table):
             raise ConfigError, "Gene calls dict must be a dict instance :/"
 
         try:
-            map(int, gene_calls_dict.keys())
+            [int(g) for g in gene_calls_dict.keys()]
         except ValueError:
             raise ConfigError, "Keys of a gene calls dict must be integers!"
 
