@@ -351,6 +351,31 @@ def get_random_colors_dict(keys):
     return dict([(k, None) for k in keys])
 
 
+def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], separator='\t'):
+    """Returns a dictionary where keys are the column indices, and items are the list of entries
+    found in that that column"""
+    filesnpaths.is_file_exists(input_file_path)
+    filesnpaths.is_file_tab_delimited
+
+    d = {}
+
+    for index in column_indices:
+        d[index] = []
+
+    with open(input_file_path, "rU") as input_file:
+        for line in input_file.readlines():
+            fields = line.strip('\n').split(separator)
+
+            for index in column_indices:
+                try:
+                    d[index].append(fields[index])
+                except:
+                    raise ConfigError, "get_column_data_from_TAB_delim_file is speaking: The file you sent\
+                                        does not have data for the column index %d. Something is wrong :/" % (index)
+
+    return d
+
+
 def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     if include_first_column:
         return open(file_path, 'rU').readline().strip('\n').split('\t')
