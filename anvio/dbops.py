@@ -793,6 +793,24 @@ class PanSuperclass(object):
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
                                 data from another table. Anvi'o needs an adult :("
 
+        # if functions are initialized, and if COGs are available, we shall add a layer for known and unknown hits
+        # for each PC (too many shitty nested loops here, but it is quite efficient since we work only with adict
+        # in memory, probably at some point this section will become much more generic):
+        if self.functions_initialized and 'COG_FUNCTION' in self.protein_clusters_function_sources:
+            self.progress.update('Computing known/unknown COGs dict')
+            for protein_cluster_id in self.additional_layers_dict:
+                COGs = Counter({})
+                for genome_id in self.protein_clusters_functions_dict[protein_cluster_id]:
+                    for gene_callers_id in self.protein_clusters_functions_dict[protein_cluster_id][genome_id]:
+                        COGs[self.protein_clusters_functions_dict[protein_cluster_id][genome_id][gene_callers_id]['COG_FUNCTION'][0]] += 1
+
+                if not COGs or COGs.most_common()[0][0] == 'UNKNOWN':
+                    self.additional_layers_dict[protein_cluster_id]['COG'] = 'UNKNOWN'
+                else:
+                    self.additional_layers_dict[protein_cluster_id]['COG'] = 'KNOWN'
+
+            self.additional_layers_headers.append('COG')
+
         self.progress.end()
 
 
