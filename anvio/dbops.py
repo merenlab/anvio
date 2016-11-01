@@ -793,8 +793,6 @@ class PanSuperclass(object):
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
                                 data from another table. Anvi'o needs an adult :("
 
-        self.additional_layers_dict.values()[0].keys()
-
         self.progress.end()
 
 
