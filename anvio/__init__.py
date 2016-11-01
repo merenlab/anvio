@@ -50,6 +50,14 @@ D = {
              'required': False,
              'help': "Anvi'o genomes storage file"}
                 ),
+    'genomes-names': (
+            ['-G', '--genome-names'],
+            {'metavar': "GENOME_NAMES",
+             'required': False,
+             'help': "Genome names to 'focus'. You can use this parameter to limit the genomes included in your analysis.\
+                      You can provide these names as a commma-separated list of names, or you can put them in a file,\
+                      where you have a single genome name in each line, and provide the file path."}
+                ),
     'serialized-profile': (
             ['-d', '--serialized-profile'],
             {'metavar': "PROFILE",
