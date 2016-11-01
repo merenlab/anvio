@@ -178,11 +178,14 @@ def is_proper_samples_order_file(file_path):
     return unique_list_of_samples[0]
 
 
-def is_file_exists(file_path):
+def is_file_exists(file_path, dont_raise=False):
     if not file_path:
         raise FilesNPathsError, "No input file is declared..."
     if not os.path.exists(file_path):
-        raise FilesNPathsError, "No such file: '%s' :/" % file_path
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError, "No such file: '%s' :/" % file_path
     return True
 
 
