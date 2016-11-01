@@ -71,6 +71,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.list_collections = A('list_collections')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.skip_init_functions = A('skip_init_functions')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError, "You can't set both a profile database and a pan database in arguments\
@@ -112,9 +113,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.collections.populate_collections_dict(self.contigs_db_path)
         else:
             self.completeness = None
-
-        if 'skip_init_functions' in args and not args.skip_init_functions:
-            self.init_functions()
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
@@ -420,9 +418,11 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         PanSuperclass.__init__(self, args)
 
-        self.genomes_storage.get_gene_sequence
         self.init_protein_clusters()
-        self.init_protein_clusters_functions()
+
+        if not args.skip_init_functions:
+            self.init_protein_clusters_functions()
+
         self.init_additional_layer_data()
 
         self.p_meta['clusterings'] = self.clusterings
@@ -441,6 +441,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.profile_db_path:
             raise ConfigError, "So you want to run anvi'o in full mode, but without a profile database?\
                                 Well. This does not make any sense."
+
+        if not args.skip_init_functions:
+            self.init_functions()
 
         ProfileSuperclass.__init__(self, args)
 
