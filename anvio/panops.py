@@ -51,6 +51,7 @@ class GenomeStorage(object):
 
         self.storage_path = None
         self.genomes_storage = None
+        self.genome_names_to_focus = None
 
         self.genomes = {}
         self.hash_to_genome_name = {}
@@ -149,20 +150,29 @@ class GenomeStorage(object):
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.storage_path = A('genomes_storage')
+        self.genome_names_to_focus = A('genome_names')
+
+        # let's take care of the genome names to focus, if there are any, first. 
+        if self.genome_names_to_focus:
+            if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0])[0]
+            else:
+                self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
+
+            self.run.warning("A subset of genome names is found, and anvi'o will focus only on to those.")
 
         filesnpaths.is_proper_genomes_storage_file(self.storage_path)
 
-        self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, db_hash = None, ignore_hash = True)
+        self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, db_hash = None, genome_names_to_focus=self.genome_names_to_focus, ignore_hash = True)
         self.genomes_storage_hash = self.genomes_storage.get_storage_hash()
 
         self.genomes = self.genomes_storage.get_genomes_dict()
+
         self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
         self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
 
         for genome_name in self.genomes:
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
-
-        self.run.info('Genomes storage', 'Initialized with %d genomes (storage hash: %s)' % (self.genomes_storage.num_genomes, self.genomes_storage.unique_hash))
 
 
     def get_functions_dict_from_contigs_db(self, contigs_db_path):

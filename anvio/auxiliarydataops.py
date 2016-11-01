@@ -166,9 +166,10 @@ class GenomesDataStorage(HDF5_IO):
            IMLQWIVIIYFLVINLVLFSMMGYDKKQAKRGNWRIPERRLLTIGLVGGGLGGLMGQKKFHHKTQKPVFALCYSIGVIAMISCIYLTFK
     """
 
-    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
-        self.version = anvio.__genomes_storage_version__
+    def __init__(self, file_path, db_hash, genome_names_to_focus=None, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'genomes data storage'
+        self.version = anvio.__genomes_storage_version__
+        self.genome_names_to_focus = genome_names_to_focus
 
         HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
 
@@ -178,12 +179,32 @@ class GenomesDataStorage(HDF5_IO):
 
         self.essential_genome_info = constants.essential_genome_info + ['genome_hash', 'external_genome']
 
-        if not create_new:
-            self.num_genomes = len(self.fp['/info/genomes'])
-            self.functions_are_available = self.fp.attrs['functions_are_available']
-
         self.D = lambda genome_name: self.fp['/data/genomes/%s' % genome_name]
         self.G = lambda gene_callers_id, genome_data: genome_data['%d' % gene_callers_id]
+
+        if not create_new:
+            self.genome_names = self.get_genome_names_in_db()
+
+            if self.genome_names_to_focus:
+                genome_names_to_focus_missing_from_db = [g for g in self.genome_names_to_focus if g not in self.genome_names]
+
+                # make sure the user knows what they're doing
+                if genome_names_to_focus_missing_from_db:
+                    raise HDF5Error, "%d of %d genome names you wanted to focus are missing from the genomes sotrage.\
+                                     Although this may not be a show-stopper, anvi'o likes to be explicit, so here we\
+                                     are. Not going anywhere until you fix this. For instance this is one of the missing\
+                                     genome names: '%s', and this is one random genome name from the database: '%s'" % \
+                                             (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
+                                             genome_names_to_focus_missing_from_db[0], self.genomes.keys()[0])
+
+                self.genome_names = self.genome_names_to_focus
+
+            self.num_genomes = len(self.genome_names)
+            self.functions_are_available = self.fp.attrs['functions_are_available']
+
+            self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.unique_hash))
+            self.run.info('Num genomes in storage', len(self.get_genome_names_in_db()))
+            self.run.info('Num genomes will be used', len(self.genome_names), mc='green')
 
 
     def is_known_genome(self, genome_name, throw_exception=True):
@@ -256,14 +277,17 @@ class GenomesDataStorage(HDF5_IO):
         return self.fp.attrs['hash']
 
 
+    def get_genome_names_in_db(self):
+        return [d for d in self.fp['/info/genomes']]
+
+
     def get_genomes_dict(self):
         genomes_dict = {}
 
-        for d in self.fp['/info/genomes']:
-            genomes_dict[d] = {}
-
-        for genome_name in genomes_dict:
+        for genome_name in self.genome_names:
+            genomes_dict[genome_name] = {}
             genomes_dict[genome_name]['name'] = genome_name
+
             # add every key-value pair we know of in to the dict:
             for key in self.fp['/info/genomes/%s' % genome_name]:
                 genomes_dict[genome_name][key] = self.fp['/info/genomes/%s/%s' % (genome_name, key)].value
