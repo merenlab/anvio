@@ -306,3 +306,8 @@ td {
   text-align: center;
 }
 
+#display-controls {
+  text-align: center;
+  padding-bottom: 15px;
+}
+

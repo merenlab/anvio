@@ -29,6 +29,9 @@ var next_pc_name;
 var index;
 var total;
 
+var state;
+var pc_data;
+
 
 function loadAll() {
     pc_name = getUrlVars()["id"];
@@ -69,8 +72,9 @@ function loadAll() {
               type: 'GET',
               cache: false,
               url: '/data/proteinclusters/get_state?timestamp=' + new Date().getTime(),
-              success: function(state) {
-                createDisplay(state, pc_data);
+              success: function(_state) {
+                state = _state;
+                createDisplay();
               }
             });
         }
@@ -79,11 +83,19 @@ function loadAll() {
 }
 
 
-function createDisplay(state, pc_data){
-    var SEQUENCE_WRAP = 80;
-    var SEQUENCE_FONT_SIZE = 18;
+function createDisplay(){
+    var sequence_wrap_val = parseInt($('#wrap_length').val());
+    var sequence_font_size_val = parseInt($('#font_size').val());
+
+    var sequence_wrap = (isNumber(sequence_wrap_val) && sequence_wrap_val > 0) ? sequence_wrap_val : 80;
+    var sequence_font_size = (isNumber(sequence_font_size_val) && sequence_font_size_val > 0) ? sequence_font_size_val : 18;
     
     var svg = document.getElementById('svg');
+
+    // clear content
+    while (svg.firstChild) {
+        svg.removeChild(svg.firstChild);
+    }
 
     var y_cord = 0;
     var offset = 0;
@@ -104,7 +116,7 @@ function createDisplay(state, pc_data){
             rect.setAttribute('y', y_cord);
             rect.setAttribute('fill', state['layers'][layer]['color']);
             rect.setAttribute('opacity', 0.2);
-            rect.setAttribute('height', (Math.max(pc_data.gene_caller_ids_in_genomes[layer].length,1) * SEQUENCE_FONT_SIZE * 1.5) + 10);
+            rect.setAttribute('height', (Math.max(pc_data.gene_caller_ids_in_genomes[layer].length,1) * sequence_font_size * 1.5) + 10);
             rect.setAttribute('width', 400);
             rect.setAttribute('class', 'sequenceBackground');
             rect.setAttribute('rx', 10);
@@ -129,7 +141,7 @@ function createDisplay(state, pc_data){
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
-                text.setAttribute('font-size', SEQUENCE_FONT_SIZE);
+                text.setAttribute('font-size', sequence_font_size);
                 text.setAttribute('font-family', "Lato, Arial");
                 text.setAttribute('font-weight', '300');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
@@ -140,15 +152,16 @@ function createDisplay(state, pc_data){
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
-                text.setAttribute('font-size', SEQUENCE_FONT_SIZE);
+                text.setAttribute('font-size', sequence_font_size);
                 text.setAttribute('font-family', "monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
-                text.appendChild(document.createTextNode(sequence.substr(offset, SEQUENCE_WRAP)));
+                text.appendChild(document.createTextNode(sequence.substr(offset, sequence_wrap)));
+                console.log(sequence.substr(offset, sequence_wrap));
                 fragment.appendChild(text);
 
-                sub_y_cord = sub_y_cord + SEQUENCE_FONT_SIZE * 1.5;
+                sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
 
                 if (offset < sequence.length) {
                     ignoreTable = false;
@@ -163,7 +176,7 @@ function createDisplay(state, pc_data){
         } else {
             svg.appendChild(fragment);
         }
-        offset += SEQUENCE_WRAP;
+        offset += sequence_wrap;
         y_cord = y_cord + 15;
     }
 
