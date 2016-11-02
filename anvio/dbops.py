@@ -738,16 +738,15 @@ class PanSuperclass(object):
         # create an instance of states table
         self.states_table = TablesForStates(self.pan_db_path)
 
-        self.progress.update('Accessing the auxiliary data file')
-        if args.genomes_storage:
-            self.genomes_storage_is_available = True
-            self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage, self.p_meta['genomes_storage_hash'])
-            self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
-
         self.progress.end()
 
-        if self.genomes_storage_is_available:
-            self.run.info('Genomes storage', 'Found: %s (v. %s)' % (args.genomes_storage, anvio.__genomes_storage_version__))
+        if args.genomes_storage:
+            self.genomes_storage_is_available = True
+            self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage,
+                                                                       self.p_meta['genomes_storage_hash'],
+                                                                       genome_names_to_focus=self.p_meta['genome_names'])
+            self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
+
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
