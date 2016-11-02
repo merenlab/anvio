@@ -28,11 +28,25 @@
             </header>
 
             <section class="main">
+                <div id="display-controls">
+                    Wrap: <input type="text" id="wrap_length" value="40" size="5" onchange="createDisplay(); "/>
+                          <input type="button" value="-" onclick="increaseVal('wrap_length', -5); createDisplay();" />
+                          <input type="button" value="+" onclick="increaseVal('wrap_length', 5); createDisplay();" />
+                    Font Size: <input type="text" id="font_size" value="18" size="5" onchange="createDisplay(); "/>
+                          <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
+                          <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
+                </div>
                 <div id="display-container">
                     <svg id="svg">
                     </svg>
                 </div>
             </section>
         </div>
+        <script>
+            function increaseVal(id, delta)
+            {
+                $('#' + id).val(Math.max(1,parseInt($('#' + id).val()) + delta));
+            }
+        </script>
     </body>
 </html>
