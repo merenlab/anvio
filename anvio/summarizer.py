@@ -146,37 +146,39 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         genome_names = self.protein_clusters.values()[0].keys()
 
         # set up the initial summary dictionary
-        self.summary['meta'] = {'output_directory': self.output_directory,
-                                'collection': bin_ids,
-                                'num_bins': len(bin_ids),
-                                'collection_name': self.collection_name,
-                                'total_num_genes_in_collection': 0,
-                                'anvio_version': __version__,
-                                'pan': self.p_meta,
-                                'genomes': {'num_genomes': self.genomes_storage.num_genomes,
-                                            'functions_available': True if len(self.protein_clusters_function_sources) else False,
-                                            'function_sources': self.protein_clusters_function_sources},
-                                'percent_of_genes_collection': 0.0,
-                                }
+        self.summary['meta'] = { \
+                'cog_functions_are_called': self.cog_functions_are_called,
+                'cog_categories_are_called': self.cog_categories_are_called,
+                'output_directory': self.output_directory,
+                'summary_type': self.summary_type,
+                'collection': bin_ids,
+                'num_bins': len(bin_ids),
+                'collection_name': self.collection_name,
+                'total_num_genes_in_collection': 0,
+                'anvio_version': __version__,
+                'pan': self.p_meta,
+                'genomes': {'num_genomes': self.genomes_storage.num_genomes,
+                            'functions_available': True if len(self.protein_clusters_function_sources) else False,
+                            'function_sources': self.protein_clusters_function_sources},
+                'percent_of_genes_collection': 0.0,
+        }
 
         # I am not sure whether this is the best place to do this,
-        self.summary['basics_pretty'] = {'pan': [
-                                                     ('Created on', self.p_meta['creation_date']),
-                                                     ('Version', anvio.__pan__version__),
-                                                     ('Number of genes', pretty(int(self.p_meta['num_genes_in_protein_clusters']))),
-                                                     ('Number of protein clusters', pretty(int(self.p_meta['num_protein_clusters']))),
-                                                     ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
-                                                     ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
-                                                     ('Genome names', ', '.join(genome_names)),
-                                                    ],
-                                         'genomes': [
-                                                        ('Created on', 'This database does not know when it was created :('),
-                                                        ('Version', anvio.__genomes_storage_version__),
-                                                        ('Number of genomes described', pretty(self.genomes_storage.num_genomes)),
-                                                        ('Functional annotation', 'Available' if len(self.protein_clusters_function_sources) else 'Not available :/'),
-                                                        ('Functional annotation sources', '--' if not len(self.protein_clusters_function_sources) else ', '.join(self.protein_clusters_function_sources)),
-                                                    ],
-                                        }
+        self.summary['basics_pretty'] = { \
+                'pan': [('Created on', self.p_meta['creation_date']),
+                        ('Version', anvio.__pan__version__),
+                        ('Number of genes', pretty(int(self.p_meta['num_genes_in_protein_clusters']))),
+                        ('Number of protein clusters', pretty(int(self.p_meta['num_protein_clusters']))),
+                        ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
+                        ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
+                        ('Genome names', ', '.join(genome_names))],
+
+                'genomes': [('Created on', 'Storage has no idea :('),
+                            ('Version', anvio.__genomes_storage_version__),
+                            ('Number of genomes described', pretty(self.genomes_storage.num_genomes)),
+                            ('Functional annotation', 'Available' if len(self.protein_clusters_function_sources) else 'Not available :/'),
+                            ('Functional annotation sources', '--' if not len(self.protein_clusters_function_sources) else ', '.join(self.protein_clusters_function_sources))],
+        }
 
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
@@ -228,7 +230,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 categories_file_obj.write('%s\t%s\n' % (cog_cat, self.cogs_data.categories[cog_cat] if cog_cat in self.cogs_data.categories else 'COG category description was not found'))
             categories_file_obj.close()
 
-        # done.
+        if self.debug:
+            import json
+            print json.dumps(self.summary, sort_keys=True, indent=4)
+
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
 
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
@@ -279,6 +285,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         # set up the initial summary dictionary
         self.summary['meta'] = {'quick': self.quick,
+                                'summary_type': self.summary_type,
                                 'output_directory': self.output_directory,
                                 'collection': bin_ids,
                                 'num_bins': len(bin_ids),
