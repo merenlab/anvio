@@ -7,8 +7,6 @@
     anvi-interactive, or anvi-refine.
 """
 
-from collections import Counter
-
 import os
 import json
 import datetime
@@ -362,7 +360,7 @@ def gen_summary(args, d, request, response, collection_name):
     summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
 
     try:
-        summary = summarizer.Summarizer(summarizer_args, r=run, p=progress)
+        summary = summarizer.PanSummarizer(summarizer_args, r=run, p=progress)
         summary.process()
     except Exception as e:
         return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
