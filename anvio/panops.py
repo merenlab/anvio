@@ -431,7 +431,8 @@ class Pangenome(GenomeStorage):
                        'diamond_sensitive': self.sensitive,
                        'maxbit': self.maxbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
-                       'genomes_storage_hash': self.genomes_storage_hash
+                       'genomes_storage_hash': self.genomes_storage_hash,
+                       'project_name': self.project_name
                       }
 
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
