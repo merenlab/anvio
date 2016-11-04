@@ -700,6 +700,9 @@ class PanSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
+        self.num_protein_clusters = None
+        self.num_genes_in_protein_clusters = None
+
         self.genomes_storage_is_available = False
         self.genomes_storage_has_functions = False
         self.functions_initialized = False
@@ -910,6 +913,29 @@ class PanSuperclass(object):
                             summary['functions'][source][function] += 1
 
         return summary
+
+
+    def init_collection_profile(self, collection_name):
+        pan_db = PanDatabase(self.pan_db_path)
+
+        if not self.protein_clusters:
+            raise ConfigError, "init_collection_profile wants to initialize the PC collection profile for '%s', but the\
+                                the protein clusters dict is kinda empty. Someone forgot to initialize something maybe?" % \
+                                        collection_name
+
+        # get trimmed collection and bins_info dictionaries
+        collection, bins_info, self.protein_clusters_in_pan_db_but_not_binned \
+                    = self.collections.get_trimmed_dicts(collection_name, set(self.protein_clusters.keys()))
+
+        # currenlty we are not really doing anything with this one, but we will be filling this up with
+        # all sorts of amazing later.
+        for bin_id in collection:
+            self.collection_profile[bin_id] = {}
+
+        self.progress.end()
+        pan_db.disconnect()
+
+        return collection, bins_info
 
 
 class ProfileSuperclass(object):
@@ -1148,7 +1174,6 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         self.init_gene_coverages_dict()
 
 
-
 ####################################################################################################
 #
 #     DATABASES
@@ -1240,7 +1265,7 @@ class PanDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls']:
+            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', 'num_protein_clusters', 'num_genes_in_protein_clusters']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
