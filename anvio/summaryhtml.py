@@ -72,6 +72,10 @@ class SummaryHTMLOutput:
         self.progress = p
         self.summary_dict = summary_dict
 
+        self.summary_type = self.summary_dict['meta']['summary_type']
+
+        if self.summary_type not in ['profile', 'pan']:
+            raise ConfigError, "Unknown summary type '%s'" % self.summary_type
 
     def generate(self, quick=False):
         self.progress.new('Copying static files')
@@ -92,12 +96,17 @@ class SummaryHTMLOutput:
 
 
     def render(self, quick=False):
-        self.progress.update('Processing the template ...')
+        self.progress.update("Processing the template for type '%s' ..." % self.summary_type)
 
-        if quick:
-            rendered = render_to_string('index-mini.tmpl', self.summary_dict)
+        if self.summary_type == 'pan':
+            rendered = render_to_string('pan-index.tmpl', self.summary_dict)
+        elif self.summary_type == 'profile':
+            if quick:
+                rendered = render_to_string('profile-index-mini.tmpl', self.summary_dict)
+            else:
+                rendered = render_to_string('pan-index.tmpl', self.summary_dict)
         else:
-            rendered = render_to_string('index.tmpl', self.summary_dict)
+            raise ConfigError, "You cray..."
 
         index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
         self.progress.update('Writing the index file ...')
