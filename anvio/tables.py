@@ -27,7 +27,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
+#     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN DATABASE (THE REST COMES FROM THE PROFILE DATABASE)
 #
 ####################################################################################################
 
