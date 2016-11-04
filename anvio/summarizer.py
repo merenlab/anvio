@@ -132,11 +132,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.genome_storage_path = None
 
         PanSuperclass.__init__(self, args, run, progress)
-        self.init_protein_clusters()
+        if not self.genomes_storage_is_available:
+            raise ConfigError, "No genomes storage no summary. Yes. Very simple stuff."
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
-        # init protein clusters functions from Pan super.
+        # init protein clusters and functins from Pan super.
+        self.init_protein_clusters()
         self.init_protein_clusters_functions()
 
         # see if COG functions or categories are available
