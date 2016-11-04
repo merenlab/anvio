@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio.db as db
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal 
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+current_version = '2'
+next_version    = '3'
+
+def update_pan_db(pan_db_path, project_name, just_do_it = False):
+    if pan_db_path is None:
+        raise ConfigError, "No database path is given."
+
+    if project_name is None:
+        raise ConfigError, "This upgrade requires you to provide a project name for this pan database. This project name\
+                            will appear in various places, so you better pick a relevant one! You can use the parameter\
+                            --project-name to do it."
+
+    # make sure someone is not being funny
+    dbops.is_pan_db(pan_db_path)
+
+    # make sure the version is 2
+    pan_db = db.DB(pan_db_path, None, ignore_version = True)
+    if str(pan_db.get_version()) != current_version:
+        raise ConfigError, "Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version
+
+    if not just_do_it:
+        try:
+            run.warning("This script will try to upgrade your pan database from v%s to v%s. It happens to be that this\
+                         upgrade will in fact remove every HMM hits from your database, and you will need to re-run your\
+                         `anvi-run-hmms` program on your pan database to get them back :( We are very sorry for the\
+                         inconvenience, but this change will make anvi'o more suitable for certain operations going\
+                         forward. If you are OK with this, just press ENTER to continue. If you want to cancel the\
+                         upgrade, press CTRL+C now. If you want to avoid this message the next time, use '--just-do-it'\
+                         flag." % (current_version, next_version))
+            raw_input("Press ENTER to continue...\n")
+        except:
+            print
+            sys.exit()
+
+    progress.new("Trying to upgrade the pan database")
+    progress.update('...')
+
+    protein_clusters = pan_db.get_table_as_dict(t.pan_protein_clusters_table_name)
+
+    num_genes_in_protein_clusters = len(protein_clusters)
+    num_protein_clusters = len(set([e['protein_cluster_id'] for e in protein_clusters.values()]))
+
+    # add new variables
+    pan_db.set_meta_value('project_name', project_name)
+    pan_db.set_meta_value('num_protein_clusters', num_protein_clusters)
+    pan_db.set_meta_value('num_genes_in_protein_clusters', num_genes_in_protein_clusters)
+
+    # set the version
+    pan_db.remove_meta_key_value_pair('version')
+    pan_db.set_version(next_version)
+
+    # bye
+    pan_db.disconnect()
+
+    # bye
+    progress.end()
+    run.info_single("The pan database successfully upgraded from version %s to %s!" % (current_version, next_version))
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade pan database from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('pan_db', metavar = 'PAN_DB', help = 'Pan database')
+    parser.add_argument('--project-name', default=None,  help = "Project name")
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    args = parser.parse_args()
+
+    try:
+        update_pan_db(args.pan_db, args.project_name, just_do_it = args.just_do_it)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)

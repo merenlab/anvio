@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Anvi'o">
+    <base target="_blank">
+
+    <title>Anvi'o: {{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href=".html/css/bootstrap.css" rel="stylesheet">
+    <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href=".html/css/anvio.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a href="http://merenlab.org/projects/anvio">Anvi'o Project Page</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio">Anvi'o Repository</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/issues">Report an Issue</a>
+                    </li>
+                    <li>
+                        <a href="http://merenlab.org/people">Contact</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+
+    <header class="image-bg-fluid-height">
+        <div class="header-summary-div">
+            <div style="width: 200px;">
+                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+            </div>
+            <div class="header-text">
+                The <b>{{ meta|lookup:"num_bins"|pretty }}</b> protein cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
+                under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_protein_clusters"|pretty }}</b>
+                protein clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_protein_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+            </div>
+        </div>
+    </header>
+
+
+    <section>
+        <div class="container">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
+                </div>
+
+                <div id="collapse-basics" class="panel-collapse collapse in">
+
+                <div class="well" style="margin: 10px;">Here are some of the details about the pan database, and genomes storage.
+                                                        </div>
+
+                <div class="row">
+                    {% if not meta|lookup:"pan"|lookup:"blank" %}
+                    <div class="col-lg-6 col-md-6 col-sm-6">
+                      <div class="panel panel-default" style="margin-left:10px;">
+                            <div class="panel-heading">
+                                Pan DB for <b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b> w/ {{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }} samples.
+                            </div>
+                            <div class="panel-body">
+                                <table class="table table-striped">
+                                    <thead id="tblHead_basics_profile">
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in basics_pretty|lookup:"pan" %}
+                                        <tr>
+                                            <td>{{ entry.0 }}</td>
+                                            <td>{{ entry.1 }}</td>
+                                        </tr>
+                                      {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="col-lg-6 col-md-6 col-sm-6">
+                        <div class="panel panel-default" style="margin-right:10px;">
+                            <div class="panel-heading">
+                                Genomes storage
+                            </div>
+                            <div class="panel-body">
+                                <table class="table table-striped">
+                                    <thead id="tblHead_basics_contigs">
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in basics_pretty|lookup:"genomes" %}
+                                        <tr>
+                                            <td>{{ entry.0 }}</td>
+                                            <td>{{ entry.1 }}</td>
+                                        </tr>
+                                      {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="well" style="margin: 10px;">These are the list of genomes used in this pan database: {{ meta|lookup:"genome_names" }}</div>
+            </div>
+        </div>
+    </section>
+
+
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="bins_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Summary files for protein clusters</h1>
+                </div>
+
+                <div id="collapse-bins" class="panel">
+                    <div class="panel-body">
+                        {% if meta|lookup:"quick" %}
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a quick summary, hence the protein clusters summary file in this output is somewhat succint.</p>
+                        {% else %}
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a full summary (i.e., the `--quick` flag has not been used), hence the protein clusters summary file is not succint by any means.</p>
+                        {% endif %}
+
+                        <p style="color: #777777; padding-top: 20px; padding-left:20px;">The summary file: <a href="{{ files|lookup:'protein_clusters_summary' }}">{{ files|lookup:'protein_clusters_summary' }}</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <div style="margin-bottom:200px"></div>
+
+    <!-- jQuery -->
+    <script src=".html/js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src=".html/js/bootstrap.min.js"></script>
+
+    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
+    <script src=".html/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+    $(document).ready(function() {
+        $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+    });
+</script>
+</body>
+</html>
