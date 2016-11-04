@@ -11,6 +11,7 @@ import textwrap
 from collections import Counter
 
 import anvio
+import anvio.cogs as cogs
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -122,8 +123,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         PanSuperclass.__init__(self, args, run, progress)
         self.init_protein_clusters()
+        self.init_protein_clusters_functions()
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+
+        # see if COG functions or categories are available
+        self.cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
+        self.cog_categories_are_called = 'COG_CATEGORY' in self.protein_clusters_function_sources
+
+        # initialize COGs data if necessary:
+        if self.cog_functions_are_called or self.cog_categories_are_called:
+            self.cogs_data = cogs.COGsData()
 
 
     def process(self):
@@ -132,9 +142,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # let bin names known to all
         bin_ids = self.collection_profile.keys()
-
-        # initialize functions
-        self.init_protein_clusters_functions()
 
         genome_names = self.protein_clusters.values()[0].keys()
 
@@ -183,11 +190,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # some preparation for a special treatment of COGs:
         observed_cog_ids = set([])
         observed_cog_categories = set([])
-        cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
-        cog_categories_are_called = 'COG_CATEGORY' in self.protein_clusters_function_sources
 
         # generate an output file for protein clusters.
-
         output_file_obj = self.get_output_file_handle(prefix='protein_clusters_summary.txt')
         output_file_obj.write('\t'.join(['unique_id', 'protein_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id'] + self.protein_clusters_function_sources) + '\n')
         unique_id = 1
@@ -199,19 +203,32 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     for function_source in self.protein_clusters_function_sources:
                         entry.append(','.join(self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]))
 
-                    if cog_functions_are_called:
+                    if self.cog_functions_are_called:
                         for cog_id in self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]['COG_FUNCTION']:
-                            observed_cog_ids.add(cog_id)
+                            observed_cog_ids.add(cog_id) if cog_id != 'UNKNOWN' else None
 
-                    if cog_categories_are_called:
+                    if self.cog_categories_are_called:
                         for cog_category in self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]['COG_CATEGORY']:
-                            observed_cog_categories.add(cog_category)
+                            observed_cog_categories.add(cog_category) if cog_category != 'UNKNOWN' else None
 
                     output_file_obj.write('\t'.join([str(e) for e in entry]) + '\n')
                     unique_id += 1
         output_file_obj.close()
 
-        # FIXME: Store cog function and category names
+        # generate COG translations files with some ugly code.
+        if self.cog_functions_are_called:
+            functions_file_obj = self.get_output_file_handle(prefix='COG_functions.txt')
+            for cog_id in observed_cog_ids:
+                functions_file_obj.write('%s\t%s\n' % (cog_id, self.cogs_data.cogs[cog_id]['annotation'] if cog_id in self.cogs_data.cogs else 'COG description was not found'))
+            functions_file_obj.close()
+
+        if self.cog_categories_are_called: 
+            categories_file_obj = self.get_output_file_handle(prefix='COG_categories.txt')
+            for cog_cat in observed_cog_categories:
+                categories_file_obj.write('%s\t%s\n' % (cog_cat, self.cogs_data.categories[cog_cat] if cog_cat in self.cogs_data.categories else 'COG category description was not found'))
+            categories_file_obj.close()
+
+        # done.
 
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
