@@ -170,6 +170,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         ('Number of genes', pretty(int(self.p_meta['num_genes_in_protein_clusters']))),
                         ('Number of protein clusters', pretty(int(self.p_meta['num_protein_clusters']))),
                         ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
+                        ('Maxbit parameter', self.p_meta['maxbit']),
+                        ('PC min occurrence parameter', pretty(int(self.p_meta['pc_min_occurrence']))),
+                        ('MCL inflation parameter', self.p_meta['mcl_inflation']),
+                        ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND (and it was %s)' % ('sensitive' if self.p_meta['diamond_sensitive'] else 'not sensitive'))),
                         ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
                         ('Genome names', ', '.join(genome_names))],
 
