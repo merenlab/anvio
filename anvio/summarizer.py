@@ -22,7 +22,7 @@ import anvio.ccollections as ccollections
 import anvio.completeness as completeness
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsSuperclass
+from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 
@@ -43,50 +43,30 @@ progress = terminal.Progress()
 P = lambda x, y: float(x) * 100 / float(y)
 
 
-class Summarizer(DatabasesMetaclass):
-    """Creates an über dictionary of 'summary'."""
-    def __init__(self, args=None, r=run, p=progress):
+class SummarizerSuperClass(object):
+    def __init__(self, args, r=run, p=progress):
         self.summary = {}
-
-        self.debug = False
-        self.quick = False
-        self.profile_db_path = None
-        self.contigs_db_path = None
-        self.output_directory = None
-        self.split_names_per_bin = None
-        self.completeness_data_available = False
-        self.gene_coverages_data_available = False
-        self.non_single_copy_gene_hmm_data_available = False
-
-        self.run = r
-        self.progress = p
-
-        DatabasesMetaclass.__init__(self, args, self.run, self.progress)
-
-        # databases initiated, let's make sure we have gene covereges data avaialable.
-        if self.gene_coverages_dict:
-            self.gene_coverages_data_available = True
-
-        self.collections = ccollections.Collections()
-        self.collections.populate_collections_dict(self.contigs_db_path)
-        self.collections.populate_collections_dict(self.profile_db_path)
-
         self.collection_name = None
 
-        if args:
-            if args.list_collections:
-                self.collections.list_collections()
-                sys.exit()
+        self.collections = ccollections.Collections()
 
-            self.collection_name = args.collection_name
-            self.output_directory = args.output_dir
-            self.quick = args.quick_summary
-            self.debug = args.debug
-            self.taxonomic_level = args.taxonomic_level
+        if self.summary_type == 'pan':
+            self.collections.populate_collections_dict(self.pan_db_path)
+        else:
+            self.collections.populate_collections_dict(self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path)
+            self.collections.populate_collections_dict(self.contigs_db_path) if self.contigs_db_path else None
+
+        if args.list_collections:
+            self.collections.list_collections()
+            sys.exit()
+
+        self.collection_name = args.collection_name
+        self.output_directory = args.output_dir
+        self.quick = args.quick_summary
+        self.debug = args.debug
+        self.taxonomic_level = args.taxonomic_level
 
         self.sanity_check()
-
-        self.init_splits_taxonomy(self.taxonomic_level)
 
         filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
 
@@ -99,6 +79,165 @@ class Summarizer(DatabasesMetaclass):
             raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+
+
+    def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None):
+        if sub_directory:
+            output_directory = os.path.join(self.output_directory, sub_directory)
+        else:
+            output_directory = self.output_directory
+
+        if not os.path.exists(output_directory):
+            filesnpaths.gen_output_directory(output_directory)
+
+        if within:
+            file_path = os.path.join(output_directory, '%s_%s' % (within, prefix))
+        else:
+            file_path = os.path.join(output_directory, '%s' % (prefix))
+
+        if os.path.exists(file_path) and not overwrite:
+            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
+
+        key = prefix.split('.')[0].replace('-', '_')
+
+        if within:
+            if within not in self.summary['files']:
+                self.summary['files'][within] = {}
+            self.summary['files'][within][key] = file_path[len(self.output_directory):].strip('/')
+        else:
+            self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
+
+        return open(file_path, 'w')
+
+
+class PanSummarizer(PanSuperclass, SummarizerSuperClass):
+    """Creates a dictionary of summary for anvi'o pan profiles"""
+    def __init__(self, args=None, r=run, p=progress):
+        self.summary_type = 'pan'
+        self.debug = False
+        self.quick = False
+        self.pan_db_path = None
+        self.output_directory = None
+        self.genome_storage_path = None
+
+        PanSuperclass.__init__(self, args, run, progress)
+        self.init_protein_clusters()
+
+        SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+
+
+    def process(self):
+        # init profile data for colletion.
+        collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
+
+        # let bin names known to all
+        bin_ids = self.collection_profile.keys()
+
+        # initialize functions
+        self.init_protein_clusters_functions()
+
+        genome_names = self.protein_clusters.values()[0].keys()
+
+        # set up the initial summary dictionary
+        self.summary['meta'] = {'output_directory': self.output_directory,
+                                'collection': bin_ids,
+                                'num_bins': len(bin_ids),
+                                'collection_name': self.collection_name,
+                                'total_num_genes_in_collection': 0,
+                                'anvio_version': __version__,
+                                'pan': self.p_meta,
+                                'genomes': {'num_genomes': self.genomes_storage.num_genomes,
+                                            'functions_available': True if len(self.protein_clusters_function_sources) else False,
+                                            'function_sources': self.protein_clusters_function_sources},
+                                'percent_of_genes_collection': 0.0,
+                                }
+
+        # I am not sure whether this is the best place to do this,
+        self.summary['basics_pretty'] = {'pan': [
+                                                     ('Created on', self.p_meta['creation_date']),
+                                                     ('Version', anvio.__pan__version__),
+                                                     ('Number of genes', pretty(int(self.p_meta['num_genes_in_protein_clusters']))),
+                                                     ('Number of protein clusters', pretty(int(self.p_meta['num_protein_clusters']))),
+                                                     ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
+                                                     ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
+                                                     ('Genome names', ', '.join(genome_names)),
+                                                    ],
+                                         'genomes': [
+                                                        ('Created on', 'This database does not know when it was created :('),
+                                                        ('Version', anvio.__genomes_storage_version__),
+                                                        ('Number of genomes described', pretty(self.genomes_storage.num_genomes)),
+                                                        ('Functional annotation', 'Available' if len(self.protein_clusters_function_sources) else 'Not available :/'),
+                                                        ('Functional annotation sources', '--' if not len(self.protein_clusters_function_sources) else ', '.join(self.protein_clusters_function_sources)),
+                                                    ],
+                                        }
+
+        self.summary['files'] = {}
+        self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
+
+        # generate a dict of protein cluster ~ bin id relationships
+        pc_name_to_bin_name= dict(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned)))
+        for bin_id in collection_dict: 
+            for pc_name in collection_dict[bin_id]:
+                pc_name_to_bin_name[pc_name] = bin_id
+
+        # some preparation for a special treatment of COGs:
+        observed_cog_ids = set([])
+        observed_cog_categories = set([])
+        cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
+        cog_categories_are_called = 'COG_CATEGORY' in self.protein_clusters_function_sources
+
+        # generate an output file for protein clusters.
+
+        output_file_obj = self.get_output_file_handle(prefix='protein_clusters_summary.txt')
+        output_file_obj.write('\t'.join(['unique_id', 'protein_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id'] + self.protein_clusters_function_sources) + '\n')
+        unique_id = 1
+        for pc_name in self.protein_clusters:
+            for genome_name in self.protein_clusters[pc_name]:
+                for gene_caller_id in self.protein_clusters[pc_name][genome_name]:
+                    entry = [unique_id, pc_name, pc_name_to_bin_name[pc_name], genome_name, gene_caller_id]
+
+                    for function_source in self.protein_clusters_function_sources:
+                        entry.append(','.join(self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]))
+
+                    if cog_functions_are_called:
+                        for cog_id in self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]['COG_FUNCTION']:
+                            observed_cog_ids.add(cog_id)
+
+                    if cog_categories_are_called:
+                        for cog_category in self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]['COG_CATEGORY']:
+                            observed_cog_categories.add(cog_category)
+
+                    output_file_obj.write('\t'.join([str(e) for e in entry]) + '\n')
+                    unique_id += 1
+        output_file_obj.close()
+
+        # FIXME: Store cog function and category names
+
+
+class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
+    """Creates an über dictionary of 'summary' for anvi'o profiles."""
+    def __init__(self, args=None, r=run, p=progress):
+        self.summary = {}
+
+        self.summary_type = 'profile'
+        self.debug = False
+        self.quick = False
+        self.profile_db_path = None
+        self.contigs_db_path = None
+        self.output_directory = None
+        self.split_names_per_bin = None
+        self.completeness_data_available = False
+        self.gene_coverages_data_available = False
+        self.non_single_copy_gene_hmm_data_available = False
+
+        DatabasesMetaclass.__init__(self, args, run, progress)
+        SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+
+        # databases initiated, let's make sure we have gene covereges data avaialable.
+        if self.gene_coverages_dict:
+            self.gene_coverages_data_available = True
+
+        self.init_splits_taxonomy(self.taxonomic_level)
 
 
     def process(self):
@@ -267,35 +406,6 @@ class Summarizer(DatabasesMetaclass):
             return sorted(self.summary['collection'].keys())
 
 
-    def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None):
-        if sub_directory:
-            output_directory = os.path.join(self.output_directory, sub_directory)
-        else:
-            output_directory = self.output_directory
-
-        if not os.path.exists(output_directory):
-            filesnpaths.gen_output_directory(output_directory)
-
-        if within:
-            file_path = os.path.join(output_directory, '%s_%s' % (within, prefix))
-        else:
-            file_path = os.path.join(output_directory, '%s' % (prefix))
-
-        if os.path.exists(file_path) and not overwrite:
-            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
-
-        key = prefix.split('.')[0].replace('-', '_')
-
-        if within:
-            if within not in self.summary['files']:
-                self.summary['files'][within] = {}
-            self.summary['files'][within][key] = file_path[len(self.output_directory):].strip('/')
-        else:
-            self.summary['files'][key] = file_path[len(self.output_directory):].strip('/')
-
-        return open(file_path, 'w')
-
-
 class Bin:
     def __init__(self, summary, bin_id, split_ids, r=run, p=progress):
         self.summary = summary
@@ -362,26 +472,6 @@ class Bin:
             raise ConfigError, 'You caled Bin.create() before setting an output directory. Anvio says "nope, thanks".'
 
         filesnpaths.gen_output_directory(self.output_directory)
-
-
-    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
-        file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
-        if os.path.exists(file_path) and not overwrite:
-            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
-
-
-        if not key:
-            key = prefix.split('.')[0].replace('-', '_')
-
-        self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
-
-        return open(file_path, 'w')
-
-
-    def store_data_in_file(self, output_file_name_posfix, content):
-        output_file_obj = self.get_output_file_handle(output_file_name_posfix)
-        output_file_obj.write('%s\n' % content)
-        output_file_obj.close()
 
 
     def access_completeness_scores(self):
@@ -700,6 +790,26 @@ class Bin:
 
         self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'] if self.bin_info_dict['N50'] else 'NA')
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
+
+
+    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
+        file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
+
+        if os.path.exists(file_path) and not overwrite:
+            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
+
+        if not key:
+            key = prefix.split('.')[0].replace('-', '_')
+
+        self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
+
+        return open(file_path, 'w')
+
+
+    def store_data_in_file(self, output_file_name_posfix, content):
+        output_file_obj = self.get_output_file_handle(output_file_name_posfix)
+        output_file_obj.write('%s\n' % content)
+        output_file_obj.close()
 
 
 def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None):
