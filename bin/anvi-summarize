@@ -1,11 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Takes collections id and generates an extensive summary based on what is available
-in the profile and contigs database."""
+"""Summarizer for anvi'o pan or profile db's.
+
+   Essentially, this program takes a collection id along with either,
+   
+   - a profile database and a contigs database
+   - or a pan database and a genomes storage
+
+   and generates a static HTML output for what is described in a given
+   collection."""
 
 import sys
 
 import anvio
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 
@@ -25,25 +33,49 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+def main(args):
+    db_type = dbops.get_db_type(args.pan_or_profile_db)
+
+    if db_type == 'pan':
+        args.pan_db = args.pan_or_profile_db
+        summary = summarizer.PanSummarizer(args)
+    elif db_type == 'profile':
+        args.profile_db = args.pan_or_profile_db
+        summary = summarizer.ProfileSummarizer(args)
+    else:
+        raise ConfigError, "Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this\
+                            program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db
+
+    summary.process()
+
+
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='A script to generate summaries for a given list of splts')
+    parser = argparse.ArgumentParser(description="Summarize an anvi'o collection. Fun stuff.")
 
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    parser.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
-    parser.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
-    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+    groupA = parser.add_argument_group('PROFILE', "The profile. Is it a standard profile, or is it a pan profile?")
+    groupB = parser.add_argument_group('PROFILE TYPE SPECIFIC PARAMETERS', "If you are summarizing a collection stored in\
+                                        a standard anvi'o profile, you will need a contigs database to go with it. If you\
+                                        are working with a pan profile, then you will need to provide a genomes storage.\
+                                        Don't worry too much, because anvi'o will warn you gently if you make a mistake.")
+    groupC = parser.add_argument_group('COMMONS', "Common parameters for all")
+
+
+    groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupC.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupC.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
+    groupC.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = parser.parse_args()
 
     try:
-        summary = summarizer.Summarizer(args)
-        summary.process()
+        main(args)
     except ConfigError, e:
         print e
         sys.exit(-1)
