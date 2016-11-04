@@ -55,9 +55,9 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Protein cluster bins that were identified in the pan '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>', and stored in the
-                database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"pan"|lookup:"num_protein_clusters"|pretty }}</b>
-                protein clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_protein_clusters"|pretty }}</b> genes identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+                The <b>{{ meta|lookup:"num_bins"|pretty }}</b> protein cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
+                under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_protein_clusters"|pretty }}</b>
+                protein clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_protein_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
             </div>
         </div>
     </header>
@@ -131,6 +131,8 @@
                     </div>
                 </div>
                 </div>
+
+                <div class="well" style="margin: 10px;">These are the list of genomes used in this pan database: {{ meta|lookup:"genome_names" }}</div>
             </div>
         </div>
     </section>
@@ -145,15 +147,13 @@
 
                 <div id="collapse-bins" class="panel">
                     <div class="panel-body">
-                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">The summary file: <a href="{{ files|lookup:'protein_clusters_summary' }}">protein_clusters_summary.txt</a>.</p>
-
-                        {% if meta|lookup:"cog_functions_are_called" %}
-                        <p style="color: #AAAAAA; padding-top: 10px; padding-left:20px;">Function names for COG IDs: <a href="{{ files|lookup:'COG_functions' }}">cog_functions.txt</a>.</p>
+                        {% if meta|lookup:"quick" %}
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a quick summary, hence the protein clusters summary file in this output is somewhat succint.</p>
+                        {% else %}
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a full summary (i.e., the `--quick` flag has not been used), hence the protein clusters summary file is not succint by any means.</p>
                         {% endif %}
 
-                        {% if meta|lookup:"cog_categories_are_called" %}
-                        <p style="color: #AAAAAA; padding-top: 10px; padding-left:20px;">Category names for COG IDs: <a href="{{ files|lookup:'COG_categories' }}">cog_categories.txt</a>.</p>
-                        {% endif %}
+                        <p style="color: #777777; padding-top: 20px; padding-left:20px;">The summary file: <a href="{{ files|lookup:'protein_clusters_summary' }}">{{ files|lookup:'protein_clusters_summary' }}</a></p>
                         </div>
                     </div>
                 </div>
