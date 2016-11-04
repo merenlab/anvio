@@ -431,7 +431,8 @@ class Pangenome(GenomeStorage):
                        'diamond_sensitive': self.sensitive,
                        'maxbit': self.maxbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
-                       'genomes_storage_hash': self.genomes_storage_hash
+                       'genomes_storage_hash': self.genomes_storage_hash,
+                       'project_name': self.project_name
                       }
 
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
@@ -916,6 +917,8 @@ class Pangenome(GenomeStorage):
 
         PCs = protein_clusters_dict.keys()
 
+        num_genes_in_protein_clusters = 0
+
         for PC in PCs:
             for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
                 try:
@@ -926,10 +929,16 @@ class Pangenome(GenomeStorage):
                                         additional genomes without cleaning the previous work directory. Sounds familiar?"
 
                 table_for_protein_clusters.add({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name})
+                num_genes_in_protein_clusters += 1
 
         self.progress.end()
 
         table_for_protein_clusters.store()
+
+        pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
+        pan_db.db.set_meta_value('num_protein_clusters', len(PCs))
+        pan_db.db.set_meta_value('num_genes_in_protein_clusters', num_genes_in_protein_clusters)
+        pan_db.disconnect()
 
         self.run.info('protein clusters info', '%d PCs stored in the database' % len(PCs))
 

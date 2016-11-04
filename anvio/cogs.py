@@ -449,7 +449,7 @@ class COGsSetup:
             # get rid of non-ascii chars:
             description = ''.join([i if ord(i) < 128 else '' for i in description])
 
-            output.write('\t'.join([category, '[%s] %s' % (category, description)]) + '\n')
+            output.write('\t'.join([category, '%s' % (category, description)]) + '\n')
 
         progress.end()
 

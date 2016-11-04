@@ -7,10 +7,11 @@ SETUP_WITH_OUTPUT_DIR $1
 
 INFO "Setting up the pan analysis directory"
 mkdir $output_dir/pan_test
-cp $files/mock_data_for_pangenomics/*.fa                  $output_dir/pan_test/
-cp $files/mock_data_for_pangenomics/emapper/*.annotations $output_dir/pan_test/
-cp $files/mock_data_for_pangenomics/external-genomes.txt  $output_dir/pan_test/
-cp $files/mock_data_for_pangenomics/default-state.json    $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/*.fa                      $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/emapper/*.annotations     $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/example-PC-collection.txt $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/pan_test/
 cd $output_dir/pan_test
 
 INFO "Generating contigs databases for external genomes"
@@ -31,6 +32,15 @@ anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J TEST
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
+
+INFO "Importing an example collection of protein clusters"
+anvi-import-collection -p TEST/TEST-PAN.db -C test_collection example-PC-collection.txt
+
+INFO "Summarizing the pan, using the test collection (in quick mode)"
+anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST_SUMMARY_QUICK --quick
+
+INFO "Summarizing the pan, using the test collection"
+anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST_SUMMARY
 
 INFO "Displaying the pangenome analysis results"
 anvi-display-pan -p TEST/TEST-PAN.db -s TEST/TEST-SAMPLES.db -g TEST-GENOMES.h5 --title "A mock pangenome analysis"
