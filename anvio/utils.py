@@ -351,6 +351,66 @@ def get_random_colors_dict(keys):
     return dict([(k, None) for k in keys])
 
 
+def summarize_alignment(sequence):
+    """Takes an alignment, and returns its summary.
+
+        >>> alignment = '----AA---TTTT-----CC-GGGGGGGG----------------ATCG--'
+        >>> sequence = alignment.replace('-') 
+        >>> summarize_alignment(alilgnment)
+        '-|4|2|3|4|5|2|1|8|16|4|2'
+        >>> summary = summarize_alignment(alignment)
+        >>> restore_alignment(sequence, summary)
+        '----AA---TTTT-----CC-GGGGGGGG----------------ATCG--'
+    """
+    alignment_summary = []
+
+    starts_with_gap = sequence[0] == '-'
+    in_gap, in_nt = (True, False) if starts_with_gap else (False, True)
+
+    gap, nt = 0, 0
+    for i in range(0, len(sequence)):
+        if sequence[i] == '-':
+            if in_nt:
+                alignment_summary.append(nt) if nt else None
+                in_gap, in_nt = True, False
+                nt = 0
+                gap = 1
+            else:
+                gap += 1
+        else:
+            if in_gap:
+                alignment_summary.append(gap) if gap else None
+                in_gap, in_nt = False, True
+                gap = 0
+                nt = 1
+            else:
+                nt += 1
+
+    alignment_summary.append(gap or nt)
+
+    return  '|'.join(['-' if starts_with_gap else '.'] + [str(s) for s in alignment_summary])
+
+
+def restore_alignment(sequence, alignment_summary):
+    """Restores an alignment from its sequence and alignment summary"""
+    alignment = ''
+    sequence = list(sequence)
+
+    in_gap = alignment_summary[0] == '-'
+    in_nt = not in_gap
+
+    for part in [int(p) for p in alignment_summary.split('|')[1:]]:
+        if in_gap:
+            alignment += '-' * part
+            in_gap, in_nt = False, True
+        else:
+            for i in range(0, part):
+                alignment += sequence.pop(0)
+            in_gap, in_nt = True, False
+
+    return alignment
+
+
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], separator='\t'):
     """Returns a dictionary where keys are the column indices, and items are the list of entries
     found in that that column"""
