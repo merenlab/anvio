@@ -190,7 +190,14 @@ def inspect_pc(d, pc_name):
     data['index'], data['total'], data['previous_pc_name'], data['next_pc_name'] = get_index_total_previous_and_next_items(d, pc_name)
 
     for gene_callers_id, genome_name in data['gene_caller_ids']:
-        data['gene_aa_sequences_for_gene_caller_ids'][gene_callers_id] = d.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+        sequence = d.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+
+        # restore alignment from the alignment summary if possible
+        if d.protein_clusters_gene_alignments_available:
+            alignment_summary = d.protein_clusters_gene_alignments[genome_name][gene_callers_id]
+            sequence = utils.restore_alignment(sequence, alignment_summary) if alignment_summary else sequence
+
+        data['gene_aa_sequences_for_gene_caller_ids'][gene_callers_id] = sequence
 
     return json.dumps(data)
 
