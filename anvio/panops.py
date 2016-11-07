@@ -23,6 +23,7 @@ import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.drivers.blast import BLAST
+from anvio.drivers.muscle import Muscle
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.clusteringconfuguration import ClusteringConfiguration
@@ -396,6 +397,7 @@ class Pangenome(GenomeStorage):
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
+        self.skip_alignments = A('skip_alignments')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
@@ -431,6 +433,7 @@ class Pangenome(GenomeStorage):
                        'diamond_sensitive': self.sensitive,
                        'maxbit': self.maxbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
+                       'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage_hash,
                        'project_name': self.project_name
                       }
@@ -948,9 +951,49 @@ class Pangenome(GenomeStorage):
                     raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
                                         additional genomes without cleaning the previous work directory. Sounds familiar?"
 
-                protein_clusters_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name})
+                protein_clusters_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name, 'alignment_summary': ''})
+
+        self.progress.end()
 
         return protein_clusters_dict
+
+
+    def compute_alignments_for_PCs(self, protein_clusters_dict):
+        if self.skip_alignments:
+            self.run.warning('Skipping gene alignments.')
+            return
+
+        r = terminal.Run()
+        r.verbose = False
+
+        muscle = Muscle(run=r)
+
+        self.progress.new('Aligning genes in protein sequences')
+        self.progress.update('...')
+        pc_names = protein_clusters_dict.keys()
+        num_pcs = len(pc_names)
+        for i in range(0, num_pcs):
+            self.progress.update('%d of %d' % (i, num_pcs)) if i % 10 == 0 else None
+            pc_name = pc_names[i]
+
+            if len(protein_clusters_dict[pc_name]) == 1:
+                # this sequence is a singleton and does not need alignment
+                continue
+
+            gene_sequences_in_pc = []
+            num_gene_entries = len(protein_clusters_dict[pc_name])
+            for j in range(0, num_gene_entries):
+                gene_entry = protein_clusters_dict[pc_name][j]
+                sequence = self.genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
+                gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
+
+            # alignment
+            alignments = muscle.run_muscle_stdin(gene_sequences_in_pc)
+
+            for j in range(0, num_gene_entries):
+                protein_clusters_dict[pc_name][j]['alignment_summary'] = utils.summarize_alignment(alignments[j][1])
+
+        self.progress.end()
 
 
     def process(self):
@@ -977,7 +1020,10 @@ class Pangenome(GenomeStorage):
         protein_clusters_dict = self.gen_protein_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
-        # store protein clusters, and gene calls in them
+        # compute alignments for genes within each PC (or don't)
+        self.compute_alignments_for_PCs(protein_clusters_dict)
+
+        # store protein clusters dict into the db
         self.store_protein_clusters(protein_clusters_dict)
 
         # populate the pan db with results
