@@ -694,6 +694,8 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
+        self.protein_clusters_gene_alignments = {}
+        self.protein_clusters_gene_alignments_available = False
         self.protein_clusters_function_sources = []
         self.protein_clusters_functions_dict = {}
         self.clusterings = {}
@@ -727,6 +729,7 @@ class PanSuperclass(object):
         self.p_meta['genome_names'] = sorted([s.strip() for s in self.p_meta['external_genome_names'].split(',') + self.p_meta['internal_genome_names'].split(',') if s])
         self.p_meta['num_genomes'] = len(self.p_meta['genome_names'])
         self.genome_names = self.p_meta['genome_names']
+        self.protein_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if self.p_meta['PCs_clustered']:
             self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
@@ -829,9 +832,13 @@ class PanSuperclass(object):
                 'PC_2': {(...)},
                 (...)
                }
+
+          This function also initializes alignment summaries for each gene
+          in each protein cluster. That information is stored in the dict
+          `self.protein_clusters_gene_alignments`.
         """
 
-        self.progress.new('Initializing protein clusters functions')
+        self.progress.new('Initializing protein clusters')
         self.progress.update('...')
 
         pan_db = PanDatabase(self.pan_db_path)
@@ -840,13 +847,19 @@ class PanSuperclass(object):
 
         for entry in protein_clusters_long_list.values():
             genome_name = entry['genome_name']
-            protein_cluster_id = entry['protein_cluster_id']
             gene_callers_id = entry['gene_caller_id']
+            protein_cluster_id = entry['protein_cluster_id']
 
             if protein_cluster_id not in self.protein_clusters:
                 self.protein_clusters[protein_cluster_id] = {}
                 for g in self.genome_names:
                     self.protein_clusters[protein_cluster_id][g] = []
+
+            if self.protein_clusters_gene_alignments_available:
+                if genome_name not in self.protein_clusters_gene_alignments:
+                    self.protein_clusters_gene_alignments[genome_name] = {}
+
+                self.protein_clusters_gene_alignments[genome_name][gene_callers_id] = entry['alignment_summary']
 
             self.protein_clusters[protein_cluster_id][genome_name].append(gene_callers_id)
 
@@ -1265,7 +1278,7 @@ class PanDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', 'num_protein_clusters', 'num_genes_in_protein_clusters']:
+            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', 'num_protein_clusters', 'num_genes_in_protein_clusters', 'gene_alignments_computed']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
