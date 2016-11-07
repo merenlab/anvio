@@ -904,6 +904,16 @@ class Pangenome(GenomeStorage):
             raise ConfigError, "There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
                     % len(self.genomes)
 
+        if not self.skip_alignments:
+            try:
+                Muscle()
+            except ConfigError, e:
+                raise ConfigError, "It seems things are not quite in order. Anvi'o does not know what is wrong, but you will\
+                                    see the actual error message in second. You can either try to address whatever causes this problem,\
+                                    or you can use the `--skip-alignments` flag to avoid it completely (although the latter would clearly\
+                                    be the easiest way out of this, anvi'o may stop thinking so highly of you if you choose to do that,\
+                                    just FYI). Here is the actual error you got: %s." % str(e).replace('\n', '').replace('  ', ' ')
+
         self.check_params()
 
         self.run.log_file_path = self.log_file_path
