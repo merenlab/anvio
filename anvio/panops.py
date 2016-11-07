@@ -981,17 +981,15 @@ class Pangenome(GenomeStorage):
                 continue
 
             gene_sequences_in_pc = []
-            num_gene_entries = len(protein_clusters_dict[pc_name])
-            for j in range(0, num_gene_entries):
-                gene_entry = protein_clusters_dict[pc_name][j]
+            for gene_entry in protein_clusters_dict[pc_name]:
                 sequence = self.genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
             alignments = muscle.run_muscle_stdin(gene_sequences_in_pc)
 
-            for j in range(0, num_gene_entries):
-                protein_clusters_dict[pc_name][j]['alignment_summary'] = utils.summarize_alignment(alignments[j][1])
+            for gene_entry in protein_clusters_dict[pc_name]:
+                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
 
         self.progress.end()
 
