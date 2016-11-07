@@ -204,14 +204,10 @@ def is_program_exists(program, dont_raise=False):
                         % (program, program)
 
 
-def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
-    filesnpaths.is_output_file_writable(log_file_path)
-
-    if remove_log_file_if_exists and os.path.exists(log_file_path):
-        os.remove(log_file_path)
-
+def format_cmdline(cmdline):
+    """Takes a cmdline for `run_command` or `run_command_STDIN`, and makes it beautiful."""
     if not cmdline or (not isinstance(cmdline, str) and not isinstance(cmdline, list)):
-        raise ConfigError, "You made utils::run_command upset. The parameter you sent to run kinda sucks. It should be string\
+        raise ConfigError, "You made ultis::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
                             or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function\
                             is always False, therefore if you send a string type, it will be split into a list prior to being\
                             sent to subprocess."
@@ -220,6 +216,18 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         cmdline = map(lambda x: str(x), cmdline.split(' '))
     else:
         cmdline = map(lambda x: str(x), cmdline)
+
+    return cmdline
+
+
+def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
+    """Uses subprocess.call to run your `cmdline`"""
+    cmdline = format_cmdline(cmdline)
+
+    filesnpaths.is_output_file_writable(log_file_path)
+
+    if remove_log_file_if_exists and os.path.exists(log_file_path):
+        os.remove(log_file_path)
 
     try:
         if first_line_of_log_is_cmdline:
@@ -233,6 +241,30 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
             raise ConfigError, "command was terminated"
         else:
             return ret_val
+    except OSError as e:
+        raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
+
+
+def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
+    """Uses subprocess.Popen and sends data to your `cmdline` through STDIN"""
+    cmdline = format_cmdline(cmdline)
+
+    filesnpaths.is_output_file_writable(log_file_path)
+
+    if remove_log_file_if_exists and os.path.exists(log_file_path):
+        os.remove(log_file_path)
+
+    try:
+        if first_line_of_log_is_cmdline:
+            with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
+
+        p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ret_val = p.communicate(input=input_data)[0]
+
+        if ret_val < 0:
+            raise ConfigError, "command was terminated"
+        else:
+            return ret_val.decode()
     except OSError as e:
         raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
 
