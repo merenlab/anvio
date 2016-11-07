@@ -695,12 +695,10 @@ class Pangenome(GenomeStorage):
             self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0, 'SCG': 0}
-            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
-                try:
-                    genome_name = self.hash_to_genome_name[entry_hash]
-                except KeyError:
-                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
-                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
+
+            for gene_entry in protein_clusters_dict[PC]:
+                genome_name = gene_entry['genome_name']
+
                 self.view_data[PC][genome_name] += 1
                 self.view_data_presence_absence[PC][genome_name] = 1
                 self.additional_view_data[PC]['num_genes_in_pc'] += 1
@@ -915,20 +913,10 @@ class Pangenome(GenomeStorage):
 
         table_for_protein_clusters = dbops.TableForProteinClusters(self.pan_db_path, run=self.run, progress=self.progress)
 
-        PCs = protein_clusters_dict.keys()
-
         num_genes_in_protein_clusters = 0
-
-        for PC in PCs:
-            for entry_hash, gene_caller_id in [e.split('_') for e in protein_clusters_dict[PC]]:
-                try:
-                    genome_name = self.hash_to_genome_name[entry_hash]
-                except KeyError:
-                    self.progress.end()
-                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
-                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
-
-                table_for_protein_clusters.add({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name})
+        for pc_name in protein_clusters_dict:
+            for gene_entry in protein_clusters_dict[pc_name]:
+                table_for_protein_clusters.add(gene_entry)
                 num_genes_in_protein_clusters += 1
 
         self.progress.end()
@@ -936,11 +924,33 @@ class Pangenome(GenomeStorage):
         table_for_protein_clusters.store()
 
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
-        pan_db.db.set_meta_value('num_protein_clusters', len(PCs))
+        pan_db.db.set_meta_value('num_protein_clusters', len(protein_clusters_dict))
         pan_db.db.set_meta_value('num_genes_in_protein_clusters', num_genes_in_protein_clusters)
         pan_db.disconnect()
 
-        self.run.info('protein clusters info', '%d PCs stored in the database' % len(PCs))
+        self.run.info('protein clusters info', '%d PCs stored in the database' % len(protein_clusters_dict))
+
+
+    def gen_protein_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+        self.progress.new('Generating the protein clusters dictionary from raw MCL clusters')
+        self.progress.update('...')
+
+        protein_clusters_dict = {}
+
+        for PC in mcl_clusters:
+            protein_clusters_dict[PC] = []
+
+            for entry_hash, gene_caller_id in [e.split('_') for e in mcl_clusters[PC]]:
+                try:
+                    genome_name = self.hash_to_genome_name[entry_hash]
+                except KeyError:
+                    self.progress.end()
+                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
+                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
+
+                protein_clusters_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name})
+
+        return protein_clusters_dict
 
 
     def process(self):
@@ -961,7 +971,11 @@ class Pangenome(GenomeStorage):
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
 
         # get clusters from MCL
-        protein_clusters_dict = self.run_mcl(mcl_input_file_path)
+        mcl_clusters = self.run_mcl(mcl_input_file_path)
+
+        # we have the raw protein clusters dict, but we need to re-format it for following steps
+        protein_clusters_dict = self.gen_protein_clusters_dict_from_mcl_clusters(mcl_clusters)
+        del mcl_clusters
 
         # store protein clusters, and gene calls in them
         self.store_protein_clusters(protein_clusters_dict)
