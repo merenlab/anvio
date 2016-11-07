@@ -14,7 +14,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 contigs_db_version = "7"
 profile_db_version = "16"
-pan_db_version = "3"
+pan_db_version = "4"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
 genomes_storage_hdf5_db_vesion = "2"
@@ -32,8 +32,8 @@ versions_for_db_types = {'contigs': contigs_db_version,
 ####################################################################################################
 
 pan_protein_clusters_table_name        = 'protein_clusters'
-pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name']
-pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ]
+pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'alignment_summary']
+pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
 
 
 ####################################################################################################
