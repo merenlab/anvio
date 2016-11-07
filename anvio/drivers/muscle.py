@@ -38,12 +38,12 @@ class Muscle:
 
 
     def run_muscle_stdin(self, sequences_list, debug=False):
-        """Takes a list of tuples for sequences, and performs MSA using muscle.
+        """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
 
             >>> from anvio.drivers.muscle import Muscle
             >>> m = Muscle()
             >>> m.run_muscle_stdin([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
-            [(u'>seq1', u'ATCATCATCGA-'), (u'>seq2', u'ATCG-AGTCGAT')]
+            {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
 
         """
 
@@ -63,14 +63,14 @@ class Muscle:
             raise ConfigError, "Drivers::Muscle: Something went wrong with this run :/ The output does not\
                                 look alright. You can find the output in this log file."
 
-        alignments = []
+        alignments = {}
 
         # parse the output, and fill alignments
         defline, seq = None, None
         for line in [o for o in output.split('\n') if len(o)] + ['>']:
             if line.startswith('>'):
                 if defline:
-                    alignments.append((defline, seq),)
+                    alignments[defline[1:]] = seq
                 defline, seq = line, None
             else:
                 if not seq:
