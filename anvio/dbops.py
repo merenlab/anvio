@@ -2895,7 +2895,7 @@ class TableForProteinClusters(Table):
 
         db_entries = [tuple([self.next_id(t.pan_protein_clusters_table_name)] + entry) for entry in self.entries]
         pan_db = PanDatabase(self.db_path)
-        pan_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_protein_clusters_table_name, db_entries)
+        pan_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.pan_protein_clusters_table_name, db_entries)
         pan_db.disconnect()
 
 
