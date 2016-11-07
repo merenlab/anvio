@@ -37,7 +37,7 @@ class Muscle:
         utils.is_program_exists(self.program_name)
 
 
-    def run_muscle_stdin(self, sequences_list, debug=True):
+    def run_muscle_stdin(self, sequences_list, debug=False):
         """Takes a list of tuples for sequences, and performs MSA using muscle.
 
             >>> from anvio.drivers.muscle import Muscle
