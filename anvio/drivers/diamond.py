@@ -97,8 +97,6 @@ class Diamond:
                     '-d', self.target_db_path,
                     '-p', self.num_threads]
 
-        self.run.info('diamond makedb cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
-
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
@@ -106,6 +104,7 @@ class Diamond:
         expected_output = self.target_db_path + '.dmnd'
         self.check_output(expected_output, 'makedb')
 
+        self.run.info('diamond makedb cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
         self.run.info('Diamond search db', expected_output)
 
 
