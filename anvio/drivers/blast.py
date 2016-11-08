@@ -91,8 +91,6 @@ class BLAST:
         cmd_line = ('makeblastdb -in %s -dbtype prot -out %s' % (self.query_fasta,
                                                                  self.target_db_path))
 
-        self.run.info('blast makeblast cmd', cmd_line, quiet=True)
-
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
@@ -100,6 +98,7 @@ class BLAST:
         expected_output = self.target_db_path + '.phr'
         self.check_output(expected_output, 'makeblastdb')
 
+        self.run.info('blast makeblast cmd', cmd_line, quiet=True)
         self.run.info('BLAST search db', self.target_db_path)
 
 
