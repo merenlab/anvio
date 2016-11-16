@@ -945,6 +945,8 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     info_dict['scg_domain'] = domain
     info_dict['scg_domain_confidence'] = domain_confidence
 
+    info_dict['hmms_for_scgs_were_run'] = True if len(results_dict) else False
+
     # lets get all amino acids used in all complete gene calls:
     if include_AA_counts:
         if split_names:
