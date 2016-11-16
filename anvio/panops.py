@@ -189,6 +189,41 @@ class GenomeStorage(object):
         return contigs_super.gene_function_calls_dict
 
 
+    def sanity_check(self):
+        """Make sure self.genomes is good to go"""
+
+        # make sure genes are called in every contigs db:
+        genomes_missing_gene_calls = [g for g in self.genomes if not self.genomes[g]['genes_are_called']]
+        if len(genomes_missing_gene_calls):
+            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
+                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
+
+        # if two contigs db has the same hash, we are kinda f'd:
+        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
+            raise ConfigError, 'Not all hash values are unique across all contig databases you provided. Something\
+                                very fishy is going on :/'
+
+
+        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
+            raise ConfigError, "Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
+                                wrong with your workflow :/ Please let the developers know if you can't figure this one out"
+
+        # make sure HMMs for SCGs were run for every contigs db:
+        genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
+        if len(genomes_missing_hmms_for_scgs):
+            if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
+                raise ConfigError, "The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. In other words,\
+                                    you don't seem to have run `anvi-run-hmms` on them. Although it is perfectly legal to have anvi'o contigs databases\
+                                    without HMMs run on SCGs, the current pangenomic workflow does not want to deal with this :( Sorry!"
+            else:
+                raise ConfigError, "Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
+                                    can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
+                                                    (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs))
+
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
+
+
     def create_genomes_data_storage(self):
         """Creates an HDF5 file storing all genome related information for later access."""
 
@@ -201,8 +236,8 @@ class GenomeStorage(object):
         self.init_internal_genomes()
         self.init_external_genomes()
 
-        # make sure genome names are not funny (since they are going to end up being db variables soon)
-        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
+        # make sure it is OK to go with self.genomes
+        self.sanity_check()
 
         # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
         # split is added or removed to any of these genomes will change this signature. since we will tie this information
@@ -291,17 +326,6 @@ class GenomeStorage(object):
 
         self.progress.end()
 
-        # if two contigs db has the same hash, we are kinda f'd:
-        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
-            raise ConfigError, 'Not all hash values are unique across all contig databases you provided. Something\
-                                very fishy is going on :/'
-
-        # make sure genes are called in every contigs db:
-        genomes_missing_gene_calls = [g for g in self.external_genome_names if not self.genomes[genome_name]['genes_are_called']]
-        if len(genomes_missing_gene_calls):
-            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
-                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
-
         self.run.info('External genomes', '%d found.' % len(self.external_genome_names))
 
 
@@ -334,16 +358,6 @@ class GenomeStorage(object):
                     c[key] = summary_from_contigs_db_summary[key]
 
         self.progress.end()
-
-        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
-            raise ConfigError, "Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
-                                wrong with your workflow :/ Please let the developers know if you can't figure this one out"
-
-        # make sure genes are called in every contigs db:
-        genomes_missing_gene_calls = [g for g in self.internal_genome_names if not self.genomes[genome_name]['genes_are_called']]
-        if len(genomes_missing_gene_calls):
-            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
-                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
 
         self.run.info('Internal genomes', '%d have been initialized.' % len(self.internal_genome_names))
 
