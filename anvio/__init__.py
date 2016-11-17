@@ -869,7 +869,7 @@ D = {
     'num-clusters-requested': (
             ['--num-clusters-requested'],
             {'metavar': 'INT',
-             'default': 80,
+             'default': 400,
              'type': int,
              'help': "How many clusters do you request? Default is %(default)d."}
              ),
