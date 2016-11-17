@@ -31,8 +31,6 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    cogs = COGs()
-
     parser = argparse.ArgumentParser(description='Run NCBI COGs on stuff.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -44,8 +42,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--search-with', default='blastp', metavar="PROGRAM",
                         help="What program to use for database searching. The default is NCBI's blastp,\
-                              and these are all the options this system has: %s." % \
-                                                        ', '.join(cogs.available_db_search_programs))
+                              but you can also use 'diamond' if you like.")
 
     args = parser.parse_args()
 
