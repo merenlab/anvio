@@ -62,7 +62,8 @@ class COGs:
         self.available_db_search_programs = [p for p in ['diamond', 'blastp'] if utils.is_program_exists(p, dont_raise=True)]
 
         self.available_db_search_program_targets = COGsSetup(args).get_formatted_db_paths()
-        self.COG_data_dir = COGsSetup(args).COG_data_dir
+        self.COG_setup = COGsSetup(args)
+        self.COG_data_dir = self.COG_setup.COG_data_dir
 
         self.search_factory = {'diamond': self.search_with_diamond,
                                'blastp': self.search_with_blastp}
@@ -74,7 +75,10 @@ class COGs:
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError, "Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
                                 database formatted under the COGs data directory for that program :/ You may need to\
-                                re-run COGs setup. We are as confused as you are."  % self.search_with
+                                re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
+                                anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
+                                time to point the right directory using the --cog-data-dir parameter." % \
+                                                                                (self.search_with, self.COG_data_dir)
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError, "You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
@@ -207,9 +211,12 @@ class COGs:
 
 class COGsData:
     """A class to make sense of COG ids and categories"""
-    def __init__(self, args=Args(), run=run, progress=progress, panic_on_failure_to_init=False):
+    def __init__(self, args=Args(), cog_data_dir = None, run=run, progress=progress, panic_on_failure_to_init=False):
         self.run = run
         self.progress = progress
+
+        if cog_data_dir:
+            args.cog_data_dir = cog_data_dir
 
         self.setup = COGsSetup(args)
         self.essential_files = self.setup.get_essential_file_paths()
@@ -260,7 +267,7 @@ class COGsData:
 
 class COGsSetup:
     """A class to download and setup the COG data from NCBI."""
-    def __init__(self, args=Args(), run=run, progress=progress):
+    def __init__(self, args=Args(), cog_data_dir = None, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -268,7 +275,7 @@ class COGsSetup:
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
-        self.COG_data_dir = A('cog_data_dir')
+        self.COG_data_dir = cog_data_dir or A('cog_data_dir')
 
         if not self.COG_data_dir:
             self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
