@@ -279,6 +279,8 @@ class COGsSetup:
 
         if not self.COG_data_dir:
             self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+        else:
+            self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
 
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
