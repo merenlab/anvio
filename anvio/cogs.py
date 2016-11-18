@@ -61,9 +61,10 @@ class COGs:
         self.log_file_path = None
         self.available_db_search_programs = [p for p in ['diamond', 'blastp'] if utils.is_program_exists(p, dont_raise=True)]
 
-        self.available_db_search_program_targets = COGsSetup(args).get_formatted_db_paths()
         self.COG_setup = COGsSetup(args)
         self.COG_data_dir = self.COG_setup.COG_data_dir
+        self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
+        self.essential_files = self.COG_setup.get_essential_file_paths()
 
         self.search_factory = {'diamond': self.search_with_diamond,
                                'blastp': self.search_with_blastp}
@@ -126,7 +127,7 @@ class COGs:
         if not self.hits:
             raise ConfigError, "COGs class has no hits to process. Did you forget to call search?"
 
-        cogs_data = COGsData()
+        cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
 
         functions_dict = {}
@@ -377,7 +378,7 @@ class COGsSetup:
                          regenerate everything that is necessary from them.")
             self.wait_for_the_user()
 
-        if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read() != COG_DATA_VERSION:
+        if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read().strip() != COG_DATA_VERSION:
             raise ConfigError, "The version of your COG data directory is different than what anvi'o hoping to see.\
                                 It seems you need to (re)run anvi'o script to download and format COG data from NCBI."
 
