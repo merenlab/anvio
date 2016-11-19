@@ -279,6 +279,13 @@ D = {
              'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the\
                       anvi'o ontigs database contains taxonomic annotations."}
                 ),
+    'cog-data-dir': (
+            ['--cog-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
+                      if you do not specify anything."}
+                ),
     'show-outlier-snvs': (
             ['--show-outlier-SNVs'],
             {'default': False,
