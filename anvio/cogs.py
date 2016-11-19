@@ -232,7 +232,11 @@ class COGsData:
             self.init()
         elif panic_on_failure_to_init:
             raise ConfigError, "It seems you don't have your COG data set up on this system. Whatever you were\
-                                trying to do is not going to continue being done :( Sorry for the cryptic error."
+                                trying to do is not going to continue being done :( Did you setup your COGs? If\
+                                not, you can take a look at the program `anvi-setup-ncbi-cogs`. Maybe you did\
+                                setup into another directory than the default destination? If that is the case\
+                                maybe you can use the `--cog-data-dir` parameter if it is applicable? No? None\
+                                of these work? Well. Anvi'o hates it as much as you do when things come to this."
 
 
     def init(self):
