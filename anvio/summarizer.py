@@ -67,6 +67,7 @@ class SummarizerSuperClass(object):
         self.quick = args.quick_summary
         self.debug = args.debug
         self.taxonomic_level = args.taxonomic_level
+        self.cog_data_dir = args.cog_data_dir
 
         self.sanity_check()
 
@@ -147,7 +148,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # initialize COGs data if necessary:
         if self.cog_functions_are_called or self.cog_categories_are_called:
-            self.cogs_data = cogs.COGsData()
+            self.cogs_data = cogs.COGsData(cog_data_dir=self.cog_data_dir, panic_on_failure_to_init=True)
 
 
     def process(self):

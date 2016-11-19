@@ -69,6 +69,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupC.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupC.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
     groupC.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
     groupC.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
