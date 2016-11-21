@@ -83,9 +83,18 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     }
     
     var order_from_state = true;
+    var all_information_layers = Object.keys(samples_information_dict[first_sample]);
+
     if (typeof(samples_layer_order) === 'undefined') {
-        samples_layer_order = Object.keys(samples_information_dict[first_sample]);
+        samples_layer_order = all_information_layers;
         order_from_state = false;
+    } else {
+        // add missing layers to state order list
+        all_information_layers.forEach(function(_lname) {
+            if (samples_layer_order.indexOf(_lname) == -1) {
+                samples_layer_order.push(_lname);
+            }
+        });
     }
     
     $('#tbody_samples').empty();
