@@ -36,6 +36,7 @@ class SequencesForHMMHits:
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
         self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
+        self.aa_sequences = contigs_db.get_table_as_dict(t.gene_protein_sequences_table_name)
         self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
 
@@ -101,7 +102,7 @@ class SequencesForHMMHits:
         return hmm_hits_per_bin
 
 
-    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences = True):
+    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences = False):
         """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
            its struture goes like this:
 
@@ -134,11 +135,16 @@ class SequencesForHMMHits:
             else:
                 unique_ids_taken_care_of.add(gene_unique_id)
 
-            gene_call = self.genes_in_contigs[hmm_hit['gene_callers_id']]
+            gene_callers_id = hmm_hit['gene_callers_id']
+            gene_call = self.genes_in_contigs[gene_callers_id]
 
             contig_name = gene_call['contig']
             start, stop = gene_call['start'], gene_call['stop']
-            sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
+
+            if return_amino_acid_sequences:
+                sequence = self.aa_sequences[gene_callers_id]['sequence']
+            else:
+                sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
             hmm_sequences_dict_for_splits[gene_unique_id] = {'sequence': sequence,
                                                              'source': source,
@@ -148,6 +154,7 @@ class SequencesForHMMHits:
                                                              'contig': contig_name,
                                                              'start': start,
                                                              'stop': stop,
+                                                             'gene_callers_id': gene_callers_id,
                                                              'length': stop - start}
 
         return hmm_sequences_dict_for_splits
@@ -155,7 +162,7 @@ class SequencesForHMMHits:
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
         entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'start', 'stop', 'length']])
+        header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
         return (header, sequence)
 
