@@ -172,11 +172,14 @@ anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o /dev/null -l
 INFO "Show available gene names in HMM sources"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o /dev/null -L
 
-INFO "Get sequences for HMM hits for a bin in a collection"
+INFO "Get DNA sequences for HMM hits for a bin in a collection"
 anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt
 
-INFO "Get all ABC transporter hits defined in an HMM source"
+INFO "Get DNA sequences for all ABC transporter hits defined in an HMM source"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o $output_dir/ABC_transporter_hits_in_external_hmm_profile.txt --gene-names ABC_tran --hmm-source external_hmm_profile
+
+INFO "Get AA sequences for HMM hits for a bin in a collection"
+anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt --get-aa-sequences
 
 INFO "Generate a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/samples-order.txt -o $output_dir/SAMPLES.db
