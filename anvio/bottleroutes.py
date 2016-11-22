@@ -457,7 +457,7 @@ def get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name):
     if not d.collection:
         return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
 
-    hmm_sequences_dict = d.hmm_access.get_hmm_sequences_dict_for_splits({bin_name: set(d.collection[bin_name])})
+    hmm_sequences_dict = d.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(d.collection[bin_name])})
     gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
 
     if not gene_sequences:

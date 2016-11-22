@@ -725,7 +725,7 @@ class Bin:
             return
 
         s = SequencesForHMMHits(self.summary.contigs_db_path)
-        hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits({self.bin_id: self.split_ids})
+        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_ids})
 
         single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]
         non_single_copy_gene_hmm_sources = self.summary.completeness.sources

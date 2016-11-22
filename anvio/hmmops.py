@@ -101,7 +101,7 @@ class SequencesForHMMHits:
         return hmm_hits_per_bin
 
 
-    def get_hmm_sequences_dict_for_splits(self, splits_dict):
+    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences = True):
         """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
            its struture goes like this:
 
@@ -110,6 +110,9 @@ class SequencesForHMMHits:
                     'bin_y': set['split_c, split_d, ...'],
                     ...
                 }
+
+            This function will return DNA seqeunces by default. If `return_amino_acid_sequences` parameter
+            is True, it will return AA sequences instead.
         """
 
         hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
