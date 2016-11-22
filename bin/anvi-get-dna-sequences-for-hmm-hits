@@ -65,7 +65,7 @@ def main(args):
     sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
     s = SequencesForHMMHits(args.contigs_db, sources = sources)
 
-    hmm_sequences_dict = s.get_hmm_sequences_dict_for_splits(splits_dict)
+    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
     run.info('Num hits', '%d found for %d source(s)' % (len(hmm_sequences_dict), len(sources)))
 
     if len(gene_names):
