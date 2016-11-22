@@ -328,6 +328,12 @@ D = {
                       to see a list of available gene names, you can use '--list-available-gene-names'\
                       flag."}
                 ),
+    'get-aa-sequences': (
+            ['--get-aa-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Store amino acid sequences instead."}
+                ),
     'list-available-gene-names': (
             ['-L', '--list-available-gene-names'],
             {'default': False,
