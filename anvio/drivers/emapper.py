@@ -174,7 +174,8 @@ class EggNOGMapper:
                                 gene calls. Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
                                                 (fields[0], self.gene_caller_id_prefix)
 
-        self.add_entry(gene_callers_id, 'EGGNOG (%s)' % self.database.upper(), fields[1], fields[11], fields[2])
+        if fields[11] and fields[11] != 'NA' and not fields[11].startswith('Protein of unknown function'):
+            self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[11], fields[2])
 
         if fields[8]:
             COG_ids=[og[:-4] for og in fields[8].split(',') if og.endswith('@NOG') and og.startswith('COG')]
