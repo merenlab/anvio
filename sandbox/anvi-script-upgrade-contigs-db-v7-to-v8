@@ -51,6 +51,8 @@ def update_contigs_db(contigs_db_path, just_do_it = False):
 
     # bye, gene_functions content
     contigs_db._exec('''DELETE FROM %s''' % t.gene_function_calls_table_name)
+    contigs_db.remove_meta_key_value_pair('gene_function_sources')
+    contigs_db.set_meta_value('gene_function_sources', None)
     contigs_db.commit()
 
     # set the version
