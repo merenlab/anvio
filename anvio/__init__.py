@@ -186,8 +186,11 @@ D = {
             ['--drop-previous-annotations'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to remove all previous functional annotations for your genes,\
-                      and then import the new data. The default behavior is to add the new annotations incrementally."}
+             'help': "Use this flag if you want anvi'o to remove ALL previous functional annotations for your genes,\
+                      and then import the new data. The default behavior will add any annotation source into the db\
+                      incrementally unless there are already annotations from this source. In which case, it will first\
+                      remove previous annotations for that source only (i.e., if source X is both in the db and in the\
+                      incoming annotations data, it will replace the content of source X in the db)."}
                 ),
     'skip-mindful-splitting': (
             ['--skip-mindful-splitting'],
