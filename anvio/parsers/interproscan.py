@@ -35,6 +35,13 @@ class InterProScan(Parser):
             try:
                 d[entry]['e_value'] = float(d[entry]['e_value'])
             except:
-                d[entry]['e_value'] = None
+                d[entry]['e_value'] = 0.0
+
+            for key in d[entry]:
+                if d[entry][key] == 'None':
+                    d[entry][key] = None
+
+            if not d[entry]['function'] and d[entry]['accession']:
+                d[entry]['function'] = d[entry]['accession']
 
         return d
