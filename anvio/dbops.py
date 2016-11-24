@@ -786,6 +786,12 @@ class PanSuperclass(object):
 
 
     def init_additional_layer_data(self):
+        """For each function annotation source add a layer of additional data to show whether PCs have annotation"""
+
+        if not self.functions_initialized:
+            # screw you, too
+            return
+
         self.progress.new('Initializing additional layer data')
         self.progress.update('...')
         pan_db = PanDatabase(self.pan_db_path)
@@ -798,23 +804,29 @@ class PanSuperclass(object):
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
                                 data from another table. Anvi'o needs an adult :("
 
-        # if functions are initialized, and if COGs are available, we shall add a layer for known and unknown hits
-        # for each PC (too many shitty nested loops here, but it is quite efficient since we work only with adict
-        # in memory, probably at some point this section will become much more generic):
-        if self.functions_initialized and 'COG_FUNCTION' in self.protein_clusters_function_sources:
-            self.progress.update('Computing known/unknown COGs dict')
+        # too many shitty nested loops here, but it is quite efficient since we work only with a dict
+        # in memory
+        for annotation_source in self.protein_clusters_function_sources:
+            if annotation_source == 'COG_CATEGORY':
+                # we don't need this one
+                continue
+
+            self.progress.update('Computing known/unknown dict for %s' % annotation_source)
             for protein_cluster_id in self.additional_layers_dict:
-                COGs = Counter({})
+                hits = Counter({})
                 for genome_id in self.protein_clusters_functions_dict[protein_cluster_id]:
                     for gene_callers_id in self.protein_clusters_functions_dict[protein_cluster_id][genome_id]:
-                        COGs[self.protein_clusters_functions_dict[protein_cluster_id][genome_id][gene_callers_id]['COG_FUNCTION'][0]] += 1
+                        if annotation_source in self.protein_clusters_functions_dict[protein_cluster_id][genome_id][gene_callers_id]:
+                            hits[self.protein_clusters_functions_dict[protein_cluster_id][genome_id][gene_callers_id][annotation_source][0]] += 1
+                        else:
+                            hits['UNKNOWN'] += 1
 
-                if not COGs or COGs.most_common()[0][0] == 'UNKNOWN':
-                    self.additional_layers_dict[protein_cluster_id]['COG'] = 'UNKNOWN'
+                if not hits or hits.most_common()[0][0] == 'UNKNOWN':
+                    self.additional_layers_dict[protein_cluster_id][annotation_source] = 'UNKNOWN'
                 else:
-                    self.additional_layers_dict[protein_cluster_id]['COG'] = 'KNOWN'
+                    self.additional_layers_dict[protein_cluster_id][annotation_source] = 'KNOWN'
 
-            self.additional_layers_headers.append('COG')
+            self.additional_layers_headers.append(annotation_source)
 
         self.progress.end()
 
