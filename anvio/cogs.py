@@ -167,8 +167,12 @@ class COGs:
                 # append annotation
                 annotations.append(cogs_data.cogs[COG_id]['annotation'])
 
-            add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), '; '.join(annotations), self.hits[gene_callers_id]['evalue'])
-            add_entry(gene_callers_id, 'COG_CATEGORY', '', ', '.join(categories), 0.0)
+            # all these shitty heuristics... If there are multiple COG ids or categories, separate them from each other by '!!!' so parsing
+            # them later is possible. Am I embarrassed? Yes. Is there a better way of doing this efficiently? Absolutely. What time is it?
+            # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
+            # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
+            add_entry(gene_callers_id, 'COG_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
+            add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(categories), 0.0)
 
         # store hits in contigs db.
         gene_function_calls_table = dbops.TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
