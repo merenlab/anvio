@@ -255,12 +255,17 @@ class GenomesDataStorage(HDF5_IO):
     def get_gene_functions(self, genome_name, gene_caller_id):
         if not self.functions_are_available:
             raise HDF5Error, "Functions are not available for this genome storage, and you are calling GenomesStorage::get_gene_functions\
-                              when you really shoudln't :/"
+                              when you really shouldn't :/"
 
         functions = {}
+
+        if 'functions' not in self.fp['/data/genomes/%s/%d' % (genome_name, gene_caller_id)]:
+            # no sources provided any annotation for this poor gene
+            return functions
+
         d = self.fp['/data/genomes/%s/%d/functions' % (genome_name, gene_caller_id)]
         for source in d:
-            functions[source] = [f.strip() if f else 'UNKNOWN' for f in d[source].value.split(',')]
+           functions[source] = d[source].value
 
         return functions
 
