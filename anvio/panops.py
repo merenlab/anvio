@@ -58,6 +58,7 @@ class GenomeStorage(object):
         self.hash_to_genome_name = {}
 
         self.functions_are_available = False
+        self.function_annotation_sources = set([])
 
 
     def load_genomes_descriptions(self):
@@ -118,32 +119,59 @@ class GenomeStorage(object):
         for genome_name in self.internal_genome_names:
             self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
 
-        # check whether function calls are available for all genomes involved. we will primarily focus on COG functions and
-        # categories. Which means we will expect every contigs database to have annotations for COG_FUNCTION and COG_CATEGORY.
-        genomes_missing_functions = []
+        # check whether function calls are available for all genomes involved, and whether function sources for each genome is identical
+        function_annotation_sources_per_genome = {}
+        all_function_annotation_sources_observed = set([])
         for genome_name in self.genomes:
             g = self.genomes[genome_name]
             contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
             sources = contigs_db.meta['gene_function_sources']
             contigs_db.disconnect()
 
-            if not sources or 'COG_FUNCTION' not in sources or 'COG_CATEGORY' not in sources:
-                genomes_missing_functions.append(genome_name)
+            function_annotation_sources_per_genome[genome_name] = sources
+            all_function_annotation_sources_observed.update(sources)
 
-        if not len(genomes_missing_functions):
-            self.run.warning('COG_FUNCTION and COG_CATEGORY annotations are available for all genomes! This information will be stored in the\
-                              genomes storage file for later use. You did great!', header="Functions are found", lc="green")
-            self.functions_are_available = True
+        if not len(all_function_annotation_sources_observed):
+            self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
+                              then your genomes have no functional annotation. It is sad.")
         else:
-            all_missing_functions = False if len(genomes_missing_functions) < len(self.genomes) else True
-            warning_msg = 'It seems %s of the genomes you have are missing COG_FUNCTION and COG_CATEGORY annotations. Analyses using this storage\
-                           will have no functional information available. If you want to change this, you can read the documentation about\
-                           importing functions into contigs databases.' % ('all' if all_missing_functions else 'some')
+            # this guy down below fills in the self.function_annotation_sources with function annotation sources
+            # that are common to all genomes.
+            for sources in function_annotation_sources_per_genome.values():
+                if not sources:
+                    continue
 
-            if not all_missing_functions:
-                warning_msg += ' If you are interested, these are the genomes that needs functional annotation: %s.' % ', '.join(genomes_missing_functions)
+                if not(self.function_annotation_sources):
+                    self.function_annotation_sources.update(sources)
+                else:
+                    self.function_annotation_sources = self.function_annotation_sources.intersection(sources)
 
-            self.run.warning(warning_msg)
+            function_annotation_sources_some_genomes_miss = all_function_annotation_sources_observed.difference(self.function_annotation_sources)
+
+            if not len(self.function_annotation_sources):
+                # none of the functions are common
+                self.run.warning("Although some of your genomes had some functional annotations, none of them were common to all genomes :/\
+                                  Anvi'o will continue working with them, but you will have no functions available to you downstream. Just\
+                                  so you know, these are the annotation sources observed at least once in at least one of your genomes: '%s'" % \
+                                                                    (', '.join(all_function_annotation_sources_observed)))
+                self.functions_are_available = False
+            else:
+                self.functions_are_available = True
+
+                # good. here we know some functions are available, but let's get some further understanding, and report it to the user, you know,
+                # because we're nice:
+                if len(function_annotation_sources_some_genomes_miss):
+                    # some functions were missing from some genomes
+                    self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some\
+                                      funciton annotation sources that are common to all of your genomes, and they will be used whenever\
+                                      it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources,\
+                                      but they were not common to all genomes. Here they are so you can say your goodbyes to them (because\
+                                      they will not be used): '%s'" % \
+                                            (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
+                else:
+                    # every function ever observed is common to all genomes.
+                    self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for\
+                                      downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
 
 
     def init_genomes_data_storage(self):
@@ -184,7 +212,7 @@ class GenomeStorage(object):
         args = Args()
         args.contigs_db = contigs_db_path
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
-        contigs_super.init_functions(requested_sources=['COG_FUNCTION', 'COG_CATEGORY'])
+        contigs_super.init_functions(requested_sources=self.function_annotation_sources)
 
         return contigs_super.gene_function_calls_dict
 
@@ -269,16 +297,17 @@ class GenomeStorage(object):
             contigs_db.disconnect()
 
             functions_dict = self.get_functions_dict_from_contigs_db(g['contigs_db_path'])
-            FCAT = lambda: functions_dict[gene_caller_id]['COG_CATEGORY'] if gene_caller_id in functions_dict else None
-            FFUN = lambda: functions_dict[gene_caller_id]['COG_FUNCTION'] if gene_caller_id in functions_dict else None
 
             for gene_caller_id in g['gene_caller_ids']:
                 partial_gene_call = gene_caller_id in g['partial_gene_calls']
 
-                if self.functions_are_available:
-                    functions = [('COG_CATEGORY', FCAT()[1] if FCAT() else ''), ('COG_FUNCTION', FFUN()[0] if FFUN() else '')]
-                else:
-                    functions = []
+                functions = []
+                if gene_caller_id in functions_dict:
+                    for annotation_source in self.function_annotation_sources:
+                        if annotation_source in functions_dict[gene_caller_id]:
+                            annotation_tuple = functions_dict[gene_caller_id][annotation_source]
+                            if annotation_tuple:
+                                functions.append((annotation_source, '%s|||%s' % (annotation_tuple[0], annotation_tuple[1])),)
 
                 self.genomes_storage.add_gene_call_data(genome_name,
                                                         gene_caller_id,
