@@ -12,7 +12,6 @@ import textwrap
 from collections import Counter
 
 import anvio
-import anvio.cogs as cogs
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -146,10 +145,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.protein_clusters_function_sources
 
-        # initialize COGs data if necessary:
-        if self.cog_functions_are_called or self.cog_categories_are_called:
-            self.cogs_data = cogs.COGsData(cog_data_dir=self.cog_data_dir, panic_on_failure_to_init=True)
-
 
     def process(self):
         # init profile data for colletion.
@@ -224,15 +219,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for pc_name in collection_dict[bin_id]:
                 pc_name_to_bin_name[pc_name] = bin_id
 
-        # some anonymous functions for a special treatment of COGs:
-        CID2DESC = lambda cog_id: self.cogs_data.cogs[cog_id]['annotation'] if cog_id in self.cogs_data.cogs else 'COG description was not found'
-        CAT2DESC = lambda cog_cat: self.cogs_data.categories[cog_cat] if cog_cat in self.cogs_data.categories else 'COG category description was not found'
-        CID = lambda cog_id: [cog_id] if self.quick else [cog_id, CID2DESC(cog_id)]
-        CAT = lambda cog_cat: [cog_cat] if self.quick else [cog_cat, CAT2DESC(cog_cat)]
-        UID = lambda unknown_id: [unknown_id] if self.quick else [unknown_id, ''] # <- FIXME: this is here because we don't have anything in the genomes
-                                                                                  # storage to resolve it. Meren hates Meren. This design will change,
-                                                                                  # but later.
-
         ###############################################
         # generate an output file for protein clusters.
         ###############################################
@@ -262,26 +248,16 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 for gene_caller_id in self.protein_clusters[pc_name][genome_name]:
                     entry = [unique_id, pc_name, pc_name_to_bin_name[pc_name], genome_name, gene_caller_id]
 
-                    # FIXME: this is a fucking mess. the genomes storage must treat every function source identically.
-                    # this is shit like this. to fix this mess you gotta start going back in the code starting with the
-                    # implementation of `init_protein_clusters_functions` in dbops/PanSuper (a kind note from Meren
-                    # to Meren).
                     for function_source in self.protein_clusters_function_sources:
-                        accessions_list = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]
-                        if function_source == 'COG_CATEGORY':
-                            m = [CAT(a) for a in accessions_list]
-                        elif function_source == 'COG_FUNCTION':
-                            m = [CID(a) for a in accessions_list]
+                        annotations_dict = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]
+                        if function_source in annotations_dict:
+                            annotation_blob = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]
+                            accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
+                            entry.append('|'.join(accessions))
+                            entry.append('|'.join(annotations))
                         else:
-                            m = [UID(a) for a in accessions_list]
-
-                        # m now a list that looks like [[acc_1, desc_1], [acc_2, desc_2]], if not self.quick,
-                        # or it is [acc_1, acc_2] if it is self.quick. we want to convert the first one into
-                        # [acc_1|acc_2, desc_1|desc_2], and the second one into [acc_1|acc_2]. quick is easy,
-                        # but the other way is tricky
-                        entry.append('|'.join([l[0] for l in m]))
-                        if not self.quick:
-                            entry.append('|'.join([l[1] for l in m]))
+                            entry.append('')
+                            entry.append('')
 
                     entry.append(self.genomes_storage.get_gene_sequence(genome_name, gene_caller_id)) if not self.quick else None
 
