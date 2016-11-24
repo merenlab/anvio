@@ -2987,13 +2987,13 @@ class TableForGeneFunctions(Table):
 
             # set the sources
             contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
-            contigs_db.db.set_meta_value('gene_function_sources', ', '.join(list(gene_function_sources_in_db.union(gene_function_sources))))
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
 
         else:
             # fuctions in the db, but none of them match with the incoming annotation sources. totally new stuff.
             # good then. update sources
             contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
-            contigs_db.db.set_meta_value('gene_function_sources', ', '.join(list(gene_function_sources_in_db.union(gene_function_sources))))
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
 
         # push the data
         db_entries = [tuple([self.next_id(t.gene_function_calls_table_name)] + [functions_dict[v][h] for h in t.gene_function_calls_table_structure[1:]]) for v in functions_dict]
