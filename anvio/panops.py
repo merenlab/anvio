@@ -128,8 +128,9 @@ class GenomeStorage(object):
             sources = contigs_db.meta['gene_function_sources']
             contigs_db.disconnect()
 
-            function_annotation_sources_per_genome[genome_name] = sources
-            all_function_annotation_sources_observed.update(sources)
+            if sources:
+                function_annotation_sources_per_genome[genome_name] = sources
+                all_function_annotation_sources_observed.update(sources)
 
         if not len(all_function_annotation_sources_observed):
             self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
