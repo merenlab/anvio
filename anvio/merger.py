@@ -213,7 +213,7 @@ class MultipleRuns:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
             raise ConfigError, "The contigs database you provided, which is identified with hash '%s', does\
                                       not seem to match the run profiles you are trying to merge, which share the\
-                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, hashes_for_profile_dbs[0])
+                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0])
 
 
     def set_sample_id(self):
