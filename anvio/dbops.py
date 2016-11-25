@@ -769,16 +769,18 @@ class PanSuperclass(object):
                               workflow will not be accessible.")
             return
 
+        # FIXME WE HAVE TO STORE AVAILABLE FUNCTIONS IN GENOMES STORAGE ATTRs!!!! THIS IS RIDICULOUS
+        self.protein_clusters_function_sources = set([])
         for protein_cluster_id in self.protein_clusters:
             self.protein_clusters_functions_dict[protein_cluster_id] = {}
             for genome_name in self.genome_names:
                 self.protein_clusters_functions_dict[protein_cluster_id][genome_name] = {}
                 for gene_callers_id in self.protein_clusters[protein_cluster_id][genome_name]:
-                    self.protein_clusters_functions_dict[protein_cluster_id][genome_name][gene_callers_id] = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
+                    functions = self.genomes_storage.get_gene_functions(genome_name, gene_callers_id)
+                    self.protein_clusters_functions_dict[protein_cluster_id][genome_name][gene_callers_id] = functions
 
-        # available functions
-        a_protein_cluster = self.protein_clusters_functions_dict.values()[0]
-        self.protein_clusters_function_sources = [v for v in a_protein_cluster.values() if v][0].values()[0].keys()
+                    if functions:
+                        self.protein_clusters_function_sources.update(functions.keys())
 
         self.functions_initialized = True
 
