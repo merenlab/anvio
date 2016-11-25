@@ -646,7 +646,7 @@ function buildLayersTable(order, settings)
             else
             {
                 var color = "#000000";
-                var height = '30';
+                var height = '90';
                 var margin = '15';
                 var color_start = "#DDDDDD";
 
