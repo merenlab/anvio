@@ -321,6 +321,21 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
                 ),
+    'annotation-sources': (
+            ['--annotation-sources'],
+            {'metavar': 'SOURCE NAME',
+             'default': None,
+             'help': "Get functional annotations for a specific list of annotation sources. You\
+                      can specifiy one or more sources by separating them from each other with a comma\
+                      character (i.e., '--annotation-sources source_1,source_2,source_3'). The default\
+                      behavior is to return everything"}
+                ),
+    'list-annotation-sources': (
+            ['-l', '--list-annotation-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available sources for annotation in the contigs database and quit."}
+                ),
     'gene-names': (
             ['--gene-names'],
             {'metavar': 'HMM HIT NAME',
