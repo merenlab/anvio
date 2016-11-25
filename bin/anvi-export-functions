@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    dbops.is_contigs_db(args.contigs_db)
+
+    progress.new('Initializing')
+    progress.update('...')
+    contigs_db = dbops.ContigsDatabase(args.contigs_db)
+    annotation_sources = contigs_db.meta['gene_function_sources']
+    annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
+    contigs_db.disconnect()
+    progress.end()
+
+    if not len(annotation_sources):
+        raise ConfigError, "This contigs database does not have any functional annotations :/"
+
+    if args.list_annotation_sources:
+        run.warning('', 'ANNOTATION SOURCE%s FOUND' % 'S' if len(annotation_sources) > 1 else '', lc='yellow')
+        for annotation_source in annotation_sources:
+            if annotation_source == annotation_sources[-1]:
+                run.info_single('%s' % annotation_source, nl_after=1)
+            else:
+                run.info_single('%s' % annotation_source)
+        sys.exit(0)
+
+    if not args.output_file:
+        raise ConfigError, "You should provide an output file name."
+
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    run.info('Annotation sources', '%s.' % (', '.join(annotation_sources)))
+
+    if args.annotation_sources:
+        requested_sources = [s.strip() for s in args.annotation_sources.split(',')]
+
+        missing_sources = [s for s in requested_sources if s not in annotation_sources]
+        if len(missing_sources):
+            raise ConfigError, "One or more of the annotation sources you requested does not appear to be in the\
+                                contigs database :/ Here is the list: %s." % (', '.join(missing_sources))
+
+        run.info('Requested sources', '%s.' % (', '.join(requested_sources)))
+
+        progress.new('Initializing')
+        progress.update('Filtering the annotations dict ...')
+        annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set(requested_sources))
+        progress.end()
+
+
+    progress.new('Exporting annotations')
+    progress.update('...')
+    headers = t.gene_function_calls_table_structure[1:]
+    output = open(args.output_file, 'w')
+    output.write('\t'.join(headers) + '\n')
+    num_entries_reported = 0
+    for entry in annotations_dict.values():
+        output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure[1:]]) + '\n')
+        num_entries_reported += 1
+    output.close()
+    progress.end()
+
+    run.info('Number of annotations reported', num_entries_reported, mc='green')
+    run.info('Output file', args.output_file)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Export gene function calls from an anvi'o contigs database")
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-2)
