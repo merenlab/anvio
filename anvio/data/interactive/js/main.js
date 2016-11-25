@@ -1231,8 +1231,8 @@ function updateProteinClustersBin(bin_id) {
         success: function(data){
             data = JSON.parse(data);
             PC_bins_summary_dict[bin_id] = data;
-            $('#completeness_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
-            $('#redundancy_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
+            $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
+            $('#completeness_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#redundancy_' + bin_id).attr("disabled", false);
