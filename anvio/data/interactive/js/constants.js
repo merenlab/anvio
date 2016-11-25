@@ -255,6 +255,23 @@ var named_layers = {
     },
 };
 
+named_category_colors = {
+    'KNOWN': '#00AA00',
+    'UNKNOWN': '#F0F0F0'
+};
+
+function getNamedCategoryColor(name)
+{
+    if ((name == null) || name == '' || name == 'None')
+        return '#FFFFFF';
+    else {
+        if (name in named_category_colors)
+            return named_category_colors[name];
+        else
+            return randomColor();
+    }
+}
+
 pretty_names = {
     'tnf-cov': 'Seq. Composition + Diff. Coverage',
     'cov': 'Differential coverage',
