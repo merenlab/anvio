@@ -2196,15 +2196,12 @@ function draw_tree(settings) {
                                     false);
                                 offset += layerdata_dict[q.label][pindex][j];
                             } 
-                    
+
                         }
                         else if(isCategorical)
                         {
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '' || layerdata_dict[q.label][pindex] == 'None')
-                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
-                                else
-                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
+                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
                             }
 
                             if (layers[pindex]['type'] == 'color') 
@@ -2329,10 +2326,7 @@ function draw_tree(settings) {
                         {
 
                             if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                if ((layerdata_dict[q.label][pindex] == null) || layerdata_dict[q.label][pindex] == '' || layerdata_dict[q.label][pindex] == 'None')
-                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = '#ffffff';
-                                else
-                                    categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = randomColor();
+                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
                             }
 
                             if (layers[pindex]['type'] == 'color') 
