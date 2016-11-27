@@ -77,6 +77,7 @@ class SummaryHTMLOutput:
         if self.summary_type not in ['profile', 'pan']:
             raise ConfigError, "Unknown summary type '%s'" % self.summary_type
 
+
     def generate(self, quick=False):
         self.progress.new('Copying static files')
         self.copy_files()
@@ -104,7 +105,7 @@ class SummaryHTMLOutput:
             if quick:
                 rendered = render_to_string('profile-index-mini.tmpl', self.summary_dict)
             else:
-                rendered = render_to_string('pan-index.tmpl', self.summary_dict)
+                rendered = render_to_string('profile-index.tmpl', self.summary_dict)
         else:
             raise ConfigError, "You cray..."
 
