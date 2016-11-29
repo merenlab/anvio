@@ -357,20 +357,32 @@ def gen_summary(args, d, request, response, collection_name):
         pass
 
     summarizer_args = Args()
-    summarizer_args.profile_db = d.profile_db_path
-    summarizer_args.contigs_db = d.contigs_db_path
+
+    # common params. we will set pan/profile specific params a bit later:
     summarizer_args.collection_name = collection_name
     summarizer_args.taxonomic_level = d.taxonomic_level
     summarizer_args.list_collections = None
     summarizer_args.debug = None
     summarizer_args.quick_summary = False
-    summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
+    summarizer_args.cog_data_dir = None
 
+    if d.mode == 'pan':
+        summarizer_args.pan_db = d.pan_db_path
+        summarizer_args.genomes_storage = d.genomes_storage_path
+        summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.pan_db), 'SUMMARY_%s' % collection_name)
+    elif d.mode == 'full':
+        summarizer_args.profile_db = d.profile_db_path
+        summarizer_args.contigs_db = d.contigs_db_path
+        summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
+    else:
+        return json.dumps({'error': 'We do not know anything about this mode: "%s"' % d.mode})
+
+    # call the summary:
     try:
-        summary = summarizer.PanSummarizer(summarizer_args, r=run, p=progress)
+        summary = summarizer.PanSummarizer(summarizer_args, r=run, p=progress) if d.mode == 'pan' else summarizer.ProfileSummarizer(summarizer_args, r=run, p=progress)
         summary.process()
     except Exception as e:
-        return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
+        return json.dumps({'error': 'Something failed in the "%s" summary mode. This is what we know: %s' % (d.mode, e)})
 
     run.info_single('HTML output for summary is ready: %s' % summary.index_html)
 
@@ -381,7 +393,12 @@ def gen_summary(args, d, request, response, collection_name):
 def send_summary_static(args, d, request, response, collection_name, filename):
     set_default_headers(response)
 
-    return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_name))
+    if d.mode == 'pan':
+        return static_file(filename, root=os.path.join(os.path.dirname(d.pan_db_path), 'SUMMARY_%s' % collection_name))
+    elif d.mode == 'full':
+        return static_file(filename, root=os.path.join(os.path.dirname(d.profile_db_path), 'SUMMARY_%s' % collection_name))
+    else:
+        return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
 
 
 def get_collection_dict(args, d, request, response, collection_name):
