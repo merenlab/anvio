@@ -1411,18 +1411,28 @@ class ContigsDatabase:
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
 
-        # just take a quick look at the first defline to make sure this FASTA file complies with anvi'o's
-        # "simple defline" rule.
+        # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
+        self.progress.new('Checking deflines and contig lengths')
+        self.progress.update('tick tock ...')
         fasta = u.SequenceSource(contigs_fasta)
-        fasta.next()
-        defline = fasta.id
-        fasta.close()
+        while fasta.next():
+            if not utils.check_contig_names(fasta.id, dont_raise=True):
+                self.progress.end()
+                raise ConfigError, "At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
+                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
+                                    care of this issue, or read this section in the tutorial to understand the reason behind\
+                                    this requirement (anvi'o is very upset for making you do this): %s" % \
+                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
 
-        if not utils.check_contig_names(defline, dont_raise=True):
-            raise ConfigError, "The FASTA file you provided does not comply with the 'simple deflines' requirement of\
-                                anvi'o. Please read this section in the tutorial to understand the reason behind this\
-                                requirement (anvi'o is very upset for making you do this): %s" \
-                                                      % ('http://merenlab.org/2015/05/02/anvio-tutorial/#preparation')
+            if len(fasta.seq) < kmer_size:
+                self.progress.end()
+                raise ConfigError, "At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
+                                    is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
+                                    with such short contigs, but the length of each contig must be at least as long as your `k` for\
+                                    k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
+                                    contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq))
+        fasta.close()
+        self.progress.end()
 
         all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
         if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
@@ -1532,16 +1542,6 @@ class ContigsDatabase:
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
         self.progress.new('South Loop')
-
-        self.progress.update('Checking the contig lengths in the input FASTA ...')
-        while fasta.next():
-            if len(fasta.seq) < kmer_size:
-                self.progress.end()
-                raise ConfigError, "At least one of the contigs, namely '%s' in your input FASTA '%s' is shorter than the k-mer size.\
-                                    The k is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
-                                    with such short contigs, but the length of each contig must be at least as long as your `k` for\
-                                    k-mer analyis." % (fasta.id, contigs_fasta, kmer_size, len(fasta.seq))
-
         fasta.reset()
         while fasta.next():
             contig_name = fasta.id
