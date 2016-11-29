@@ -1532,6 +1532,17 @@ class ContigsDatabase:
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
         self.progress.new('South Loop')
+
+        self.progress.update('Checking the contig lengths in the input FASTA ...')
+        while fasta.next():
+            if len(fasta.seq) < kmer_size:
+                self.progress.end()
+                raise ConfigError, "At least one of the contigs, namely '%s' in your input FASTA '%s' is shorter than the k-mer size.\
+                                    The k is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
+                                    with such short contigs, but the length of each contig must be at least as long as your `k` for\
+                                    k-mer analyis." % (fasta.id, contigs_fasta, kmer_size, len(fasta.seq))
+
+        fasta.reset()
         while fasta.next():
             contig_name = fasta.id
             contig_sequence = fasta.seq
