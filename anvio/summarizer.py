@@ -129,7 +129,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.quick = False
         self.pan_db_path = None
         self.output_directory = None
-        self.genome_storage_path = None
+        self.genomes_storage_path = None
 
         PanSuperclass.__init__(self, args, run, progress)
         if not self.genomes_storage_is_available:
