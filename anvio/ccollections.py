@@ -209,6 +209,7 @@ class GetSplitNamesInBins:
     def __init__(self, args):
         # we will fill this in and return it
         self.split_names_of_interest = set([])
+        self.bins = None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bin_ids_file_path = A('bin_ids_file')
@@ -226,22 +227,14 @@ class GetSplitNamesInBins:
             raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
                                 you would like to focus. Not both :/'
 
-        if (not self.bin_ids_file_path) and (not self.bin_id):
-            raise ConfigError, "You must either use a file to list all the bin ids (-B) you would like to\
-                                focus on, or declare a single bin id (-b) from your collection. You have\
-                                not really given anvi'o anything to work with."
-
         if not self.collection_name:
             raise ConfigError, 'This will not work without a collection ID for your bins :/'
 
         if self.bin_ids_file_path:
             filesnpaths.is_file_exists(self.bin_ids_file_path)
             self.bins = set([b.strip() for b in open(self.bin_ids_file_path).readlines()])
-        if self.bin_id:
+        elif self.bin_id:
             self.bins = set([self.bin_id])
-
-        if not len(self.bins):
-            raise ConfigError, 'There is no bin to work with :/'
 
         self.collections = Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
@@ -255,11 +248,17 @@ class GetSplitNamesInBins:
 
         bins_in_collection = self.collection_dict.keys()
 
-        bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
-        if len(bins_that_does_not_exist_in_collection):
-            raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
-                                "%s". Here is a list of bins that are missing: "%s"'\
-                                        % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection))
+        if not self.bins:
+            self.bins = bins_in_collection
+        else:
+            bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
+            if len(bins_that_does_not_exist_in_collection):
+                raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
+                                    "%s". Here is a list of bins that are missing: "%s"'\
+                                            % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection))
+
+        if not len(self.bins):
+            raise ConfigError, 'There is no bin to work with :/'
 
 
     def get_split_names_only(self):
