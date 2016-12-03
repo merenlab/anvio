@@ -102,7 +102,7 @@ class SequencesForHMMHits:
         return hmm_hits_per_bin
 
 
-    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences=False):
+    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences=False, return_best_hits=False):
         """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
            its struture goes like this:
 
@@ -114,6 +114,9 @@ class SequencesForHMMHits:
 
             This function will return DNA seqeunces by default. If `return_amino_acid_sequences` parameter
             is True, it will return AA sequences instead.
+
+            `return_best_hit=True` will filter the resulting dictionary to remove weak hits if there are more
+            than one hit for a given gene name in a bin for a given hmm source.
         """
 
         hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
@@ -156,6 +159,62 @@ class SequencesForHMMHits:
                                                             'stop': stop,
                                                             'gene_callers_id': gene_callers_id,
                                                             'length': stop - start}
+
+        if return_best_hits:
+            return self.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict_for_splits)
+        else:
+            return hmm_sequences_dict_for_splits
+
+
+    def filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(self, hmm_sequences_dict_for_splits):
+        """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every hit\
+           to identify for each bin_id hits with the same gene name and source. If there are multiple gene\
+           names and source, removes every other except the one with the smallest e-value.
+
+           Say, if there are multiple RecA hits in a bin based on Campbell_et_al, this will keep only the most\
+           significant one.
+        """
+
+        bin_names, hmm_sources = set([]), set([])
+        for v in hmm_sequences_dict_for_splits.values():
+            bin_names.add(v['bin_id'])
+            hmm_sources.add(v['source'])
+
+        # this dictionary will keep track of the occurrence of each gene name in each hmm source and bin:
+        d = {}
+
+        for bin_name in bin_names:
+            d[bin_name] = {}
+            for hmm_source in hmm_sources:
+                d[bin_name][hmm_source] = {}
+
+        # fill in gene_names
+        for v in hmm_sequences_dict_for_splits.values():
+            d[v['bin_id']][v['source']][v['gene_name']] = []
+
+        # add genes into lists
+        for hit_unique_id in hmm_sequences_dict_for_splits:
+            h = hmm_sequences_dict_for_splits[hit_unique_id]
+            d[h['bin_id']][h['source']][h['gene_name']].append((h['e_value'], hit_unique_id), )
+
+        # find the ones that occur twice:
+        hit_unique_ids_to_remove = set([])
+        for bin_name in d:
+            for hmm_source in d[bin_name]:
+                for gene_name in d[bin_name][hmm_source]:
+                    if len(d[bin_name][hmm_source][gene_name]) > 1:
+                        # here `d[bin_name][hmm_source][gene_name]` should look like this for a single gene name from
+                        # a single source in a single bin:
+                        #
+                        #   [(6.2e-19, 'Rinke_et_al___7f25'), (1.8e-26, 'Rinke_et_al___57b0'), (7.7e-30, 'Rinke_et_al___4e43')]
+                        #
+                        # so we will sort from small e_value to big, and add unique ids to the list of shit ids to
+                        # remove them from the dictionary we got.
+                        hit_unique_ids_to_remove.update([t[1] for t in sorted(d[bin_name][hmm_source][gene_name])[1:]])
+
+        for hit_unique_id in hit_unique_ids_to_remove:
+            hmm_sequences_dict_for_splits.pop(hit_unique_id)
+
 
         return hmm_sequences_dict_for_splits
 
