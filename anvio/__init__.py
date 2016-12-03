@@ -352,6 +352,15 @@ D = {
              'action': 'store_true',
              'help': "Store amino acid sequences instead."}
                 ),
+    'return-best-hit': (
+            ['--return-best-hit'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "A bin may contain more than one hit for a gene name in a given HMM source. For instance, there may\
+                      be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of\
+                      the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good\
+                      for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
     'list-available-gene-names': (
             ['-L', '--list-available-gene-names'],
             {'default': False,
