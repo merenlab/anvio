@@ -102,7 +102,7 @@ class SequencesForHMMHits:
         return hmm_hits_per_bin
 
 
-    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences = False):
+    def get_sequences_dict_for_hmm_hits_in_splits(self, splits_dict, return_amino_acid_sequences=False):
         """splits dict is what you get from ccollections.GetSplitNamesInBins(args).get_dict(), and
            its struture goes like this:
 
@@ -120,7 +120,7 @@ class SequencesForHMMHits:
 
         hmm_sequences_dict_for_splits = {}
 
-        unique_ids_taken_care_of = set([])
+        unique_hits_taken_care_of = set([])
         for split_entry in hits_in_splits.values():
             hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
 
@@ -128,12 +128,12 @@ class SequencesForHMMHits:
             source = hmm_hit['source']
             gene_name = hmm_hit['gene_name']
             e_value = hmm_hit['e_value']
-            gene_unique_id = hmm_hit['gene_unique_identifier']
+            hit_unique_id = '___'.join([source, hmm_hit['gene_unique_identifier']])
 
-            if gene_unique_id in unique_ids_taken_care_of:
+            if hit_unique_id in unique_hits_taken_care_of:
                 continue
             else:
-                unique_ids_taken_care_of.add(gene_unique_id)
+                unique_hits_taken_care_of.add(hit_unique_id)
 
             gene_callers_id = hmm_hit['gene_callers_id']
             gene_call = self.genes_in_contigs[gene_callers_id]
@@ -146,16 +146,16 @@ class SequencesForHMMHits:
             else:
                 sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
-            hmm_sequences_dict_for_splits[gene_unique_id] = {'sequence': sequence,
-                                                             'source': source,
-                                                             'bin_id': split_name_to_bin_id[split_name],
-                                                             'gene_name': gene_name,
-                                                             'e_value': e_value,
-                                                             'contig': contig_name,
-                                                             'start': start,
-                                                             'stop': stop,
-                                                             'gene_callers_id': gene_callers_id,
-                                                             'length': stop - start}
+            hmm_sequences_dict_for_splits[hit_unique_id] = {'sequence': sequence,
+                                                            'source': source,
+                                                            'bin_id': split_name_to_bin_id[split_name],
+                                                            'gene_name': gene_name,
+                                                            'e_value': e_value,
+                                                            'contig': contig_name,
+                                                            'start': start,
+                                                            'stop': stop,
+                                                            'gene_callers_id': gene_callers_id,
+                                                            'length': stop - start}
 
         return hmm_sequences_dict_for_splits
 
