@@ -649,8 +649,6 @@ class Bin:
         bin.
         """
 
-        self.progress.update('Recovering the gene caller ids in this bin ...')
-
         genes_dict = {}
 
         for split_name in self.split_ids:
