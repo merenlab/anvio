@@ -67,6 +67,8 @@ class ArgsTemplateForSummarizerClass:
         self.list_collections = None
         self.debug = None
         self.quick_summary = False
+        self.skip_check_collection_name = False
+        self.skip_init_functions = False
         self.cog_data_dir = None
         self.output_dir = filesnpaths.get_temp_directory_path()
 
@@ -88,12 +90,15 @@ class SummarizerSuperClass(object):
             self.collections.list_collections()
             sys.exit()
 
-        self.collection_name = args.collection_name
-        self.output_directory = args.output_dir
-        self.quick = args.quick_summary
-        self.debug = args.debug
-        self.taxonomic_level = args.taxonomic_level
-        self.cog_data_dir = args.cog_data_dir
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.collection_name = A('collection_name')
+        self.skip_check_collection_name = A('skip_check_collection_name')
+        self.skip_init_functions = A('skip_init_functions')
+        self.output_directory = A('output_dir')
+        self.quick = A('quick_summary')
+        self.debug = A('debug')
+        self.taxonomic_level = A('taxonomic_level')
+        self.cog_data_dir = A('cog_data_dir')
 
         self.sanity_check()
 
@@ -101,11 +106,12 @@ class SummarizerSuperClass(object):
 
 
     def sanity_check(self):
-        if not self.collection_name:
-            raise ConfigError, "You must specify a collection id :/"
+        if not self.skip_check_collection_name:
+            if not self.collection_name:
+                raise ConfigError, "You must specify a collection id :/"
 
-        if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
+            if self.collection_name not in self.collections.collections_dict:
+                raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
@@ -166,7 +172,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # init protein clusters and functins from Pan super.
         self.init_protein_clusters()
-        self.init_protein_clusters_functions()
+
+        if not self.skip_init_functions:
+            self.init_protein_clusters_functions()
 
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
