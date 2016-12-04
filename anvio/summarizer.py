@@ -524,6 +524,9 @@ class Bin:
                                                 % (len(missing_ids), bin_id, self.summary.collection_name))
 
 
+        self.gene_caller_ids = self.get_gene_caller_ids()
+
+
     def create(self):
         self.create_bin_dir()
 
@@ -646,6 +649,8 @@ class Bin:
         bin.
         """
 
+        self.progress.update('Recovering the gene caller ids in this bin ...')
+
         genes_dict = {}
 
         for split_name in self.split_ids:
@@ -681,12 +686,9 @@ class Bin:
 
         d = {}
 
-        self.progress.update('Recovering gene calls for the bin ...')
-        gene_callers_ids_for_complete_genes = self.get_gene_caller_ids()
-
         self.progress.update('Sorting out gene calls ...')
         headers = ['contig', 'start', 'stop', 'direction']
-        for gene_callers_id in gene_callers_ids_for_complete_genes:
+        for gene_callers_id in self.gene_caller_ids:
             d[gene_callers_id] = {}
 
             # first fill in sample independent information;
@@ -731,7 +733,7 @@ class Bin:
         self.progress.update('Stroing gene coverages and functions ...')
         utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
-        self.bin_info_dict['genes'] = {'num_genes_found': len(gene_callers_ids_for_complete_genes)}
+        self.bin_info_dict['genes'] = {'num_genes_found': len(self.gene_caller_ids)}
 
 
     def store_sequences_for_hmm_hits(self):
