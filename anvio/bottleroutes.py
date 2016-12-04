@@ -353,18 +353,12 @@ def gen_summary(args, d, request, response, collection_name):
 
     run.info_single('A summary of collection "%s" has been requested.' % collection_name)
 
-    class Args:
-        pass
-
-    summarizer_args = Args()
+    # get a dummy args instance, and fill it down below
+    summarizer_args = summarizer.ArgsTemplateForSummarizerClass()
 
     # common params. we will set pan/profile specific params a bit later:
     summarizer_args.collection_name = collection_name
     summarizer_args.taxonomic_level = d.taxonomic_level
-    summarizer_args.list_collections = None
-    summarizer_args.debug = None
-    summarizer_args.quick_summary = False
-    summarizer_args.cog_data_dir = None
 
     if d.mode == 'pan':
         summarizer_args.pan_db = d.pan_db_path
