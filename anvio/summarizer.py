@@ -44,6 +44,33 @@ progress = terminal.Progress()
 P = lambda x, y: float(x) * 100 / float(y)
 
 
+class ArgsTemplateForSummarizerClass:
+    """Just a dummy args template for ad hoc use of summary classes.
+
+    You can use it like this:
+
+        >>> args = summarizer.ArgsTemplateForSummarizerClass()
+        >>> args.profile_db = profile_db_path
+        >>> args.contigs_db = contigs_db_path
+        >>> args.collection_name = collection_name
+        >>> args.output_dir = output_dir
+
+        >>> summarizer.ProfileSummarizer(args)
+    """
+
+    def __init__(self):
+        self.profile_db = None
+        self.pan_db = None
+        self.contigs_db = None
+        self.collection_name = None
+        self.taxonomic_level = 't_genus'
+        self.list_collections = None
+        self.debug = None
+        self.quick_summary = False
+        self.cog_data_dir = None
+        self.output_dir = filesnpaths.get_temp_directory_path()
+
+
 class SummarizerSuperClass(object):
     def __init__(self, args, r=run, p=progress):
         self.summary = {}
@@ -515,7 +542,7 @@ class Bin:
         self.set_taxon_calls()
 
         if self.summary.gene_coverages_dict:
-            self.store_gene_coverages_matrix()
+            self.store_gene_coverages_and_functions()
 
         self.store_profile_data()
 
@@ -609,18 +636,16 @@ class Bin:
         self.bin_info_dict['hmms'] = info_dict
 
 
-    def store_gene_coverages_matrix(self):
+    def get_gene_caller_ids(self):
+        """Returns a set of gene caller ids in the bin.
 
-        if self.summary.quick:
-            return
+        Because splits can be cut from arbitrary locations, we may have partial hits of genes in a bin.
+        we don't want genes to appear in a bin more than once due to this, or end up appearing in
+        two different bins just because one bin has a fraction of a gene. here we will build the
+        genes_dict, which will contain every gene hit in all splits that are found in this genome
+        bin.
+        """
 
-        self.progress.update('Storing gene coverages ...')
-
-        # because splits are cut from arbitrary locations, we may have partial hits of genes in a bin.
-        # we don't want genes to appear in a bin more than once due to this, or end up appearing in
-        # two different bins just because one bin has a fraction of a gene. here we will build the
-        # genes_dict, which will contain every gene hit in all splits that are found in this genome
-        # bin.
         genes_dict = {}
 
         for split_name in self.split_ids:
@@ -636,7 +661,6 @@ class Bin:
                 else:
                     genes_dict[gene_callers_id] = [gene_call_in_split]
 
-
         # here we have every gene hit in this bin stored in genes_dict. what we will do is to find gene
         # call ids for genes more than 90% of which apper to be in this bin (so nothing wil be reported for
         # a gene where only like 20% of it ended up in this bin).
@@ -647,8 +671,20 @@ class Bin:
 
         del genes_dict
 
+        return gene_callers_ids_for_complete_genes
+
+
+    def store_gene_coverages_and_functions(self):
+
+        if self.summary.quick:
+            return
+
         d = {}
 
+        self.progress.update('Recovering gene calls for the bin ...')
+        gene_callers_ids_for_complete_genes = self.get_gene_caller_ids()
+
+        self.progress.update('Sorting out gene calls ...')
         headers = ['contig', 'start', 'stop', 'direction']
         for gene_callers_id in gene_callers_ids_for_complete_genes:
             d[gene_callers_id] = {}
@@ -661,6 +697,7 @@ class Bin:
             for sample_name in self.summary.p_meta['samples']:
                 d[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
 
+            self.progress.update('Sorting out functions ...')
             # add functions if there are any:
             if len(self.summary.gene_function_call_sources):
                 for source in self.summary.gene_function_call_sources:
@@ -691,6 +728,7 @@ class Bin:
         else:
             headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence']
 
+        self.progress.update('Stroing gene coverages and functions ...')
         utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
         self.bin_info_dict['genes'] = {'num_genes_found': len(gene_callers_ids_for_complete_genes)}
