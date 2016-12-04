@@ -61,7 +61,7 @@ class GenomeStorage(object):
         self.function_annotation_sources = set([])
 
 
-    def load_genomes_descriptions(self, skip_functions):
+    def load_genomes_descriptions(self, skip_functions=False):
         """Reads internal and external genome files, populates self.genomes"""
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
