@@ -61,23 +61,12 @@ class GenomeStorage(object):
         self.function_annotation_sources = set([])
 
 
-    def load_genomes_descriptions(self):
+    def load_genomes_descriptions(self, skip_functions):
         """Reads internal and external genome files, populates self.genomes"""
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.storage_path = A('output_file')
         input_file_for_internal_genomes = A('internal_genomes')
         input_file_for_external_genomes = A('external_genomes')
-
-        if not self.storage_path:
-            self.storage_path = "GENOMES.h5"
-        else:
-            if not self.storage_path.endswith('-GENOMES.h5'):
-                raise ConfigError, "The genomes storage file must end with '-GENOMES.h5'. Anvi'o developers do know how ridiculous\
-                                    this requirement sounds like, but if you have seen the things they did, you would totally\
-                                    understand why this is necessary."
-
-        filesnpaths.is_output_file_writable(self.storage_path)
 
         fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
         fields_for_external_genomes_input = ['name', 'contigs_db_path']
@@ -118,6 +107,11 @@ class GenomeStorage(object):
             self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
         for genome_name in self.internal_genome_names:
             self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
+
+        # if the client is not interested in functions, skip the rest.
+        if skip_functions:
+            self.functions_are_available = False
+            return
 
         # check whether function calls are available for all genomes involved, and whether function sources for each genome is identical
         function_annotation_sources_per_genome = {}
@@ -256,6 +250,19 @@ class GenomeStorage(object):
     def create_genomes_data_storage(self):
         """Creates an HDF5 file storing all genome related information for later access."""
 
+        # some simple checks
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.storage_path = A('output_file')
+        if not self.storage_path:
+            self.storage_path = "GENOMES.h5"
+        else:
+            if not self.storage_path.endswith('-GENOMES.h5'):
+                raise ConfigError, "The genomes storage file must end with '-GENOMES.h5'. Anvi'o developers do know how ridiculous\
+                                    this requirement sounds like, but if you have seen the things they did, you would totally\
+                                    understand why this is necessary."
+
+        filesnpaths.is_output_file_writable(self.storage_path)
+
         # let's read those internal and external genome files the user sent.
         self.load_genomes_descriptions()
 
@@ -359,13 +366,22 @@ class GenomeStorage(object):
         self.run.info('External genomes', '%d found.' % len(self.external_genome_names))
 
 
+    def get_unique_profile_db_path_to_internal_genome_name_dict(self):
+        """Returns a dictionary to bind all genome names that originate from the same profile db"""
+
+        unique_profile_db_path_to_internal_genome_name = {}
+
+        for profile_path in set([self.genomes[g]['profile_db_path'] for g in self.internal_genome_names]):
+            unique_profile_db_path_to_internal_genome_name[profile_path] = [g for g in self.internal_genome_names if self.genomes[g]['profile_db_path'] == profile_path]
+
+        return unique_profile_db_path_to_internal_genome_name
+
+
     def init_internal_genomes(self):
         self.progress.new('Initializing internal genomes')
 
         # to not initialize things over and over again:
-        unique_profile_db_path_to_internal_genome_name = {}
-        for profile_path in set([self.genomes[g]['profile_db_path'] for g in self.internal_genome_names]):
-            unique_profile_db_path_to_internal_genome_name[profile_path] = [g for g in self.internal_genome_names if self.genomes[g]['profile_db_path'] == profile_path]
+        unique_profile_db_path_to_internal_genome_name = self.get_unique_profile_db_path_to_internal_genome_name_dict()
 
         for profile_db_path in unique_profile_db_path_to_internal_genome_name:
             self.collections = ccollections.Collections()
