@@ -207,6 +207,15 @@ def is_output_dir_writable(dir_path):
     return True
 
 
+def is_dir_empty(dir_path):
+    if not dir_path:
+        raise FilesNPathsError, "is_dir_empty: No directory path is declared..."
+    if not os.path.isdir(dir_path):
+        raise FilesNPathsError, "is_dir_empty: '%s' is not a directory..." % dir_path
+
+    return False if len(os.listdir(dir_path)) else True
+
+
 def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
@@ -320,7 +329,7 @@ def check_output_directory(output_directory, ok_if_exists=False):
 
 
 def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists=False):
-    if os.path.exists(output_directory) and delete_if_exists:
+    if os.path.exists(output_directory) and delete_if_exists and not is_dir_empty(output_directory):
         try:
             run.warning('filesnpaths::gen_output_directory: the client asked the existing directory \
                          "%s" to be removed.. Just so you know :/ (You have 5 seconds to press\
