@@ -679,25 +679,34 @@ class Bin:
         return gene_callers_ids_for_complete_genes
 
 
-    def store_gene_coverages_and_functions(self):
-
-        if self.summary.quick:
-            return
-
+    def get_gene_coverages_across_samples_dict(self):
         d = {}
 
-        self.progress.update('Sorting out gene calls ...')
-        headers = ['contig', 'start', 'stop', 'direction']
         for gene_callers_id in self.gene_caller_ids:
             d[gene_callers_id] = {}
 
-            # first fill in sample independent information;
-            for header in headers:
-                d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
-
-            # then fill in distribution across samples:
             for sample_name in self.summary.p_meta['samples']:
                 d[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+
+        return d
+
+
+    def store_gene_coverages_and_functions(self):
+        if self.summary.quick:
+            return
+
+        self.progress.update('Sorting out gene calls ...')
+
+        # here we get the dictionary `d`, which will be holding gene coverages
+        # then fill the rest up with funcitons and others stuff in the following
+        # for loop
+        d = self.get_gene_coverages_across_samples_dict()
+
+        headers = ['contig', 'start', 'stop', 'direction']
+        for gene_callers_id in self.gene_caller_ids:
+            # add sample independent information into `d`;
+            for header in headers:
+                d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
             self.progress.update('Sorting out functions ...')
             # add functions if there are any:
