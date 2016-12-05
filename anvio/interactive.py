@@ -252,11 +252,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # sanity of the view data
             filesnpaths.is_file_tab_delimited(view_data_path)
             view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
-            if not view_data_columns[0] == "contig":
-                raise ConfigError, "The first row of the first column of the view data file must\
-                                    say 'contig', which is not the case for your view data file\
-                                    ('%s'). Please make sure this is a properly formatted view data\
-                                    file." % (view_data_path)
 
             # load view data as the default view:
             self.views[self.default_view] = {'header': view_data_columns[1:],
