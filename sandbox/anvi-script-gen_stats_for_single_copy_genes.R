@@ -103,7 +103,6 @@ for(source in c('Alneberg_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_
     text = sprintf("%s:\n%.2f%% of %d genes\noccur %s times", source, percent_agrees, nrow(x), num_genomes)
     p <- ggplot() + annotate("text", x = 1, y = 1, size=7, label = text) + theme(line = element_blank(),
             text = element_blank(),
-            line = element_blank(),
             title = element_blank())
 
     q <- ggplot(x, aes(x=factor(0), y=count))
