@@ -1005,9 +1005,22 @@ class ProfileSuperclass(object):
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
-        if self.p_meta['contigs_clustered']:
+        if self.p_meta['contigs_clustered'] and 'available_clusterings' in self.p_meta:
             self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
             self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
+        elif self.p_meta['contigs_clustered'] and 'available_clusterings' not in self.p_meta:
+            self.progress.end()
+            self.run.warning("Your profile database thinks the hierarchical clustering was done, yet it contains no entries\
+                              for any hierarchical clustering results. This is not good. Something must have gone wrong\
+                              somewhere :/ To be on the safe side, anvi'o will assume this profile database has no\
+                              clustering (which is literally the case, by the way, it is just the database itself is\
+                              confused about that fact --it happens to the best of us).")
+            self.progress.new('Initializing the profile database superclass')
+
+            self.p_meta['contigs_clustered'] = False
+            self.p_meta['available_clusterings'] = None
+            self.p_meta['default_clustering'] = None
+            self.clusterings = None
         else:
             self.p_meta['available_clusterings'] = None
             self.p_meta['default_clustering'] = None
