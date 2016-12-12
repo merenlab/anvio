@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import numpy as numpy
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+import anvio.ccollections as ccollections
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def main(args):
+    fraction_of_median_coverage = float(args.fraction_of_median_coverage)
+
+    run.info('Fraction of median coverage for core genes', fraction_of_median_coverage)
+
+    progress.new('Initializing internal genomes')
+
+    profile_db_path = args.profile_db
+    contigs_db_path = args.contigs_db
+    collection_name = args.collection_name
+    genome_name = args.bin_id
+
+    progress.update('Computing gene presence data ...')
+    gene_presence_in_the_environment_dict = {}
+
+    ARGS = summarizer.ArgsTemplateForSummarizerClass()
+    ARGS.profile_db = profile_db_path
+    ARGS.contigs_db = contigs_db_path
+    ARGS.collection_name = collection_name
+
+    summary = summarizer.ProfileSummarizer(ARGS)
+
+    split_names_of_interest = ccollections.GetSplitNamesInBins(args).get_dict()[genome_name]
+
+    gene_presence_in_the_environment_dict = {}
+
+    genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
+    gene_coverages_across_samples = genome_bin_summary.get_gene_coverages_across_samples_dict()
+
+    # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
+    # summarize the coverage of each gene in all samples:
+    sum_gene_coverages_across_samples = dict([(gene_callers_id, sum(gene_coverages_across_samples[gene_callers_id].values())) for gene_callers_id in gene_coverages_across_samples])
+
+    # now we will identify the median coverage
+    median_coverage_across_samples = numpy.median(sum_gene_coverages_across_samples.values())
+
+    # now we will store decide whether a gene found in this genome is also found in the environment, and store that
+    # information into `gene_presence_in_the_environment_dict`, and move on to the next stage.
+    for gene_caller_id in sum_gene_coverages_across_samples:
+        if sum_gene_coverages_across_samples[gene_caller_id] < median_coverage_across_samples * fraction_of_median_coverage:
+            gene_presence_in_the_environment_dict[gene_caller_id] = False
+        else:
+            gene_presence_in_the_environment_dict[gene_caller_id] = True
+
+    progress.update('Storing the output for gene presence data')
+
+    utils.store_dict_as_TAB_delimited_file(gene_coverages_across_samples, '%s-GENE-COVs.txt' % genome_name)
+
+    output = open(genome_name + '-ENV-DETECTION.txt', 'w')
+    output.write('gene_callers_id\tdetection\n')
+    for gene_callers_id in gene_presence_in_the_environment_dict:
+        output.write('%s\t%f\n' % (gene_callers_id, gene_presence_in_the_environment_dict[gene_callers_id]))
+    output.close()
+
+    progress.end()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Quantify the detection of genes in genomes in metagenomes to identify the environmental\
+                                                  core. This is a helper script for anvi'o metapangenomic workflow.")
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    parser.add_argument('--fraction-of-median-coverage', metavar="FLOAT", default=0.25, type=float, help="The value set here\
+                        will be used to remove a gene if its total coverage across environments is less than the median coverage\
+                        of all genes multiplied by this value. The default is 0.25, which means, if the median total coverage of\
+                        all genes across all samples is 100X, then, a gene with a total coverage of less than 25X across all\
+                        samples will be assumed not a part of the 'environmental core'.")
+
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError, e:
+        print e
+        sys.exit(-1)
+    except FilesNPathsError, e:
+        print e
+        sys.exit(-1)
