@@ -109,13 +109,26 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         self.add_integer_list('/data/coverages/%s/%s' % (split_name, sample_id), coverage_list)
 
 
-    def get(self, split_name):
+    def get(self, split_name, sample_names=[]):
         self.is_known_split(split_name)
 
+        if sample_names:
+            if not isinstance(sample_names, set):
+                raise HDF5Error, 'The type of sample names must be a "set".'
+
+        # let's learn what we have
+        sample_names_in_db = self.fp['/data/coverages/%s' % split_name].keys()
+
+        if sample_names:
+            for sample_name in sample_names:
+                missing_samples = [sample_name for sample_name in sample_names if sample_name not in sample_names_in_db]
+                if len(missing_samples):
+                    raise HDF5Error, "Some sample names you requested are missing from the auxiliary data file. Here\
+                                        they are: '%s'" % (', '.join(missing_samples))
+        else:
+            sample_names = self.fp['/data/coverages/%s' % split_name].keys()
+
         d = {}
-
-        sample_names = self.fp['/data/coverages/%s' % split_name].keys()
-
         for sample_name in sample_names:
             d[sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
 
