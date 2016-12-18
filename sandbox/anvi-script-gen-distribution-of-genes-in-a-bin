@@ -28,8 +28,10 @@ pp = terminal.pretty_print
 
 def main(args):
     fraction_of_median_coverage = float(args.fraction_of_median_coverage)
+    min_detection = float(args.min_detection)
 
     run.info('Fraction of median coverage for core genes', fraction_of_median_coverage)
+    run.info('Min detection in at last one metagenome', min_detection)
 
     progress.new('Initializing internal genomes')
 
@@ -48,6 +50,26 @@ def main(args):
 
     summary = summarizer.ProfileSummarizer(ARGS)
 
+    # recover the detection statistic
+    summary.init_collection_profile(collection_name)
+    detection_across_metagenomes = summary.collection_profile[genome_name]['portion_covered']
+
+    num_metagenomes_above_min_detection = [m for m in detection_across_metagenomes if detection_across_metagenomes[m] > min_detection]
+
+    num_metagenomes = len(detection_across_metagenomes)
+    average_detection_of_genome = sum(detection_across_metagenomes.values()) / num_metagenomes
+    max_detection_of_genome = max(detection_across_metagenomes.values())
+    if not len(num_metagenomes_above_min_detection):
+        not_enough_detection = True
+        run.warning("This genome is not detected in any of the %d metgenomes you have more than %.2f of its fraction. In fact, its\
+                     average detection is %.2f across all metagenomes, %.2f being the maximum. Well, you can take a look at the\
+                     anvi-summarize output if you would like to learn more. The bottom line is this: the metagenomes you have in this\
+                     project are not the best ones to investigate the occurrence of the genes in this genome in the environment. So.\
+                     This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %\
+                            (num_metagenomes, min_detection, average_detection_of_genome, max_detection_of_genome))
+    else:
+        not_enough_detection = False
+
     split_names_of_interest = ccollections.GetSplitNamesInBins(args).get_dict()[genome_name]
 
     gene_presence_in_the_environment_dict = {}
@@ -65,10 +87,12 @@ def main(args):
     # now we will store decide whether a gene found in this genome is also found in the environment, and store that
     # information into `gene_presence_in_the_environment_dict`, and move on to the next stage.
     for gene_caller_id in sum_gene_coverages_across_samples:
-        if sum_gene_coverages_across_samples[gene_caller_id] < median_coverage_across_samples * fraction_of_median_coverage:
-            gene_presence_in_the_environment_dict[gene_caller_id] = False
+        if not_enough_detection:
+            gene_presence_in_the_environment_dict[gene_caller_id] = 'UNKNOWN'
+        elif sum_gene_coverages_across_samples[gene_caller_id] < median_coverage_across_samples * fraction_of_median_coverage:
+            gene_presence_in_the_environment_dict[gene_caller_id] = 'NOT DETECTED'
         else:
-            gene_presence_in_the_environment_dict[gene_caller_id] = True
+            gene_presence_in_the_environment_dict[gene_caller_id] = 'DETECTED'
 
     progress.update('Storing the output for gene presence data')
 
@@ -77,7 +101,7 @@ def main(args):
     output = open(genome_name + '-ENV-DETECTION.txt', 'w')
     output.write('gene_callers_id\tdetection\n')
     for gene_callers_id in gene_presence_in_the_environment_dict:
-        output.write('%s\t%f\n' % (gene_callers_id, gene_presence_in_the_environment_dict[gene_callers_id]))
+        output.write('%s\t%s\n' % (gene_callers_id, gene_presence_in_the_environment_dict[gene_callers_id]))
     output.close()
 
     progress.end()
@@ -92,6 +116,12 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    parser.add_argument('--min-detection', metavar="FLOAT", default=0.50, type=float, help="For this entire thing to work, the\
+                        genome you are focusing on should be detected in at least one metagenome. If that is not the case, it would\
+                        mean that you do not have any sample that represents the niche for this organism (or you do not have enough\
+                        depth of coverage) to investigate the detection of genes in the environment. By default, this script requires\
+                        at least '0.5' of the genome to be detected in at least one metagenome. This parameter allows you to change\
+                        that. 0 would mean no detection test required, 1 would mean the entire genome must be detected.")
     parser.add_argument('--fraction-of-median-coverage', metavar="FLOAT", default=0.25, type=float, help="The value set here\
                         will be used to remove a gene if its total coverage across environments is less than the median coverage\
                         of all genes multiplied by this value. The default is 0.25, which means, if the median total coverage of\
