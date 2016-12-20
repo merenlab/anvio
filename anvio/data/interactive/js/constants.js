@@ -257,7 +257,10 @@ var named_layers = {
 
 named_category_colors = {
     'KNOWN': '#00AA00',
-    'UNKNOWN': '#F0F0F0'
+    'UNKNOWN': '#F0F0F0',
+    'ECG': '#00AA00',
+    'EDG': '#AA0000',
+    'NA': '#F0F0F0'
 };
 
 function getNamedCategoryColor(name)
