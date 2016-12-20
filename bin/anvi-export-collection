@@ -51,7 +51,7 @@ def main(args):
     collection_info = c.collections_dict[args.collection_name]
     run.info('Collection found', '"%s" (%d items in %d bins)' % (args.collection_name, collection_info['num_splits'], collection_info['num_bins']))
 
-    c.export_collection(args.collection_name, args.output_file_prefix)
+    c.export_collection(args.collection_name, output_file_prefix=args.output_file_prefix, include_unbinned=args.include_unbinned)
 
 
 if __name__ == '__main__':
@@ -61,9 +61,12 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    parser.add_argument('--include-unbinned', default=False, action='store_true', help="When this flag is used, anvi'o\
+                         will also store in the output file the items that do not appear in any of your bins. This new\
+                         bin will be called '__UNBINNED__'. Yes. The ugly name is intentional.")
 
     args = parser.parse_args()
-    
+
     try:
         main(args)
     except ConfigError, e:
