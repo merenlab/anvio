@@ -1950,10 +1950,10 @@ function loadState()
                                 $('#tree-radius-container').show();
                                 $('#tree-radius').val(state['tree-radius']);
                             }
-                            if (state.hasOwnProperty('order-by')) {
+                            if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
                                 $('#trees_container').val(state['order-by']);
                             }
-                            if (state.hasOwnProperty('current-view')) {
+                            if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
                                 $('#views_container').val(state['current-view']);
                             }
                             if (state.hasOwnProperty('max-font-size')) {
