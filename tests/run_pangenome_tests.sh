@@ -36,6 +36,9 @@ anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
 INFO "Importing an example collection of protein clusters"
 anvi-import-collection -p TEST/TEST-PAN.db -C test_collection example-PC-collection.txt
 
+INFO "Exporting the collection 'test_collection'"
+anvi-export-collection -p TEST/TEST-PAN.db -C test_collection -O exported_collection --include-unbinned
+
 INFO "Summarizing the pan, using the test collection (in quick mode)"
 anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST_SUMMARY_QUICK --quick
 
