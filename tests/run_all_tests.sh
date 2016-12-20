@@ -128,6 +128,9 @@ anvi-import-collection $files/example_files_for_external_binning_results/externa
 INFO "Exporting the 'CONTIGS_IMPORTED' collection that was just imported"
 anvi-export-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db -C CONTIGS_IMPORTED --output-file-prefix $output_dir/exported-collection
 
+INFO "Exporting the 'CONTIGS_IMPORTED' collection that was just imported *with* unbinned items"
+anvi-export-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db -C CONTIGS_IMPORTED --output-file-prefix $output_dir/exported-collection --include-unbinned
+
 INFO "Re-importing a collection from files just exported for CONTIGS_IMPORTED collection (just to confuse you, and to see if we can import stuff we export)"
 anvi-import-collection $output_dir/exported-collection.txt \
                        -c $output_dir/CONTIGS.db \
