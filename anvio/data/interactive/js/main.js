@@ -335,15 +335,12 @@ function initData () {
             buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
-            $.when({}).then(onTreeClusteringChange).then(onViewChange).then(
-                function() {
-                    if (autoload_state !== null)
-                    {
-                        $.when({}).then(loadState).then(function() {
-                            drawTree();
-                        });
-                    }
-                });
+            $.when({}).then(loadState)
+                      .then(onTreeClusteringChange)
+                      .then(onViewChange)
+                      .then(function() {
+                        drawTree();
+                      });
             /*
             //  Add bins
             */
@@ -1952,6 +1949,12 @@ function loadState()
                             if (state.hasOwnProperty('tree-radius')) {
                                 $('#tree-radius-container').show();
                                 $('#tree-radius').val(state['tree-radius']);
+                            }
+                            if (state.hasOwnProperty('order-by')) {
+                                $('#trees_container').val(state['order-by']);
+                            }
+                            if (state.hasOwnProperty('current-view')) {
+                                $('#views_container').val(state['current-view']);
                             }
                             if (state.hasOwnProperty('max-font-size')) {
                                 $('#max_font_size').val(state['max-font-size']);
