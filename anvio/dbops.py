@@ -694,6 +694,7 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
+        self.protein_cluster_names = set([])
         self.protein_clusters_gene_alignments = {}
         self.protein_clusters_gene_alignments_available = False
         self.protein_clusters_function_sources = []
@@ -739,6 +740,10 @@ class PanSuperclass(object):
             self.p_meta['default_clustering'] = None
             self.clusterings = None
 
+        # recover all protein cluster names so others can access to this information
+        # without having to initialize anything
+        self.protein_cluster_names = set(pan_db.db.get_single_column_from_table(t.pan_protein_clusters_table_name, 'protein_cluster_id'))
+
         pan_db.disconnect()
 
         # create an instance of states table
@@ -746,11 +751,11 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        if args.genomes_storage:
-            self.genomes_storage_is_available = True
+        if 'genomes_storage' in args.__dict__ and args.genomes_storage:
             self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage,
                                                                        self.p_meta['genomes_storage_hash'],
                                                                        genome_names_to_focus=self.p_meta['genome_names'])
+            self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
@@ -3347,3 +3352,35 @@ def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path):
     h.export_sequences_table_in_db_into_FASTA_file(t.gene_protein_sequences_table_name, output_file_path = output_file_path)
 
     return output_file_path
+
+
+def get_all_item_names_from_the_database(db_path):
+    """Return all split names or PC names in a given database"""
+
+    all_items = set([])
+
+    database = db.DB(db_path, get_required_version_for_db(db_path))
+    db_type = database.get_meta_value('db_type')
+
+    class Args: pass
+    args = Args()
+
+    if db_type == 'profile':
+        args.profile_db = db_path
+        all_items = set(ProfileSuperclass(args).split_names)
+    elif db_type == 'pan':
+        args.pan_db = db_path
+        all_items = set(PanSuperclass(args).protein_cluster_names)
+    elif db_type == 'contigs':
+        args.contigs_db = db_path
+        all_items = set(ContigsSuperclass(args).splits_basic_info.keys())
+    else:
+        raise ConfigError, "You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
+                            what is '%s'?" % (db_path, db_type)
+
+    if not len(all_items):
+        raise ConfigError, "dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
+                            There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
+                            with a developer. They will love this story."
+
+    return all_items
