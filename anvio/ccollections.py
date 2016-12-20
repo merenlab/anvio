@@ -45,22 +45,28 @@ class Collections:
         self.run = r
         self.progress = p
 
+        self.db_type = None
+        self.db_path = None
+
 
     def populate_collections_dict(self, db_path):
+        filesnpaths.is_file_exists(db_path)
+        self.db_path = db_path
+
         database = db.DB(db_path, dbops.get_required_version_for_db(db_path))
-        db_type = database.get_meta_value('db_type')
+        self.db_type = database.get_meta_value('db_type')
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
 
         # collections info must be read only if its coming from the contigs database.
-        if db_type == 'contigs':
+        if self.db_type == 'contigs':
             read_only = True
-        elif db_type == 'profile':
+        elif self.db_type == 'profile':
             read_only = False
-        elif db_type == 'pan':
+        elif self.db_type == 'pan':
             read_only = False
         else:
-            raise ConfigError, 'Collections class does not know about this "%s" database type :/' % db_type
+            raise ConfigError, 'Collections class does not know about this "%s" database type :/' % self.db_type
 
         for collection_name in collections_info_table:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
@@ -173,11 +179,11 @@ class Collections:
         self.run.warning('', 'COLLECTIONS FOUND', lc='yellow')
         for collection_name in self.collections_dict:
             c = self.collections_dict[collection_name]
-            output = '%s (%d bins, representing %d splits).' % (collection_name, c['num_bins'], c['num_splits'])
+            output = '%s (%d bins, representing %d items).' % (collection_name, c['num_bins'], c['num_splits'])
             self.run.info_single(output)
 
 
-    def export_collection(self, collection_name, output_file_prefix=None):
+    def export_collection(self, collection_name, output_file_prefix=None, include_unbinned=False):
         self.sanity_check(collection_name)
 
         if not output_file_prefix:
@@ -186,6 +192,7 @@ class Collections:
         info_file_path = output_file_prefix + '-info.txt'
         items_file_path = output_file_prefix + '.txt'
 
+        self.run.info('Report unbinned items if there are any', include_unbinned)
         self.run.info('Items file path', items_file_path)
         filesnpaths.is_output_file_writable(items_file_path)
 
@@ -193,16 +200,36 @@ class Collections:
         collection = self.get_collection_dict(collection_name)
 
         if len(bins_info):
-            self.run.info('Info file path', info_file_path)
+            self.run.info('Bins info file path', info_file_path)
             info_file = open(info_file_path, 'w')
+
+            if include_unbinned:
+                bins_info['__UNBINNED__'] = {'html_color': '#000000', 'source': 'anvi-export-collections'}
+
             for bin_name in bins_info:
                 info_file.write('%s\t%s\t%s\n' % (bin_name, bins_info[bin_name]['source'], bins_info[bin_name]['html_color']))
             info_file.close()
+
+        binned_items = set([])
 
         items_file = open(items_file_path, 'w')
         for bin_name in collection:
             for item_name in collection[bin_name]:
                 items_file.write('%s\t%s\n' % (item_name, bin_name))
+                binned_items.add(item_name)
+
+        if include_unbinned:
+            all_items = dbops.get_all_item_names_from_the_database(self.db_path)
+
+            unbinned_items = all_items.difference(binned_items)
+
+            for item_name in unbinned_items:
+                items_file.write('%s\t__UNBINNED__\n' % (item_name))
+
+            self.run.warning("As per your request, %d items that were not in any of the bins in the collection '%s' are stored\
+                              in the output file under the bin name '__UNBINNED__'." % (len(unbinned_items), collection_name))
+
+        items_file.close()
 
 
 class GetSplitNamesInBins:
