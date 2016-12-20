@@ -11,7 +11,6 @@
 #context-container {
   position: fixed;
   bottom: 0;
-  padding-left: 30px;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
 }
