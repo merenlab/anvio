@@ -51,7 +51,7 @@ INFO "RENAMING CONTIGS"
 anvi-script-reformat-fasta $FASTA --simplify-names -o $TEMP_FASTA -r $MAP
 
 INFO "GENERATING THE CONTIGS DB"
-anvi-gen-contigs-database -f $INPUT_DIR/$FILENAME-clean.fa -o $CONTIGS_DB
+anvi-gen-contigs-database -f $INPUT_DIR/$FILENAME-clean.fa -o $CONTIGS_DB --skip-mindful-splitting
 
 # remove the temporary file with clean names
 rm $TEMP_FASTA
