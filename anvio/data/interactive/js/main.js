@@ -335,12 +335,22 @@ function initData () {
             buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
-            $.when({}).then(loadState)
-                      .then(onTreeClusteringChange)
+            if (autoload_state !== null)
+            {
+                $.when({}).then(onViewChange)
+                      .then(loadState)
                       .then(onViewChange)
+                      .then(onTreeClusteringChange)
                       .then(function() {
                         drawTree();
-                      });
+                      });                
+            }
+            else
+            {
+                $.when({}).then(onViewChange)
+                          .then(onTreeClusteringChange);          
+            }
+
             /*
             //  Add bins
             */
