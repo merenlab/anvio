@@ -2627,7 +2627,7 @@ function draw_tree(settings) {
     }
 
     // Scale to fit window
-    var bbox = svg.getBBox();
+    bbox = svg.getBBox();
     scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
 
     zoom_reset();
