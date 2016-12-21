@@ -585,6 +585,6 @@ function pan(dx, dy) {
 }
 
 function zoom_reset() {
-    baseMatrix = [1 * scale, 0, 0, 1 * scale, VIEWER_WIDTH / 2, VIEWER_HEIGHT / 2];
+    baseMatrix = [1 * scale, 0, 0, 1 * scale, VIEWER_WIDTH / 2 - (bbox.x + bbox.width / 2) * scale, VIEWER_HEIGHT / 2 - (bbox.y + bbox.height / 2) * scale];
     setMatrix(baseMatrix);
 }
