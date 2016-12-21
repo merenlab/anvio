@@ -100,6 +100,7 @@ var autoload_state;
 var autoload_collection;
 var mode;
 var samples_tree_hover = false;
+var bbox;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
