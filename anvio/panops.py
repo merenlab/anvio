@@ -597,7 +597,6 @@ class Pangenome(GenomeStorage):
         blast.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_proteins_fasta_path))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
-
         return blast.get_blastall_results()
 
 
