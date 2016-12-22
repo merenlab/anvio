@@ -72,9 +72,6 @@ class BLAST:
         else:
             self.blastp()
 
-        if self.names_dict:
-            self.ununique_search_results()
-
         return self.search_output_path
 
 
@@ -121,6 +118,9 @@ class BLAST:
         self.progress.end()
 
         self.check_output(self.search_output_path, 'blastp')
+
+        if self.names_dict:
+            self.ununique_search_results()
 
         self.run.info('BLASTP results', self.search_output_path)
 
