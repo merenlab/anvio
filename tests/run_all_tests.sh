@@ -24,6 +24,9 @@ column -t $output_dir/contigs-reformat-report.txt
 INFO "Generating an EMPTY contigs database"
 anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
 
+INFO "Exporting gene calls from the contigs database"
+anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
+
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/*
 
