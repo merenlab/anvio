@@ -262,6 +262,9 @@ function initData () {
 
                 $('#completion_title').attr('title', 'PCs').html('PCs');
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
+                $('#splits_title').hide();
+                $('#len_title').hide();
+
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/collection-bg.png)');
@@ -1085,10 +1088,15 @@ function newBin(id, binState) {
     var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
                    '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
                    '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td data-value="{name}"><input type="text" size="21" id="bin_name_{id}" value="{name}"></td>' +
-                   '    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>' +
-                   '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
+                   '    <td data-value="{name}"><input type="text" size="21" id="bin_name_{id}" value="{name}"></td>';
+
+    if (mode != 'pan')
+    {
+        template +='    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
+                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>';
+    }
+
+    template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
                    '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
                    '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
                    '</tr>';
@@ -1194,29 +1202,31 @@ function updateBinsWindow(bin_list) {
 
     for (var _i = 0; _i < bin_list.length; _i++) {
         var bin_id = bin_list[_i];
-        var contigs = 0;
-        var length_sum = 0;
-
-        for (var j = 0; j < SELECTED[bin_id].length; j++) {
-            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
-            {
-                contigs++;
-                length_sum += parseInt(contig_lengths[SELECTED[bin_id][j]]);
-            }
-        }
-
-        $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
-
-        // it is likely in manual or server modes lenghts are not going to be available.
-        if (isNaN(length_sum))
-            $('#contig_length_' + bin_id).html('N/A').parent().attr('data-value', 0);
-        else
-            $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
 
         if (mode === 'pan'){
             updateProteinClustersBin(bin_id);
         } else {
             updateComplateness(bin_id);
+
+            var contigs = 0;
+            var length_sum = 0;
+
+            for (var j = 0; j < SELECTED[bin_id].length; j++) {
+                if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
+                {
+                    contigs++;
+                    length_sum += parseInt(contig_lengths[SELECTED[bin_id][j]]);
+                }
+            }
+
+            $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
+
+            // it is likely in manual or server modes lenghts are not going to be available.
+            if (isNaN(length_sum))
+                $('#contig_length_' + bin_id).html('N/A').parent().attr('data-value', 0);
+            else
+                $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
+
         }
 
         showContigNames(bin_id, true);
