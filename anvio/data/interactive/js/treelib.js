@@ -2797,7 +2797,7 @@ function redrawBins()
         {
 
             drawPie('bin',
-                'bin_outer_' + 1,
+                'bin_outer_' + i,
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 total_radius + margin,
@@ -2824,12 +2824,14 @@ function redrawBins()
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
             }
+
+
         }
         else
         {
 
             drawPhylogramRectangle('bin',
-                'bin_outer_' + 1,
+                'bin_outer_' + i,
                 total_radius + margin,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
