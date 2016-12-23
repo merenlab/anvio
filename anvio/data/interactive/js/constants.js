@@ -185,11 +185,11 @@ var named_layers = {
         'norm': 'log',
         'pretty_name': 'Coverage STD',
     },
-    'portion_covered': {
+    'detection': {
         'height': 0,
         'color': '#616161',
         'norm': 'none',
-        'pretty_name': 'Percent covered',
+        'pretty_name': 'Detection',
     },
     'abundance': {
         'height': 0,

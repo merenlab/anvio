@@ -52,7 +52,7 @@ def main(args):
 
     # recover the detection statistic
     summary.init_collection_profile(collection_name)
-    detection_across_metagenomes = summary.collection_profile[genome_name]['portion_covered']
+    detection_across_metagenomes = summary.collection_profile[genome_name]['detection']
 
     num_metagenomes_above_min_detection = [m for m in detection_across_metagenomes if detection_across_metagenomes[m] > min_detection]
 

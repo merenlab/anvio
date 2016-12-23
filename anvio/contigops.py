@@ -80,7 +80,7 @@ class Contig:
              'mean_coverage_Q1Q3': self.coverage.mean_Q1Q3,
              'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
-             'portion_covered': self.coverage.portion_covered,
+             'detection': self.coverage.detection,
              'abundance': self.abundance,
              'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None,
              '__parent__': None}
@@ -142,7 +142,7 @@ class Split:
              'mean_coverage_Q1Q3': self.coverage.mean_Q1Q3,
              'max_normalized_ratio': 1.0,
              'relative_abundance': 1.0,
-             'portion_covered': self.coverage.portion_covered,
+             'detection': self.coverage.detection,
              'abundance': self.abundance,
              'variability': self.auxiliary.variation_density if self.auxiliary else None,
              '__parent__': self.parent}
