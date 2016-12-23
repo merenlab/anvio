@@ -54,7 +54,7 @@ class Coverage:
         self.std = 0.0
         self.mean = 0.0
         self.median = 0.0
-        self.portion_covered = 0.0
+        self.detection = 0.0
         self.mean_Q1Q3 = 0.0
 
 
@@ -83,7 +83,7 @@ class Coverage:
         self.median = numpy.median(c)
         self.mean = numpy.mean(c)
         self.std = numpy.std(c)
-        self.portion_covered = 1 - (float(collections.Counter(c)[0]) / len(c))
+        self.detection = 1 - (float(collections.Counter(c)[0]) / len(c))
 
         self.outlier_positions = get_indices_for_outlier_values(c)
 
