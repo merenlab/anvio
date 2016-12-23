@@ -127,7 +127,7 @@ function createCharts(state){
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
-    var height = (chartHeight * visible_layers + 400);
+    var height = ((chartHeight + 10) * visible_layers);
     var contextHeight = 50;
     var contextWidth = width;
 
@@ -136,6 +136,8 @@ function createCharts(state){
             .attr("height", (height + margin.top + margin.bottom));
 
     $('#chart-container').css("width", (width + 150) + "px");
+    $('#chart-container').css("height", height + "px");
+
     
     var charts = [];
     
