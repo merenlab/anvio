@@ -793,11 +793,7 @@ class PanSuperclass(object):
 
 
     def init_additional_layer_data(self):
-        """For each function annotation source add a layer of additional data to show whether PCs have annotation"""
-
-        if not self.functions_initialized:
-            # screw you, too
-            return
+        """Recover additional data stored in the pan database `additional data` table."""
 
         self.progress.new('Initializing additional layer data')
         self.progress.update('...')
@@ -807,9 +803,20 @@ class PanSuperclass(object):
         pan_db.disconnect()
 
         if len([h for h in self.additional_layers_headers if h not in self.additional_layers_dict.values()[0].keys()]):
+            self.progress.end()
             raise ConfigError, "Something that should never happen happened :( At least one additional data header that\
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
                                 data from another table. Anvi'o needs an adult :("
+
+        # In fact we are done here since we have our `additional_layers_dict` all filled up with sweet data.
+        # But if functions are initialized, we can also get a summary of protein clusters based on whether most
+        # genes in them were annotated with known functions or not for a given annotation source. Of course,
+        # for this to happen, we need to check whther functions were initialied prior to the call to
+        # `init_additional_layer_data`.
+        if not self.functions_initialized:
+            # no? k. bye.
+            self.progress.end()
+            return
 
         # too many shitty nested loops here, but it is quite efficient since we work only with a dict
         # in memory
