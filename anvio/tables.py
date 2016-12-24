@@ -141,7 +141,7 @@ views_table_types                    = [  'str'  ,      'str'    ]
 # for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
 # become sample names. 
-atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'mean_coverage_Q1Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability', '__parent__']
+atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability', '__parent__']
 atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 
