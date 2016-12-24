@@ -3235,7 +3235,7 @@ def get_split_names_in_profile_db(profile_db_path):
     profile_db = ProfileDatabase(profile_db_path)
 
     if int(profile_db.meta['merged']):
-        split_names = set(profile_db.db.get_single_column_from_table('mean_coverage_Q1Q3_splits', 'contig'))
+        split_names = set(profile_db.db.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
     else:
         split_names = set(profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig'))
 
