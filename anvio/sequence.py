@@ -55,7 +55,7 @@ class Coverage:
         self.mean = 0.0
         self.median = 0.0
         self.detection = 0.0
-        self.mean_Q1Q3 = 0.0
+        self.mean_Q2Q3 = 0.0
 
 
     def run(self, bam, split):
@@ -88,12 +88,12 @@ class Coverage:
         self.outlier_positions = get_indices_for_outlier_values(c)
 
         if c.size < 4:
-            self.mean_Q1Q3 = self.mean
+            self.mean_Q2Q3 = self.mean
         else:
             sorted_c = sorted(c)
             Q = int(c.size * 0.25)
-            Q1Q3 = sorted_c[Q:-Q]
-            self.mean_Q1Q3 = numpy.mean(Q1Q3)
+            Q2Q3 = sorted_c[Q:-Q]
+            self.mean_Q2Q3 = numpy.mean(Q2Q3)
 
 
 def get_indices_for_outlier_values(c):

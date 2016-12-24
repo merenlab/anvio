@@ -4,4 +4,4 @@
 
 [Abundance PROFILE.db::atomic_data_contigs]
 normalize=False
-columns_to_use = abundance,mean_coverage_Q1Q3,mean_coverage
+columns_to_use = abundance,mean_coverage_Q2Q3,mean_coverage
