@@ -44,13 +44,15 @@ def update_profile_db(profile_db_path, just_do_it = False):
             sys.exit()
 
     is_merged = profile_db.get_meta_value('merged')
+    is_full_profile = 'portion_covered_splits' in  profile_db.get_table_names()
 
     run.info('Profile db type', 'Merged' if is_merged else 'Single')
+    run.info('Full profile', is_full_profile)
 
     progress.new("Trying to upgrade the profile database")
     progress.update('...')
 
-    if is_merged:
+    if is_full_profile and is_merged:
         profile_db._exec('ALTER TABLE portion_covered_splits RENAME TO detection_splits;')
         profile_db._exec('ALTER TABLE portion_covered_contigs RENAME TO detection_contigs;')
         profile_db._exec('ALTER TABLE mean_coverage_Q1Q3_splits RENAME TO mean_coverage_Q2Q3_splits;')
@@ -61,7 +63,7 @@ def update_profile_db(profile_db_path, just_do_it = False):
         profile_db._exec('DELETE FROM %s WHERE view_id = "mean_coverage_Q1Q3"' % (t.views_table_name))
         profile_db._exec('INSERT INTO %s VALUES ("mean_coverage_Q2Q3", "mean_coverage_Q2Q3_splits")' % t.views_table_name)
 
-    else:
+    elif is_full_profile and not is_merged:
         profile_db.cursor.execute('ALTER TABLE atomic_data_contigs RENAME TO atomic_data_contigs_TEMP;')
         profile_db.cursor.execute('CREATE TABLE atomic_data_contigs (contig text, std_coverage numeric, mean_coverage numeric, mean_coverage_Q2Q3 numeric, max_normalized_ratio numeric, relative_abundance numeric, detection numeric, abundance numeric, variability numeric, __parent__ text);')
         profile_db.cursor.execute('INSERT INTO atomic_data_contigs(contig, std_coverage, mean_coverage, mean_coverage_Q2Q3, max_normalized_ratio, relative_abundance, detection, abundance, variability, __parent__) SELECT contig, std_coverage, mean_coverage, mean_coverage_Q1Q3, max_normalized_ratio, relative_abundance, portion_covered, abundance, variability, __parent__ FROM atomic_data_contigs_TEMP;')
