@@ -173,8 +173,23 @@
                                     <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
                                     <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
                                 </div>
+                        </div>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="show-bin-labels">Show bin labels:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="show_bin_labels" name="checkbox" 
+                                    value="value" onchange="redrawBins(); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;">
+                                    <span class="bin_labels_details" style="display: none; margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="redrawBins();" /></span>
+                                </div>
                         </div> 
-
+                        <div class="form-group form-margin bin_labels_details" style="display: none;">
+                                <label class="col-md-4 settings-label" for="layer-margin" data-help="autororate-bin-labels">Autorotate bin labels:</label>  
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="autorotate_bin_labels" name="checkbox" 
+                                    value="value" onchange="redrawBins(); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
+                                    <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="redrawBins();" /></span>
+                                </div>
+                        </div> 
                         <div class="form-group form-margin">
                                 <label class="col-md-4 settings-label" for="layer-margin" data-help="optimize-speed">Optimize speed:</label>  
                                 <div class="col-md-8">

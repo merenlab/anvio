@@ -888,6 +888,10 @@ function serializeSettings(use_layer_names) {
     state['samples-order'] = $('#samples_order').val();
     state['max-font-size'] = $('#max_font_size').val();
     state['optimize-speed'] = $('#optimize_speed').is(':checked');
+    state['show-bin-labels'] = $('#show_bin_labels').is(':checked');
+    state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
+    state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
+    state['bin-labels-angle'] = $('#bin_labels_angle').val();
 
     // sync views object and layers table
     syncViews();
@@ -1998,9 +2002,20 @@ function loadState()
                             if (state.hasOwnProperty('grid-width')) {
                                 $('#grid_width').val(state['grid-width']);
                             }
+                            if (state.hasOwnProperty('bin-labels-font-size')) {
+                                $('#bin_labels_font_size').val(state['bin-labels-font-size']);
+                            }
+                            if (state.hasOwnProperty('bin-labels-angle')) {
+                                $('#bin_labels_angle').val(state['bin-labels-angle']);
+                            }
+                            if (state.hasOwnProperty('show-bin-labels')) {
+                                $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('autorotate-bin-labels')) {
+                                $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
+                            }
                             if (state.hasOwnProperty('show-grid-for-bins')) {
                                 $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-                                redrawBins();
                             }
                             if (state.hasOwnProperty('samples-edge-length-normalization')) {
                                 $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
