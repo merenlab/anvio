@@ -15,13 +15,6 @@ run = Run()
 progress = Progress()
 progress.verbose = False
 
-# I am taking this part of the code out until we find a better way to utilize the
-# C extension
-#try:
-#    from anvio.columnprofile import ColumnProfile
-#except ImportError:
-#    run.info_single('C extension for ColumnProfile failed to load, falling back to the Python implementation...', mc='gray', nl_after=1)
-#    from anvio.variability import ColumnProfile
 from anvio.variability import ColumnProfile
 
 

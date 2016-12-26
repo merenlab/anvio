@@ -41,7 +41,6 @@ setup(
 
     cmdclass = {'build_ext': build_ext},
     ext_modules = [
-                    Extension('anvio.columnprofile', sources = ['./anvio/extensions/columnprofile.c']),
                     Extension("anvio.vbgmm", sources=["./anvio/extensions/concoct/vbgmm.pyx", "./anvio/extensions/concoct/c_vbgmm_fit.c"],
                                 libraries =['gsl',  'gslcblas'], include_dirs=include_dirs_for_concoct),
                   ],
