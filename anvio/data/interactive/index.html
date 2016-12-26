@@ -143,7 +143,7 @@
                                     <div class="col-md-8">
                                         <input type="text" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
                                     </div>
-                            </div> 
+                            </div>
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Layer margins:</label>  
                                     <div class="col-md-8">
@@ -157,19 +157,19 @@
                                     </div>
                             </div> 
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="custom-layer-margins">Custom layer margins:</label>  
+                                    <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom layer margins:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                     </div>
                             </div> 
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="edge-length-norm">Edge length norm.:</label>  
+                                    <label class="col-md-4 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                     </div>
                             </div> 
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="show-grids">Show grids for bins:</label>  
+                                    <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids for bins:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                         <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
@@ -177,7 +177,7 @@
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="show-bin-labels">Show bin names:</label>  
+                                    <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show bin names:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="show_bin_labels" name="checkbox" 
                                         value="value" onchange="redrawBins(); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;">
@@ -185,7 +185,7 @@
                                     </div>
                             </div> 
                             <div class="form-group form-margin bin_labels_details" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="autororate-bin-labels">Autorotate bin names:</label>  
+                                    <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate bin names:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="autorotate_bin_labels" name="checkbox" 
                                         value="value" onchange="redrawBins(); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
@@ -193,7 +193,7 @@
                                     </div>
                             </div> 
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="optimize-speed">Optimize speed:</label>  
+                                    <label class="col-md-4 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
                                     </div>
