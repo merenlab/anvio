@@ -389,7 +389,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxLength) {
+function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family, color, maxLength) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline:middle');
@@ -397,7 +397,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxL
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('font-size', font_size);
-    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('font-family', font_family);
     text.setAttribute('fill', color);
 
     switch (align) {
@@ -426,10 +426,14 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, color, maxL
     svg.appendChild(text);
 
     // trim long text
-    for (var x=0; x < string.length; x++){
-        if (text.getSubStringLength(0, x + 1) >= maxLength){
-            text.textContent = string.substring(0, x);
-            break;
+
+    if (maxLength > 0)
+    {
+        for (var x=0; x < string.length; x++){
+            if (text.getSubStringLength(0, x + 1) >= maxLength){
+                text.textContent = string.substring(0, x);
+                break;
+            }
         }
     }
 }
@@ -2216,7 +2220,7 @@ function draw_tree(settings) {
                                 offset_xy['y'] = q.xy['y'];
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
-                                drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height']);
                                 
                             }
                         }
@@ -2348,7 +2352,7 @@ function draw_tree(settings) {
                                 offset_xy['y'] = Math.sin(q.angle) * _radius;
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
-                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], layers[pindex]['color'], layers[pindex]['height']);
+                                drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height']);
                             }
                         }
                         else if (isParent)
@@ -2785,6 +2789,10 @@ function redrawBins()
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
+    var show_bin_labels = $('#show_bin_labels')[0].checked;
+    var bin_labels_font_size = $('#bin_labels_font_size').val();
+    var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
+    var bin_labels_angle = $('#bin_labels_angle').val();
     
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = order_to_node_map[bins_to_draw[i][0]];
@@ -2806,6 +2814,33 @@ function redrawBins()
                 color,
                 1,
                 false);
+
+            var align = 'left';
+            var angle = (end.angle + start.angle) / 2;
+            var new_angle = angle * 180.0 / Math.PI;
+            if ((angle > Math.PI / 2.0) && (angle < 1.5 * Math.PI)) {
+                align = 'right';
+                new_angle += 180.0;
+            }
+
+            if (show_bin_labels)
+            {
+                drawRotatedText(
+                    'bin',
+                    {
+                        'x': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.cos((end.angle + start.angle) / 2), 
+                        'y': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.sin((end.angle + start.angle) / 2), 
+                    },
+                    $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
+                    (autorotate_bin_labels) ? new_angle : bin_labels_angle,
+                    align,
+                    bin_labels_font_size + "px",
+                    "HelveticaNeue-CondensedBold, Helvetica Neue, Helvetica, sans-serif",
+                    color,
+                    0
+                    );
+
+            }
 
             var pie = drawPie('bin',
                 'bin_background_' + i,
@@ -2839,6 +2874,25 @@ function redrawBins()
                 color,
                 1,
                 false);
+
+            if (show_bin_labels)
+            {
+                drawRotatedText(
+                    'bin',
+                    {
+                        'y': (start.xy.y + end.xy.y) / 2, 
+                        'x': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)), 
+                    },
+                    $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
+                    (autorotate_bin_labels) ? 0 : bin_labels_angle,
+                    'left',
+                    bin_labels_font_size + "px",
+                    "HelveticaNeue-CondensedBold, Helvetica Neue, Helvetica, sans-serif",
+                    color,
+                    0
+                    );
+
+            }
 
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
