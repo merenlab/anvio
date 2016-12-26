@@ -2,6 +2,8 @@ import os
 import sys
 import glob
 
+anvio_version='2.0.3'
+
 try:
     import numpy
 except ImportError:
@@ -28,7 +30,7 @@ include_dirs_for_concoct = [numpy.get_include(), '/opt/local/include/']
 
 setup(
     name = "anvio",
-    version = open('VERSION').read().strip(),
+    version = anvio_version,
 
     scripts = [script for script in glob.glob('bin/*') + glob.glob('sandbox/*') if not script.endswith('-OBSOLETE')],
     include_package_data = True,

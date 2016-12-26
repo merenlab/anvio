@@ -1098,16 +1098,19 @@ run = Run()
 
 
 def set_version():
-    try:
-        __version__ = pkg_resources.require("anvio")[0].version
-    except:
-        # maybe it is not installed but being run from the codebase dir?
-        try:
-            __version__ = open(os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../VERSION').read().strip()
-        except:
-            __version__ = 'unknown'
+    anvio_version = 'unknown'
 
-    return __version__, \
+    try:
+        anvio_version = pkg_resources.require("anvio")[0].version
+    except:
+        # maybe anvi'o is not installed but it is being run from the codebase dir?
+        # some hacky stuff to get version from the setup.py
+        try:
+            exec([l.strip() for l in open(os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py').readlines() if l.strip().startswith('anvio_version')][0])
+        except:
+            pass
+
+    return anvio_version, \
            t.contigs_db_version, \
            t.pan_db_version, \
            t.profile_db_version, \
