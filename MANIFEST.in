@@ -1,4 +1,4 @@
-include *.txt *.md VERSION
+include *.txt *.md
 recursive-include anvio/data *
 recursive-include anvio/extensions *.h *.c *.pyx *.py
 recursive-include tests *.bam *.txt *.fa *.tbl *.sh *.gz *.ini *.tsv *.json
