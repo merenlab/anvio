@@ -1,8 +1,12 @@
 import os
 import sys
+import uuid
 import glob
 
 anvio_version='2.0.3'
+
+from pip.req import parse_requirements
+requirements = [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())]
 
 try:
     import numpy
@@ -37,7 +41,7 @@ setup(
 
     packages = find_packages(),
 
-    install_requires = ['bottle>=0.12.9', 'pysam==0.9.1', 'ete2>=2.3.10', 'scipy>=0.13.3', 'scikit-learn>=0.17.1', 'django>=1.9.7', 'h5py>=2.6.0', 'cherrypy>=6.0.2', 'requests>=2.10.0'],
+    install_requires = requirements,
 
     cmdclass = {'build_ext': build_ext},
     ext_modules = [
