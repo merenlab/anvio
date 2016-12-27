@@ -89,7 +89,7 @@
             <div class="tab-content">
                 <div role="tabpanel" class="tab-pane fade in active" id="tree_settings" style="padding-bottom: 50px;">
                     <div id="tree-settings" class="form-horizontal">
-                        <h4>General Display Settings</h4>
+                        <span class="settings-header">Display</span>
                         <div class="form-group form-margin">
                                 <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>  
                                 <div class="col-md-8">
@@ -111,61 +111,39 @@
                                     <select id="views_container" class="form-control input-xs"></select>
                                 </div>
                         </div>
+
+                        <span class="settings-header">Visual State <span id="current_state"></span></span>
+                        <div class="sidebar-state-buttons btn-group col-md-12" role="group">
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                        </div>
+
                         <a href="#" onclick="$('#additional_settings').toggle(); if ($('#additional_settings').is(':visible')) { $('#additional_settings_label').html('(hide)'); } else { $('#additional_settings_label').html('(show)'); }; "><h4>Additional Settings  <span id="additional_settings_label">(show)</span></h4></a>
                         <div id="additional_settings" style="display: none;">
+                            <span class="settings-header">Dendrogram</span>
                             <div class="form-group form-margin circlephylogram_settings">
-                                    <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Draw Angle:</label>  
+                                    <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>  
                                     <div class="col-md-8 form-inline">
                                         <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to 
                                         <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
                                     </div>
                             </div>
                             <div class="form-group form-margin circlephylogram_settings">
-                                    <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Tree radius:</label>  
+                                    <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>  
                                     <div class="col-md-8">
                                         <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
                                     </div>
                             </div> 
                             <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Tree height:</label>  
+                                    <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Height:</label>  
                                     <div class="col-md-8">
                                         <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
                                     </div>
                             </div> 
                             <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Tree width:</label>  
+                                    <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Width:</label>  
                                     <div class="col-md-8">
                                         <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
-                                    </div>
-                            </div> 
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Bins layer height:</label>  
-                                    <div class="col-md-8">
-                                        <input type="text" onchange="redrawBins();" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Bins layer margin:</label>  
-                                    <div class="col-md-8">
-                                        <input type="text" onchange="redrawBins();" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Layer margins:</label>  
-                                    <div class="col-md-8">
-                                        <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                    </div>
-                            </div> 
-                            <div class="form-group form-margin max-font-size-input" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Maximum Font Size: </label>  
-                                    <div class="col-md-8">
-                                        <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
-                                    </div>
-                            </div> 
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom layer margins:</label>  
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                     </div>
                             </div> 
                             <div class="form-group form-margin">
@@ -174,30 +152,66 @@
                                         <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                     </div>
                             </div> 
+
+                            <span class="settings-header">Selections</span>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids for bins:</label>  
+                                    <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>  
                                     <div class="col-md-8">
-                                        <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                                        <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                                        <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                        <input type="text" onchange="redrawBins();" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show bin names:</label>  
+                                    <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>  
+                                    <div class="col-md-8">
+                                        <input type="text" onchange="redrawBins();" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
+                                    </div>
+                            </div>
+                            <div class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="show_bin_labels" name="checkbox" 
-                                        value="value" onchange="redrawBins(); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;">
+                                        value="value" onchange="redrawBins(); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
                                         <span class="bin_labels_details" style="display: none; margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="redrawBins();" /></span>
                                     </div>
                             </div> 
                             <div class="form-group form-margin bin_labels_details" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate bin names:</label>  
+                                    <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>  
                                     <div class="col-md-8">
                                         <input type="checkbox" id="autorotate_bin_labels" name="checkbox" 
                                         value="value" onchange="redrawBins(); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
                                         <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="redrawBins();" /></span>
                                     </div>
                             </div> 
+                            <div class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>  
+                                    <div class="col-md-8">
+                                        <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                        <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                        <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                    </div>
+                            </div>
+
+                            <span class="settings-header">Data Layers</span>
+                            <div class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>  
+                                    <div class="col-md-8">
+                                        <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
+                                    </div>
+                            </div> 
+                            <div class="form-group form-margin max-font-size-input" style="display: none;">
+                                    <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>  
+                                    <div class="col-md-8">
+                                        <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
+                                    </div>
+                            </div> 
+                            <div class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>  
+                                    <div class="col-md-8">
+                                        <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
+                                    </div>
+                            </div> 
+
+                            <span class="settings-header">Performance</span>
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>  
                                     <div class="col-md-8">
@@ -206,15 +220,9 @@
                             </div>
                         </div>
 
-                        <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                            <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
-                        </div>
+                        <span class="settings-header">Data Layers</span>
 
-
-                        <h4>Layer Settings <span id="current_state"></span></h4>
-
-                        <div id="table_layers_container">
+                        <div id="table_layers_container" style="margin-top: 15px;">
                             <table id="table_layers">
                                 <thead>
                                     <tr>
@@ -352,15 +360,23 @@
 
                 <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
                     <div id="sample-settings" class="form-horizontal">
-                       <h4>Sample Order</h4>
+                        <span class="settings-header">Organization</span>
                         <div class="form-group form-margin">
-                                <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Sample order:</label>
+                                <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Order by:</label>
                                 <div class="col-md-8">
                                     <select id="samples_order" class="form-control input-xs">
                                         <!-- JS FILLS HERE -->
                                     </select>
                                 </div>
                         </div>
+
+                        <span class="settings-header">Tree/Dendrogram</span>
+                        <div class="form-group form-margin">
+                                <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
+                                </div>
+                        </div>  
                         <div class="form-group form-margin">
                                 <label class="col-md-4 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>  
                                 <div class="col-md-8">
@@ -368,20 +384,14 @@
                                 </div>
                         </div>
                         <div class="form-group form-margin">
-                                <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore Branch Lengths:</label>  
+                                <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>  
                                 <div class="col-md-8">
                                     <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
                                 </div>
                         </div>
-                        <div class="form-group form-margin">
-                                <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Tree height:</label>  
-                                <div class="col-md-8">
-                                    <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
-                                </div>
-                        </div>  
-                        <h4>Sample Layers</h4>
 
-                        <div id="table_samples_container">
+                        <span class="settings-header">Data Layers</span>
+                        <div id="table_samples_container" style="margin-top: 10px;">
                             <table id="table_samples">
                                 <thead>
                                     <tr>

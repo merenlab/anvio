@@ -16,6 +16,15 @@
     font-size: 12px;
 }
 
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
 h4 {
     margin-top: 10px;
 }
@@ -150,8 +159,6 @@ td > input[type='checkbox'] {
 
 .sidebar-state-buttons {
     background-color: rgba(255, 255, 255, 0.5);
-    border-top: 1px rgb(187, 187, 187) solid;
-    border-bottom: 1px rgb(187, 187, 187) solid;
     padding: 3px 0px;
     margin: 6px 0px;
 }
@@ -159,6 +166,7 @@ td > input[type='checkbox'] {
 .btn-group {
     background-color: rgba(255, 255, 255, 0.5);
     margin: 1px 0px;
+    margin-bottom:10px;
 }
 
 .colorpicker {
