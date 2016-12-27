@@ -880,6 +880,7 @@ function serializeSettings(use_layer_names) {
     state['tree-width'] = $('#tree_width').val();
     state['layer-margin'] = $('#layer-margin').val();
     state['outer-ring-height'] = $('#outer-ring-height').val();
+    state['outer-ring-margin'] = $('#outer-ring-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
@@ -1988,6 +1989,8 @@ function loadState()
                                 $('#layer-margin').val(state['layer-margin']);
                             if (state.hasOwnProperty('outer-ring-height'))
                                 $('#outer-ring-height').val(state['outer-ring-height']);
+                            if (state.hasOwnProperty('outer-ring-margin'))
+                                $('#outer-ring-margin').val(state['outer-ring-margin']);
                             if (state.hasOwnProperty('edge-normalization'))
                                 $('#edge_length_normalization').prop('checked', state['edge-normalization']);
                             if (state.hasOwnProperty('optimize-speed'))
