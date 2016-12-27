@@ -2794,12 +2794,14 @@ function redrawBins()
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
     
+    var outer_ring_size = parseFloat($('#outer-ring-height').val());
+    var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
+
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = order_to_node_map[bins_to_draw[i][0]];
         var end = order_to_node_map[bins_to_draw[i][1]];
 
         var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
-        var outer_ring_size = parseInt(last_settings['outer-ring-height']);
 
         if (tree_type == 'circlephylogram')
         {
@@ -2808,8 +2810,8 @@ function redrawBins()
                 'bin_outer_' + i,
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
-                total_radius + margin,
-                total_radius + margin + outer_ring_size,
+                total_radius + outer_ring_margin,
+                total_radius + outer_ring_margin + outer_ring_size,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 1,
@@ -2828,8 +2830,8 @@ function redrawBins()
                 drawRotatedText(
                     'bin',
                     {
-                        'x': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.cos((end.angle + start.angle) / 2), 
-                        'y': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.sin((end.angle + start.angle) / 2), 
+                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.cos((end.angle + start.angle) / 2), 
+                        'y': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)) * Math.sin((end.angle + start.angle) / 2), 
                     },
                     $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
                     (autorotate_bin_labels) ? new_angle : bin_labels_angle,
@@ -2847,7 +2849,7 @@ function redrawBins()
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
                 beginning_of_layers,
-                (show_grid) ? total_radius + margin + outer_ring_size : total_radius,
+                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 (show_grid) ? 0 : 0.1,
@@ -2867,7 +2869,7 @@ function redrawBins()
 
             drawPhylogramRectangle('bin',
                 'bin_outer_' + i,
-                total_radius + margin,
+                total_radius + outer_ring_margin,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
                 outer_ring_size,
@@ -2881,7 +2883,7 @@ function redrawBins()
                     'bin',
                     {
                         'y': (start.xy.y + end.xy.y) / 2, 
-                        'x': (total_radius + margin * 2 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)), 
+                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)), 
                     },
                     $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
                     (autorotate_bin_labels) ? 0 : bin_labels_angle,
@@ -2899,7 +2901,7 @@ function redrawBins()
                 beginning_of_layers,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
-                (show_grid) ? total_radius + margin + outer_ring_size - beginning_of_layers : total_radius + margin - beginning_of_layers,
+                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius + margin - beginning_of_layers,
                 color,
                 (show_grid) ? 0 : 0.1,
                 false);
@@ -2929,8 +2931,8 @@ function redrawBins()
                 'bin_outer_' + 1,
                 start.angle - angle_per_leaf / 2,
                 end.angle + angle_per_leaf / 2,
-                total_radius + margin + outer_ring_size,
-                total_radius + margin + outer_ring_size * 2,
+                total_radius + outer_ring_margin + outer_ring_size,
+                total_radius + outer_ring_margin + outer_ring_size * 2,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
                 color,
                 1,
@@ -2940,7 +2942,7 @@ function redrawBins()
         {
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
-                total_radius + margin + outer_ring_size,
+                total_radius + outer_ring_margin + outer_ring_size,
                 (start.xy.y + end.xy.y) / 2,
                 end.xy.y - start.xy.y + height_per_leaf,
                 outer_ring_size,
