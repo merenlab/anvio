@@ -2995,7 +2995,7 @@ function rebuildIntersections()
                 var node = label_to_node_map[SELECTED[bin_id][cursor]];
                 var parent = node.ancestor;
 
-                if (parent.ancestor == null) 
+                if (parent == null || parent.ancestor == null) 
                 {
                     // skip root
                     continue;
