@@ -3,7 +3,7 @@ import sys
 import uuid
 import glob
 
-anvio_version='2.0.3'
+anvio_version='2.1.0'
 
 from pip.req import parse_requirements
 requirements = [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())]
