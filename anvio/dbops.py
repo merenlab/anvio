@@ -59,12 +59,19 @@ class DBClassFactory:
                            'contigs': ContigsDatabase,
                            'pan': PanDatabase}
 
-    def get(self, db_type):
+    def get_db_class(self, db_path):
+        db_type = get_db_type(db_path)
+
         if db_type not in self.DB_CLASSES:
             raise ConfigError, "DBClassFactory speaking. I do not know a class for database type\
                                 %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES))
 
         return self.DB_CLASSES[db_type]
+
+
+    def get_db_object(self, db_path):
+        anvio_db_class = self.get_db_class(db_path)
+        return anvio_db_class(db_path)
 
 
 class ContigsSuperclass(object):
@@ -1902,8 +1909,6 @@ class TablesForViews(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        self.DB_CLASS = DBClassFactory().get(db_type=get_db_type(db_path))
-
         Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
 
@@ -1924,7 +1929,7 @@ class TablesForViews(Table):
         If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
         """
 
-        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
 
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
 
@@ -1946,7 +1951,7 @@ class TablesForViews(Table):
 
 
     def remove(self, view_name, table_names_to_blank=[]):
-        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
         anvio_db.db._exec('''DELETE FROM %s WHERE view_id = "%s"''' % (t.views_table_name, view_name))
         for table_name in table_names_to_blank:
             anvio_db.db._exec('''DELETE FROM %s''' % table_name)
@@ -2696,13 +2701,11 @@ class TablesForStates(Table):
 
         Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
-        self.DB_CLASS = DBClassFactory().get(db_type=get_db_type(self.db_path))
-
         self.init()
 
 
     def init(self):
-        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
         self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
         anvio_db.disconnect()
 
@@ -2719,7 +2722,7 @@ class TablesForStates(Table):
 
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
 
-        anvio_db = self.DB_CLASS(self.db_path)
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
         anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
         self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
 
@@ -2728,7 +2731,6 @@ class TablesForStates(Table):
 
     def remove_state(self, state_id):
         self.delete_entries_for_key('name', state_id, [t.states_table_name])
-
 
 
 class TablesForTaxonomy(Table):
@@ -3249,14 +3251,13 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
 
     # let's learn who we are dealing with:
     db_type = get_db_type(anvio_db_path)
-    DB_CLASS = DBClassFactory().get(db_type=db_type)
 
     utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name, stringent=False)
 
     # replace clustering id with a text that contains distance and linkage information
     clustering_id = ':'.join([clustering_name, distance, linkage])
 
-    anvio_db = DB_CLASS(anvio_db_path)
+    anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
     if t.clusterings_table_name not in anvio_db.db.get_table_names():
         raise ConfigError, "You can't a new clustering result into this %s database (%s). You know why? Becasue it doesn't\
