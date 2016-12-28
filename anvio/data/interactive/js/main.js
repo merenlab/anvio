@@ -1093,7 +1093,7 @@ function newBin(id, binState) {
     var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
                    '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
                    '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td data-value="{name}"><input type="text" size="21" id="bin_name_{id}" value="{name}"></td>';
+                   '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
 
     if (mode != 'pan')
     {
