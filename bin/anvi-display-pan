@@ -142,7 +142,7 @@ def send_data(name):
                              "stateAutoload": d.state_autoload,
                              "collectionAutoload": d.collection_autoload,
                              "noPing": False,
-                             "inspectionAvailable": d.auxiliary_profile_data_available,
+                             "inspectionAvailable": True,
                              "sequencesAvailable": True if d.split_sequences else False})
     elif name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
@@ -171,7 +171,7 @@ def send_data(name):
     elif name == "samples_information_default_layer_order":
         return json.dumps(d.samples_information_default_layer_order)
     elif name == "is_inspection_available":
-        return json.dumps(d.auxiliary_profile_data_available)
+        return json.dumps(True)
     elif name == "is_inspection_available":
         return json.dumps(True if d.split_sequences else False)
 
