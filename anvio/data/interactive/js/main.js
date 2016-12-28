@@ -221,7 +221,7 @@ function initData () {
             $('.menuItemInspect').addClass('menu-disabled');
         }
 
-        if(!sequencesAvailable && mode != "collection"){
+        if(!sequencesAvailable && mode != "collection" && mode != "pan"){
             toastr.info("No sequence data is available. Some menu items will be disabled.");
             $('.menuItemSequence').addClass('menu-disabled');
         }
