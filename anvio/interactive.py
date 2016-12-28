@@ -198,10 +198,17 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError, "When you want to use the interactive interface in manual mode, you must\
                                 not use a contigs database."
 
+        if not self.profile_db_path:
+            raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
+                                to provide a profile database path. But you DO NOT need an already existing\
+                                profile database, since anvi'o will generate an empty one for you. The profile\
+                                database in this mode only used to read or store the 'state' of the display\
+                                for visualization purposes, or to allow you to create and store collections."
+
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
         # not be included in manual operations.
-        if os.path.exists(self.profile_db_path):
+        if filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
             profile_db = ProfileDatabase(self.profile_db_path)
             if profile_db.meta['contigs_db_hash']:
                 raise ConfigError, "Well. It seems the profile database is associated with a contigs database,\
@@ -209,13 +216,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     what you wanted to do is to let the manual mode create a new profile database\
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist)."
-
-        if not self.profile_db_path:
-            raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
-                                to declare a profile database. The profile database in this mode only used to\
-                                read or store the 'state' of the display for visualization purposes. You DO\
-                                NOT need to point to an already existing database, as anvi'o will generate\
-                                an empty one for your if there is no profile database."
 
         if not self.tree:
             raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
