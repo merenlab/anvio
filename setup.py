@@ -1,12 +1,10 @@
 import os
 import sys
-import uuid
 import glob
 
 anvio_version='2.1.0'
 
-from pip.req import parse_requirements
-requirements = [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())]
+requirements = [req.strip() for req in open('requirements.txt', 'rU').readlines() if not req.startswith('#')]
 
 try:
     import numpy
