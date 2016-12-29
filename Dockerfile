@@ -1,6 +1,6 @@
 FROM ubuntu:trusty
 
-ENV ANVIO_VERSION 2.0.2
+ENV ANVIO_VERSION 2.1.0
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -38,7 +38,9 @@ RUN apt-get update \
         django==1.9.7 \
         pysam==0.9.1 \
         h5py==2.6.0 \
-    && pip install anvio==$ANVIO_VERSION \
+	requests==2.10.0 \
+	cherrypy==6.0.2 \
+    && pip install --no-deps anvio==$ANVIO_VERSION \
     && apt-get remove -y \
         binutils \
         build-essential \
