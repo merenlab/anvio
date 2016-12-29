@@ -18,6 +18,7 @@ RUN apt-get update \
         python-scipy \
         sqlite3 \
         wget \
+        bsdmainutils \
         libblas-dev \
         liblapack-dev \
         libatlas-base-dev \
@@ -25,7 +26,13 @@ RUN apt-get update \
         zlib1g-dev \
         libhdf5-serial-dev \
         libhdf5-dev \
+        mcl \
+        ncbi-blast+ \
+        muscle \
     && mkdir -p /tmp/build \
+    && wget https://github.com/bbuchfink/diamond/releases/download/v0.8.30/diamond-linux64.tar.gz -O /tmp/build/diamond-linux64.tar.gz \
+    && tar -zxvf /tmp/build/diamond-linux64.tar.gz -C /tmp/build/ \
+    && cp /tmp/build/diamond /usr/bin/ \
     && wget https://github.com/hyattpd/Prodigal/archive/v2.6.2.tar.gz -O /tmp/build/v2.6.2.tar.gz \
     && tar -zxvf //tmp/build/v2.6.2.tar.gz -C /tmp/build/ \
     && make -C /tmp/build/Prodigal-2.6.2/ \
@@ -38,8 +45,8 @@ RUN apt-get update \
         django==1.9.7 \
         pysam==0.9.1 \
         h5py==2.6.0 \
-	requests==2.10.0 \
-	cherrypy==6.0.2 \
+        requests==2.10.0 \
+       cherrypy==6.0.2 \
     && pip install --no-deps anvio==$ANVIO_VERSION \
     && apt-get remove -y \
         binutils \
