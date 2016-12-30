@@ -28,16 +28,35 @@ function createBin(parent, bin_id) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawTitle(top, left, settings) {
-    var _font_size = (total_radius / 25);
+
+function drawTitle(settings) {
+    createBin('viewport', 'title_group');
+    _bbox = document.getElementById('viewport').getBBox();
+
+    var top = 0;
+    var left = 0;
+    var _font_size = 0;
+    switch (settings['tree-type']) {
+        case 'phylogram':
+            top = _bbox.y - 160;
+            left = _bbox.x + _bbox.width / 2;
+            _font_size = _bbox.width / 40;
+            break;
+        case 'circlephylogram':
+            top = _bbox.y - 160;
+            left = 0;
+            _font_size = _bbox.width / 80;
+            break;
+    }
+
     top -= 3 * _font_size;
-    drawText('viewport', {'x': left, 'y': top}, document.title, 2 * _font_size + 'px', 'center');
+    drawText('title_group', {'x': left, 'y': top}, document.title, 2 * _font_size + 'px', 'center');
     top += 2 * _font_size;
     var _sub_title = "Tree order: " + getClusteringPrettyName(settings['order-by']) + " | ";
     _sub_title    += "Current view: " + settings['current-view'] + " | ";
     _sub_title    += "Sample order: " + settings['samples-order'];
 
-    drawText('viewport', {'x': left, 'y': top}, _sub_title, _font_size + 'px', 'center');
+    drawText('title_group', {'x': left, 'y': top}, _sub_title, _font_size + 'px', 'center');
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2556,7 +2575,6 @@ function draw_tree(settings) {
     rebuildIntersections();
     createBin('tree_bin', 'layer_labels');
     createBin('tree_bin', 'bin');
-    // redrawBins() call moved to draw_tree_callback because redrawBins needs last_settings to be set.
 
     // observe for transform matrix change
     var observer = new MutationObserver(updateSingleBackgroundGlobals);
@@ -2617,16 +2635,16 @@ function draw_tree(settings) {
         }
     }
 
-    // draw title
+    // draw title and legends
+    drawTitle(settings);
+
     var legend_top = total_radius + parseFloat(settings['layer-margin']) + parseFloat(settings['outer-ring-height']) * 2;
     switch (settings['tree-type']) {
         case 'phylogram':
             drawLegend(legend_top, 0 - VIEWER_HEIGHT, 0);
-            drawTitle(-150, -0.5 * VIEWER_HEIGHT, settings);
             break;
         case 'circlephylogram':
             drawLegend(legend_top, 0 - total_radius, total_radius - 40);
-            drawTitle(-1 * total_radius - 150, 0, settings);
             break;
     }
 
