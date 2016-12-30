@@ -2962,6 +2962,8 @@ function rebuildIntersections()
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
         // try to make new intersections
 
+        var selected_set = new Set(SELECTED[bin_id]);
+
         var next_iteration = [].concat(SELECTED[bin_id]);
         var inserted;
         do {
@@ -2979,15 +2981,15 @@ function rebuildIntersections()
                     continue;
                 }
 
-                if (SELECTED[bin_id].indexOf(parent.label) > -1)
+                if (selected_set.has(parent.label))
                 {
                     // parent already in selected list
                     continue;
                 }
 
-                if (node.sibling != null && SELECTED[bin_id].indexOf(node.sibling.label) > -1)
+                if (node.sibling != null && selected_set.has(node.sibling.label))
                 {
-                    SELECTED[bin_id].push(parent.label);
+                    selected_set.add(parent.label);
                     next_iteration.push(parent.label);
                     next_iteration.splice(next_iteration.indexOf(node.label), 1);
                     next_iteration.splice(next_iteration.indexOf(node.sibling.label), 1);
@@ -2996,5 +2998,7 @@ function rebuildIntersections()
             }
 
         } while (inserted > 0)
+
+        SELECTED[bin_id] = Array.from(selected_set);
     }
 }
