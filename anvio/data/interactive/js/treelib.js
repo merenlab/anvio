@@ -2960,39 +2960,17 @@ function rebuildIntersections()
         return;
 
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-
-        // delete extra intersections
-        var deleted;
-        do {
-            deleted = 0;
-            var cursor = SELECTED[bin_id].length;
-            while (cursor--)
-            {
-                var node = label_to_node_map[SELECTED[bin_id][cursor]];
-                
-                if (node.IsLeaf())
-                    continue;
-
-                if (node.child != null && SELECTED[bin_id].indexOf(node.child.label) > -1)
-                    continue;
-
-                if (node.sibling != null && SELECTED[bin_id].indexOf(node.sibling.label) > -1)
-                    continue;
-
-                SELECTED[bin_id].splice(cursor,1);
-                deleted++;
-            }
-
-        } while (deleted > 0)
-
         // try to make new intersections
+
+        var next_iteration = [].concat(SELECTED[bin_id]);
         var inserted;
         do {
             inserted = 0;
-            var length = SELECTED[bin_id].length;
+            var nodes = [].concat(next_iteration);
+            var length = nodes.length;
             for (var cursor = 0; cursor < length; cursor++)
             {
-                var node = label_to_node_map[SELECTED[bin_id][cursor]];
+                var node = label_to_node_map[nodes[cursor]];
                 var parent = node.ancestor;
 
                 if (parent == null || parent.ancestor == null) 
@@ -3010,7 +2988,9 @@ function rebuildIntersections()
                 if (node.sibling != null && SELECTED[bin_id].indexOf(node.sibling.label) > -1)
                 {
                     SELECTED[bin_id].push(parent.label);
-                    
+                    next_iteration.push(parent.label);
+                    next_iteration.splice(next_iteration.indexOf(node.label), 1);
+                    next_iteration.splice(next_iteration.indexOf(node.sibling.label), 1);
                     inserted++;
                 }
             }
