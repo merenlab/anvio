@@ -2941,7 +2941,7 @@ function redrawBins()
         var end = start;
 
         var color = document.getElementById('picker_highlight').getAttribute('color');
-        var outer_ring_size = parseInt(last_settings['outer-ring-height']);
+        var outer_ring_size = parseInt(settings['outer-ring-height']);
 
         if (tree_type == 'circlephylogram')
         {
