@@ -417,12 +417,22 @@ def get_collections(args, d, request, response):
     return json.dumps(csd)
 
 
-def get_tree(args, d, request, response, tree_id):
+def get_items_ordering(args, d, request, response, items_ordering_id):
     set_default_headers(response)
 
-    if tree_id in d.p_meta['clusterings']:
-        run.info_single("Clustering of '%s' has been requested" % (tree_id))
-        return json.dumps(d.p_meta['clusterings'][tree_id]['newick'])
+    if items_ordering_id in d.p_meta['clusterings']:
+        items_ordering = d.p_meta['clusterings'][items_ordering_id]
+
+        if items_ordering.has_key('newick'):
+            run.info_single("The newick order '%s' has been requested" % (items_ordering_id))
+            return json.dumps(items_ordering['newick'])
+        elif items_ordering.has_key('basic'):
+            run.info_single("The list order '%s' has been requested" % (items_ordering_id))
+            return json.dumps(items_ordering['basic'])
+        else:
+            return json.dumps({'error': "The interface requested something anvi'o doesn't know about. Item orderings\
+                                         can only be in the form of 'newick' or 'basic'. But the interface requested\
+                                         a '%s'. We are all confused here :/" % items_ordering_id})
 
     return json.dumps("")
 
