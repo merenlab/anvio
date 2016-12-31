@@ -181,9 +181,9 @@ def send_data(name):
 def get_view_data(view_id):
     return routes.get_view_data(args, d, request, response, view_id)
 
-@route('/tree/<tree_id>')
-def get_tree(tree_id):
-    return routes.get_tree(args, d, request, response, tree_id)
+@route('/tree/<items_ordering_id>')
+def get_items_ordering(items_ordering_id):
+    return routes.get_items_ordering(args, d, request, response, items_ordering_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
