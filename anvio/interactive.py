@@ -232,7 +232,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError, "Sorry, there are no states to show in manual mode :/"
 
         filesnpaths.is_file_exists(self.tree)
-        tree = filesnpaths.is_proper_newick(self.tree)
+        newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
+        names_in_newick_tree = utils.get_names_order_from_newick_tree(newick_tree_text)
 
         view_data_path = os.path.abspath(self.view_data_path) if self.view_data_path else None
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
@@ -243,8 +244,10 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
         self.p_meta['default_clustering'] = clustering_id
-        self.p_meta['available_clusterings'] = [clustering_id]
-        self.p_meta['clusterings'] = {clustering_id: {'newick': ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])}}
+        self.p_meta['available_clusterings'] = [clustering_id, 'Alphabetical_(right_to_left):none:none', 'Alphabetical_(left_to_right):none:none']
+        self.p_meta['clusterings'] = {clustering_id: {'newick': newick_tree_text},
+                                      'Alphabetical_(right_to_left)': {'basic': sorted(names_in_newick_tree)},
+                                      'Alphabetical_(left_to_right)': {'basic': sorted(names_in_newick_tree, reverse=True)}}
 
         self.default_view = self.p_meta['default_view']
 
@@ -259,10 +262,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         else:
             # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
             # here using what is in the tree.
-            names_in_the_tree = [n.name for n in tree.get_leaves()]
-
             ad_hoc_dict = {}
-            for item in names_in_the_tree:
+            for item in names_in_newick_tree:
                 ad_hoc_dict[item] = {'names': item}
 
             self.views[self.default_view] = {'header': ['names'],
@@ -693,7 +694,11 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 # (8) send it along!
                 json_object.append(json_entry)
 
+
             self.views[view] = json_object
+
+        import anvio.dictio as d
+        d.write_serialized_object(self.views, '/tmp/views')
 
 
     def end(self):
