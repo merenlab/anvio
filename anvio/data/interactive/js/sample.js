@@ -396,7 +396,7 @@ function drawSamplesLayers(settings) {
     {
         var samples_layer_name     = settings['samples-layer-order'][i];
         var samples_layer_settings = settings['samples-layers'][samples_layer_name];
-        
+
         if (samples_layer_settings['min']['disabled'])
         {
             $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-min').prop('disabled', false);
@@ -431,6 +431,9 @@ function drawSamplesLayers(settings) {
         var layer_index = j+1;
         var pindex = settings['layer-order'][j];
         var sample_name = getLayerName(pindex);
+
+        if (settings['layers'][pindex]['height'] == 0)
+            continue;
 
         sample_xy[sample_name] = {
             'x': layer_boundaries[layer_index][0] + (layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0]) / 2,
@@ -562,6 +565,9 @@ function drawSamplesLayers(settings) {
             }
         }
     }
+
+    if (samples_start == -1 || samples_end == -1)
+        return;
 
     // draw sample backgrounds and titles.
     for (var i=0; i < settings['samples-layer-order'].length; i++)

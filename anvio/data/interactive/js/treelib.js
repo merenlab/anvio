@@ -2203,6 +2203,9 @@ function draw_tree(settings) {
                         var isStackBar    = (layer_types[pindex] == 1) ? true : false;
                         var isCategorical = (layer_types[pindex] == 2) ? true : false;
 
+                        if (layers[pindex]['height'] == 0)
+                            continue;
+
                         if(isStackBar)
                         {
                             var offset = 0;
@@ -2325,6 +2328,9 @@ function draw_tree(settings) {
                         var isParent      = (layer_types[pindex] == 0) ? true : false;
                         var isStackBar    = (layer_types[pindex] == 1) ? true : false;
                         var isCategorical = (layer_types[pindex] == 2) ? true : false;
+
+                        if (layers[pindex]['height'] == 0)
+                            continue;
 
                         if(isStackBar)
                         {
@@ -2474,6 +2480,8 @@ function draw_tree(settings) {
         var isCategorical = (layer_types[pindex] == 2) ? true : false;
         var isNumerical = (layer_types[pindex] == 3) ? true : false;
 
+        if (layers[pindex]['height'] == 0)
+            continue;
 
         if (isParent || isCategorical)
         {
