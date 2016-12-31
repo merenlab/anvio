@@ -292,13 +292,13 @@ def get_view_data(view_id):
     else:
         return routes.get_view_data(retval["data"]["args"], retval["data"]["d"], request, response, view_id)
 
-@route('/tree/<tree_id>')
-def get_tree(tree_id):
+@route('/tree/<items_ordering_id>')
+def get_items_ordering(items_ordering_id):
     retval = userdb.set_user_data(request)
     if retval["status"] == "error":
         return json.dumps(retval)
     else:
-        return routes.get_tree(retval["data"]["args"], retval["data"]["d"], request, response, tree_id)
+        return routes.get_items_ordering(retval["data"]["args"], retval["data"]["d"], request, response, items_ordering_id)
 
 @route('/data/charts/<split_name>')
 def charts(split_name):
