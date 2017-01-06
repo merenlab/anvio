@@ -329,7 +329,7 @@ class COGsSetup:
             formatted_db_paths['diamond'] = J(diamond_db_path, 'COG')
 
         blast_db_path = J(self.COG_data_dir, 'DB_BLAST')
-        if os.path.exists(diamond_db_path):
+        if os.path.exists(blast_db_path):
             formatted_db_paths['blastp'] = J(blast_db_path, 'COG')
 
         return formatted_db_paths
