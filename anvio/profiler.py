@@ -722,8 +722,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.join()
 
-         if self.num_contigs != len(self.contigs):
-             self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
+        if self.num_contigs != len(self.contigs):
+            self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
 
         # # set contig abundance
         #contigops.set_contigs_abundance(self.contigs)
