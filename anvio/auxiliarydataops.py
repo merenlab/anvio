@@ -40,7 +40,7 @@ class HDF5_IO(object):
             if not unique_hash:
                 raise HDF5Error, "When creating a new database, the 'unique_hash' cannot be None"
 
-            self.fp = h5py.File(self.file_path, 'w')
+            self.fp = h5py.File(self.file_path, 'a')
             self.fp.attrs['hash'] = unique_hash
             self.fp.attrs['version'] = self.version
         else:
