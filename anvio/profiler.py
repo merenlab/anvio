@@ -6,6 +6,9 @@ import os
 import sys
 import pysam
 import shutil
+import pysam
+import time
+import multiprocessing
 
 import anvio
 import anvio.tables as t
@@ -22,7 +25,6 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -100,7 +102,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
 
-        self.atomic_data = contigops.AtomicContigSplitData(self.progress)
+        self.atomic_data = contigops.AtomicContigSplitData()
 
         # following variable will be populated during the profiling, and its content will eventually
         # be stored in t.variable_nts_table_name
@@ -188,45 +190,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # profile...
         if self.blank:
             self.init_mock_profile()
-        elif self.input_file_path:
-            self.init_profile_from_BAM()
-            self.profile()
-            if self.gen_serialized_profile:
-                self.store_profile()
-        elif self.serialized_profile_path:
-            self.init_serialized_profile()
-        else:
-            raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
 
-        self.generate_variabile_nts_table()
-        self.generate_variabile_aas_table()
-        self.generate_gene_coverages_table()
-        self.store_split_coverages()
-
-        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
-        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
-        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
-        # function create_new_view defined in the class TablesForViews.
-        view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
-                                        table_name='atomic_data_splits',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name='single')
-
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
-                                        table_name='atomic_data_contigs',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name=None)
-
-        # OK. if this is a blank profile, atomic_data_* tables will be completely empty. but having no
-        # split names in the profile database becomes very limiting for downstream analyses, so here
-        # we will generate a null atomic_data_splits table, only purpose of which will be to hold the
-        # split names
-        if self.blank:
             # creating a null view_data_splits dict:
             view_data_splits = dict(zip(self.split_names, [dict(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:])))] * len(self.split_names)))
             dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
@@ -236,13 +200,25 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                            table_structure=t.atomic_data_table_structure,
                                            table_types=t.atomic_data_table_types,
                                            view_name='single')
+        elif self.input_file_path:
+            self.init_profile_from_BAM()
+            self.profile()
+        else:
+            raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
 
-        if self.contigs_shall_be_clustered:
-            self.cluster_contigs()
+        #self.generate_variabile_nts_table()
+        #self.generate_variabile_aas_table()
+        #self.generate_gene_coverages_table()
+        #self.store_split_coverages()
 
-        runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
-        self.run.info('runinfo', runinfo_serialized)
-        self.run.store_info_dict(runinfo_serialized, strip_prefix=self.output_directory)
+        # # OK. if this is a blank profile, atomic_data_* tables will be completely empty. but having no
+        # # split names in the profile database becomes very limiting for downstream analyses, so here
+        # # we will generate a null atomic_data_splits table, only purpose of which will be to hold the
+        # # split names
+        # if self.blank:
+
+        # if self.contigs_shall_be_clustered:
+        #     self.cluster_contigs()
 
         if self.bam:
             self.bam.close()
@@ -250,13 +226,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.quit()
 
 
-    def generate_variabile_aas_table(self):
+    def generate_variabile_aas_table(self, quiet=False):
         if self.skip_SNV_profiling or not self.profile_AA_frequencies:
             # there is nothing to generate really..
             self.run.info('AA_frequencies_table', False, quiet=True)
             return
 
-        self.progress.new('Computing AA frequencies at variable positions')
+        if not quiet:
+            self.progresss.new('Computing AA frequencies at variable positions')
 
         variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
@@ -275,8 +252,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             gene_caller_id = gene_caller_ids_to_profile[i]
             codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
 
-            self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
-                                % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
+            if not quiet:
+                self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
+                                    % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
 
             gene_call = self.genes_in_contigs_dict[gene_caller_id]
             contig_name = gene_call['contig']
@@ -296,17 +274,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 variable_aas_table.append(db_entry)
 
         variable_aas_table.store()
-        self.progress.end()
+        if not quiet:
+            self.progress.end()
         self.run.info('AA_frequencies_table', True, quiet=True)
 
+        # clear contents of set
+        self.codons_in_genes_to_profile_AA_frequencies.clear()
 
-    def generate_variabile_nts_table(self):
+
+    def generate_variabile_nts_table(self, quiet=False):
         if self.skip_SNV_profiling:
             # there is nothing to generate really..
             self.run.info('variable_nts_table', False, quiet=True)
             return
 
-        self.progress.new('NT Variability')
+        if not quiet:
+            self.progress.new('NT Variability')
+
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
         for contig in self.contigs.values():
@@ -344,22 +328,29 @@ class BAMProfiler(dbops.ContigsSuperclass):
                             # save this information for later use
                             self.codons_in_genes_to_profile_AA_frequencies.add((gene_caller_id, column_profile['codon_order_in_gene']),)
 
-                    variable_nts_table.append(column_profile)
+                    variable_nts_table.append(column_profile, quiet=quiet)
 
         variable_nts_table.store()
-        self.progress.end()
+        if not quiet:
+            self.progress.end()
+
+
         self.run.info('variable_nts_table', True, quiet=True)
 
 
-    def generate_gene_coverages_table(self):
+    def generate_gene_coverages_table(self, quiet=False):
         gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
-        self.progress.new('Profiling genes')
+        if not quiet:
+            self.progress.new('Profiling genes')
+
         num_contigs = len(self.contigs)
         contig_names = self.contigs.keys()
         for i in range(0, num_contigs):
             contig = contig_names[i]
-            self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
+            if not quiet:
+                self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
+
             # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
@@ -367,31 +358,34 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
 
         gene_coverages_table.store()
-        self.progress.end()
+        if not quiet:
+            self.progress.end()
         self.run.info('gene_coverages_table', True, quiet=True)
 
 
-    def store_split_coverages(self):
+    def store_split_coverages(self, quiet=False):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
         split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
 
-        self.progress.new('Storing split coverages')
+        if not quiet:
+            self.progress.new('Storing split coverages')
 
         contigs_counter = 1
         for contig_name in self.contigs:
-            self.progress.update('working on contig %s of %s' % (pp(contigs_counter), pp(len(self.contigs))))
+            if not quiet:
+                self.progress.update('working on contig %s of %s' % (pp(contigs_counter), pp(len(self.contigs))))
 
             for split in self.contigs[contig_name].splits:
                 split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
 
             contigs_counter += 1
 
-        self.progress.end()
+        if not quiet:
+            self.progress.end()
+            self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only=True)
+            self.run.info('split_coverage_values', True, quiet=True)
 
         split_coverage_values.close()
-
-        self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only=True)
-        self.run.info('split_coverage_values', True, quiet=True)
 
 
     def set_sample_id(self):
@@ -631,63 +625,133 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         return return_path
 
+    @staticmethod
+    def profile_contig_worker(available_index_queue, output_queue, info_dict):
+        bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
+        while True:
+            if available_index_queue.empty() == True:
+                break   
+            else:
+                index = available_index_queue.get()
+
+                contig_name = info_dict['contig_names'][index]
+                contig = contigops.Contig(contig_name)
+                contig.length = info_dict['contig_lengths'][index]
+                contig.split_length = info_dict['split_length']
+                contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
+                contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
+                contig.report_variability_full = info_dict['report_variability_full']
+
+                # populate contig with empty split objects and
+                for split_name in info_dict['contig_name_to_splits'][contig_name]:
+                    s = info_dict['splits_basic_info'][split_name]
+                    split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
+                    split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
+                    contig.splits.append(split)
+
+                # analyze coverage for each split
+                contig.analyze_coverage(bam_file)
+
+                # test the mean coverage of the contig.
+                if contig.coverage.mean < info_dict['min_mean_coverage']:
+                     output_queue.put(None)
+                     continue
+
+                if not info_dict['skip_SNV_profiling']:
+                    contig.analyze_auxiliary(bam_file)
+
+                output_queue.put(contig)
+  
+        bam_file.close()
+        return
 
     def profile(self):
-        """Big deal function"""
+        manager = multiprocessing.Manager()
+        info_dict = manager.dict()
+        info_dict = {
+            'input_file_path': self.input_file_path,
+            'contig_names': self.contig_names,
+            'contig_lengths': self.contig_lengths,
+            'splits_basic_info': self.splits_basic_info,
+            'split_length': self.a_meta['split_length'],
+            'min_coverage_for_variability': self.min_coverage_for_variability,
+            'skip_SNV_profiling': self.skip_SNV_profiling,
+            'report_variability_full': self.report_variability_full,
+            'contig_name_to_splits': self.contig_name_to_splits,
+            'contig_sequences': self.contig_sequences,
+            'min_mean_coverage': self.min_mean_coverage
+        }
 
-        # So we start with essential stats. In the section below, we will simply go through each contig
-        # in the BAM file and populate the contigs dictionary for the first time.
-        for i in range(0, len(self.contig_names)):
+        available_index_queue = multiprocessing.Queue()
+        output_queue = multiprocessing.Queue(maxsize=500)
 
-            contig_name = self.contig_names[i]
+        for i in range(0, self.num_contigs):
+            available_index_queue.put(i)
 
-            contig = contigops.Contig(contig_name)
-            contig.length = self.contig_lengths[i]
-            contig.split_length = self.a_meta['split_length']
-            contig.min_coverage_for_variability = self.min_coverage_for_variability
-            contig.skip_SNV_profiling = self.skip_SNV_profiling
-            contig.report_variability_full = self.report_variability_full
+        #num_threads = multiprocessing.cpu_count() - 1
+        num_threads = 7
+        processes = []
+        for i in range(0, num_threads):
+            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
+        
+        for proc in processes:
+            proc.start()
 
-            self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
-                                                                      i + 1,
-                                                                      len(self.contig_names),
-                                                                      pp(int(contig.length))))
+        recieved_contigs = 0
+        self.progress.new('Profiling using ' + str(num_threads) + ' processes')
 
-            # populate contig with empty split objects and
-            for split_name in self.contig_name_to_splits[contig_name]:
-                s = self.splits_basic_info[split_name]
-                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
-                split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
-                contig.splits.append(split)
+        while recieved_contigs < self.num_contigs:
+            contig = output_queue.get()
+            self.contigs[contig.name] = contig
+            self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
+                                                                   self.num_contigs))
+            recieved_contigs += 1
 
-            # analyze coverage for each split
-            contig.analyze_coverage(self.bam, self.progress)
-
-            # test the mean coverage of the contig.
-            discarded_contigs_due_to_C = set([])
-            if contig.coverage.mean < self.min_mean_coverage:
-                # discard this contig and continue
-                discarded_contigs_due_to_C.add(contig.name)
-                self.progress.end()
-                continue
-
-            if not self.skip_SNV_profiling:
-                contig.analyze_auxiliary(self.bam, self.progress)
-
-            self.progress.end()
-
-            # add contig to the dict.
-            self.contigs[contig_name] = contig
+            if recieved_contigs > 0 and recieved_contigs % 250 == 0:
+                self.store_contigs_buffer()
+                self.contigs.clear()
 
 
-        if discarded_contigs_due_to_C:
-            self.run.info('contigs_after_C', pp(len(self.contigs)))
+        for proc in processes:
+            proc.join()
 
-        # set contig abundance
-        contigops.set_contigs_abundance(self.contigs)
+        self.store_contigs_buffer()
+        self.progress.end()
 
-        self.check_contigs()
+        # if self.num_contigs != len(self.contigs):
+        #     self.run.info('contigs_after_C', pp(len(self.contigs)))
 
+        # # set contig abundance
+        #contigops.set_contigs_abundance(self.contigs)
+
+        self.check_contigs(num_contigs=recieved_contigs)
+
+    def store_contigs_buffer(self):
+        self.generate_variabile_nts_table(quiet=True)
+        self.generate_variabile_aas_table(quiet=True)
+        self.generate_gene_coverages_table(quiet=True)
+        self.store_split_coverages(quiet=True)
+
+        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
+        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
+        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
+        # function create_new_view defined in the class TablesForViews.
+        view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_splits',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name='single',
+                                        append_mode=True)
+
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_contigs',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name=None,
+                                        append_mode=True)
 
     def store_profile(self):
         output_file = self.generate_output_destination('PROFILE.cp')
@@ -698,8 +762,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('profile_dict', output_file)
 
 
-    def check_contigs(self):
-        if not len(self.contigs):
+    def check_contigs(self, num_contigs=None):
+        if not num_contigs:
+            num_contigs = len(self.contigs)
+
+        if not num_contigs:
             raise ConfigError, "0 contigs to work with. Bye."
 
 
