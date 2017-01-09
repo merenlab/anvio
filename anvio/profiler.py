@@ -698,33 +698,37 @@ class BAMProfiler(dbops.ContigsSuperclass):
             proc.start()
 
         recieved_contigs = 0
+        discarded_contigs = 0
         self.progress.new('Profiling using ' + str(num_threads) + ' processes')
 
         while recieved_contigs < self.num_contigs:
             contig = output_queue.get()
-            self.contigs[contig.name] = contig
-            self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
-                                                                   self.num_contigs))
+            if contig:
+                self.contigs[contig.name] = contig
+                self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
+                                                                       self.num_contigs))
+            else:
+                discarded_contigs += 1
+
             recieved_contigs += 1
 
             if recieved_contigs > 0 and recieved_contigs % 250 == 0:
                 self.store_contigs_buffer()
                 self.contigs.clear()
 
+        self.store_contigs_buffer()
+        self.progress.end()
 
         for proc in processes:
             proc.join()
 
-        self.store_contigs_buffer()
-        self.progress.end()
-
-        # if self.num_contigs != len(self.contigs):
-        #     self.run.info('contigs_after_C', pp(len(self.contigs)))
+         if self.num_contigs != len(self.contigs):
+             self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
 
         # # set contig abundance
         #contigops.set_contigs_abundance(self.contigs)
 
-        self.check_contigs(num_contigs=recieved_contigs)
+        self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
     def store_contigs_buffer(self):
         self.generate_variabile_nts_table(quiet=True)
