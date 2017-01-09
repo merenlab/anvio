@@ -1912,7 +1912,7 @@ class TablesForViews(Table):
         Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
 
-    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None):
+    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
         """Creates a new view table, and adds an entry for it into the 'views' table.
 
         Entries in 'views' table appear in various places in the interface. However, we also generate
@@ -1933,18 +1933,25 @@ class TablesForViews(Table):
 
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
 
-        if view_name and view_name in views_in_db:
-            raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
-                                You can't create another one before you get rid of the existing one, because rules."\
-                                                                        % view_name
+        if not append_mode:
+            if view_name and view_name in views_in_db:
+                raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                                    You can't create another one before you get rid of the existing one, because rules."\
+                                                                            % view_name
 
-        # first create the data table:
-        anvio_db.db.drop_table(table_name)
-        anvio_db.db.create_table(table_name, table_structure, table_types)
+            # first create the data table:
+            anvio_db.db.drop_table(table_name)
+        
+        try:
+            anvio_db.db.create_table(table_name, table_structure, table_types)
+        except:
+            if not append_mode:
+                raise ConfigError, "Table already exists" 
+
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
         anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
 
-        if view_name:
+        if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
 
         anvio_db.disconnect()
@@ -1971,11 +1978,11 @@ class TableForVariability(Table):
         self.set_next_available_id(t.variable_nts_table_name)
 
 
-    def append(self, profile):
+    def append(self, profile, quiet=False):
         db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
-        if self.num_entries % 100 == 0:
+        if not quiet and self.num_entries % 100 == 0:
             self.progress.update('Information for %d SNV sites have been added ...' % self.num_entries)
 
 
