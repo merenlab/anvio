@@ -81,13 +81,13 @@ class Contig:
         return d
 
 
-    def analyze_coverage(self, bam, progress):
+    def analyze_coverage(self, bam):
         contig_coverage = []
         num_splits = len(self.splits)
         counter = 1
 
         for split in self.splits:
-            progress.update('Coverage (split: %d of %d)' % (counter, num_splits))
+            #progress.update('Coverage (split: %d of %d)' % (counter, num_splits))
 
             split.coverage = Coverage()
             split.coverage.run(bam, split)
@@ -98,13 +98,13 @@ class Contig:
         self.coverage.process_c(contig_coverage)
 
 
-    def analyze_auxiliary(self, bam, progress):
+    def analyze_auxiliary(self, bam):
         num_splits = len(self.splits)
         counter = 1
 
         for split in self.splits:
-            progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
-                                 % (counter, num_splits, self.coverage.mean, split.coverage.mean))
+            #progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
+            #                     % (counter, num_splits, self.coverage.mean, split.coverage.mean))
 
             split.auxiliary = Auxiliary(split,
                                         bam,
@@ -205,25 +205,17 @@ class Auxiliary:
 
 
 class AtomicContigSplitData:
-    def __init__(self, p=progress):
+    def __init__(self,):
         self.atomic_data_contigs = {}
         self.atomic_data_splits = {}
-        self.progress = p
-
 
     def get_data(self, sample_id, contigs):
-        self.progress.new('Generating atomic_data')
-        self.progress.update('...')
-
         num_contigs = pp(len(contigs))
-        cur_contig = 1
 
         # this loop will get atomic_data information from Contig instanes and store them into the db
         # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
         # although it looks crappy:
         for contig_name in contigs:
-            if cur_contig % 10 == 0:
-                self.progress.update("Processing contig %s of %s" % (pp(cur_contig), num_contigs))
             contig = contigs[contig_name]
             contig_atomic_data = contig.get_atomic_data_dict()
 
@@ -237,9 +229,5 @@ class AtomicContigSplitData:
                 self.atomic_data_splits[split.name] = {'contig': split.name}
                 for atomic_data_field in t.atomic_data_table_structure[1:]:
                     self.atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
-
-            cur_contig += 1
-
-        self.progress.end()
 
         return self.atomic_data_splits, self.atomic_data_contigs
