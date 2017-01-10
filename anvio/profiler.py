@@ -219,8 +219,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # # split names
         # if self.blank:
 
-        # if self.contigs_shall_be_clustered:
-        #     self.cluster_contigs()
+        if self.contigs_shall_be_clustered:
+            self.cluster_contigs()
 
         if self.bam:
             self.bam.close()
