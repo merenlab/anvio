@@ -705,10 +705,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         while recieved_contigs < self.num_contigs:
             contig = output_queue.get()
+
+            self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
+                                                                    self.num_contigs))
+
             if contig:
                 self.contigs[contig.name] = contig
-                self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
-                                                                       self.num_contigs))
             else:
                 discarded_contigs += 1
 
