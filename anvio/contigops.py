@@ -32,20 +32,20 @@ variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45
 variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
 
 
-def set_contigs_abundance(contigs):
-    """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
-       a Contigs wrapper .. maybe later."""
+# def set_contigs_abundance(contigs):
+#     """takes a list of contigs (of Contig class) and sets abundance values. a better way to do this is to implement
+#        a Contigs wrapper .. maybe later."""
 
-    # first calculate the mean coverage
-    total_length_of_all_contigs = sum([c.length for c in contigs.values()])
-    total_coverage_values_for_all_contigs = sum([c.coverage.mean * c.length for c in contigs.values()])
-    overall_mean_coverage = total_coverage_values_for_all_contigs / total_length_of_all_contigs
+#     # first calculate the mean coverage
+#     total_length_of_all_contigs = sum([c.length for c in contigs.values()])
+#     total_coverage_values_for_all_contigs = sum([c.coverage.mean * c.length for c in contigs.values()])
+#     overall_mean_coverage = total_coverage_values_for_all_contigs / total_length_of_all_contigs
 
-    # set normalized abundance factor for each contig
-    for contig in contigs:
-        contigs[contig].abundance = contigs[contig].coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
-        for split in contigs[contig].splits:
-            split.abundance = split.coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
+#     # set normalized abundance factor for each contig
+#     for contig in contigs:
+#         contigs[contig].abundance = contigs[contig].coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
+#         for split in contigs[contig].splits:
+#             split.abundance = split.coverage.mean / overall_mean_coverage if overall_mean_coverage else 0
 
 
 def gen_split_name(parent_name, order):
