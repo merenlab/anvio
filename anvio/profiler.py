@@ -61,6 +61,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.total_length_of_all_contigs = 0
+        self.total_coverage_values_for_all_contigs = 0
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -725,12 +727,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.num_contigs != len(self.contigs):
             self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
 
-        # # set contig abundance
-        #contigops.set_contigs_abundance(self.contigs)
+        overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
+
+        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
     def store_contigs_buffer(self):
+        for contig in self.contigs.values():
+            self.total_length_of_all_contigs += contig.length
+            self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
+
+            # we will divide every abundance after profiling is done.
+            contig.abundance = contig.coverage.mean
+            for split in contig.splits:
+                split.abundance = contig.coverage.mean
+
         self.generate_variabile_nts_table(quiet=True)
         self.generate_variabile_aas_table(quiet=True)
         self.generate_gene_coverages_table(quiet=True)
