@@ -1073,6 +1073,27 @@ D = {
              'help': "If this is true, users will not receive a link via email to confirm their account but instead be validated\
                       automatically if there is no smtp configuration."}
                 ),
+    'num-processes': (
+            ['--num-processes'],
+            {'metavar': 'INT',
+            'required': False,
+            'help': "Number of processes that will do the profiling. Each process will increase the speed of processing but \
+                    costs additional memory. If not given, Anvi'o will spawn processes according to number of CPU cores you have."}
+                ),
+    'queue-size': (
+            ['--queue-size'],
+            {'default': 500,
+            'metavar': 'INT',
+            'required': False,
+             'help': "Queue size"}
+                ),
+    'write-buffer-size': (
+            ['--write-buffer-size'],
+            {'default': 250,
+            'metavar': 'INT',
+            'required': False,
+             'help': "write buffer size"}
+                ),
 }
 
 # two functions that works with the dictionary above.
