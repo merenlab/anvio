@@ -699,6 +699,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.progress.update('%d of %d contigs completed. ' % (recieved_contigs,
                                                                     self.num_contigs))
+            self.progress.append(" Memory: " + utils.get_total_memory_usage())
 
             if contig:
                 self.contigs[contig.name] = contig
