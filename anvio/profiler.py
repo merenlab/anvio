@@ -61,6 +61,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.num_threads = A('num_threads')
+        self.queue_size = A('queue_size')
+        self.write_buffer_size = A('write_buffer_size')
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
 
@@ -674,12 +677,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         }
 
         available_index_queue = multiprocessing.Queue()
-        output_queue = multiprocessing.Queue(maxsize=500)
+        output_queue = multiprocessing.Queue(maxsize=self.queue_size)
 
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
-        num_threads = multiprocessing.cpu_count() - 1
+        num_threads = self.num_threads or (multiprocessing.cpu_count() - 1)
         processes = []
         for i in range(0, num_threads):
             processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
@@ -704,7 +707,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             recieved_contigs += 1
 
-            if recieved_contigs > 0 and recieved_contigs % 250 == 0:
+            if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
                 self.store_contigs_buffer()
                 self.contigs.clear()
 
