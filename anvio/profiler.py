@@ -690,8 +690,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
-        #num_threads = multiprocessing.cpu_count() - 1
-        num_threads = 7
+        num_threads = multiprocessing.cpu_count() - 1
         processes = []
         for i in range(0, num_threads):
             processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
