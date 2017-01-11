@@ -208,17 +208,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
 
-        #self.generate_variabile_nts_table()
-        #self.generate_variabile_aas_table()
-        #self.generate_gene_coverages_table()
-        #self.store_split_coverages()
-
-        # # OK. if this is a blank profile, atomic_data_* tables will be completely empty. but having no
-        # # split names in the profile database becomes very limiting for downstream analyses, so here
-        # # we will generate a null atomic_data_splits table, only purpose of which will be to hold the
-        # # split names
-        # if self.blank:
-
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
