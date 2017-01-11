@@ -8,6 +8,7 @@ import sys
 import time
 import socket
 import shutil
+import psutil
 import urllib2
 import smtplib
 import textwrap
@@ -16,6 +17,7 @@ import multiprocessing
 import ConfigParser
 
 from email.mime.text import MIMEText
+from math import log
 
 import anvio
 import anvio.db as db
@@ -103,7 +105,6 @@ class Multiprocessing:
     def get_shared_integer(self):
         return self.manager.Value('i', 0)
 
-
     def run_processes(self, processes_to_run, progress=Progress(verbose=False)):
         tot_num_processes = len(processes_to_run)
         sent_to_run = 0
@@ -129,6 +130,21 @@ class Multiprocessing:
                                                             NumRunningProceses()))
             time.sleep(1)
 
+
+def get_total_memory_usage():
+    current_process = psutil.Process(os.getpid())
+    mem = current_process.memory_info().rss
+    for child in current_process.children(recursive=True):
+        mem += child.memory_info().rss
+
+    return human_readable_file_size(mem)
+
+def human_readable_file_size(size):
+    _suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+
+    order = int(log(size) / 10) if size else 0
+
+    return '{:.4g} {}'.format(size / (1 << (order * 10)), _suffixes[order])
 
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
     """Get a port number for the `ip` address."""
