@@ -704,9 +704,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.views[view] = json_object
 
-        import anvio.dictio as d
-        d.write_serialized_object(self.views, '/tmp/views')
-
 
     def end(self):
         # FIXME: remove temp files and stuff
