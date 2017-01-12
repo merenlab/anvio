@@ -77,15 +77,15 @@ class CONCOCT:
 
         if not int(profile_db.meta['merged']):
             self.progress.end()
-            raise ConfigError, 'CONCOCT can only be used to cluster merged runs...'
+            raise ConfigError('CONCOCT can only be used to cluster merged runs...')
 
         self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest=profile_db.samples)
         profile_db.disconnect()
 
         self.progress.update('accessing the profile database ...')
         contigs_db = dbops.ContigsDatabase(args.contigs_db, quiet=True)
-        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest=self.coverages.keys())
-        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest=self.coverages.keys())
+        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest=list(self.coverages.keys()))
+        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest=list(self.coverages.keys()))
         contigs_db.disconnect()
 
         self.progress.update('computing split lengths ...')
@@ -156,25 +156,25 @@ class CONCOCT_INTERFACE():
         self.progress = p
 
         if NClusters < 2 or NClusters > 2000:
-            raise ConfigError, "Number of clusters requested must be between 2 and 2,000."
+            raise ConfigError("Number of clusters requested must be between 2 and 2,000.")
 
         self.progress.new('CONCOCT')
 
         self.debug = debug
 
         self.progress.update('Checking the number of samples ...')
-        first_cov = coverages.itervalues().next()
-        sample_names = first_cov.keys()
+        first_cov = next(iter(coverages.values()))
+        sample_names = list(first_cov.keys())
         NS = len(sample_names)
 
         self.progress.update('Checking the number of k-mers ...')
-        first_kmer = kmers.itervalues().next()
-        kmer_names = first_kmer.keys()
+        first_kmer = next(iter(kmers.values()))
+        kmer_names = list(first_kmer.keys())
         NK = len(kmer_names)
 
         self.progress.update('Checking the number of contigs to cluster ...')
-        self.contig_names = coverages.keys()
-        self.NC = len(coverages.keys())
+        self.contig_names = list(coverages.keys())
+        self.NC = len(list(coverages.keys()))
 
         cov_array = np.zeros((self.NC, NS))
         kmer_array = np.zeros((self.NC, NK))
@@ -242,4 +242,4 @@ class CONCOCT_INTERFACE():
             bin_name_conversion_dict[bin_id] = 'Bin_%d' % bin_counter
             bin_counter += 1
 
-        return dict(zip(self.contig_names, [bin_name_conversion_dict[g] for g in self.assign]))
+        return dict(list(zip(self.contig_names, [bin_name_conversion_dict[g] for g in self.assign])))

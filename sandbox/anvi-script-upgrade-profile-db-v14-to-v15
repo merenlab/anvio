@@ -19,7 +19,7 @@ progress = terminal.Progress()
 
 def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_runinfo = False):
     if profile_db_path is None:
-        raise ConfigError, "No profile database is given."
+        raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
     dbops.is_profile_db(profile_db_path)
@@ -27,7 +27,7 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
     # make sure the version is 5
     profile_db = db.DB(profile_db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '14':
-        raise ConfigError, "Version of this profile database is not 14 (hence, this script cannot really do anything)."
+        raise ConfigError("Version of this profile database is not 14 (hence, this script cannot really do anything).")
 
     is_merged = profile_db.get_meta_value('merged')
 
@@ -38,9 +38,9 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
                          or you are certain that it will work, or if you are a lucky person in general, press ENTER to continue.\
                          If you want to cancel the upgrade, press CTRL+C now. If you want to avoid this message the next time,\
                          use "--just-do-it" flag.')
-            raw_input("Press ENTER to continue...\n")
+            input("Press ENTER to continue...\n")
         except:
-            print
+            print()
             sys.exit()
 
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
@@ -55,10 +55,10 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
 
     if not skip_runinfo:
         if not runinfo_path:
-            raise ConfigError, "I can't find the runinfo file around this profile :("
+            raise ConfigError("I can't find the runinfo file around this profile :(")
 
         runinfo = dictio.read_serialized_object(runinfo_path)
-        if not runinfo.has_key('blank'):
+        if 'blank' not in runinfo:
             runinfo['blank'] = False
 
             dictio.write_serialized_object(runinfo, runinfo_path)
@@ -88,6 +88,6 @@ if __name__ == '__main__':
 
     try:
         update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

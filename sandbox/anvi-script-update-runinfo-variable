@@ -36,16 +36,16 @@ def main(args):
         sys.exit()
 
     if not args.variable:
-        raise ConfigError, "You must set a variable to update using '--variable' parameter. To see a list of\
-                            all variables, run the program with '--show-contents' flag."
+        raise ConfigError("You must set a variable to update using '--variable' parameter. To see a list of\
+                            all variables, run the program with '--show-contents' flag.")
 
     vals = [p for p in [args.set_bool, args.set_int, args.set_string, args.set_float] if not isinstance(p, type(None))]
 
     if not len(vals):
-        raise ConfigError, "You must select one of the 'set-*' parameters."
+        raise ConfigError("You must select one of the 'set-*' parameters.")
 
     if len(vals) > 1:
-        raise ConfigError, "You can only use one of the 'set-*' parameters."
+        raise ConfigError("You can only use one of the 'set-*' parameters.")
 
     val = vals[0]
 
@@ -55,7 +55,7 @@ def main(args):
         elif val.lower() == 'true' or val == '1':
             val = True
         else:
-            raise ConfigError, "Unintelligible value for --set-bool."
+            raise ConfigError("Unintelligible value for --set-bool.")
 
     runinfo[args.variable] = val
 
@@ -83,12 +83,12 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
-    except DictIOError, e:
-        print e
+    except DictIOError as e:
+        print(e)
         sys.exit(-3)

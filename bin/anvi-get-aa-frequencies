@@ -37,12 +37,12 @@ def main(args):
     bam_file_object = bamops.BAMFileObject(args.input_file).get()
 
     if args.gene_caller_id not in c.genes_in_contigs_dict:
-        raise ConfigError, "The contigs db does not have the gene caller id '%d' :/" % args.gene_caller_id
+        raise ConfigError("The contigs db does not have the gene caller id '%d' :/" % args.gene_caller_id)
 
     gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
 
     if gene_call['partial']:
-        raise ConfigError, 'This seems to be a partial gene call. Sorry :/'
+        raise ConfigError('This seems to be a partial gene call. Sorry :/')
 
     contig_sequence = c.contig_sequences[gene_call['contig']]['sequence']
 
@@ -61,7 +61,7 @@ def main(args):
                           'contig_name': gene_call['contig'], 'start': gene_call['start'],
                           'stop': gene_call['stop'], 'direction': gene_call['direction']}
 
-        for aa in codon_to_AA.values():
+        for aa in list(codon_to_AA.values()):
             d[codon_order][aa] = entry['frequencies'][aa]
 
     header = ['codon_order_in_gene', 'contig_name', 'start', 'stop', 'direction', 'reference', 'coverage'] + sorted(list(set(codon_to_AA.values())))
@@ -87,9 +87,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

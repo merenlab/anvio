@@ -117,37 +117,37 @@ class MultipleRuns:
                 missing_path.append(p)
 
         if improper:
-            raise ConfigError, "%s seem to be properly formatted anvio object: %s. Are you\
+            raise ConfigError("%s seem to be properly formatted anvio object: %s. Are you\
                                            sure these are anvio RUNINFO.cp files?" % \
                                            ('Some RUNINFO files do not' if len(improper) > 1 else "RUNINFO file does not",
-                                            ', '.join(improper))
+                                            ', '.join(improper)))
 
         if missing_path:
-            raise ConfigError, "Anvi'o couldn't find any profile databases for %d of %d single runs you provided for merging.\
+            raise ConfigError("Anvi'o couldn't find any profile databases for %d of %d single runs you provided for merging.\
                                 Are you sure your profile databases were generated during profiling? :(" % \
-                                            (len(missing_path), len(self.input_runinfo_dicts))
+                                            (len(missing_path), len(self.input_runinfo_dicts)))
 
 
     def sanity_check(self):
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
 
         if not len(self.input_runinfo_paths) > 1:
-            raise ConfigError, "You need to provide at least 2 RUNINFO.cp files for this program\
-                                           to be useful."
+            raise ConfigError("You need to provide at least 2 RUNINFO.cp files for this program\
+                                           to be useful.")
 
         if not self.contigs_db_path:
-            raise ConfigError, "You must provide a contigs database for this operation."
+            raise ConfigError("You must provide a contigs database for this operation.")
         if not os.path.exists(self.contigs_db_path):
-            raise ConfigError, "Anvi'o couldn't find the contigs database where you said it would be :/"
+            raise ConfigError("Anvi'o couldn't find the contigs database where you said it would be :/")
 
         missing = [p for p in self.input_runinfo_paths if not os.path.exists(p)]
         if missing:
-            raise ConfigError, "%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
-                                                                 ', '.join(missing))
+            raise ConfigError("%s not found: %s." % ('Some files are' if len(missing) > 1 else "File is",
+                                                                 ', '.join(missing)))
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError, "You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
-                                while also asking it to enforce it."
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
+                                while also asking it to enforce it.")
 
         self.read_runinfo_dicts()
 
@@ -158,18 +158,18 @@ class MultipleRuns:
         contigs_db.disconnect()
 
         # test open all profile databases to make sure you are golden with versions
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             sample_profile_db = anvio.db.DB(runinfo['profile_db'], anvio.__profile__version__)
             sample_profile_db.disconnect()
 
-        if [True for v in self.input_runinfo_dicts.values() if v['merged']]:
-            raise ConfigError, "This is very cute, but you can't merge already merged runs. anvio can only merge\
-                                      individual profiles (which are generated through anvi-profile program). Sorry."
+        if [True for v in list(self.input_runinfo_dicts.values()) if v['merged']]:
+            raise ConfigError("This is very cute, but you can't merge already merged runs. anvio can only merge\
+                                      individual profiles (which are generated through anvi-profile program). Sorry.")
 
-        if [True for v in self.input_runinfo_dicts.values() if v['blank']]:
-            raise ConfigError, "Do you have a blank profile in there? Because it seems you do :/ Well, here is the problem:\
+        if [True for v in list(self.input_runinfo_dicts.values()) if v['blank']]:
+            raise ConfigError("Do you have a blank profile in there? Because it seems you do :/ Well, here is the problem:\
                                 blank profiles are merely useful to play with a contigs database when no mapping data is\
-                                available, and they are not supposed to be merged."
+                                available, and they are not supposed to be merged.")
 
         for k, p in [('total_length', 'Number of nucleotides described'),
                      ('num_contigs', 'Number of contigs'),
@@ -181,39 +181,39 @@ class MultipleRuns:
                      ('report_variability_full', 'Report full variability (--report-variability-full)'),
                      ('profile_AA_frequencies', 'Profile AA frequencies parameter (--profile-AA-frequencies)'),
                      ('skip_SNV_profiling', 'Skip SNV profiling parameter (--skip-SNV-profiling)')]:
-            v = set([r[k] for r in self.input_runinfo_dicts.values()])
+            v = set([r[k] for r in list(self.input_runinfo_dicts.values())])
             if len(v) > 1:
-                raise ConfigError, "%s is not identical for all profiles to be merged, which is a \
+                raise ConfigError("%s is not identical for all profiles to be merged, which is a \
                                     deal breaker. All profiles that are going to be merged must be\
-                                    run with identical flags and parameters :/" % p
+                                    run with identical flags and parameters :/" % p)
 
             # so we carry over this information into the runinfo dict for merged runs:
             self.run.info(k, v.pop())
 
         # get split names from one of the profile databases. split names must be identical across all
-        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(self.input_runinfo_dicts.values()[0]['profile_db'])))
+        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(list(self.input_runinfo_dicts.values())[0]['profile_db'])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
-        sample_runinfos = self.input_runinfo_dicts.values()
+        sample_runinfos = list(self.input_runinfo_dicts.values())
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in sample_runinfos])
         if len(hashes_for_profile_dbs) != 1:
             if None in hashes_for_profile_dbs:
-                raise ConfigError, "It seems there is at least one run in the mix that was profiled using an\
+                raise ConfigError("It seems there is at least one run in the mix that was profiled using an\
                                           contigs database, and at least one other that was profiled without using\
                                           one. This is not good. All runs must be profiled using the same contigs\
-                                          database, or all runs must be profiled without a contigs database :/"
+                                          database, or all runs must be profiled without a contigs database :/")
             else:
-                raise ConfigError, "It seems these runs were profiled using different contigs databases (or\
+                raise ConfigError("It seems these runs were profiled using different contigs databases (or\
                                           different versions of the same contigs database). All runs must be\
                                           profiled using the same contigs database, or all runs must be profiled\
-                                          without a contigs database :/"
+                                          without a contigs database :/")
 
 
         # make sure the hash for contigs db is identical across all profile databases:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
-            raise ConfigError, "The contigs database you provided, which is identified with hash '%s', does\
+            raise ConfigError("The contigs database you provided, which is identified with hash '%s', does\
                                       not seem to match the run profiles you are trying to merge, which share the\
-                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0])
+                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
 
 
     def set_sample_id(self):
@@ -228,31 +228,31 @@ class MultipleRuns:
 
 
     def is_all_samples_have_it(self, runinfo_variable):
-        presence = [runinfo[runinfo_variable] for runinfo in self.input_runinfo_dicts.values() if runinfo_variable in runinfo]
+        presence = [runinfo[runinfo_variable] for runinfo in list(self.input_runinfo_dicts.values()) if runinfo_variable in runinfo]
 
         if not len(presence):
-            raise ConfigError, "Something is wrong. Your profiles are not compatible with the merger. Please\
-                                      re-profile everything you are trying to merge, and run merger again."
+            raise ConfigError("Something is wrong. Your profiles are not compatible with the merger. Please\
+                                      re-profile everything you are trying to merge, and run merger again.")
 
-        if presence.count(True) == len(self.input_runinfo_dicts.values()):
+        if presence.count(True) == len(list(self.input_runinfo_dicts.values())):
             self.run.info(runinfo_variable, True, quiet=True)
-        elif presence.count(False) == len(self.input_runinfo_dicts.values()):
+        elif presence.count(False) == len(list(self.input_runinfo_dicts.values())):
             # none has it
             self.run.info(runinfo_variable, False, quiet=True)
             return
         else:
             # some weird shit must have happened.
-            raise ConfigError, "Anvi'o is confused. While merging multiple runs, it seem some of the runs have the\
+            raise ConfigError("Anvi'o is confused. While merging multiple runs, it seem some of the runs have the\
                                       '%s' in their PROFILE.db's, and others do not. This should never happen. Probably\
                                       your best bet is to profile everything (with of course using the same parameters)\
-                                      from scratch :/" % runinfo_variable
+                                      from scratch :/" % runinfo_variable)
 
     def merge_variable_nts_tables(self):
         self.is_all_samples_have_it('variable_nts_table')
 
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
             sample_profile_db.disconnect()
@@ -269,7 +269,7 @@ class MultipleRuns:
 
         variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
             sample_profile_db.disconnect()
@@ -288,12 +288,12 @@ class MultipleRuns:
         gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
         # fill "genes" instance from all samples
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             sample_id = runinfo['sample_id']
 
             sample_profile_db = dbops.ProfileDatabase(runinfo['profile_db'], quiet=True)
             sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
-            for g in sample_gene_profiles.values():
+            for g in list(sample_gene_profiles.values()):
                 gene_coverages_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['mean_coverage'] * self.normalization_multiplier[sample_id])
             sample_profile_db.disconnect()
 
@@ -307,7 +307,7 @@ class MultipleRuns:
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
         # fill coverages in from all samples
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             input_file_path = os.path.join(os.path.dirname(runinfo['profile_db']), 'AUXILIARY-DATA.h5')
             sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(input_file_path, self.contigs_db_hash)
 
@@ -326,7 +326,7 @@ class MultipleRuns:
         # this is not the best way to do it. a better way probably required all reads obtained from each
         # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
         num_reads_mapped_per_sample = {}
-        for runinfo in self.input_runinfo_dicts.values():
+        for runinfo in list(self.input_runinfo_dicts.values()):
             sample_profile_db = anvio.db.DB(runinfo['profile_db'], anvio.__profile__version__)
             num_reads_mapped_per_sample[runinfo['sample_id']] = int(sample_profile_db.get_meta_value('total_reads_mapped'))
             sample_profile_db.disconnect()
@@ -334,9 +334,9 @@ class MultipleRuns:
         smallest_sample_size = min(num_reads_mapped_per_sample.values())
 
         if smallest_sample_size == 0:
-            raise ConfigError, "It seems at least one of the samples you are trying to merge has zero hits. Here is a\
+            raise ConfigError("It seems at least one of the samples you are trying to merge has zero hits. Here is a\
                                 list of all samples and number of mapped reads they have: %s." \
-                                    % ', '.join(['"%s": %s' % (s, pp(num_reads_mapped_per_sample[s])) for s in num_reads_mapped_per_sample])
+                                    % ', '.join(['"%s": %s' % (s, pp(num_reads_mapped_per_sample[s])) for s in num_reads_mapped_per_sample]))
 
         for sample_id in num_reads_mapped_per_sample:
             self.normalization_multiplier[sample_id] = smallest_sample_size * 1.0 / num_reads_mapped_per_sample[sample_id]
@@ -358,7 +358,7 @@ class MultipleRuns:
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
-        C = lambda x: self.input_runinfo_dicts.values()[0][x]
+        C = lambda x: list(self.input_runinfo_dicts.values())[0][x]
         self.contigs_db_hash = C('contigs_db_hash')
         self.min_contig_length = C('min_contig_length')
         self.num_contigs = C('num_contigs')
@@ -587,7 +587,7 @@ class MultipleRuns:
 
     def get_split_parents(self):
         parents = {}
-        m = self.atomic_data_for_each_run['splits'].values()[0]
+        m = list(self.atomic_data_for_each_run['splits'].values())[0]
         for split in m:
             parents[split] = m[split]["__parent__"]
         return parents
@@ -602,7 +602,7 @@ class MultipleRuns:
 
             target_table = 'atomic_data_%s' % target
 
-            for r in self.input_runinfo_dicts.values():
+            for r in list(self.input_runinfo_dicts.values()):
                 db = anvio.db.DB(r['profile_db'], dbops.get_required_version_for_db(r['profile_db']))
                 atomic_data_table_for_each_run[target][r['sample_id']] = db.get_table_as_dict(target_table)
 

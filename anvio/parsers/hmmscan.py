@@ -27,7 +27,7 @@ class HMMScan(Parser):
         # search_table_structure = ['entry_id', 'source', 'search_type', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
 
         entry_id = 0
-        for hit in self.dicts['hits'].values():
+        for hit in list(self.dicts['hits'].values()):
             entry = {'entry_id': entry_id,
                      'gene_name': hit['gene_name'],
                      'gene_hmm_id': hit['gene_hmm_id'],

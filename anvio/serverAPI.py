@@ -75,7 +75,7 @@ class AnviServerAPI:
         if target in self.allowed_targets:
             return target
         else:
-            raise AnviServerError, "'%s' does not seem to be a target recognized by the API :/" % target
+            raise AnviServerError("'%s' does not seem to be a target recognized by the API :/" % target)
 
 
     def get_files_dict(self, files):
@@ -91,7 +91,7 @@ class AnviServerAPI:
                 continue
 
             if not os.path.exists(file_path):
-                raise AnviServerError, "File '%s' does not exist." % file_path
+                raise AnviServerError("File '%s' does not exist." % file_path)
 
             files_dict[file_name] = open(file_path)
 
@@ -100,7 +100,7 @@ class AnviServerAPI:
 
     def request(self, target, data={}, files={}, method='POST', continue_on_error=False):
         if method not in self.methods:
-            raise AnviServerError, "Unknown method: '%s'" % method
+            raise AnviServerError("Unknown method: '%s'" % method)
 
         url = self.URL(target)
 
@@ -111,20 +111,20 @@ class AnviServerAPI:
         try:
             response_object = self.methods[method](url, data=data, headers=headers, cookies=cookies, files=files)
         except Exception as e:
-            raise AnviServerError, "Something went wrong while trying to connect to the host %s. Here is a more\
-                                detailed and uglier report: '''%s'''" % (self.hostname, e)
+            raise AnviServerError("Something went wrong while trying to connect to the host %s. Here is a more\
+                                detailed and uglier report: '''%s'''" % (self.hostname, e))
 
         if not response_object.status_code == requests.codes.ok:
-            raise AnviServerError, "Somewhing went wrong with the server, and it returned an error code of %d.\
+            raise AnviServerError("Somewhing went wrong with the server, and it returned an error code of %d.\
                                 The reason for this error can be probably found in the server logs. If you\
                                 would like to help, you can send an e-mail to us to let us know about htis\
                                 error by telling us the details of what you were doing. Sorry!" \
-                                                                            % response_object.status_code
+                                                                            % response_object.status_code)
 
         server_response = json.loads(response_object.text)
 
         if not continue_on_error and server_response['status'] == 'error':
-            raise AnviServerError, server_response['message']
+            raise AnviServerError(server_response['message'])
 
         return server_response
 
@@ -143,8 +143,8 @@ class AnviServerAPI:
         response = self.request('login', data)
 
         if [t for t in ['token', 'firstname', 'lastname'] if t not in response['data']]:
-            raise AnviServerError, 'The response from the server for a login request was not what the\
-                                API was expecting to get. Something weird is happening.'
+            raise AnviServerError('The response from the server for a login request was not what the\
+                                API was expecting to get. Something weird is happening.')
 
         self.token = response['data']['token']
         self.logged_in = True
@@ -154,7 +154,7 @@ class AnviServerAPI:
 
     def check_login(self):
         if not self.logged_in:
-            raise AnviServerError, "You are not logged in. Please make a login() call first."
+            raise AnviServerError("You are not logged in. Please make a login() call first.")
 
 
     def push(self, delete_if_exists=False):

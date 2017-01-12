@@ -41,9 +41,9 @@ if __name__ == '__main__':
     try:
         a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)
         a.create(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

@@ -43,25 +43,25 @@ def main(args):
         sys.exit()
 
     if args.profile_db and not args.collection_name:
-        raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
+        raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
     if not args.collection_name:
         run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
                      is a a single genome (or genome bin).")
 
     if args.collection_name and args.collection_name not in collections.collections_dict:
-        raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name
+        raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name)
 
     completeness = Completeness(args.contigs_db)
     if not len(completeness.sources):
-        raise ConfigError, "HMM's were not run for this contigs database :/"
+        raise ConfigError("HMM's were not run for this contigs database :/")
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 
     if args.collection_name:
         collection = collections.get_collection_dict(args.collection_name)
     else:
-        collection = {os.path.basename(args.contigs_db[:-3]): contigs_db.splits_basic_info.keys()}
+        collection = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     run.info_single("Completion and redundancy estimates", nl_before=1, nl_after=1)
 
@@ -78,10 +78,10 @@ def main(args):
 
         results_dict[bin_id] = {'percent_completion': p_completion, 'percent_redundancy': p_redundancy, 'num_splits': num_splits, 'total_length': total_length}
 
-        print "%s :: PC: %.2f%%, PR: %.2f%%, N: %s, S: %s, D: %s (%.2f)" % \
-                        (bin_id, p_completion, p_redundancy, pp(num_splits), pp(total_length), domain, domain_confidence)
+        print("%s :: PC: %.2f%%, PR: %.2f%%, N: %s, S: %s, D: %s (%.2f)" % \
+                        (bin_id, p_completion, p_redundancy, pp(num_splits), pp(total_length), domain, domain_confidence))
 
-    print
+    print()
 
     if args.output_file:
         utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length'])
@@ -103,9 +103,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

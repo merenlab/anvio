@@ -20,7 +20,7 @@ progress = terminal.Progress()
 
 def update_profile_db_from_v4_to_v5(profile_db_path):
     if profile_db_path is None:
-        raise ConfigError, "No profile database is given."
+        raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
     dbops.is_profile_db(profile_db_path)
@@ -28,14 +28,14 @@ def update_profile_db_from_v4_to_v5(profile_db_path):
     # make sure the version is 4
     profile_db = db.DB(profile_db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '4':
-        raise ConfigError, "Version of this profile database is not 4 (hence, this script cannot really do anything)."
+        raise ConfigError("Version of this profile database is not 4 (hence, this script cannot really do anything).")
 
     progress.new("Trying to upgrade the profile database")
     progress.update('...')
 
     if t.states_table_name in profile_db.get_table_names():
         progress.end()
-        raise ConfigError, "It seems '%s' table already exists in your profile database." % t.states_table_name
+        raise ConfigError("It seems '%s' table already exists in your profile database." % t.states_table_name)
 
     # create the table
     profile_db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)   
@@ -86,6 +86,6 @@ if __name__ == '__main__':
 
     try:
         update_profile_db_from_v4_to_v5(args.profile_db)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

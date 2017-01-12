@@ -54,18 +54,18 @@ for source in search_info_dict:
         sources[source] = [g.strip() for g in search_info_dict[source]['genes'].split(',')]
 
 if args.list_sources:
-    print sources.keys()
+    print((list(sources.keys())))
     sys.exit()
 
 if args.source:
     if args.source not in sources:
-        print 'bad --source. here are the available ones: %s' % ', '.join(sources)
+        print(('bad --source. here are the available ones: %s' % ', '.join(sources)))
     else:
         sources = {args.source: sources[source]}
 
 hits_output = open(args.contigs_db + '.hits', 'w')
 hits_output.write('source\tcontig\tgene\te_value\n')
-for entry in search_contigs_dict.values():
+for entry in list(search_contigs_dict.values()):
     contig_name = genes_in_contigs_dict[entry['gene_callers_id']]['contig']
     hits_output.write('%s\t%s\t%s\t%.4g\n' % (entry['source'], contig_name, entry['gene_name'], entry['e_value'] ))
 hits_output.close()

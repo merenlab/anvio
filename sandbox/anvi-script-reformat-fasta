@@ -53,7 +53,7 @@ def remove_short_contigs_from_fasta(args):
     total_num_nucleotides_removed = 0
     total_num_contigs_removed = 0
 
-    while fasta.next():
+    while next(fasta):
         l = len(fasta.seq)
 
         total_num_nucleotides += l
@@ -127,9 +127,9 @@ if __name__ == '__main__':
 
     try:
         remove_short_contigs_from_fasta(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
