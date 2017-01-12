@@ -274,7 +274,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         header.append('aa_sequence') if not self.quick else None
 
         # write the header
-        output_file_obj.write('\t'.join(header) + '\n')
+        output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
 
         # uber loop for the file content
         unique_id = 1
@@ -296,7 +296,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     entry.append(self.genomes_storage.get_gene_sequence(genome_name, gene_caller_id)) if not self.quick else None
 
-                    output_file_obj.write('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n')
+                    output_file_obj.write(('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n').encode('utf-8'))
                     unique_id += 1
 
 
