@@ -279,7 +279,7 @@ class GenomeStorage(object):
         # split is added or removed to any of these genomes will change this signature. since we will tie this information
         # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
         # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
-        storage_hash = hashlib.sha224('_'.join(self.genomes[genome_name]['genome_hash'] for genome_name in self.genomes)).hexdigest()[0:8]
+        storage_hash = hashlib.sha224('_'.join(self.genomes[genome_name]['genome_hash'] for genome_name in self.genomes).encode('utf-8')).hexdigest()[0:8]
 
         self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, storage_hash, create_new=True)
         self.genomes_storage.fp.attrs['functions_are_available'] = self.functions_are_available

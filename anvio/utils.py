@@ -277,12 +277,8 @@ def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_c
             with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
 
         p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
-        ret_val = p.communicate(input=input_data)[0]
-
-        if ret_val < 0:
-            raise ConfigError("command was terminated")
-        else:
-            return ret_val.decode()
+        ret_val = p.communicate(input=input_data.encode('utf-8'))[0]
+        return ret_val.decode()
     except OSError as e:
         raise ConfigError("command was failed for the following reason: '%s' ('%s')" % (e, cmdline))
 
@@ -722,7 +718,7 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
 
 def get_split_start_stops_without_gene_calls(contig_length, split_length):
     """Returns split start stop locations for a given contig length."""
-    num_chunks = contig_length / split_length
+    num_chunks = int(contig_length / split_length)
 
     if num_chunks < 2:
         return [(0, contig_length)]
