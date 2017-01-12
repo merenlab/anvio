@@ -43,7 +43,7 @@ done
 
 INFO "Merging profiles"
 # merge samples
-anvi-merge $output_dir/SAMPLE-*/RUNINFO.cp -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
+anvi-merge $output_dir/SAMPLE-*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
 
 INFO "Generating a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/samples-order.txt -o $output_dir/SAMPLES.db

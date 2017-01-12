@@ -81,10 +81,7 @@ done
 
 
 INFO "Merging profiles"
-anvi-merge $output_dir/SAMPLE-*/RUNINFO.cp -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
-
-INFO "Add a new variable into the RUNINFO file of the merged profile"
-anvi-script-update-runinfo-variable $output_dir/SAMPLES-MERGED/RUNINFO.mcp --variable TEST-VARIABLE --set-bool true
+anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db
@@ -96,7 +93,7 @@ INFO "Cluster contigs in the newly generated coverages file using 'canberra' dis
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt --distance canberra --linkage complete -o $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs_CANB_COMP.newick
 
 INFO "Generating network descriptions for samples based on ORFs and functions"
-anvi-gen-network -r $output_dir/SAMPLES-MERGED/RUNINFO.mcp -c $output_dir/CONTIGS.db
+anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization $files/example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
