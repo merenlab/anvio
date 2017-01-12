@@ -47,7 +47,11 @@ class HDF5_IO(object):
             filesnpaths.is_file_exists(self.file_path)
             self.fp = h5py.File(self.file_path, 'r')
 
-            if self.fp.attrs['version'].decode('utf-8') != self.version:
+            G = lambda x: self.fp.attrs[x].decode('utf-8') if isinstance(self.fp.attrs[x], bytes) else self.fp.attrs[x]
+            fp_version = G('version')
+            fp_hash = G('hash')
+
+            if fp_version != self.version:
                 raise HDF5Error("The data file for %s ('%s') is at version '%s', however, your client is at\
                                   version '%s'. This is bad news, because your version of anvi'o can't work with\
                                   this file. You can regenerate the data file using the current version of anvi'o,\
@@ -56,11 +60,11 @@ class HDF5_IO(object):
                                   may want to consider sending an e-mail to the anvi'o developers to find out what's up.\
                                   We heard that they love them some e-mails." % (self.db_type, self.file_path, self.fp.attrs['version'].decode('utf-8'), self.version))
 
-            if not ignore_hash and self.fp.attrs['hash'].decode('utf-8') != unique_hash:
+            if not ignore_hash and fp_hash != unique_hash:
                 raise HDF5Error("The database at '%s' does not seem to be compatible with the client :/\
                                   (i.e., the hash values do not match)." % self.file_path)
 
-            self.unique_hash = self.fp.attrs['hash']
+            self.unique_hash = fp_hash
 
 
     def add_integer_list(self, path, l, data_type='uint16'):
