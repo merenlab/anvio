@@ -139,12 +139,15 @@ def get_total_memory_usage():
 
     return human_readable_file_size(mem)
 
-def human_readable_file_size(size):
-    _suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-
-    order = int(log(size) / 10) if size else 0
-
-    return '{:.4g} {}'.format(size / (1 << (order * 10)), _suffixes[order])
+def human_readable_file_size(nbytes):
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    if nbytes == 0: return '0 B'
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
 
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
     """Get a port number for the `ip` address."""
