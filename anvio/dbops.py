@@ -1259,11 +1259,18 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length', 'total_reads_mapped']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
                     pass
+
+            sample_ids_list = [s.strip() for s in self.meta['samples'].split(',')]
+            if 'total_reads_mapped' in self.meta:
+                total_reads_mapped_list = [int(n.strip()) for n in self.meta['total_reads_mapped'].split(',')]
+                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], total_reads_mapped_list[i]) for i in range(0, len(sample_ids_list))])
+            else:
+                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], 0) for i in range(0, len(sample_ids_list))])
 
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
