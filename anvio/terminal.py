@@ -29,10 +29,10 @@ class SuppressAllOutput(object):
     def __enter__(self):
         sys.stderr.flush()
         self.old_stderr = sys.stderr
-        sys.stderr = open('/dev/null', 'a+', 0)
+        sys.stderr = open('/dev/null', 'ab+', 0)
         sys.stdout.flush()
         self.old_stdout = sys.stdout
-        sys.stdout = open('/dev/null', 'a+', 0)
+        sys.stdout = open('/dev/null', 'ab+', 0)
 
     def __exit__(self, exc_type, exc_value, traceback):
         sys.stderr.flush()
@@ -74,7 +74,7 @@ class Progress:
 
     def new(self, pid):
         if self.pid:
-            raise TerminalError, "Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid)
+            raise TerminalError("Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid))
 
         if not self.verbose:
             return
@@ -122,7 +122,7 @@ class Progress:
             return
 
         if not self.pid:
-            raise TerminalError, 'Progress with null pid will not update for msg "%s"' % msg
+            raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
 
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))

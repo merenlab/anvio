@@ -70,9 +70,9 @@ if __name__ == '__main__':
     try:
         profiler = anvio.profiler.BAMProfiler(args)
         profiler._run()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

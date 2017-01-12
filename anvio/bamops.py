@@ -4,7 +4,7 @@
 
    The default client is `anvi-report-linkmers`"""
 
-from __future__ import division
+
 
 import os
 import sys
@@ -87,7 +87,7 @@ class AAFrequencies:
             for unique_hash in unique_hashes:
                 hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
 
-            nt_frequencies = Counter(hash_to_oligotype.values())
+            nt_frequencies = Counter(list(hash_to_oligotype.values()))
             aa_frequencies = Counter({})
 
             # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
@@ -124,7 +124,7 @@ class LinkMerDatum:
         self.read_id = read_id
         self.sample_id = sample_id
         self.read_X = 'read-1' if is_read1 else 'read-2'
-        self.read_unique_id = hashlib.sha224(sample_id + read_id + self.read_X).hexdigest()
+        self.read_unique_id = hashlib.sha224((sample_id + read_id + self.read_X).encode('utf-8')).hexdigest()
         self.contig_name = None
         self.request_id = None
         self.pos_in_contig = None
@@ -214,13 +214,13 @@ class BAMFileObject:
         try:
             bam_file_object = pysam.Samfile(self.input_bam_path, 'rb')
         except ValueError as e:
-            raise ConfigError, 'Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e)
+            raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
 
         try:
             bam_file_object.mapped
         except ValueError:
             self.progress.end()
-            raise ConfigError, "It seems the BAM file is not indexed. See 'anvi-init-bam' script."
+            raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
 
         return bam_file_object
 
@@ -245,7 +245,7 @@ class LinkMers:
             self.input_file_paths = [os.path.abspath(p.strip()) for p in args.input_files]
 
             if len(self.input_file_paths) != len(set(self.input_file_paths)):
-                raise ConfigError, "You can't declared the same BAM file twice :/"
+                raise ConfigError("You can't declared the same BAM file twice :/")
 
             self.only_complete_links = args.only_complete_links
 
@@ -266,7 +266,7 @@ class LinkMers:
                 try:
                     positions = [int(pos) for pos in positions.split(',')]
                 except ValueError:
-                    raise ConfigError, 'Positions for contig "%s" does not seem to be comma-separated integers...' % contig_name
+                    raise ConfigError('Positions for contig "%s" does not seem to be comma-separated integers...' % contig_name)
 
                 self.contig_and_position_requests_list.append((request_id, contig_name, set(positions)),)
 
@@ -327,12 +327,12 @@ class LinkMers:
         bam_file_object.close()
 
         for tpl in sorted(zip(contig_lengths, contig_names), reverse=True):
-            print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+            print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
 
     def sanity_check(self):
         if not self.contig_and_position_requests_list:
-            raise ConfigError, "Entries dictionary is empty"
+            raise ConfigError("Entries dictionary is empty")
 
 
 class GetReadsFromBAM:
@@ -366,9 +366,9 @@ class GetReadsFromBAM:
         self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]))
 
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.bins = d.keys()
+        self.bins = list(d.keys())
 
-        for split_names in d.values():
+        for split_names in list(d.values()):
             self.split_names_of_interest.update(split_names)
 
         self.run.info('Collection ID', self.collection_name)
@@ -395,7 +395,7 @@ class GetReadsFromBAM:
 
         self.progress.update('Computing start/stops positions of interest in %d contigs ...' % (len(contigs_involved)))
         for contig_id in contigs_involved:
-            splits_order = contigs_involved[contig_id].keys()
+            splits_order = list(contigs_involved[contig_id].keys())
             sequential_blocks = ccollections.GetSequentialBlocksOfSplits(splits_order).process()
 
             for sequential_block in sequential_blocks:
@@ -467,9 +467,9 @@ class GetReadsFromBAM:
             bam_file_object.close()
 
         if len(bad_bam_files):
-            raise ConfigError, 'Samtools is not happy with some of your bam files. The following\
+            raise ConfigError('Samtools is not happy with some of your bam files. The following\
                                 file(s) do not look like proper BAM files [ here is the actual\
-                                error: "%s"]: %s.' % (e, ','.join(bad_bam_files))
+                                error: "%s"]: %s.' % (e, ','.join(bad_bam_files)))
 
         if not self.output_file_path:
             self.output_file_path = 'short_reads.fa'
@@ -487,7 +487,7 @@ class ReadsMappingToARange:
 
     def process_range(self, input_bam_paths, contig_name, start, end):
         if end <= start:
-            raise ConfigError, "The end of range cannot be equal or smaller than the start of it :/"
+            raise ConfigError("The end of range cannot be equal or smaller than the start of it :/")
 
         data = []
 

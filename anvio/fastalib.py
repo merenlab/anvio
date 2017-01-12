@@ -47,7 +47,7 @@ class FastaOutput:
         self.output_file_obj.write('%s\n' % seq)
 
     def split(self, sequence, piece_length=80):
-        ticks = range(0, len(sequence), piece_length) + [len(sequence)]
+        ticks = list(range(0, len(sequence), piece_length)) + [len(sequence)]
         return '\n'.join([sequence[ticks[x]:ticks[x + 1]] for x in range(0, len(ticks) - 1)])
 
     def close(self):
@@ -61,7 +61,7 @@ class ReadFasta:
 
         self.fasta = SequenceSource(f_name)
 
-        while self.fasta.next():
+        while next(self.fasta):
             if self.fasta.pos % 1000 == 0 or self.fasta.pos == 1:
                 sys.stderr.write('\r[fastalib] Reading FASTA into memory: %s' % (self.fasta.pos))
                 sys.stderr.flush()
@@ -98,7 +98,7 @@ class SequenceSource():
             self.file_pointer = open(self.fasta_file_path)
 
         if not self.file_pointer.read(1) == '>':
-            raise FastaLibError, "File '%s' does not seem to be a FASTA file." % self.fasta_file_path
+            raise FastaLibError("File '%s' does not seem to be a FASTA file." % self.fasta_file_path)
 
         self.file_pointer.seek(0)
 
@@ -130,7 +130,7 @@ class SequenceSource():
         self.total_unique = len(self.unique_hash_dict)
         self.reset()
 
-    def next(self):
+    def __next__(self):
         if self.unique:
             return self.next_unique()
         else:
@@ -178,7 +178,7 @@ class SequenceSource():
 
     def get_seq_by_read_id(self, read_id):
         self.reset()
-        while self.next():
+        while next(self):
             if self.id == read_id:
                 return self.seq
 
@@ -203,7 +203,7 @@ class SequenceSource():
 
         self.reset()
 
-        while self.next():
+        while next(self):
             if self.pos % 10000 == 0 or self.pos == 1:
                 sys.stderr.write('\r[fastalib] Reading: %s' % (self.pos))
                 sys.stderr.flush()
@@ -232,7 +232,7 @@ class SequenceSource():
         plt.subplots_adjust(left=0.05, bottom=0.03, top=0.95, right=0.98)
 
         plt.plot(seq_len_distribution, color='black', alpha=0.3)
-        plt.fill_between(range(0, max_seq_len + 1), seq_len_distribution, y2=0, color='black', alpha=0.15)
+        plt.fill_between(list(range(0, max_seq_len + 1)), seq_len_distribution, y2=0, color='black', alpha=0.15)
         plt.ylabel('number of sequences')
         plt.xlabel('sequence length')
 
@@ -242,8 +242,8 @@ class SequenceSource():
         if ytickstep is None:
             ytickstep = max(seq_len_distribution) / 20 or 1
 
-        plt.xticks(range(xtickstep, max_seq_len + 1, xtickstep), rotation=90, size='xx-small')
-        plt.yticks(range(0, max(seq_len_distribution) + 1, ytickstep),
+        plt.xticks(list(range(xtickstep, max_seq_len + 1, xtickstep)), rotation=90, size='xx-small')
+        plt.yticks(list(range(0, max(seq_len_distribution) + 1, ytickstep)),
                    [y for y in range(0, max(seq_len_distribution) + 1, ytickstep)],
                    size='xx-small')
         plt.xlim(xmin=0, xmax=max_seq_len)
@@ -301,7 +301,7 @@ class QualSource:
             self.reset()
 
 
-    def next(self):
+    def __next__(self):
         self.id = self.file_pointer.readline()[1:].strip()
         self.quals = None
         self.quals_int = None

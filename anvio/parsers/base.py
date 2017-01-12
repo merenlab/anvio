@@ -35,28 +35,28 @@ class Parser(object):
         self.dicts = {}
 
         if len(input_file_paths) != len(files_expected):
-            raise ConfigError, "This parser (%s) requires %d file(s), but %d of them were sent. This class is now\
-                                confused :/" % (self.annotation_source, len(files_expected), len(input_file_paths))
+            raise ConfigError("This parser (%s) requires %d file(s), but %d of them were sent. This class is now\
+                                confused :/" % (self.annotation_source, len(files_expected), len(input_file_paths)))
 
         if sorted(files_expected.keys()) != sorted(files_structure.keys()):
-            raise ConfigError, "Items in files_expected and files_structure must match."
+            raise ConfigError("Items in files_expected and files_structure must match.")
 
         missing_files = []
-        for f in self.files_expected.values():
+        for f in list(self.files_expected.values()):
             if os.path.basename(f) not in self.input_file_names:
                 missing_files.append(f)
         if missing_files:
             if sorted(missing_files) == sorted(self.files_expected.values()):
-                raise ConfigError, "%s parser requires these file(s): %s. Please refer to the documentation if you\
+                raise ConfigError("%s parser requires these file(s): %s. Please refer to the documentation if you\
                                     don't know how to generate them" % (self.annotation_source,
-                                                                        ', '.join(self.files_expected.values()))
+                                                                        ', '.join(list(self.files_expected.values()))))
 
-            raise ConfigError, "%s parser requires %d files (%s). %s missing from your input: %s"\
+            raise ConfigError("%s parser requires %d files (%s). %s missing from your input: %s"\
                                      % (self.annotation_source,
                                         len(self.files_expected),
-                                        ', '.join(self.files_expected.values()),
+                                        ', '.join(list(self.files_expected.values())),
                                         "These files were" if len(missing_files) > 1 else "This file was",
-                                        ", ".join(missing_files))
+                                        ", ".join(missing_files)))
 
         for alias in self.files_expected:
             for i in range(0, len(self.input_file_names)):
@@ -70,7 +70,7 @@ class Parser(object):
                 if f['type'] == 'fasta':
                     self.dicts[alias] = get_dict_f(self.paths[alias])
                 else:
-                    raise ConfigError, "Parser class does not know about file type '%s' :/" % f['type']
+                    raise ConfigError("Parser class does not know about file type '%s' :/" % f['type'])
             else:
                 # then it is tab-delimited
                 no_header = f['no_header'] if 'no_header' in f else False
@@ -113,7 +113,7 @@ class TaxonomyHelper(object):
         taxon_names = t.taxon_names_table_structure[1:]
 
         for gene_callers_id in self.annotations_dict:
-            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][taxon] or '' for taxon in taxon_names)).hexdigest()
+            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][taxon] or '' for taxon in taxon_names).encode('utf-8')).hexdigest()
 
             if t_hash in hash_to_taxon_name_id:
                 taxon_name_id = hash_to_taxon_name_id[t_hash]

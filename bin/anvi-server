@@ -83,17 +83,17 @@ try:
 
     # initialize usermanagement
     userdb = usermgmt.UserMGMT(copy.deepcopy(args), anvio.__users_db_version__, mailer = mailer)
-except ConfigError, e:
-    print e
+except ConfigError as e:
+    print(e)
     sys.exit(-1)
-except FilesNPathsError, e:
-    print e
+except FilesNPathsError as e:
+    print(e)
     sys.exit(-2)
-except DictIOError, e:
-    print e
+except DictIOError as e:
+    print(e)
     sys.exit(-3)
-except SamplesError, e:
-    print e
+except SamplesError as e:
+    print(e)
     sys.exit(-4)
 
 
@@ -264,7 +264,7 @@ def send_data(name):
     args = retval["data"]["args"]
 
     if name == "init":
-        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        available_views = dict(list(zip(list(d.views.keys()), list(d.views.keys()))))
         split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
         return json.dumps( { "title": d.title,
                              "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),

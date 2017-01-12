@@ -46,8 +46,8 @@ class Completeness:
         info_table = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
 
         # identify and remove non-single-copy sources of hmm search results:
-        non_singlecopy_sources = set([k for k in info_table.keys() if info_table[k]['search_type'] != 'singlecopy'])
-        singlecopy_sources = set([k for k in info_table.keys() if info_table[k]['search_type'] == 'singlecopy'])
+        non_singlecopy_sources = set([k for k in list(info_table.keys()) if info_table[k]['search_type'] != 'singlecopy'])
+        singlecopy_sources = set([k for k in list(info_table.keys()) if info_table[k]['search_type'] == 'singlecopy'])
         for non_singlecopy_source in non_singlecopy_sources:
             info_table.pop(non_singlecopy_source)
 
@@ -77,14 +77,14 @@ class Completeness:
         # we're done with the db
         contigs_db.disconnect()
 
-        self.sources = info_table.keys()
+        self.sources = list(info_table.keys())
         self.domains = set([info_table[source]['domain'] for source in self.sources])
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
         if source_requested:
             if source_requested not in self.sources:
-                raise ConfigError, 'Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested
+                raise ConfigError('Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested)
 
             # filter out sources that are not requested
             self.sources = [source_requested]
@@ -94,7 +94,7 @@ class Completeness:
         self.unique_gene_id_to_gene_name = {}
         self.splits_unique_gene_id_occurs = {}
         # these will be very useful later. trust me.
-        for entry in self.hmm_hits_splits_table.values():
+        for entry in list(self.hmm_hits_splits_table.values()):
             hmm_hit = self.hmm_hits_table[entry['hmm_hit_entry_id']]
             gene_unique_identifier = hmm_hit['gene_unique_identifier']
 
@@ -171,7 +171,7 @@ class Completeness:
             info_dict[source], gene_name_to_unique_id[source] = {}, {}
 
         # here we go through every hit and populate 'info_dict' and 'gene_name_to_unique_id':
-        for entry in hmm_hits_splits_table.values():
+        for entry in list(hmm_hits_splits_table.values()):
             hmm_hit = self.hmm_hits_table[entry['hmm_hit_entry_id']]
 
             if hmm_hit['e_value'] > min_e_value:
@@ -203,7 +203,7 @@ class Completeness:
             domain = self.source_to_domain[source]
             results_dict[domain][source] = {'domain': domain, 'source': source}
 
-            genes_count = Counter([v['gene_name'] for v in info_dict[source].values()])
+            genes_count = Counter([v['gene_name'] for v in list(info_dict[source].values())])
 
             # report results
             results_dict[domain][source]['percent_complete'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])

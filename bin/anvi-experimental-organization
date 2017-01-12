@@ -31,17 +31,17 @@ def experimental_organization(args):
     split_names = []
 
     if not args.skip_store_in_db and not args.profile_db:
-        raise ConfigError, "OK. When you don't use the --skip-store-in-db flag, you need to define a\
-                            profile database to be explicit about where to store the resulting tree."
+        raise ConfigError("OK. When you don't use the --skip-store-in-db flag, you need to define a\
+                            profile database to be explicit about where to store the resulting tree.")
 
     if args.profile_db:
         dbops.is_profile_db(args.profile_db)
     dbops.is_contigs_db(args.contigs_db)
 
     if not args.skip_store_in_db and not args.name:
-        raise ConfigError, "Since you have not used the --skip-store-in-db flag, this program will attempt\
+        raise ConfigError("Since you have not used the --skip-store-in-db flag, this program will attempt\
                             store resulting clustering into the profile database, and it needs a name for\
-                            this tree. Please use the --name flag to provide one."
+                            this tree. Please use the --name flag to provide one.")
 
     if args.name:
         u.is_this_name_OK_for_database('--name parameter', args.name)
@@ -102,9 +102,9 @@ if __name__ == '__main__':
 
     try:
         experimental_organization(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
