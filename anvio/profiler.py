@@ -61,8 +61,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
         self.num_processes = A('num_processes')
-        self.queue_size = A('queue_size')
-        self.write_buffer_size = A('write_buffer_size')
+        self.queue_size = int(A('queue_size'))
+        self.write_buffer_size = int(A('write_buffer_size'))
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
 
