@@ -697,25 +697,31 @@ class BAMProfiler(dbops.ContigsSuperclass):
         last_memory_update = int(time.time())
 
         while recieved_contigs < self.num_contigs:
-            contig = output_queue.get()
-            
-            if (int(time.time()) - last_memory_update) > 5:
-                last_memory_update = int(time.time())
-                memory_usage = utils.get_total_memory_usage()
+            try:
+                contig = output_queue.get()
+                
+                if (int(time.time()) - last_memory_update) > 5:
+                    last_memory_update = int(time.time())
+                    memory_usage = utils.get_total_memory_usage()
 
-            self.progress.update('%d of %d contigs completed. Memory: %s' % (recieved_contigs,
-                                                                            self.num_contigs,
-                                                                            memory_usage))
-            if contig:
-                self.contigs[contig.name] = contig
-            else:
-                discarded_contigs += 1
+                self.progress.update('%d of %d contigs completed. Memory: %s' % (recieved_contigs,
+                                                                                self.num_contigs,
+                                                                                memory_usage))
+                if contig:
+                    self.contigs[contig.name] = contig
+                else:
+                    discarded_contigs += 1
 
-            recieved_contigs += 1
+                recieved_contigs += 1
 
-            if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
-                self.store_contigs_buffer()
-                self.contigs.clear()
+                if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
+                    self.store_contigs_buffer()
+                    self.contigs.clear()
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
+                for proc in processes:
+                    proc.terminate()
+                break
 
         self.store_contigs_buffer()
         self.progress.end()
