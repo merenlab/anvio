@@ -49,24 +49,24 @@ class NetworkDescriptonSamples:
         self.contigs_db = db.DB(self.contigs_db_path, t.contigs_db_version)
 
         if self.contigs_db.get_meta_value('contigs_db_hash') != self.profile_db.get_meta_value('contigs_db_hash'):
-            raise ConfigError, "OK. The run described in '%s' was not profiled using the contigs database\
-                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.contigs_db_path)
+            raise ConfigError("OK. The run described in '%s' was not profiled using the contigs database\
+                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.contigs_db_path))
 
         table_names = self.profile_db.get_table_names()
 
         if not int(self.profile_db.get_meta_value('merged')):
-            raise ConfigError, "The profile database describes a single run. Current implementation of this\
-                                      program restricts its use to merged runs. Sorry :/"
+            raise ConfigError("The profile database describes a single run. Current implementation of this\
+                                      program restricts its use to merged runs. Sorry :/")
 
         if t.gene_coverages_table_name not in table_names:
-            raise ConfigError, "There is no '%s' table in the profile database. This does not really make\
-                                      any sense :/" % t.gene_coverages_table_name
+            raise ConfigError("There is no '%s' table in the profile database. This does not really make\
+                                      any sense :/" % t.gene_coverages_table_name)
 
         progress.new('Init')
         progress.update('Reading genes table from %s ...' % self.profile_db_path)
         self.genes_dict = self.profile_db.get_table_as_dict(t.gene_coverages_table_name)
-        self.samples = sorted(list(set([r['sample_id'] for r in self.genes_dict.values()])))
-        self.genes = sorted(list(set([r['gene_callers_id'] for r in self.genes_dict.values()])))
+        self.samples = sorted(list(set([r['sample_id'] for r in list(self.genes_dict.values())])))
+        self.genes = sorted(list(set([r['gene_callers_id'] for r in list(self.genes_dict.values())])))
 
         progress.update('Reading annotations table from %s  ...' % self.contigs_db_path)
         self.genes_in_contigs = self.contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
@@ -110,7 +110,7 @@ class NetworkDescriptonSamples:
         samples_dict = {}
         for sample in samples:
             samples_dict[sample] = {}
-        for v in table.values():
+        for v in list(table.values()):
             samples_dict[v['sample_id']][v[unit]] = v['mean_coverage']
         return samples_dict
 
@@ -132,9 +132,9 @@ if __name__ == '__main__':
         network.init()
         network.generate_genes_network()
         network.generate_functions_network()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

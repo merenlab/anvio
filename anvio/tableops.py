@@ -42,11 +42,11 @@ class Table(object):
     """Superclass for rudimentary needs and operations for contigs db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
         if not db_path:
-            raise ConfigError, "Table superclass is being initiated without a db path, and it is very\
-                                very concerning :( Anvi'o needs an adult."
+            raise ConfigError("Table superclass is being initiated without a db path, and it is very\
+                                very concerning :( Anvi'o needs an adult.")
 
         if not os.path.exists(db_path):
-            raise ConfigError, "Database ('%s') does not exist. You must create one first." % db_path
+            raise ConfigError("Database ('%s') does not exist. You must create one first." % db_path)
 
         self.quiet = quiet
         self.db_type = None
@@ -80,7 +80,7 @@ class Table(object):
 
     def next_id(self, table):
         if table not in self.next_available_id:
-            raise ConfigError, "If you need unique ids, you must call 'set_next_available_id' first"
+            raise ConfigError("If you need unique ids, you must call 'set_next_available_id' first")
 
         self.next_available_id[table] += 1
         return self.next_available_id[table] - 1
@@ -113,19 +113,19 @@ class Table(object):
         database = db.DB(self.db_path, self.version)
 
         if table not in database.get_table_names():
-            raise ConfigError, 'Trying to export sequences into a FASTA file, but the table\
-                                "%s" does not seem to be in this database :/' % (table)
+            raise ConfigError('Trying to export sequences into a FASTA file, but the table\
+                                "%s" does not seem to be in this database :/' % (table))
 
         if 'sequence' not in database.get_table_structure(table):
-            raise ConfigError, "You requested to store sequences in table '%s' into a FASTA\
+            raise ConfigError("You requested to store sequences in table '%s' into a FASTA\
                                 file, however this table does not seem to be a table that\
-                                stores sequence information :(" % table
+                                stores sequence information :(" % table)
 
         sequences_table = database.get_table_as_dict(table)
         database.disconnect()
 
         if not len([sequences_table]):
-            raise ConfigError, "There are no sequences to report in table '%s'." % (table)
+            raise ConfigError("There are no sequences to report in table '%s'." % (table))
 
         self.progress.new('Exporting %d sequences into a FASTA file' % len(sequences_table))
         self.progress.update('...')

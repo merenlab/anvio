@@ -76,7 +76,7 @@ class Centrifuge(Parser):
         self.run.info('Total num hits found', len(self.dicts['hits']))
 
         num_hits_below_hit_score = 0
-        for hit in self.dicts['hits'].values():
+        for hit in list(self.dicts['hits'].values()):
             if hit['score'] < self.min_hit_score:
                 num_hits_below_hit_score += 1
                 continue

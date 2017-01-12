@@ -66,7 +66,7 @@ class Collections:
         elif self.db_type == 'pan':
             read_only = False
         else:
-            raise ConfigError, 'Collections class does not know about this "%s" database type :/' % self.db_type
+            raise ConfigError('Collections class does not know about this "%s" database type :/' % self.db_type)
 
         for collection_name in collections_info_table:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
@@ -77,10 +77,10 @@ class Collections:
 
     def sanity_check(self, collection_name):
         if collection_name not in self.collections_dict:
-            raise ConfigError, 'There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
+            raise ConfigError('There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
                                 a programmer and accessing to the collections from your program, here is a reminder for you:\
                                 are you sure `populate_collections_dict` was called for whatever database you are trying to\
-                                get collections from?' % collection_name
+                                get collections from?' % collection_name)
 
 
     def get_trimmed_dicts(self, collection_name, split_names = set([])):
@@ -102,7 +102,7 @@ class Collections:
 
         self.progress.update('Identifying bin names that do not have any splits that appear in the profile database ...')
         bins_with_zero_splits_in_profile_db = []
-        bin_ids_in_collection = collection_dict.keys()
+        bin_ids_in_collection = list(collection_dict.keys())
         for bin_id in bin_ids_in_collection:
             # good split names are the ones that appear in `split_names` user sent. so here we will replace
             # the content of each bin with only split names that are 'good' in that sense. in practice, this
@@ -143,7 +143,7 @@ class Collections:
 
         collection_dict_to_return = {}
 
-        for entry in collection_dict_from_db.values():
+        for entry in list(collection_dict_from_db.values()):
             collection_name = entry['collection_name']
             bin_name = entry['bin_name']
             split = entry['split']
@@ -169,7 +169,7 @@ class Collections:
         collections_bins_info_table_filtered = utils.get_filtered_dict(collections_bins_info_table, 'collection_name', set([collection_name]))
 
         bins_info_dict = {}
-        for v in collections_bins_info_table_filtered.values():
+        for v in list(collections_bins_info_table_filtered.values()):
             bins_info_dict[v['bin_name']] = {'html_color': v['html_color'], 'source': v['source']}
 
         return bins_info_dict
@@ -247,15 +247,15 @@ class GetSplitNamesInBins:
         self.debug = A('debug')
 
         if not self.profile_db_path:
-            raise ConfigError, "You didn't provide a profile database path. When you clearly should have :/\
-                                This is GetSplitNamesInBins speaking. Has her eyes on you."
+            raise ConfigError("You didn't provide a profile database path. When you clearly should have :/\
+                                This is GetSplitNamesInBins speaking. Has her eyes on you.")
 
         if self.bin_ids_file_path and self.bin_id:
-            raise ConfigError, 'Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
-                                you would like to focus. Not both :/'
+            raise ConfigError('Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
+                                you would like to focus. Not both :/')
 
         if not self.collection_name:
-            raise ConfigError, 'This will not work without a collection ID for your bins :/'
+            raise ConfigError('This will not work without a collection ID for your bins :/')
 
         if self.bin_ids_file_path:
             filesnpaths.is_file_exists(self.bin_ids_file_path)
@@ -267,25 +267,25 @@ class GetSplitNamesInBins:
         self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError, 'The collection id "%s" does not seem to be in the profile database. These are the\
+            raise ConfigError('The collection id "%s" does not seem to be in the profile database. These are the\
                                 collections that are available through this profile database: "%s".'\
-                                                    % (self.collection_name, ', '.join(self.collections.collections_dict))
+                                                    % (self.collection_name, ', '.join(self.collections.collections_dict)))
 
         self.collection_dict = self.collections.get_collection_dict(self.collection_name)
 
-        bins_in_collection = self.collection_dict.keys()
+        bins_in_collection = list(self.collection_dict.keys())
 
         if not self.bins:
             self.bins = bins_in_collection
         else:
             bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
             if len(bins_that_does_not_exist_in_collection):
-                raise ConfigError, 'Some of the bins you requested does not appear to have been described in the collection\
+                raise ConfigError('Some of the bins you requested does not appear to have been described in the collection\
                                     "%s". Here is a list of bins that are missing: "%s"'\
-                                            % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection))
+                                            % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection)))
 
         if not len(self.bins):
-            raise ConfigError, 'There is no bin to work with :/'
+            raise ConfigError('There is no bin to work with :/')
 
 
     def get_split_names_only(self):

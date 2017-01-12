@@ -31,7 +31,7 @@ pp = terminal.pretty_print
 
 
 def main(args):
-    A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     profile_db_path = A('profile_db')
     contigs_db_path = A('contigs_db')
     list_collections = A('list_collections')
@@ -48,10 +48,10 @@ def main(args):
     dry_run = A('dry_run')
 
     if use_SCG_averages and use_highest_completion_score:
-        raise ConfigError, "You can't use both `--use-SCG-averages` and `--use-highest-completion-score`"
+        raise ConfigError("You can't use both `--use-SCG-averages` and `--use-highest-completion-score`")
 
     if not use_SCG_averages and not use_highest_completion_score:
-        raise ConfigError, "You must choose one: `--use-SCG-averages`, or`--use-highest-completion-score`"
+        raise ConfigError("You must choose one: `--use-SCG-averages`, or`--use-highest-completion-score`")
 
     dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
@@ -63,43 +63,43 @@ def main(args):
         sys.exit()
 
     if not prefix:
-        raise ConfigError, "Anvi'o is having hard time believing that you called this function without\
-                            a prefix to rename bins in the collection '%s'." % collection_name_to_read
+        raise ConfigError("Anvi'o is having hard time believing that you called this function without\
+                            a prefix to rename bins in the collection '%s'." % collection_name_to_read)
 
     utils.is_this_name_OK_for_database('prefix for bins', prefix)
 
     if not report_file_path:
-        raise ConfigError, "You must provide an output file name to report file changes. It may or may not\
+        raise ConfigError("You must provide an output file name to report file changes. It may or may not\
                             be useful to you, but let's don't take unnecessary risks, eh? (you can use the\
-                            `--report-file` parameter)"
+                            `--report-file` parameter)")
 
     filesnpaths.is_output_file_writable(report_file_path)
 
     if collection_name_to_read == collection_name_to_write:
-        raise ConfigError, "Well :( Collection name to read from can't be identical to the collection name\
-                            you want to use to store updated bin names. You know. It kinda defeats the purpose."
+        raise ConfigError("Well :( Collection name to read from can't be identical to the collection name\
+                            you want to use to store updated bin names. You know. It kinda defeats the purpose.")
 
     if not collection_name_to_read:
-        raise ConfigError, "You must provide a collection name to read from."
+        raise ConfigError("You must provide a collection name to read from.")
 
     if not collection_name_to_write:
-        raise ConfigError, "You must provide a new collection name to write updated bin names."
+        raise ConfigError("You must provide a new collection name to write updated bin names.")
 
     utils.is_this_name_OK_for_database('collection name two write', collection_name_to_write)
 
     if  collection_name_to_read not in collections.collections_dict:
-        raise ConfigError, "%s is not a valid collection name, because it doesn't exist :(. See a\
-                            list of available ones with '--list-collections' flag" % collection_name_to_read
+        raise ConfigError("%s is not a valid collection name, because it doesn't exist :(. See a\
+                            list of available ones with '--list-collections' flag" % collection_name_to_read)
 
     if  collection_name_to_write in collections.collections_dict:
-        raise ConfigError, "The new collection name %s is already in the database. You must choose a new\
-                            collection name." % collection_name_to_write
+        raise ConfigError("The new collection name %s is already in the database. You must choose a new\
+                            collection name." % collection_name_to_write)
 
     completeness = Completeness(contigs_db_path)
 
     if not len(completeness.sources):
-        raise ConfigError, "HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
-                            their completion estimates? :("
+        raise ConfigError("HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
+                            their completion estimates? :(")
 
     if use_SCG_averages:
         run.warning('As per your request, this run will use average completion and redundancy estimates\
@@ -111,9 +111,9 @@ def main(args):
                      completion estimate.')
     else:
         if not 'Campbell_et_al' in completeness.sources:
-            raise ConfigError, "In most cases anvi'o relies on single-copy gene collection by Campbell\
+            raise ConfigError("In most cases anvi'o relies on single-copy gene collection by Campbell\
                                 et al., and it seems the contigs database does not contain HMM hits for\
-                                that resource :/ Bad news."
+                                that resource :/ Bad news.")
 
 
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
@@ -141,7 +141,7 @@ def main(args):
             p_completion = d[domain][scg_collection_name]['percent_complete']
             p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
         else:
-            raise ConfigError, "WTF :( Something that shuold never happened just happened,"
+            raise ConfigError("WTF :( Something that shuold never happened just happened,")
 
         size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
         substantive_completion = p_completion - p_redundancy
@@ -176,7 +176,7 @@ def main(args):
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
 
-        if bins_info_dict.has_key(bin_name):
+        if bin_name in bins_info_dict:
             new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
         report.write('%s\t%s\n' % (bin_name, new_bin_name))
@@ -233,11 +233,11 @@ if __name__ == '__main__':
                                 and so on. If you use this flag, it will name the ones that meet the criteria\
                                 described by MAG-related flags as 'PREFIX_MAG_00001', 'PREFIX_MAG_00002', and\
                                 so on. The ones that do not get to be named as MAGs will remain as bins.")
-    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, metavar='[0-100]', choices=range(0, 101), \
+    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, metavar='[0-100]', choices=list(range(0, 101)), \
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their completion estimate is\
                               above this (the default is %(default)d), and the redundancy estimate is\
                               less than --max-redundancy-for-MAG.")
-    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, metavar='[0-100]', choices=range(0, 101), \
+    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, metavar='[0-100]', choices=list(range(0, 101)), \
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
                               below this (the default is %(default)d) and the completion estimate is above\
                               --min-completion-for-MAG.")
@@ -262,9 +262,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

@@ -74,17 +74,17 @@ class GenomeStorage(object):
         internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
         external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if input_file_for_external_genomes else {}
 
-        self.internal_genome_names = internal_genomes_dict.keys()
-        self.external_genome_names = external_genomes_dict.keys()
+        self.internal_genome_names = list(internal_genomes_dict.keys())
+        self.external_genome_names = list(external_genomes_dict.keys())
 
         if not self.internal_genome_names and not self.external_genome_names:
-            raise ConfigError, "You in fact tried to create a genomes storage file without providing any internal or external genome\
+            raise ConfigError("You in fact tried to create a genomes storage file without providing any internal or external genome\
                                 descriptions! You got 5 anvi'o points for being awesome, but this is not gonna work since you really\
-                                need to provide at least one of those descriptions :/"
+                                need to provide at least one of those descriptions :/")
 
         if len(self.internal_genome_names) + len(self.external_genome_names) != len(set(self.internal_genome_names + self.external_genome_names)):
-            raise ConfigError, "Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
-                                seem to be the case with your input :/"
+            raise ConfigError("Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
+                                seem to be the case with your input :/")
 
         # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
         for source, input_file in [(external_genomes_dict, input_file_for_external_genomes), (internal_genomes_dict, input_file_for_internal_genomes)]:
@@ -132,7 +132,7 @@ class GenomeStorage(object):
         else:
             # this guy down below fills in the self.function_annotation_sources with function annotation sources
             # that are common to all genomes.
-            for sources in function_annotation_sources_per_genome.values():
+            for sources in list(function_annotation_sources_per_genome.values()):
                 if not sources:
                     continue
 
@@ -218,30 +218,30 @@ class GenomeStorage(object):
         # make sure genes are called in every contigs db:
         genomes_missing_gene_calls = [g for g in self.genomes if not self.genomes[g]['genes_are_called']]
         if len(genomes_missing_gene_calls):
-            raise ConfigError, 'Genes must have been called during the generation of contigs database for this workflow to work. However,\
-                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls))
+            raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
+                                these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
 
         # if two contigs db has the same hash, we are kinda f'd:
         if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
-            raise ConfigError, 'Not all hash values are unique across all contig databases you provided. Something\
-                                very fishy is going on :/'
+            raise ConfigError('Not all hash values are unique across all contig databases you provided. Something\
+                                very fishy is going on :/')
 
 
         if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
-            raise ConfigError, "Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
-                                wrong with your workflow :/ Please let the developers know if you can't figure this one out"
+            raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
+                                wrong with your workflow :/ Please let the developers know if you can't figure this one out")
 
         # make sure HMMs for SCGs were run for every contigs db:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
             if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
-                raise ConfigError, "The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. In other words,\
+                raise ConfigError("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. In other words,\
                                     you don't seem to have run `anvi-run-hmms` on them. Although it is perfectly legal to have anvi'o contigs databases\
-                                    without HMMs run on SCGs, the current pangenomic workflow does not want to deal with this :( Sorry!"
+                                    without HMMs run on SCGs, the current pangenomic workflow does not want to deal with this :( Sorry!")
             else:
-                raise ConfigError, "Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
+                raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
                                     can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
-                                                    (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs))
+                                                    (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs)))
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
@@ -257,9 +257,9 @@ class GenomeStorage(object):
             self.storage_path = "GENOMES.h5"
         else:
             if not self.storage_path.endswith('-GENOMES.h5'):
-                raise ConfigError, "The genomes storage file must end with '-GENOMES.h5'. Anvi'o developers do know how ridiculous\
+                raise ConfigError("The genomes storage file must end with '-GENOMES.h5'. Anvi'o developers do know how ridiculous\
                                     this requirement sounds like, but if you have seen the things they did, you would totally\
-                                    understand why this is necessary."
+                                    understand why this is necessary.")
 
         filesnpaths.is_output_file_writable(self.storage_path)
 
@@ -439,7 +439,7 @@ class GenomeStorage(object):
         split_names_of_interest = list(ccollections.GetSplitNamesInBins(args).get_split_names_only())
 
         if not len(split_names_of_interest):
-            raise ConfigError, "There are 0 splits defined for bin id %s in collection %s..." % (entry['bin_id'], entry['collection_id'])
+            raise ConfigError("There are 0 splits defined for bin id %s in collection %s..." % (entry['bin_id'], entry['collection_id']))
 
         return split_names_of_interest
 
@@ -523,11 +523,11 @@ class Pangenome(GenomeStorage):
     def check_params(self):
         # check the project name:
         if not self.project_name:
-            raise ConfigError, "Please set a project name, and be prepared to see it around as (1) anvi'o will use\
+            raise ConfigError("Please set a project name, and be prepared to see it around as (1) anvi'o will use\
                                 that name to set the output directory and to name various output files such as the\
                                 databases that will be generated at the end of the process. If you set your own output\
                                 directory name, you can have multiple projects in it and all of those projects can use\
-                                the same intermediate files whenever possible."
+                                the same intermediate files whenever possible.")
 
         utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
 
@@ -551,22 +551,22 @@ class Pangenome(GenomeStorage):
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
         if not isinstance(self.maxbit, float):
-            raise ConfigError, "maxbit value must be of type float :("
+            raise ConfigError("maxbit value must be of type float :(")
 
         if self.maxbit < 0 or self.maxbit > 1:
-            raise ConfigError, "Well. maxbit must be between 0 and 1. Yes. Very boring."
+            raise ConfigError("Well. maxbit must be between 0 and 1. Yes. Very boring.")
 
         if not isinstance(self.min_percent_identity, float):
-            raise ConfigError, "Minimum percent identity value must be of type float :("
+            raise ConfigError("Minimum percent identity value must be of type float :(")
 
         if self.min_percent_identity < 0 or self.min_percent_identity > 100:
-            raise ConfigError, "Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is\
-                                pretty cute, too." % self.min_percent_identity
+            raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is\
+                                pretty cute, too." % self.min_percent_identity)
 
 
-        if len([c for c in self.genomes.values() if 'genome_hash' not in c]):
-            raise ConfigError, "self.genomes does not seem to be a properly formatted dictionary for\
-                                the anvi'o class Pangenome."
+        if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
+            raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for\
+                                the anvi'o class Pangenome.")
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
@@ -644,8 +644,8 @@ class Pangenome(GenomeStorage):
                     [mapping[i](fields[i]) for i in range(0, len(mapping))]
             except Exception as e:
                 self.progress.end()
-                raise ConfigError, "Something went wrong while processing the blastall output file in line %d.\
-                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e)
+                raise ConfigError("Something went wrong while processing the blastall output file in line %d.\
+                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e))
             line_no += 1
             all_ids.add(query_id)
             all_ids.add(subject_id)
@@ -677,8 +677,8 @@ class Pangenome(GenomeStorage):
             try:
                 genome_name = self.hash_to_genome_name[entry_hash]
             except KeyError:
-                raise ConfigError, "Something horrible happened. This can only happend if you started a new analysis with\
-                                    additional genomes without cleaning the previous work directory. Sounds familiar?"
+                raise ConfigError("Something horrible happened. This can only happend if you started a new analysis with\
+                                    additional genomes without cleaning the previous work directory. Sounds familiar?")
 
             # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
             # bit score that would have recovered from a perfect match
@@ -726,7 +726,7 @@ class Pangenome(GenomeStorage):
             num_edges_stored += 1
 
         # add additional lines if there are any:
-        for line in additional_mcl_input_lines.values():
+        for line in list(additional_mcl_input_lines.values()):
             mcl_input.write(line)
             num_edges_stored += 1
 
@@ -745,13 +745,13 @@ class Pangenome(GenomeStorage):
 
         def store_file(data, path, headers=None):
             if not headers:
-                headers = ['contig'] + sorted(data.values()[0].keys())
+                headers = ['contig'] + sorted(list(data.values())[0].keys())
 
             utils.store_dict_as_TAB_delimited_file(data, path, headers=headers)
 
             return path
 
-        PCs = protein_clusters_dict.keys()
+        PCs = list(protein_clusters_dict.keys())
 
         for PC in PCs:
             self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
@@ -914,12 +914,12 @@ class Pangenome(GenomeStorage):
         headers = ['total_length']
 
         for h in ['percent_complete', 'percent_redundancy']:
-            if h in self.genomes.values()[0]:
+            if h in list(self.genomes.values())[0]:
                 headers.append(h)
 
         headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
-        for c in self.genomes.values():
+        for c in list(self.genomes.values()):
             new_dict = {}
             for header in headers:
                 new_dict[header] = c[header]
@@ -951,27 +951,27 @@ class Pangenome(GenomeStorage):
         self.check_programs()
 
         if not isinstance(self.mcl_inflation, float):
-            raise ConfigError, "Well, MCL likes its inflation parameter in 'float' form..."
+            raise ConfigError("Well, MCL likes its inflation parameter in 'float' form...")
 
         if self.mcl_inflation > 100 or self.mcl_inflation < 0.1:
-            raise ConfigError, "MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0."
+            raise ConfigError("MCL inflation parameter should have a reasonable value :/ Like between 0.1 and 100.0.")
 
         if not isinstance(self.genomes, type({})):
-            raise ConfigError, "self.genomes must be a dict. Anvi'o needs an adult :("
+            raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
 
         if len(self.genomes) < 2:
-            raise ConfigError, "There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
-                    % len(self.genomes)
+            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
+                    % len(self.genomes))
 
         if not self.skip_alignments:
             try:
                 Muscle()
-            except ConfigError, e:
-                raise ConfigError, "It seems things are not quite in order. Anvi'o does not know what is wrong, but you will\
+            except ConfigError as e:
+                raise ConfigError("It seems things are not quite in order. Anvi'o does not know what is wrong, but you will\
                                     see the actual error message in second. You can either try to address whatever causes this problem,\
                                     or you can use the `--skip-alignments` flag to avoid it completely (although the latter would clearly\
                                     be the easiest way out of this, anvi'o may stop thinking so highly of you if you choose to do that,\
-                                    just FYI). Here is the actual error you got: %s." % str(e).replace('\n', '').replace('  ', ' ')
+                                    just FYI). Here is the actual error you got: %s." % str(e).replace('\n', '').replace('  ', ' '))
 
         self.check_params()
 
@@ -1017,8 +1017,8 @@ class Pangenome(GenomeStorage):
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
                     self.progress.end()
-                    raise ConfigError, "Something horrible happened. This can only happen if you started a new analysis with\
-                                        additional genomes without cleaning the previous work directory. Sounds familiar?"
+                    raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with\
+                                        additional genomes without cleaning the previous work directory. Sounds familiar?")
 
                 protein_clusters_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name, 'alignment_summary': ''})
 
@@ -1039,7 +1039,7 @@ class Pangenome(GenomeStorage):
 
         self.progress.new('Aligning genes in protein sequences')
         self.progress.update('...')
-        pc_names = protein_clusters_dict.keys()
+        pc_names = list(protein_clusters_dict.keys())
         num_pcs = len(pc_names)
         for i in range(0, num_pcs):
             self.progress.update('%d of %d' % (i, num_pcs)) if i % 10 == 0 else None

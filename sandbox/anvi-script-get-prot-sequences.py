@@ -34,5 +34,5 @@ db.disconnect()
 for gene_id in gene_ids:
     g = genes_in_contigs[gene_id]
     g_sequence = contig_sequences[g['contig']]['sequence'][g['start']:g['stop']]
-    print '>%s|%s' % (gene_id, '|'.join('%s:%s' % (k, g[k]) for k in ['contig', 'start', 'stop', 'direction', 'function', 't_species']))
-    print textwrap.fill(g_sequence, 80)
+    print(('>%s|%s' % (gene_id, '|'.join('%s:%s' % (k, g[k]) for k in ['contig', 'start', 'stop', 'direction', 'function', 't_species']))))
+    print((textwrap.fill(g_sequence, 80)))

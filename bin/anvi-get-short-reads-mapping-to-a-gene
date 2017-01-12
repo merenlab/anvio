@@ -29,8 +29,8 @@ def main(args):
     c = ContigsSuperclass(args)
 
     if args.gene_caller_id not in c.genes_in_contigs_dict:
-        raise ConfigError, "The gene id you provided does not seem to be in the contigs\
-                            database."
+        raise ConfigError("The gene id you provided does not seem to be in the contigs\
+                            database.")
 
     gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
     mapping_range_start = gene_call['start'] + args.leeway
@@ -69,10 +69,10 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
   

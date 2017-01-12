@@ -48,7 +48,7 @@ try:
     from django.template.loader import render_to_string
     from django.template.defaultfilters import register
 except ImportError:
-    raise ConfigError, 'You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.'
+    raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
 
 
 __author__ = "A. Murat Eren"
@@ -75,7 +75,7 @@ class SummaryHTMLOutput:
         self.summary_type = self.summary_dict['meta']['summary_type']
 
         if self.summary_type not in ['profile', 'pan']:
-            raise ConfigError, "Unknown summary type '%s'" % self.summary_type
+            raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
     def generate(self, quick=False):
@@ -107,11 +107,11 @@ class SummaryHTMLOutput:
             else:
                 rendered = render_to_string('profile-index.tmpl', self.summary_dict)
         else:
-            raise ConfigError, "You cray..."
+            raise ConfigError("You cray...")
 
         index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
         self.progress.update('Writing the index file ...')
-        open(index_html, 'w').write(rendered.encode('utf-8'))
+        open(index_html, 'wb').write(rendered.encode('utf-8'))
 
         self.progress.end()
         return index_html

@@ -42,9 +42,9 @@ def main(args):
         try:
             gene_caller_ids = [int(l.strip()) for l in open(args.gene_caller_ids).readlines()]
         except:
-            raise ConfigError, "The gene caller ids parameter (%s) you used matched a file name in this directory\
+            raise ConfigError("The gene caller ids parameter (%s) you used matched a file name in this directory\
                                 however, anvi'o couldn't make much sense of it :/ Anvi'o certainly hopes this\
-                                error makes some sense to you." % args.gene_caller_ids
+                                error makes some sense to you." % args.gene_caller_ids)
             sys.exit()
     else:
         if args.gene_caller_ids:
@@ -71,9 +71,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

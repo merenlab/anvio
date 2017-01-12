@@ -16,12 +16,12 @@ progress = terminal.Progress()
 
 def convert_annotation_db_to_contigs_db(annotation_db_path):
     if annotation_db_path is None:
-        raise ConfigError, "No database path is given."
+        raise ConfigError("No database path is given.")
 
     annotation_db = db.DB(annotation_db_path, None, ignore_version = True)
 
     if annotation_db.get_meta_value('db_type') != 'annotation':
-        raise ConfigError, "'%s' does not seem to be an anvi'o annotation database :/"
+        raise ConfigError("'%s' does not seem to be an anvi'o annotation database :/")
 
     # fix the hash entry in the metadata table
     db_hash = annotation_db.get_meta_value('annotation_hash')
@@ -45,6 +45,6 @@ if __name__ == '__main__':
 
     try:
         convert_annotation_db_to_contigs_db(args.annotation_db)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

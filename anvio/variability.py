@@ -3,7 +3,7 @@
 
 """Classes to make sense of single nucleotide variation"""
 
-from __future__ import division
+
 from collections import Counter
 
 import anvio
@@ -60,7 +60,7 @@ class ColumnProfile:
         coverage = coverage if coverage else len(column)
 
         if len(reference) != 1:
-            raise ConfigError, "ColumnProfile class is upset. The reference must be a single base."
+            raise ConfigError("ColumnProfile class is upset. The reference must be a single base.")
 
         self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'reference': reference,
                         'coverage': coverage, 'departure_from_reference': 0, 'competing_nts': None, 'worth_reporting': False}
