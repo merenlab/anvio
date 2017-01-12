@@ -1126,7 +1126,9 @@ def set_version():
         # maybe anvi'o is not installed but it is being run from the codebase dir?
         # some hacky stuff to get version from the setup.py
         try:
-            exec([l.strip() for l in open(os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py').readlines() if l.strip().startswith('anvio_version')][0])
+            setup_py_path = os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py'
+            version_string = [l.strip() for l in open(setup_py_path).readlines() if l.strip().startswith('anvio_version')][0]
+            anvio_version = version_string.split('=')[1].strip().strip("'").strip('"')
         except:
             pass
 
