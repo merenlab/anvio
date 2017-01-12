@@ -235,6 +235,13 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
         names_in_newick_tree = utils.get_names_order_from_newick_tree(newick_tree_text)
 
+        # try to convert item names into integer values for proper sorting later. it's OK if it does
+        # not work.
+        try:
+            names_in_newick_tree = [int(n) for n in names_in_newick_tree]
+        except:
+            pass
+
         view_data_path = os.path.abspath(self.view_data_path) if self.view_data_path else None
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
