@@ -39,7 +39,7 @@ def main(args):
     contigs_db = db.DB(args.contigs_db, anvio.__contigs__version__)
 
     if(merged_profile_db.get_meta_value('merged') != True):
-        raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.profile_db
+        raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
 
     if args.output_dir:
         filesnpaths.gen_output_directory(args.output_dir)
@@ -87,6 +87,6 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

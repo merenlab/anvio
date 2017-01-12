@@ -108,10 +108,10 @@ class SummarizerSuperClass(object):
     def sanity_check(self):
         if not self.skip_check_collection_name:
             if not self.collection_name:
-                raise ConfigError, "You must specify a collection id :/"
+                raise ConfigError("You must specify a collection id :/")
 
             if self.collection_name not in self.collections.collections_dict:
-                raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name
+                raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
@@ -139,7 +139,7 @@ class SummarizerSuperClass(object):
             file_path += '.gz'
 
         if os.path.exists(file_path) and not overwrite:
-            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
+            raise ConfigError('get_output_file_handle: well, this file already exists: "%s"' % file_path)
 
         if within:
             if within not in self.summary['files']:
@@ -166,7 +166,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         PanSuperclass.__init__(self, args, run, progress)
         if not self.genomes_storage_is_available:
-            raise ConfigError, "No genomes storage no summary. Yes. Very simple stuff."
+            raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
@@ -186,9 +186,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
 
         # let bin names known to all
-        bin_ids = self.collection_profile.keys()
+        bin_ids = list(self.collection_profile.keys())
 
-        genome_names = ', '.join(self.protein_clusters.values()[0].keys())
+        genome_names = ', '.join(list(self.protein_clusters.values())[0].keys())
 
         # set up the initial summary dictionary
         self.summary['meta'] = { \
@@ -237,7 +237,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if self.debug:
             import json
-            print json.dumps(self.summary, sort_keys=True, indent=4)
+            print(json.dumps(self.summary, sort_keys=True, indent=4))
 
         self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
 
@@ -249,7 +249,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.progress.update('...')
 
         # generate a dict of protein cluster ~ bin id relationships
-        pc_name_to_bin_name= dict(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned)))
+        pc_name_to_bin_name= dict(list(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned))))
         for bin_id in collection_dict: 
             for pc_name in collection_dict[bin_id]:
                 pc_name_to_bin_name[pc_name] = bin_id
@@ -337,7 +337,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
 
         # let bin names known to all
-        bin_ids = self.collection_profile.keys()
+        bin_ids = list(self.collection_profile.keys())
 
         # load completeness information if available
         self.completeness = completeness.Completeness(self.contigs_db_path)
@@ -402,7 +402,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['files'] = {}
         self.summary['collection'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from ProfileSuperclass!
-        self.summary['collection_profile_items'] = [] if not len(self.collection_profile.values()) else self.collection_profile.values()[0].keys()
+        self.summary['collection_profile_items'] = [] if not len(list(self.collection_profile.values())) else list(self.collection_profile.values())[0].keys()
 
         # add hmm items for each seach type:
         if self.non_single_copy_gene_hmm_data_available:
@@ -477,7 +477,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                 self.summary['bin_percent_abundance_items'] = None
             else:
                 self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
-                self.summary['bin_percent_abundance_items'] = sorted(self.bin_percent_recruitment_per_sample.values()[0].keys())
+                self.summary['bin_percent_abundance_items'] = sorted(list(self.bin_percent_recruitment_per_sample.values())[0].keys())
                 output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='bins_percent_recruitment.txt')
                 utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
                                                        None,
@@ -487,7 +487,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         if self.debug:
             import json
-            print json.dumps(self.summary, sort_keys=True, indent=4)
+            print(json.dumps(self.summary, sort_keys=True, indent=4))
 
         self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
 
@@ -565,7 +565,7 @@ class Bin:
 
         if not self.output_directory:
             self.progress.end()
-            raise ConfigError, 'You caled Bin.create() before setting an output directory. Anvio says "nope, thanks".'
+            raise ConfigError('You caled Bin.create() before setting an output directory. Anvio says "nope, thanks".')
 
         filesnpaths.gen_output_directory(self.output_directory)
 
@@ -807,7 +807,7 @@ class Bin:
         # now it is time to go through each contig found in contigs_represented to
         # figure out what fraction of the contig is in fact in this bin
         for contig_id in contigs_represented:
-            splits_order = contigs_represented[contig_id].keys()
+            splits_order = list(contigs_represented[contig_id].keys())
 
             self.progress.update('Creating the FASTA file :: Identifying sequential blocks ...')
             # this is critical: sequential_blocks is a list of one ore more lists, where each item of this list
@@ -875,7 +875,7 @@ class Bin:
             else:
                 taxon_calls_counter['None'] += 1
 
-        taxon_calls = sorted([list(tc) for tc in taxon_calls_counter.items()], key=lambda x: int(x[1]), reverse=True)
+        taxon_calls = sorted([list(tc) for tc in list(taxon_calls_counter.items())], key=lambda x: int(x[1]), reverse=True)
 
         self.bin_info_dict['taxon_calls'] = taxon_calls
 
@@ -909,7 +909,7 @@ class Bin:
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
 
         if os.path.exists(file_path) and not overwrite:
-            raise ConfigError, 'get_output_file_handle: well, this file already exists: "%s"' % file_path
+            raise ConfigError('get_output_file_handle: well, this file already exists: "%s"' % file_path)
 
         if not key:
             key = prefix.split('.')[0].replace('-', '_')
@@ -950,11 +950,11 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
         split_names = set(split_names)
         c.init_split_sequences()
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in c.genes_in_splits.values() if e['split'] in split_names])
+        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in list(c.genes_in_splits.values()) if e['split'] in split_names])
     else:
         c.init_contig_sequences()
-        seq = ''.join([e['sequence'] for e in c.contig_sequences.values()])
-        info_dict['gene_caller_ids'] = c.genes_in_contigs_dict.keys()
+        seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
+        info_dict['gene_caller_ids'] = list(c.genes_in_contigs_dict.keys())
 
     info_dict['gc_content'] = sequence.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)
@@ -966,7 +966,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
 
     info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
     info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in info_dict['gene_caller_ids']])
-    info_dict['avg_gene_length'] = numpy.mean(info_dict['gene_lengths'].values())
+    info_dict['avg_gene_length'] = numpy.mean(list(info_dict['gene_lengths'].values()))
     info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
 
     # get completeness / contamination estimates
@@ -992,12 +992,12 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
 
     missing_keys = [key for key in constants.essential_genome_info if key not in info_dict]
     if len(missing_keys):
-        raise ConfigError, "We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
+        raise ConfigError("We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
                             produce a dictionary that meets the requirements defined in the constants module of anvi'o\
                             for 'essential genome info'. But when I look at the resulting dictionary this funciton is\
                             about to return, I can see it is missing some stuff :/ This is not a user error, but it needs\
                             the attention of an anvi'o developer. Here are the keys that should have been in the results\
-                            but missing: '%s'" % (', '.join(missing_keys))
+                            but missing: '%s'" % (', '.join(missing_keys)))
 
     return info_dict
 
@@ -1068,7 +1068,7 @@ class AdHocRunGenerator:
 
     def is_good_to_go(self):
         if not self.sanity_checked:
-            raise ConfigError, "AdHocRunGenerator :: You gotta be nice, and run sanity check first :/"
+            raise ConfigError("AdHocRunGenerator :: You gotta be nice, and run sanity check first :/")
 
 
     def get_output_file_path(self, file_name):
@@ -1077,9 +1077,9 @@ class AdHocRunGenerator:
 
     def check_output_directory(self):
         if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
-            raise ConfigError, "AdHocRunGenerator will not work with an existing directory. Please provide a new\
+            raise ConfigError("AdHocRunGenerator will not work with an existing directory. Please provide a new\
                                 path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
-                                any existing directory."
+                                any existing directory.")
 
         filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
 

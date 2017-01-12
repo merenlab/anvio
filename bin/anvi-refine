@@ -88,17 +88,17 @@ try:
 
     r = refine.RefineBins(args)
     d = r.refine()
-except ConfigError, e:
-    print e
+except ConfigError as e:
+    print(e)
     sys.exit(-1)
-except FilesNPathsError, e:
-    print e
+except FilesNPathsError as e:
+    print(e)
     sys.exit(-2)
-except DictIOError, e:
-    print e
+except DictIOError as e:
+    print(e)
     sys.exit(-3)
-except SamplesError, e:
-    print e
+except SamplesError as e:
+    print(e)
     sys.exit(-4)
 
 
@@ -128,7 +128,7 @@ def send_data(name):
     if name == "init":
         return json.dumps( { "title": d.title,
                              "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
-                             "views": (d.default_view, dict(zip(d.views.keys(), d.views.keys()))),
+                             "views": (d.default_view, dict(list(zip(list(d.views.keys()), list(d.views.keys()))))),
                              "contigLengths": dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info]),
                              "defaultView": d.views[d.default_view],
                              "mode": "refine",
@@ -146,7 +146,7 @@ def send_data(name):
     elif name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
     elif name == "views":
-        available_views = dict(zip(d.views.keys(), d.views.keys()))
+        available_views = dict(list(zip(list(d.views.keys()), list(d.views.keys()))))
         return json.dumps((d.default_view, available_views), )
     elif name == "default_view":
         return json.dumps(d.views[d.default_view])

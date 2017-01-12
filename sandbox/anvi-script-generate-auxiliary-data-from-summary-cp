@@ -40,7 +40,7 @@ def create_HDF5_summary_from_summary_cp(args):
     progress.update('...')
 
     if not os.path.exists(summary_cp_path):
-        raise ConfigError, "No SUMMARY.cp was found at '%s'" % summary_cp_path
+        raise ConfigError("No SUMMARY.cp was found at '%s'" % summary_cp_path)
 
     input_directory_prefix = os.path.dirname(summary_cp_path)
     output_file_name = os.path.join(os.path.dirname(summary_cp_path), 'AUXILIARY-DATA.h5')
@@ -80,9 +80,9 @@ if __name__ == '__main__':
 
     try:
         create_HDF5_summary_from_summary_cp(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

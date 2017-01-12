@@ -28,27 +28,27 @@ progress = terminal.Progress()
 def main(args):
     # make sure we have the parser
     if not args.parser:
-        raise ConfigError, "You really need to specify a parser."
+        raise ConfigError("You really need to specify a parser.")
 
     if args.parser not in parser_modules['taxonomy']:
-        raise ConfigError, "Anvi'o does not know what to do with '%s'. You must use one of the available taxonomy\
+        raise ConfigError("Anvi'o does not know what to do with '%s'. You must use one of the available taxonomy\
                             parsers so anvi'o can make sense of your input data. Here is what anvi'o has to parse\
                             incoming taxonomy (you should take a look at the documentation if you are not sure\
                             how to deal with this situation, because it is not that hard, in fact (or, you know\
                             you can send an e-mail to us)): %s"\
-                                                 % (args.parser, ', '.join(parser_modules['taxonomy']))
+                                                 % (args.parser, ', '.join(parser_modules['taxonomy'])))
     if not args.input_files:
-        raise ConfigError, "You need to use '--input-files' parameter to list file(s) that is/are required the\
-                            parser you chose. Please see the documentation for details."
+        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
+                            parser you chose. Please see the documentation for details.")
 
     parser = parser_modules['taxonomy'][args.parser](args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
     genes_taxonomy_dict, taxon_names_dict = parser.process()
 
     if not len(genes_taxonomy_dict):
-        raise ConfigError, "Your parser (%s) returned an empty result for your input file. Something must have gone wrong.\
+        raise ConfigError("Your parser (%s) returned an empty result for your input file. Something must have gone wrong.\
                             Maybe you selected a wrong parser, or the input file format has changed between when this\
                             parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
-                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser)
+                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
 
 
     tables_for_taxonomy = dbops.TablesForTaxonomy(args.contigs_db, run, progress)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                                 for later use. Using a parser will not prevent the analysis of single-copy genes,\
                                 but make anvio more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
-                                regarding parsers.' % (len(parser_modules['taxonomy']), parser_modules['taxonomy'].keys()))
+                                regarding parsers.' % (len(parser_modules['taxonomy']), list(parser_modules['taxonomy'].keys())))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')
@@ -80,9 +80,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

@@ -71,8 +71,8 @@ class RefineBins(dbops.DatabasesMetaclass):
 
         self.progress.update('Getting split names')
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.bins = d.keys()
-        for split_names in d.values():
+        self.bins = list(d.keys())
+        for split_names in list(d.values()):
             self.split_names_of_interest.update(split_names)
         self.progress.end()
 
@@ -118,9 +118,9 @@ class RefineBins(dbops.DatabasesMetaclass):
 
 
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
-        if 0 in [len(b) for b in refined_bin_data.values()]:
-            raise RefineError, 'One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
-                                this is not the right way to do it.'
+        if 0 in [len(b) for b in list(refined_bin_data.values())]:
+            raise RefineError('One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
+                                this is not the right way to do it.')
 
         self.progress.new('Storing refined bins')
         self.progress.update('accessing to collection "%s" ...' % self.collection_name)
@@ -130,14 +130,14 @@ class RefineBins(dbops.DatabasesMetaclass):
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]
         if len(bad_bin_names):
-            raise RefineError, '%s of your bin names %s NOT unique, and already exist%s in the database. You must rename\
+            raise RefineError('%s of your bin names %s NOT unique, and already exist%s in the database. You must rename\
                                 %s to something else: %s' % (
                                                               'One' if len(bad_bin_names) == 1 else len(bad_bin_names),
                                                               'is' if len(bad_bin_names) == 1 else 'are',
                                                               's' if len(bad_bin_names) == 1 else '',
                                                               'this one' if len(bad_bin_names) == 1 else 'these',
                                                               ', '.join(bad_bin_names)
-                                                             )
+                                                             ))
 
         # remove bins that should be updated in the database:
         for bin_id in self.ids_for_already_refined_bins:
@@ -193,6 +193,6 @@ class RefineBins(dbops.DatabasesMetaclass):
 
             clusterings[clustering_id] = {'newick': newick}
 
-        self.run.info('available_clusterings', clusterings.keys())
+        self.run.info('available_clusterings', list(clusterings.keys()))
 
         return clusterings

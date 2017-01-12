@@ -61,7 +61,7 @@ def main(args):
         # a shitty limitation here before we start:
         collection_names = set([G.genomes[genome_name]['collection_id'] for genome_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]])
         if len(collection_names) != 1:
-            raise ConfigError, "You have to have the same collection for each bin originate from the same profile db."
+            raise ConfigError("You have to have the same collection for each bin originate from the same profile db.")
 
     per_gene_output_file = open(output_per_gene_summary_path, 'w')
     per_gene_output_file.write('genome\tgene_callers_id\tclass\n')
@@ -98,7 +98,7 @@ def main(args):
             sum_gene_coverages_across_samples = dict([(gene_callers_id, sum(gene_coverages_across_samples[gene_callers_id].values())) for gene_callers_id in gene_coverages_across_samples])
 
             # now we will identify the median coverage
-            median_coverage_across_samples = numpy.median(sum_gene_coverages_across_samples.values())
+            median_coverage_across_samples = numpy.median(list(sum_gene_coverages_across_samples.values()))
 
             # now we will store decide whether a gene found in this genome is also found in the environment, and store that
             # information into `gene_presence_in_the_environment_dict`, and move on to the next stage.
@@ -176,9 +176,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

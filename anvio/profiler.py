@@ -4,10 +4,9 @@
 
 import os
 import sys
+import time
 import pysam
 import shutil
-import pysam
-import time
 import multiprocessing
 
 import anvio
@@ -91,7 +90,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             sys.exit()
 
         if not self.contigs_db_path:
-            raise ConfigError, "No contigs database, no profilin'. Bye."
+            raise ConfigError("No contigs database, no profilin'. Bye.")
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
@@ -119,9 +118,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
-            raise ConfigError, "You can not run profiling without a contigs database. You can create\
+            raise ConfigError("You can not run profiling without a contigs database. You can create\
                                 one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
-                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
+                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/")
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
                                                                    ok_if_exists=self.overwrite_output_destinations)
@@ -197,7 +196,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_mock_profile()
 
             # creating a null view_data_splits dict:
-            view_data_splits = dict(zip(self.split_names, [dict(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:])))] * len(self.split_names)))
+            view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
             dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
             dbops.TablesForViews(self.profile_db_path).create_new_view(
                                            data_dict=view_data_splits,
@@ -209,7 +208,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_profile_from_BAM()
             self.profile()
         else:
-            raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
+            raise ConfigError("What are you doing? :( Whatever it is, anvi'o will have none of it.")
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
@@ -239,7 +238,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id] = set([])
             codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
 
-        gene_caller_ids_to_profile = codons_in_genes_to_profile_AA_frequencies_dict.keys()
+        gene_caller_ids_to_profile = list(codons_in_genes_to_profile_AA_frequencies_dict.keys())
         num_gene_caller_ids_to_profile = len(gene_caller_ids_to_profile)
 
         for i in range(0, len(gene_caller_ids_to_profile)):
@@ -262,7 +261,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 db_entry['coverage'] = e['coverage']
                 db_entry['departure_from_reference'] = e['departure_from_reference']
                 db_entry['codon_order_in_gene'] = codon_order
-                for aa in constants.codon_to_AA.values():
+                for aa in list(constants.codon_to_AA.values()):
                     db_entry[aa] = e['frequencies'][aa]
 
                 variable_aas_table.append(db_entry)
@@ -287,9 +286,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
-        for contig in self.contigs.values():
+        for contig in list(self.contigs.values()):
             for split in contig.splits:
-                for column_profile in split.column_profiles.values():
+                for column_profile in list(split.column_profiles.values()):
                     # let's figure out more about this particular variable position
                     pos_in_contig = column_profile['pos_in_contig']
 
@@ -339,7 +338,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.progress.new('Profiling genes')
 
         num_contigs = len(self.contigs)
-        contig_names = self.contigs.keys()
+        contig_names = list(self.contigs.keys())
         for i in range(0, num_contigs):
             contig = contig_names[i]
             if not quiet:
@@ -442,10 +441,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.check_contigs()
 
         # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_contigs_without_any_gene_calls(self.contigs.keys())
+        self.check_contigs_without_any_gene_calls(list(self.contigs.keys()))
 
         contigs_to_discard = set()
-        for contig in self.contigs.values():
+        for contig in list(self.contigs.values()):
             if contig.length < self.min_contig_length:
                 contigs_to_discard.add(contig.name)
         if len(contigs_to_discard):
@@ -472,7 +471,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             utils.check_contig_names(self.contig_names)
 
             for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+                print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
         else:
             self.progress.new('Init')
@@ -484,7 +483,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.info('num_contigs', pp(len(self.contigs)))
 
             for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+                print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
 
     def remove_contigs_that_are_shorter_than_min_contig_length(self):
@@ -495,7 +494,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contigs_longer_than_M.add(i)
 
         if not len(contigs_longer_than_M):
-            raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+            raise ConfigError("0 contigs larger than %s nts." % pp(self.min_contig_length))
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
             self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
@@ -554,13 +553,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
         for contig_name in self.contig_names:
             if contig_name not in self.contig_names_in_contigs_db:
-                raise ConfigError, "At least one contig name in your BAM file does not match contig names stored in the\
+                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the\
                                     contigs database. For instance, this is one contig name found in your BAM file: '%s',\
                                     and this is another one found in your contigs database: '%s'. You may be using an\
                                     contigs database for profiling that has nothing to do with the BAM file you are\
                                     trying to profile, or you may have failed to fix your contig names in your FASTA file\
                                     prior to mapping, which is described here: %s"\
-                                        % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
+                                        % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS'))
 
         self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
         self.run.info('num_contigs', self.num_contigs, quiet=True)
@@ -581,7 +580,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_reads_mapped = 0
         self.progress.end()
 
-        self.contig_names = self.contigs_basic_info.keys()
+        self.contig_names = list(self.contigs_basic_info.keys())
         self.contig_lengths = [self.contigs_basic_info[contig_name]['length'] for contig_name in self.contigs_basic_info]
         self.total_length = sum(self.contig_lengths)
         self.num_contigs = len(self.contig_names)
@@ -735,7 +734,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
     def store_contigs_buffer(self):
-        for contig in self.contigs.values():
+        for contig in list(self.contigs.values()):
             self.total_length_of_all_contigs += contig.length
             self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
 
@@ -784,7 +783,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             num_contigs = len(self.contigs)
 
         if not num_contigs:
-            raise ConfigError, "0 contigs to work with. Bye."
+            raise ConfigError("0 contigs to work with. Bye.")
 
 
     def cluster_contigs(self):
@@ -813,27 +812,27 @@ class BAMProfiler(dbops.ContigsSuperclass):
                               rest of the parameters you may have declred. Most of them will not matter.")
 
             if not self.output_directory:
-                raise ConfigError, "If you want to generate a blank profile, you need to declare an output diretory path."
+                raise ConfigError("If you want to generate a blank profile, you need to declare an output diretory path.")
             if not self.sample_id:
-                raise ConfigError, "Mock profiles require a sample name to be declared. Because :/"
+                raise ConfigError("Mock profiles require a sample name to be declared. Because :/")
             return
 
         if (not self.input_file_path) and (not self.serialized_profile_path):
-            raise ConfigError, "You didn't declare any input files :/ If you intend to create a blank profile without any,\
+            raise ConfigError("You didn't declare any input files :/ If you intend to create a blank profile without any,\
                                 input file, you should be a bit more explicit about your intention (you know, in the help\
                                 there is a flag for it and all). Otherwise you should either provide an input BAM file, or\
-                                a serialized anvi'o profile. See '--help' maybe?"
+                                a serialized anvi'o profile. See '--help' maybe?")
         if self.input_file_path and self.serialized_profile_path:
-            raise ConfigError, "You can't declare both an input file and a serialized profile."
+            raise ConfigError("You can't declare both an input file and a serialized profile.")
         if self.serialized_profile_path and (not self.output_directory):
-            raise ConfigError, "When loading serialized profiles, you need to declare an output directory."
+            raise ConfigError("When loading serialized profiles, you need to declare an output directory.")
         if self.input_file_path and not os.path.exists(self.input_file_path):
-            raise ConfigError, "No such file: '%s'" % self.input_file_path
+            raise ConfigError("No such file: '%s'" % self.input_file_path)
         if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
-            raise ConfigError, "No such file: '%s'" % self.serialized_profile_path
+            raise ConfigError("No such file: '%s'" % self.serialized_profile_path)
         if not self.min_coverage_for_variability >= 0:
-            raise ConfigError, "Minimum coverage for variability must be 0 or larger."
+            raise ConfigError("Minimum coverage for variability must be 0 or larger.")
         if not self.min_mean_coverage >= 0:
-            raise ConfigError, "Minimum mean coverage must be 0 or larger."
+            raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:
-            raise ConfigError, "Minimum contig length must be 0 or larger."
+            raise ConfigError("Minimum contig length must be 0 or larger.")
