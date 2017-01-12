@@ -6,10 +6,9 @@ import sys
 
 import anvio
 import anvio.db as db
+import anvio.dbops as dbops
 import anvio.tables as t
-import anvio.dictio as dictio
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.utils import gen_gexf_network_file
@@ -30,33 +29,25 @@ progress = terminal.Progress()
 
 class NetworkDescriptonSamples:
     def __init__(self):
-        self.runinfo_path = None
+        self.profile_db_path = None
         self.contigs_db_path = None
         self.use_named_functions_only = False
-        self.runinfo = None
         self.functions = {'labels': {}}
-        self.P = lambda x: os.path.join(os.path.dirname(self.runinfo_path), x)
+
+        self.P = lambda x: os.path.join(os.path.dirname(self.profile_db_path), x)
 
 
     def init(self):
-        filesnpaths.is_file_exists(self.runinfo_path)
-        filesnpaths.is_file_exists(self.contigs_db_path)
+        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        self.runinfo = dictio.read_serialized_object(self.runinfo_path)
-        self.profile_db_path = self.P(self.runinfo['profile_db'])
         self.profile_db = db.DB(self.profile_db_path, t.profile_db_version)
-
         self.contigs_db = db.DB(self.contigs_db_path, t.contigs_db_version)
-
-        if self.contigs_db.get_meta_value('contigs_db_hash') != self.profile_db.get_meta_value('contigs_db_hash'):
-            raise ConfigError("OK. The run described in '%s' was not profiled using the contigs database\
-                                      you sent as a parameter ('%s'). Hmm :/"% (self.runinfo_path, self.contigs_db_path))
 
         table_names = self.profile_db.get_table_names()
 
         if not int(self.profile_db.get_meta_value('merged')):
             raise ConfigError("The profile database describes a single run. Current implementation of this\
-                                      program restricts its use to merged runs. Sorry :/")
+                               program restricts its use to merged runs. Sorry :/")
 
         if t.gene_coverages_table_name not in table_names:
             raise ConfigError("There is no '%s' table in the profile database. This does not really make\
@@ -120,14 +111,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate a network description file')
 
-    parser.add_argument(*anvio.A('runinfo'), **anvio.K('runinfo'))
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
     args = parser.parse_args()
 
     try:
         network = NetworkDescriptonSamples()
-        network.runinfo_path = args.runinfo
+        network.profile_db_path = args.profile_db
         network.contigs_db_path = args.contigs_db
         network.init()
         network.generate_genes_network()
