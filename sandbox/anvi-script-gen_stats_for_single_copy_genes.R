@@ -62,19 +62,14 @@ if(file.access(hits) == -1){
     stop(sprintf("Specified file '%s' does not exist", hits))
 }
 
-#e_value <- 1e-20
-#hits <- '~/Infant-MERGED-FINAL-5K-FOR-THE-PAPER/Infant-gut-BINS/E_faecaelis-REF-OG1RF.db.hits'
-#genes <- '~/Infant-MERGED-FINAL-5K-FOR-THE-PAPER/Infant-gut-BINS/E_faecaelis-REF-OG1RF.db.genes'
-# source <- 'Wu_et_al'
-# source <- 'Dupont_et_al'
-
 genes_df <- data.frame(read.table(genes, header = TRUE,sep="\t"))
 hits_df <- data.frame(read.table(hits, header = TRUE,sep="\t"))
 hits_df <- hits_df[hits_df$e_value < e_value, ]
+sources <- levels(hits_df$source)
 
 plots <- list()  # new empty list
 i <- 1
-for(source in c('Alneberg_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_al')){
+for(source in sources){
 	print(source)
     source_genes_df <- genes_df[genes_df$source == source, ]
     source_genes_df$source <- factor(source_genes_df$source)
@@ -143,11 +138,13 @@ for(source in c('Alneberg_et_al', 'Creevey_et_al', 'Campbell_et_al', 'Dupont_et_
     i <- i + 1
 
 }
-pdf(paste(output_prefix, 'new.pdf', sep=''), width=25, height=12)
-grid.arrange(plots[[1]], plots[[2]], plots[[3]],
-             plots[[4]], plots[[5]], plots[[6]],
-             plots[[7]], plots[[8]], plots[[9]],
-             plots[[10]], plots[[11]], plots[[12]],
-             widths = c(2, 1, 10))
+
+pdf(paste(output_prefix, 'new.pdf', sep=''), width=25, height=3)
+
+i <- 1
+for(source in sources){
+  grid.arrange(plots[[i]], plots[[i+1]], plots[[i+2]], widths = c(2, 1, 10))
+  i=i+3
+}
 dev.off()
 
