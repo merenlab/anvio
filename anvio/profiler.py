@@ -60,7 +60,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
-        self.num_processes = A('num_processes')
+        self.num_threads = int(A('num_threads'))
         self.queue_size = int(A('queue_size'))
         self.write_buffer_size = int(A('write_buffer_size'))
         self.total_length_of_all_contigs = 0
@@ -681,9 +681,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
-        num_processes = int(self.num_processes or (multiprocessing.cpu_count() - 1))
         processes = []
-        for i in range(0, num_processes):
+        for i in range(0, self.num_threads):
             processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
         
         for proc in processes:
@@ -691,7 +690,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         recieved_contigs = 0
         discarded_contigs = 0
-        self.progress.new('Profiling using ' + str(num_processes) + ' processes')
+        self.progress.new('Profiling using ' + str(self.num_threads) + ' processes')
 
         memory_usage = "0"
         last_memory_update = int(time.time())

@@ -61,7 +61,7 @@ if __name__ == '__main__':
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
     groupC.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
     groupC.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
-    groupZ.add_argument(*anvio.A('num-processes'), **anvio.K('num-processes'))
+    groupZ.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupZ.add_argument(*anvio.A('queue-size'), **anvio.K('queue-size'))
     groupZ.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
