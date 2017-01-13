@@ -690,7 +690,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         recieved_contigs = 0
         discarded_contigs = 0
-        self.progress.new('Profiling using ' + str(self.num_threads) + ' processes')
+        self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
 
         memory_usage = "0"
         last_memory_update = int(time.time())
