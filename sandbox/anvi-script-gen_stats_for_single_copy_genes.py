@@ -49,9 +49,21 @@ contig_lengths = dict([(c, contig_lengths_table[c]['length']) for c in contig_le
 db.disconnect()
 
 sources = {}
+irrelevant_sources = []
 for source in search_info_dict:
     if search_info_dict[source]['search_type'] == "singlecopy":
         sources[source] = [g.strip() for g in search_info_dict[source]['genes'].split(',')]
+    else:
+        irrelevant_sources.append(source)
+
+irrelevant_entries = []
+for source in irrelevant_sources:
+    for entry in search_contigs_dict:
+        if search_contigs_dict[entry]['source'] in irrelevant_sources:
+            irrelevant_entries.append(entry)
+
+for entry in irrelevant_entries:
+    search_contigs_dict.pop(entry)
 
 if args.list_sources:
     print((list(sources.keys())))
