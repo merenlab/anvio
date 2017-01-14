@@ -3325,7 +3325,7 @@ def get_default_clustering_id(default_clustering_requested, clusterings_dict, pr
         raise ConfigError, "You requested to get the default clustering given the clustering dictionary,\
                             but the clustering dict is empty :/ "
 
-    matching_clustering_ids = [clustering for clustering in clusterings_dict if clustering.lower().startswith(default_clustering_requested.lower())]
+    matching_clustering_ids = [clustering for clustering in clusterings_dict if clustering.lower().split(':')[0] == default_clustering_requested.lower()]
 
     if not len(matching_clustering_ids):
         default_clustering = clusterings_dict.keys()[0]
