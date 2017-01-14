@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     parser.add_argument('--include-unbinned', default=False, action='store_true', help="When this flag is used, anvi'o\
                          will also store in the output file the items that do not appear in any of your bins. This new\
-                         bin will be called '__UNBINNED__'. Yes. The ugly name is intentional.")
+                         bin will be called 'UNBINNED_ITEMS_BIN'. Yes. The ugly name is intentional.")
 
     args = parser.parse_args()
 
