@@ -204,7 +204,7 @@ class Collections:
             info_file = open(info_file_path, 'w')
 
             if include_unbinned:
-                bins_info['__UNBINNED__'] = {'html_color': '#000000', 'source': 'anvi-export-collections'}
+                bins_info['UNBINNED_ITEMS_BIN'] = {'html_color': '#000000', 'source': 'anvi-export-collections'}
 
             for bin_name in bins_info:
                 info_file.write('%s\t%s\t%s\n' % (bin_name, bins_info[bin_name]['source'], bins_info[bin_name]['html_color']))
@@ -224,10 +224,10 @@ class Collections:
             unbinned_items = all_items.difference(binned_items)
 
             for item_name in unbinned_items:
-                items_file.write('%s\t__UNBINNED__\n' % (item_name))
+                items_file.write('%s\tUNBINNED_ITEMS_BIN\n' % (item_name))
 
             self.run.warning("As per your request, %d items that were not in any of the bins in the collection '%s' are stored\
-                              in the output file under the bin name '__UNBINNED__'." % (len(unbinned_items), collection_name))
+                              in the output file under the bin name 'UNBINNED_ITEMS_BIN'." % (len(unbinned_items), collection_name))
 
         items_file.close()
 
