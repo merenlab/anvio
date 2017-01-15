@@ -136,7 +136,8 @@ class MultipleRuns:
         self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
         if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
             raise ConfigError("Sample ids in each single profile database to be merged must be unique. But it is not the case\
-                               with your input :/")
+                               with your input :/ Here are the sample names in case you would like to find out which ones occur\
+                               more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
 
         # test open the contigs database (and learn its hash while doing it) to make sure we don't have
         # a deal breaker just yet
@@ -158,7 +159,6 @@ class MultipleRuns:
                 raise ConfigError("%s are not identical for all profiles to be merged, which is a \
                                     deal breaker. All profiles that are going to be merged must be\
                                     run with identical flags and parameters :/" % p)
-
 
         # get split names from one of the profile databases. split names must be identical across all
         self.split_names = sorted(list(dbops.get_split_names_in_profile_db(list(self.profile_dbs_info_dict.keys())[0])))
@@ -288,8 +288,9 @@ class MultipleRuns:
 
         filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.overwrite_output_destinations)
 
-        # init profile database
+        # set database paths
         self.merged_profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
+        self.samples_db_path = os.path.join(self.output_directory, 'SAMPLES.db')
 
         profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
 
@@ -348,6 +349,7 @@ class MultipleRuns:
 
         # get view data information for both contigs and splits:
         self.atomic_data_fields, self.atomic_data_for_each_run = self.read_atomic_data_tables()
+
         self.split_parents = self.get_split_parents()
 
         self.run.info('profiler_version', anvio.__profile__version__)
@@ -398,6 +400,9 @@ class MultipleRuns:
         if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
             self.bin_contigs_concoct()
 
+        # generate a samples database while you are at it
+        self.gen_samples_db_from_view_data()
+
         self.run.quit()
 
 
@@ -418,6 +423,69 @@ class MultipleRuns:
     def get_relative_abundance_of_split(self, target, sample_id, split_name):
         denominator = float(sum(self.normalized_coverages[target][split_name].values()))
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
+
+
+    def gen_samples_db_from_view_data(self):
+        """Geenrate a samples db for the merged profile.
+
+           We use the ProfileSuperclass to load all the views we added into the meged profile,
+           and generate clusterings of samples for each view to generate a default samples database."""
+
+        self.run.info_single("SAMPLES.db stuff...", nl_before=1, nl_after=1, mc="blue")
+
+        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
+
+        class Args: pass
+        args = Args()
+        args.profile_db = self.merged_profile_db_path
+
+        # initialize views.
+        profile_db_super = dbops.ProfileSuperclass(args)
+        profile_db_super.load_views(omit_parent_column=True)
+
+        sample_orders = {}
+        failed_attempts = []
+        self.progress.new('Generating a default SAMPLES.db')
+        for essential_field in essential_fields:
+            self.progress.update('recovering samples order for "%s"' % (essential_field))
+            try:
+                sample_orders[essential_field] = \
+                        clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
+                                                                 distance=self.distance,
+                                                                 linkage=self.linkage,
+                                                                 transpose=True)
+            except:
+                failed_attempts.append(essential_field)
+        self.progress.end()
+
+        if not len(sample_orders):
+            self.run.warning("This may or may not be important: anvi'o attempted to generate a samples\
+                              database for this merged profile, however, all attempts to cluster samples\
+                              based on view data available in the merged profile failed. No samples db\
+                              for you :/")
+            return
+
+        if len(failed_attempts):
+            self.run.warning("While anvi'o was trying to generate clusterings of samples based on view data\
+                              available in the merged profile, clustering of some of the essential data\
+                              failed. It is likely not a very big deal, but you shall be the judge of it.\
+                              Anvi'o now proceeds to generate a samples db with clusterings it generated\
+                              using the view data that worked. Here is the list of stuff that failed: '%s'"\
+                              % (', '.join(failed_attempts)))
+
+        samples_order_file_path = filesnpaths.get_temp_file_path()
+        samples_order_file = open(samples_order_file_path, 'w')
+        samples_order_file.write('attributes\tbasic\tnewick\n')
+        for sample_order in sample_orders:
+            samples_order_file.write('%s\t%s\t%s\n' % (sample_order, '', sample_orders[sample_order]))
+        samples_order_file.close()
+
+        samples_db = dbops.SamplesInformationDatabase(self.samples_db_path, quiet=False)
+        samples_db.create(samples_order_path=samples_order_file_path)
+
+        os.remove(samples_order_file_path)
+
+        self.run.info('Samples database', self.samples_db_path)
 
 
     def gen_view_data_tables_from_atomic_data(self):
@@ -479,6 +547,8 @@ class MultipleRuns:
 
 
     def bin_contigs_concoct(self):
+        self.run.info_single("Automatic binning with CONCOCT...", nl_before=1, nl_after=1, mc="blue")
+
         if not __CONCOCT_IS_AVAILABLE__:
             self.run.warning('The CONCOCT module is not available. Skipping the unsupervised binning\
                               with CONCOCT.')
@@ -501,6 +571,8 @@ class MultipleRuns:
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
         # every data file that may be required.
+
+        self.run.info_single("Anvi'o hierarchical clustering of contigs...", nl_before=1, nl_after=1, mc="blue")
 
         if not self.skip_hierarchical_clustering:
             for config_name in self.clustering_configs:
