@@ -650,10 +650,14 @@ function formatString(s) {
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
 function Node(label) {
+    if (typeof label === 'undefined')
+    {
+        label = 'UnnamedIntersection' + Math.random().toString(36).substr(2, 12);
+    }
     this.ancestor = null;
     this.child = null;
     this.sibling = null;
-    this.label = typeof label !== 'undefined' ? label : '';
+    this.label = label;
     this.id = 0;
     this.weight = 0;
     this.xy = [];
