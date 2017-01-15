@@ -134,7 +134,10 @@ def get_total_memory_usage():
     current_process = psutil.Process(os.getpid())
     mem = current_process.memory_info().rss
     for child in current_process.children(recursive=True):
-        mem += child.memory_info().rss
+        try:
+            mem += child.memory_info().rss
+        except:
+            pass
 
     return human_readable_file_size(mem)
 
