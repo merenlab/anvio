@@ -1200,7 +1200,7 @@ class ProfileSuperclass(object):
         return collection, bins_info
 
 
-    def load_views(self, splits_of_interest=None):
+    def load_views(self, splits_of_interest=None, omit_parent_column=False):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
@@ -1209,7 +1209,7 @@ class ProfileSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
 
         profile_db.disconnect()
 
@@ -1814,8 +1814,8 @@ class SamplesInformationDatabase:
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
-        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
-        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
+        self.db.set_meta_value('sample_names_for_order', ','.join(sorted(samples.sample_names_in_samples_order_file)) if samples.sample_names_in_samples_order_file else None)
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(sorted(samples.samples_information_default_layer_order)) if hasattr(samples, 'samples_information_default_layer_order') else None)
 
         self.disconnect()
 
