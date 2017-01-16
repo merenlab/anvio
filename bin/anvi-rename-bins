@@ -159,13 +159,6 @@ def main(args):
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     progress.end()
 
-    if dry_run:
-        run.warning('This was a dry run, which means nothing is updated in the profile database.\
-                     Please take a look at the report filen and see whether things worked out the\
-                     way you wanted them to. If all looks alright, you will need to run the previous\
-                     commandline without the --dry-run flag.')
-        return
-
     new_collection_dict = {}
     new_bins_info_dict = {}
 
@@ -184,11 +177,19 @@ def main(args):
         counter += 1
 
     report.close()
+    run.info('Report', '%s' % (report_file_path))
+
+    if dry_run:
+        run.warning('This was a dry run. So nothing is updated in the profile database, but now there is\
+                     a fancy report file that shows how your bins would have been renamed. Please take a\
+                     look at it and make sure things seem just like the way you want. Once you are satisfied\
+                     you can run the program without the --dry-run flag.')
+
+        return
 
     collections_table = dbops.TablesForCollections(profile_db_path)
     collections_table.append(collection_name_to_write, new_collection_dict, new_bins_info_dict)
 
-    run.info('Report', '%s' % (report_file_path))
     run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
                         name "%s".' % (counter, collection_name_to_read, collection_name_to_write))
 
