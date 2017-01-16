@@ -44,6 +44,10 @@ def main(args):
     if args.output_file:
         filesnpaths.is_output_file_writable(args.output_file)
 
+    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+        raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name.\
+                           Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so).")
+
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
@@ -112,7 +116,7 @@ def main(args):
                         (class_prediction, class_probability, pp(total_length), percent_completion, percent_redundancy)
             run.info(bin_id, result)
             if args.output_file:
-                with open(args.output_file, "w") as f: f.write(result + '\n')
+                with open(args.output_file, "a") as f: f.write(result + '\n')
 
 
 if __name__ == '__main__':
