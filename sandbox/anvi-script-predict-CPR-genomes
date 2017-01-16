@@ -46,7 +46,8 @@ def main(args):
 
     if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
         raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name.\
-                           Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so).")
+                           Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."\
+                                    % args.output_file)
 
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
