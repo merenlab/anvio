@@ -6,7 +6,6 @@ import anvio
 
 from anvio.sequence import Coverage
 from anvio.terminal import Run, Progress
-from anvio.terminal import pretty_print as pp
 from anvio.variability import VariablityTestFactory
 
 import anvio.tables as t
@@ -52,6 +51,33 @@ def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 
+def get_atomic_data_dicts(sample_id, contigs):
+    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data
+       dictionaries"""
+    atomic_data_contigs = {}
+    atomic_data_splits = {}
+
+    # this loop will get atomic_data information from Contig instanes and store them into the db
+    # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
+    # although it looks crappy:
+    for contig_name in contigs:
+        contig = contigs[contig_name]
+        contig_atomic_data = contig.get_atomic_data_dict()
+
+        atomic_data_contigs[contig.name] = {'contig': contig.name}
+        for atomic_data_field in t.atomic_data_table_structure[1:]:
+            atomic_data_contigs[contig.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
+
+        # contig is done, deal with splits in it:
+        for split in contig.splits:
+            split_atomic_data = split.get_atomic_data_dict()
+            atomic_data_splits[split.name] = {'contig': split.name}
+            for atomic_data_field in t.atomic_data_table_structure[1:]:
+                atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
+
+    return atomic_data_splits, atomic_data_contigs
+
+
 class Contig:
     def __init__(self, name):
         self.name = name
@@ -83,12 +109,9 @@ class Contig:
 
     def analyze_coverage(self, bam):
         contig_coverage = []
-        num_splits = len(self.splits)
+
         counter = 1
-
         for split in self.splits:
-            #progress.update('Coverage (split: %d of %d)' % (counter, num_splits))
-
             split.coverage = Coverage()
             split.coverage.run(bam, split)
             contig_coverage.extend(split.coverage.c)
@@ -99,13 +122,8 @@ class Contig:
 
 
     def analyze_auxiliary(self, bam):
-        num_splits = len(self.splits)
         counter = 1
-
         for split in self.splits:
-            #progress.update('Auxiliary stats (split: %d of %d) CMC: %.1f :: SMC: %.1f'\
-            #                     % (counter, num_splits, self.coverage.mean, split.coverage.mean))
-
             split.auxiliary = Auxiliary(split,
                                         bam,
                                         parent_outlier_positions=self.coverage.outlier_positions,
@@ -202,32 +220,3 @@ class Auxiliary:
             else:
                 self.rep_seq += 'N'
                 self.v.append(0)
-
-
-class AtomicContigSplitData:
-    def __init__(self,):
-        self.atomic_data_contigs = {}
-        self.atomic_data_splits = {}
-
-    def get_data(self, sample_id, contigs):
-        num_contigs = pp(len(contigs))
-
-        # this loop will get atomic_data information from Contig instanes and store them into the db
-        # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
-        # although it looks crappy:
-        for contig_name in contigs:
-            contig = contigs[contig_name]
-            contig_atomic_data = contig.get_atomic_data_dict()
-
-            self.atomic_data_contigs[contig.name] = {'contig': contig.name}
-            for atomic_data_field in t.atomic_data_table_structure[1:]:
-                self.atomic_data_contigs[contig.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
-
-            # contig is done, deal with splits in it:
-            for split in contig.splits:
-                split_atomic_data = split.get_atomic_data_dict()
-                self.atomic_data_splits[split.name] = {'contig': split.name}
-                for atomic_data_field in t.atomic_data_table_structure[1:]:
-                    self.atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
-
-        return self.atomic_data_splits, self.atomic_data_contigs
