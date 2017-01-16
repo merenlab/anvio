@@ -106,8 +106,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
 
-        self.atomic_data = contigops.AtomicContigSplitData()
-
         # following variable will be populated during the profiling, and its content will eventually
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
@@ -757,7 +755,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # that the first entry has a view_id, and the second one does not have one. I know you will look at this
         # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
         # function create_new_view defined in the class TablesForViews.
-        view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
+        view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
+
         dbops.TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_splits,
                                         table_name='atomic_data_splits',
