@@ -217,14 +217,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.quit()
 
 
-    def generate_variabile_aas_table(self, quiet=False):
+    def generate_variabile_aas_table(self):
         if self.skip_SNV_profiling or not self.profile_AA_frequencies:
-            # there is nothing to generate really..
-            self.run.info('AA_frequencies_table', False, quiet=True)
             return
-
-        if not quiet:
-            self.progresss.new('Computing AA frequencies at variable positions')
 
         variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
@@ -242,10 +237,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for i in range(0, len(gene_caller_ids_to_profile)):
             gene_caller_id = gene_caller_ids_to_profile[i]
             codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
-
-            if not quiet:
-                self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
-                                    % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
 
             gene_call = self.genes_in_contigs_dict[gene_caller_id]
             contig_name = gene_call['contig']
@@ -265,22 +256,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 variable_aas_table.append(db_entry)
 
         variable_aas_table.store()
-        if not quiet:
-            self.progress.end()
-        self.run.info('AA_frequencies_table', True, quiet=True)
 
         # clear contents of set
         self.codons_in_genes_to_profile_AA_frequencies.clear()
 
 
-    def generate_variabile_nts_table(self, quiet=False):
+    def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
-            # there is nothing to generate really..
-            self.run.info('variable_nts_table', False, quiet=True)
             return
-
-        if not quiet:
-            self.progress.new('NT Variability')
 
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
@@ -319,28 +302,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
                             # save this information for later use
                             self.codons_in_genes_to_profile_AA_frequencies.add((gene_caller_id, column_profile['codon_order_in_gene']),)
 
-                    variable_nts_table.append(column_profile, quiet=quiet)
+                    variable_nts_table.append(column_profile)
 
         variable_nts_table.store()
-        if not quiet:
-            self.progress.end()
 
 
-        self.run.info('variable_nts_table', True, quiet=True)
-
-
-    def generate_gene_coverages_table(self, quiet=False):
+    def generate_gene_coverages_table(self):
         gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
-
-        if not quiet:
-            self.progress.new('Profiling genes')
 
         num_contigs = len(self.contigs)
         contig_names = list(self.contigs.keys())
         for i in range(0, num_contigs):
             contig = contig_names[i]
-            if not quiet:
-                self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
 
             # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
@@ -349,32 +322,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
 
         gene_coverages_table.store()
-        if not quiet:
-            self.progress.end()
-        self.run.info('gene_coverages_table', True, quiet=True)
 
 
-    def store_split_coverages(self, quiet=False):
+    def store_split_coverages(self):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
         split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True, open_in_append_mode=True)
 
-        if not quiet:
-            self.progress.new('Storing split coverages')
-
         contigs_counter = 1
         for contig_name in self.contigs:
-            if not quiet:
-                self.progress.update('working on contig %s of %s' % (pp(contigs_counter), pp(len(self.contigs))))
-
             for split in self.contigs[contig_name].splits:
                 split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
 
             contigs_counter += 1
-
-        if not quiet:
-            self.progress.end()
-            self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only=True)
-            self.run.info('split_coverage_values', True, quiet=True)
 
         split_coverage_values.close()
 
@@ -748,10 +707,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.abundance = contig.coverage.mean
 
-        self.generate_variabile_nts_table(quiet=True)
-        self.generate_variabile_aas_table(quiet=True)
-        self.generate_gene_coverages_table(quiet=True)
-        self.store_split_coverages(quiet=True)
+        self.progress.verbose = False
+        self.generate_variabile_nts_table()
+        self.generate_variabile_aas_table()
+        self.generate_gene_coverages_table()
+        self.store_split_coverages()
+        self.progress.verbose = True
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note
         # that the first entry has a view_id, and the second one does not have one. I know you will look at this
