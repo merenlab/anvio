@@ -44,7 +44,8 @@ def update_profile_db(profile_db_path, just_do_it = False):
             sys.exit()
 
     is_merged = profile_db.get_meta_value('merged')
-    is_full_profile = 'portion_covered_splits' in  profile_db.get_table_names()
+    tables_in_db = profile_db.get_table_names()
+    is_full_profile = 'portion_covered_splits' in tables_in_db or 'atomic_data_splits' in tables_in_db
 
     run.info('Profile db type', 'Merged' if is_merged else 'Single')
     run.info('Full profile', is_full_profile)
