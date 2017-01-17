@@ -8,7 +8,6 @@ import time
 import pysam
 import shutil
 import multiprocessing
-import tracemalloc
 
 import anvio
 import anvio.tables as t
@@ -35,12 +34,11 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 pp = terminal.pretty_print
-
+info_dict = {}
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
     def __init__(self, args):
-        tracemalloc.start()
         self.args = args
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -524,56 +522,38 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return return_path
 
     @staticmethod
-    def profile_contig_worker(available_index_queue, output_queue, info_dict, lock, max_queue_size):
+    def profile_contig_worker(index):
         bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
-        while True:
-            if available_index_queue.empty() == True:
-                break   
-            else:
-                index = available_index_queue.get()
+        contig_name = info_dict['contig_names'][index]
+        contig = contigops.Contig(contig_name)
+        contig.length = info_dict['contig_lengths'][index]
+        contig.split_length = info_dict['split_length']
+        contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
+        contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
+        contig.report_variability_full = info_dict['report_variability_full']
 
-                contig_name = info_dict['contig_names'][index]
-                contig = contigops.Contig(contig_name)
-                contig.length = info_dict['contig_lengths'][index]
-                contig.split_length = info_dict['split_length']
-                contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
-                contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
-                contig.report_variability_full = info_dict['report_variability_full']
+        # populate contig with empty split objects and
+        for split_name in info_dict['contig_name_to_splits'][contig_name]:
+            s = info_dict['splits_basic_info'][split_name]
+            split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
+            split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
+            contig.splits.append(split)
 
-                # populate contig with empty split objects and
-                for split_name in info_dict['contig_name_to_splits'][contig_name]:
-                    s = info_dict['splits_basic_info'][split_name]
-                    split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
-                    split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
-                    contig.splits.append(split)
+        # analyze coverage for each split
+        contig.analyze_coverage(bam_file)
 
-                # analyze coverage for each split
-                contig.analyze_coverage(bam_file)
+        # test the mean coverage of the contig.
+        if contig.coverage.mean < info_dict['min_mean_coverage']:
+            contig = None
+        else:
+            if not info_dict['skip_SNV_profiling']:
+                contig.analyze_auxiliary(bam_file)
 
-                # test the mean coverage of the contig.
-                if contig.coverage.mean < info_dict['min_mean_coverage']:
-                    contig = None
-                else:
-                    if not info_dict['skip_SNV_profiling']:
-                        contig.analyze_auxiliary(bam_file)
-
-                while True:
-                    if len(output_queue) < max_queue_size:
-                        lock.acquire()
-                        output_queue.append(contig)
-                        lock.release()
-                        break
-                    else:
-                        time.sleep(0.1)
-  
         bam_file.close()
-        return
-
+        return contig
 
     def profile(self):
-        manager = multiprocessing.Manager()
-        info_dict = manager.dict()
-        info_dict = {
+        info_dict.update({
             'input_file_path': self.input_file_path,
             'contig_names': self.contig_names,
             'contig_lengths': self.contig_lengths,
@@ -585,22 +565,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'contig_name_to_splits': self.contig_name_to_splits,
             'contig_sequences': self.contig_sequences,
             'min_mean_coverage': self.min_mean_coverage
-        }
-
-        available_index_queue = multiprocessing.Queue()
-
-        output_queue = manager.list()
-        lock = multiprocessing.Lock()
-
-        for i in range(0, self.num_contigs):
-            available_index_queue.put(i)
-
-        processes = []
-        for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict, lock, self.queue_size)))
-        
-        for proc in processes:
-            proc.start()
+        })
+        pool = multiprocessing.Pool(self.num_threads, maxtasksperchild=10)
+        result_iterator = pool.imap_unordered(BAMProfiler.profile_contig_worker, range(self.num_contigs))
 
         recieved_contigs = 0
         discarded_contigs = 0
@@ -611,16 +578,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         while recieved_contigs < self.num_contigs:
             try:
-                contig = None
-                lock.acquire()
-
-                if len(output_queue) > 0:
-                    contig = output_queue.pop()
-                    lock.release()
-                else:
-                    lock.release()
-                    time.sleep(0.1)
-                    continue
+                contig = result_iterator.next()
 
                 if (int(time.time()) - last_memory_update) > 5:
                     last_memory_update = int(time.time())
@@ -641,15 +599,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del self.contigs[:]
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
-                for proc in processes:
-                    proc.terminate()
+                pool.terminate()
                 break
 
         self.store_contigs_buffer()
         self.progress.end()
 
-        for proc in processes:
-            proc.join()
+        pool.terminate()
 
         # FIXME: this needs to be checked:
         if self.num_contigs != len(self.contigs):
@@ -661,15 +617,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
-
-
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-
-        print("[ Top 10 ]")
-        for stat in top_stats[:10]:
-            print(stat)
-
 
     def store_contigs_buffer(self):
         for contig in self.contigs:
