@@ -13,7 +13,6 @@ import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.dictio as dictio
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
@@ -232,7 +231,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_AA_frequencies_dict.keys())
-        num_gene_caller_ids_to_profile = len(gene_caller_ids_to_profile)
 
         for i in range(0, len(gene_caller_ids_to_profile)):
             gene_caller_id = gene_caller_ids_to_profile[i]
@@ -598,20 +596,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
 
-        memory_usage = "0"
+        memory_usage = "..."
         last_memory_update = int(time.time())
 
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
-                
+
                 if (int(time.time()) - last_memory_update) > 5:
                     last_memory_update = int(time.time())
                     memory_usage = utils.get_total_memory_usage()
 
-                self.progress.update('%d of %d contigs completed. Memory: %s' % (recieved_contigs,
-                                                                                self.num_contigs,
-                                                                                memory_usage))
+                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
+                            (recieved_contigs, self.num_contigs, memory_usage))
+
                 if contig:
                     self.contigs.append(contig)
                 else:
