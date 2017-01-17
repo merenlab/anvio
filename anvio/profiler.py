@@ -98,7 +98,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         self.bam = None
-        self.contigs = {}
+        self.contigs = []
 
         self.database_paths = {'CONTIGS.db': self.contigs_db_path}
 
@@ -267,7 +267,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
-        for contig in list(self.contigs.values()):
+        for contig in self.contigs:
             for split in contig.splits:
                 for column_profile in list(split.column_profiles.values()):
                     # let's figure out more about this particular variable position
@@ -310,16 +310,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def generate_gene_coverages_table(self):
         gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
-        num_contigs = len(self.contigs)
-        contig_names = list(self.contigs.keys())
-        for i in range(0, num_contigs):
-            contig = contig_names[i]
+        for contig in self.contigs:
+            contig_name = contig.name
 
             # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
             # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
             # we wreck ourselves and the ultimately the analysis of this poor user:
-            if contig in self.contig_name_to_genes:
-                gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
+            if contig_name in self.contig_name_to_genes:
+                gene_coverages_table.analyze_contig(contig, self.sample_id, self.contig_name_to_genes[contig_name])
 
         gene_coverages_table.store()
 
@@ -329,8 +327,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True, open_in_append_mode=True)
 
         contigs_counter = 1
-        for contig_name in self.contigs:
-            for split in self.contigs[contig_name].splits:
+        for contig in self.contigs:
+            for split in contig.splits:
                 split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
 
             contigs_counter += 1
@@ -375,72 +373,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                       (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
 
 
-    def init_serialized_profile(self):
-        self.progress.new('Init')
-        self.progress.update('Reading serialized profile')
-        self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
-        self.progress.end()
-
-        self.run.info('profile_loaded_from', self.serialized_profile_path)
-        self.run.info('num_contigs', pp(len(self.contigs)))
-
-        if self.contig_names_of_interest:
-            contigs_to_discard = set()
-            for contig in self.contigs:
-                if contig not in self.contig_names_of_interest:
-                    contigs_to_discard.add(contig)
-
-            if len(contigs_to_discard):
-                for contig in contigs_to_discard:
-                    self.contigs.pop(contig)
-            self.run.info('num_contigs_selected_for_analysis', pp(len(self.contigs)))
-
-        self.check_contigs()
-
-        # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_contigs_without_any_gene_calls(list(self.contigs.keys()))
-
-        contigs_to_discard = set()
-        for contig in list(self.contigs.values()):
-            if contig.length < self.min_contig_length:
-                contigs_to_discard.add(contig.name)
-        if len(contigs_to_discard):
-            for contig in contigs_to_discard:
-                self.contigs.pop(contig)
-            self.run.info('contigs_raw_longer_than_M', len(self.contigs))
-
-        self.check_contigs()
-
-
     def list_contigs(self):
         import signal
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-        if self.input_file_path:
-            self.progress.new('Init')
-            self.progress.update('Reading BAM File')
-            self.bam = pysam.Samfile(self.input_file_path, 'rb')
-            self.progress.end()
+        self.progress.new('Init')
+        self.progress.update('Reading BAM File')
+        self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        self.progress.end()
 
-            self.contig_names = self.bam.references
-            self.contig_lengths = self.bam.lengths
+        self.contig_names = self.bam.references
+        self.contig_lengths = self.bam.lengths
 
-            utils.check_contig_names(self.contig_names)
+        utils.check_contig_names(self.contig_names)
 
-            for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
-                print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
-
-        else:
-            self.progress.new('Init')
-            self.progress.update('Reading serialized profile')
-            self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
-            self.progress.end()
-
-            self.run.info('profile_loaded_from', self.serialized_profile_path)
-            self.run.info('num_contigs', pp(len(self.contigs)))
-
-            for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
-                print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
+        for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
+            print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
 
     def remove_contigs_that_are_shorter_than_min_contig_length(self):
@@ -665,7 +613,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                                                 self.num_contigs,
                                                                                 memory_usage))
                 if contig:
-                    self.contigs[contig.name] = contig
+                    self.contigs.append(contig)
                 else:
                     discarded_contigs += 1
 
@@ -673,7 +621,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
                     self.store_contigs_buffer()
-                    self.contigs.clear()
+                    del self.contigs[:]
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
                 for proc in processes:
@@ -686,6 +634,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.join()
 
+        # FIXME: this needs to be checked:
         if self.num_contigs != len(self.contigs):
             self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
 
@@ -698,7 +647,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_contigs_buffer(self):
-        for contig in list(self.contigs.values()):
+        for contig in self.contigs:
             self.total_length_of_all_contigs += contig.length
             self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
 
@@ -735,14 +684,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         table_types=t.atomic_data_table_types,
                                         view_name=None,
                                         append_mode=True)
-
-    def store_profile(self):
-        output_file = self.generate_output_destination('PROFILE.cp')
-        self.progress.new('Storing Profile')
-        self.progress.update('Serializing information for %s contigs ...' % pp(len(self.contigs)))
-        dictio.write_serialized_object(self.contigs, output_file)
-        self.progress.end()
-        self.run.info('profile_dict', output_file)
 
 
     def check_contigs(self, num_contigs=None):

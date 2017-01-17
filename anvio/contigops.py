@@ -60,8 +60,7 @@ def get_atomic_data_dicts(sample_id, contigs):
     # this loop will get atomic_data information from Contig instanes and store them into the db
     # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
     # although it looks crappy:
-    for contig_name in contigs:
-        contig = contigs[contig_name]
+    for contig in contigs:
         contig_atomic_data = contig.get_atomic_data_dict()
 
         atomic_data_contigs[contig.name] = {'contig': contig.name}
