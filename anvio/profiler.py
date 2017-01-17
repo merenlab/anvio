@@ -656,6 +656,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file.close()
         return
 
+
     def profile(self):
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
@@ -735,6 +736,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
+
 
     def store_contigs_buffer(self):
         for contig in list(self.contigs.values()):
