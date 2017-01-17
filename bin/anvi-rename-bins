@@ -121,12 +121,13 @@ def main(args):
     collection_dict = collections.get_collection_dict(collection_name_to_read)
     bins_info_dict = collections.get_bins_info_dict(collection_name_to_read)
 
+    counter = 0
     MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
     total_num_bins = len(collection_dict)
-    counter = 1
     progress.new('Going through bins in the collection %s' % collection_name_to_read)
     for bin_name in collection_dict:
+        counter += 1
         progress.update('%d in %d' % (counter, total_num_bins))
         p_completion, p_redundancy, domain, domain_confidence, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
         if use_SCG_averages:
@@ -153,7 +154,6 @@ def main(args):
                 bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
         else:
             bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
-        counter += 1
 
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
@@ -162,10 +162,11 @@ def main(args):
     new_collection_dict = {}
     new_bins_info_dict = {}
 
+    counter = 0
     report = open(report_file_path, 'w')
     report.write('old_bin_name\tnew_bin_name\n')
-    counter = 1
     for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+        counter += 1
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
 
@@ -174,7 +175,6 @@ def main(args):
 
         report.write('%s\t%s\n' % (bin_name, new_bin_name))
 
-        counter += 1
 
     report.close()
     run.info('Report', '%s' % (report_file_path))
