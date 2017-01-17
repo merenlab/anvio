@@ -288,6 +288,8 @@ class MultipleRuns:
 
         filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.overwrite_output_destinations)
 
+        self.run.log_file_path = os.path.join(self.output_directory, 'RUNLOG.txt')
+
         # set database paths
         self.merged_profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
         self.samples_db_path = os.path.join(self.output_directory, 'SAMPLES.db')
