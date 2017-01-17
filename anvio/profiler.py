@@ -524,7 +524,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return return_path
 
     @staticmethod
-    def profile_contig_worker(available_index_queue, output_queue, info_dict):
+    def profile_contig_worker(available_index_queue, output_queue, info_dict, lock, max_queue_size):
         bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
         while True:
             if available_index_queue.empty() == True:
@@ -552,13 +552,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 # test the mean coverage of the contig.
                 if contig.coverage.mean < info_dict['min_mean_coverage']:
-                     output_queue.put(None)
-                     continue
+                    contig = None
+                else:
+                    if not info_dict['skip_SNV_profiling']:
+                        contig.analyze_auxiliary(bam_file)
 
-                if not info_dict['skip_SNV_profiling']:
-                    contig.analyze_auxiliary(bam_file)
-
-                output_queue.put(contig)
+                while True:
+                    if len(output_queue) < max_queue_size:
+                        lock.acquire()
+                        output_queue.append(contig)
+                        lock.release()
+                        break
+                    else:
+                        time.sleep(0.1)
   
         bam_file.close()
         return
@@ -582,14 +588,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         }
 
         available_index_queue = multiprocessing.Queue()
-        output_queue = multiprocessing.Queue(maxsize=self.queue_size)
+
+        output_queue = manager.list()
+        lock = multiprocessing.Lock()
 
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
         processes = []
         for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
+            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict, lock, self.queue_size)))
         
         for proc in processes:
             proc.start()
@@ -603,7 +611,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         while recieved_contigs < self.num_contigs:
             try:
-                contig = output_queue.get()
+                contig = None
+                lock.acquire()
+
+                if len(output_queue) > 0:
+                    contig = output_queue.pop()
+                    lock.release()
+                else:
+                    lock.release()
+                    time.sleep(0.1)
+                    continue
 
                 if (int(time.time()) - last_memory_update) > 5:
                     last_memory_update = int(time.time())
