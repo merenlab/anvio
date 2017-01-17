@@ -356,7 +356,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def store_split_coverages(self, quiet=False):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True, open_in_append_mode=True)
 
         if not quiet:
             self.progress.new('Storing split coverages')
