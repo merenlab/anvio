@@ -29,18 +29,21 @@ pp = terminal.pretty_print
 
 
 class HDF5_IO(object):
-    def __init__(self, file_path, unique_hash, create_new=False, ignore_hash=False):
+    def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False):
         self.file_path = file_path
+
+        if open_in_append_mode and not create_new:
+            raise HDF5Error("The 'open_in_append_mode' flag can only be used along with the flag 'create_new'.")
 
         if create_new:
             if ignore_hash:
-                raise HDF5Error("When creating a new database, you can't use the 'ignore_hash'\
-                                  parameter.")
+                raise HDF5Error("When creating (or appending to) a database, you can't use the 'ignore_hash'\
+                                  flag.")
 
             if not unique_hash:
-                raise HDF5Error("When creating a new database, the 'unique_hash' cannot be None")
+                raise HDF5Error("When creating (or appending to) a database, the 'unique_hash' cannot be None.")
 
-            self.fp = h5py.File(self.file_path, 'a')
+            self.fp = h5py.File(self.file_path, 'a' if open_in_append_mode else 'w')
             self.fp.attrs['hash'] = unique_hash
             self.fp.attrs['version'] = self.version
         else:
