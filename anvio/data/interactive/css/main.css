@@ -59,9 +59,7 @@ option {
 }
 
 #svg {
-    position: fixed;
-    left: 490px;   
-    width: calc(100% - 490px);
+    width: 100%;
     height: 100%;
 }
 
@@ -70,8 +68,43 @@ html, body, #wrapper {
     width: 100%;
     height: 100%;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    margin: 0px;
+    padding: 0px;
 }
 
+#panel-left {
+    flex: 0 0 490px;
+    position: relative;
+}
+
+#panel-center {
+    flex: 1;
+    position: relative;
+}
+
+#toggle-panel-left {
+    position: absolute;
+    height: 90px;
+    width: 13px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(50% - 90px);
+    left: 0px;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    border-radius: 0px 10px 10px 0px;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+#toggle-panel-left:hover {
+    background-color: #DDDDDD;
+}
+
+#wrapper {
+    display: flex;
+}
 #multiUser {
     width: 490px;
     border-right: 1px solid #d3d3d3;
