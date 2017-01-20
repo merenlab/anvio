@@ -30,6 +30,7 @@ function createBin(parent, bin_id) {
 //--------------------------------------------------------------------------------------------------
 
 function drawTitle(settings) {
+    return;
     createBin('viewport', 'title_group');
     _bbox = document.getElementById('viewport').getBBox();
 
@@ -61,6 +62,7 @@ function drawTitle(settings) {
 
 //--------------------------------------------------------------------------------------------------
 function drawLegend(top, left, line_end) {
+    return;
     var _left = left;
     var line_height = (line_end - _left) / 80;
     var gap = line_height / 2;
@@ -2226,10 +2228,6 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
-                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
-                            }
-
                             if (layers[pindex]['type'] == 'color') 
                             {
                                 categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
@@ -2243,7 +2241,6 @@ function draw_tree(settings) {
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
                                 drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height'], 'center');
-                                
                             }
                         }
                         else if (isParent)
@@ -2353,11 +2350,6 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
-
-                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
-                            }
-
                             if (layers[pindex]['type'] == 'color') 
                             {
                                 categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);

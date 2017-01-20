@@ -64,7 +64,9 @@ var bin_count = 0;
 var layer_types;
 
 var categorical_data_colors = {};
+var categorical_stats = {};
 var stack_bar_colors = {};
+var legends = [];
 
 var context_menu_target_id = 0;
 var context_menu_layer_id = 0;
@@ -397,7 +399,7 @@ function onViewChange() {
 
                         // add layerdata columns to search window
                         $('#searchLayerList').empty();
-                        for (var i=0; i < layerdata[0].length; i++)
+                        for (var i=0; i < parameter_count; i++)
                         {
                             $('#searchLayerList').append(new Option(layerdata[0][i],i));
                         }
@@ -413,7 +415,9 @@ function onViewChange() {
 
                         $("#tbody_layers").empty();
 
-                        buildLayersTable(layer_order, views[current_view]);  
+                        buildLayersTable(layer_order, views[current_view]);
+                        populateColorDicts();
+                        buildLegendTables();
 
                         waitingDialog.hide();
                     }
@@ -422,6 +426,206 @@ function onViewChange() {
         });
 
     return defer.promise();
+}
+
+function populateColorDicts() {
+    for (var layer_id=0; layer_id < parameter_count; layer_id++)
+    {
+        layer_name = layerdata[0][layer_id];
+
+        if (layer_types[layer_id] == 1) {
+            if (!(layer_id in stack_bar_colors))
+            {
+                stack_bar_colors[layer_id] = new Array();
+                var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+                for (var j=0; j < bars.length; j++)
+                {
+                    stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
+                } 
+            }
+        }
+
+        if (layer_types[layer_id] == 2) {
+            if (!(layer_id in categorical_data_colors))
+            {
+                categorical_stats[layer_id] = {};
+                categorical_data_colors[layer_id] = {};
+                for (var i=1; i < layerdata.length; i++)
+                {
+                    var _category_name = layerdata[i][layer_id];
+                    if (_category_name == null || _category_name == '' || _category_name == 'null')
+                        _category_name = 'None';
+                    layerdata[i][layer_id] = _category_name;
+
+                    if (typeof categorical_data_colors[layer_id][_category_name] === 'undefined'){
+                        categorical_data_colors[layer_id][_category_name]  = getNamedCategoryColor(_category_name);
+                        categorical_stats[layer_id][_category_name] = 0;
+                    }
+
+                    categorical_stats[layer_id][_category_name]++;
+                }
+            }
+        }
+    }
+
+    var first_sample = Object.keys(samples_information_dict)[0];
+
+    if (typeof first_sample !== 'undefined')
+    {
+        for (sample_layer_name in samples_information_dict[first_sample])
+        {
+            if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
+            {
+                // no color table for numeric
+            }
+            else if (sample_layer_name.indexOf(';') > -1) // stack bar
+            {
+                if (!(sample_layer_name in samples_stack_bar_colors))
+                {
+                    samples_stack_bar_colors[sample_layer_name] = new Array();
+                    for (var j=0; j < sample_layer_name.split(";").length; j++)
+                    {
+                        samples_stack_bar_colors[sample_layer_name].push(randomColor());
+                    } 
+                }
+            }
+            else // categorical
+            {
+                if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
+                    samples_categorical_colors[sample_layer_name] = {};
+                    samples_categorical_stats[sample_layer_name] = {};
+                }
+
+                for (_sample in samples_information_dict)
+                {
+                    var _category_name = samples_information_dict[_sample][sample_layer_name];
+                    if (_category_name == null || _category_name == '' || _category_name == 'null')
+                        _category_name = 'None';
+                    samples_information_dict[_sample][sample_layer_name] = _category_name;
+
+                    if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
+                        samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                        samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                    }
+
+                    samples_categorical_stats[sample_layer_name][_category_name]++;
+                }
+            }
+        }
+    }
+}
+
+function buildLegendTables() {
+    if(typeof $('#legend_settings').data("ui-accordion") != "undefined"){
+        $('#legend_settings').accordion("destroy");
+        $('#legend_settings').empty();
+    }
+    
+    legends = [];
+
+    for (pindex in categorical_data_colors)
+    {
+        var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
+
+        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+
+        legends.push({
+            'name': getPrettyName(getLayerName(pindex)),
+            'source': 'categorical_data_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': names,
+            'stats': categorical_stats[pindex]
+        });
+    }
+
+    for (pindex in stack_bar_colors)
+    {
+        var layer_name = getLayerName(pindex);
+        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+
+        var pretty_name = getLayerName(pindex);
+        pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
+
+        legends.push({
+            'name': getPrettyName(pretty_name),
+            'source': 'stack_bar_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': keys,
+        });    
+    }
+
+    for (sample in samples_categorical_colors)
+    {
+        var names = Object.keys(samples_categorical_colors[sample]);
+
+        legends.push({
+            'name': getPrettyName(sample),
+            'source': 'samples_categorical_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': names,
+            'stats': samples_categorical_stats[sample]
+        });
+    }
+
+    for (sample in samples_stack_bar_colors)
+    {
+        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+
+        legends.push({
+            'name': getPrettyName(pretty_name),
+            'source': 'samples_stack_bar_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': keys
+        });
+    }
+
+    for (var i=0; i < legends.length; i++)
+    {
+        var legend = legends[i];
+        var template = '<span>' + legend['name'] + '</span><div>';
+
+        for (var j = 0; j < legend['item_names'].length; j++) {
+
+            var _name = legend['item_names'][j];
+            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
+
+            if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+                continue;
+
+            if (legend.hasOwnProperty('stats')) {
+                _name = _name + ' (' + legend['stats'][_name] + ')';
+            }
+
+            template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
+                                    '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
+                                    'style="margin-right: 5px; background-color: ' + _color + '"' +
+                                    'callback_source="' + legend['source'] + '"' +
+                                    'callback_pindex="' + legend['key'] + '"' +
+                                    'callback_name="' + legend['item_keys'][j] + '"' + 
+                                   '></div>' + _name + '</div>';
+       }
+       template = template + '<div style="clear: both; display:block;"></div>';
+        $('#legend_settings').append(template + '</div>');
+    }
+
+    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+
+    $('.legendcolorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+        }
+    });
 }
 
 function onTreeClusteringChange() {
@@ -587,18 +791,7 @@ function buildLayersTable(order, settings)
             else
             {
                 var height = '300';
-                var margin = '15';
-
-                // pick random color for stack bar items
-                if (!(layer_id in stack_bar_colors))
-                {
-                    stack_bar_colors[layer_id] = new Array();
-                    var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-                    for (var j=0; j < bars.length; j++)
-                    {
-                        stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
-                    } 
-                }             
+                var margin = '15';           
             }
 
             if (hasViewSettings)
@@ -687,11 +880,6 @@ function buildLayersTable(order, settings)
                             break;
                         }
                     }
-                }
-
-                if (!(layer_id in categorical_data_colors))
-                {
-                    categorical_data_colors[layer_id] = {};
                 }
             }
             
@@ -2044,6 +2232,8 @@ function loadState()
 
                             buildLayersTable(layer_order, views[current_view]);
                             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+                            buildLegendTables();
+
 
                             current_state_name = state_name;
                             $('#current_state').html('[current state: ' + current_state_name + ']');
