@@ -127,6 +127,10 @@ html, body, #wrapper {
     margin-top: 43px;
 }
 
+.ui-accordion .ui-accordion-content {
+    padding: 10px;
+}
+
 .input-xs {
     height: 22px;
     padding: 0px 5px;
@@ -150,7 +154,7 @@ html, body, #wrapper {
 }
 
 .nav>li>a {
-   padding: 10px 14px;
+   padding: 10px 12px;
 }
 
 td, tr {
@@ -219,8 +223,8 @@ td > input[type='checkbox'] {
     margin-left: 3px;
 }
 
-.colorpicker:hover {
-    border: 1px solid;
+.legendcolorpicker:hover {
+    border: 2px solid;
     border-color: #555;
 }
 

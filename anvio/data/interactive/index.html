@@ -16,7 +16,7 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
-
+    <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
@@ -25,6 +25,7 @@
     <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"></script>
     <script type="text/javascript" src="lib/colpick/colpick.js"></script>
     <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
@@ -65,9 +66,10 @@
                 <div role="tabpanel" style="margin: 0px;">
                     <ul class="nav nav-tabs" role="tablist">
                       <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Layers</a></li>
+                      <li role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Legend</a></li>
                       <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
                       <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                      <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li>
+                      <!-- <li id="mouse_tooltips_tab" role="presentation" class="disabled"><a href="#mouse_hover" aria-controls="mouse_hover" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-eye-open" aria-hidden="true" data-help="tooltips-tab"></span> Mouse</a></li> -->
                       <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                       <li role="presentation" class="dropdown-submenu pull-right">
                         <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
@@ -90,6 +92,13 @@
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade in active" id="tree_settings" style="padding-bottom: 50px;">
                         <div id="tree-settings" class="form-horizontal">
+
+                            <span class="settings-header">Visual State <span id="current_state"></span></span>
+                            <div class="sidebar-state-buttons btn-group col-md-12" role="group">
+                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                            </div>
+
                             <span class="settings-header">Display</span>
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>  
@@ -111,12 +120,6 @@
                                     <div class="col-md-8">
                                         <select id="views_container" class="form-control input-xs"></select>
                                     </div>
-                            </div>
-
-                            <span class="settings-header">Visual State <span id="current_state"></span></span>
-                            <div class="sidebar-state-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
                             </div>
 
                             <a href="#" onclick="$('#additional_settings').toggle(); if ($('#additional_settings').is(':visible')) { $('#additional_settings_label').html('(hide)'); } else { $('#additional_settings_label').html('(show)'); }; "><h4>Additional Settings  <span id="additional_settings_label">(show)</span></h4></a>
@@ -272,6 +275,11 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                    <div role="tabpanel" class="tab-pane fade in" id="legend_settings" style="padding-bottom: 50px;">
+
+
+
                     </div>
 
                     <div role="tabpanel" class="tab-pane fade in" id="bin_settings">

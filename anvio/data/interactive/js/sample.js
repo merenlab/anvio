@@ -1,4 +1,5 @@
 var samples_categorical_colors = {};
+var samples_categorical_stats = {};
 var samples_stack_bar_colors = {};
 var samples_information_dict;
 var samples_order_dict;
@@ -202,16 +203,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none');
                 var height = getNamedLayerDefaults(layer_name, 'height', 500);
                 var margin = 15;
-
-                // pick random color for stack bar items
-                if (!(layer_name in samples_stack_bar_colors))
-                {
-                    samples_stack_bar_colors[layer_name] = new Array();
-                    for (var j=0; j < layer_name.split(";").length; j++)
-                    {
-                        samples_stack_bar_colors[layer_name].push(randomColor());
-                    } 
-                }  
             }
 
             var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
@@ -379,12 +370,6 @@ function drawSamplesLayers(settings) {
                 }
 
                 _samples_information_dict[sample][layer] = stack_bar_items;
-            }
-            else
-            {
-                //categorical
-                if (typeof samples_categorical_colors[layer] === 'undefined')
-                    samples_categorical_colors[layer] = {};
             }
         }
     }
