@@ -60,6 +60,19 @@
 
 <body>
     <div id="wrapper">
+
+        <div id="toggle-panel-left" onclick="$('#panel-left').toggle(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left').text('&#9664;'); $('#toggle-panel-left').css('left', '490px'); } else { $('#toggle-panel-left').text('&#9658;'); $('#toggle-panel-left').css('left', '0px'); }">
+            &#9664;
+        </div>
+
+        <div id="toggle-panel-right" onclick="$('#mouse_hover_panel').toggle(); if ($('#mouse_hover_panel').is(':visible')) { $('#toggle-panel-right').text('&#9658;'); $('#toggle-panel-right').css('right', '400px'); } else { $('#toggle-panel-right').text('&#9664;'); $('#toggle-panel-right').css('right', '0px'); }">
+                &#9658;
+        </div>
+        <div id="panel-center">
+            <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
+                <g id="viewport"></g>
+            </svg>
+        </div>
         <div id="panel-left">
             <div id="fixed-navbar-div">
            <div id="multiUser" style="position: relative; bottom: 5px; right: 9px;"></div>
@@ -523,20 +536,9 @@
                 </div>
             </div>
         </div>
-        <div id="panel-center">
-            <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
-                <g id="viewport"></g>
-            </svg>
-            <div id="toggle-panel-left" onclick="$('#panel-left').toggle(); updateSingleBackgroundGlobals(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left').text('&#9664;'); } else { $('#toggle-panel-left').text('&#9658;'); }">
-                &#9664;
-            </div>
-        </div>
     </div>
 
     <div id="mouse_hover_panel">
-        <div id="toggle-panel-right" onclick=" if (parseInt($('#mouse_hover_panel').css('right')) == 0) { $('#mouse_hover_panel').css('right', '-400px'); } else { $('#mouse_hover_panel').css('right', '0px'); } ">
-                &#9658;
-        </div>
         <div id="mouse_hover_scroll_parent" style="height: 100%">
             <div id="mouse_hover_scroll" style="position: absolute;">
                 <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
