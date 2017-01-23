@@ -1271,7 +1271,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             updated_line_fields = []
             for i in range(0, len(line_fields)):
                 try:
-                    updated_line_fields.append(column_mapping[i](line_fields[i]))
+                    if line_fields[i] == None and column_mapping[i] in [float, int]:
+                        updated_line_fields.append(column_mapping[i](0))
+                    else:
+                        updated_line_fields.append(column_mapping[i](line_fields[i]))
                 except NameError:
                     raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native\
                                         Python functions, such as 'str', 'int', or 'float', or anonymous functions\
