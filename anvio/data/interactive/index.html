@@ -60,13 +60,12 @@
 
 <body>
     <div id="wrapper">
-
-        <div id="toggle-panel-left" onclick="$('#panel-left').toggle(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left').text('&#9664;'); $('#toggle-panel-left').css('left', '490px'); } else { $('#toggle-panel-left').text('&#9658;'); $('#toggle-panel-left').css('left', '0px'); }">
-            &#9664;
+        <div id="toggle-panel-left" onclick="$('#panel-left').toggle(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left-inner').text('&#9664;'); $('#toggle-panel-left').css('left', '490px'); } else { $('#toggle-panel-left-inner').text('&#9658;'); $('#toggle-panel-left').css('left', '0px'); }">
+            <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">SETTINGS</span>
         </div>
 
-        <div id="toggle-panel-right" onclick="$('#mouse_hover_panel').toggle(); if ($('#mouse_hover_panel').is(':visible')) { $('#toggle-panel-right').text('&#9658;'); $('#toggle-panel-right').css('right', '400px'); } else { $('#toggle-panel-right').text('&#9664;'); $('#toggle-panel-right').css('right', '0px'); }">
-                &#9658;
+        <div id="toggle-panel-right" onclick="$('#mouse_hover_panel').toggle(); if ($('#mouse_hover_panel').is(':visible')) { $('#toggle-panel-right-inner').text('&#9658;'); $('#toggle-panel-right').css('right', '400px'); } else { $('#toggle-panel-right-inner').text('&#9664;'); $('#toggle-panel-right').css('right', '0px'); }">
+                <span id="toggle-panel-right-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">MOUSE</span>
         </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
