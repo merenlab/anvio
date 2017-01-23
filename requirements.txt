@@ -7,5 +7,5 @@ scipy>=0.13.3
 scikit-learn>=0.17.1
 django>=1.9.7
 h5py>=2.6.0
-cherrypy>=6.0.2
+cherrypy==8.9.1
 requests>=2.10.0
