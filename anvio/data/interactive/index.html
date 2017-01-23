@@ -454,26 +454,6 @@
                             </div>
                         </div>
                     </div>
-                    <div role="tabpanel" class="tab-pane fade in" id="mouse_hover">
-                        <div id="mouse_hover_scroll_parent" style="height: 100%">
-                            <div id="mouse_hover_scroll" style="position: absolute;">
-                                <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
-                                <div id="mouse_hover" class="form-horizontal">
-                                    <table class="table table-striped sortable" id="tooltips-table">
-                                        <thead id="thead_search_results">
-                                            <tr>
-                                                <th width="30%">Key</th>
-                                                <th width="70%">Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tooltip_content" class="search-results-display">
-                                            <!-- JS FILLS HERE -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <div role="tabpanel" class="tab-pane fade in" id="search_tab">
                         <p style="color: #AAAAAA; padding: 10px;">Search splits based on various attributes.
@@ -553,6 +533,26 @@
         </div>
     </div>
 
+    <div id="mouse_hover_panel">
+        <div id="mouse_hover_scroll_parent" style="height: 100%">
+            <div id="mouse_hover_scroll" style="position: absolute;">
+                <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
+                <div id="mouse_hover" class="form-horizontal">
+                    <table class="table table-striped sortable" id="tooltips-table">
+                        <thead id="thead_search_results">
+                            <tr>
+                                <th width="30%">Key</th>
+                                <th width="70%">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tooltip_content" class="search-results-display">
+                            <!-- JS FILLS HERE -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- DIALOGS SECTION -->
 
     <!-- LOAD STATE -->

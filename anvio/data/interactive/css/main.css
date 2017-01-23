@@ -72,6 +72,18 @@ html, body, #wrapper {
     padding: 0px;
 }
 
+#mouse_hover_panel {
+    top: 0px;
+    right: 0px;
+    width: 400px;
+    position: absolute;
+    display: block;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    padding: 15px;
+}
+
 #panel-left {
     flex: 0 0 490px;
     position: relative;
@@ -269,7 +281,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #tooltips-table {
-  width: 480px;
   display: block;
   max-width: 100%;
   overflow: scroll;
