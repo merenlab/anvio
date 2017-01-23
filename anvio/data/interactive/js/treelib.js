@@ -2673,6 +2673,9 @@ function draw_tree(settings) {
         function(event) { 
             dragging = false; 
 
+            mouse_event_origin_x = event.clientX;
+            mouse_event_origin_y = event.clientY;
+
             if (event.shiftKey)
             {
                 drawing_zoom = true;
@@ -2686,8 +2689,11 @@ function draw_tree(settings) {
             }
         });
     viewport.addEventListener('mousemove', 
-        function(event) { 
-            dragging = true; 
+        function(event) {
+            if (Math.abs(mouse_event_origin_x - event.clientX) + Math.abs(mouse_event_origin_y - event.clientY) > 2)
+            {
+                dragging = true; 
+            }
 
             if (event.shiftKey && drawing_zoom)
             {

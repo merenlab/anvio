@@ -103,6 +103,9 @@ var autoload_collection;
 var mode;
 var samples_tree_hover = false;
 var bbox;
+
+var mouse_event_origin_x = 0;
+var mouse_event_origin_y = 0;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
