@@ -349,6 +349,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     width: 490px;
     padding-top: 4px;
     border-right: 1px solid #D3D3D3;
+    background-color: #FFFFFF;
 }
 
 .dropdown-menu>li>p {
