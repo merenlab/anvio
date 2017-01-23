@@ -78,14 +78,18 @@ html, body, #wrapper {
     top: 0px;
     display: block;
     background-color: #EEE;
-    width: 600px;
-    left: calc(50% - 300px);
-    height: 48px;
-    font-size: 32px;
-    color: rgb(58, 58, 58);
+    width: 720px;
+    left: calc(50% - 360px);
+    height: 60px;
     text-align: center;
     border-radius: 0px 0px 16px 16px;
     border: 1px solid #D3D3D3;
+}
+
+#title-panel-first-line {
+    font-size: 32px;
+    color: rgb(58, 58, 58);
+    line-height: 115%;
 }
 
 #mouse_hover_panel {
