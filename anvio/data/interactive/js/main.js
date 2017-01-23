@@ -294,6 +294,7 @@ function initData () {
             bin_prefix = prefixResponse[0];
 
             document.title = titleResponse[0];
+            $('#title-panel').text(titleResponse[0])
             contig_lengths = eval(contigLengthsResponse[0]);
 
             // if --state parameter given, autoload given state.
