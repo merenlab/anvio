@@ -73,6 +73,21 @@ html, body, #wrapper {
     overflow: hidden;
 }
 
+#title-panel {
+    position: absolute;
+    top: 0px;
+    display: block;
+    background-color: #EEE;
+    width: 600px;
+    left: calc(50% - 300px);
+    height: 48px;
+    font-size: 32px;
+    color: rgb(58, 58, 58);
+    text-align: center;
+    border-radius: 0px 0px 16px 16px;
+    border: 1px solid #D3D3D3;
+}
+
 #mouse_hover_panel {
     top: 0px;
     right: 0px;
