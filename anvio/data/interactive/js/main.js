@@ -107,7 +107,14 @@ var bbox;
 //  Init
 //---------------------------------------------------------
 
+$(window).resize(function() {
+     // get current client size
+    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
+    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
+});
+
 $(document).ready(function() {
+    $(window).trigger('resize');
     toastr.options = {
         "closeButton": true,
         "debug": false,
@@ -1164,10 +1171,6 @@ function serializeSettings(use_layer_names) {
 }
 
 function drawTree() {
-    // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
-
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
