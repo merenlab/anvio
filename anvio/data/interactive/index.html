@@ -534,6 +534,9 @@
     </div>
 
     <div id="mouse_hover_panel">
+        <div id="toggle-panel-right" onclick=" if (parseInt($('#mouse_hover_panel').css('right')) == 0) { $('#mouse_hover_panel').css('right', '-400px'); } else { $('#mouse_hover_panel').css('right', '0px'); } ">
+                &#9658;
+        </div>
         <div id="mouse_hover_scroll_parent" style="height: 100%">
             <div id="mouse_hover_scroll" style="position: absolute;">
                 <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>

@@ -70,6 +70,7 @@ html, body, #wrapper {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     margin: 0px;
     padding: 0px;
+    overflow: hidden;
 }
 
 #mouse_hover_panel {
@@ -113,6 +114,27 @@ html, body, #wrapper {
 #toggle-panel-left:hover {
     background-color: #DDDDDD;
 }
+
+#toggle-panel-right {
+    position: absolute;
+    height: 90px;
+    width: 13px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(50% - 90px);
+    left: -13px;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+#toggle-panel-right:hover {
+    background-color: #DDDDDD;
+}
+
 
 #wrapper {
     display: flex;
