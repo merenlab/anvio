@@ -2650,8 +2650,6 @@ function draw_tree(settings) {
 
     // Scale to fit window
     bbox = svg.getBBox();
-    scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
-
     zoom_reset();
 
     // pan and mouse zoom
