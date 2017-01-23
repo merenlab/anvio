@@ -100,16 +100,15 @@ html, body, #wrapper {
 #toggle-panel-left {
     position: absolute;
     height: 90px;
-    width: 13px;
+    width: 15px;
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
     top: calc(50% - 90px);
     left: 490px;
-    display: flex;
-    align-items: center;
     border-radius: 0px 10px 10px 0px;
     cursor: pointer;
     font-size: 10px;
+    padding-top: 9px;
 }
 
 #toggle-panel-left:hover {
@@ -119,16 +118,15 @@ html, body, #wrapper {
 #toggle-panel-right {
     position: absolute;
     height: 90px;
-    width: 13px;
+    width: 15px;
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
     top: calc(50% - 90px);
     right: 400px;
-    display: flex;
-    align-items: center;
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
     font-size: 10px;
+    padding-top: 14px;
 }
 
 #toggle-panel-right:hover {
