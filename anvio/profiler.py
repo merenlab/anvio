@@ -562,12 +562,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile(self):
 
         coverages = {}
-        counter = 0
 
-        print("Reading from samtools...")
         import subprocess
         import numpy
 
+        contig_name_to_length = {}
+        for i in range(len(self.contig_names)):
+            contig_name_to_length[self.contig_names[i]] = self.contig_lengths[i]
+
+        print("Reading from samtools...")
         process = subprocess.Popen(["samtools", "mpileup", "-Q", "0", self.input_file_path], stdout=subprocess.PIPE, stderr=open(os.devnull, 'w'))
         while True:
             length = 0
@@ -577,10 +580,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             if output:
                 output = output.split("\t")
                 if not output[0] in coverages:
-                    length = self.contig_lengths[counter]
+                    length = contig_name_to_length[output[0]]
+                    del contig_name_to_length[output[0]]
                     coverages[output[0]] = numpy.zeros((length,), dtype=numpy.uint16)
-                    print(str(counter) + " of " + str(self.num_contigs))
-                    counter += 1
                 pos = int(output[1]) - 1
                 if (pos < 0 or pos >= length):
                     continue
