@@ -523,7 +523,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     @staticmethod
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
-        bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
         while True:
             if available_index_queue.empty() == True:
                 break   
@@ -546,23 +545,47 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     contig.splits.append(split)
 
                 # analyze coverage for each split
-                contig.analyze_coverage(bam_file)
+                contig.analyze_coverage(info_dict['coverages'])
 
                 # test the mean coverage of the contig.
                 if contig.coverage.mean < info_dict['min_mean_coverage']:
                      output_queue.put(None)
                      continue
 
-                if not info_dict['skip_SNV_profiling']:
-                    contig.analyze_auxiliary(bam_file)
+                # if not info_dict['skip_SNV_profiling']:
+                #     contig.analyze_auxiliary(bam_file)
 
                 output_queue.put(contig)
-  
-        bam_file.close()
         return
 
 
     def profile(self):
+
+        coverages = {}
+        counter = 0
+
+        print("Reading from samtools...")
+        import subprocess
+        import numpy
+
+        process = subprocess.Popen(["samtools", "mpileup", "-Q", "0", self.input_file_path], stdout=subprocess.PIPE, stderr=open(os.devnull, 'w'))
+        while True:
+            length = 0
+            output = process.stdout.readline().decode()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                output = output.split("\t")
+                if not output[0] in coverages:
+                    length = self.contig_lengths[counter]
+                    coverages[output[0]] = numpy.zeros((length,), dtype=numpy.uint16)
+                    print(str(counter) + " of " + str(self.num_contigs))
+                    counter += 1
+                pos = int(output[1]) - 1
+                if (pos < 0 or pos >= length):
+                    continue
+                coverages[output[0]][pos] = int(output[3])
+
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
@@ -576,7 +599,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'report_variability_full': self.report_variability_full,
             'contig_name_to_splits': self.contig_name_to_splits,
             'contig_sequences': self.contig_sequences,
-            'min_mean_coverage': self.min_mean_coverage
+            'min_mean_coverage': self.min_mean_coverage,
+            'coverages': coverages
         }
 
         available_index_queue = multiprocessing.Queue()
