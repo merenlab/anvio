@@ -8,7 +8,6 @@ import time
 import pysam
 import shutil
 import multiprocessing
-import tracemalloc
 
 import anvio
 import anvio.tables as t
@@ -40,7 +39,6 @@ pp = terminal.pretty_print
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
     def __init__(self, args):
-        tracemalloc.start()
         self.args = args
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -644,14 +642,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
-
-
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-
-        print("[ Top 10 ]")
-        for stat in top_stats[:10]:
-            print(stat)
 
 
     def store_contigs_buffer(self):
