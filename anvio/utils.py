@@ -132,10 +132,10 @@ class Multiprocessing:
 
 def get_total_memory_usage():
     current_process = psutil.Process(os.getpid())
-    mem = current_process.memory_info().rss
+    mem = current_process.memory_info().vms
     for child in current_process.children(recursive=True):
         try:
-            mem += child.memory_info().rss
+            mem += child.memory_info().vms
         except:
             pass
 
