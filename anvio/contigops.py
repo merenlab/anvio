@@ -90,13 +90,13 @@ class Contig:
         return d
 
 
-    def analyze_coverage(self, bam):
+    def analyze_coverage(self, coverages):
         contig_coverage = []
 
         counter = 1
         for split in self.splits:
             split.coverage = Coverage()
-            split.coverage.run(bam, split)
+            split.coverage.run(coverages, split)
             contig_coverage.extend(split.coverage.c)
 
             counter += 1
