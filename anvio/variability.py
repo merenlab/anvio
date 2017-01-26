@@ -3,9 +3,6 @@
 
 """Classes to make sense of single nucleotide variation"""
 
-
-from collections import Counter
-
 import anvio
 
 from anvio.constants import nucleotides
@@ -55,9 +52,9 @@ class VariablityTestFactory:
 class ColumnProfile:
     """A class to report raw variability information for a given nucleotide position"""
 
-    def __init__(self, column, reference, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
+    def __init__(self, nt_counts, reference, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
         # make sure we have coverage value regardless of user's input:
-        coverage = coverage if coverage else len(column)
+        coverage = coverage if coverage else sum(nt_counts.values())
 
         if len(reference) != 1:
             raise ConfigError("ColumnProfile class is upset. The reference must be a single base.")
@@ -65,8 +62,6 @@ class ColumnProfile:
         self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'reference': reference,
                         'coverage': coverage, 'departure_from_reference': 0, 'competing_nts': None, 'worth_reporting': False}
 
-
-        nt_counts = Counter(column)
         for nt in nucleotides:
             self.profile[nt] = nt_counts[nt]
 
