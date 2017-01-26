@@ -602,13 +602,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 coverages[output[0]][pos] = int(output[3])
                 if not self.skip_SNV_profiling:
                     for nucleotide in output[4]:
-                        if nucleotide == 'a' or nucleotide == 'A':
+                        if nucleotide == 'A' or nucleotide == 'a':
                             column_nucleotide_counts[output[0]][pos][0] += 1
-                        elif nucleotide == 't' or nucleotide == 'T':
+                        elif nucleotide == 'T' or nucleotide == 't':
                             column_nucleotide_counts[output[0]][pos][1] += 1
-                        elif nucleotide == 'g' or nucleotide == 'G':
+                        elif nucleotide == 'G' or nucleotide == 'g':
                             column_nucleotide_counts[output[0]][pos][2] += 1
-                        elif nucleotide == 'c' or nucleotide == 'C':
+                        elif nucleotide == 'C' or nucleotide == 'c':
                             column_nucleotide_counts[output[0]][pos][3] += 1
         self.progress.end()
 
