@@ -23,6 +23,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.drivers.samtools import Samtools
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -560,61 +561,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile(self):
-
-        coverages = {}
-        if not self.skip_SNV_profiling:
-            column_nucleotide_counts = {}
-
-        import subprocess
-        import numpy
-
-        contig_name_to_length = {}
-        for i in range(len(self.contig_names)):
-            contig_name_to_length[self.contig_names[i]] = self.contig_lengths[i]
-
-        self.progress.new('Reading from samtools')
-        process = subprocess.Popen(["samtools", "mpileup", "-Q", "0", self.input_file_path], stdout=subprocess.PIPE, stderr=open(os.devnull, 'w'))
-        counter = 0
-        while True:
-            length = 0
-            output = process.stdout.readline().decode()
-            if output == '' and process.poll() is not None:
-                break
-            if output:
-                output = output.split("\t")
-                if not output[0] in coverages:
-                    length = contig_name_to_length[output[0]]
-                    del contig_name_to_length[output[0]]
-                    
-                    coverages[output[0]] = numpy.zeros((length,), dtype=numpy.uint16)
-                    if not self.skip_SNV_profiling:
-                        column_nucleotide_counts[output[0]] = numpy.zeros((length,5), dtype=numpy.uint16)
-
-                    counter += 1
-                    self.progress.update('Received %d of %d.' % \
-                                    (counter, self.num_contigs))
-
-                pos = int(output[1]) - 1
-
-                if (pos < 0 or pos >= length):
-                    continue
-
-                coverages[output[0]][pos] = int(output[3])
-                if not self.skip_SNV_profiling:
-                    for nucleotide in output[4]:
-                        if nucleotide == 'A' or nucleotide == 'a':
-                            column_nucleotide_counts[output[0]][pos][0] += 1
-                        elif nucleotide == 'T' or nucleotide == 't':
-                            column_nucleotide_counts[output[0]][pos][1] += 1
-                        elif nucleotide == 'G' or nucleotide == 'g':
-                            column_nucleotide_counts[output[0]][pos][2] += 1
-                        elif nucleotide == 'C' or nucleotide == 'c':
-                            column_nucleotide_counts[output[0]][pos][3] += 1
-                        elif nucleotide == 'N' or nucleotide == 'n':
-                            column_nucleotide_counts[output[0]][pos][4] += 1
-
-
-        self.progress.end()
+        bam_reader = Samtools(self.contig_lengths, self.contig_names, self.skip_SNV_profiling, progress=self.progress)
+        bam_reader.run(self.input_file_path)
 
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
@@ -630,7 +578,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'contig_name_to_splits': self.contig_name_to_splits,
             'contig_sequences': self.contig_sequences,
             'min_mean_coverage': self.min_mean_coverage,
-            'coverages': coverages
+            'coverages': bam_reader.coverages,
+            'column_nucleotide_counts': bam_reader.column_nucleotide_counts,
         }
 
         available_index_queue = multiprocessing.Queue()
