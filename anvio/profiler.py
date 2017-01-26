@@ -562,6 +562,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile(self):
 
         coverages = {}
+        if not self.skip_SNV_profiling:
+            column_nucleotide_counts = {}
 
         import subprocess
         import numpy
@@ -583,16 +585,31 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 if not output[0] in coverages:
                     length = contig_name_to_length[output[0]]
                     del contig_name_to_length[output[0]]
+                    
                     coverages[output[0]] = numpy.zeros((length,), dtype=numpy.uint16)
+                    if not self.skip_SNV_profiling:
+                        column_nucleotide_counts[output[0]] = numpy.zeros((length,5), dtype=numpy.uint16)
+
                     counter += 1
                     self.progress.update('Received %d of %d.' % \
                                     (counter, self.num_contigs))
 
                 pos = int(output[1]) - 1
+
                 if (pos < 0 or pos >= length):
                     continue
-                coverages[output[0]][pos] = int(output[3])
 
+                coverages[output[0]][pos] = int(output[3])
+                if not self.skip_SNV_profiling:
+                    for nucleotide in output[4]:
+                        if nucleotide == 'a' or nucleotide == 'A':
+                            column_nucleotide_counts[output[0]][pos][0] += 1
+                        elif nucleotide == 't' or nucleotide == 'T':
+                            column_nucleotide_counts[output[0]][pos][1] += 1
+                        elif nucleotide == 'g' or nucleotide == 'G':
+                            column_nucleotide_counts[output[0]][pos][2] += 1
+                        elif nucleotide == 'c' or nucleotide == 'C':
+                            column_nucleotide_counts[output[0]][pos][3] += 1
         self.progress.end()
 
         manager = multiprocessing.Manager()
