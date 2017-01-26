@@ -610,6 +610,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                             column_nucleotide_counts[output[0]][pos][2] += 1
                         elif nucleotide == 'C' or nucleotide == 'c':
                             column_nucleotide_counts[output[0]][pos][3] += 1
+                        elif nucleotide == 'N' or nucleotide == 'n':
+                            column_nucleotide_counts[output[0]][pos][4] += 1
+
+
         self.progress.end()
 
         manager = multiprocessing.Manager()
