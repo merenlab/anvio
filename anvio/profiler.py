@@ -570,8 +570,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for i in range(len(self.contig_names)):
             contig_name_to_length[self.contig_names[i]] = self.contig_lengths[i]
 
-        print("Reading from samtools...")
+        self.progress.new('Reading from samtools')
         process = subprocess.Popen(["samtools", "mpileup", "-Q", "0", self.input_file_path], stdout=subprocess.PIPE, stderr=open(os.devnull, 'w'))
+        counter = 0
         while True:
             length = 0
             output = process.stdout.readline().decode()
@@ -583,10 +584,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     length = contig_name_to_length[output[0]]
                     del contig_name_to_length[output[0]]
                     coverages[output[0]] = numpy.zeros((length,), dtype=numpy.uint16)
+                    counter += 1
+                    self.progress.update('Received %d of %d.' % \
+                                    (counter, self.num_contigs))
+
                 pos = int(output[1]) - 1
                 if (pos < 0 or pos >= length):
                     continue
                 coverages[output[0]][pos] = int(output[3])
+
+        self.progress.end()
 
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
