@@ -12,13 +12,13 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
+__author__ = "Özcan Esen"
 __copyright__ = "Copyright 2017, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 progress = terminal.Progress()
