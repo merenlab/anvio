@@ -553,8 +553,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                      output_queue.put(None)
                      continue
 
-                # if not info_dict['skip_SNV_profiling']:
-                #     contig.analyze_auxiliary(bam_file)
+                if not info_dict['skip_SNV_profiling']:
+                     contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
 
                 output_queue.put(contig)
         return
@@ -567,7 +567,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
-            'input_file_path': self.input_file_path,
             'contig_names': self.contig_names,
             'contig_lengths': self.contig_lengths,
             'splits_basic_info': self.splits_basic_info,
