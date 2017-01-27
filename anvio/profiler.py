@@ -550,11 +550,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 # test the mean coverage of the contig.
                 if contig.coverage.mean < info_dict['min_mean_coverage']:
-                     output_queue.put(None)
-                     continue
+                    output_queue.put(None)
+                    continue
 
                 if not info_dict['skip_SNV_profiling']:
-                     contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
+                    contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
 
                 output_queue.put(contig)
         return
