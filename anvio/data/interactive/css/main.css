@@ -200,7 +200,7 @@ html, body, #wrapper {
 
 .sidebar-footer {
     background-color: white;
-    height: 82px;
+    height: 123px;
     width: 490px;
     position: fixed;
     bottom: -0px;
@@ -232,7 +232,7 @@ td > input[type='checkbox'] {
 .sidebar-footer-draw {
     height: 40px;
     padding: 5px 10px;
-    border-bottom: 1px solid #D3D3D3;
+    border-bottom: 1px solid #eee;
 }
 
 #sidebar-footer-controls {
@@ -245,14 +245,12 @@ td > input[type='checkbox'] {
     width: 25%;
 }
 
-.sidebar-state-buttons > .btn {
-    width: 25%;
+.sidebar-state-buttons {
+    width: 100%;
 }
 
-.sidebar-state-buttons {
-    background-color: rgba(255, 255, 255, 0.5);
-    padding: 3px 0px;
-    margin: 6px 0px;
+.sidebar-state-buttons > .btn {
+    width: 50%;
 }
 
 .btn-group {
