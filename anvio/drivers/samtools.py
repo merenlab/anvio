@@ -74,6 +74,8 @@ class Samtools:
         if (pos < 0 or pos >= length):
             return
 
+        self.coverages[contig_name][pos] = coverage
+
         if not self.skip_SNV_profiling:
             for nucleotide in column:
                 if nucleotide == 'A' or nucleotide == 'a':
