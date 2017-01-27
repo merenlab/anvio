@@ -600,7 +600,13 @@ function buildLegendTables() {
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
-        var template = '<span>' + legend['name'] + '</span><div>';
+        var template = '<span>';
+
+        if (legends[i]['source'].indexOf('samples') > -1) {
+            template += '<span class="label label-default">Samples</span> '
+        }
+
+        template += legend['name'] + '</span><div>';
 
         for (var j = 0; j < legend['item_names'].length; j++) {
 
