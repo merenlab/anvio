@@ -1626,7 +1626,8 @@ function exportSvg() {
     settings = last_settings; 
     drawLayerLegend(settings['layers'], settings['views'][current_view], settings['layer-order'], top, left);
     var detached_clones = $('#samples_tree path.clone').detach();
-    drawTitle(settings);
+    drawTitle(last_settings);
+    drawLegend();
 
     svgCrowbar();
 
@@ -1634,6 +1635,7 @@ function exportSvg() {
     $('#bin_legend').remove();
     $('#layer_legend').remove();
     $('#title_group').remove();
+    $('#legend_group').remove();
 }
 
 function showStoreCollectionWindow() {
