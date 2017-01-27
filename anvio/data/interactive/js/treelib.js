@@ -30,7 +30,6 @@ function createBin(parent, bin_id) {
 //--------------------------------------------------------------------------------------------------
 
 function drawTitle(settings) {
-    return;
     createBin('viewport', 'title_group');
     _bbox = document.getElementById('viewport').getBBox();
 
@@ -1909,6 +1908,8 @@ function draw_tree(settings) {
                     td = new RectangleTreeDrawer();
                 }
 
+
+
                 td.Init(t, {
                     svg_id: 'tree',
                     width: height,
@@ -2636,7 +2637,6 @@ function draw_tree(settings) {
     }
 
     // draw title and legends
-    drawTitle(settings);
     var _sub_title = "Tree order: <b>" + getClusteringPrettyName(settings['order-by']) + "</b> | ";
         _sub_title    += "Current view: <b>" + settings['current-view'] + "</b> | ";
         _sub_title    += "Sample order: <b>" + settings['samples-order'] + "</b>";
