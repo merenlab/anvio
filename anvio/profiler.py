@@ -525,10 +525,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
         while True:
-            if available_index_queue.empty() == True:
-                break   
-            else:
-                index = available_index_queue.get()
+            try:
+                index = available_index_queue.get(False)
 
                 contig_name = info_dict['contig_names'][index]
                 contig = contigops.Contig(contig_name)
@@ -557,6 +555,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
 
                 output_queue.put(contig)
+            except:
+                # queue will raise Empty
+                break
         return
 
 
