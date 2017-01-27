@@ -94,6 +94,13 @@ html, body, #wrapper {
     line-height: 115%;
 }
 
+#title-panel-close-button {
+    position: absolute;
+    top: 0px;
+    right: 10px;
+    font-size: 12px;
+}
+
 #mouse_hover_panel {
     top: 0px;
     right: 0px;
@@ -116,6 +123,24 @@ html, body, #wrapper {
 #panel-center {
     width: 100%;
     height: 100%;
+}
+
+#toggle-panel-top {
+    position: absolute;
+    height: 15px;
+    width: 90px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: 0;
+    left: calc(50% - 45px);
+    border-radius: 0px 0px 10px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    text-align: center;
+}
+
+#toggle-panel-top:hover {
+    background-color: #DDDDDD;
 }
 
 #toggle-panel-left {
