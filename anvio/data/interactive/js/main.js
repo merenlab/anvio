@@ -1703,6 +1703,9 @@ function storeRefinedBins() {
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
+    collection_name = collection_name.replace(/\W+/g, "_");
+    $('#storeCollection_name').val(collection_name);
+
     if (collection_name.length==0) {
         $('#storeCollection_name').focus();
         return;
