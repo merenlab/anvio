@@ -57,10 +57,12 @@ class Samtools:
                 # 3 -> coverage 
                 # 4 -> column
                 self.process(output[0], int(output[1]) - 1, int(output[3]), output[4])
-
         self.progress.end()
 
     def process(self, contig_name, pos, coverage, column):
+        if not contig_name in self.contig_name_to_length:
+            return
+
         length = self.contig_name_to_length[contig_name]
 
         if not contig_name in self.coverages:
