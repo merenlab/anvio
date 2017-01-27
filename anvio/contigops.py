@@ -172,6 +172,9 @@ class Auxiliary:
             if self.split.parent in coverages:
                 coverage = coverages[self.split.parent][pos_in_contig]
 
+            if coverage < self.min_coverage:
+                continue
+
             nt_counts = Counter({'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0})
             if self.split.parent in column_nucleotide_counts:
                 nt_counts = Counter({
