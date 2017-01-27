@@ -59,11 +59,8 @@ class Coverage:
 
 
     def run(self, coverages, split):
-        if split.parent in coverages:
-            for i in range(split.start, split.end):
-                self.c.append(coverages[split.parent][i])
-        else:
-            self.c = [0] * (split.end - split.start)
+        for i in range(split.start, split.end):
+            self.c.append(coverages[i])
 
         if self.c:
             split.explicit_length = len(self.c)

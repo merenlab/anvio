@@ -536,6 +536,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
                 contig.report_variability_full = info_dict['report_variability_full']
 
+                # read information from bam
+                bam_reader = Samtools(info_dict['input_file_path'], contig_name, contig.length, info_dict['skip_SNV_profiling'])
+                bam_reader.run()
+
                 # populate contig with empty split objects and
                 for split_name in info_dict['contig_name_to_splits'][contig_name]:
                     s = info_dict['splits_basic_info'][split_name]
@@ -544,7 +548,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     contig.splits.append(split)
 
                 # analyze coverage for each split
-                contig.analyze_coverage(info_dict['coverages'])
+                contig.analyze_coverage(bam_reader.coverages)
 
                 # test the mean coverage of the contig.
                 if contig.coverage.mean < info_dict['min_mean_coverage']:
@@ -552,7 +556,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     continue
 
                 if not info_dict['skip_SNV_profiling']:
-                    contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
+                    contig.analyze_auxiliary(bam_reader.column_nucleotide_counts, bam_reader.coverages)
 
                 output_queue.put(contig)
             except:
@@ -562,12 +566,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile(self):
-        bam_reader = Samtools(self.contig_lengths, self.contig_names, self.skip_SNV_profiling, progress=self.progress)
-        bam_reader.run(self.input_file_path)
-
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
+            'input_file_path': self.input_file_path,
             'contig_names': self.contig_names,
             'contig_lengths': self.contig_lengths,
             'splits_basic_info': self.splits_basic_info,
@@ -578,8 +580,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'contig_name_to_splits': self.contig_name_to_splits,
             'contig_sequences': self.contig_sequences,
             'min_mean_coverage': self.min_mean_coverage,
-            'coverages': bam_reader.coverages,
-            'column_nucleotide_counts': bam_reader.column_nucleotide_counts,
         }
 
         available_index_queue = multiprocessing.Queue()
