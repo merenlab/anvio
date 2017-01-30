@@ -168,18 +168,22 @@ class Auxiliary:
             pos_in_split = pos_in_contig - self.split.start
             base_in_contig = self.split.sequence[pos_in_split]
 
-            coverage = coverages[pos_in_contig]
+            coverage = 0
+            if self.split.parent in coverages:
+                coverage = coverages[self.split.parent][pos_in_contig]
 
             if coverage < self.min_coverage:
                 continue
 
-            nt_counts = Counter({
-                'A': column_nucleotide_counts[pos_in_contig][0],
-                'T': column_nucleotide_counts[pos_in_contig][1],
-                'G': column_nucleotide_counts[pos_in_contig][2],
-                'C': column_nucleotide_counts[pos_in_contig][3],
-                'N': column_nucleotide_counts[pos_in_contig][4]
-            })
+            nt_counts = Counter({'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0})
+            if self.split.parent in column_nucleotide_counts:
+                nt_counts = Counter({
+                    'A': column_nucleotide_counts[self.split.parent][pos_in_contig][0],
+                    'T': column_nucleotide_counts[self.split.parent][pos_in_contig][1],
+                    'G': column_nucleotide_counts[self.split.parent][pos_in_contig][2],
+                    'C': column_nucleotide_counts[self.split.parent][pos_in_contig][3],
+                    'N': column_nucleotide_counts[self.split.parent][pos_in_contig][4]
+                })
 
             cp = ColumnProfile(nt_counts,
                                reference=base_in_contig,
