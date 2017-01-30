@@ -407,6 +407,11 @@ function drawSamplesLayers(settings) {
     }
     var gradient_done = false;
 
+    if (settings['tree-type'] == 'phylogram') {
+        gradient_done = true;
+        // there is no need for bacnground gradient for phylogram tree
+    }
+
     var sample_xy = {};
 
     var samples_start = -1;
