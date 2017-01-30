@@ -2034,7 +2034,7 @@ function draw_tree(settings) {
             var _opacity = 1;
         } else {
             var _bgcolor = layers[pindex]['color'];
-            var _opacity = 0.3;
+            var _opacity = parseFloat(settings['background-opacity']);
         }
 
         // draw backgrounds

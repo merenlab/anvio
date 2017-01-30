@@ -1098,6 +1098,7 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
+    state['background-opacity'] = $('#background_opacity').val();
 
     // sync views object and layers table
     syncViews();
@@ -2236,6 +2237,9 @@ function loadState()
                             }
                             if (state.hasOwnProperty('samples-tree-height')) {
                                 $('#samples_tree_height').val(state['samples-tree-height']);
+                            }
+                            if (state.hasOwnProperty('background-opacity')) {
+                                $('#background_opacity').val(state['background-opacity']);
                             }
 
                             // reload layers
