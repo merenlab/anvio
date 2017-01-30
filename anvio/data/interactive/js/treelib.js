@@ -2545,13 +2545,18 @@ function draw_tree(settings) {
                     layers[pindex]['height']);
             }
         }
-
-        if (settings['angle-min'] == 0 && settings['angle-max'] <= 270)
-        {
-            //draw samples layers
-            createBin('viewport', 'samples');
-            drawSamples();
-        }
+    }
+    if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] <= 270)
+    {
+        //draw samples layers
+        createBin('viewport', 'samples');
+        drawSamples();
+    }
+    else if (settings['tree-type'] == 'phylogram')
+    {
+        createBin('viewport', 'samples');
+        $('#samples').attr('transform', 'rotate(90)');
+        drawSamples();
     }
 
     // draw title and legends
