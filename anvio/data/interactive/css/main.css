@@ -258,6 +258,10 @@ html, body, #wrapper {
     border-right: 1px solid #D3D3D3;
 }
 
+.table-spacing td {
+    padding: 3px;
+}
+
 .nav>li>a {
    padding: 10px 12px;
 }
@@ -330,7 +334,7 @@ td > input[type='checkbox'] {
     margin-left: 3px;
 }
 
-.legendcolorpicker:hover {
+.colorpicker:hover {
     border: 2px solid;
     border-color: #555;
 }

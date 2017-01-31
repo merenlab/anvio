@@ -613,11 +613,38 @@ function buildLegendTables() {
                             <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;"><span class="glyphicon glyphicon-tint"></span>Batch Coloring</button>
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span>Batch Coloring</button>
                         </div>
+                        <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
+                            <table class="col-md-12 table-spacing">
+                                <tr>
+                                    <td class="col-md-2">Rule: </td>
+                                    <td class="col-md-10">
+                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="count"> Count 
+                                            <select id="count_rule_`+i+`">
+                                                <option selected>==</option>
+                                                <option>&lt;</option>
+                                                <option>&gt;</option>
+                                            </select>
+                                            <input type="text" id="count_rule_value_`+i+`" size="3">
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2">Color: </td>
+                                    <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="clear: both; display:block;"></div>
                         <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
         }
-
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div>');
@@ -626,6 +653,42 @@ function buildLegendTables() {
     }
 
     $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+        }
+    });
+}
+
+function batchColor(legend_id) {
+    var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
+    var color = $('#batch_colorpicker_' + legend_id).attr('color');
+    var legend = legends[legend_id];
+
+    for (var i=0; i < legend['item_keys'].length; i++)
+    {
+        if (rule == 'all') {
+            window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+        }
+        else if (rule == 'name') {
+            if (legend['item_names'][i].toLowerCase().indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            }
+        } 
+        else if (rule == 'count') {
+            console.log("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()));
+            if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            }
+        }
+    }
+
+    createLegendColorPanel(legend_id);
 }
 
 function createLegendColorPanel(legend_id) {
