@@ -9,9 +9,9 @@ import json
 import time
 import shutil
 import tempfile
-import anvio.fastalib as u
 
 import anvio
+import anvio.fastalib as u
 
 from anvio.terminal import Run
 from anvio.terminal import Progress
@@ -181,7 +181,7 @@ def is_proper_samples_order_file(file_path):
 def is_file_exists(file_path, dont_raise=False):
     if not file_path:
         raise FilesNPathsError("No input file is declared...")
-    if not os.path.exists(file_path):
+    if not os.path.exists(os.path.abspath(file_path)):
         if dont_raise:
             return False
         else:
@@ -270,6 +270,19 @@ def is_file_fasta_formatted(file_path):
     f.close()
 
     return True
+
+
+def is_file_plain_text(file_path, dont_raise=False):
+    is_file_exists(file_path)
+
+    try:
+        open(os.path.abspath(file_path), 'rU').read(512)
+        return True
+    except IsADirectoryError:
+        raise FilesNPathsError("There must be a misunderstnding... %s is a directory .. as far as a file\
+                                can be from being a plain text file :(" % file_path)
+    except UnicodeDecodeError:
+        raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
 
 
 def is_program_exists(program):
