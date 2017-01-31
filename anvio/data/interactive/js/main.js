@@ -681,7 +681,6 @@ function batchColor(legend_id) {
             }
         } 
         else if (rule == 'count') {
-            console.log("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()));
             if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
                 window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
             }
