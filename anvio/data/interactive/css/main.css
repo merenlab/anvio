@@ -94,9 +94,9 @@ html, body, #wrapper {
     top: 0px;
     display: inline-block;
     background-color: #EEE;
-    min-width: 720px;
-    left: calc(50% - 360px);
-    height: 60px;
+    min-width: 460px;
+    left: calc(50% - 230px);
+    height: 44px;
     text-align: center;
     border-radius: 0px 0px 16px 16px;
     border: 1px solid #D3D3D3;
@@ -105,7 +105,7 @@ html, body, #wrapper {
 }
 
 #title-panel-first-line {
-    font-size: 32px;
+    font-size: 20px;
     color: rgb(58, 58, 58);
     line-height: 115%;
 }
@@ -486,5 +486,15 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     .toggle-panel-right-pos {
         right: 400px !important;
+    }
+
+    #title-panel {
+        min-width: 720px;
+        left: calc(50% - 360px);
+        height: 60px;
+    }
+
+    #title-panel-first-line {
+        font-size: 32px;
     }
 }
