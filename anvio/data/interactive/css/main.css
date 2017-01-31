@@ -102,6 +102,7 @@ html, body, #wrapper {
     border: 1px solid #D3D3D3;
     padding-left: 10px;
     padding-right: 10px;
+    opacity: 0.9;
 }
 
 #title-panel-first-line {
