@@ -59,7 +59,7 @@ function showSearchResult() {
     {
         rows = rows + "<tr><td data-value=" + layerdata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + layerdata[search_results[i]][0] + "\");'>" + layerdata[search_results[i]][0] + "</a></td><td data-value=" + layerdata[search_results[i]][search_column] + ">" + layerdata[search_results[i]][search_column] + "</td></tr>";
     }
-    $(".search-results-display").html(rows);
+    $("#tbody_search_body").html(rows);
 }
 
 function highlightResult() {

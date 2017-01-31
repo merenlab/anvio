@@ -60,7 +60,14 @@ function drawTitle(settings) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function drawLegend(top, left, line_end) {
+function drawLegend() {
+    createBin('viewport', 'legend_group');
+    _bbox = document.getElementById('viewport').getBBox();
+
+    var top = _bbox.y + _bbox.height;
+    var left = _bbox.x;
+    var line_end = _bbox.x + _bbox.width;
+    
     var _left = left;
     var line_height = (line_end - _left) / 80;
     var gap = line_height / 2;
@@ -68,98 +75,10 @@ function drawLegend(top, left, line_end) {
     var top = top + line_height * 3;
     var _top = top;
 
-    var legends = [];
-   
-    $.each(layer_types, function (i, _) {
-        var pindex = i;
-        if (layer_types[pindex] != 2)
-            return; // skip if not categorical
-
-        if (layers[pindex]['type'] == 'text')
-            return; // skip if type is text
-
-        var categorical_stats = {};
-
-        categorical_stats['None'] = 0;
-        for (var name in categorical_data_colors[pindex]) {
-            categorical_stats[name] = 0;
-        }
-        for (var index = 1; index < layerdata.length; index++)
-        {
-            var taxonomy_name = layerdata[index][pindex];
-            if (taxonomy_name == null || taxonomy_name == '' || taxonomy_name == 'null')
-                taxonomy_name = 'None';
-            categorical_stats[taxonomy_name] += 1;
-        }
-        var names = Object.keys(categorical_stats).sort(function(a,b){return categorical_stats[b]-categorical_stats[a]});
-
-        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
-
-        legends.push({
-            'name': getLayerName(pindex),
-            'source': 'categorical_data_colors',
-            'key': pindex,
-            'item_names': names,
-            'item_keys': names,
-            'stats': categorical_stats
-        });
-    });
-
-    $.each(layer_types, function (i, _) {
-        if (layer_types[i] != 1)
-            return; // skip if not stack bar
-
-        var pindex = i;
-        var layer_name = getLayerName(pindex);
-        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-
-        var pretty_name = getLayerName(pindex);
-        pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
-
-        legends.push({
-            'name': pretty_name,
-            'source': 'stack_bar_colors',
-            'key': pindex,
-            'item_names': names,
-            'item_keys': keys,
-        });
-    });
-
-    for (sample in samples_categorical_colors)
-    {
-        var names = Object.keys(samples_categorical_colors[sample]);
-
-        legends.push({
-            'name': sample,
-            'source': 'samples_categorical_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': names,
-            //'stats': TO DO
-        });
-    }
-
-    for (sample in samples_stack_bar_colors)
-    {
-        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
-
-        legends.push({
-            'name': pretty_name,
-            'source': 'samples_stack_bar_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': keys,
-            //'stats': TO DO
-        });
-    }
-
     for (var i=0; i < legends.length; i++)
     {
         var bin_id = 'legend_' + i;
-        createBin('viewport', bin_id);
+        createBin('legend_group', bin_id);
         var legend = legends[i];
 
         for (var j = 0; j < legend['item_names'].length; j++) {
@@ -1907,6 +1826,8 @@ function draw_tree(settings) {
                     td = new RectangleTreeDrawer();
                 }
 
+
+
                 td.Init(t, {
                     svg_id: 'tree',
                     width: height,
@@ -2113,7 +2034,7 @@ function draw_tree(settings) {
             var _opacity = 1;
         } else {
             var _bgcolor = layers[pindex]['color'];
-            var _opacity = 0.3;
+            var _opacity = parseFloat(settings['background-opacity']);
         }
 
         // draw backgrounds
@@ -2226,10 +2147,6 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
-                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
-                            }
-
                             if (layers[pindex]['type'] == 'color') 
                             {
                                 categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
@@ -2243,7 +2160,6 @@ function draw_tree(settings) {
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
                                 drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height'], 'center');
-                                
                             }
                         }
                         else if (isParent)
@@ -2353,11 +2269,6 @@ function draw_tree(settings) {
                         }
                         else if(isCategorical)
                         {
-
-                            if (typeof categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] === 'undefined'){
-                                categorical_data_colors[pindex][layerdata_dict[q.label][pindex]] = getNamedCategoryColor(layerdata_dict[q.label][pindex]);
-                            }
-
                             if (layers[pindex]['type'] == 'color') 
                             {
                                 categorical_layers_ordered[layer_index].push(layerdata_dict[q.label][pindex]);
@@ -2634,32 +2545,28 @@ function draw_tree(settings) {
                     layers[pindex]['height']);
             }
         }
-
-        if (settings['angle-min'] == 0 && settings['angle-max'] <= 270)
-        {
-            //draw samples layers
-            createBin('viewport', 'samples');
-            drawSamples();
-        }
+    }
+    if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] <= 270)
+    {
+        //draw samples layers
+        createBin('viewport', 'samples');
+        drawSamples();
+    }
+    else if (settings['tree-type'] == 'phylogram')
+    {
+        createBin('viewport', 'samples');
+        $('#samples').attr('transform', 'rotate(90)');
+        drawSamples();
     }
 
     // draw title and legends
-    drawTitle(settings);
-
-    var legend_top = total_radius + parseFloat(settings['layer-margin']) + parseFloat(settings['outer-ring-height']) * 2;
-    switch (settings['tree-type']) {
-        case 'phylogram':
-            drawLegend(legend_top, 0 - VIEWER_HEIGHT, 0);
-            break;
-        case 'circlephylogram':
-            drawLegend(legend_top, 0 - total_radius, total_radius - 40);
-            break;
-    }
+    var _sub_title = "Tree order: <b>" + getClusteringPrettyName(settings['order-by']) + "</b> | ";
+        _sub_title    += "Current view: <b>" + settings['current-view'] + "</b> | ";
+        _sub_title    += "Sample order: <b>" + settings['samples-order'] + "</b>";
+    $('#title-panel-second-line').html(_sub_title);
 
     // Scale to fit window
     bbox = svg.getBBox();
-    scale = Math.min(VIEWER_WIDTH / bbox.width, VIEWER_HEIGHT / bbox.height) * 0.80;
-
     zoom_reset();
 
     // pan and mouse zoom
@@ -2683,6 +2590,9 @@ function draw_tree(settings) {
         function(event) { 
             dragging = false; 
 
+            mouse_event_origin_x = event.clientX;
+            mouse_event_origin_y = event.clientY;
+
             if (event.shiftKey)
             {
                 drawing_zoom = true;
@@ -2696,8 +2606,11 @@ function draw_tree(settings) {
             }
         });
     viewport.addEventListener('mousemove', 
-        function(event) { 
-            dragging = true; 
+        function(event) {
+            if (Math.abs(mouse_event_origin_x - event.clientX) + Math.abs(mouse_event_origin_y - event.clientY) > 2)
+            {
+                dragging = true; 
+            }
 
             if (event.shiftKey && drawing_zoom)
             {
@@ -2779,7 +2692,13 @@ function redrawBins()
     // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-        for (var j = 0; j < SELECTED[bin_id].length; j++) {
+        for (var j = SELECTED[bin_id].length - 1; j >= 0; j--) {
+            if (typeof label_to_node_map[SELECTED[bin_id][j]] === 'undefined')
+            {
+                SELECTED[bin_id].splice(j, 1);
+                continue;
+            }
+
             if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
                 leaf_list[label_to_node_map[SELECTED[bin_id][j]].order] = bin_id;
             }
