@@ -603,6 +603,9 @@ var origin_y;
 
 function updateSingleBackgroundGlobals()
 {
+    if (typeof tree_type === 'undefined')
+        return;
+
     if (tree_type == 'phylogram')
     {
         var path_event = document.getElementById('path_event');
