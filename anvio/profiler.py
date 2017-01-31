@@ -65,6 +65,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.write_buffer_size = int(A('write_buffer_size'))
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
+        self.description_file_path = A('description')
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -113,12 +114,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
+        # we don't know what we are about
+        self.description = None
+
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
             raise ConfigError("You can not run profiling without a contigs database. You can create\
                                 one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
                                 tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/")
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
                                                                    ok_if_exists=self.overwrite_output_destinations)
@@ -149,7 +157,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
-                       'gene_coverages_computed': self.a_meta['genes_are_called']}
+                       'gene_coverages_computed': self.a_meta['genes_are_called'],
+                       'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
         self.progress.end()
@@ -172,6 +181,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
+        self.run.info('description', 'Found (%d characters)' % len(self.description) if self.description else None)
         self.run.info('profile_db', self.profile_db_path, display_only=True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
