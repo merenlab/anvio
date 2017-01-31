@@ -1,5 +1,5 @@
 *:not(text) {
-    font-size: 12px;
+    font-size: 10px;
     line-height: 1.428;
 }
 
@@ -63,7 +63,7 @@ h4 {
 
 .glyphicon {
     top: 4px;
-    font-size: 15px;
+    font-size: 10px;
 }
 
 option {
@@ -120,20 +120,21 @@ html, body, #wrapper {
 #mouse_hover_panel {
     top: 0px;
     right: 0px;
-    width: 400px;
     position: absolute;
-    display: block;
+    display: none;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
     padding: 15px;
-}
+    opacity: 0.9;
+    width: 300px;}
 
 #panel-left {
     position: absolute;
     width: 490px;
     top: 0px;
     left: 0px;
+    opacity: 0.9;
 }
 
 #panel-center {
@@ -166,11 +167,14 @@ html, body, #wrapper {
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
     top: calc(50% - 90px);
-    left: 490px;
     border-radius: 0px 10px 10px 0px;
     cursor: pointer;
     font-size: 10px;
     padding-top: 9px;
+}
+
+.toggle-panel-left-pos {
+    left: 400px;
 }
 
 #toggle-panel-left:hover {
@@ -184,11 +188,15 @@ html, body, #wrapper {
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
     top: calc(50% - 90px);
-    right: 400px;
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
     font-size: 10px;
     padding-top: 14px;
+    right: 0px;
+}
+
+.toggle-panel-right-pos {
+    right: 300px !important;
 }
 
 #toggle-panel-right:hover {
@@ -215,9 +223,9 @@ html, body, #wrapper {
     position: fixed;
     background: url('../images/fractal.jpg') center center scroll;
     border-right: 1px solid #D3D3D3;
-    width: 490px;
+    width: 400px;
     height: 100%;
-    padding: 10px;
+    padding: 5px;
     overflow: scroll;
     padding-bottom: 150px;
     margin-top: 43px;
@@ -242,7 +250,7 @@ html, body, #wrapper {
 .sidebar-footer {
     background-color: white;
     height: 123px;
-    width: 490px;
+    width: 400px;
     position: fixed;
     bottom: -0px;
     border-top: 1px solid #D3D3D3;
@@ -402,9 +410,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 #fixed-navbar-div {
     position: fixed;
-    padding-left: 9px;
     z-index: 500;
-    width: 490px;
+    width: 400px;
     padding-top: 4px;
     border-right: 1px solid #D3D3D3;
     background-color: #FFFFFF;
@@ -435,4 +442,49 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .menu-disabled {
     pointer-events:none;
     opacity:0.4;
+}
+
+
+@media only screen and (min-width:1440px){
+    /* styles for browsers larger than 1440px; */
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
+    }
+
+    #sidebar {
+        width: 490px;
+        padding: 10px;
+    }
+
+    .sidebar-footer {
+        width: 490px;
+    }
+
+    .glyphicon {
+        top: 4px;
+        font-size: 15px;
+    }
+
+    #fixed-navbar-div {
+        width: 490px;
+        padding-left: 9px;
+    }
+
+    #mouse_hover_panel {
+        width: 400px;
+    }
+
+    #fixed-navbar-div {
+        width: 490px;
+        padding-left: 9px;
+    }
+
+    .toggle-panel-left-pos {
+        left: 490px;
+    }
+
+    .toggle-panel-right-pos {
+        right: 300px !important;
+    }
 }
