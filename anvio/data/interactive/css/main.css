@@ -279,6 +279,10 @@ td > input[type='checkbox'] {
 .tab-content {
 }
 
+.tab-pane {
+    padding-bottom: 200px;
+}
+
 .sidebar-footer-draw {
     height: 40px;
     padding: 5px 10px;
