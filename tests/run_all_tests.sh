@@ -81,7 +81,7 @@ done
 
 
 INFO "Merging profiles"
-anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
+anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db
