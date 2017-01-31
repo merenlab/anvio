@@ -67,6 +67,7 @@ class MultipleRuns:
         self.debug = A('debug')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.description_file_path = A('description')
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -83,6 +84,9 @@ class MultipleRuns:
         self.clustering_configs = constants.clustering_configs['merged']
 
         self.database_paths = {'CONTIGS.db': self.contigs_db_path}
+
+        # we don't know what we are about
+        self.description = None
 
 
     def populate_profile_dbs_info_dict(self):
@@ -183,6 +187,11 @@ class MultipleRuns:
             raise ConfigError("The contigs database you provided, which is identified with hash '%s', does\
                                       not seem to match the run profiles you are trying to merge, which share the\
                                       hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
+
+        # do we have a description file?
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
 
     def set_sample_id(self):
@@ -346,7 +355,8 @@ class MultipleRuns:
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.contigs_db_hash,
-                       'gene_coverages_computed': self.gene_coverages_computed}
+                       'gene_coverages_computed': self.gene_coverages_computed,
+                       'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
         # get view data information for both contigs and splits:
@@ -357,6 +367,7 @@ class MultipleRuns:
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('output_dir', self.output_directory)
         self.run.info('sample_id', self.sample_id)
+        self.run.info('description', 'Found (%d characters)' % len(self.description) if self.description else None)
         self.run.info('profile_db', self.merged_profile_db_path)
         self.run.info('merged', True)
         self.run.info('contigs_db_hash', self.contigs_db_hash)

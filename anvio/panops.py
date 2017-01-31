@@ -467,6 +467,7 @@ class Pangenome(GenomeStorage):
         self.maxbit = A('maxbit')
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
+        self.description_file_path = A('description')
 
         # when it is time to organize PCs
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -479,6 +480,9 @@ class Pangenome(GenomeStorage):
         self.view_data = {}
         self.view_data_presence_absence = {}
         self.additional_view_data = {}
+
+        # we don't know what we are about
+        self.description = None
 
 
     def generate_pan_db(self):
@@ -495,7 +499,8 @@ class Pangenome(GenomeStorage):
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage_hash,
-                       'project_name': self.project_name
+                       'project_name': self.project_name,
+                       'description': self.description if self.description else '_No description is provided_',
                       }
 
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
@@ -567,6 +572,10 @@ class Pangenome(GenomeStorage):
         if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
             raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for\
                                 the anvi'o class Pangenome.")
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
