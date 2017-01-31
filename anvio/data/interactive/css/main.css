@@ -485,6 +485,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     .toggle-panel-right-pos {
-        right: 300px !important;
+        right: 400px !important;
     }
 }
