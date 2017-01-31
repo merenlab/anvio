@@ -607,29 +607,22 @@ function buildLegendTables() {
         }
 
         template += legend['name'] + '</span><div>';
+        if (legend.hasOwnProperty('stats')) {
+            template += `Sort: <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;"><span class="glyphicon glyphicon-tint"></span>Batch Coloring</button>
+                        </div>
+                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+        }
 
-        for (var j = 0; j < legend['item_names'].length; j++) {
-
-            var _name = legend['item_names'][j];
-            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
-
-            if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
-                continue;
-
-            if (legend.hasOwnProperty('stats')) {
-                _name = _name + ' (' + legend['stats'][_name] + ')';
-            }
-
-            template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
-                                    '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
-                                    'style="margin-right: 5px; background-color: ' + _color + '"' +
-                                    'callback_source="' + legend['source'] + '"' +
-                                    'callback_pindex="' + legend['key'] + '"' +
-                                    'callback_name="' + legend['item_keys'][j] + '"' + 
-                                   '></div>' + _name + '</div>';
-       }
-       template = template + '<div style="clear: both; display:block;"></div>';
+        template += '<div id="legend_content_' + i + '"></div>';
+        template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div>');
+
+        createLegendColorPanel(i); // this fills legend_content_X
     }
 
     $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
@@ -643,6 +636,49 @@ function buildLegendTables() {
             window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
         }
     });
+}
+
+function createLegendColorPanel(legend_id) {
+    var legend = legends[legend_id];
+    var template = '';
+
+    for (var j = 0; j < legend['item_names'].length; j++) {
+
+        var _name = legend['item_names'][j];
+        var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
+
+        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+            continue;
+
+        if (legend.hasOwnProperty('stats')) {
+            _name = _name + ' (' + legend['stats'][_name] + ')';
+        }
+
+        template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
+                                '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
+                                'style="margin-right: 5px; background-color: ' + _color + '"' +
+                                'callback_source="' + legend['source'] + '"' +
+                                'callback_pindex="' + legend['key'] + '"' +
+                                'callback_name="' + legend['item_keys'][j] + '"' + 
+                               '></div>' + _name + '</div>';
+   }
+
+   $('#legend_content_' + legend_id).empty();
+   $('#legend_content_' + legend_id).html(template);
+}
+
+function orderLegend(legend_id, type) {
+    if (type == 'alphabetical') {
+        legends[legend_id]['item_names'] = legends[legend_id]['item_names'].sort();
+    }
+    else if (type == 'count') {
+        legends[legend_id]['item_names'] = legends[legend_id]['item_names'].sort(function(a,b){return legends[legend_id]['stats'][b]-legends[legend_id]['stats'][a]});
+    }
+
+    // in both cases we will move None to end.
+    legends[legend_id]['item_names'].push(legends[legend_id]['item_names'].splice(legends[legend_id]['item_names'].indexOf('None'), 1)[0]);
+
+    createLegendColorPanel(legend_id);
 }
 
 function onTreeClusteringChange() {
