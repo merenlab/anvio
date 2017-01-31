@@ -8,12 +8,13 @@ import sys
 import time
 import socket
 import shutil
-import urllib2
+import psutil
+import urllib.request, urllib.error, urllib.parse
 import smtplib
 import textwrap
 import subprocess
 import multiprocessing
-import ConfigParser
+import configparser
 
 from email.mime.text import MIMEText
 
@@ -29,7 +30,7 @@ from anvio.errors import ConfigError
 from anvio.sequence import Composition
 
 with SuppressAllOutput():
-    from ete2 import Tree
+    from ete3 import Tree
 
 
 __author__ = "A. Murat Eren"
@@ -103,7 +104,6 @@ class Multiprocessing:
     def get_shared_integer(self):
         return self.manager.Value('i', 0)
 
-
     def run_processes(self, processes_to_run, progress=Progress(verbose=False)):
         tot_num_processes = len(processes_to_run)
         sent_to_run = 0
@@ -130,23 +130,46 @@ class Multiprocessing:
             time.sleep(1)
 
 
+def get_total_memory_usage():
+    current_process = psutil.Process(os.getpid())
+    mem = current_process.memory_info().rss
+    for child in current_process.children(recursive=True):
+        try:
+            mem += child.memory_info().rss
+        except:
+            pass
+
+    return human_readable_file_size(mem)
+
+
+def human_readable_file_size(nbytes):
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    if nbytes == 0: return '0 B'
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
     """Get a port number for the `ip` address."""
 
     try:
         port_num = int(port_num) if port_num else 0
     except Exception as e:
-        raise ConfigError, "Not a happy port number :/ %s." % e
+        raise ConfigError("Not a happy port number :/ %s." % e)
 
     if not port_num:
         port_num = get_next_available_port_num(constants.default_port_number)
 
         if not port_num:
-            raise ConfigError, "Anvi'o searched a bunch of port numbers starting from %d, but failed\
-                                to find an available one for you. Maybe you should specify one :/"
+            raise ConfigError("Anvi'o searched a bunch of port numbers starting from %d, but failed\
+                                to find an available one for you. Maybe you should specify one :/")
     else:
         if is_port_in_use(port_num):
-            raise ConfigError, "The port number %d seems to be in use :/" % port_num
+            raise ConfigError("The port number %d seems to be in use :/" % port_num)
 
     if os.getuid() and port_num < 1024:
         run.warning("Using the port number %d requires superuser priviliges, which your user does not\
@@ -198,24 +221,24 @@ def is_program_exists(program, dont_raise=False):
     if dont_raise:
         return False
 
-    raise ConfigError, "An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear\
+    raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear\
                         in your path :/ If you are certain you have it on your system (for instance you can run it\
                         by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
-                        % (program, program)
+                        % (program, program))
 
 
 def format_cmdline(cmdline):
     """Takes a cmdline for `run_command` or `run_command_STDIN`, and makes it beautiful."""
     if not cmdline or (not isinstance(cmdline, str) and not isinstance(cmdline, list)):
-        raise ConfigError, "You made ultis::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
+        raise ConfigError("You made ultis::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
                             or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function\
                             is always False, therefore if you send a string type, it will be split into a list prior to being\
-                            sent to subprocess."
+                            sent to subprocess.")
 
     if isinstance(cmdline, str):
-        cmdline = map(lambda x: str(x), cmdline.split(' '))
+        cmdline = [str(x) for x in cmdline.split(' ')]
     else:
-        cmdline = map(lambda x: str(x), cmdline)
+        cmdline = [str(x) for x in cmdline]
 
     return cmdline
 
@@ -238,11 +261,11 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         log_file.close()
 
         if ret_val < 0:
-            raise ConfigError, "command was terminated"
+            raise ConfigError("command was terminated")
         else:
             return ret_val
     except OSError as e:
-        raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
+        raise ConfigError("command was failed for the following reason: '%s' ('%s')" % (e, cmdline))
 
 
 def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
@@ -259,14 +282,10 @@ def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_c
             with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
 
         p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
-        ret_val = p.communicate(input=input_data)[0]
-
-        if ret_val < 0:
-            raise ConfigError, "command was terminated"
-        else:
-            return ret_val.decode()
+        ret_val = p.communicate(input=input_data.encode('utf-8'))[0]
+        return ret_val.decode()
     except OSError as e:
-        raise ConfigError, "command was failed for the following reason: '%s' ('%s')" % (e, cmdline)
+        raise ConfigError("command was failed for the following reason: '%s' ('%s')" % (e, cmdline))
 
 
 def get_command_output_from_shell(cmd_line):
@@ -275,7 +294,7 @@ def get_command_output_from_shell(cmd_line):
     try:
         out_bytes = subprocess.check_output(cmd_line.split(), stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        out_bytes = e.output
+        out_bytes = e.output.decode("utf-8")
         ret_code = e.returncode
 
     return out_bytes, ret_code
@@ -287,11 +306,11 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     num_fields = len(a[0])
 
     if len(header) != num_fields:
-        raise ConfigError, "store array: header length (%d) differs from data (%d)..." % (len(header), num_fields)
+        raise ConfigError("store array: header length (%d) differs from data (%d)..." % (len(header), num_fields))
 
     for col in exclude_columns:
         if not col in header:
-            raise ConfigError, "store array: column %s is not in the header array..."
+            raise ConfigError("store array: column %s is not in the header array...")
 
     exclude_indices = set([header.index(c) for c in exclude_columns])
 
@@ -317,7 +336,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         f = file_obj
 
     if not headers:
-        headers = ['key'] + sorted(d.values()[0].keys())
+        headers = ['key'] + sorted(list(d.values())[0].keys())
 
     f.write('%s\n' % '\t'.join(headers))
 
@@ -327,11 +346,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             try:
                 val = d[k][header]
             except KeyError:
-                raise ConfigError, "Header ('%s') is not found in the dict :/" % (header)
+                raise ConfigError("Header ('%s') is not found in the dict :/" % (header))
             except TypeError:
-                raise ConfigError, "Your dictionary is not properly formatted to be exported\
+                raise ConfigError("Your dictionary is not properly formatted to be exported\
                                     as a TAB-delimited file :/ You ask for '%s', but it is not\
-                                    even a key in the dictionary" % (header)
+                                    even a key in the dictionary" % (header))
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
@@ -351,7 +370,7 @@ def HTMLColorToRGB(colorstring, scaled=True):
     colorstring = colorstring.strip()
     if colorstring[0] == '#': colorstring = colorstring[1:]
     if len(colorstring) != 6:
-        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
+        raise ValueError("input #%s is not in #RRGGBB format" % colorstring)
     r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
     r, g, b = [int(n, 16) for n in (r, g, b)]
 
@@ -462,8 +481,8 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], sepa
                 try:
                     d[index].append(fields[index])
                 except:
-                    raise ConfigError, "get_column_data_from_TAB_delim_file is speaking: The file you sent\
-                                        does not have data for the column index %d. Something is wrong :/" % (index)
+                    raise ConfigError("get_column_data_from_TAB_delim_file is speaking: The file you sent\
+                                        does not have data for the column index %d. Something is wrong :/" % (index))
 
     return d
 
@@ -510,8 +529,8 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     columns = [columns[i] for i in fields_of_interest]
 
     if not len(columns):
-        raise ConfigError, "Only a subset (%d) of fields were requested by the caller, but none of them was found\
-                            in the matrix (%s) :/" % (len(cols_to_return), file_path)
+        raise ConfigError("Only a subset (%d) of fields were requested by the caller, but none of them was found\
+                            in the matrix (%s) :/" % (len(cols_to_return), file_path))
 
     id_counter = 0
     for line in input_matrix.readlines():
@@ -536,7 +555,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         # remove clutter
         os.remove(file_path)
 
-    sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.iteritems()])
+    sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.items()])
 
     return id_to_sample_dict, sample_to_id_dict, columns, vectors
 
@@ -545,7 +564,7 @@ def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
 
-    while fasta.next():
+    while next(fasta):
         ids.append(fasta.id)
 
     return ids
@@ -555,7 +574,7 @@ def get_read_lengths_from_fasta(input_file):
     contig_lengths = {}
 
     fasta = u.SequenceSource(input_file)
-    while fasta.next():
+    while next(fasta):
         contig_lengths[fasta.id] = len(fasta.seq)
 
     fasta.close()
@@ -569,7 +588,7 @@ def get_GC_content_for_FASTA_entries(file_path):
     GC_content_dict = {}
 
     fasta = u.SequenceSource(file_path)
-    while fasta.next():
+    while next(fasta):
         GC_content_dict[fasta.id] = get_GC_content_for_sequence(fasta.seq)
 
     return GC_content_dict
@@ -602,16 +621,16 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     try:
         local_time = float(local_time)
     except ValueError:
-        raise ConfigError, "utils::get_time_to_date is called with bad local_time."
+        raise ConfigError("utils::get_time_to_date is called with bad local_time.")
 
     return time.strftime(fmt, time.localtime(local_time))
 
 
 def concatenate_files(dest_file, file_list):
     if not dest_file:
-        raise ConfigError, "Destination cannot be empty."
+        raise ConfigError("Destination cannot be empty.")
     if not len(file_list):
-        raise ConfigError, "File list cannot be empty."
+        raise ConfigError("File list cannot be empty.")
     for f in file_list:
         filesnpaths.is_file_exists(f)
     filesnpaths.is_output_file_writable(dest_file)
@@ -659,8 +678,8 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     # points based on the length of the contig and desired split size:
     optimal_number_of_splits = int(contig_length / split_length)
 
-    optimal_split_length = contig_length / optimal_number_of_splits
-    optimal_break_points = range(optimal_split_length, contig_length - optimal_split_length + 1, optimal_split_length)
+    optimal_split_length = int(contig_length / optimal_number_of_splits)
+    optimal_break_points = list(range(optimal_split_length, contig_length - optimal_split_length + 1, optimal_split_length))
 
     # now we will identify the very bad break points that we can't find a way to split around
     bad_break_points = set([])
@@ -671,7 +690,7 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
             # optimal break point hits a gene. we shall search towards both directions
             # to find a better break point:
             new_break_point = None
-            for s in range(0, split_length / 2):
+            for s in range(0, int(split_length / 2)):
                 if break_point + s in non_coding_positions_in_contig:
                     new_break_point = break_point + s
                     break
@@ -697,14 +716,14 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
         return [(0, contig_length)]
 
     # create start/stop positions from these break points
-    chunks = zip([0] + optimal_break_points[:-1], optimal_break_points) + [(optimal_break_points[-1], contig_length)]
+    chunks = list(zip([0] + optimal_break_points[:-1], optimal_break_points)) + [(optimal_break_points[-1], contig_length)]
 
     return chunks
 
 
 def get_split_start_stops_without_gene_calls(contig_length, split_length):
     """Returns split start stop locations for a given contig length."""
-    num_chunks = contig_length / split_length
+    num_chunks = int(contig_length / split_length)
 
     if num_chunks < 2:
         return [(0, contig_length)]
@@ -768,8 +787,8 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     """Returns a dictionary to translate codons in a gene to nucleotide positions"""
 
     if gene_call['partial']:
-        raise ConfigError, "get_codon_order_to_nt_positions_dict: this simply will not work\
-                            for partial gene calls, and this on *is* a partial one."
+        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work\
+                            for partial gene calls, and this on *is* a partial one.")
 
     start = gene_call['start']
     stop = gene_call['stop']
@@ -793,8 +812,8 @@ def get_DNA_sequence_translated(sequence, gene_callers_id):
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
-        raise ConfigError, "The sequence corresponds to the gene callers id '%s' does not seem to\
-                            have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence)
+        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to\
+                            have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
 
     translated_sequence = ''
 
@@ -813,16 +832,16 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
     if gene_call['contig'] not in contig_sequences_dict:
-        raise ConfigError, "get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
+        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
                             this function does contain the contig name that appears in the gene call.\
-                            Something is wrong here..."
+                            Something is wrong here...")
 
     try:
         contig_sequence = contig_sequences_dict[gene_call['contig']]['sequence']
     except:
-        raise ConfigError, "get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
+        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
                             this function does not seem to be an anvi'o contig sequences dict :/ It\
-                            doesn't have the item 'sequence' in it."
+                            doesn't have the item 'sequence' in it.")
 
     list_of_AAs = []
     for codon_order in codon_order_to_nt_positions:
@@ -864,25 +883,25 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError, "Sample names can't start with digits. Long story. Please specify a sample name\
+            raise ConfigError("Sample names can't start with digits. Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you may want to check '-s' parameter to set\
                                 a sample name if your client permits (otherwise you are going to have to edit\
-                                your input files))."
+                                your input files)).")
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
-            raise ConfigError, "Sample name ('%s') contains characters that anvio does not like. Please\
+            raise ConfigError("Sample name ('%s') contains characters that anvio does not like. Please\
                                 limit the characters that make up the project name to ASCII letters,\
-                                digits, and the underscore character ('_')." % sample_id
+                                digits, and the underscore character ('_')." % sample_id)
 
 
 def is_this_name_OK_for_database(variable_name, content, stringent=True):
     if not content:
-        raise ConfigError, "But the %s is empty? Come on :(" % variable_name
+        raise ConfigError("But the %s is empty? Come on :(" % variable_name)
 
     if content[0] in constants.digits:
-        raise ConfigError, "Sorry, %s can't start with a digit. Long story. Please specify a name\
-                            that starts with an ASCII letter." % variable_name
+        raise ConfigError("Sorry, %s can't start with a digit. Long story. Please specify a name\
+                            that starts with an ASCII letter." % variable_name)
 
     if stringent:
         allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
@@ -890,8 +909,8 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
         allowed_chars = constants.allowed_chars.replace('.', '')
 
     if len([c for c in content if c not in allowed_chars]):
-        raise ConfigError, "Well, the %s contains characters that anvi'o does not like :/ Please limit the characters\
-                            to ASCII letters, digits, and the underscore ('_') character character." % variable_name
+        raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters\
+                            to ASCII letters, digits, and the underscore ('_') character character." % variable_name)
 
 
 def check_contig_names(contig_names, dont_raise=False):
@@ -901,7 +920,7 @@ def check_contig_names(contig_names, dont_raise=False):
         if dont_raise:
             return False
 
-        raise ConfigError, "The name of at least one contig in your BAM file %s anvio does not\
+        raise ConfigError("The name of at least one contig in your BAM file %s anvio does not\
                             like (%s). Please go back to your original files and make sure that\
                             the characters in contig names are limited to to ASCII letters,\
                             digits. Names can also contain underscore ('_'), dash ('-') and dot ('.')\
@@ -909,7 +928,7 @@ def check_contig_names(contig_names, dont_raise=False):
                             re-generate your BAM files and is very sorry for asking you to do that, however,\
                             it is critical for later steps in the analysis." \
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
-                                   ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like]))
+                                   ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like])))
 
     return True
 
@@ -921,7 +940,7 @@ def get_FASTA_file_as_dictionary(file_path):
     d = {}
 
     fasta = u.SequenceSource(file_path)
-    while fasta.next():
+    while next(fasta):
         d[fasta.id] = fasta.seq
 
     return d
@@ -937,12 +956,12 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
         names_file_path = output_fasta_path + '.names'
 
     if output_fasta_path == names_file_path:
-        raise ConfigError, "I can't unique this. Output FASTA file path can't be identical to\
-                            the names file path..."
+        raise ConfigError("I can't unique this. Output FASTA file path can't be identical to\
+                            the names file path...")
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
-        raise ConfigError, "Anvi'o will not unique this. Output FASTA path and names file path should\
-                            be different from the the input file path..."
+        raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should\
+                            be different from the the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
@@ -952,7 +971,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
     names_file = open(names_file_path, 'w')
 
     names_dict = {}
-    while input_fasta.next():
+    while next(input_fasta):
         output_fasta.store(input_fasta, split=False, store_frequencies=store_frequencies_in_deflines)
         names_file.write('%s\t%s\n' % (input_fasta.id, ','.join(input_fasta.ids)))
 
@@ -1069,13 +1088,13 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
     output = open(output_file, 'w')
 
     samples = sorted(samples_dict.keys())
-    sample_mapping_categories = sorted([k for k in sample_mapping_dict.values()[0].keys() if k != 'colors']) if sample_mapping_dict else None
-    unit_mapping_categories = sorted([k for k in unit_mapping_dict.keys() if k not in ['colors', 'labels']]) if unit_mapping_dict else None
+    sample_mapping_categories = sorted([k for k in list(sample_mapping_dict.values())[0].keys() if k != 'colors']) if sample_mapping_dict else None
+    unit_mapping_categories = sorted([k for k in list(unit_mapping_dict.keys()) if k not in ['colors', 'labels']]) if unit_mapping_dict else None
 
     sample_mapping_category_types = []
     if sample_mapping_dict:
         for category in sample_mapping_categories:
-            if RepresentsFloat(sample_mapping_dict.values()[0][category]):
+            if RepresentsFloat(list(sample_mapping_dict.values())[0][category]):
                 sample_mapping_category_types.append('double')
             else:
                 sample_mapping_category_types.append('string')
@@ -1177,11 +1196,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 
 def is_ascii_only(text):
     """test whether 'text' is composed of ASCII characters only"""
-    try:
-        text.decode('ascii')
-    except UnicodeDecodeError:
-        return False
-    return True
+    return all(ord(c) < 128 for c in text)
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
@@ -1191,13 +1206,13 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     """Takes a file path, returns a dictionary."""
 
     if expected_fields and (not isinstance(expected_fields, list) and not isinstance(expected_fields, set)):
-        raise ConfigError, "'expected_fields' variable must be a list (or a set)."
+        raise ConfigError("'expected_fields' variable must be a list (or a set).")
 
     if only_expected_fields and not expected_fields:
-        raise ConfigError, "'only_expected_fields' variable guarantees that there are no more fields present\
+        raise ConfigError("'only_expected_fields' variable guarantees that there are no more fields present\
                             in the input file but the ones requested with 'expected_fields' variable. If you\
                             need to use this flag, you must also be explicit about what fields you expect to\
-                            find in the file."
+                            find in the file.")
 
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
@@ -1216,8 +1231,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         columns = column_names
 
         if num_fields != len(columns):
-            raise  ConfigError, "Number of column names declared (%d) differs from the number of columns\
-                                 found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path)
+            raise  ConfigError("Number of column names declared (%d) differs from the number of columns\
+                                 found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path))
 
         # now we set the column names. if the file had its header, we must discard
         # the first line. so here we go:
@@ -1229,17 +1244,17 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     if expected_fields:
         for field in expected_fields:
             if field not in columns:
-                raise ConfigError, "The file '%s' does not contain the right type of header. It was expected\
+                raise ConfigError("The file '%s' does not contain the right type of header. It was expected\
                                     to have these: '%s', however it had these: '%s'" % (file_path,
                                                                                         ', '.join(expected_fields),
-                                                                                        ', '.join(columns[1:]))
+                                                                                        ', '.join(columns[1:])))
 
     if only_expected_fields:
         for field in columns:
             if field not in expected_fields:
-                raise ConfigError, "There are more fields in the file '%s' than the expected fields :/\
+                raise ConfigError("There are more fields in the file '%s' than the expected fields :/\
                                     Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
-                                    funciton is called with `only_expected_fields` flag turned on."
+                                    funciton is called with `only_expected_fields` flag turned on.")
 
     d = {}
     line_counter = 0
@@ -1247,8 +1262,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     for line in f.readlines():
         if ascii_only:
             if not is_ascii_only(line):
-                raise ConfigError, "The input file conitans non-ascii characters at line number %d. Those lines\
-                                    either should be removed, or edited." % (line_counter + 2)
+                raise ConfigError("The input file conitans non-ascii characters at line number %d. Those lines\
+                                    either should be removed, or edited." % (line_counter + 2))
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
@@ -1256,16 +1271,19 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             updated_line_fields = []
             for i in range(0, len(line_fields)):
                 try:
-                    updated_line_fields.append(column_mapping[i](line_fields[i]))
+                    if line_fields[i] == None and column_mapping[i] in [float, int]:
+                        updated_line_fields.append(column_mapping[i](0))
+                    else:
+                        updated_line_fields.append(column_mapping[i](line_fields[i]))
                 except NameError:
-                    raise ConfigError, "Mapping function '%s' did not work on value '%s'. These functions can be native\
+                    raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native\
                                         Python functions, such as 'str', 'int', or 'float', or anonymous functions\
-                                        defined using lambda notation." % (column_mapping[i], line_fields[i])
+                                        defined using lambda notation." % (column_mapping[i], line_fields[i]))
                 except TypeError:
-                    raise ConfigError, "Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i]
+                    raise ConfigError("Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i])
                 except ValueError:
-                    raise ConfigError, "Mapping funciton '%s' did not like the value '%s' in column number %d\
-                                        of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path)
+                    raise ConfigError("Mapping funciton '%s' did not like the value '%s' in column number %d\
+                                        of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
             line_fields = updated_line_fields
 
         if indexing_field == -1:
@@ -1288,7 +1306,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         # we don't want to through keys in d each time we want to add stuff to 'dict_to_append', so we keep keys we
         # find in the first item in the dict in another variable. this is potentially very dangerous if not every
         # item in 'd' has identical set of keys.
-        keys = d.values()[0].keys()
+        keys = list(d.values())[0].keys()
 
         for entry in dict_to_append:
             if entry not in d:
@@ -1296,8 +1314,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                 # ask us to add None for these entries via none_for_missing, we are going to make a noise,
                 # otherwise we will tolerate it.
                 if not assign_none_for_missing:
-                    raise ConfigError, "Appending entries to the already existing dictionary from file '%s' failed\
-                                        as the entry %s does not appear to be in the file." % (file_path, entry)
+                    raise ConfigError("Appending entries to the already existing dictionary from file '%s' failed\
+                                        as the entry %s does not appear to be in the file." % (file_path, entry))
                 else:
                     for key in keys:
                         dict_to_append[entry][key] = none_value
@@ -1314,7 +1332,7 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
     # removes any entry from d, where the value of the 'item' of items in d does not match
     # with 'accepted_values'
     if not isinstance(accepted_values_set, type(set([]))):
-        raise ConfigError, "get_filtered_dict: values must be type of set([])."
+        raise ConfigError("get_filtered_dict: values must be type of set([]).")
 
     filtered_dict = {}
 
@@ -1338,20 +1356,20 @@ def anvio_hmm_target_term_to_alphabet_and_context(target):
     elif len(fields) == 1:
         alphabet = fields[0]
     else:
-        raise ConfigError, "HMM stuff is upset with you. There are unexpected number of fields in the target\
-                            file."
+        raise ConfigError("HMM stuff is upset with you. There are unexpected number of fields in the target\
+                            file.")
 
     if alphabet not in ['AA', 'DNA', 'RNA']:
-        raise ConfigError, "The alphabet in the target file (%s) isnot one of the alphabets anvi'o knows how to\
-                            work with. Here is a list for you to choose from: 'DNA', 'RNA', or 'AA'" % alphabet
+        raise ConfigError("The alphabet in the target file (%s) isnot one of the alphabets anvi'o knows how to\
+                            work with. Here is a list for you to choose from: 'DNA', 'RNA', or 'AA'" % alphabet)
 
     if context not in ['GENE', 'CONTIG', None]:
-        raise ConfigError, "The context you defined in the target file (%s) does not make any sense to anvi'o.\
-                            It would have, if you had chosen one of these: 'GENE', 'CONTIG'." % context
+        raise ConfigError("The context you defined in the target file (%s) does not make any sense to anvi'o.\
+                            It would have, if you had chosen one of these: 'GENE', 'CONTIG'." % context)
 
     if alphabet == 'AA' and context == 'CONTIG':
-        raise ConfigError, "You can't use the AA alphabet with the CONTIGS context :/ You need to set your target\
-                            again. 'AA' or 'AA:GENE' would have worked much better."
+        raise ConfigError("You can't use the AA alphabet with the CONTIGS context :/ You need to set your target\
+                            again. 'AA' or 'AA:GENE' would have worked much better.")
 
     if not context:
         context = 'GENE'
@@ -1380,7 +1398,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
     """
     if not isinstance(source_dirs, type([])):
-        raise ConfigError, "source_dirs parameter must be a list (get_HMM_sources_dictionary)."
+        raise ConfigError("source_dirs parameter must be a list (get_HMM_sources_dictionary).")
 
     sources = {}
     allowed_chars_for_proper_sources = constants.allowed_chars.replace('.', '').replace('-', '')
@@ -1393,17 +1411,17 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             source = source[:-1]
 
         if not PROPER(os.path.basename(source)):
-            raise ConfigError, "One of the search database directories ('%s') contains characters in its name\
+            raise ConfigError("One of the search database directories ('%s') contains characters in its name\
                                 anvio does not like. Directory names should be at least three characters long\
                                 and must not contain any characters but ASCII letters, digits and\
-                                underscore" % os.path.basename(source)
+                                underscore" % os.path.basename(source))
 
         for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt']:
             if not os.path.exists(os.path.join(source, f)):
-                raise ConfigError, "Each search database directory must contain following files:\
+                raise ConfigError("Each search database directory must contain following files:\
                                     'kind.txt', 'reference.txt', 'genes.txt', 'target.txt', and\
                                     'genes.hmm.gz'. %s does not seem to be a proper source." % \
-                                                os.path.basename(source)
+                                                os.path.basename(source))
 
         ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
         kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
@@ -1415,24 +1433,24 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             kind, domain = kind.split(':')
 
         if not PROPER(kind):
-            raise ConfigError, "'kind.txt' defines the kind of search this database offers. The kind term must be a single\
+            raise ConfigError("'kind.txt' defines the kind of search this database offers. The kind term must be a single\
                                 word that is at least three characters long, and must not contain any characters but\
                                 ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
-                                or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind)
+                                or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind))
 
         if domain and not PROPER(domain):
-            raise ConfigError, "That's lovely that you decided to specify a domain extension for your HMM collection in the\
+            raise ConfigError("That's lovely that you decided to specify a domain extension for your HMM collection in the\
                                 'kind.txt'. Although, your domain term is not a good one, as it must be a single\
                                 word that is at least three characters long, and without any characters but\
                                 ASCII letters, digits, and underscore. Confused? That's fine. Send an e-mail to the anvi'o\
-                                developers, and they will help you!"
+                                developers, and they will help you!")
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
                                              'domain': domain,
-                                             'genes': genes.keys(),
+                                             'genes': list(genes.keys()),
                                              'target': target,
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
@@ -1458,21 +1476,21 @@ def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
-        u = urllib2.urlopen(url)
-    except Exception, e:
-        raise ConfigError, "Something went wrong with your donwload attempt. Here is the\
-                            problem: '%s'" % e
+        u = urllib.request.urlopen(url)
+    except Exception as e:
+        raise ConfigError("Something went wrong with your donwload attempt. Here is the\
+                            problem: '%s'" % e)
 
     meta = u.info()
 
     try:
         file_size = int(meta.getheaders("Content-Length")[0])
     except:
-        raise ConfigError, "Anvi'o failed to determine the size of the file you want to download, and\
+        raise ConfigError("Anvi'o failed to determine the size of the file you want to download, and\
                             decided to quit because it's programmers didn't put enough effort into their\
                             coding to handle that case. If you end up having this error, please send them\
                             an e-mail. It will make them feel so embarrassed, that they will fix this\
-                            right away."
+                            right away.")
 
     f = open(output_file_path, 'wb')
 
@@ -1545,40 +1563,40 @@ class Mailer:
         def get_option(self, config, section, option, cast):
             try:
                 return cast(config.get(section, option).strip())
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 return None
 
         filesnpaths.is_file_exists(config_ini_path)
 
         self.config_ini_path = config_ini_path
 
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
 
         try:
             config.read(self.config_ini_path)
         except Exception as e:
-            raise ConfigError, "Well, the file '%s' does not seem to be a config file at all :/ Here\
-                                is what the parser had to complain about it: %s" % (self.config_ini_path, e)
+            raise ConfigError("Well, the file '%s' does not seem to be a config file at all :/ Here\
+                                is what the parser had to complain about it: %s" % (self.config_ini_path, e))
 
         section = 'SMTP'
 
         if section not in config.sections():
-            raise ConfigError, "The config file '%s' does not seem to have an 'SMTP' section, which\
+            raise ConfigError("The config file '%s' does not seem to have an 'SMTP' section, which\
                                 is essential for Mailer class to learn server and authentication\
                                 settings. Please check the documentation to create a proper config\
-                                file." % self.config_ini_path
+                                file." % self.config_ini_path)
 
 
         for option, value in config.items(section):
-            if option not in self.config_template[section].keys():
-                raise ConfigError, 'Unknown option, "%s", under section "%s".' % (option, section)
+            if option not in list(self.config_template[section].keys()):
+                raise ConfigError('Unknown option, "%s", under section "%s".' % (option, section))
             if 'test' in self.config_template[section][option] and not self.config_template[section][option]['test'](value):
                 if 'required' in self.config_template[section][option]:
                     r = self.config_template[section][option]['required']
-                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".\
-                                        What is expected is %s.' % (value, option, section, r)
+                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".\
+                                        What is expected is %s.' % (value, option, section, r))
                 else:
-                    raise ConfigError, 'Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section)
+                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
 
         self.run.warning('', header="SMTP Configuration is read", lc='cyan')
         for option, value in config.items(section):
@@ -1593,7 +1611,7 @@ class Mailer:
 
     def connect(self):
         if not self.server_address or not self.server_port:
-            raise ConfigError, "SMTP server has not been configured to send e-mails :/"
+            raise ConfigError("SMTP server has not been configured to send e-mails :/")
 
         try:
            self.server = smtplib.SMTP(self.server_address, self.server_port)
@@ -1606,8 +1624,8 @@ class Mailer:
                self.server.login(self.username, self.password)
 
         except Exception as e:
-            raise ConfigError, "Something went wrong while connecting to the SMTP server :/ This is what we\
-                                know about the problem: %s" % e
+            raise ConfigError("Something went wrong while connecting to the SMTP server :/ This is what we\
+                                know about the problem: %s" % e)
 
 
     def disconnect(self):
@@ -1634,8 +1652,8 @@ class Mailer:
             self.server.sendmail(self.from_address, [to], msg.as_string())
         except Exception as e:
             self.progress.end()
-            raise ConfigError, "Something went wrong while trying to connet send your e-mail :(\
-                                This is what we know about the problem: %s" % e
+            raise ConfigError("Something went wrong while trying to connet send your e-mail :(\
+                                This is what we know about the problem: %s" % e)
 
 
         self.progress.update('Disconnecting ..')

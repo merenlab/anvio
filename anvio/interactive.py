@@ -74,8 +74,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.skip_init_functions = A('skip_init_functions')
 
         if self.pan_db_path and self.profile_db_path:
-            raise ConfigError, "You can't set both a profile database and a pan database in arguments\
-                                you send to this class. What are you doing?"
+            raise ConfigError("You can't set both a profile database and a pan database in arguments\
+                                you send to this class. What are you doing?")
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -93,7 +93,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
-            raise ConfigError, "You can't anvi-interactive in manual mode with a collection name."
+            raise ConfigError("You can't anvi-interactive in manual mode with a collection name.")
 
         self.external_clustering = external_clustering
 
@@ -146,7 +146,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
-            self.p_meta['available_clusterings'] = self.clusterings.keys()
+            self.p_meta['available_clusterings'] = list(self.clusterings.keys())
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
         if not self.state_autoload and 'default' in self.states_table.states:
@@ -157,18 +157,18 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
-                raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
+                raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
                                     of splits that is required by the interactive interface. It may have been generated\
                                     by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
                                     clustering step may have been skipped by anvi-merge because you had too many stplits\
                                     to get the clustering in a reasonable amount of time. Please read the help menu for\
                                     anvi-merge, and/or refer to the tutorial: \
-                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging"
+                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
             else:
-                raise ConfigError, "This single profile database does not seem to have any hierarchical clustering\
+                raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
                                     that is required by the interactive interface. You must use `--cluster-contigs`\
                                     flag for single profiles to access to this functionality. Please read the help\
-                                    menu for anvi-profile, and/or refer to the tutorial."
+                                    menu for anvi-profile, and/or refer to the tutorial.")
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
@@ -195,15 +195,15 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_manual_mode(self, args):
         if self.contigs_db_path:
-            raise ConfigError, "When you want to use the interactive interface in manual mode, you must\
-                                not use a contigs database."
+            raise ConfigError("When you want to use the interactive interface in manual mode, you must\
+                                not use a contigs database.")
 
         if not self.profile_db_path:
-            raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
+            raise ConfigError("Even when you want to use the interactive interface in manual mode, you need\
                                 to provide a profile database path. But you DO NOT need an already existing\
                                 profile database, since anvi'o will generate an empty one for you. The profile\
                                 database in this mode only used to read or store the 'state' of the display\
-                                for visualization purposes, or to allow you to create and store collections."
+                                for visualization purposes, or to allow you to create and store collections.")
 
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
@@ -211,25 +211,25 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
             profile_db = ProfileDatabase(self.profile_db_path)
             if profile_db.meta['contigs_db_hash']:
-                raise ConfigError, "Well. It seems the profile database is associated with a contigs database,\
+                raise ConfigError("Well. It seems the profile database is associated with a contigs database,\
                                     which means using it in manual mode is not the best way to use it. Probably\
                                     what you wanted to do is to let the manual mode create a new profile database\
                                     for you. Simply type in a new profile database path (it can be a file name\
-                                    that doesn't exist)."
+                                    that doesn't exist).")
 
         if not self.tree:
-            raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
-                                at least the tree file. Please see the documentation for help."
+            raise ConfigError("When you are running the interactive interface in manual mode, you must declare\
+                                at least the tree file. Please see the documentation for help.")
 
         if self.view:
-            raise ConfigError, "You can't use '--view' parameter when you are running the interactive interface\
-                                in manual mode"
+            raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
+                                in manual mode")
 
         if self.show_views:
-            raise ConfigError, "Sorry, there are no views to show in manual mode :/"
+            raise ConfigError("Sorry, there are no views to show in manual mode :/")
 
         if self.show_states:
-            raise ConfigError, "Sorry, there are no states to show in manual mode :/"
+            raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
         filesnpaths.is_file_exists(self.tree)
         newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
@@ -276,7 +276,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
 
-        self.displayed_item_names_ordered = self.views[self.default_view]['dict'].keys()
+        self.displayed_item_names_ordered = list(self.views[self.default_view]['dict'].keys())
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
@@ -292,9 +292,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
             if num_names_missing_in_FASTA:
-                raise ConfigError, 'Some of the names in your view data does not have corresponding entries in the\
+                raise ConfigError('Some of the names in your view data does not have corresponding entries in the\
                                     FASTA file you provided. Here is an example to one of those %d names that occur\
-                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop())
+                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop()))
 
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
@@ -324,11 +324,11 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             sys.exit()
 
         if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
+            raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name)
 
         completeness = Completeness(args.contigs_db)
         if not len(completeness.sources):
-            raise ConfigError, "HMM's were not run for this contigs database :/"
+            raise ConfigError("HMM's were not run for this contigs database :/")
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database:
@@ -416,8 +416,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_pan_mode(self, args):
         if not self.pan_db_path:
-            raise ConfigError, "So you want to display a pan genome without a pan database? Anvi'o is\
-                                confused :/"
+            raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is\
+                                confused :/")
 
         PanSuperclass.__init__(self, args)
 
@@ -438,12 +438,12 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_full_mode(self, args):
         if not self.contigs_db_path:
-            raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
-                                should use the `--manual` flag if that's what your intention)."
+            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you\
+                                should use the `--manual` flag if that's what your intention).")
 
         if not self.profile_db_path:
-            raise ConfigError, "So you want to run anvi'o in full mode, but without a profile database?\
-                                Well. This does not make any sense."
+            raise ConfigError("So you want to run anvi'o in full mode, but without a profile database?\
+                                Well. This does not make any sense.")
 
         if not args.skip_init_functions:
             self.init_functions()
@@ -485,7 +485,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                          'Via "%s" table' % self.views[view]['table_name'],
                          lc='crimson',
                          mc='green' if view == self.default_view else 'crimson')
-            print
+            print()
             sys.exit()
 
         if self.show_states:
@@ -495,7 +495,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                          'Last modified %s' % self.states_table.states[state]['last_modified'],
                          lc='crimson',
                          mc='crimson')
-            print
+            print()
             sys.exit()
 
         # if the user has an additional view data, load it up into the self.views dict.
@@ -504,8 +504,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             additional_view_columns = utils.get_columns_of_TAB_delim_file(self.additional_view_path)
 
             if not additional_view_columns[-1] == '__parent__':
-                raise ConfigError, "The last column of the additional view must be '__parent__' with the proper\
-                                    parent information for each split."
+                raise ConfigError("The last column of the additional view must be '__parent__' with the proper\
+                                    parent information for each split.")
 
             column_mapping = [str] + [float] * (len(additional_view_columns) - 1) + [str]
 
@@ -516,8 +516,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the user specifies a view, set it as default:
         if self.view:
             if not self.view in self.views:
-                raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
-                                          available views by running this program with --show-views flag." % self.view
+                raise ConfigError("The requested view ('%s') is not available for this run. Please see\
+                                          available views by running this program with --show-views flag." % self.view)
 
             self.default_view = self.view
 
@@ -552,8 +552,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.state_autoload:
             if not self.state_autoload in self.states_table.states:
-                raise ConfigError, "The requested state ('%s') is not available for this run. Please see\
-                                          available states by running this program with --show-states flag." % self.state_autoload
+                raise ConfigError("The requested state ('%s') is not available for this run. Please see\
+                                          available states by running this program with --show-states flag." % self.state_autoload)
 
 
     def check_names_consistency(self):
@@ -570,24 +570,24 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         splits_in_additional_view_but_not_in_tree = splits_in_additional_view - splits_in_tree if splits_in_additional_view else set([])
 
         if splits_in_additional_view_but_not_in_tree:
-            raise ConfigError, "There are some split names in your additional view data file ('%s') that are missing from\
+            raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from\
                                 split names characterized in the database. There are in fact %d of them. For instance,\
                                 here is a random split name that is in your additional view data, yet not in the database:\
                                 '%s'. This is not going to work for anvi'o :/" \
-                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop())
+                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
             example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
-            raise ConfigError, 'Some split names found in your tree are missing in your view data. Hard to\
+            raise ConfigError('Some split names found in your tree are missing in your view data. Hard to\
                                 know what cuased this, but essentially your tree and your view does not\
                                 seem to be compatible. Here is a couple of splits that appear in the tree\
-                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view)
+                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view))
 
         if splits_in_tree_but_not_in_database:
-            raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
+            raise ConfigError('Some split names found in your tree are missing from your database. Hard to\
                                 know why is this the case, but here is a couple of them: %s'\
-                                    % ', '.join(list(splits_in_tree_but_not_in_database)[0:5])
+                                    % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
             splits_in_additional_layers = set(sorted([l.split('\t')[0] for l in open(self.additional_layers_path).readlines()[1:]]))
@@ -610,7 +610,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def prune_view_dicts(self):
         self.progress.new('Pruning view dicts')
         self.progress.update('...')
-        splits_in_views = set(self.views.values()[0]['dict'].keys())
+        splits_in_views = set(list(self.views.values())[0]['dict'].keys())
         splits_to_remove = splits_in_views - set(self.displayed_item_names_ordered)
 
         for view in self.views:

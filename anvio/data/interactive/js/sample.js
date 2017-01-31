@@ -556,73 +556,71 @@ function drawSamplesLayers(settings) {
         }
     }
 
-    if (samples_start == -1 || samples_end == -1)
-        return;
-
-    // draw sample backgrounds and titles.
-    for (var i=0; i < settings['samples-layer-order'].length; i++)
+    if (!(samples_start == -1 || samples_end == -1))
     {
-        var samples_layer_name     = settings['samples-layer-order'][i];
-        var samples_layer_settings = settings['samples-layers'][samples_layer_name];
-        var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
-        var min = samples_layer_min[samples_layer_name];
-        var max = samples_layer_max[samples_layer_name];
-
-        if (samples_layer_settings['height'] == 0) {
-            continue;
-        }
-
-        if (samples_layer_settings['data-type'] == 'numeric')
+        // draw sample backgrounds and titles.
+        for (var i=0; i < settings['samples-layer-order'].length; i++)
         {
-            if (samples_layer_settings['type'] != 'intensity')
-            {
-                var start = samples_layer_boundaries[i][0];
-                var end   = samples_layer_boundaries[i][1];
+            var samples_layer_name     = settings['samples-layer-order'][i];
+            var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+            var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
+            var min = samples_layer_min[samples_layer_name];
+            var max = samples_layer_max[samples_layer_name];
 
-                drawPhylogramRectangle('samples',
-                    'samples_background',
-                    layer_boundaries[samples_start][0],
-                    0 - end + (end - start) / 2,
-                    end - start,
-                    layer_boundaries[samples_end][1] - layer_boundaries[samples_start][0],
-                    samples_layer_settings['color'],
-                    0.2,
-                    false);
+            if (samples_layer_settings['height'] == 0) {
+                continue;
             }
 
-            drawText('samples', {
-                'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
-            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color'], 'baseline');
+            if (samples_layer_settings['data-type'] == 'numeric')
+            {
+                if (samples_layer_settings['type'] != 'intensity')
+                {
+                    var start = samples_layer_boundaries[i][0];
+                    var end   = samples_layer_boundaries[i][1];
 
-            drawText('samples', {
-                'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - samples_layer_boundaries[i][1] + samples_layer_settings['height'] / 6
-            }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
+                    drawPhylogramRectangle('samples',
+                        'samples_background',
+                        layer_boundaries[samples_start][0],
+                        0 - end + (end - start) / 2,
+                        end - start,
+                        layer_boundaries[samples_end][1] - layer_boundaries[samples_start][0],
+                        samples_layer_settings['color'],
+                        0.2,
+                        false);
+                }
 
-            drawText('samples', {
-                'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - samples_layer_boundaries[i][0]
-            }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
+                drawText('samples', {
+                    'x': layer_boundaries[samples_end][1] + 20,
+                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
+                }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color'], 'baseline');
 
-        }
-        else if (samples_layer_settings['data-type'] == 'stack-bar')
-        {
-            drawText('samples', {
-                'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
-            }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191', 'baseline');
-        }
-        else
-        {
-            drawText('samples', {
-                'x': layer_boundaries[samples_end][1] + 20,
-                'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 2
-            }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color'], 'baseline');   
+                drawText('samples', {
+                    'x': layer_boundaries[samples_end][1] + 20,
+                    'y': 0 - samples_layer_boundaries[i][1] + samples_layer_settings['height'] / 6
+                }, max , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
+
+                drawText('samples', {
+                    'x': layer_boundaries[samples_end][1] + 20,
+                    'y': 0 - samples_layer_boundaries[i][0]
+                }, min , samples_layer_settings['height'] / 6 + 'px', 'left', '#000000', 'baseline');
+
+            }
+            else if (samples_layer_settings['data-type'] == 'stack-bar')
+            {
+                drawText('samples', {
+                    'x': layer_boundaries[samples_end][1] + 20,
+                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
+                }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191', 'baseline');
+            }
+            else
+            {
+                drawText('samples', {
+                    'x': layer_boundaries[samples_end][1] + 20,
+                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 2
+                }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color'], 'baseline');   
+            }
         }
     }
-
-
     drawSamplesTree(settings, sample_xy);
 }
 

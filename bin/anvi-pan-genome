@@ -97,12 +97,12 @@ if __name__ == '__main__':
     try:
         pan = panops.Pangenome(args, run, progress)
         pan.process()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
-    except HDF5Error, e:
-        print e
+    except HDF5Error as e:
+        print(e)
         sys.exit(-2)

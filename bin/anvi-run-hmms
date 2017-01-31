@@ -29,14 +29,14 @@ def main(args):
     # first check whether this computer is capable of doing an HMM search.
     missing_programs =  utils.get_missing_programs_for_hmm_analysis()
     if missing_programs:
-        raise ConfigError, "Well, in order to run this program, you need %s to be installed on your system." %\
-                                                                                     (', and '.join(missing_programs))
+        raise ConfigError("Well, in order to run this program, you need %s to be installed on your system." %\
+                                                                                     (', and '.join(missing_programs)))
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
-            raise ConfigError, 'No such file or directory: "%s"' % args.hmm_profile_dir
+            raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
         sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
@@ -65,9 +65,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

@@ -36,6 +36,7 @@ if __name__ == '__main__':
                                         and update your profiles, but it is important to make sure defaults are\
                                         reasonable for your sample.')
     groupC = parser.add_argument_group('CONTIGS', 'Sweet parameters of convenience')
+    groupZ = parser.add_argument_group('PERFORMANCE', 'Performance settings for profiler')
 
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
@@ -60,15 +61,18 @@ if __name__ == '__main__':
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
     groupC.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
     groupC.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
+    groupZ.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupZ.add_argument(*anvio.A('queue-size'), **anvio.K('queue-size'))
+    groupZ.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
     args = parser.parse_args()
 
     try:
         profiler = anvio.profiler.BAMProfiler(args)
         profiler._run()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

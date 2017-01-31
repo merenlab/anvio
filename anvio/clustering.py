@@ -16,7 +16,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 with terminal.SuppressAllOutput():
-    from ete2 import Tree
+    from ete3 import Tree
 
 
 distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
@@ -43,7 +43,7 @@ progress.verbose = False
 
 
 def set_num_components_for_each_matrix(config):
-    denominator = float(sum([r['ratio'] for r in config.matrices_dict.values()]))
+    denominator = float(sum([r['ratio'] for r in list(config.matrices_dict.values())]))
     for matrix in config.matrices:
         m = config.matrices_dict[matrix]
         num_components_for_ratio = int(round(config.num_components * (m['ratio'] / denominator)))
@@ -63,31 +63,31 @@ def is_distance_and_linkage_compatible(distance, linkage):
     is_distance_metric_OK(distance)
 
     if distance == 'yule' and linkage != 'single':
-        raise ConfigError, "The cistance metric 'yule' will only work with the linkage 'single' :/"
+        raise ConfigError("The cistance metric 'yule' will only work with the linkage 'single' :/")
 
     try:
         hierarchy.linkage([(1, 0), (0, 1), (1, 1)], metric=distance, method=linkage)
     except Exception as exception:
-        raise ConfigError, "Someone is upset here: %s" % exception
+        raise ConfigError("Someone is upset here: %s" % exception)
 
 
 def is_linkage_method_OK(linkage):
     if linkage not in linkage_methods:
-        raise ConfigError, "Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here\
-                            is a list of all the available ones: %s" % (linkage, ', '.join(linkage_methods))
+        raise ConfigError("Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here\
+                            is a list of all the available ones: %s" % (linkage, ', '.join(linkage_methods)))
 
 
 def is_distance_metric_OK(distance):
     if distance not in distance_metrics:
-        raise ConfigError, "Distance '%s' is not one of the metrics anvi'o recognizes :/ Here\
-                            is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics))
+        raise ConfigError("Distance '%s' is not one of the metrics anvi'o recognizes :/ Here\
+                            is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics)))
 
 
 def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
     is_distance_and_linkage_compatible(distance, linkage)
 
     matrix_file = filesnpaths.get_temp_file_path()
-    utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + d[d.keys()[0]].keys())
+    utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + list(d[list(d.keys())[0]].keys()))
 
     newick = get_newick_tree_data(matrix_file, transpose=transpose, distance=distance, linkage=linkage)
 
@@ -106,7 +106,7 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage
         output_file_name = os.path.abspath(output_file_name)
         output_directory = os.path.dirname(output_file_name)
         if not os.access(output_directory, os.W_OK):
-            raise ConfigError, "You do not have write permission for the output directory: '%s'" % output_directory
+            raise ConfigError("You do not have write permission for the output directory: '%s'" % output_directory)
 
     id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
 
@@ -248,7 +248,7 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
     for i in range(0, len(config.master_rows)):
         row = config.master_rows[i]
         config.combined_id_to_sample[i] = config.master_rows[i]
-        combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in config.matrices_dict.values()]
+        combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in list(config.matrices_dict.values())]
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
     progress.update('Clustering ...')
@@ -335,7 +335,7 @@ def order_contigs_experimental(config, progress=progress, run=run, debug=False):
         for i in range(0, len(config.master_rows)):
             row = config.master_rows[i]
             config.combined_id_to_sample[i] = config.master_rows[i]
-            combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in config.matrices_dict.values()]
+            combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in list(config.matrices_dict.values())]
             config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
         progress.update('Clustering ...')

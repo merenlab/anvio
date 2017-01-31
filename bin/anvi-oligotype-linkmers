@@ -35,11 +35,11 @@ def main(args):
 
     # take care of unique hashes
     hash_to_oligotype = {}
-    unique_hashes = set([entry['read_unique_id'] for entry in report.values()])
+    unique_hashes = set([entry['read_unique_id'] for entry in list(report.values())])
     for unique_hash in unique_hashes:
         hash_to_oligotype[unique_hash] = []
 
-    for entry in report.values():
+    for entry in list(report.values()):
         hash_to_oligotype[entry['read_unique_id']].append((entry['pos_in_contig'], entry['base']),)
 
     for unique_hash in unique_hashes:
@@ -47,15 +47,15 @@ def main(args):
 
     d = {}
 
-    request_ids = sorted(list(set([entry['request_id'] for entry in report.values()])))
-    samples = sorted(list(set([entry['sample_id'] for entry in report.values()])))
+    request_ids = sorted(list(set([entry['request_id'] for entry in list(report.values())])))
+    samples = sorted(list(set([entry['sample_id'] for entry in list(report.values())])))
 
     for request_id in request_ids:
         d[request_id] = {}
         for sample_id in samples:
             d[request_id][sample_id] = Counter()
 
-    for entry in report.values():
+    for entry in list(report.values()):
         request_id, sample_id, unique_hash = entry['request_id'], entry['sample_id'], entry['read_unique_id']
         oligotype = hash_to_oligotype[unique_hash]
         d[request_id][sample_id][oligotype] += 1
@@ -65,7 +65,7 @@ def main(args):
     # that this might blow up sooner or later, but I will think of a better solution then.
     for request_id in d:
         for sample_id in d[request_id]:
-            normalization_factor = len(d[request_id].values()[0].keys()[0])
+            normalization_factor = len(list(list(d[request_id].values())[0].keys())[0])
             for oligotype in d[request_id][sample_id]:
                 d[request_id][sample_id][oligotype] = d[request_id][sample_id][oligotype] / normalization_factor
 
@@ -90,10 +90,10 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
   

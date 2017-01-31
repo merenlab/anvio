@@ -30,15 +30,15 @@ def main(args):
     dbops.is_contigs_db(args.contigs_db)
 
     if not args.output_file:
-        raise ConfigError, "You should provide an output file name so anvi'o does not have to make up a silly\
-                            name :/"
+        raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly\
+                            name :/")
 
     filesnpaths.is_output_file_writable(args.output_file)
 
     contigs_db = dbops.ContigsSuperclass(args)
 
     if not contigs_db.genes_in_contigs_dict:
-        raise ConfigError, "Something weird happened. The contigs database does not seem to have any gene calls :/"
+        raise ConfigError("Something weird happened. The contigs database does not seem to have any gene calls :/")
     else:
         run.info('Num gene calls found', len(contigs_db.genes_in_contigs_dict))
 
@@ -59,9 +59,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
