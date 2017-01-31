@@ -128,6 +128,7 @@ def send_data(name):
     set_default_headers(response)
     if name == "init":
         return json.dumps( { "title": d.title,
+                             "description": (d.p_meta['description']),
                              "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
                              "views": (d.default_view, dict(list(zip(list(d.views.keys()), list(d.views.keys()))))),
                              "contigLengths": dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info]),
@@ -144,6 +145,8 @@ def send_data(name):
                              "noPing": False,
                              "inspectionAvailable": True,
                              "sequencesAvailable": True if d.split_sequences else False})
+    elif name == "description":
+        return json.dumps(d.p_meta['description'])
     elif name == "clusterings":
         return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
     elif name == "views":
