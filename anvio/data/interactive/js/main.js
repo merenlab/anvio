@@ -626,16 +626,6 @@ function buildLegendTables() {
     }
 
     $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
-
-    $('.legendcolorpicker').colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'dark',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
-        }
-    });
 }
 
 function createLegendColorPanel(legend_id) {
@@ -661,10 +651,20 @@ function createLegendColorPanel(legend_id) {
                                 'callback_pindex="' + legend['key'] + '"' +
                                 'callback_name="' + legend['item_keys'][j] + '"' + 
                                '></div>' + _name + '</div>';
-   }
+    }
 
-   $('#legend_content_' + legend_id).empty();
-   $('#legend_content_' + legend_id).html(template);
+    $('#legend_content_' + legend_id).empty();
+    $('#legend_content_' + legend_id).html(template);
+
+    $('.legendcolorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+        }
+    });
 }
 
 function orderLegend(legend_id, type) {
