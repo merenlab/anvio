@@ -12,9 +12,8 @@ import pkg_resources
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
 try:
-    if sys.version_info < (2, 7, 5):
-        v = '.'.join([str(x) for x in sys.version_info[0:3]])
-        sys.stderr.write("Your active Python version is '%s'. Anything less than '2.7.5' will not do it for anvi'o :/\n" % v)
+    if sys.version_info.major != 3:
+        sys.stderr.write("Your active Python major version ('%d') is not compatible with what anvi'o expects :/ We recently switched to Python 3.\n" % sys.version_info.major)
         sys.exit(-1)
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
@@ -1073,6 +1072,20 @@ D = {
              'help': "If this is true, users will not receive a link via email to confirm their account but instead be validated\
                       automatically if there is no smtp configuration."}
                 ),
+    'queue-size': (
+            ['--queue-size'],
+            {'default': 500,
+            'metavar': 'INT',
+            'required': False,
+             'help': "Queue size"}
+                ),
+    'write-buffer-size': (
+            ['--write-buffer-size'],
+            {'default': 250,
+            'metavar': 'INT',
+            'required': False,
+             'help': "write buffer size"}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -1106,7 +1119,9 @@ def set_version():
         # maybe anvi'o is not installed but it is being run from the codebase dir?
         # some hacky stuff to get version from the setup.py
         try:
-            exec([l.strip() for l in open(os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py').readlines() if l.strip().startswith('anvio_version')][0])
+            setup_py_path = os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py'
+            version_string = [l.strip() for l in open(setup_py_path).readlines() if l.strip().startswith('anvio_version')][0]
+            anvio_version = version_string.split('=')[1].strip().strip("'").strip('"')
         except:
             pass
 

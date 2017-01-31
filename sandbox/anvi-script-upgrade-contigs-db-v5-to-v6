@@ -18,7 +18,7 @@ progress = terminal.Progress()
 
 def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
     if contigs_db_path is None:
-        raise ConfigError, "No database path is given."
+        raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
     dbops.is_contigs_db(contigs_db_path)
@@ -26,7 +26,7 @@ def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
     # make sure the version is 2
     contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != '5':
-        raise ConfigError, "Version of this contigs database is not 5 (hence, this script cannot really do anything)."
+        raise ConfigError("Version of this contigs database is not 5 (hence, this script cannot really do anything).")
 
     if not just_do_it:
         try:
@@ -34,9 +34,9 @@ def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
                          any existing annotations of taxonomy, and you will have to re-import them later. If you are\
                          OK with that, just press ENTER to continue. If you want to cancel the upgrade, press CTRL+C\
                          now. If you want to avoid this message the next time, use "--just-do-it" flag.')
-            raw_input("Press ENTER to continue...\n")
+            input("Press ENTER to continue...\n")
         except:
-            print
+            print()
             sys.exit()
 
     progress.new("Trying to upgrade the contigs database")
@@ -76,6 +76,6 @@ if __name__ == '__main__':
 
     try:
         update_contigs_db_from_v5_to_v6(args.contigs_db, just_do_it = args.just_do_it)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

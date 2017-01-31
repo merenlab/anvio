@@ -82,6 +82,6 @@ class KMers:
             # metrics wouldn't go crazy. instead we fill it with 1. which
             # doesn't affect relative distances.
             if not len(frequencies):
-                frequencies = dict(zip(kmers, [1] * len(kmers)))
+                frequencies = dict(list(zip(kmers, [1] * len(kmers))))
 
         return frequencies

@@ -63,8 +63,8 @@ class DBClassFactory:
         db_type = get_db_type(db_path)
 
         if db_type not in self.DB_CLASSES:
-            raise ConfigError, "DBClassFactory speaking. I do not know a class for database type\
-                                %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES))
+            raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
+                                %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES)))
 
         return self.DB_CLASSES[db_type]
 
@@ -156,8 +156,8 @@ class ContigsSuperclass(object):
         for hmm_source in self.hmm_sources_info:
             self.hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in self.hmm_sources_info[hmm_source]['genes'].split(',')])
 
-        self.singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
-        self.non_singlecopy_gene_hmm_sources = set([s for s in self.hmm_sources_info.keys() if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
+        self.singlecopy_gene_hmm_sources = set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
+        self.non_singlecopy_gene_hmm_sources = set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
 
         self.progress.update('Generating "split name" to "gene entry ids" mapping dict')
         for entry_id in self.genes_in_splits:
@@ -172,7 +172,7 @@ class ContigsSuperclass(object):
                 self.split_name_to_gene_caller_ids_dict[split_name] = set([])
 
         self.progress.update('Generating "gene caller id" to "split name" mapping dict')
-        for entry in self.genes_in_splits.values():
+        for entry in list(self.genes_in_splits.values()):
             self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
         contigs_db.disconnect()
@@ -199,8 +199,8 @@ class ContigsSuperclass(object):
             return
 
         if t_level not in t.taxon_names_table_structure[1:]:
-            raise ConfigError, "Pretty close. But the taxonomic level '%s' is not known to anvi'o. How about\
-                                one of these: %s." % (t_level, ','.join(t.taxon_names_table_structure[1:]))
+            raise ConfigError("Pretty close. But the taxonomic level '%s' is not known to anvi'o. How about\
+                                one of these: %s." % (t_level, ','.join(t.taxon_names_table_structure[1:])))
 
         self.progress.new('Initializing splits taxonomy')
         self.progress.update('...')
@@ -306,7 +306,7 @@ class ContigsSuperclass(object):
             for split_name in split_names_of_interest if split_names_of_interest else self.splits_basic_info:
                 self.hmm_searches_dict[split_name] = copy.deepcopy(sources_tmpl)
 
-            for e in non_singlecopy_gene_hmm_results_dict.values():
+            for e in list(non_singlecopy_gene_hmm_results_dict.values()):
                 hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
                 search_term = 'hmmx_%s_%s' % (self.hmm_sources_info[e['source']]['search_type'], hmm_hit['gene_name'])
                 self.hmm_searches_dict[e['split']][search_term] = 1
@@ -316,7 +316,7 @@ class ContigsSuperclass(object):
                 sources_tmpl[source] = []
                 self.hmm_searches_header.append((search_type, source),)
 
-            for e in non_singlecopy_gene_hmm_results_dict.values():
+            for e in list(non_singlecopy_gene_hmm_results_dict.values()):
                 hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
                 if not e['split'] in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
@@ -337,10 +337,10 @@ class ContigsSuperclass(object):
         See `init_nt_position_info_dict` for more info."""
 
         if not self.nt_positions_info:
-            raise ConfigError, "get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
+            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
                                 This may happen if you don't have the '.h5' file for your contigs database in the same\
                                 directory with your contigs database. But if you do have it there, then anvi'o really\
-                                needs an adult :("
+                                needs an adult :(")
 
         if not self.nt_positions_info.is_known_contig(contig_name):
             return (0, 0, 0)
@@ -377,16 +377,16 @@ class ContigsSuperclass(object):
                     requested_sources = [s for s in requested_sources if s in gene_function_sources_in_db]
                 else:
                     self.progress.end()
-                    raise ConfigError, "Some of the functional sources you requested are missing from the contigs database '%s'. Here\
+                    raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here\
                                         they are (or here it is, whatever): %s." % \
-                                                    (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources]))
+                                                    (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
 
-            hits = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
+            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
                                                                   '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
-                                                                  error_if_no_data=False).values()
+                                                                  error_if_no_data=False).values())
             self.gene_function_call_sources = requested_sources
         else:
-            hits = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values()
+            hits = list(contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values())
             self.gene_function_call_sources = gene_function_sources_in_db
 
         for hit in hits:
@@ -400,7 +400,7 @@ class ContigsSuperclass(object):
                 self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
 
             if self.gene_function_calls_dict[gene_callers_id][source]:
-                if self.gene_function_calls_dict[gene_callers_id][source][1] < e_value:
+                if self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
                     # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
                     # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
                     continue
@@ -417,16 +417,16 @@ class ContigsSuperclass(object):
 
     def search_splits_for_gene_functions(self, search_terms, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
-            raise ConfigError, "Search terms must be of type 'list'"
+            raise ConfigError("Search terms must be of type 'list'")
 
         search_terms = [s.strip() for s in search_terms]
 
         if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
-            raise ConfigError, "Please do not use the same search term twice :/ Becasue, reasons. You know."
+            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
 
         for search_term in search_terms:
             if not len(search_term) >= 3:
-                raise ConfigError, "A search term cannot be less than three characters"
+                raise ConfigError("A search term cannot be less than three characters")
 
         self.run.info('Search terms', '%d found' % (len(search_terms)))
         matching_gene_caller_ids = dict([(search_term, {}) for search_term in search_terms])
@@ -470,21 +470,21 @@ class ContigsSuperclass(object):
            and returns the order of codon the nucleotide matches to."""
 
         if not isinstance(pos_in_contig, int):
-            raise ConfigError, "get_corresponding_codon_order_in_gene :: pos_in_contig must be of type 'int'"
+            raise ConfigError("get_corresponding_codon_order_in_gene :: pos_in_contig must be of type 'int'")
 
         if not isinstance(gene_caller_id, int):
-            raise ConfigError, "get_corresponding_codon_order_in_gene :: gene_caller_id must be of type 'int'"
+            raise ConfigError("get_corresponding_codon_order_in_gene :: gene_caller_id must be of type 'int'")
 
         gene_call = self.genes_in_contigs_dict[gene_caller_id]
 
         if contig_name != gene_call['contig']:
-            raise ConfigError, 'get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s\
+            raise ConfigError('get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s\
                                 do not seem to have anything to do with each other :/ This is not a user-level error\
-                                something must have gone very wrong somewhere in the code ...' % (gene_caller_id, contig_name)
+                                something must have gone very wrong somewhere in the code ...' % (gene_caller_id, contig_name))
 
         if not pos_in_contig >= gene_call['start'] or not pos_in_contig < gene_call['stop']:
-            raise ConfigError, "get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
-                                                        % (pos_in_contig, gene_caller_id)
+            raise ConfigError("get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
+                                                        % (pos_in_contig, gene_caller_id))
 
         start, stop = gene_call['start'], gene_call['stop']
 
@@ -519,9 +519,9 @@ class ContigsSuperclass(object):
             return AA_counts_dict
 
         if len([True for v in [split_names, contig_names, gene_caller_ids] if v]) > 1:
-            raise ConfigError, "get_AA_counts_dict :: If you want to get AA counts for a specific\
+            raise ConfigError("get_AA_counts_dict :: If you want to get AA counts for a specific\
                                 set of split names, contig names, or gene call ids, that is totally\
-                                fine. But you can't request more than one at a time."
+                                fine. But you can't request more than one at a time.")
 
         # we need to understand what genes we're interested in first. it could be genes in
         # a collection, or it could be everything in the contigs database, etc
@@ -557,7 +557,7 @@ class ContigsSuperclass(object):
         AA_counts_dict['total_gene_calls'] = len(gene_calls_of_interest)
 
         # add missing AAs into the dict .. if there are any
-        for AA in codon_to_AA.values():
+        for AA in list(codon_to_AA.values()):
             if AA not in AA_counts_dict['AA_counts']:
                 AA_counts_dict['AA_counts'][AA] = 0
 
@@ -578,12 +578,12 @@ class ContigsSuperclass(object):
 
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True):
         if not isinstance(gene_caller_ids_list, list):
-            raise ConfigError, "Gene caller's ids must be of type 'list'"
+            raise ConfigError("Gene caller's ids must be of type 'list'")
 
         try:
             gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
         except:
-            raise ConfigError, "List of IDs for gene calls contains non-integer values :/"
+            raise ConfigError("List of IDs for gene calls contains non-integer values :/")
 
         if not len(self.contig_sequences):
             self.init_contig_sequences()
@@ -621,20 +621,20 @@ class ContigsSuperclass(object):
 
     def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         if not output_file_path:
-            raise ConfigError, "gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
-                                Anvi'o does not know how you managed to come here, but please go back and come again."
+            raise ConfigError("gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
+                                Anvi'o does not know how you managed to come here, but please go back and come again.")
 
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not isinstance(wrap, int):
-            raise ConfigError, '"wrap" has to be an integer instance'
+            raise ConfigError('"wrap" has to be an integer instance')
         if wrap == 0:
             wrap = None
         if wrap and wrap <= 20:
-            raise ConfigError, 'Value for wrap must be larger than 20. Yes. Rules.'
+            raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
         if not gene_caller_ids_list:
-            gene_caller_ids_list = self.genes_in_contigs_dict.keys()
+            gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
                               %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
@@ -673,15 +673,15 @@ class ContigsSuperclass(object):
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not self.a_meta['taxonomy_source']:
-            raise ConfigError, "There is no taxonomy source in the contigs database :/"
+            raise ConfigError("There is no taxonomy source in the contigs database :/")
 
         if not len(self.splits_taxonomy_dict):
             self.init_splits_taxonomy()
 
         if not len(self.splits_taxonomy_dict):
-            raise ConfigError, "The splits taxonomy is empty. There is nothing to report. Could it be\
+            raise ConfigError("The splits taxonomy is empty. There is nothing to report. Could it be\
                                 possible the taxonomy caller you used did not assign any taxonomy to\
-                                anything?"
+                                anything?")
 
         self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
 
@@ -772,8 +772,8 @@ class PanSuperclass(object):
         self.progress.new('Initializing functions for protein clusters')
         self.progress.update('...')
         if not self.protein_clusters:
-            raise ConfigError, "init_protein_clusters_functions is speaking! You called this function before you initialized\
-                                protein clusters :/ One of us does not know what they're doing :("
+            raise ConfigError("init_protein_clusters_functions is speaking! You called this function before you initialized\
+                                protein clusters :/ One of us does not know what they're doing :(")
 
         if not self.genomes_storage_has_functions:
             self.progress.end()
@@ -792,7 +792,7 @@ class PanSuperclass(object):
                     self.protein_clusters_functions_dict[protein_cluster_id][genome_name][gene_callers_id] = functions
 
                     if functions:
-                        self.protein_clusters_function_sources.update(functions.keys())
+                        self.protein_clusters_function_sources.update(list(functions.keys()))
 
         self.functions_initialized = True
 
@@ -809,11 +809,11 @@ class PanSuperclass(object):
         self.additional_layers_headers = pan_db.db.get_meta_value('additional_data_headers').split(',')
         pan_db.disconnect()
 
-        if len([h for h in self.additional_layers_headers if h not in self.additional_layers_dict.values()[0].keys()]):
+        if len([h for h in self.additional_layers_headers if h not in list(self.additional_layers_dict.values())[0].keys()]):
             self.progress.end()
-            raise ConfigError, "Something that should never happen happened :( At least one additional data header that\
+            raise ConfigError("Something that should never happen happened :( At least one additional data header that\
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
-                                data from another table. Anvi'o needs an adult :("
+                                data from another table. Anvi'o needs an adult :(")
 
         # In fact we are done here since we have our `additional_layers_dict` all filled up with sweet data.
         # But if functions are initialized, we can also get a summary of protein clusters based on whether most
@@ -878,7 +878,7 @@ class PanSuperclass(object):
 
         protein_clusters_long_list = pan_db.db.get_table_as_dict(t.pan_protein_clusters_table_name)
 
-        for entry in protein_clusters_long_list.values():
+        for entry in list(protein_clusters_long_list.values()):
             genome_name = entry['genome_name']
             gene_callers_id = entry['gene_caller_id']
             protein_cluster_id = entry['protein_cluster_id']
@@ -965,9 +965,9 @@ class PanSuperclass(object):
         pan_db = PanDatabase(self.pan_db_path)
 
         if not self.protein_clusters:
-            raise ConfigError, "init_collection_profile wants to initialize the PC collection profile for '%s', but the\
+            raise ConfigError("init_collection_profile wants to initialize the PC collection profile for '%s', but the\
                                 the protein clusters dict is kinda empty. Someone forgot to initialize something maybe?" % \
-                                        collection_name
+                                        collection_name)
 
         # get trimmed collection and bins_info dictionaries
         collection, bins_info, self.protein_clusters_in_pan_db_but_not_binned \
@@ -1091,7 +1091,7 @@ class ProfileSuperclass(object):
             return
 
         self.gene_coverages_dict = {}
-        for gene_coverage_entry in gene_coverages_table.values():
+        for gene_coverage_entry in list(gene_coverages_table.values()):
             gene_callers_id = gene_coverage_entry['gene_callers_id']
 
             if gene_callers_id not in self.gene_coverages_dict:
@@ -1104,12 +1104,12 @@ class ProfileSuperclass(object):
 
     def get_variability_information_for_split(self, split_name, return_outliers=False, return_raw_results=False):
         if not split_name in self.split_names:
-            raise ConfigError, "get_variability_information_for_split: The split name '%s' does not seem to be\
+            raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be\
                                 represented in this profile database. Are you sure you are looking for it\
-                                in the right database?" % split_name
+                                in the right database?" % split_name)
 
         profile_db = ProfileDatabase(self.profile_db_path)
-        split_variability_information = profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values()
+        split_variability_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
         profile_db.disconnect()
 
         if return_raw_results:
@@ -1146,7 +1146,7 @@ class ProfileSuperclass(object):
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
         # anonymous function to convert single profile table dicts compatible with merged ones (#155):
-        SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in d[s].values()])) for s in d])
+        SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in list(d[s].values())])) for s in d])
 
         self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
         for table_name in table_names:
@@ -1184,7 +1184,7 @@ class ProfileSuperclass(object):
         else:
             for sample in self.p_meta['samples']:
                 percents = {}
-                all_coverages_in_sample = sum([d[sample] for d in coverage_table_data.values()])
+                all_coverages_in_sample = sum([d[sample] for d in list(coverage_table_data.values())])
 
                 for bin_id in collection:
                     bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
@@ -1200,7 +1200,7 @@ class ProfileSuperclass(object):
         return collection, bins_info
 
 
-    def load_views(self, splits_of_interest=None):
+    def load_views(self, splits_of_interest=None, omit_parent_column=False):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
@@ -1209,7 +1209,7 @@ class ProfileSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
 
         profile_db.disconnect()
 
@@ -1259,11 +1259,18 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length', 'total_reads_mapped']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
                     pass
+
+            sample_ids_list = [s.strip() for s in self.meta['samples'].split(',')]
+            if 'total_reads_mapped' in self.meta:
+                total_reads_mapped_list = [int(n.strip()) for n in self.meta['total_reads_mapped'].split(',')]
+                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], total_reads_mapped_list[i]) for i in range(0, len(sample_ids_list))])
+            else:
+                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], 0) for i in range(0, len(sample_ids_list))])
 
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
@@ -1409,9 +1416,9 @@ class ContigsDatabase:
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
             if 'creation_date' not in self.meta:
-                raise ConfigError, "The contigs database ('%s') seems to be corrupted :/ This happens if the process that\
+                raise ConfigError("The contigs database ('%s') seems to be corrupted :/ This happens if the process that\
                                     that generates the database ends prematurely. Most probably, you will need to generate\
-                                    the contigs database from scratch. Sorry!" % (self.db_path)
+                                    the contigs database from scratch. Sorry!" % (self.db_path))
 
             self.run.info('Contigs database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
             self.run.info('Number of contigs', self.meta['num_contigs'], quiet=self.quiet)
@@ -1438,8 +1445,8 @@ class ContigsDatabase:
             filesnpaths.is_file_exists(external_gene_calls)
 
         if external_gene_calls and skip_gene_calling:
-            raise ConfigError, "You provided a file for external gene calls, and used requested gene calling to be\
-                                skipped. Please make up your mind."
+            raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
+                                skipped. Please make up your mind.")
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
 
@@ -1447,41 +1454,41 @@ class ContigsDatabase:
         self.progress.new('Checking deflines and contig lengths')
         self.progress.update('tick tock ...')
         fasta = u.SequenceSource(contigs_fasta)
-        while fasta.next():
+        while next(fasta):
             if not utils.check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
-                raise ConfigError, "At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
+                raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
                                     requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
                                     care of this issue, or read this section in the tutorial to understand the reason behind\
                                     this requirement (anvi'o is very upset for making you do this): %s" % \
-                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
+                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
 
             if len(fasta.seq) < kmer_size:
                 self.progress.end()
-                raise ConfigError, "At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
+                raise ConfigError("At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
                                     is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
                                     with such short contigs, but the length of each contig must be at least as long as your `k` for\
                                     k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
-                                    contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq))
+                                    contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
         fasta.close()
         self.progress.end()
 
         all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
         if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
-            raise ConfigError, "Every contig in the input FASTA file must have a unique ID. You know..."
+            raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
 
         if not split_length:
-            raise ConfigError, "Creating a new contigs database requires split length information to be\
+            raise ConfigError("Creating a new contigs database requires split length information to be\
                                 provided. But the ContigsDatabase class was called to create one without this\
-                                bit of information. Not cool."
+                                bit of information. Not cool.")
 
         if not os.path.exists(contigs_fasta):
-            raise ConfigError, "Creating a new contigs database requires a FASTA file with contigs to be provided."
+            raise ConfigError("Creating a new contigs database requires a FASTA file with contigs to be provided.")
 
         try:
             split_length = int(split_length)
         except:
-            raise ConfigError, "Split size must be an integer."
+            raise ConfigError("Split size must be an integer.")
 
         if split_length <= 0:
             split_length = sys.maxsize
@@ -1489,10 +1496,10 @@ class ContigsDatabase:
         try:
             kmer_size = int(kmer_size)
         except:
-            raise ConfigError, "K-mer size must be an integer."
+            raise ConfigError("K-mer size must be an integer.")
         if kmer_size < 2 or kmer_size > 8:
-            raise ConfigError, "We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
-                                source code if you are not happy to be told what you can't do, let us know how it goes!)."
+            raise ConfigError("We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
+                                source code if you are not happy to be told what you can't do, let us know how it goes!).")
 
         if skip_gene_calling:
             skip_mindful_splitting = True
@@ -1575,7 +1582,7 @@ class ContigsDatabase:
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
         self.progress.new('South Loop')
         fasta.reset()
-        while fasta.next():
+        while next(fasta):
             contig_name = fasta.id
             contig_sequence = fasta.seq
 
@@ -1728,8 +1735,8 @@ class SamplesInformationDatabase:
 
     def init(self):
         if not self.db_path:
-            raise ConfigError, "When SamplesInformationDatabase is called, the db_path parameter cannot be\
-                                'None' type :/"
+            raise ConfigError("When SamplesInformationDatabase is called, the db_path parameter cannot be\
+                                'None' type :/")
 
         if os.path.exists(self.db_path):
             is_samples_db(self.db_path)
@@ -1748,7 +1755,7 @@ class SamplesInformationDatabase:
 
     def get_samples_information_and_order_dicts(self):
         if not self.db:
-            raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
+            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
 
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
 
@@ -1761,16 +1768,16 @@ class SamplesInformationDatabase:
 
     def get_samples_information_default_layer_order(self):
         if not self.db:
-            raise ConfigError, "The samples database has not been initialized. You are doing something wrong :/"
+            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
 
         return self.samples_information_default_layer_order
 
 
     def create(self, samples_information_path=None, samples_order_path=None):
         if not samples_information_path and not samples_order_path:
-            raise ConfigError, "You must declare at least one of the input files to create a samples information\
+            raise ConfigError("You must declare at least one of the input files to create a samples information\
                                 database. Neither samples information, nor samples order file has been passed to\
-                                the class :("
+                                the class :(")
 
         is_db_ok_to_create(self.db_path, 'samples')
 
@@ -1786,7 +1793,7 @@ class SamplesInformationDatabase:
         self.db.set_meta_value('creation_date', time.time())
 
         # first create the easy one: the samples_order table.
-        available_orders = samples.samples_order_dict.keys()
+        available_orders = list(samples.samples_order_dict.keys())
         db_entries = [(attribute, samples.samples_order_dict[attribute]['basic'], samples.samples_order_dict[attribute]['newick']) for attribute in samples.samples_order_dict]
         self.db.create_table(t.samples_order_table_name, t.samples_order_table_structure, t.samples_order_table_types)
         self.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.samples_order_table_name, db_entries)
@@ -1807,8 +1814,8 @@ class SamplesInformationDatabase:
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
-        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
-        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
+        self.db.set_meta_value('sample_names_for_order', ','.join(sorted(samples.sample_names_in_samples_order_file)) if samples.sample_names_in_samples_order_file else None)
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(sorted(samples.samples_information_default_layer_order)) if hasattr(samples, 'samples_information_default_layer_order') else None)
 
         self.disconnect()
 
@@ -1912,7 +1919,7 @@ class TablesForViews(Table):
         Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
 
-    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None):
+    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
         """Creates a new view table, and adds an entry for it into the 'views' table.
 
         Entries in 'views' table appear in various places in the interface. However, we also generate
@@ -1933,18 +1940,25 @@ class TablesForViews(Table):
 
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
 
-        if view_name and view_name in views_in_db:
-            raise ConfigError, "TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
-                                You can't create another one before you get rid of the existing one, because rules."\
-                                                                        % view_name
+        if not append_mode:
+            if view_name and view_name in views_in_db:
+                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                                    You can't create another one before you get rid of the existing one, because rules."\
+                                                                            % view_name)
 
-        # first create the data table:
-        anvio_db.db.drop_table(table_name)
-        anvio_db.db.create_table(table_name, table_structure, table_types)
+            # first create the data table:
+            anvio_db.db.drop_table(table_name)
+        
+        try:
+            anvio_db.db.create_table(table_name, table_structure, table_types)
+        except:
+            if not append_mode:
+                raise ConfigError("Table already exists") 
+
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
         anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
 
-        if view_name:
+        if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
 
         anvio_db.disconnect()
@@ -1954,7 +1968,8 @@ class TablesForViews(Table):
         anvio_db = DBClassFactory().get_db_object(self.db_path)
         anvio_db.db._exec('''DELETE FROM %s WHERE view_id = "%s"''' % (t.views_table_name, view_name))
         for table_name in table_names_to_blank:
-            anvio_db.db._exec('''DELETE FROM %s''' % table_name)
+            if table_name in anvio_db.db.get_table_names():
+                anvio_db.db._exec('''DELETE FROM %s''' % table_name)
         anvio_db.disconnect()
 
 
@@ -1971,11 +1986,11 @@ class TableForVariability(Table):
         self.set_next_available_id(t.variable_nts_table_name)
 
 
-    def append(self, profile):
+    def append(self, profile, quiet=False):
         db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
-        if self.num_entries % 100 == 0:
+        if not quiet and self.num_entries % 100 == 0:
             self.progress.update('Information for %d SNV sites have been added ...' % self.num_entries)
 
 
@@ -2011,15 +2026,15 @@ class AA_counts(ContigsSuperclass):
         error_msg = "You mixed up optional stuff :/ Please read the help."
         if self.profile_db_path:
             if self.contigs_of_interest_file_path or self.genes_of_interest_file_path:
-                raise ConfigError, error_msg
+                raise ConfigError(error_msg)
             self.__AA_counts_for_bins()
         elif self.contigs_of_interest_file_path:
             if self.profile_db_path or self.genes_of_interest_file_path:
-                raise ConfigError, error_msg
+                raise ConfigError(error_msg)
             self.__AA_counts_for_contigs()
         elif self.genes_of_interest_file_path:
             if self.profile_db_path or self.contigs_of_interest_file_path:
-                raise ConfigError, error_msg
+                raise ConfigError(error_msg)
             self.__AA_counts_for_genes()
         else:
             self.__AA_counts_for_the_contigs_db()
@@ -2027,7 +2042,7 @@ class AA_counts(ContigsSuperclass):
 
     def __AA_counts_for_bins(self):
         if not self.collection_name:
-            raise ConfigError, "You must declare a collection name along with the profile database."
+            raise ConfigError("You must declare a collection name along with the profile database.")
 
         profile_db = ProfileDatabase(self.profile_db_path)
         collections_info_table = profile_db.db.get_table_as_dict(t.collections_info_table_name)
@@ -2035,14 +2050,14 @@ class AA_counts(ContigsSuperclass):
         profile_db.disconnect()
 
         if not len(collections_info_table):
-            raise ConfigError, "There are no collections stored in the profile database :/"
+            raise ConfigError("There are no collections stored in the profile database :/")
 
         if not self.collection_name in collections_info_table:
-            valid_collections = ', '.join(collections_info_table.keys())
-            raise ConfigError, "'%s' is not a valid collection name. But %s: '%s'." \
+            valid_collections = ', '.join(list(collections_info_table.keys()))
+            raise ConfigError("'%s' is not a valid collection name. But %s: '%s'." \
                                     % (self.collection_name,
                                        'these are' if len(valid_collections) > 1 else 'this is',
-                                       valid_collections)
+                                       valid_collections))
 
         bin_names_in_collection = collections_info_table[self.collection_name]['bin_names'].split(',')
 
@@ -2052,8 +2067,8 @@ class AA_counts(ContigsSuperclass):
 
             missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
             if len(missing_bins):
-                raise ConfigError, "Some bin names you declared do not appear to be in the collection %s." \
-                                            % self.collection_name
+                raise ConfigError("Some bin names you declared do not appear to be in the collection %s." \
+                                            % self.collection_name)
         else:
             bin_names_of_interest = bin_names_in_collection
 
@@ -2064,7 +2079,7 @@ class AA_counts(ContigsSuperclass):
         for bin_name in bin_names_of_interest:
             split_name_per_bin_dict[bin_name] = set([])
 
-        for e in collection_dict.values():
+        for e in list(collection_dict.values()):
             split_name_per_bin_dict[e['bin_name']].add(e['split'])
 
         for bin_name in bin_names_of_interest:
@@ -2078,8 +2093,8 @@ class AA_counts(ContigsSuperclass):
 
         missing_contigs = [True for c in contigs_of_interest if c not in self.contigs_basic_info]
         if missing_contigs:
-            raise ConfigError, "Some contig names you declared do not seem to be present in the contigs\
-                                database :("
+            raise ConfigError("Some contig names you declared do not seem to be present in the contigs\
+                                database :(")
 
         for contig_name in contigs_of_interest:
             self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names=set([contig_name]))['AA_counts']
@@ -2091,8 +2106,8 @@ class AA_counts(ContigsSuperclass):
         try:
             genes_of_interest = [int(line.strip()) for line in open(self.genes_of_interest_file_path).readlines()]
         except:
-            raise ConfigError, "Gene call ids in your genes of interest file does not resemble anvi'o gene\
-                                call ids (I tried to int them, and it didn't work!)"
+            raise ConfigError("Gene call ids in your genes of interest file does not resemble anvi'o gene\
+                                call ids (I tried to int them, and it didn't work!)")
 
         for gene_call in genes_of_interest:
             self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids=set([gene_call]))['AA_counts']
@@ -2104,7 +2119,7 @@ class AA_counts(ContigsSuperclass):
 
     def report(self):
         if self.args.output_file:
-            header = ['source'] + sorted(self.counts_dict.values()[0].keys())
+            header = ['source'] + sorted(list(self.counts_dict.values())[0].keys())
             utils.store_dict_as_TAB_delimited_file(self.counts_dict, self.args.output_file, header)
             self.run.info('Output', self.args.output_file)
 
@@ -2195,25 +2210,25 @@ class TablesForGeneCalls(Table):
 
     def check_gene_calls_dict(self, gene_calls_dict):
         if not isinstance(gene_calls_dict, type({})):
-            raise ConfigError, "Gene calls dict must be a dict instance :/"
+            raise ConfigError("Gene calls dict must be a dict instance :/")
 
         try:
-            [int(g) for g in gene_calls_dict.keys()]
+            [int(g) for g in list(gene_calls_dict.keys())]
         except ValueError:
-            raise ConfigError, "Keys of a gene calls dict must be integers!"
+            raise ConfigError("Keys of a gene calls dict must be integers!")
 
-        if False in map(lambda x: x['direction'] in ['f', 'r'], gene_calls_dict.values()):
-            raise ConfigError, "The values in 'direction' column can't be anything but 'f' (for forward)\
-                                or 'r' (for reverse). You have other stuff, and it is not cool."
+        if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward)\
+                                or 'r' (for reverse). You have other stuff, and it is not cool.")
 
-        if False in map(lambda x: x['stop'] > x['start'], gene_calls_dict.values()):
-            raise ConfigError, "For each gene call, the stop position must be bigger than the start position.\
+        if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("For each gene call, the stop position must be bigger than the start position.\
                                 Your gene calls dict does not conform to that. If you have reverse gene calls\
-                                you must use the 'direction' column to declare that."
+                                you must use the 'direction' column to declare that.")
 
-        if False in map(lambda x: (x['stop'] - float(x['start'])) % 3.0 == 0, gene_calls_dict.values()):
-            raise ConfigError, "Something is wrong with your gene calls. For every gene call, the (stop - start)\
-                                should be multiply of 3. It is not the case for all, which is a deal breaker."
+        if False in [(x['stop'] - float(x['start'])) % 3.0 == 0 for x in list(gene_calls_dict.values())]:
+            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start)\
+                                should be multiply of 3. It is not the case for all, which is a deal breaker.")
 
 
     def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path):
@@ -2231,7 +2246,7 @@ class TablesForGeneCalls(Table):
 
         contig_sequences = {}
         fasta = u.SequenceSource(self.contigs_fasta)
-        while fasta.next():
+        while next(fasta):
             contig_sequences[fasta.id] = fasta.seq
         fasta.close()
 
@@ -2241,8 +2256,8 @@ class TablesForGeneCalls(Table):
             contig_name = gene_call['contig']
 
             if contig_name not in contig_sequences:
-                raise ConfigError, "You are in big trouble :( The contig name '%s' in your external gene callers file\
-                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name
+                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
+                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
             if gene_call['partial']:
                 protein_sequences[gene_callers_id] = ''
@@ -2400,14 +2415,14 @@ class TablesForHMMHits(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
         if not self.genes_are_called:
-            raise ConfigError, "It seems the contigs database '%s' was created with '--skip-gene-calling' flag.\
-                                Nothing to do here :/" % (self.db_path)
+            raise ConfigError("It seems the contigs database '%s' was created with '--skip-gene-calling' flag.\
+                                Nothing to do here :/" % (self.db_path))
 
         self.init_gene_calls_dict()
 
         if not len(self.gene_calls_dict):
-            raise ConfigError, "Tables that should contain gene calls are empty. Which probably means the gene\
-                                caller reported no genes for your contigs."
+            raise ConfigError("Tables that should contain gene calls are empty. Which probably means the gene\
+                                caller reported no genes for your contigs.")
 
         self.set_next_available_id(t.hmm_hits_table_name)
         self.set_next_available_id(t.hmm_hits_splits_table_name)
@@ -2427,7 +2442,7 @@ class TablesForHMMHits(Table):
         tmp_directory_path = filesnpaths.get_temp_directory_path()
 
         # here we will go through targets and populate target_files_dict based on what we find among them.
-        targets = set([s['target'] for s in sources.values()])
+        targets = set([s['target'] for s in list(sources.values())])
         for target in targets:
 
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
@@ -2486,7 +2501,7 @@ class TablesForHMMHits(Table):
 
         if not self.debug:
             commander.clean_tmp_dirs()
-            for v in target_files_dict.values():
+            for v in list(target_files_dict.values()):
                 os.remove(v)
 
 
@@ -2503,7 +2518,7 @@ class TablesForHMMHits(Table):
 
             gene_call = self.gene_calls_dict[hit['gene_callers_id']]
 
-            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])])).hexdigest()
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
 
         self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
@@ -2516,7 +2531,7 @@ class TablesForHMMHits(Table):
 
         # then populate serach_data table for each contig.
         db_entries = []
-        for hit in search_results_dict.values():
+        for hit in list(search_results_dict.values()):
             entry_id = self.next_id(t.hmm_hits_table_name)
             db_entries.append(tuple([entry_id] + [hit[h] for h in t.hmm_hits_table_structure[1:]]))
             # tiny hack here: for each hit, we are generating a unique id (`entry_id`), and feeding that information
@@ -2534,7 +2549,7 @@ class TablesForHMMHits(Table):
 
     def process_splits(self, search_results_dict):
         hits_per_contig = {}
-        for hit in search_results_dict.values():
+        for hit in list(search_results_dict.values()):
             contig_name = self.gene_calls_dict[hit['gene_callers_id']]['contig']
 
             if contig_name in hits_per_contig:
@@ -2596,24 +2611,24 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError, 'Bins in the collection dict do not match to the ones in the bins info dict.\
+                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict.\
                                     They do not have to be identical, but for each bin id, there must be a unique\
-                                    entry in the bins informaiton dict. There is something wrong with your input :/'
+                                    entry in the bins informaiton dict. There is something wrong with your input :/')
 
         # remove any pre-existing information for 'collection_name'
         self.delete(collection_name)
 
-        num_splits_in_collection_dict = sum([len(splits) for splits in collection_dict.values()])
-        splits_in_collection_dict = set(list(chain.from_iterable(collection_dict.values())))
+        num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
+        splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
         if len(splits_in_collection_dict) != num_splits_in_collection_dict:
-            raise ConfigError, "TablesForCollections::append: %d of the split or contig IDs appear more than once in\
+            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in\
                                 your collections input. It is unclear to anvi'o how did you manage to do this, but we\
-                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict))
+                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
 
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # how many clusters are defined in 'collection_dict'?
-        bin_names = collection_dict.keys()
+        bin_names = list(collection_dict.keys())
 
         # push information about this search result into serach_info table.
         db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
@@ -2754,8 +2769,8 @@ class TablesForTaxonomy(Table):
         self.source = source
 
         if not self.genes_are_called:
-            raise ConfigError, "Something is wrong. The contigs database says that genes were now called, and here\
-                                you are trying to populate taxonomy tables for genes. No, thanks."
+            raise ConfigError("Something is wrong. The contigs database says that genes were now called, and here\
+                                you are trying to populate taxonomy tables for genes. No, thanks.")
 
         self.init_gene_calls_dict()
 
@@ -2834,7 +2849,7 @@ class TablesForTaxonomy(Table):
         run.info("Num gene caller ids in the incoming data", pp(len(gene_caller_ids_in_taxonomy_dict)))
 
         if gene_caller_ids_missing_in_db:
-            raise ConfigError, "Taxonomy information for genes you are trying to import into the database contains\
+            raise ConfigError("Taxonomy information for genes you are trying to import into the database contains\
                                 %s gene caller ids that do not appear to be in the database. This is a step you must\
                                 be very careful to make sure you are not importing annotations for genes that have\
                                 nothing to do with your contigs database. To make sure of that, you should always work\
@@ -2842,22 +2857,22 @@ class TablesForTaxonomy(Table):
                                 to get the data to annotate. For instance one of the gene caller ids you have in your\
                                 input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes\
                                 sense to you, because it definitely does not make any sense to anvi'o :("\
-                                                        % (len(gene_caller_ids_missing_in_db), str(gene_caller_ids_missing_in_db.pop()))
+                                                        % (len(gene_caller_ids_missing_in_db), str(gene_caller_ids_missing_in_db.pop())))
 
         # check whether input matrix dict
-        keys_found =  self.taxon_names_dict.values()[0].keys()
+        keys_found =  list(self.taxon_names_dict.values())[0].keys()
         missing_keys = [key for key in t.taxon_names_table_structure[1:] if key not in keys_found]
         if len(missing_keys):
-            raise ConfigError, "Anvi'o is trying to get ready to create tables for taxonomy, but there is something\
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but there is something\
                                 wrong :( The taxonomy names dict (one of the required input dictionaries to the class\
                                 seems to be missing a one or more keys that are necessary to finish the job. Here is \
                                 a list of missing keys: %s. The complete list of input keys should contain these: %s."\
-                                        % (', '.join(missing_keys), ', '.join(t.taxon_names_table_structure[1:]))
+                                        % (', '.join(missing_keys), ', '.join(t.taxon_names_table_structure[1:])))
 
         if not len(self.taxon_names_dict):
-            raise ConfigError, "Anvi'o is trying to get ready to create tables for taxonomy, but taxonomy names dict\
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but taxonomy names dict\
                                 (one of the required input dictionaries to the class responsible for this task) seems\
-                                to be empty."
+                                to be empty.")
 
 
     def populate_splits_taxonomy_table(self):
@@ -2980,8 +2995,8 @@ class TableForGeneFunctions(Table):
         self.sanity_check()
 
         # incoming stuff:
-        gene_function_sources = set([v['source'] for v in functions_dict.values()])
-        unique_num_genes = len(set([v['gene_callers_id'] for v in functions_dict.values()]))
+        gene_function_sources = set([v['source'] for v in list(functions_dict.values())])
+        unique_num_genes = len(set([v['gene_callers_id'] for v in list(functions_dict.values())]))
 
         # oepn connection
         contigs_db = ContigsDatabase(self.db_path)
@@ -3061,9 +3076,9 @@ class GenesInSplits:
         gene_length = prot_end - prot_start
 
         if gene_length <= 0:
-            raise ConfigError, "dbops.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
+            raise ConfigError("dbops.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
                                 which starts at position %d and ends at position %d. Well, it doesn't look right,\
-                                does it?" % (gene_callers_id, prot_start, prot_end)
+                                does it?" % (gene_callers_id, prot_start, prot_end))
 
         # if only a part of the gene is in the split:
         start_in_split = (split_start if prot_start < split_start else prot_start) - split_start
@@ -3087,46 +3102,46 @@ class GenesInSplits:
 def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
-        raise ConfigError, "'%s' is not an anvi'o contigs database." % db_path
+        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
 
 
 def is_pan_or_profile_db(db_path):
     if get_db_type(db_path) not in ['pan', 'profile']:
-        raise ConfigError, "'%s' is neither a pan nor a profile database :/ Someone is in trouble."
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble.")
 
 
 def is_profile_db(db_path):
     if get_db_type(db_path) != 'profile':
-        raise ConfigError, "'%s' is not an anvi'o profile database." % db_path
+        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
 
 
 def is_pan_db(db_path):
     if get_db_type(db_path) != 'pan':
-        raise ConfigError, "'%s' is not an anvi'o pan database." % db_path
+        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
 
 
 def is_samples_db(db_path):
     if get_db_type(db_path) != 'samples_information':
-        raise ConfigError, "'%s' is not an anvi'o samples database." % db_path
+        raise ConfigError("'%s' is not an anvi'o samples database." % db_path)
 
 
 def is_db_ok_to_create(db_path, db_type):
     if os.path.exists(db_path):
-        raise ConfigError, "Anvi'o will not overwrite an existing %s database. Please choose a different name\
-                            or remove the existing database ('%s') first." % (db_type, db_path)
+        raise ConfigError("Anvi'o will not overwrite an existing %s database. Please choose a different name\
+                            or remove the existing database ('%s') first." % (db_type, db_path))
 
     if not db_path.lower().endswith('.db'):
-        raise ConfigError, "Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
+        raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
                             apologize for imposing their views on how anvi'o databases should be named, and are\
-                            humbled by your cooperation." % db_type
+                            humbled by your cooperation." % db_type)
 
 
 def get_required_version_for_db(db_path):
     db_type = get_db_type(db_path)
 
     if db_type not in t.versions_for_db_types:
-        raise ConfigError, "Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
-                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type)
+        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
+                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
 
     return t.versions_for_db_types[db_type]
 
@@ -3137,13 +3152,13 @@ def get_db_type(db_path):
     try:
         database = db.DB(db_path, None, ignore_version=True)
     except:
-        raise ConfigError, 'Are you sure "%s" is a database file? Because, you know, probably\
-                            it is not at all..' % db_path
+        raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+                            it is not at all..' % db_path)
 
     tables = database.get_table_names()
     if 'self' not in tables:
         database.disconnect()
-        raise ConfigError, "'%s' does not seem to be a anvi'o database..." % db_path
+        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
 
     db_type = database.get_meta_value('db_type')
     database.disconnect()
@@ -3166,11 +3181,11 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     profile_db.disconnect()
 
     if a_hash != p_hash:
-        raise ConfigError, 'The contigs database and the profile database does not\
+        raise ConfigError('The contigs database and the profile database does not\
                             seem to be compatible. More specifically, this contigs\
                             database is not the one that was used when %s generated\
                             this profile database.'\
-                                % 'anvi-merge' if merged else 'anvi-profile'
+                                % 'anvi-merge' if merged else 'anvi-profile')
 
     return True
 
@@ -3184,7 +3199,7 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, ma
     samples_db = SamplesInformationDatabase(samples_db_path)
 
     if 'merged' in profile_db.meta and not int(profile_db.meta['merged']):
-        raise ConfigError, "Samples databases are only useful if you are working on a merged profile."
+        raise ConfigError("Samples databases are only useful if you are working on a merged profile.")
 
     if manual_mode_exception:
         # manual mode exception is a funny need. when the user wants to use --manual flag with anvi-interactive,
@@ -3198,10 +3213,10 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, ma
         # the samples bit that appears in the data file :( I know, I know...
         samples_in_samples_db_but_not_in_profile_db = samples_db.samples - profile_db.samples
         if len(samples_in_samples_db_but_not_in_profile_db):
-            raise ConfigError, "Anvi'o is upset with you :/ Please make sure your samples information files (or your\
+            raise ConfigError("Anvi'o is upset with you :/ Please make sure your samples information files (or your\
                                 samples database) contain sample names from your data file. These sample names are in\
                                 your samples information, but not in your data file: '%s'. If this error does not make\
-                                any sense to you, please contact an anvi'o developer." % ', '.join(samples_in_samples_db_but_not_in_profile_db)
+                                any sense to you, please contact an anvi'o developer." % ', '.join(samples_in_samples_db_but_not_in_profile_db))
         return
 
 
@@ -3212,23 +3227,23 @@ def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, ma
         how_much_of_the_samples_are_represented_txt = 'none' if len(missing_samples) == len(profile_db.samples) else\
                                                       'only %d of %d' % (num_represented_samples, len(profile_db.samples))
 
-        raise ConfigError, "The samples information database you provided ('%s') does not seem to agree well with the profile\
+        raise ConfigError("The samples information database you provided ('%s') does not seem to agree well with the profile\
                             database ('%s'). More specifically, %s of the samples in the profile database are repesented in\
                             the samples information database. Names for these missing samples go like this: %s ...,\
                             while the sample names in the samples information database go like this: %s ... This could be due to\
                             a simple typo, or you may be using the wrong or outdated samples information database. You may need to\
                             regenerate the samples information database to fix this problem :/"\
                                                 % (samples_db_path, profile_db_path, how_much_of_the_samples_are_represented_txt,
-                                                   ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3]))
+                                                   ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3])))
 
     if samples_db.sample_names_for_order:
         missing_samples = samples_db.sample_names_for_order - profile_db.samples
 
         if len(missing_samples):
-            raise ConfigError, "The samples order information in the samples database do not match with the sample names in\
+            raise ConfigError("The samples order information in the samples database do not match with the sample names in\
                                 the profile database (or the input data). To be precise, %d sample(s) occur(s) only in the\
                                 samples database, and not found in the profile database (or in the input data). Here is some of\
-                                them: %s ..." % (len(missing_samples), ', '.join(list(missing_samples)[0:3]))
+                                them: %s ..." % (len(missing_samples), ', '.join(list(missing_samples)[0:3])))
 
 
 def get_split_names_in_profile_db(profile_db_path):
@@ -3260,8 +3275,8 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
     if t.clusterings_table_name not in anvio_db.db.get_table_names():
-        raise ConfigError, "You can't a new clustering result into this %s database (%s). You know why? Becasue it doesn't\
-                            have a table for 'clusterings' :(" % (db_type, anvio_db_path)
+        raise ConfigError("You can't a new clustering result into this %s database (%s). You know why? Becasue it doesn't\
+                            have a table for 'clusterings' :(" % (db_type, anvio_db_path))
 
     try:
         available_clusterings = anvio_db.db.get_meta_value('available_clusterings').split(',')
@@ -3322,13 +3337,13 @@ def get_default_clustering_id(default_clustering_requested, clusterings_dict, pr
     """
 
     if not clusterings_dict:
-        raise ConfigError, "You requested to get the default clustering given the clustering dictionary,\
-                            but the clustering dict is empty :/ "
+        raise ConfigError("You requested to get the default clustering given the clustering dictionary,\
+                            but the clustering dict is empty :/ ")
 
     matching_clustering_ids = [clustering for clustering in clusterings_dict if clustering.lower().split(':')[0] == default_clustering_requested.lower()]
 
     if not len(matching_clustering_ids):
-        default_clustering = clusterings_dict.keys()[0]
+        default_clustering = list(clusterings_dict.keys())[0]
         run.warning('`get_default_clustering_id` function is concerned, because nothing in the clusterings\
                      dict matched to the desired default clustring class "%s". So it literally set "%s"\
                      (a class of "%s") randomly as the default. Good luck :/' % (default_clustering_requested,
@@ -3383,12 +3398,12 @@ def get_all_item_names_from_the_database(db_path):
         args.contigs_db = db_path
         all_items = set(ContigsSuperclass(args).splits_basic_info.keys())
     else:
-        raise ConfigError, "You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
-                            what is '%s'?" % (db_path, db_type)
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
+                            what is '%s'?" % (db_path, db_type))
 
     if not len(all_items):
-        raise ConfigError, "dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
+        raise ConfigError("dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
                             There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
-                            with a developer. They will love this story."
+                            with a developer. They will love this story.")
 
     return all_items

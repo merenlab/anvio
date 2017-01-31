@@ -58,19 +58,12 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, split):
-        coverage_profile = {}
-        for pileupcolumn in bam.pileup(split.parent, split.start, split.end):
-            if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
-                continue
-
-            coverage_profile[pileupcolumn.pos] = pileupcolumn.n
-
-        for i in range(split.start, split.end):
-            if i in coverage_profile:
-                self.c.append(coverage_profile[i])
-            else:
-                self.c.append(0)
+    def run(self, coverages, split):
+        if split.parent in coverages:
+            for i in range(split.start, split.end):
+                self.c.append(coverages[split.parent][i])
+        else:
+            self.c = [0] * (split.end - split.start)
 
         if self.c:
             split.explicit_length = len(self.c)

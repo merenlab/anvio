@@ -41,7 +41,7 @@ def main(args):
 
     all_split_names = set([])
 
-    for split_names in matching_split_names_dict.values():
+    for split_names in list(matching_split_names_dict.values()):
         all_split_names.update(split_names)
 
     results_dict = {}
@@ -86,9 +86,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

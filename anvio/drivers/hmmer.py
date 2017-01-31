@@ -47,13 +47,13 @@ class HMMer:
     def run_hmmscan(self, source, target, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
 
         if target not in self.target_files_dict:
-            raise ConfigError, "You have an unknown target :/ Target, which defines an alphabet and context\
+            raise ConfigError("You have an unknown target :/ Target, which defines an alphabet and context\
                                 to clarify whether the HMM search is supposed to be done using alphabets DNA,\
                                 RNA, or AA sequences, and contexts of GENEs or CONTIGs. Yours is %s, and it\
-                                doesn't work for anvi'o." % target
+                                doesn't work for anvi'o." % target)
 
         if not self.target_files_dict[target]:
-            raise ConfigError, "HMMer class does not know about Sequences file for the target %s :/" % target
+            raise ConfigError("HMMer class does not know about Sequences file for the target %s :/" % target)
 
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
@@ -80,7 +80,7 @@ class HMMer:
         self.progress.new('Unpacking the model into temporary work directory')
         self.progress.update('...')
         hmm_file_path = os.path.join(tmp_dir, 'hmm.txt')
-        hmm_file = open(hmm_file_path, 'w')
+        hmm_file = open(hmm_file_path, 'wb')
         hmm_file.write(gzip.open(hmm, 'rb').read())
         hmm_file.close()
         self.progress.end()
@@ -92,12 +92,12 @@ class HMMer:
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
-            raise ConfigError, "The last call did not work quite well. Most probably the version of HMMER\
+            raise ConfigError("The last call did not work quite well. Most probably the version of HMMER\
                                 you have installed is not up-to-date enough. Just to make sure what went\
                                 wrong please take a look at the log file ('%s'). Please visit %s to see what\
                                 is the latest version availalbe. You can learn which version of HMMER you have\
                                 on your system by typing 'hmmpress -h'"\
-                                        % (log_file_path, 'http://hmmer.janelia.org/download.html')
+                                        % (log_file_path, 'http://hmmer.janelia.org/download.html'))
         self.progress.end()
 
         self.progress.new('Processing')
@@ -112,10 +112,10 @@ class HMMer:
         utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.hmm_scan_hits_shitty):
-            raise ConfigError, "Something went wrong with hmmscan, and it failed to generate the\
+            raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path
+                                file if you were to ask for help." % log_file_path)
 
         self.progress.end()
 

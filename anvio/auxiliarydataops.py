@@ -29,38 +29,45 @@ pp = terminal.pretty_print
 
 
 class HDF5_IO(object):
-    def __init__(self, file_path, unique_hash, create_new=False, ignore_hash=False):
+    def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False):
         self.file_path = file_path
+
+        if open_in_append_mode and not create_new:
+            raise HDF5Error("The 'open_in_append_mode' flag can only be used along with the flag 'create_new'.")
 
         if create_new:
             if ignore_hash:
-                raise HDF5Error, "When creating a new database, you can't use the 'ignore_hash'\
-                                  parameter."
+                raise HDF5Error("When creating (or appending to) a database, you can't use the 'ignore_hash'\
+                                  flag.")
 
             if not unique_hash:
-                raise HDF5Error, "When creating a new database, the 'unique_hash' cannot be None"
+                raise HDF5Error("When creating (or appending to) a database, the 'unique_hash' cannot be None.")
 
-            self.fp = h5py.File(self.file_path, 'w')
+            self.fp = h5py.File(self.file_path, 'a' if open_in_append_mode else 'w')
             self.fp.attrs['hash'] = unique_hash
             self.fp.attrs['version'] = self.version
         else:
             filesnpaths.is_file_exists(self.file_path)
             self.fp = h5py.File(self.file_path, 'r')
 
-            if self.fp.attrs['version'] != self.version:
-                raise HDF5Error, "The data file for %s ('%s') is at version '%s', however, your client is at\
+            G = lambda x: self.fp.attrs[x].decode('utf-8') if isinstance(self.fp.attrs[x], bytes) else self.fp.attrs[x]
+            fp_version = G('version')
+            fp_hash = G('hash')
+
+            if fp_version != self.version:
+                raise HDF5Error("The data file for %s ('%s') is at version '%s', however, your client is at\
                                   version '%s'. This is bad news, because your version of anvi'o can't work with\
                                   this file. You can regenerate the data file using the current version of anvi'o,\
                                   or look around to see whether there is an upgrade script is available (a good start\
                                   would be to type 'anvi-script-upgrade-' and then click TAB key twice). Otherwise you\
                                   may want to consider sending an e-mail to the anvi'o developers to find out what's up.\
-                                  We heard that they love them some e-mails." % (self.db_type, self.file_path, self.fp.attrs['version'], self.version)
+                                  We heard that they love them some e-mails." % (self.db_type, self.file_path, self.fp.attrs['version'].decode('utf-8'), self.version))
 
-            if not ignore_hash and self.fp.attrs['hash'] != unique_hash:
-                raise HDF5Error, "The database at '%s' does not seem to be compatible with the client :/\
-                                  (i.e., the hash values do not match)." % self.file_path
+            if not ignore_hash and fp_hash != unique_hash:
+                raise HDF5Error("The database at '%s' does not seem to be compatible with the client :/\
+                                  (i.e., the hash values do not match)." % self.file_path)
 
-            self.unique_hash = self.fp.attrs['hash']
+            self.unique_hash = fp_hash
 
 
     def add_integer_list(self, path, l, data_type='uint16'):
@@ -91,18 +98,18 @@ class HDF5_IO(object):
 
 class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, create_new = False, ignore_hash = False, run=run, progress=progress, quiet = False):
+    def __init__(self, file_path, db_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.version = anvio.__hdf5__version__
 
-        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new, ignore_hash = ignore_hash)
+        HDF5_IO.__init__(self, file_path, db_hash, create_new=create_new, open_in_append_mode=open_in_append_mode, ignore_hash=ignore_hash)
 
         self.quiet = quiet
 
 
     def is_known_split(self, split_name):
         if not self.path_exists('/data/coverages/%s' % split_name):
-            raise HDF5Error, 'The database at "%s" does not know anything about "%s" :(' % (self.file_path, split_name)
+            raise HDF5Error('The database at "%s" does not know anything about "%s" :(' % (self.file_path, split_name))
 
 
     def append(self, split_name, sample_id, coverage_list):
@@ -114,19 +121,19 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
 
         if sample_names:
             if not isinstance(sample_names, set):
-                raise HDF5Error, 'The type of sample names must be a "set".'
+                raise HDF5Error('The type of sample names must be a "set".')
 
         # let's learn what we have
-        sample_names_in_db = self.fp['/data/coverages/%s' % split_name].keys()
+        sample_names_in_db = list(self.fp['/data/coverages/%s' % split_name].keys())
 
         if sample_names:
             for sample_name in sample_names:
                 missing_samples = [sample_name for sample_name in sample_names if sample_name not in sample_names_in_db]
                 if len(missing_samples):
-                    raise HDF5Error, "Some sample names you requested are missing from the auxiliary data file. Here\
-                                        they are: '%s'" % (', '.join(missing_samples))
+                    raise HDF5Error("Some sample names you requested are missing from the auxiliary data file. Here\
+                                        they are: '%s'" % (', '.join(missing_samples)))
         else:
-            sample_names = self.fp['/data/coverages/%s' % split_name].keys()
+            sample_names = list(self.fp['/data/coverages/%s' % split_name].keys())
 
         d = {}
         for sample_name in sample_names:
@@ -203,12 +210,12 @@ class GenomesDataStorage(HDF5_IO):
 
                 # make sure the user knows what they're doing
                 if genome_names_to_focus_missing_from_db:
-                    raise HDF5Error, "%d of %d genome names you wanted to focus are missing from the genomes sotrage.\
+                    raise HDF5Error("%d of %d genome names you wanted to focus are missing from the genomes sotrage.\
                                      Although this may not be a show-stopper, anvi'o likes to be explicit, so here we\
                                      are. Not going anywhere until you fix this. For instance this is one of the missing\
                                      genome names: '%s', and this is one random genome name from the database: '%s'" % \
                                              (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
-                                             genome_names_to_focus_missing_from_db[0], self.genomes.keys()[0])
+                                             genome_names_to_focus_missing_from_db[0], list(self.genomes.keys())[0]))
 
                 self.genome_names = self.genome_names_to_focus
 
@@ -223,14 +230,14 @@ class GenomesDataStorage(HDF5_IO):
     def is_known_genome(self, genome_name, throw_exception=True):
         if not self.path_exists('/info/genomes/%s' % genome_name):
             if throw_exception:
-                raise HDF5Error, 'The database at "%s" does not know anything about "%s" :(' % (self.file_path, genome_name)
+                raise HDF5Error('The database at "%s" does not know anything about "%s" :(' % (self.file_path, genome_name))
             else:
                 return False
 
 
     def is_known_gene_call(self, genome_name, gene_caller_id):
         if not self.path_exists('/data/genomes/%s/%d' % (genome_name, gene_caller_id)):
-            raise HDF5Error, 'The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id)
+            raise HDF5Error('The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id))
 
 
     def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
@@ -267,8 +274,8 @@ class GenomesDataStorage(HDF5_IO):
 
     def get_gene_functions(self, genome_name, gene_caller_id):
         if not self.functions_are_available:
-            raise HDF5Error, "Functions are not available for this genome storage, and you are calling GenomesStorage::get_gene_functions\
-                              when you really shouldn't :/"
+            raise HDF5Error("Functions are not available for this genome storage, and you are calling GenomesStorage::get_gene_functions\
+                              when you really shouldn't :/")
 
         functions = {}
 
@@ -285,7 +292,7 @@ class GenomesDataStorage(HDF5_IO):
 
     def add_genome(self, genome_name, info_dict):
         if self.is_known_genome(genome_name, throw_exception=False):
-            raise HDF5Error, "Genome '%s' is already in this data storage :/" % genome_name
+            raise HDF5Error("Genome '%s' is already in this data storage :/" % genome_name)
 
         for key in self.essential_genome_info:
             self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
@@ -334,7 +341,7 @@ class GenomesDataStorage(HDF5_IO):
             self.progress.update('%s ...' % genome_name)
 
             genome_data = self.D(genome_name)
-            gene_caller_ids = sorted([int(i[0]) for i in genome_data.items()])
+            gene_caller_ids = sorted([int(i[0]) for i in list(genome_data.items())])
 
             for gene_caller_id in gene_caller_ids:
                 partial = self.G(gene_caller_id, genome_data)['partial'].value

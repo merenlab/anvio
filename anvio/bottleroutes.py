@@ -293,7 +293,7 @@ def store_collections_dict(args, d, request, response):
         run.info_single('Lousy attempt from the user to store their collection under an empty source identifier name :/')
         return json.dumps("Error: Collection name cannot be empty.")
 
-    num_splits = sum(len(l) for l in data.values())
+    num_splits = sum(len(l) for l in list(data.values()))
     if not num_splits:
         run.info_single('The user to store 0 splits as a collection :/')
         return json.dumps("Error: There are no selections to store (you haven't selected anything).")
@@ -423,10 +423,10 @@ def get_items_ordering(args, d, request, response, items_ordering_id):
     if items_ordering_id in d.p_meta['clusterings']:
         items_ordering = d.p_meta['clusterings'][items_ordering_id]
 
-        if items_ordering.has_key('newick'):
+        if 'newick' in items_ordering:
             run.info_single("The newick order '%s' has been requested" % (items_ordering_id))
             return json.dumps(items_ordering['newick'])
-        elif items_ordering.has_key('basic'):
+        elif 'basic' in items_ordering:
             run.info_single("The list order '%s' has been requested" % (items_ordering_id))
             return json.dumps(items_ordering['basic'])
         else:

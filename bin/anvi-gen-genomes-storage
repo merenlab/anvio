@@ -54,9 +54,9 @@ if __name__ == '__main__':
     try:
         pan = panops.GenomeStorage(args, run, progress)
         pan.create_genomes_data_storage()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

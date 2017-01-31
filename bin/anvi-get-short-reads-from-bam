@@ -44,10 +44,10 @@ if __name__ == '__main__':
         r = GetReadsFromBAM(args)
         r.init()
         r.store_short_reads_for_splits()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
   

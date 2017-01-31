@@ -21,7 +21,7 @@ next_version    = '17'
 
 def update_profile_db(profile_db_path, just_do_it = False):
     if profile_db_path is None:
-        raise ConfigError, "No database path is given."
+        raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
     dbops.is_profile_db(profile_db_path)
@@ -29,7 +29,7 @@ def update_profile_db(profile_db_path, just_do_it = False):
     # make sure the version is accurate
     profile_db = db.DB(profile_db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:
-        raise ConfigError, "Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version
+        raise ConfigError("Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version)
 
     if not just_do_it:
         try:
@@ -38,9 +38,9 @@ def update_profile_db(profile_db_path, just_do_it = False):
                          why we called it `portion_covered` in the first place :/ You can just press ENTER to continue.\
                          If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
                          this message the next time, use '--just-do-it'." % (current_version, next_version))
-            raw_input("Press ENTER to continue...\n")
+            input("Press ENTER to continue...\n")
         except:
-            print
+            print()
             sys.exit()
 
     is_merged = profile_db.get_meta_value('merged')
@@ -98,6 +98,6 @@ if __name__ == '__main__':
 
     try:
         update_profile_db(args.profile_db, just_do_it = args.just_do_it)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

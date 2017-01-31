@@ -3,7 +3,7 @@
 
 """Classes to make sense of single nucleotide variation"""
 
-from __future__ import division
+
 from collections import Counter
 
 import os
@@ -77,7 +77,7 @@ class VariabilitySuper(object):
         self.input_file_path = None
 
         if self.engine not in variability_engines:
-            raise ConfigError, "The superclass is inherited with an unknown engine. Anvi'o needs an adult :("
+            raise ConfigError("The superclass is inherited with an unknown engine. Anvi'o needs an adult :(")
 
         # Initialize the contigs super
         dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
@@ -105,37 +105,37 @@ class VariabilitySuper(object):
                 self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
             except ValueError:
                 self.progress.end()
-                raise ConfigError, "Well. Anvi'o was working on your genes of interest .. and ... those gene IDs did not\
-                                    look like anvi'o gene caller ids :/ Anvi'o is sad now."
+                raise ConfigError("Well. Anvi'o was working on your genes of interest .. and ... those gene IDs did not\
+                                    look like anvi'o gene caller ids :/ Anvi'o is sad now.")
         else:
             self.genes_of_interest = set([])
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
-            raise ConfigError, 'You need to provide a profile database.'
+            raise ConfigError('You need to provide a profile database.')
 
         if not self.contigs_db_path:
-            raise ConfigError, 'You need to provide a contigs database.'
+            raise ConfigError('You need to provide a contigs database.')
 
         self.progress.update('Making sure our databases are compatible ..')
         dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
-            raise ConfigError, "When you sepecify a coverage value through --min-coverage-in-each-sample, you must also\
+            raise ConfigError("When you sepecify a coverage value through --min-coverage-in-each-sample, you must also\
                                 use --quince-mode flag, since the former parameter needs to know the coverage values in all\
                                 samples even if variation is reported for only one sample among otheres. This is the only way\
                                 to figure out whether variation is not reported for other samples due to low or zero coverage,\
                                 or there was no variation to report despite the high coverage. Anvi'o could turn --quince-mode\
                                 flat automatically for you, but then it is much better if you have full control and understaning\
-                                of what is going on."
+                                of what is going on.")
 
         if self.quince_mode:
             self.progress.update('Accessing auxiliary data file ...')
             auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
             if not os.path.exists(auxiliary_data_file_path):
-                raise ConfigError, "Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
-                                    However it wasn't found at '%s' :/" % auxiliary_data_file_path
+                raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
+                                    However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
 
@@ -145,13 +145,13 @@ class VariabilitySuper(object):
             # the profile database.
             if not self.bin_id:
                 self.progress.end()
-                raise ConfigError, 'When you declare a collection id, you must also declare a bin name\
-                                    (from which the split names of interest will be acquired)'
+                raise ConfigError('When you declare a collection id, you must also declare a bin name\
+                                    (from which the split names of interest will be acquired)')
             if self.splits_of_interest or self.splits_of_interest_path:
                 self.progress.end()
-                raise ConfigError, "You declared a collection id and one or more bin names so anvi'o can find out\
+                raise ConfigError("You declared a collection id and one or more bin names so anvi'o can find out\
                                     splits of interest, but you also have specified informaiton for split names?\
-                                    This is confusing. You should choose one way or another :/"
+                                    This is confusing. You should choose one way or another :/")
 
             self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
         else:
@@ -161,9 +161,9 @@ class VariabilitySuper(object):
             if not self.splits_of_interest:
                 if not self.splits_of_interest_path:
                     self.progress.end()
-                    raise ConfigError, 'You did not declare a source for split names. You either should give me\
+                    raise ConfigError('You did not declare a source for split names. You either should give me\
                                         a file with split names you are interested in, or a collection id and\
-                                        bin name so I can learn split names from the profile database.'
+                                        bin name so I can learn split names from the profile database.')
                 filesnpaths.is_file_exists(self.splits_of_interest_path)
                 self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
 
@@ -175,25 +175,25 @@ class VariabilitySuper(object):
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
-            raise ConfigError, "Well well well. It seems SNVs were not characterized for this profile database.\
-                                Sorry, there is nothing to report here!"
+            raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
+                                Sorry, there is nothing to report here!")
 
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
         elif self.engine == 'AA':
             # AA specific stuff. first check whether things were profiled
             if not profile_db.meta['AA_frequencies_profiled']:
-                raise ConfigError, "It seems AA frequencies were not characterized for this profile database.\
-                                    There is nothing to report here for AAs!"
+                raise ConfigError("It seems AA frequencies were not characterized for this profile database.\
+                                    There is nothing to report here for AAs!")
 
             # get the data.
             self.data = profile_db.db.get_table_as_dict(t.variable_aas_table_name)
 
             # append split_name information
-            for e in self.data.values():
+            for e in list(self.data.values()):
                 e['split_name'] = self.gene_callers_id_to_split_name_dict[e['corresponding_gene_call']]
         else:
-            raise ConfigError, "VariabilitySuper :: Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine
+            raise ConfigError("VariabilitySuper :: Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         profile_db.disconnect()
 
@@ -260,8 +260,8 @@ class VariabilitySuper(object):
             samples_missing_from_db = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
 
             if len(samples_missing_from_db):
-                raise ConfigError, 'One or more samples you are interested in seem to be missing from\
-                                    the profile database: %s' % ', '.join(samples_missing_from_db)
+                raise ConfigError('One or more samples you are interested in seem to be missing from\
+                                    the profile database: %s' % ', '.join(samples_missing_from_db))
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = self.samples_of_interest
@@ -276,7 +276,7 @@ class VariabilitySuper(object):
             self.filter('splits of interest', lambda x: x['split_name'] not in self.splits_of_interest)
 
         # let's report the number of positions reported in each sample before filtering any futrher:
-        num_positions_each_sample = Counter([v['sample_id'] for v in self.data.values()])
+        num_positions_each_sample = Counter([v['sample_id'] for v in list(self.data.values())])
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
 
         if self.min_departure_from_reference:
@@ -367,7 +367,7 @@ class VariabilitySuper(object):
 
     def insert_additional_fields(self, keys=[]):
         if not len(keys):
-            keys = self.data.keys()
+            keys = list(self.data.keys())
 
         for key in keys:
             e = self.data[key]
@@ -397,8 +397,8 @@ class VariabilitySuper(object):
 
         num_samples = len(self.sample_ids)
         if self.min_scatter > num_samples / 2:
-            raise ConfigError, 'Minimum scatter (%d) can not be more than half of the number of samples\
-                                (%d) :/' % (self.min_scatter, num_samples)
+            raise ConfigError('Minimum scatter (%d) can not be more than half of the number of samples\
+                                (%d) :/' % (self.min_scatter, num_samples))
 
         self.run.info('Min scatter', self.min_scatter)
 
@@ -494,7 +494,7 @@ class VariabilitySuper(object):
         self.progress.new('Filtering based on -n')
 
         self.progress.update('Generating splits and positions tuples ...')
-        splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in self.data.values()])
+        splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in list(self.data.values())])
         unique_positions_to_remove = set([])
 
         self.progress.update('Generating positions in splits dictionary ...')
@@ -555,7 +555,7 @@ class VariabilitySuper(object):
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
         self.progress.update('populating a dict to track corresponding gene ids for each unique position')
         unique_pos_identifier_to_corresponding_gene_id = {}
-        for entry in self.data.values():
+        for entry in list(self.data.values()):
             unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
 
         return unique_pos_identifier_to_corresponding_gene_id
@@ -564,7 +564,7 @@ class VariabilitySuper(object):
     def get_unique_pos_identifier_to_codon_order_in_gene(self):
         self.progress.update('populating a dict to track codon order in genes for each unique position')
         unique_pos_identifier_to_codon_order_in_gene = {}
-        for entry in self.data.values():
+        for entry in list(self.data.values()):
             unique_pos_identifier_to_codon_order_in_gene[entry['unique_pos_identifier']] = entry['codon_order_in_gene']
 
         return unique_pos_identifier_to_codon_order_in_gene
@@ -592,7 +592,7 @@ class VariabilitySuper(object):
 
         self.run.info('Num entries reported', pp(len(self.data)))
         self.run.info('Output File', self.args.output_file)
-        self.run.info('Num %s positions reported' % self.engine, pp(len(set([e['unique_pos_identifier'] for e in self.data.values()]))))
+        self.run.info('Num %s positions reported' % self.engine, pp(len(set([e['unique_pos_identifier'] for e in list(self.data.values())]))))
 
 
 class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
@@ -718,7 +718,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         unique_pos_identifier_str_to_consenus_codon = {}
         unique_pos_identifier_str_to_unique_pos_identifier = {}
-        for e in self.data.values():
+        for e in list(self.data.values()):
             upi = e['unique_pos_identifier_str']
             unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
             unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
@@ -836,7 +836,7 @@ class VariabilityNetwork:
         if self.samples_information_path:
             filesnpaths.is_file_tab_delimited(self.samples_information_path)
             self.samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_path)
-            num_attributes = len(self.samples_information_dict.values()[0])
+            num_attributes = len(list(self.samples_information_dict.values())[0])
 
             self.run.info('samples_information', '%d attributes read for %d samples' % (num_attributes, len(self.samples_information_dict)))
 
@@ -852,25 +852,25 @@ class VariabilityNetwork:
 
     def generate(self):
         if not self.data:
-            raise ConfigError, "There is nothing to report. Either the input file you provided was empty, or you\
-                                haven't filled in the variable positions data into the class."
+            raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you\
+                                haven't filled in the variable positions data into the class.")
 
         if self.max_num_unique_positions < 0:
-            raise ConfigError, "Max number of unique positions cannot be less than 0.. Obviously :/"
+            raise ConfigError("Max number of unique positions cannot be less than 0.. Obviously :/")
 
-        self.samples = sorted(list(set([e['sample_id'] for e in self.data.values()])))
+        self.samples = sorted(list(set([e['sample_id'] for e in list(self.data.values())])))
         self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
 
         if self.samples_information_dict:
             samples_missing_in_information_dict = [s for s in self.samples if s not in self.samples_information_dict]
             if len(samples_missing_in_information_dict):
-                raise ConfigError, "The sample names you provided in the samples information data is not a subset of\
+                raise ConfigError("The sample names you provided in the samples information data is not a subset of\
                                     sample names found in the variable positions data :/ Essentially, every sample name\
                                     appears in the variability data must be present in the samples information data,\
                                     however, you are missing these ones from your samples information: %s."\
-                                                % (', '.join(samples_missing_in_information_dict))
+                                                % (', '.join(samples_missing_in_information_dict)))
 
-        self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in self.data.values()])
+        self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
         self.run.info('unique_variable_nt_positions', '%d found.' % (len(self.unique_variable_nt_positions)))
 
         if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
@@ -886,7 +886,7 @@ class VariabilityNetwork:
                 samples_dict[sample_name][unique_variable_position] = 0
 
         self.progress.update('Updating the dictionary with data')
-        for entry in self.data.values():
+        for entry in list(self.data.values()):
             sample_id = entry['sample_id']
             pos = entry['unique_pos_identifier']
             frequency = entry['departure_from_reference']
