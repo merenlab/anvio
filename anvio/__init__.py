@@ -90,6 +90,15 @@ D = {
              'required': True,
              'help': "Anvi'o runinfo file path."}
                 ),
+    'description': (
+            ['--description'],
+            {'metavar': 'TEXT_FILE',
+             'required': False,
+             'help': "A plain text file that contains some description about the project. You can use Markdwon syntax.\
+                      The description text will be rendered and shown in all relevant interfaces, including the\
+                      anvi'o interactive interface, or anvi'o summary outputs."}
+                ),
+
     'additional-view': (
             ['-V', '--additional-view'],
             {'metavar': 'ADDITIONAL_VIEW',
@@ -416,14 +425,6 @@ D = {
                       the gene context for it to be reported. You must consider the length of\
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
-                ),
-    'gen-serialized-profile': (
-            ['--gen-serialized-profile'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "When declared, anvi'o will store the profiling results in a serialized object that can be used for quick\
-                      re-profiling. However, this object can get very large, and take a lot of space on disk. It is essentially\
-                      useful for testing purposes, and for people who like to hack things."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
