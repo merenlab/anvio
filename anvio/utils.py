@@ -443,13 +443,22 @@ def summarize_alignment(sequence):
 
 
 def restore_alignment(sequence, alignment_summary):
-    """Restores an alignment from its sequence and alignment summary"""
-    alignment = ''
-    sequence = list(sequence)
+    """Restores an alignment from its sequence and alignment summary.
+
+       See `summarize_alignment` for the `alignment_summary` compression.
+    """
+
+    if isinstance(sequence, bytes):
+        sequence = list(sequence.decode('utf-8'))
+    elif isinstance(sequence, str):
+        sequence = list(sequence)
+    else:
+        raise ConfigError("Sequence must be of type str or bytes. What you sent is of %s :/" % type(sequence))
 
     in_gap = alignment_summary[0] == '-'
     in_nt = not in_gap
 
+    alignment = ''
     for part in [int(p) for p in alignment_summary.split('|')[1:]]:
         if in_gap:
             alignment += '-' * part
