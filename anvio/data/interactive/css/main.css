@@ -45,7 +45,7 @@ h4 {
     margin-top: 10px;
 }
 
-::-webkit-scrollbar:not(#description-dialog *) { 
+#sidebar::-webkit-scrollbar { 
     display: none; 
 }
 
