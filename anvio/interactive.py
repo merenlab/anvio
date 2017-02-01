@@ -248,6 +248,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
+        self.p_meta['description'] = '_No description is available_'
 
         clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
         self.p_meta['default_clustering'] = clustering_id
