@@ -760,6 +760,7 @@ function showDescription() {
         width: 600,
         height: 500
     });
+    descriptionEditor.togglePreview();
 }
 
 function onTreeClusteringChange() {
