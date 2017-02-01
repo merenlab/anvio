@@ -519,3 +519,23 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .ui-dialog-content {
     width: 100% !important;
 }
+
+/* Close Button */
+
+.close-thick {
+  color: #777;
+  font: 14px/100% arial, sans-serif;
+  position: absolute;
+  right: 0px;
+  text-decoration: none;
+  text-shadow: 0 1px 0 #fff;
+  top: 0px;
+}
+
+.close-thick:hover {
+    text-decoration: none;
+}
+
+.close-thick:after {
+  content: '✖'; /* UTF-8 symbol */
+}
