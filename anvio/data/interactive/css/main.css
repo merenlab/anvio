@@ -111,13 +111,6 @@ html, body, #wrapper {
     line-height: 115%;
 }
 
-#title-panel-close-button {
-    position: absolute;
-    top: 0px;
-    right: 10px;
-    font-size: 12px;
-}
-
 #mouse_hover_panel {
     top: 0px;
     right: 0px;
