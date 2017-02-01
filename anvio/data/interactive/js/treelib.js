@@ -2550,6 +2550,12 @@ function draw_tree(settings) {
             }
         }
     }
+
+    // Scale to fit window
+    bbox = svg.getBBox();
+    zoom_reset();
+
+
     if (settings['tree-type'] == 'circlephylogram' && settings['angle-min'] == 0 && settings['angle-max'] <= 270)
     {
         //draw samples layers
@@ -2568,10 +2574,6 @@ function draw_tree(settings) {
         _sub_title    += "Current view: <b>" + settings['current-view'] + "</b> | ";
         _sub_title    += "Sample order: <b>" + settings['samples-order'] + "</b>";
     $('#title-panel-second-line').html(_sub_title);
-
-    // Scale to fit window
-    bbox = svg.getBBox();
-    zoom_reset();
 
     // pan and mouse zoom
     $('svg').svgPan('viewport');
