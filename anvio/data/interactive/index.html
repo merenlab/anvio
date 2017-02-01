@@ -26,6 +26,10 @@
     <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/button.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/position.js"></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/dialog.js"></script>
     <script type="text/javascript" src="lib/colpick/colpick.js"></script>
     <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
@@ -49,6 +53,9 @@
 
     <script type="text/javascript" src="js/session.js"></script>
     <script type="text/javascript" src="js/index.js"></script>
+
+    <link rel="stylesheet" href="lib/simplemde-markdown-editor/dist/simplemde.min.css">
+    <script src="lib/simplemde-markdown-editor/dist/simplemde.min.js"></script>
 
     <script>
       $(document).ready(function(){
@@ -781,6 +788,12 @@
         </div>
     </div>
 
+    <!-- DESCRIPTION DIALOG -->
+    <div id="description-dialog" title="Description" style="display: none; ">
+        <textarea id="description-editor">
+        </textarea>
+    </div>
+
     <!-- DEFAULT RIGHT CLICK MENU -->
     <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
@@ -831,7 +844,6 @@
 
     <!-- Activate tooltips... -->
     <script type="text/javascript">
-
     function titleSetter()
     {
         if (!$("#show-help-tooltips").is(':checked'))

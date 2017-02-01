@@ -106,6 +106,9 @@ var bbox;
 
 var mouse_event_origin_x = 0;
 var mouse_event_origin_y = 0;
+
+var description;
+var descriptionEditor;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -225,6 +228,7 @@ function initData () {
         var collectionAutoloadResponse = [ response.collectionAutoload ];
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
+        var description = response.description;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
 
@@ -294,7 +298,15 @@ function initData () {
             bin_prefix = prefixResponse[0];
 
             document.title = titleResponse[0];
-            $('#title-panel-first-line').text(titleResponse[0])
+            $('#title-panel-first-line').text(titleResponse[0]);
+            if (typeof description !== 'undefined')
+            {
+                $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
+            }
+            $('#description-editor').val(description);
+            descriptionEditor = new SimpleMDE({ element: document.getElementById("description-editor") });
+            //descriptionEditor.value(description);
+
             contig_lengths = eval(contigLengthsResponse[0]);
 
             // if --state parameter given, autoload given state.
@@ -741,6 +753,13 @@ function orderLegend(legend_id, type) {
     legends[legend_id]['item_names'].push(legends[legend_id]['item_names'].splice(legends[legend_id]['item_names'].indexOf('None'), 1)[0]);
 
     createLegendColorPanel(legend_id);
+}
+
+function showDescription() {
+    $('#description-dialog').dialog({        
+        width: 600,
+        height: 500
+    });
 }
 
 function onTreeClusteringChange() {

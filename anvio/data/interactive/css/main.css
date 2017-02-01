@@ -507,3 +507,15 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 32px;
     }
 }
+
+.CodeMirror, .CodeMirror-scroll {
+    height: calc(100% - 80px) !important;
+}
+
+.ui-dialog, .ui-dialog-content {
+    padding: 0px !important;
+}
+
+.ui-dialog-content {
+    width: 100% !important;
+}
