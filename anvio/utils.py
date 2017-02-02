@@ -142,6 +142,35 @@ def get_total_memory_usage():
     return human_readable_file_size(mem)
 
 
+def get_predicted_type_of_items_in_a_dict(d, key):
+    """Gets a dictionary `d` and a `key` in it, and returns a type function.
+    
+    It is a bit counter intuitive. dictionary should look like this:
+
+        d = {'x': {'key': item, (...)},
+             'y': {'key': item, (...)},
+             (...),
+            }
+
+    This is a shitty funciton, but there was a real need for it, so here we are :/
+    """
+
+    items = [x[key] for x in d.values()]
+
+    not_float = False
+    for item in items:
+        try:
+            float(item or 0)
+        except ValueError:
+            not_float = True
+            break
+
+    if not_float:
+        return str
+    else:
+        return float
+
+
 def human_readable_file_size(nbytes):
     suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
     if nbytes == 0: return '0 B'
