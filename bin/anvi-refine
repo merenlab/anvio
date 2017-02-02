@@ -73,6 +73,7 @@ groupD.add_argument(*anvio.A('show-outlier-snvs'), **anvio.K('show-outlier-snvs'
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
