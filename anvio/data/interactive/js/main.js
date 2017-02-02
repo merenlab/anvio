@@ -616,6 +616,8 @@ function buildLegendTables() {
 
         if (legends[i]['source'].indexOf('samples') > -1) {
             template += '<span class="label label-default">Samples</span> '
+        } else {
+            template += '<span class="label label-default">Main</span> '
         }
 
         template += legend['name'] + '</span><div>';
@@ -625,7 +627,7 @@ function buildLegendTables() {
                             <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span>Batch Coloring</button>
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
                         </div>
                         <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
                             <table class="col-md-12 table-spacing">
