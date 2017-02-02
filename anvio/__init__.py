@@ -1033,6 +1033,14 @@ D = {
                       relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
                       processing time for large datasets."}
                 ),
+    'skip-auto-ordering': (
+            ['--skip-auto-ordering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the attempt to include automatically generated orders of items based on additional data\
+                      is skipped. In case those buggers cause issues with your data, and you still want to see your stuff and\
+                      deal with the other issue maybe later."}
+                ),
     'quick-summary': (
             ['--quick-summary'],
             {'default': False,
