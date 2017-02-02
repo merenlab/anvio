@@ -72,6 +72,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
         self.skip_init_functions = A('skip_init_functions')
+        self.skip_auto_ordering = A('skip_auto_ordering')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -81,7 +82,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.displayed_item_names_ordered = None
-        self.additional_layers = None
         self.auxiliary_profile_data_available = False
 
         self.samples_information_dict = {}
@@ -185,12 +185,36 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.mode == 'full':
             self.init_non_singlecopy_gene_hmm_sources(self.displayed_item_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
 
+        # take care of additional layers, and update ordering information for items
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
-            self.additional_layers = self.additional_layers_path
+
+            self.additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.additional_layers_dict, assign_none_for_missing=True)
+            self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
+        self.auto_order_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
+
+
+    def auto_order_items_based_on_additional_layers_data(self):
+        if self.skip_auto_ordering:
+            return
+
+        self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        # go through additional layers that are not of type `bar`.
+        for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
+            self.progress.update('for "%s" ...' % layer)
+            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+            item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
+
+            self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
+            self.p_meta['clusterings']['>> %s' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple)]}
+
+            self.p_meta['available_clusterings'].append('>> %s_(reverse):none:none' % layer)
+            self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+
+        self.progress.end()
 
 
     def load_manual_mode(self, args):
@@ -341,6 +365,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # the one we have. that will be LOVELY.
         self.load_full_mode(args)
 
+        # FIXME: `clusterings` should become `orderings` thorughout the code.
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
 
@@ -625,11 +650,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def convert_view_data_into_json(self):
         '''This function's name must change to something more meaningful.'''
 
-        additional_layers_dict, additional_layers_headers = self.additional_layers_dict, self.additional_layers_headers
-        if self.additional_layers_path:
-            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=additional_layers_dict, assign_none_for_missing=True)
-            additional_layers_headers = additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
-
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
             view_dict = self.views[view]['dict']
@@ -657,8 +677,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             json_header.extend(view_headers)
 
             # (6) then add 'additional' headers as the outer ring:
-            if additional_layers_headers:
-                json_header.extend(additional_layers_headers)
+            if self.additional_layers_headers:
+                json_header.extend(self.additional_layers_headers)
 
             # (7) finally add hmm search results
             if self.hmm_searches_header:
@@ -690,7 +710,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([additional_layers_dict[split_name][header] if split_name in additional_layers_dict else None for header in additional_layers_headers])
+                json_entry.extend([self.additional_layers_dict[split_name][header] if split_name in self.additional_layers_dict else None for header in self.additional_layers_headers])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -701,7 +721,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (8) send it along!
                 json_object.append(json_entry)
-
 
             self.views[view] = json_object
 
