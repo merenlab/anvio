@@ -22,6 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
 class DB:
     def __init__(self, db_path, client_version, new_database=False, ignore_version=False):
         self.db_path = db_path
@@ -48,13 +49,14 @@ class DB:
             self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 raise ConfigError("It seems the database '%s' was generated when your client was at version %s,\
-                                    however, your client now is at version %s. Which means this database file\
-                                    cannot be used with this client anymore and needs to be upgraded to the\
-                                    version %s :/ That being said, you may not need to re-create this database\
-                                    if there is a script to upgrade this database from v%s to v%s. Please feel free to\
-                                    get in touch with the anvi'o developers (they will be happy to hear from you)."\
-                                            % (self.db_path, self.version, client_version, client_version,\
-                                               self.version, client_version))
+                                   however, your client now is at version %s. Which means this database file\
+                                   cannot be used with this client anymore, but THERE MAY be a script to UPGRADE \
+                                   your database! Just type `anvi-script-upgrade-` on your terminal, and press the TAB key\
+                                   twice to see all available scripts. If there is nothing there to upgrade your database from\
+                                   v%s to v%s, you may need to re-create it with the new anvi'o :/ Please feel free to\
+                                   get in touch with the anvi'o developers if you are not sure, and they will help you\
+                                   figure out what is the next best step for you."\
+                                           % (self.db_path, self.version, client_version, self.version, client_version))
 
 
     def get_version(self):
