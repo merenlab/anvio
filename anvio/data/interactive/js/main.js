@@ -823,27 +823,29 @@ function syncViews() {
 
 
 function getComboBoxContent(default_item, available_items){
+    available_items = Object.keys(available_items).sort()
     var combo = '';
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
-    $.each(available_items, function(index, value) {
-        if (index.indexOf(':') == -1) {
-            text_val = getPrettyName(index);
+    $.each(available_items, function(index, item) {
+        console.log(item);
+        if (item.indexOf(':') == -1) {
+            text_val = getPrettyName(item);
         } else {
-            text_val = getClusteringPrettyName(index);
+            text_val = getClusteringPrettyName(item);
         }
 
-        if(index == default_item)
+        if(item == default_item)
         {
             combo += combo_item
-                        .replace('{val}', index)
+                        .replace('{val}', item)
                         .replace('{sel}', ' selected')
                         .replace('{text}', text_val);
         }
         else
         {
             combo += combo_item
-                        .replace('{val}', index)
+                        .replace('{val}', item)
                         .replace('{sel}', '')
                         .replace('{text}', text_val);
         }
