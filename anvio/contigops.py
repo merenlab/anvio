@@ -170,7 +170,7 @@ class Auxiliary:
 
             coverage = 0
             if self.split.parent in coverages:
-                coverage = coverages[self.split.parent][pos_in_contig]
+                coverage = int(coverages[self.split.parent][pos_in_contig])
 
             if coverage < self.min_coverage:
                 continue
@@ -178,11 +178,11 @@ class Auxiliary:
             nt_counts = Counter({'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0})
             if self.split.parent in column_nucleotide_counts:
                 nt_counts = Counter({
-                    'A': column_nucleotide_counts[self.split.parent][pos_in_contig][0],
-                    'T': column_nucleotide_counts[self.split.parent][pos_in_contig][1],
-                    'G': column_nucleotide_counts[self.split.parent][pos_in_contig][2],
-                    'C': column_nucleotide_counts[self.split.parent][pos_in_contig][3],
-                    'N': column_nucleotide_counts[self.split.parent][pos_in_contig][4]
+                    'A': int(column_nucleotide_counts[self.split.parent][pos_in_contig][0]),
+                    'T': int(column_nucleotide_counts[self.split.parent][pos_in_contig][1]),
+                    'G': int(column_nucleotide_counts[self.split.parent][pos_in_contig][2]),
+                    'C': int(column_nucleotide_counts[self.split.parent][pos_in_contig][3]),
+                    'N': int(column_nucleotide_counts[self.split.parent][pos_in_contig][4])
                 })
 
             cp = ColumnProfile(nt_counts,
