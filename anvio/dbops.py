@@ -2152,6 +2152,18 @@ class TableForAAFrequencies(Table):
         profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
         profile_db.disconnect()
 
+class TableForGeneDetection(Table):
+    '''The purpose of this class is to keep detection values for each gene in contigs, which is found in a sample.
+    Before the existence of this table, detection information was only saved at split level. The purpose of this
+    table is to make this information available in the gene level'''
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+        self.genes = []
+        self.set_next_available_id(t.gene_detection_table_name)
+
 
 class TableForGeneCoverages(Table):
     '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
