@@ -27,6 +27,12 @@ anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
 
+INFO "Exporting contig sequences from the contigs database"
+anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_contig_seqeunces.fa
+
+INFO "Exporting contig sequences from the contigs database in 'splits mode'"
+anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqeunces.fa --splits-mode
+
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/*
 
