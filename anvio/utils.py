@@ -1073,7 +1073,7 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     return True
 
 
-def export_contigs_from_contigs_db(contigs_db_path, output_file_path, rna_alphabet=True, split=True):
+def export_contigs_from_contigs_db(contigs_db_path, output_file_path, rna_alphabet=False, split=True):
     filesnpaths.is_output_file_writable(output_file_path)
 
     contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
