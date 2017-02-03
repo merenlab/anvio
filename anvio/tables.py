@@ -133,6 +133,10 @@ gene_coverages_table_name            = 'gene_coverages'
 gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
 gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
 
+gene_detection_table_name           = 'gene_detection'
+gene_detection_table_structure      = ['entry_id', 'gene_callers_id', 'sample_id', 'detection']
+gene_detection_table_types          = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
+
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
 views_table_types                    = [  'str'  ,      'str'    ]
