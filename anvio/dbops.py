@@ -2468,9 +2468,9 @@ class TablesForHMMHits(Table):
                     pass # because you can't be here.
                 else:
                     target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
-                    utils.export_contigs_from_contigs_db(self.db_path,
-                                                         target_files_dict['%s:CONTIG' % alphabet],
-                                                         rna_alphabet=True if alphabet=='RNA' else False)
+                    utils.export_sequences_from_contigs_db(self.db_path,
+                                                           target_files_dict['%s:CONTIG' % alphabet],
+                                                           rna_alphabet=True if alphabet=='RNA' else False)
 
         commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use)
 
