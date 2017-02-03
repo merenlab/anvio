@@ -1073,23 +1073,34 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     return True
 
 
-def export_contigs_from_contigs_db(contigs_db_path, output_file_path, rna_alphabet=False, split=True):
+def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True):
+    """Export sequences from a contigs database."""
     filesnpaths.is_output_file_writable(output_file_path)
 
     contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
     contig_sequences_dict = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
+    splits_info_dict = contigs_db.get_table_as_dict(t.splits_info_table_name)
     contigs_db.disconnect()
 
-    contigs_fasta = u.FastaOutput(output_file_path)
+    output_fasta = u.FastaOutput(output_file_path)
 
-    for contig_name in sorted(contig_sequences_dict.keys()):
-        sequence = contig_sequences_dict[contig_name]['sequence']
+    FORMAT = lambda seq: seq.replace('T', 'U') if rna_alphabet else seq
 
-        if rna_alphabet:
-            sequence = sequence.replace('T', 'U')
+    if not seq_names_to_export:
+        if splits_mode:
+            seq_names_to_export = sorted(splits_info_dict.keys())
+        else:
+            seq_names_to_export = sorted(contig_sequences_dict.keys())
 
-        contigs_fasta.write_id(contig_name)
-        contigs_fasta.write_seq(sequence, split=split)
+    for seq_name in seq_names_to_export:
+        if splits_mode:
+            s = splits_info_dict[seq_name]
+            sequence = FORMAT(contig_sequences_dict[s['parent']]['sequence'][s['start']:s['end']])
+        else:
+            sequence = FORMAT(contig_sequences_dict[seq_name]['sequence'])
+
+        output_fasta.write_id(seq_name)
+        output_fasta.write_seq(sequence, split=truncate)
 
     return True
 
