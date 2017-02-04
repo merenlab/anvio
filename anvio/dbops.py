@@ -2173,6 +2173,15 @@ class TableForGeneDetection(Table):
             self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
 
 
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path)
+        db_entries = [
+            tuple([self.next_id(t.gene_detection_table_name)] + [gene[h] for h in t.gene_detection_table_structure[1:]])
+            for gene in self.genes]
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_detection_table_name, db_entries)
+        profile_db.disconnect()
+
+
 class TableForGeneCoverages(Table):
     '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
        Simply, you create an instance from it, keep sending contig instances from contig.py::Contig class along with
