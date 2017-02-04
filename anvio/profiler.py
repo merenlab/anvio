@@ -316,6 +316,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         variable_nts_table.store()
 
 
+    def generate_gene_detection_table(self):
+        gene_detection_table = dbops.TableForGeneDetection(self.profile_db_path, progress=self.progress)
+
+        for contig in self.contigs:
+            contig_name = contig.name
+
+            # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
+            # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
+            # we wreck ourselves and the ultimately the analysis of this poor user:
+            if contig_name in self.contig_name_to_genes:
+                gene_detection_table.analyze_contig(contig, self.sample_id, self.contig_name_to_genes[contig_name])
+
+        gene_detection_table.store()
+
+
     def generate_gene_coverages_table(self):
         gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
 
