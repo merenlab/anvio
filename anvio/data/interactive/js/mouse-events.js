@@ -173,7 +173,13 @@ function lineContextMenuHandler(event) {
         }
 
         return false;
+    } else {
+        context_menu_target_id = getNodeFromEvent(event).id;
+        $('#branch_right_click_menu').show();
+        $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
     }
+
+    return false;
 
     var p = getNodeFromEvent(event);
 
@@ -490,6 +496,10 @@ function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
 
     switch (action) {
+        case 'collapse':
+            collapsedNodes.push(context_menu_target_id);
+            drawTree();
+            break;
 
         case 'select':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
