@@ -2165,6 +2165,14 @@ class TableForGeneDetection(Table):
         self.set_next_available_id(t.gene_detection_table_name)
 
 
+    def analyze_contig(self, contig, sample_id, start_stop_pos_list):
+        # analyzing the contig to find the detection value for each gene, by counting the number of nucleotide
+        # positions that have coverage value greater than zero, and then deviding by the length of the gebe
+        for gene_callers_id, start, stop in start_stop_pos_list:
+            gene_detection = Counter(self.contig_coverages[contig.name][start:stop])[0] / (stop - start)
+            self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
+
+
 class TableForGeneCoverages(Table):
     '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
        Simply, you create an instance from it, keep sending contig instances from contig.py::Contig class along with
