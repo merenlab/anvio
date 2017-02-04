@@ -874,6 +874,12 @@
         </div>
     </div>
 
+    <!-- RIGHT CLICK MENU FOR BRANCH -->
+    <ul id="branch_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
+        <li><a href="#" onclick="menu_callback('select');">Add branch to bin</a></li>
+        <li><a href="#" onclick="menu_callback('remove');">Remove branch from bin</a></li>
+        <li><a href="#" onclick="menu_callback('collapse');">Collapse this branch</a></li>
+    </ul>
     <!-- DEFAULT RIGHT CLICK MENU -->
     <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>

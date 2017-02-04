@@ -581,6 +581,7 @@ function Node(label) {
     this.path_length = 0.0;
     this.depth = 0;
     this.order = null;
+    this.collapsed = false;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1600,17 +1601,53 @@ function draw_tree(settings) {
 
             label_to_node_map[q.label] = q;
             id_to_node_map[q.id] = q;
-            
+
+            var _n = new NodeIterator(q);
+            var _q = _n.Begin();
+
+            q.child_nodes = [];
+            while (_q != null) {
+                q.child_nodes.push(_q.id);
+                _q = _n.Next();
+            }
+
+            if (collapsedNodes.indexOf(q.id) > -1) {
+                q.collapsed = true;
+                q.child_nodes = []
+                q.child = null;
+
+                var mock_data = [q.label];
+                for (var i = 1; i < parameter_count; i++) {
+                    if (layerdata[0][i].indexOf(';') > -1) {
+                        mock_data.push("0;0;0");
+                    }
+                    else if (isNumber(layerdata[1][i])) {
+                        mock_data.push(0);
+                    }
+                    else {
+                        mock_data.push("None");
+                    }
+                }
+                layerdata.push(mock_data);
+            }
+            q=n.Next();
+        }
+
+        var n = new NodeIterator(t.root);
+        var q = n.Begin();
+
+        var order_counter = 0;   
+        while (q != null) {
+            console.log(q);
             if (q.IsLeaf()) {
                 q.order = order_counter++;
                 order_to_node_map[q.order] = q;
             }
-
             q=n.Next();
         }
+        t.num_leaves = order_counter;
         leaf_count = t.num_leaves;
     }
-
 
     // generate tooltip text before normalization
     layerdata_dict = new Array();
@@ -1920,15 +1957,6 @@ function draw_tree(settings) {
                     if (q.radius > tree_radius)
                         tree_radius = q.radius;
 
-                    // childs
-                    var _n = new NodeIterator(q);
-                    var _q = _n.Begin();
-
-                    q.child_nodes = [];
-                    while (_q != null) {
-                        q.child_nodes.push(_q.id);
-                        _q = _n.Next();
-                    }
                     // end of childs
                     q = n.Next();
                 }
@@ -2609,6 +2637,8 @@ function draw_tree(settings) {
     document.body.addEventListener('click', function() { $('#default_right_click_menu').hide(); }, false);
     document.body.addEventListener('click', function() { $('#collection_mode_right_click_menu').hide(); }, false);
     document.body.addEventListener('click', function() { $('#pan_mode_right_click_menu').hide(); }, false);
+    document.body.addEventListener('click', function() { $('#branch_right_click_menu').hide(); }, false);
+
 
     // code below required to stop clicking on contigs while panning.
     var viewport = document.getElementById('svg');

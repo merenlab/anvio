@@ -109,6 +109,7 @@ var mouse_event_origin_x = 0;
 var mouse_event_origin_y = 0;
 
 var request_prefix = getParameterByName('request_prefix');
+var collapsedNodes = []; 
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
