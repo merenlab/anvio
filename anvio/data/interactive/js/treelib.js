@@ -568,10 +568,12 @@ function formatString(s) {
 
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
+var unnamed_intersection_counter = 0;
+
 function Node(label) {
     if (typeof label === 'undefined')
     {
-        label = 'UnnamedIntersection' + Math.random().toString(36).substr(2, 12);
+        label = 'UnnamedIntersection' + (unnamed_intersection_counter++);
     }
     this.ancestor = null;
     this.child = null;
