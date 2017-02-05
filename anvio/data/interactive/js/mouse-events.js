@@ -179,11 +179,11 @@ function lineContextMenuHandler(event) {
     } else {
         context_menu_target_id = getNodeFromEvent(event).id;
         if (collapsedNodes.indexOf(context_menu_target_id) == -1) {
-            $('#menuItemCollapse').show();
-            $('#menuItemExpand').hide();
+            $('.menuItemCollapse').show();
+            $('.menuItemExpand').hide();
         } else {
-            $('#menuItemCollapse').hide();
-            $('#menuItemExpand').show();
+            $('.menuItemCollapse').hide();
+            $('.menuItemExpand').show();
         }
         $('#branch_right_click_menu').show();
         $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
