@@ -235,6 +235,22 @@ class MultipleRuns:
         variable_aas_table.store()
 
 
+    def merge_gene_detection_tables(self):
+        # create an instance from genes
+        gene_detection_table = dbops.TableForGeneDetection(self.merged_profile_db_path, progress=self.progress)
+
+        # fill "genes" instance from all samples
+        for input_profile_db_path in self.profile_dbs_info_dict:
+            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
+            sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_detection_table_name,
+                                                                          tables.gene_detection_table_structure)
+            for g in list(sample_gene_profiles.values()):
+                gene_detection_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['detection'])
+            sample_profile_db.disconnect()
+
+        gene_detection_table.store()
+
+
     def merge_gene_coverages_tables(self):
         # create an instance from genes
         gene_coverages_table = dbops.TableForGeneCoverages(self.merged_profile_db_path, progress=self.progress)
