@@ -187,7 +187,9 @@ function lineContextMenuHandler(event) {
     }
 
     return false;
+}
 
+function removeBranchFromBin(event) {
     var p = getNodeFromEvent(event);
 
     if (p.id == 0)
@@ -520,7 +522,7 @@ function menu_callback(action, param) {
 
         case 'remove':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            lineContextMenuHandler(fake_event);
+            removeBranchFromBin(fake_event);
             break;
 
         case 'select_layer':
