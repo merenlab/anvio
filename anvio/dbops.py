@@ -1188,10 +1188,19 @@ class ProfileSuperclass(object):
 
                 for bin_id in collection:
                     bin_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in collection[bin_id]])
-                    percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
+
+                    if all_coverages_in_sample == 0:
+                        percents[bin_id] = 0.0
+                    else:
+                        percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
 
                 splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_in_profile_db_but_not_binned])
-                percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
+                
+                if all_coverages_in_sample == 0:
+                    percents['__splits_not_binned__'] = 0.0
+                else:
+                    percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
+                
                 self.bin_percent_recruitment_per_sample[sample] = percents
 
         self.progress.end()
