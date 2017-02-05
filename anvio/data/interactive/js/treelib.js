@@ -1615,20 +1615,6 @@ function draw_tree(settings) {
                 q.collapsed = true;
                 q.child_nodes = []
                 q.child = null;
-
-                var mock_data = [q.label];
-                for (var i = 1; i < parameter_count; i++) {
-                    if (layerdata[0][i].indexOf(';') > -1) {
-                        mock_data.push("0;0;0");
-                    }
-                    else if (isNumber(layerdata[1][i])) {
-                        mock_data.push(0);
-                    }
-                    else {
-                        mock_data.push("None");
-                    }
-                }
-                layerdata.push(mock_data);
             }
             q=n.Next();
         }
@@ -1650,6 +1636,27 @@ function draw_tree(settings) {
 
     // generate tooltip text before normalization
     layerdata_dict = new Array();
+
+    // generate mock data for collapsed nodes
+    for (var i=0; i < collapsedNodes.length; i++) {
+        var q = id_to_node_map[collapsedNodes[i]];
+
+        var mock_data = [q.label];
+        for (var j = 1; j < parameter_count; j++) {
+            if (layerdata[0][j].indexOf(';') > -1) {
+                var pcount = layerdata[0][j].split(';').length;
+                mock_data.push(Array(pcount).fill('0').join(';'));
+            }
+            else if (isNumber(layerdata[1][j])) {
+                mock_data.push(0);
+            }
+            else {
+                mock_data.push("None");
+            }
+        }
+
+        layerdata_dict[q.label] = mock_data;
+    }
 
     empty_tooltip = '<tr><td>split_name</td><td>n/a</td></tr>';
     empty_tooltip += '<tr><td>parent</td><td>n/a</td></tr>';
