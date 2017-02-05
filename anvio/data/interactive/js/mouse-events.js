@@ -65,6 +65,9 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
+    if (p.collapsed)
+        return;
+
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
         newBin();
 
