@@ -1638,7 +1638,6 @@ function draw_tree(settings) {
 
         var order_counter = 0;   
         while (q != null) {
-            console.log(q);
             if (q.IsLeaf()) {
                 q.order = order_counter++;
                 order_to_node_map[q.order] = q;
