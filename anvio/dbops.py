@@ -1293,6 +1293,7 @@ class ProfileDatabase:
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
+        self.db.create_table(t.gene_detection_table_name, t.gene_detection_table_structure, t.gene_detection_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
