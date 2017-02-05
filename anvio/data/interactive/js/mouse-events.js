@@ -175,6 +175,13 @@ function lineContextMenuHandler(event) {
         return false;
     } else {
         context_menu_target_id = getNodeFromEvent(event).id;
+        if (collapsedNodes.indexOf(context_menu_target_id) == -1) {
+            $('#menuItemCollapse').show();
+            $('#menuItemExpand').hide();
+        } else {
+            $('#menuItemCollapse').hide();
+            $('#menuItemExpand').show();
+        }
         $('#branch_right_click_menu').show();
         $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
     }
@@ -498,6 +505,11 @@ function menu_callback(action, param) {
     switch (action) {
         case 'collapse':
             collapsedNodes.push(context_menu_target_id);
+            drawTree();
+            break;
+
+        case 'expand':
+            collapsedNodes.splice(collapsedNodes.indexOf(context_menu_target_id), 1);
             drawTree();
             break;
 
