@@ -264,7 +264,7 @@ function drawLine(svg_id, p, p0, p1, isArc) {
         triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
 
         var tp1_x, tp1_y, tp2_x, tp2_y;
-        if (last_settings['tree-type'] == 'phylogram') {
+        if ($('#tree_type').val() == 'phylogram') {
             var tp1_x = p.max_child_x;
             var tp1_y = p0['y'] - height_per_leaf / 2;
 
@@ -1686,7 +1686,6 @@ function draw_tree(settings) {
                         q.max_child_x =  Math.max(q.max_child_x, p.xy.x);
                     }    
                 }
-                console.log(q);
                 q.child_nodes = []
                 q.child = null;
             }
