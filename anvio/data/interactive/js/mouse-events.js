@@ -111,11 +111,10 @@ function lineClickHandler(event) {
 function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
     var bin_id = getBinId();
+    context_menu_target_id = getNodeFromEvent(event).id;
 
-    if (event.target.id.indexOf('path_') > -1)
+    if (event.target.id.indexOf('path_') > -1 && !id_to_node_map[context_menu_target_id].collapsed)
     {
-        context_menu_target_id = getNodeFromEvent(event).id;
-
         if (mode == "collection") {
             $('#collection_mode_right_click_menu').show();
             $('#collection_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -177,7 +176,6 @@ function lineContextMenuHandler(event) {
 
         return false;
     } else {
-        context_menu_target_id = getNodeFromEvent(event).id;
         if (collapsedNodes.indexOf(context_menu_target_id) == -1) {
             $('.menuItemCollapse').show();
             $('.menuItemExpand').hide();
