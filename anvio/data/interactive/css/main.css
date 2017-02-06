@@ -335,6 +335,10 @@ td > input[type='checkbox'] {
 div#tooltip_content tr:nth-child(even) {background: rgba(100,100,100,0.1);}
 div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
+#tooltip_content td {
+    word-break: break-all;
+}
+
 .table-striped>tbody>tr:nth-child(even) {background: rgba(100,100,100,0.1);}
 .table-striped>tbody>tr:nth-of-type(odd) {background: rgba(220,220,220,0.1);}
 
