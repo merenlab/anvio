@@ -262,7 +262,22 @@ function drawLine(svg_id, p, p0, p1, isArc) {
         triangle.setAttribute('id', line.getAttribute('id'));
         triangle.setAttribute('vector-effect', 'non-scaling-stroke');
         triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
-        triangle.setAttribute('points', p1['x'] + ',' + p1['y'] + ' ' + (p.max_child_x) + ',' + (p0['y'] - height_per_leaf/2) + ' ' + (p.max_child_x) + ',' + (p0['y'] + height_per_leaf/2) );
+
+        var tp1_x, tp1_y, tp2_x, tp2_y;
+        if (last_settings['tree-type'] == 'phylogram') {
+            var tp1_x = p.max_child_x;
+            var tp1_y = p0['y'] - height_per_leaf / 2;
+
+            var tp2_x = p.max_child_x;
+            var tp2_y = p0['y'] + height_per_leaf / 2;
+        } else {
+            var tp1_x = p.max_child_radius * Math.cos(p.angle + angle_per_leaf / 2);
+            var tp1_y = p.max_child_radius * Math.sin(p.angle + angle_per_leaf / 2);
+
+            var tp2_x = p.max_child_radius * Math.cos(p.angle - angle_per_leaf / 2);
+            var tp2_y = p.max_child_radius * Math.sin(p.angle - angle_per_leaf / 2);
+        }
+        triangle.setAttribute('points', p1['x'] + ',' + p1['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
         svg.appendChild(triangle);
     }
 
@@ -1635,8 +1650,6 @@ function draw_tree(settings) {
                 });
                 break;
         }
-
-        td.CalcCoordinates();
         td.CalcCoordinates();
 
         var n = new NodeIterator(t.root);
@@ -1668,7 +1681,7 @@ function draw_tree(settings) {
                 for (var i=0; i < q.child_nodes.length; i++) {
                     p = id_to_node_map[q.child_nodes[i]];
                     if (settings['tree-type'] == 'circlephylogram') {
-                        q.max_child_radius = Math.max(q.max_child_x, p.radius);
+                        q.max_child_radius = Math.max(q.max_child_radius, p.radius);
                     } else {
                         q.max_child_x =  Math.max(q.max_child_x, p.xy.x);
                     }    
