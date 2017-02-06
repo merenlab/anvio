@@ -1681,9 +1681,9 @@ function draw_tree(settings) {
                 for (var i=0; i < q.child_nodes.length; i++) {
                     p = id_to_node_map[q.child_nodes[i]];
                     if (settings['tree-type'] == 'circlephylogram') {
-                        q.max_child_radius = Math.max(q.max_child_radius, p.radius);
+                        q.max_child_radius = Math.max(q.max_child_radius, p.radius, p.max_child_radius, q.max_child_x);
                     } else {
-                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x);
+                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x, p.max_child_radius, q.max_child_x);
                     }    
                 }
                 q.child_nodes = []
