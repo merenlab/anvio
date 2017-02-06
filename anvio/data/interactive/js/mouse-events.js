@@ -461,8 +461,14 @@ function mouseMoveHandler(event) {
     if (!layer_id_exp)
         return;
     var layer_id = layer_id_exp[0];
+    var target_node = id_to_node_map[p.id];
 
-    var tooltip_arr = layerdata_title[id_to_node_map[p.id].label].slice(0);
+    if (target_node.collapsed) {
+        $('#tooltip_content').html("Collapsed branch");
+        return;
+    }
+
+    var tooltip_arr = layerdata_title[target_node.label].slice(0);
     
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
