@@ -257,8 +257,18 @@ function drawLine(svg_id, p, p0, p1, isArc) {
     var svg = document.getElementById(svg_id);
     svg.appendChild(line);
 
+    if (p.collapsed) {
+        var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        triangle.setAttribute('id', line.getAttribute('id'));
+        triangle.setAttribute('vector-effect', 'non-scaling-stroke');
+        triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
+        triangle.setAttribute('points', p1['x'] + ',' + p1['y'] + ' ' + (p.max_child_x) + ',' + (p0['y'] - height_per_leaf/2) + ' ' + (p.max_child_x) + ',' + (p0['y'] + height_per_leaf/2) );
+        svg.appendChild(triangle);
+    }
+
     return line;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 function drawText(svg_id, p, string, font_size, align, color, baseline) {
@@ -582,6 +592,8 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.collapsed = false;
+    this.max_child_x = 0;
+    this.max_child_radius = 0;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1587,6 +1599,45 @@ function draw_tree(settings) {
             toastr.error('Error while parsing tree data.');
             return;
         }
+        t.ComputeWeights(t.root);
+
+        var td = null;
+
+        switch (settings['tree-type']) {
+            case 'phylogram':
+                if (t.has_edge_lengths) {
+                    td = new PhylogramTreeDrawer();
+                } else {
+                    td = new RectangleTreeDrawer();
+                }
+
+                td.Init(t, {
+                    svg_id: 'tree',
+                    width: height,
+                    height: width,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
+                break;
+
+            case 'circlephylogram':
+                if (t.has_edge_lengths) {
+                    td = new CirclePhylogramDrawer();
+                } else {
+                    td = new CircleTreeDrawer();
+                }
+                td.Init(t, {
+                    svg_id: 'tree',
+                    width: (radius == 0) ? VIEWER_WIDTH : radius,
+                    height: (radius == 0) ? VIEWER_HEIGHT : radius,
+                    fontHeight: 10,
+                    root_length: 0.1
+                });
+                break;
+        }
+
+        td.CalcCoordinates();
+        td.CalcCoordinates();
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
@@ -1613,6 +1664,16 @@ function draw_tree(settings) {
 
             if (collapsedNodes.indexOf(q.id) > -1) {
                 q.collapsed = true;
+
+                for (var i=0; i < q.child_nodes.length; i++) {
+                    p = id_to_node_map[q.child_nodes[i]];
+                    if (settings['tree-type'] == 'circlephylogram') {
+                        q.max_child_radius = Math.max(q.max_child_x, p.radius);
+                    } else {
+                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x);
+                    }    
+                }
+                console.log(q);
                 q.child_nodes = []
                 q.child = null;
             }
@@ -1869,7 +1930,6 @@ function draw_tree(settings) {
 
     if (hasTree) 
     {
-        t.ComputeWeights(t.root);
         var td = null;
 
         switch (settings['tree-type']) {
@@ -1879,8 +1939,6 @@ function draw_tree(settings) {
                 } else {
                     td = new RectangleTreeDrawer();
                 }
-
-
 
                 td.Init(t, {
                     svg_id: 'tree',
