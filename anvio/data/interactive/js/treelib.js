@@ -1168,7 +1168,7 @@ PhylogramTreeDrawer.prototype.CalcLeaf = function(p) {
 
 
 //--------------------------------------------------------------------------------------------------
-PhylogramTreeDrawer.prototype.CalcCoordinates = function() {
+PhylogramTreeDrawer.prototype.CalcCoordinates = function(max_path_length) {
     this.max_path_length = 0;
     //console.log(this.max_path_length);    
 
@@ -1190,6 +1190,10 @@ PhylogramTreeDrawer.prototype.CalcCoordinates = function() {
 
         this.max_path_length = Math.max(this.max_path_length, q.path_length);
         q = n.Next();
+    }
+
+    if (typeof max_path_length !== 'undefined') {
+        this.max_path_length = max_path_length;
     }
 
     //console.log(this.max_path_length);    
@@ -1481,7 +1485,7 @@ CirclePhylogramDrawer.prototype.CalcLeafRadius = function(p) {
 }
 
 //--------------------------------------------------------------------------------------------------
-CirclePhylogramDrawer.prototype.CalcCoordinates = function() {
+CirclePhylogramDrawer.prototype.CalcCoordinates = function(max_path_length) {
     this.max_path_length = 0;
     //console.log(this.max_path_length);    
 
@@ -1506,6 +1510,10 @@ CirclePhylogramDrawer.prototype.CalcCoordinates = function() {
 
         this.max_path_length = Math.max(this.max_path_length, q.path_length);
         q = n.Next();
+    }
+
+    if (typeof max_path_length !== 'undefined') {
+        this.max_path_length = max_path_length;
     }
 
     this.leaf_count = 0;
@@ -1556,6 +1564,8 @@ function draw_tree(settings) {
     label_to_node_map = {};
     order_to_node_map = {};
     unnamed_node_counter = 0;
+
+    var max_path_length;
 
     if (clusteringData.constructor === Array)
     {
@@ -1651,6 +1661,7 @@ function draw_tree(settings) {
                 break;
         }
         td.CalcCoordinates();
+        max_path_length = t.max_path_length;
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
@@ -1986,7 +1997,7 @@ function draw_tree(settings) {
                 break;
         }
 
-        td.CalcCoordinates();
+        td.CalcCoordinates(max_path_length);
         td.Draw();
     }
 
