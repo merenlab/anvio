@@ -77,32 +77,30 @@ class Samtools:
             return
 
         self.coverages[contig_name][pos] = coverage
-        if not self.skip_SNV_profiling:
-            nucleotides = self.parse_column(column)
-            self.column_nucleotide_counts[contig_name][pos][0] = nucleotides['A']
-            self.column_nucleotide_counts[contig_name][pos][1] = nucleotides['T']
-            self.column_nucleotide_counts[contig_name][pos][2] = nucleotides['G']
-            self.column_nucleotide_counts[contig_name][pos][3] = nucleotides['C']
-            self.column_nucleotide_counts[contig_name][pos][4] = nucleotides['N']
 
-    def parse_column(self, column):
-        column = column.upper()
-        i = 0
-        output = {'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0}
-        while i < len(column):
-            if column[i] == '^':
-                i += 2
-                continue
-            elif column[i] == '+' or column[i] == '-':
-                skipLength = 0
-                x = i + 1
-                while (column[x].isnumeric()):
-                    skipLength *= 10
-                    skipLength += int(column[x])
-                    x += 1
-                i = x + skipLength
-                continue
-            elif (column[i] in output):
-                output[column[i]] += 1
-            i += 1
-        return output
+        if not self.skip_SNV_profiling:
+            indexes = {'A': 0, 'T': 1, 'G': 2, 'C': 3, 'N': 4}
+            column = column.upper()
+            i = 0
+            while i < len(column):
+                if column[i] == '^':
+                    i += 2
+                    continue
+                elif column[i] == '+' or column[i] == '-':
+                    skipLength = 0
+                    x = i + 1
+                    while (column[x].isnumeric()):
+                        skipLength *= 10
+                        skipLength += int(column[x])
+                        x += 1
+                    if (column[i] == '-'):
+                        offset = 0
+                        for base in column[x:x+skipLength]:
+                            offset += 1
+                            if base in indexes:
+                                self.column_nucleotide_counts[contig_name][pos+offset][indexes[base]] += 1
+                    i = x + skipLength  
+                    continue
+                elif (column[i] in indexes):
+                    self.column_nucleotide_counts[contig_name][pos][indexes[column[i]]] += 1
+                i += 1
