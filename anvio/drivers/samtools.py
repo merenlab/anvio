@@ -77,17 +77,32 @@ class Samtools:
             return
 
         self.coverages[contig_name][pos] = coverage
-
         if not self.skip_SNV_profiling:
-            for nucleotide in column:
-                if nucleotide == 'A' or nucleotide == 'a':
-                    self.column_nucleotide_counts[contig_name][pos][0] += 1
-                elif nucleotide == 'T' or nucleotide == 't':
-                    self.column_nucleotide_counts[contig_name][pos][1] += 1
-                elif nucleotide == 'G' or nucleotide == 'g':
-                    self.column_nucleotide_counts[contig_name][pos][2] += 1
-                elif nucleotide == 'C' or nucleotide == 'c':
-                    self.column_nucleotide_counts[contig_name][pos][3] += 1
-                elif nucleotide == 'N' or nucleotide == 'n':
-                    self.column_nucleotide_counts[contig_name][pos][4] += 1
+            nucleotides = self.parse_column(column)
+            self.column_nucleotide_counts[contig_name][pos][0] = nucleotides['A']
+            self.column_nucleotide_counts[contig_name][pos][1] = nucleotides['T']
+            self.column_nucleotide_counts[contig_name][pos][2] = nucleotides['G']
+            self.column_nucleotide_counts[contig_name][pos][3] = nucleotides['C']
+            self.column_nucleotide_counts[contig_name][pos][4] = nucleotides['N']
 
+    def parse_column(self, column):
+        column = column.upper()
+        i = 0
+        output = {'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0}
+        while i < len(column):
+            if column[i] == '^':
+                i += 2
+                continue
+            elif column[i] == '+' or column[i] == '-':
+                skipLength = 0
+                x = i + 1
+                while (column[x].isnumeric()):
+                    skipLength *= 10
+                    skipLength += int(column[x])
+                    x += 1
+                i = x + skipLength
+                continue
+            elif (column[i] in output):
+                output[column[i]] += 1
+            i += 1
+        return output
