@@ -2439,7 +2439,10 @@ function draw_tree(settings) {
 
                 if (isCategorical)
                 {
-                    color = categorical_data_colors[pindex][categorical_item[2]];
+                    var _category_name = categorical_item[2];
+                    if (_category_name == null || _category_name == '' || _category_name == 'null')
+                        _category_name = 'None';
+                    color = categorical_data_colors[pindex][_category_name];
                 } 
                 else // parent
                 {
