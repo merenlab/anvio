@@ -532,7 +532,7 @@ function drawSamplesLayers(settings) {
                 // categorical
                 var value = _samples_information_dict[sample_name][samples_layer_name];
 
-                if (value == null | value == 'null' | value == '') {
+                if (value == null || value == 'null' || value == '') {
                     value == 'None';
                 }
 
