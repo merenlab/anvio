@@ -264,7 +264,8 @@ named_category_colors = {
     'TSC': '#AA0000',
     'TSA': '#0000AA',
     'TNC': '#00AA00',
-    'TNA': '#F0F0F0'
+    'TNA': '#c78932',
+    'NaN': '#bfbfbf'
 };
 
 function getNamedCategoryColor(name)
