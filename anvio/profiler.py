@@ -522,22 +522,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
         bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
-        #from pympler import asizeof
-        # import objgraph
-        # import gc
-        # import sys
-        # #import copy
-        # known_dicts = set([])
         while True:
-            #gc.collect()
-            # for d in objgraph.by_type('dict'):
-            #     if id(d) not in known_dicts:
-            #         print(type(d))
-            #         known_dicts.add(id(d))
-            #         print("references: " + str(sys.getrefcount(d)))
-
-            #objgraph.show_growth()
-            #print(asizeof.asizeof(bam_file))
             index = available_index_queue.get(True)
             contig_name = info_dict['contig_names'][index]
             contig = contigops.Contig(contig_name)
@@ -565,7 +550,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             if not info_dict['skip_SNV_profiling']:
                 contig.analyze_auxiliary(bam_file)
 
-            #output_queue.put(copy.deepcopy(contig))
             output_queue.put(contig)
 
             for split in contig.splits:
@@ -576,7 +560,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del contig.coverage
             del contig
 
-        print("child dead")
         bam_file.close()
         return
 
@@ -616,19 +599,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
         memory_usage = "..."
         last_memory_update = int(time.time())
-        # import objgraph
-        # import gc
-        # import sys
-        # known_dicts = set([])
+
         while recieved_contigs < self.num_contigs:
             try:
-                # gc.collect()
-                # for d in objgraph.by_type('dict'):
-                #     if id(d) not in known_dicts:
-                #         print(type(d))
-                #         print(d.keys())
-                #         known_dicts.add(id(d))
-                #         print("references: " + str(sys.getrefcount(d)))
                 contig = output_queue.get()
                 if (int(time.time()) - last_memory_update) > 1:
                     last_memory_update = int(time.time())
