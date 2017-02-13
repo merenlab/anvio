@@ -287,6 +287,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         annotations_dict = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]
                         if function_source in annotations_dict:
                             annotation_blob = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]
+
+                            # FIXME: this is an artifact from Py2 to Py3 swtich. DBs generated in Py2 and used from Py3 will have type
+                            # bytes for annotation_blob. so we will convert them to str.. If the db is generated with Py3, there is no
+                            # such problem, so we can remove this extra step around July 2017.
+                            if isinstance(annotation_blob, bytes):
+                                annotation_blob = annotation_blob.decode('utf-8')
+
                             accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
                             entry.append('|'.join(accessions))
                             entry.append('|'.join(annotations))
