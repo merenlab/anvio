@@ -522,7 +522,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
         bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
+        #from pympler import asizeof
+        # import objgraph
+        # import gc
+        # import sys
+        # #import copy
+        # known_dicts = set([])
         while True:
+            #gc.collect()
+            # for d in objgraph.by_type('dict'):
+            #     if id(d) not in known_dicts:
+            #         print(type(d))
+            #         known_dicts.add(id(d))
+            #         print("references: " + str(sys.getrefcount(d)))
+
+            #objgraph.show_growth()
+            #print(asizeof.asizeof(bam_file))
             index = available_index_queue.get(True)
             contig_name = info_dict['contig_names'][index]
             contig = contigops.Contig(contig_name)
@@ -550,7 +565,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             if not info_dict['skip_SNV_profiling']:
                 contig.analyze_auxiliary(bam_file)
 
+            #output_queue.put(copy.deepcopy(contig))
             output_queue.put(contig)
+
+            for split in contig.splits:
+                del split.coverage
+                del split.auxiliary
+                del split
+            del contig.splits[:]
+            del contig.coverage
+            del contig
 
         print("child dead")
         bam_file.close()
@@ -574,8 +598,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'min_mean_coverage': self.min_mean_coverage
         }
 
-        available_index_queue = multiprocessing.Queue()
-        output_queue = multiprocessing.Queue(self.queue_size)
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
 
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
@@ -592,8 +616,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
         memory_usage = "..."
         last_memory_update = int(time.time())
+        # import objgraph
+        # import gc
+        # import sys
+        # known_dicts = set([])
         while recieved_contigs < self.num_contigs:
             try:
+                # gc.collect()
+                # for d in objgraph.by_type('dict'):
+                #     if id(d) not in known_dicts:
+                #         print(type(d))
+                #         print(d.keys())
+                #         known_dicts.add(id(d))
+                #         print("references: " + str(sys.getrefcount(d)))
                 contig = output_queue.get()
                 if (int(time.time()) - last_memory_update) > 1:
                     last_memory_update = int(time.time())
@@ -604,7 +639,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 if contig:
                     self.contigs.append(contig)
-                    del contig
                 else:
                     discarded_contigs += 1
 
@@ -612,6 +646,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
                     self.store_contigs_buffer()
+                    for c in self.contigs:
+                        for split in c.splits:
+                            del split.coverage
+                            del split.auxiliary
+                            del split
+                        del c.splits[:]
+                        del c.coverage
+                        del c
                     del self.contigs[:]
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
