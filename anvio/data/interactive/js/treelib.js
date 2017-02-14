@@ -1661,7 +1661,7 @@ function draw_tree(settings) {
                 break;
         }
         td.CalcCoordinates();
-        max_path_length = t.max_path_length;
+        max_path_length = td.max_path_length;
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
