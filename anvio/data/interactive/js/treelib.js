@@ -1514,6 +1514,7 @@ CirclePhylogramDrawer.prototype.CalcCoordinates = function(max_path_length) {
 
     if (typeof max_path_length !== 'undefined') {
         this.max_path_length = max_path_length;
+
     }
 
     this.leaf_count = 0;
@@ -1692,9 +1693,9 @@ function draw_tree(settings) {
                 for (var i=0; i < q.child_nodes.length; i++) {
                     p = id_to_node_map[q.child_nodes[i]];
                     if (settings['tree-type'] == 'circlephylogram') {
-                        q.max_child_radius = Math.max(q.max_child_radius, p.radius, p.max_child_radius, q.max_child_x);
+                        q.max_child_radius = Math.max(q.max_child_radius, p.radius, p.max_child_radius);
                     } else {
-                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x, p.max_child_radius, q.max_child_x);
+                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x, p.max_child_x);
                     }    
                 }
                 q.child_nodes = []
@@ -2016,23 +2017,10 @@ function draw_tree(settings) {
             case 'phylogram':
                 while (q != null)
                 {
-                    if (q.xy.x > tree_max_x)
-                        tree_max_x = q.xy.x;
+                    tree_max_x = Math.max(tree_max_x, q.xy.x, q.max_child_x);
                     if (q.xy.y > tree_max_y)
                         tree_max_y = q.xy.y;
-
-                    // childs
-                    var _n = new NodeIterator(q);
-                    var _q = _n.Begin();
-
-                    q.child_nodes = [];
-                    while (_q != null) {
-                        q.child_nodes.push(_q.id);
-                        _q = _n.Next();
-                    }
-                    // end of childs
                     q = n.Next();
-
                 }
                 layer_boundaries.push( [0, tree_max_x] );
 
@@ -2041,10 +2029,7 @@ function draw_tree(settings) {
             case 'circlephylogram':
                 while (q != null) 
                 {
-                    if (q.radius > tree_radius)
-                        tree_radius = q.radius;
-
-                    // end of childs
+                    tree_radius = Math.max(tree_radius, q.radius, q.max_child_radius);
                     q = n.Next();
                 }
                 layer_boundaries.push( [0, tree_radius] );
