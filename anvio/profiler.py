@@ -20,7 +20,6 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
-
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
@@ -34,7 +33,6 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 pp = terminal.pretty_print
-
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
@@ -535,44 +533,48 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
         bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
         while True:
-            if available_index_queue.empty() == True:
-                break   
-            else:
-                index = available_index_queue.get()
+            index = available_index_queue.get(True)
+            contig_name = info_dict['contig_names'][index]
+            contig = contigops.Contig(contig_name)
+            contig.length = info_dict['contig_lengths'][index]
+            contig.split_length = info_dict['split_length']
+            contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
+            contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
+            contig.report_variability_full = info_dict['report_variability_full']
 
-                contig_name = info_dict['contig_names'][index]
-                contig = contigops.Contig(contig_name)
-                contig.length = info_dict['contig_lengths'][index]
-                contig.split_length = info_dict['split_length']
-                contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
-                contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
-                contig.report_variability_full = info_dict['report_variability_full']
+            # populate contig with empty split objects and
+            for split_name in info_dict['contig_name_to_splits'][contig_name]:
+                s = info_dict['splits_basic_info'][split_name]
+                split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
+                split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
+                contig.splits.append(split)
 
-                # populate contig with empty split objects and
-                for split_name in info_dict['contig_name_to_splits'][contig_name]:
-                    s = info_dict['splits_basic_info'][split_name]
-                    split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
-                    split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
-                    contig.splits.append(split)
+            # analyze coverage for each split
+            contig.analyze_coverage(bam_file)
 
-                # analyze coverage for each split
-                contig.analyze_coverage(bam_file)
+            # test the mean coverage of the contig.
+            if contig.coverage.mean < info_dict['min_mean_coverage']:
+                 output_queue.put(None)
+                 continue
 
-                # test the mean coverage of the contig.
-                if contig.coverage.mean < info_dict['min_mean_coverage']:
-                     output_queue.put(None)
-                     continue
+            if not info_dict['skip_SNV_profiling']:
+                contig.analyze_auxiliary(bam_file)
 
-                if not info_dict['skip_SNV_profiling']:
-                    contig.analyze_auxiliary(bam_file)
+            output_queue.put(contig)
 
-                output_queue.put(contig)
-  
+            for split in contig.splits:
+                del split.coverage
+                del split.auxiliary
+                del split
+            del contig.splits[:]
+            del contig.coverage
+            del contig
+
         bam_file.close()
         return
 
-
     def profile(self):
+
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
@@ -589,8 +591,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'min_mean_coverage': self.min_mean_coverage
         }
 
-        available_index_queue = multiprocessing.Queue()
-        output_queue = multiprocessing.Queue(maxsize=self.queue_size)
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
 
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
@@ -605,15 +607,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         recieved_contigs = 0
         discarded_contigs = 0
         self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
-
         memory_usage = "..."
         last_memory_update = int(time.time())
 
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
-
-                if (int(time.time()) - last_memory_update) > 5:
+                if (int(time.time()) - last_memory_update) > 1:
                     last_memory_update = int(time.time())
                     memory_usage = utils.get_total_memory_usage()
 
@@ -629,12 +629,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
                     self.store_contigs_buffer()
+                    for c in self.contigs:
+                        for split in c.splits:
+                            del split.coverage
+                            del split.auxiliary
+                            del split
+                        del c.splits[:]
+                        del c.coverage
+                        del c
                     del self.contigs[:]
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
-                for proc in processes:
-                    proc.terminate()
                 break
+
+        for proc in processes:
+            proc.terminate()
 
         self.store_contigs_buffer()
         self.progress.end()
