@@ -23,7 +23,6 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.drivers.samtools import Samtools
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -534,9 +533,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     @staticmethod
     def profile_contig_worker(available_index_queue, output_queue, info_dict):
+        bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
         while True:
-            try:
-                index = available_index_queue.get(False)
+            if available_index_queue.empty() == True:
+                break   
+            else:
+                index = available_index_queue.get()
 
                 contig_name = info_dict['contig_names'][index]
                 contig = contigops.Contig(contig_name)
@@ -554,30 +556,27 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     contig.splits.append(split)
 
                 # analyze coverage for each split
-                contig.analyze_coverage(info_dict['coverages'])
+                contig.analyze_coverage(bam_file)
 
                 # test the mean coverage of the contig.
                 if contig.coverage.mean < info_dict['min_mean_coverage']:
-                    output_queue.put(None)
-                    continue
+                     output_queue.put(None)
+                     continue
 
                 if not info_dict['skip_SNV_profiling']:
-                    contig.analyze_auxiliary(info_dict['column_nucleotide_counts'], info_dict['coverages'])
+                    contig.analyze_auxiliary(bam_file)
 
                 output_queue.put(contig)
-            except:
-                # queue will raise Empty
-                break
+  
+        bam_file.close()
         return
 
 
     def profile(self):
-        bam_reader = Samtools(self.contig_lengths, self.contig_names, self.skip_SNV_profiling, progress=self.progress)
-        bam_reader.run(self.input_file_path)
-
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
+            'input_file_path': self.input_file_path,
             'contig_names': self.contig_names,
             'contig_lengths': self.contig_lengths,
             'splits_basic_info': self.splits_basic_info,
@@ -587,9 +586,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'report_variability_full': self.report_variability_full,
             'contig_name_to_splits': self.contig_name_to_splits,
             'contig_sequences': self.contig_sequences,
-            'min_mean_coverage': self.min_mean_coverage,
-            'coverages': bam_reader.coverages,
-            'column_nucleotide_counts': bam_reader.column_nucleotide_counts,
+            'min_mean_coverage': self.min_mean_coverage
         }
 
         available_index_queue = multiprocessing.Queue()
