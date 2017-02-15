@@ -613,7 +613,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
-                if (int(time.time()) - last_memory_update) > 1:
+                if (int(time.time()) - last_memory_update) > 5:
                     last_memory_update = int(time.time())
                     memory_usage = utils.get_total_memory_usage()
 
