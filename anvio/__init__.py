@@ -536,6 +536,13 @@ D = {
                       criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
                       Please refer to the user documentation if this is confusing."}
                 ),
+    'min-ratio-of-competings-nts': (
+            ['-r', '--min-ratio-of-competings-nts'],
+            {'metavar': 'RATIO',
+             'default': 0,
+             'type': float,
+             'help': "Minimum ratio of the competing nucleotides at a given position. Default is %(default)d."}
+                ),
     'max-num-unique-positions': (
             ['-n', '--max-num-unique-positions'],
             {'metavar': 'NUM_POSITIONS',
