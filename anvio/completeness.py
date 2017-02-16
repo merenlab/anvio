@@ -6,7 +6,6 @@
     contigs database.
 """
 
-import sys
 import numpy
 from collections import Counter
 
@@ -15,7 +14,6 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 
@@ -140,8 +138,13 @@ class Completeness:
             percent_completion = numpy.mean([d[domain][s]['percent_complete'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
-            substantive_completion = percent_completion - percent_redundancy
-            domain_specific_estimates.append((substantive_completion, domain, substantive_completion / 100.0), )
+            # so the substantive completion seems to be not working to predict the best matching domain. this is
+            # because the number of single-copy gene hits, whether they contribute to completion or redundancy of a
+            # given bin, will likely be are much smaller for the non-matching domain in most cases. so instead of the
+            # substantive_completion (percent_completion - percent_redundancy), we are going to use the total number
+            # of hits for ordering.
+            total_redundancy_and_completion = percent_completion + percent_redundancy
+            domain_specific_estimates.append((total_redundancy_and_completion, domain, total_redundancy_and_completion / 100.0), )
 
         domain_specific_estimates.sort(reverse=True)
 
