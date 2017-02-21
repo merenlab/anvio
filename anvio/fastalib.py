@@ -95,7 +95,7 @@ class SequenceSource():
         if self.compressed:
             self.file_pointer = gzip.open(self.fasta_file_path)
         else:
-            self.file_pointer = open(self.fasta_file_path)
+            self.file_pointer = open(self.fasta_file_path, 'rU')
 
         if not self.file_pointer.read(1) == '>':
             raise FastaLibError("File '%s' does not seem to be a FASTA file." % self.fasta_file_path)
