@@ -36,7 +36,7 @@ def remove_short_contigs_from_fasta(args):
 
     if args.input_ids:
         filesnpaths.is_file_exists(args.input_ids)
-        input_ids = set([l.split('\t')[0].strip() for l in open(args.input_ids).readlines()])
+        input_ids = set([l.split('\t')[0].strip() for l in open(args.input_ids, 'rU').readlines()])
         run.info('Input IDs to remove', '%d found' % len(input_ids))
     else:
         input_ids = set([])
