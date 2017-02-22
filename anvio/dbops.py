@@ -2177,8 +2177,7 @@ class TableForGeneDetection(Table):
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
         db_entries = [
-            tuple([self.next_id(t.gene_detection_table_name)] + [gene[h] for h in t.gene_detection_table_structure[1:]])
-            for gene in self.genes]
+            tuple([self.next_id(t.gene_detection_table_name)] + [gene[h] for h in t.gene_detection_table_structure[1:]]) for gene in self.genes]
         profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_detection_table_name, db_entries)
         profile_db.disconnect()
 
