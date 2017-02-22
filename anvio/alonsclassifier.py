@@ -161,9 +161,9 @@ class AlonsClassifier:
         taxon_specificity = {}
 
         for gene_id in adjusted_stds:
-            # if the gene is not detected in any sample then return NaN
+            # if the gene is not detected in any sample then return None
             if detection_of_genes[gene_id]['number_of_detections'] <= 1:
-                taxon_specificity[gene_id] = 'NaN'
+                taxon_specificity[gene_id] = 'None'
             else:
                 if adjusted_stds[gene_id] < beta:
                     taxon_specificity[gene_id] = 'TS'
@@ -196,7 +196,7 @@ class AlonsClassifier:
         """ Returns 'core'/'accessory' classification for each gene. This is done using only the samples in which the
         genome is detected """
         if detection_of_genes[gene_id]['number_of_detections'] == 0:
-            return 'NaN'
+            return 'None'
         elif self.get_number_of_detections_for_gene(detection_of_genes, gene_id, samples_with_genome) < eta * len(
             samples_with_genome):
             return 'accessory'
@@ -205,8 +205,8 @@ class AlonsClassifier:
 
 
     def get_gene_class(self, taxon_specificity, core_or_accessory):
-        if taxon_specificity == 'NaN' or core_or_accessory == 'NaN':
-            return 'NaN'
+        if taxon_specificity == 'None' or core_or_accessory == 'None':
+            return 'None'
         elif taxon_specificity == 'TS':
             if core_or_accessory == 'core':
                 return 'TSC'
@@ -227,24 +227,14 @@ class AlonsClassifier:
             print('%s is not valid. Value should be \'TS\' or \'TNS\'' % taxon_specificity)
             exit(1)
 
-    def report_gene_class_information(self, gene_class_information,detection_of_genome_in_samples):
-        C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[
-            dict_id][field]==value])
-        number_of_TS = C(gene_class_information, 'gene_specificity','TS')
-        number_of_TSC = C(gene_class_information, 'gene_class','TSC')
-        number_of_TSA = C(gene_class_information, 'gene_class','TSA')
-        number_of_TNC = C(gene_class_information, 'gene_class','TNC')
-        number_of_TNA = C(gene_class_information, 'gene_class','TNA')
-        number_of_NaN = C(gene_class_information, 'gene_class', None)
-        number_of_positive_samples = C(detection_of_genome_in_samples, 'detection', True)
 
-        print('The number of TS is %s' % number_of_TS )
-        print('The number of TSC is %s' % number_of_TSC)
-        print('The number of TSA is %s' % number_of_TSA)
-        print('The number of TNC is %s' % number_of_TNC)
-        print('The number of TNA is %s' % number_of_TNA)
-        print('The number of NaN is %s' % number_of_NaN)
-        print('The number of samples with the genome is %s' % number_of_positive_samples)
+    def report_gene_class_information(self, gene_class_information,detection_of_genome_in_samples):
+        C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[dict_id][field]==value])
+
+        for gene_class in ['TSC', 'TSA', 'TNC', 'TNA', 'None']:
+            self.run.info('Num class %s' % gene_class, C(gene_class_information, 'gene_class', gene_class))
+
+        self.run.info('Num samples in which the genome is detected', C(detection_of_genome_in_samples, 'detection', True), mc='green')
 
 
     def get_gene_classes(self, data, samples):
@@ -275,7 +265,8 @@ class AlonsClassifier:
                 if abs(new_loss - loss) < epsilon:
                     converged = True
             loss = new_loss
-            print('current value of loss function: %s ' % loss)
+
+            self.run.warning('current value of loss function: %s ' % loss)
 
             for gene_id in data:
                 gene_class_information[gene_id] = {}
@@ -297,12 +288,16 @@ class AlonsClassifier:
 
             TSC_genes = [gene_id for gene_id in gene_class_information if gene_class_information[gene_id][
                 'gene_class']=='TSC']
-            # taxon_specific_genes = [gene_id for gene_id in gene_class_information if gene_class_information[gene_id][
-            #     'gene_class']=='TSC' or gene_class_information[gene_id]['gene_class']=='TSA']
+
             self.report_gene_class_information(gene_class_information, detection_of_genome_in_samples)
-        final_detection_of_genome_in_samples = self.get_detection_of_genome_in_samples(detection_of_genes, samples, self.alpha,
-                                                                            genes_to_consider=TSC_genes)
+
+        final_detection_of_genome_in_samples = self.get_detection_of_genome_in_samples(detection_of_genes,
+                                                                                       samples,
+                                                                                       self.alpha,
+                                                                                       genes_to_consider=TSC_genes)
+
         return gene_class_information, final_detection_of_genome_in_samples
+
 
     def get_specificity_from_class_id(self, class_id):
         try:
