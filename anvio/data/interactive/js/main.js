@@ -2368,10 +2368,20 @@ function loadState()
                             var current_view = $('#views_container').val();
                             $("#tbody_layers").empty();
 
-                            if (state.hasOwnProperty('samples-categorical-colors'))
-                                samples_categorical_colors = state['samples-categorical-colors']; 
-                            if (state.hasOwnProperty('samples-stack-bar-colors'))
-                                samples_stack_bar_colors = state['samples-stack-bar-colors']; 
+                            if (state.hasOwnProperty('samples-categorical-colors')) {
+                                for (key in state['samples-categorical-colors']) {
+                                    if (key in samples_categorical_colors) {
+                                        samples_categorical_colors[key] = state['samples-categorical-colors'][key];
+                                    } 
+                                }
+                            }
+                            if (state.hasOwnProperty('samples-stack-bar-colors')) {
+                                for (key in state['samples-stack-bar-colors']) {
+                                    if (key in samples_stack_bar_colors) {
+                                        samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
+                                    } 
+                                }
+                            }
 
                             if (state.hasOwnProperty('samples-order'))
                                 $('#samples_order').val(state['samples-order']);

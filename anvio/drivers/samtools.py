@@ -79,15 +79,28 @@ class Samtools:
         self.coverages[contig_name][pos] = coverage
 
         if not self.skip_SNV_profiling:
-            for nucleotide in column:
-                if nucleotide == 'A' or nucleotide == 'a':
-                    self.column_nucleotide_counts[contig_name][pos][0] += 1
-                elif nucleotide == 'T' or nucleotide == 't':
-                    self.column_nucleotide_counts[contig_name][pos][1] += 1
-                elif nucleotide == 'G' or nucleotide == 'g':
-                    self.column_nucleotide_counts[contig_name][pos][2] += 1
-                elif nucleotide == 'C' or nucleotide == 'c':
-                    self.column_nucleotide_counts[contig_name][pos][3] += 1
-                elif nucleotide == 'N' or nucleotide == 'n':
-                    self.column_nucleotide_counts[contig_name][pos][4] += 1
-
+            indexes = {'A': 0, 'T': 1, 'G': 2, 'C': 3, 'N': 4}
+            column = column.upper()
+            i = 0
+            while i < len(column):
+                if column[i] == '^':
+                    i += 2
+                    continue
+                elif column[i] == '+' or column[i] == '-':
+                    skipLength = 0
+                    x = i + 1
+                    while (column[x].isnumeric()):
+                        skipLength *= 10
+                        skipLength += int(column[x])
+                        x += 1
+                    if (column[i] == '-'):
+                        offset = 0
+                        for base in column[x:x+skipLength]:
+                            offset += 1
+                            if base in indexes:
+                                self.column_nucleotide_counts[contig_name][pos+offset][indexes[base]] += 1
+                    i = x + skipLength  
+                    continue
+                elif (column[i] in indexes):
+                    self.column_nucleotide_counts[contig_name][pos][indexes[column[i]]] += 1
+                i += 1
