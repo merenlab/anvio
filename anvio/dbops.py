@@ -2174,6 +2174,10 @@ class TableForGeneDetection(Table):
             self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
 
 
+    def add_gene_entry(self, gene_callers_id, sample_id, detection):
+        self.genes.append({'gene_callers_id': gene_callers_id, 'sample_id': sample_id, 'detection': detection})
+
+
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
         db_entries = [
