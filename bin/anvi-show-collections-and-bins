@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8
 """Takes an anvi'o profile database and returns a quick text summary
 of bins and collections found in it."""

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8
 """A script to call CONCOCT clustering on a merged anvi'o profile"""
 
