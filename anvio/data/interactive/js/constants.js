@@ -260,7 +260,12 @@ named_category_colors = {
     'UNKNOWN': '#F0F0F0',
     'ECG': '#00AA00',
     'EDG': '#AA0000',
-    'NA': '#F0F0F0'
+    'NA': '#F0F0F0',
+    'TSC': '#AA0000',
+    'TSA': '#0000AA',
+    'TNC': '#00AA00',
+    'TNA': '#c78932',
+    'NaN': '#bfbfbf'
 };
 
 function getNamedCategoryColor(name)
