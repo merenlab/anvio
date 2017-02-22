@@ -2165,10 +2165,21 @@ class TableForGeneDetection(Table):
         self.genes = []
         self.set_next_available_id(t.gene_detection_table_name)
 
+        # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
+        # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
+        # should change for good. but for now I will generate a dict to keep contig coverages to avoid
+        # even more redundant computations:
+        self.contig_coverages = {}
 
     def analyze_contig(self, contig, sample_id, start_stop_pos_list):
         # analyzing the contig to find the detection value for each gene, by counting the number of nucleotide
         # positions that have coverage value greater than zero, and then dividing by the length of the gene
+        if contig.name not in self.contig_coverages:
+            contig_coverage = []
+            for split in contig.splits:
+                contig_coverage.extend(split.coverage.c)
+            self.contig_coverages[contig.name] = contig_coverage
+
         for gene_callers_id, start, stop in start_stop_pos_list:
             gene_detection = Counter(self.contig_coverages[contig.name][start:stop])[0] / (stop - start)
             self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
