@@ -2181,7 +2181,7 @@ class TableForGeneDetection(Table):
             self.contig_coverages[contig.name] = contig_coverage
 
         for gene_callers_id, start, stop in start_stop_pos_list:
-            gene_detection = Counter(self.contig_coverages[contig.name][start:stop])[0] / (stop - start)
+            gene_detection = 1 - Counter(self.contig_coverages[contig.name][start:stop])[0] / (stop - start)
             self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
 
 
