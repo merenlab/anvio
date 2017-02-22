@@ -4,7 +4,6 @@
 
 import anvio
 
-from collections import Counter
 from anvio.sequence import Coverage
 from anvio.terminal import Run, Progress
 from anvio.variability import VariablityTestFactory
@@ -91,13 +90,13 @@ class Contig:
         return d
 
 
-    def analyze_coverage(self, coverages):
+    def analyze_coverage(self, bam):
         contig_coverage = []
 
         counter = 1
         for split in self.splits:
             split.coverage = Coverage()
-            split.coverage.run(coverages, split)
+            split.coverage.run(bam, split)
             contig_coverage.extend(split.coverage.c)
 
             counter += 1
@@ -105,12 +104,11 @@ class Contig:
         self.coverage.process_c(contig_coverage)
 
 
-    def analyze_auxiliary(self, column_nucleotide_counts, coverages):
+    def analyze_auxiliary(self, bam):
         counter = 1
         for split in self.splits:
             split.auxiliary = Auxiliary(split,
-                                        column_nucleotide_counts,
-                                        coverages,
+                                        bam,
                                         parent_outlier_positions=self.coverage.outlier_positions,
                                         min_coverage=self.min_coverage_for_variability,
                                         report_variability_full=self.report_variability_full)
@@ -147,7 +145,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, column_nucleotide_counts, coverages, parent_outlier_positions, min_coverage=10, report_variability_full=False):
+    def __init__(self, split, bam, parent_outlier_positions, min_coverage=10, report_variability_full=False):
         self.v = []
         self.rep_seq = ''
         self.split = split
@@ -158,34 +156,29 @@ class Auxiliary:
         self.column_profile = self.split.column_profiles
         self.report_variability_full = report_variability_full
 
-        self.run(column_nucleotide_counts, coverages)
+        self.run(bam)
 
 
-    def run(self, column_nucleotide_counts, coverages):
+    def run(self, bam):
         ratios = []
 
-        for pos_in_contig in range(self.split.start, self.split.end): 
-            pos_in_split = pos_in_contig - self.split.start
-            base_in_contig = self.split.sequence[pos_in_split]
+        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end):
+            pos_in_contig = pileupcolumn.pos
+            if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
+                continue
 
-            coverage = 0
-            if self.split.parent in coverages:
-                coverage = int(coverages[self.split.parent][pos_in_contig])
+            valid_nts = [pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip]
 
+            coverage = len(valid_nts)
             if coverage < self.min_coverage:
                 continue
 
-            nt_counts = Counter({'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0})
-            if self.split.parent in column_nucleotide_counts:
-                nt_counts = Counter({
-                    'A': int(column_nucleotide_counts[self.split.parent][pos_in_contig][0]),
-                    'T': int(column_nucleotide_counts[self.split.parent][pos_in_contig][1]),
-                    'G': int(column_nucleotide_counts[self.split.parent][pos_in_contig][2]),
-                    'C': int(column_nucleotide_counts[self.split.parent][pos_in_contig][3]),
-                    'N': int(column_nucleotide_counts[self.split.parent][pos_in_contig][4])
-                })
+            column = ''.join(valid_nts)
 
-            cp = ColumnProfile(nt_counts,
+            pos_in_split = pos_in_contig - self.split.start
+            base_in_contig = self.split.sequence[pos_in_split]
+
+            cp = ColumnProfile(column,
                                reference=base_in_contig,
                                coverage=coverage,
                                split_name=self.split.name,
