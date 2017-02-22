@@ -686,6 +686,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_variabile_nts_table()
         self.generate_variabile_aas_table()
         self.generate_gene_coverages_table()
+        self.generate_gene_detection_table()
         self.store_split_coverages()
         self.progress.verbose = True
 
