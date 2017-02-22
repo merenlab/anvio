@@ -1293,7 +1293,7 @@ class ProfileDatabase:
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
         self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
-        self.db.create_table(t.gene_detection_table_name, t.gene_detection_table_structure, t.gene_detection_table_types)
+        self.db.create_table(t.gene_detections_table_name, t.gene_detections_table_structure, t.gene_detections_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
@@ -2163,7 +2163,7 @@ class TableForGeneDetection(Table):
         Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
 
         self.genes = []
-        self.set_next_available_id(t.gene_detection_table_name)
+        self.set_next_available_id(t.gene_detections_table_name)
 
         # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
         # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
@@ -2192,8 +2192,8 @@ class TableForGeneDetection(Table):
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
         db_entries = [
-            tuple([self.next_id(t.gene_detection_table_name)] + [gene[h] for h in t.gene_detection_table_structure[1:]]) for gene in self.genes]
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_detection_table_name, db_entries)
+            tuple([self.next_id(t.gene_detections_table_name)] + [gene[h] for h in t.gene_detections_table_structure[1:]]) for gene in self.genes]
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_detections_table_name, db_entries)
         profile_db.disconnect()
 
 
