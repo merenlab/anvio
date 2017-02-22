@@ -504,7 +504,7 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], sepa
     """Returns a dictionary where keys are the column indices, and items are the list of entries
     found in that that column"""
     filesnpaths.is_file_exists(input_file_path)
-    filesnpaths.is_file_tab_delimited
+    filesnpaths.is_file_tab_delimited(input_file_path)
 
     d = {}
 
