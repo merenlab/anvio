@@ -69,6 +69,7 @@ class VariabilitySuper(object):
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
 
+        self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
         self.split_name_position_dict = {}
@@ -109,6 +110,10 @@ class VariabilitySuper(object):
                                     look like anvi'o gene caller ids :/ Anvi'o is sad now.")
         else:
             self.genes_of_interest = set([])
+
+        self.progress.update('Making sure you are not playing games ..')
+        if self.engine not in ['NT', 'AA']:
+            raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -178,26 +183,31 @@ class VariabilitySuper(object):
             raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
                                 Sorry, there is nothing to report here!")
 
+        # populate substitution scoring matrices
+        import anvio.data.SCMs as SCMs
+        self.substitution_scoring_matrices = SCMs.data[self.engine]
+
+        ##################### LOAD ENGINE-SPECIFIC DATA #####################
+        # data is one of them, since they will be read from different tables.
+        # another one is the substitution scoring matrices.
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
+            self.progress.end()
+
         elif self.engine == 'AA':
-            # AA specific stuff. first check whether things were profiled
             if not profile_db.meta['AA_frequencies_profiled']:
                 raise ConfigError("It seems AA frequencies were not characterized for this profile database.\
                                     There is nothing to report here for AAs!")
 
-            # get the data.
             self.data = profile_db.db.get_table_as_dict(t.variable_aas_table_name)
+            self.progress.end()
 
             # append split_name information
             for e in list(self.data.values()):
                 e['split_name'] = self.gene_callers_id_to_split_name_dict[e['corresponding_gene_call']]
-        else:
-            raise ConfigError("VariabilitySuper :: Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
+        # we're done here. bye.
         profile_db.disconnect()
-
-        self.progress.end()
 
 
     def filter(self, filter_name, test_func):
