@@ -1083,17 +1083,24 @@ D = {
                 ),
     'queue-size': (
             ['--queue-size'],
-            {'default': 500,
-            'metavar': 'INT',
-            'required': False,
-             'help': "Queue size"}
+            {'default': 0,
+             'metavar': 'INT',
+             'required': False,
+             'help': "The queue size for worker threads to store data to communicate to the main thread. The default is set by the\
+                      class based on the number of threads. If you have *any* hesitation about whther you know what you are doing,\
+                      you should not change this value."}
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
-            {'default': 250,
-            'metavar': 'INT',
-            'required': False,
-             'help': "write buffer size"}
+            {'default': 500,
+             'metavar': 'INT',
+             'required': False,
+             'help': "How many items should be kept in memory before they are written do the disk. The default is %(default)d.\
+                      The larger the buffer size, the less frequent the program will access to the disk, yet the more memory\
+                      will be consumed since the processed items will be cleared off the memory only after they are written\
+                      to the disk. The default buffer size will likely work for most cases, but if you have very large\
+                      contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
+                      the memory use never exceeds the size of the physical memory."}
                 ),
 }
 
