@@ -1067,10 +1067,6 @@ class ProfileSuperclass(object):
             # this is a blank profile, there is nothing to init here
             return
 
-        if not self.a_meta['genes_are_called']:
-            # genes were not identified/annotated
-            return
-
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         self.progress.new('Reading gene coverages table')
