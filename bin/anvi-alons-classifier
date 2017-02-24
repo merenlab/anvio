@@ -32,7 +32,6 @@ if __name__ == '__main__':
                                                     class and gene detection) and sample-detection-output for the detection of the reference genome across \
                                                      samples.")
     group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db',{'required': False}))
-    group0.add_argument(*anvio.A('profile-db'), **anvio.K('contigs-db',{'required': False}))
     group0.add_argument('-d', '--data-file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of coverage values of \
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The matrix should include at least two samples")
