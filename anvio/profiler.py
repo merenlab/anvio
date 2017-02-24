@@ -570,11 +570,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del contig.coverage
             del contig
 
+        # we are closing this object here for clarity, although we 
+        # are not really closing it since the code never reaches here
+        # and the worker is killed by its parent:
         bam_file.close()
         return
 
-    def profile(self):
 
+    def profile(self):
         manager = multiprocessing.Manager()
         info_dict = manager.dict()
         info_dict = {
@@ -594,32 +597,39 @@ class BAMProfiler(dbops.ContigsSuperclass):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
+        # put contig indices into the queue to be read from within
+        # the worker
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
         processes = []
         for i in range(0, self.num_threads):
             processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
-        
+
         for proc in processes:
             proc.start()
 
         recieved_contigs = 0
         discarded_contigs = 0
+        memory_usage = None
+
         self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
-        memory_usage = "..."
+        self.progress.update('initializing threads ...')
+        # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
 
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
                 if (int(time.time()) - last_memory_update) > 5:
-                    last_memory_update = int(time.time())
                     memory_usage = utils.get_total_memory_usage()
+                    last_memory_update = int(time.time())
 
                 self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
-                            (recieved_contigs, self.num_contigs, memory_usage))
+                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
 
+                # if we have a contig back, it means we are good to go with it,
+                # otherwise it is garbage.
                 if contig:
                     self.contigs.append(contig)
                 else:
@@ -627,7 +637,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 recieved_contigs += 1
 
-                if recieved_contigs > 0 and recieved_contigs % self.write_buffer_size == 0:
+                # here you're about to witness the poor side of Python (or our use of it).
+                # the problem we run into here was the lack of action from the garbage
+                # collector on the processed objects. although we couldn't find any refs to
+                # these objects, garbage collecter kept them in the memory, and `del` statement
+                # on the `split` object did not yield any improvement either. so here we are
+                # accessing to the atomic data structures in our split objects to try to relieve
+                # the memory by encouraging the garbage collector to realize what's up
+                # explicitly.
+                if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
                     self.store_contigs_buffer()
                     for c in self.contigs:
                         for split in c.splits:
@@ -639,7 +657,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         del c
                     del self.contigs[:]
             except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes... ")
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
                 break
 
         for proc in processes:
@@ -648,17 +666,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.store_contigs_buffer()
         self.progress.end()
 
-        for proc in processes:
-            proc.join()
-
         # FIXME: this needs to be checked:
-        if self.num_contigs != len(self.contigs):
-            self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
+        if discarded_contigs > 0:
+            self.run.info('contigs_after_C', pp(recieved_contigs - discarded_contigs))
 
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
             overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
 
+        # FIXME: We know this is ugly. You can keep your opinion to yourself.
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
@@ -763,3 +779,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:
             raise ConfigError("Minimum contig length must be 0 or larger.")
+
+        if self.num_threads < 1:
+            raise ConfigError("Nice try. Obviously, number of threds can not be less than 1.")
+
+        if not self.queue_size:
+            self.queue_size = self.num_threads * 2
+
+        if not self.write_buffer_size:
+            self.run.warning("You set the write buffer size to 0. Which means, the profiling data will be kept in memory until\
+                              the very end of the processing.")
+
+        if self.write_buffer_size < 0:
+            raise ConfigError('No. Write buffer size can not have a negative value.')
