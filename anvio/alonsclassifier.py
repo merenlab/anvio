@@ -11,6 +11,7 @@ import numpy as np
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+from anvio.dbops import ProfileSuperclass
 
 from anvio.errors import ConfigError
 
@@ -39,6 +40,8 @@ class AlonsClassifier:
         self.output_file = A('output_file')
         self.profile_db_path = A('profile_db')
         self.sample_detection_output = A('sample_detection_output')
+        self.data = {}
+        self.samples = {}
         self.alpha = A('alpha')
         self.beta = A('beta')
         self.gamma = A('gamma')
@@ -50,8 +53,11 @@ class AlonsClassifier:
         if self.profile_db_path is None:
             self.get_data_from_txt_file()
         else:
-            # load sample list and gene_coverage from the merged profile db
-            pass
+            # load sample list and gene_coverage_dict from the merged profile db
+            self.profile_db = ProfileSuperclass(args)
+            self.profile_db.init_gene_coverages_dict()
+            self.data = self.profile_db.gene_coverages_dict
+            self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
 
     def sanity_check(self):
@@ -163,6 +169,8 @@ class AlonsClassifier:
         #  a TNS gene. But I still kept here the original definition of adjusted_std
         # adjusted_std = np.std([d[gene_id, sample_id] / mean_coverage_in_samples[sample_id] for sample_id in samples if (
         #         detection_of_genes[gene_id][sample_id] and detection_of_genome_in_samples[sample_id])])
+
+        # FIXME: no reason for self.samples to be empty. besides, I should re-consider only considering positive samples here
         if self.samples == []:
             return 0
         else:
