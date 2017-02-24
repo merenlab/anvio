@@ -48,9 +48,30 @@ class AlonsClassifier:
 
     def sanity_check(self):
         """Basic sanity check for class inputs"""
+
+        # checking alpha
+        if not isinstance(self.alpha, float):
+            raise ConfigError("alpha value must be a type float.")
+        if self.alpha <= 0 or self.alpha > 1:
+            raise ConfigError("alpha value must be greater than zero and a max of 1, the value you supplied %s" % self.alpha)
+
+        # Checking beta
+        if not isinstance(self.beta, float):
+            raise ConfigError("beta value must be a type float.")
+        if self.beta <= 0:
+            raise ConfigError("beta value must be greater than zero, the value you supplied %s" % self.beta)
+
+        # Checking gamma
         if not isinstance(self.gamma, float):
             raise ConfigError("Gamma value must be a type float.")
+        if self.gamma <= 0:
+            raise ConfigError("Gamma value must be greater than zero, the value you supplied %s" % self.gamma)
 
+        # Checking eta
+        if self.eta <= 0 or self.eta > 1:
+            raise ConfigError("eta value must be greater than zero and a max of 1, the value you supplied %s" % self.eta)
+
+        
 
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
