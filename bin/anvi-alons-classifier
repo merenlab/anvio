@@ -47,11 +47,11 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('-a', '--alpha', metavar='NUM', dest='alpha', type=float, default=0.8,
                         help='portion of TSC genes required to decide a genome is detected in a sample')
-    groupC.add_argument('-b', '--beta', metavar='NUM', dest='beta', type=float, default=1,
+    groupC.add_argument('-b', '--beta', metavar='NUM', dest='beta', type=float, default=1.0,
                         help='Weight of the number of non-taxon-specific genes in the loss function (default = 1). '
                              'This means that if the adjusted standard deviation of a gene is greater than beta, '
                              'then the gene will be classified as non-taxon-specific')
-    groupC.add_argument('-g', '--gamma', metavar='NUM', dest='gamma', type=float, default=2,
+    groupC.add_argument('-g', '--gamma', metavar='NUM', dest='gamma', type=float, default=2.0,
                         help='This is used to define detection of genes. It is the number of standard deviation below '
                              'the mean value of the taxon specific genes for which a gene is still considered detected')
     groupC.add_argument('-e', '--eta', metavar='NUM', dest='eta', type=float, default=0.95,
