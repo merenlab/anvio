@@ -36,7 +36,7 @@ class AlonsClassifier:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.data_file_path = A('data_file')
-        self.output = A('output')
+        self.output_file = A('output_file')
         self.sample_detection_output = A('sample_detection_output')
         self.alpha = A('alpha')
         self.beta = A('beta')
@@ -332,7 +332,7 @@ class AlonsClassifier:
                                                                                 assign_none_for_missing=True,
                                                                                 column_mapping=[int]+[str]*len(additional_column_titles))
     
-        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, self.output, headers=['gene_callers_id',
+        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, self.output_file, headers=['gene_callers_id',
                                                                                                        'gene_class',
                                                                                                        'number_of_detections', 'portion_detected'] + additional_column_titles)
         if not self.samples_information_to_append:
