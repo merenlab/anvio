@@ -379,6 +379,11 @@ class VariabilitySuper(object):
         if not len(keys):
             keys = list(self.data.keys())
 
+        # preparing this for later use:
+        missing_items_from_substitution_matrices = {}
+        for m in self.substitution_scoring_matrices:
+            missing_items_from_substitution_matrices[m] = set([])
+
         for key in keys:
             e = self.data[key]
 
@@ -396,6 +401,36 @@ class VariabilitySuper(object):
             total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
             coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
             e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
+
+            # this is where we will make use of the substitution scoring matrices framwork.
+            #
+            # FIXME: here is some code to recover from a design flaw. we have competing_nts in the NT table, but we don't
+            #        have competing_aas in the AA table. this should be fixed by removing the competing_nts from the NT
+            #        table, and that information should be recoverd here just like the way we recover this for AAs down
+            #        below (see how `competing_items` is recovered for engine == 'AA').
+            if self.engine == 'NT':
+                competing_items = list(e['competing_nts'])
+            if self.engine == 'AA':
+                competing_items = [freqs_list[0][1], freqs_list[1][1] if freqs_list[1][0] else freqs_list[0][1]]
+                e['competing_aas'] = ''.join(sorted(competing_items))
+
+            for m in self.substitution_scoring_matrices:
+                try:
+                    e[m] = self.substitution_scoring_matrices[m][competing_items[0]][competing_items[1]]
+                except KeyError:
+                    e[m] = None
+
+                    for item in competing_items:
+                        if item not in self.substitution_scoring_matrices[m]:
+                            missing_items_from_substitution_matrices[m].add(item)
+
+        for m in self.substitution_scoring_matrices:
+            if missing_items_from_substitution_matrices[m]:
+                self.run.warning("Some items were missing from your substitution matrix. Probably this is not a big\
+                                  deal and/or probably you have already been expecting this since you know everything\
+                                  anyway. But here is a list of things that were found in your variability profile,\
+                                  but not in your matrix: '%s'." % (', '.join(missing_items_from_substitution_matrices[m])),
+                                 header="Missing items from '%s'" % m)
 
 
     def filter_based_on_scattering_factor(self):
@@ -583,11 +618,18 @@ class VariabilitySuper(object):
         self.progress.new('Reporting')
 
         if self.engine == 'NT':
-            table_structure = t.variable_nts_table_structure
+            new_structure = [t.variable_nts_table_structure[0]] + \
+                             ['unique_pos_identifier'] + \
+                             [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + \
+                             list(self.substitution_scoring_matrices.keys()) + \
+                             ['consensus', 'departure_from_consensus', 'n2n1ratio']
         elif self.engine == 'AA':
-            table_structure = t.variable_aas_table_structure
+            new_structure = [t.variable_nts_table_structure[0]] + \
+                             ['unique_pos_identifier'] + \
+                             [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + \
+                             list(self.substitution_scoring_matrices.keys()) + \
+                             ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio']
 
-        new_structure = [t.variable_nts_table_structure[0]] + ['unique_pos_identifier'] + [x for x in table_structure[1:] if x != 'split_name'] + ['consensus', 'departure_from_consensus', 'n2n1ratio']
 
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')
