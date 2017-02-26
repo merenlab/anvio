@@ -297,7 +297,7 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
-    'show-outlier-snvs': (
+    'show-outlier-SNVs': (
             ['--show-outlier-SNVs'],
             {'default': False,
              'action': 'store_true',
