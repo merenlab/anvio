@@ -1098,7 +1098,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_variability_information_for_split(self, split_name, return_outliers=False, return_raw_results=False):
+    def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be\
                                 represented in this profile database. Are you sure you are looking for it\
@@ -1118,7 +1118,7 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
-            if not return_outliers and e['cov_outlier_in_contig']:
+            if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']

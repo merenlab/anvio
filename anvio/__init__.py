@@ -297,16 +297,17 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
-    'show-outlier-SNVs': (
-            ['--show-outlier-SNVs'],
+    'hide-outlier-SNVs': (
+            ['--hide-outlier-SNVs'],
             {'default': False,
              'action': 'store_true',
              'help': "During profiling, anvi'o marks positions of single-nucleotide variations (SNVs)\
                       that originate from places in contigs where coverage values are a bit 'sketchy'.\
-                      By default, when you inspect a split in applicable projects, the interface does\
-                      not show SNVs marked as outlier. Decleration of this flag changes that behavior,\
-                      and tells anvi'o to show anything and everything reported (There may or may not\
-                      be some historical data on this here: https://github.com/meren/anvio/issues/309)."}
+                      If you would like to avoid SNVs in those positions of splits in applicable projects\
+                      you can use this flag, and the interafce would hide SNVs that are marked as 'outlier'\
+                      (although it is clearly the best to see everything, no one will judge you if you end\
+                      up using this flag) (plus, there may or may not be some historical data on this here: \
+                      https://github.com/meren/anvio/issues/309)."}
                 ),
     'hmm-source': (
             ['--hmm-source'],
