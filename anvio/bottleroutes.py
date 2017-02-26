@@ -202,7 +202,7 @@ def inspect_pc(d, pc_name):
     return json.dumps(data)
 
 
-def charts(d, split_name, show_outlier_SNVs=False):
+def charts(d, split_name, hide_outlier_SNVs=False):
     data = {'layers': [],
              'index': None,
              'total': None,
@@ -212,7 +212,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
              'previous_contig_name': None,
              'next_contig_name': None,
              'genes': [],
-             'outlier_SNVs_shown': show_outlier_SNVs}
+             'outlier_SNVs_shown': not hide_outlier_SNVs}
 
     if split_name not in d.split_names:
         return data
@@ -230,7 +230,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
     ## get the variability information dict for split:
     progress.new('Variability')
     progress.update('Collecting info for "%s"' % split_name)
-    split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers=show_outlier_SNVs)
+    split_variability_info_dict = d.get_variability_information_for_split(split_name, skip_outlier_SNVs=hide_outlier_SNVs)
 
     for layer in layers:
         progress.update('Formatting variability data: "%s"' % layer)
