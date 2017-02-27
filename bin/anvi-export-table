@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8
 """Takes a database and a table name as parameters, stores the content as
 a TAB-delimited matrix."""

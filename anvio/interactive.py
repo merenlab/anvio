@@ -172,7 +172,14 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
+        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
+        if 'newick' in default_clustering:
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'])
+        elif 'basic' in default_clustering:
+            self.displayed_item_names_ordered = default_clustering['basic']
+        else:
+            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
+                               never happen happened. The default clustering does not have a basic or newick type.")
 
         # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
@@ -241,9 +248,13 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist).")
 
+        if not self.tree and not self.view_data_path:
+            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
+                               anvi'o supposed to visualize? :(")
+
         if not self.tree:
-            raise ConfigError("When you are running the interactive interface in manual mode, you must declare\
-                                at least the tree file. Please see the documentation for help.")
+            self.run.warning("You haven't declared a tree file. Anvi'o will do its best to come up with an\
+                              organization of your items.")
 
         if self.view:
             raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
@@ -255,14 +266,17 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.show_states:
             raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
-        filesnpaths.is_file_exists(self.tree)
-        newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-        names_in_newick_tree = utils.get_names_order_from_newick_tree(newick_tree_text)
+        if self.tree:
+            filesnpaths.is_file_exists(self.tree)
+            newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
+            item_names = utils.get_names_order_from_newick_tree(newick_tree_text)
+        else:
+            item_names = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
         try:
-            names_in_newick_tree = [int(n) for n in names_in_newick_tree]
+            item_names = [int(n) for n in item_names]
         except:
             pass
 
@@ -272,16 +286,22 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
+        self.default_view = self.p_meta['default_view']
+
         self.p_meta['description'] = '_No description is available_'
 
-        clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-        self.p_meta['default_clustering'] = clustering_id
-        self.p_meta['available_clusterings'] = [clustering_id, 'Alphabetical_(right_to_left):none:none', 'Alphabetical_(left_to_right):none:none']
-        self.p_meta['clusterings'] = {clustering_id: {'newick': newick_tree_text},
-                                      'Alphabetical_(right_to_left)': {'basic': sorted(names_in_newick_tree)},
-                                      'Alphabetical_(left_to_right)': {'basic': sorted(names_in_newick_tree, reverse=True)}}
+        # set some default organizations of data:
+        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': sorted(item_names)},
+                                      'Alphabetical:none:none': {'basic': sorted(item_names, reverse=True)}}
+        self.p_meta['available_clusterings'] = ['Alphabetical_(reverse):none:none', 'Alphabetical:none:none']
+        self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
 
-        self.default_view = self.p_meta['default_view']
+        # if we have a tree, let's make arrangements for it:
+        if self.tree:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+            self.p_meta['default_clustering'] = clustering_id
+            self.p_meta['available_clusterings'].append(clustering_id)
+            self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
 
         if self.view_data_path:
             # sanity of the view data
@@ -295,7 +315,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
             # here using what is in the tree.
             ad_hoc_dict = {}
-            for item in names_in_newick_tree:
+            for item in item_names:
                 ad_hoc_dict[item] = {'names': item}
 
             self.views[self.default_view] = {'header': ['names'],

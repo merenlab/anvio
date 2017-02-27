@@ -4,7 +4,6 @@
 
 import os
 import h5py
-import mmap
 import json
 import time
 import shutil
@@ -239,7 +238,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
     if expected_number_of_fields:
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
-            raise FilesNPathsError("The expected number of fileds for '%s' is %d. Yet, it has %d\
+            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d\
                                      of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
@@ -319,14 +318,7 @@ def get_num_lines_in_file(file_path):
     if os.stat(file_path).st_size == 0:
         return 0
 
-    f = open(file_path, "rU+")
-    buf = mmap.mmap(f.fileno(), 0)
-    num_lines = 0
-    readline = buf.readline
-    while readline():
-        num_lines += 1
-
-    return num_lines
+    return sum(1 for line in open(file_path))
 
 
 def check_output_directory(output_directory, ok_if_exists=False):
