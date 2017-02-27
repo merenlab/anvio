@@ -29,14 +29,14 @@ run = terminal.Run()
 def main(args):
     dbops.is_profile_db(args.profile_db)
 
-    if not args.output_file:
-        raise ConfigError("You must declare an output file name. Because.")
-
     profile_db = dbops.ProfileSuperclass(args)
 
     if args.list_splits:
         print('\n'.join(sorted(list(profile_db.split_names))))
         sys.exit(0)
+
+    if not args.output_file:
+        raise ConfigError("You must declare an output file name. Because.")
 
     if not args.split_name:
         raise ConfigError("Please declare a split name. Like, the one you are interested in. If you\
