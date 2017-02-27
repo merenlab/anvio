@@ -297,16 +297,17 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
-    'show-outlier-snvs': (
-            ['--show-outlier-SNVs'],
+    'hide-outlier-SNVs': (
+            ['--hide-outlier-SNVs'],
             {'default': False,
              'action': 'store_true',
              'help': "During profiling, anvi'o marks positions of single-nucleotide variations (SNVs)\
                       that originate from places in contigs where coverage values are a bit 'sketchy'.\
-                      By default, when you inspect a split in applicable projects, the interface does\
-                      not show SNVs marked as outlier. Decleration of this flag changes that behavior,\
-                      and tells anvi'o to show anything and everything reported (There may or may not\
-                      be some historical data on this here: https://github.com/meren/anvio/issues/309)."}
+                      If you would like to avoid SNVs in those positions of splits in applicable projects\
+                      you can use this flag, and the interafce would hide SNVs that are marked as 'outlier'\
+                      (although it is clearly the best to see everything, no one will judge you if you end\
+                      up using this flag) (plus, there may or may not be some historical data on this here: \
+                      https://github.com/meren/anvio/issues/309)."}
                 ),
     'hmm-source': (
             ['--hmm-source'],
@@ -433,6 +434,13 @@ D = {
              'help': "When declared, the program will list contigs in the BAM file and exit gracefully\
                       without any further analysis."}
                 ),
+    'list-splits': (
+            ['--list-splits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the program will list split names in the profile database and quite"}
+                ),
+
     'list-collections': (
             ['--list-collections'],
             {'default': False,
@@ -461,6 +469,11 @@ D = {
             ['--completeness-source'],
             {'metavar': 'NAME',
              'help': "Single-copy gene source to use to estimate completeness."}
+                ),
+    'split-name': (
+            ['--split-name'],
+            {'metavar': 'SPLIT_NAME',
+             'help': "Split name."}
                 ),
     'splits-of-interest': (
             ['--splits-of-interest'],
@@ -1083,17 +1096,24 @@ D = {
                 ),
     'queue-size': (
             ['--queue-size'],
-            {'default': 500,
-            'metavar': 'INT',
-            'required': False,
-             'help': "Queue size"}
+            {'default': 0,
+             'metavar': 'INT',
+             'required': False,
+             'help': "The queue size for worker threads to store data to communicate to the main thread. The default is set by the\
+                      class based on the number of threads. If you have *any* hesitation about whther you know what you are doing,\
+                      you should not change this value."}
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
-            {'default': 250,
-            'metavar': 'INT',
-            'required': False,
-             'help': "write buffer size"}
+            {'default': 500,
+             'metavar': 'INT',
+             'required': False,
+             'help': "How many items should be kept in memory before they are written do the disk. The default is %(default)d.\
+                      The larger the buffer size, the less frequent the program will access to the disk, yet the more memory\
+                      will be consumed since the processed items will be cleared off the memory only after they are written\
+                      to the disk. The default buffer size will likely work for most cases, but if you have very large\
+                      contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
+                      the memory use never exceeds the size of the physical memory."}
                 ),
 }
 
