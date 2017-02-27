@@ -993,6 +993,9 @@ class ProfileSuperclass(object):
         self.gene_coverages_dict = None
         self.split_coverage_values = None
 
+        self.auxiliary_profile_data_available = None
+        self.auxiliary_data_path = None
+
         self.split_names = set([])
         self.clusterings = {}
         self.views = {}
@@ -1048,17 +1051,17 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
-        if not os.path.exists(auxiliary_data_path):
+        self.auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+        if not os.path.exists(self.auxiliary_data_path):
             self.auxiliary_profile_data_available = False
         else:
             self.auxiliary_profile_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_path, self.p_meta['contigs_db_hash'])
+            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
 
         if self.auxiliary_profile_data_available:
-            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_data_path, anvio.__hdf5__version__))
+            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
         self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
@@ -1098,7 +1101,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_variability_information_for_split(self, split_name, return_outliers=False, return_raw_results=False):
+    def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be\
                                 represented in this profile database. Are you sure you are looking for it\
@@ -1118,7 +1121,7 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
-            if not return_outliers and e['cov_outlier_in_contig']:
+            if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
