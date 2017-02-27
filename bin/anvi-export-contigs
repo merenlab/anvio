@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8
 """A script to export a FASTA file of contigs (or splits) from a contigs database."""
 
