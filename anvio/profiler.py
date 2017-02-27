@@ -670,7 +670,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.num_contigs != len(self.contigs):
             self.run.info('contigs_after_C', pp(recieved_contigs-discarded_contigs))
 
-        overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
+        overall_mean_coverage = 1
+        if self.total_length_of_all_contigs != 0:
+            overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
 
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
         dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
