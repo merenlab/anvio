@@ -434,6 +434,13 @@ D = {
              'help': "When declared, the program will list contigs in the BAM file and exit gracefully\
                       without any further analysis."}
                 ),
+    'list-splits': (
+            ['--list-splits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the program will list split names in the profile database and quite"}
+                ),
+
     'list-collections': (
             ['--list-collections'],
             {'default': False,
@@ -462,6 +469,11 @@ D = {
             ['--completeness-source'],
             {'metavar': 'NAME',
              'help': "Single-copy gene source to use to estimate completeness."}
+                ),
+    'split-name': (
+            ['--split-name'],
+            {'metavar': 'SPLIT_NAME',
+             'help': "Split name."}
                 ),
     'splits-of-interest': (
             ['--splits-of-interest'],
