@@ -235,37 +235,6 @@ class MultipleRuns:
         variable_aas_table.store()
 
 
-    def merge_gene_detections_tables(self):
-        # create an instance from genes
-        gene_detections_table = dbops.TableForGeneDetection(self.merged_profile_db_path, progress=self.progress)
-
-        # fill "genes" instance from all samples
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_detections_table_name,
-                                                                          tables.gene_detections_table_structure)
-            for g in list(sample_gene_profiles.values()):
-                gene_detections_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['detection'])
-            sample_profile_db.disconnect()
-
-        gene_detections_table.store()
-
-
-    def merge_gene_coverages_tables(self):
-        # create an instance from genes
-        gene_coverages_table = dbops.TableForGeneCoverages(self.merged_profile_db_path, progress=self.progress)
-
-        # fill "genes" instance from all samples
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_gene_profiles = sample_profile_db.db.get_table_as_dict(tables.gene_coverages_table_name, tables.gene_coverages_table_structure)
-            for g in list(sample_gene_profiles.values()):
-                gene_coverages_table.add_gene_entry(g['gene_callers_id'], g['sample_id'], g['mean_coverage'])
-            sample_profile_db.disconnect()
-
-        gene_coverages_table.store()
-
-
     def merge_split_coverage_data(self):
         output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.h5')
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
@@ -328,7 +297,6 @@ class MultipleRuns:
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
-        self.gene_coverages_computed = C('gene_coverages_computed')
         self.AA_frequencies_profiled = C('AA_frequencies_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.total_length = C('total_length')
@@ -371,7 +339,6 @@ class MultipleRuns:
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.contigs_db_hash,
-                       'gene_coverages_computed': self.gene_coverages_computed,
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
@@ -395,16 +362,8 @@ class MultipleRuns:
 
         self.set_normalization_multiplier()
 
-        self.progress.new('Merging gene coverages tables')
-        self.merge_gene_coverages_tables()
-        self.progress.end()
-
         self.progress.new('Merging split coverage values')
         self.merge_split_coverage_data()
-        self.progress.end()
-
-        self.progress.new('Merging gene detection tables')
-        self.merge_gene_detections_tables()
         self.progress.end()
 
         if self.SNVs_profiled:

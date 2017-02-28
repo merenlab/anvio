@@ -13,7 +13,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "8"
-profile_db_version = "19"
+profile_db_version = "20"
 pan_db_version = "5"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
@@ -128,14 +128,6 @@ variable_aas_table_types             = [ 'numeric',    'text'  ,        'numeric
 variable_nts_table_name              = 'variable_nucleotide_positions'
 variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
 variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'       ,       'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
-
-gene_coverages_table_name            = 'gene_coverages'
-gene_coverages_table_structure       = ['entry_id', 'gene_callers_id', 'sample_id', 'mean_coverage']
-gene_coverages_table_types           = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
-
-gene_detections_table_name           = 'gene_detections'
-gene_detections_table_structure      = ['entry_id', 'gene_callers_id', 'sample_id', 'detection']
-gene_detections_table_types          = [ 'numeric',     'numeric'    ,   'text'   ,    'numeric'   ]
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
