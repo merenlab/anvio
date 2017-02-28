@@ -111,13 +111,9 @@ class ContigsSuperclass(object):
 
         try:
             self.contigs_db_path = args.contigs_db
+            filesnpaths.is_file_exists(self.contigs_db_path)
         except:
-            self.run.warning("ContigsSuperclass class is called with args without a contigs_db member. Anvi'o will assume\
-                              you are a programmer, and will not raise an error. But the init function is returning\
-                              prematurely. Just so you know.")
             return
-
-        filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
