@@ -385,7 +385,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Minimum conting length', pretty(self.p_meta['min_contig_length'])),
+                                                     ('Minimum contig length', pretty(self.p_meta['min_contig_length'])),
                                                      ('Number of contigs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
