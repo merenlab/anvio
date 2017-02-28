@@ -191,6 +191,9 @@ anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
 
+INFO "Export gene coverage and detection data"
+anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED
+
 INFO "Show all available HMM sources"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o /dev/null -l
 
