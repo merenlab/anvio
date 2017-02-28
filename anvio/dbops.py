@@ -89,10 +89,10 @@ class ContigsSuperclass(object):
 
         self.genes_in_contigs_dict = {}
         self.contig_name_to_genes = {}
-        self.genes_in_splits = {}
+        self.genes_in_splits = {} # keys of this dict are NOT gene caller ids. they are ids for each entry.
         self.genes_in_splits_summary_dict = {}
         self.genes_in_splits_summary_headers = []
-        self.split_name_to_gene_caller_ids_dict = {} # for fast access to all self.genes_in_splits entries for a given split
+        self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
         self.auxiliary_contigs_data_available = False
@@ -112,10 +112,9 @@ class ContigsSuperclass(object):
         try:
             self.contigs_db_path = args.contigs_db
         except:
-            # ContigsSuperclass class called with args without contigs_db member..
-            return
-
-        if not self.contigs_db_path:
+            self.run.warning("ContigsSuperclass class is called with args without a contigs_db member. Anvi'o will assume\
+                              you are a programmer, and will not raise an error. But the init function is returning\
+                              prematurely. Just so you know.")
             return
 
         filesnpaths.is_file_exists(self.contigs_db_path)
@@ -162,14 +161,14 @@ class ContigsSuperclass(object):
         self.progress.update('Generating "split name" to "gene entry ids" mapping dict')
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']
-            if split_name in self.split_name_to_gene_caller_ids_dict:
-                self.split_name_to_gene_caller_ids_dict[split_name].add(entry_id)
+            if split_name in self.split_name_to_genes_in_splits_entry_ids:
+                self.split_name_to_genes_in_splits_entry_ids[split_name].add(entry_id)
             else:
-                self.split_name_to_gene_caller_ids_dict[split_name] = set([entry_id])
+                self.split_name_to_genes_in_splits_entry_ids[split_name] = set([entry_id])
 
         for split_name in self.splits_basic_info:
-            if split_name not in self.split_name_to_gene_caller_ids_dict:
-                self.split_name_to_gene_caller_ids_dict[split_name] = set([])
+            if split_name not in self.split_name_to_genes_in_splits_entry_ids:
+                self.split_name_to_genes_in_splits_entry_ids[split_name] = set([])
 
         self.progress.update('Generating "gene caller id" to "split name" mapping dict')
         for entry in list(self.genes_in_splits.values()):
@@ -529,8 +528,8 @@ class ContigsSuperclass(object):
 
         if split_names:
             for split_name in split_names:
-                for gene_call_id in self.split_name_to_gene_caller_ids_dict[split_name]:
-                    gene_calls_of_interest.add(gene_call_id)
+                for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
+                    gene_calls_of_interest.add(self.genes_in_splits[entry_id]['gene_callers_id'])
         elif contig_names:
             for contig_name in contig_names:
                 for gene_call_id in [t[0] for t in self.contig_name_to_genes[contig_name]]:
@@ -985,12 +984,27 @@ class PanSuperclass(object):
 
 
 class ProfileSuperclass(object):
+    """Fancy super class to deal with profile db stuff.
+
+       if you want to make use of this class directly (i.e., not as a superclass), get an instance
+       like this:
+       
+            >>> class Args: None
+            >>> args = Args()
+            >>> args.profile_db = /path/to/profile
+            >>> p = ProfileSuperclass(args)
+
+       Alternatively you can include a contigs database path (contigs_db) in args so you have access
+       to some functions that would require that.
+       """
+
     def __init__(self, args, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
 
-        self.gene_coverages_dict = None
+        self.gene_coverages_dict = {}
+        self.gene_detection_dict = {}
         self.split_coverage_values = None
 
         self.auxiliary_profile_data_available = None
@@ -1001,16 +1015,21 @@ class ProfileSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
-        try:
-            self.profile_db_path = args.profile_db
-        except:
-            self.run.warning('ProfileSuperclass class called with args without profile_db member')
-            return
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
 
         if not self.profile_db_path:
+            self.run.warning("ProfileSuperclass class called with args without profile_db member. Anvi'o will assume\
+                              you are a programmer, and will not raise an error. But the init function is returning\
+                              prematurely. Just so you know.")
             return
 
-        filesnpaths.is_file_exists(self.profile_db_path)
+        is_profile_db(self.profile_db_path)
+
+        # we have a contigs db? let's see if it's for real.
+        if self.contigs_db_path:
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.new('Initializing the profile database superclass')
 
@@ -1065,38 +1084,96 @@ class ProfileSuperclass(object):
         self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
-    def init_gene_coverages_dict(self):
+    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
+        """This function will fill process the auxiliary data and fill two dictionaries:
+
+            - self.gene_detection_dict
+            - self.gene_coverages_dict
+
+           If this is taking forever and you want to kill Meren, everyone will understand you.
+        """
+
         if self.p_meta['blank']:
-            # this is a blank profile, there is nothing to init here
+            self.run.warning("Someone asked gene coverages to be initialized when working with a blank profile database.\
+                              Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this\
+                              is warning you about, just carry on.")
             return
 
-        profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
-
-        self.progress.new('Reading gene coverages table')
-        self.progress.update('...')
-        gene_coverages_table = profile_db.db.get_table_as_dict(t.gene_coverages_table_name)
-        profile_db.disconnect()
-
-        if not len(gene_coverages_table):
-            self.progress.end()
-            self.run.warning('Something came up, please read this carefuly: your contigs database does\
-                              contain information for open reading frames in your contigs. however, the\
-                              gene coverages table in the profile database is empty. This happens when you\
-                              annotate your contigs database with gene/function calls *after* you have\
-                              profiled your samples. If you are OK with this situation, you can simply\
-                              ignore this message. If you need to access to this information, you must\
-                              re-profile your samples (and merge them) using your most update contigs\
-                              database :/ Sorry!')
+        if not self.auxiliary_profile_data_available:
+            self.run.warning("Gene-level detection and coverage values are always recovered from the auxiliary data files\
+                              associated with profile databases. You don't seem to have one around for this profile database,\
+                              and you shall get NO GENE COVERAGES OR ANYTHING :(")
             return
 
-        self.gene_coverages_dict = {}
-        for gene_coverage_entry in list(gene_coverages_table.values()):
-            gene_callers_id = gene_coverage_entry['gene_callers_id']
+        if not self.contigs_db_path:
+            self.run.warning("Someone wants to populate gene coverages data, but they called the profile super class without\
+                              a contigs database path. Anvi'o will pretend nothing happened, but will return nothing back.\
+                              Good luck with your downstream endeavors.")
+            return
 
-            if gene_callers_id not in self.gene_coverages_dict:
-                self.gene_coverages_dict[gene_callers_id] = {}
+        contigs_db = ContigsSuperclass(self.args)
 
-            self.gene_coverages_dict[gene_callers_id][gene_coverage_entry['sample_id']] = gene_coverage_entry['mean_coverage']
+        if not contigs_db.a_meta['genes_are_called']:
+            self.run.warning("Well, someone wants to populate the gene coverages data, when in fact genes were not called :/\
+                              Instead of giving an error, anvi'o will return prematurely, without really doing anything.")
+            return
+
+        if not contigs_db.a_meta['splits_consider_gene_calls']:
+            self.run.warning("PLEASE READ THIS VERY CAREFULLY (remember, anvi'o never talks to you in CAPS, so it must be important).\
+                              It seems when you generated your contigs database, you have skipped 'mindful' splitting of contigs.\
+                              This means, some of the genes may be soft-broken into two or more pieces. For most things, it doesn't\
+                              really matter, but here this will cause an issue as your gene coverages will average one of those splits\
+                              without any biologically relevant reason. We could have done much better here, but it would have affected\
+                              the performance very negatively. If you are seeing this warning, and go like 'crap, this will ruin\
+                              everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
+                              think about whether we can be less lazy about stuff, and do things better.")
+
+        sample_names = self.p_meta['samples']
+        split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
+
+        self.progress.new('Recovering gene coverage and detection data')
+
+        num_splits, counter = len(self.split_names), 1
+        # go through all the split names
+        for split_name in self.split_names:
+            if num_splits > 10 and counter % 10 == 0:
+                self.progress.update('%d of %d splits ...' % (counter, num_splits))
+
+            # recover split coverage values from the auxiliary data file:
+            split_coverage = split_coverages.get(split_name)
+
+            # identify entry ids for genes in `split_name`
+            genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
+
+            # we have to go back, Kate :(
+            if not genes_in_splits_entries:
+                continue
+
+            # we will go through each gene entry in the split
+            for genes_in_splits_entry in genes_in_splits_entries:
+                e = contigs_db.genes_in_splits[genes_in_splits_entry]
+                gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
+                gene_length = gene_stop - gene_start
+
+                if gene_length <= 0:
+                    raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
+                                       here!" % (gene_callers_id, gene_length))
+
+                self.gene_coverages_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in sample_names])
+                self.gene_detection_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in sample_names])
+
+                for sample_name in sample_names:
+                    # and recover the gene coverage array per position for a given sample:
+                    gene_coverage_per_position = split_coverage[sample_name][gene_start:gene_stop]
+
+                    # all the magic happens here:
+                    gene_mean_coverage = numpy.mean(gene_coverage_per_position)
+                    gene_detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
+
+                    self.gene_coverages_dict[gene_callers_id][sample_name] = gene_mean_coverage
+                    self.gene_detection_dict[gene_callers_id][sample_name] = gene_detection
+
+            counter += 1
 
         self.progress.end()
 
@@ -1229,7 +1306,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
-        self.init_gene_coverages_dict()
+        self.init_gene_coverages_and_detection_dicts()
 
 
 ####################################################################################################
