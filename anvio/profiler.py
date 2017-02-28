@@ -154,7 +154,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
-                       'gene_coverages_computed': self.a_meta['genes_are_called'],
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
@@ -193,7 +192,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('profile_AA_frequencies', self.profile_AA_frequencies)
         self.run.info('report_variability_full', self.report_variability_full)
-        self.run.info('gene_coverages_computed', self.a_meta['genes_are_called'])
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -311,36 +309,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     variable_nts_table.append(column_profile)
 
         variable_nts_table.store()
-
-
-    def generate_gene_detections_table(self):
-        gene_detections_table = dbops.TableForGeneDetection(self.profile_db_path, progress=self.progress)
-
-        for contig in self.contigs:
-            contig_name = contig.name
-
-            # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
-            # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
-            # we wreck ourselves and the ultimately the analysis of this poor user:
-            if contig_name in self.contig_name_to_genes:
-                gene_detections_table.analyze_contig(contig, self.sample_id, self.contig_name_to_genes[contig_name])
-
-        gene_detections_table.store()
-
-
-    def generate_gene_coverages_table(self):
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
-
-        for contig in self.contigs:
-            contig_name = contig.name
-
-            # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
-            # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
-            # we wreck ourselves and the ultimately the analysis of this poor user:
-            if contig_name in self.contig_name_to_genes:
-                gene_coverages_table.analyze_contig(contig, self.sample_id, self.contig_name_to_genes[contig_name])
-
-        gene_coverages_table.store()
 
 
     def store_split_coverages(self):
@@ -709,8 +677,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.verbose = False
         self.generate_variabile_nts_table()
         self.generate_variabile_aas_table()
-        self.generate_gene_coverages_table()
-        self.generate_gene_detections_table()
         self.store_split_coverages()
         self.progress.verbose = True
 

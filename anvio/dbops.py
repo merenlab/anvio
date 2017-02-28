@@ -1111,7 +1111,9 @@ class ProfileSuperclass(object):
                               Good luck with your downstream endeavors.")
             return
 
-        contigs_db = ContigsSuperclass(self.args)
+        run = terminal.Run(verbose=False)
+        progress = terminal.Progress(verbose=False)
+        contigs_db = ContigsSuperclass(self.args, r=run, p=progress)
 
         if not contigs_db.a_meta['genes_are_called']:
             self.run.warning("Well, someone wants to populate the gene coverages data, when in fact genes were not called :/\
@@ -1368,8 +1370,6 @@ class ProfileDatabase:
 
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
-        self.db.create_table(t.gene_coverages_table_name, t.gene_coverages_table_structure, t.gene_coverages_table_types)
-        self.db.create_table(t.gene_detections_table_name, t.gene_detections_table_structure, t.gene_detections_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
@@ -2227,91 +2227,6 @@ class TableForAAFrequencies(Table):
     def store(self):
         profile_db = ProfileDatabase(self.db_path)
         profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
-        profile_db.disconnect()
-
-class TableForGeneDetection(Table):
-    '''The purpose of this class is to keep detection values for each gene in contigs, which is found in a sample.
-    Before the existence of this table, detection information was only saved at split level. The purpose of this
-    table is to make this information available in the gene level'''
-    def __init__(self, db_path, run=run, progress=progress):
-        self.db_path = db_path
-
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
-
-        self.genes = []
-        self.set_next_available_id(t.gene_detections_table_name)
-
-        # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
-        # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
-        # should change for good. but for now I will generate a dict to keep contig coverages to avoid
-        # even more redundant computations:
-        self.contig_coverages = {}
-
-    def analyze_contig(self, contig, sample_id, start_stop_pos_list):
-        # analyzing the contig to find the detection value for each gene, by counting the number of nucleotide
-        # positions that have coverage value greater than zero, and then dividing by the length of the gene
-        if contig.name not in self.contig_coverages:
-            contig_coverage = []
-            for split in contig.splits:
-                contig_coverage.extend(split.coverage.c)
-            self.contig_coverages[contig.name] = contig_coverage
-
-        for gene_callers_id, start, stop in start_stop_pos_list:
-            gene_detection = 1 - Counter(self.contig_coverages[contig.name][start:stop])[0] / (stop - start)
-            self.add_gene_entry(gene_callers_id, sample_id, gene_detection)
-
-
-    def add_gene_entry(self, gene_callers_id, sample_id, detection):
-        self.genes.append({'gene_callers_id': gene_callers_id, 'sample_id': sample_id, 'detection': detection})
-
-
-    def store(self):
-        profile_db = ProfileDatabase(self.db_path)
-        db_entries = [
-            tuple([self.next_id(t.gene_detections_table_name)] + [gene[h] for h in t.gene_detections_table_structure[1:]]) for gene in self.genes]
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_detections_table_name, db_entries)
-        profile_db.disconnect()
-
-
-class TableForGeneCoverages(Table):
-    '''The purpose of this class is to keep coverage values for each gene in contigs for found in a sample.
-       Simply, you create an instance from it, keep sending contig instances from contig.py::Contig class along with
-       a list of inferred start/stop locations for each reading frame. Once you are done, you call create_gene_coverages_table.'''
-    def __init__(self, db_path, run=run, progress=progress):
-        self.db_path = db_path
-
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
-
-        self.genes = []
-        self.set_next_available_id(t.gene_coverages_table_name)
-
-        # we keep coverage values in contig.py/Contig instances only for splits, during the profiling,
-        # coverage for contigs are temporarily calculated, and then discarded. probably that behavior
-        # should change for good. but for now I will generate a dict to keep contig coverages to avoid
-        # even more redundant computations:
-        self.contig_coverages = {}
-
-
-    def analyze_contig(self, contig, sample_id, start_stop_pos_list):
-        if contig.name not in self.contig_coverages:
-            contig_coverage = []
-            for split in contig.splits:
-                contig_coverage.extend(split.coverage.c)
-            self.contig_coverages[contig.name] = contig_coverage
-
-        for gene_callers_id, start, stop in start_stop_pos_list:
-            gene_coverage = numpy.mean(self.contig_coverages[contig.name][start:stop])
-            self.add_gene_entry(gene_callers_id, sample_id, gene_coverage)
-
-
-    def add_gene_entry(self, gene_callers_id, sample_id, coverage):
-        self.genes.append({'gene_callers_id': gene_callers_id, 'sample_id': sample_id, 'mean_coverage': coverage})
-
-
-    def store(self):
-        profile_db = ProfileDatabase(self.db_path)
-        db_entries = [tuple([self.next_id(t.gene_coverages_table_name)] + [gene[h] for h in t.gene_coverages_table_structure[1:]]) for gene in self.genes]
-        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.gene_coverages_table_name, db_entries)
         profile_db.disconnect()
 
 
