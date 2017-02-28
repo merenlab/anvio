@@ -2593,7 +2593,7 @@ function draw_tree(settings) {
     document.body.addEventListener('click', function() { $('#collection_mode_right_click_menu').hide(); }, false);
     document.body.addEventListener('click', function() { $('#pan_mode_right_click_menu').hide(); }, false);
 
-    // code below required to stop clicking on contings while panning.
+    // code below required to stop clicking on contigs while panning.
     var viewport = document.getElementById('svg');
     viewport.addEventListener('mousedown', 
         function(event) { 
