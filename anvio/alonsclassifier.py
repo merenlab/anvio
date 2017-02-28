@@ -55,7 +55,7 @@ class AlonsClassifier:
         else:
             # load sample list and gene_coverage_dict from the merged profile db
             self.profile_db = ProfileSuperclass(args)
-            self.profile_db.init_gene_coverages_dict()
+            self.profile_db.init_gene_coverages_and_detection_dicts()
             self.data = self.profile_db.gene_coverages_dict
             self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
