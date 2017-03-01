@@ -1366,7 +1366,7 @@ CircleTreeDrawer.prototype.CalcCoordinates = function() {
     this.leaf_angle = Math.toRadians(Math.abs(angle_max - angle_min)) / this.t.num_leaves;
     //this.leaf_angle = 2 * Math.PI / this.t.num_leaves;
 
-    this.leaf_radius = this.settings.width / 2;
+    this.leaf_radius = this.settings.width;
     this.node_gap = this.leaf_radius / this.t.root.depth;
 
 
@@ -1443,12 +1443,12 @@ function CirclePhylogramDrawer() {
 
 //--------------------------------------------------------------------------------------------------
 CirclePhylogramDrawer.prototype.CalcInternalRadius = function(p) {
-    p.radius = this.root_length + (p.path_length / this.max_path_length) * (this.settings.width / 2)
+    p.radius = this.root_length + (p.path_length / this.max_path_length) * (this.settings.width)
 }
 
 //--------------------------------------------------------------------------------------------------
 CirclePhylogramDrawer.prototype.CalcLeafRadius = function(p) {
-    p.radius = this.root_length + (p.path_length / this.max_path_length) * (this.settings.width / 2)
+    p.radius = this.root_length + (p.path_length / this.max_path_length) * (this.settings.width)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1457,7 +1457,7 @@ CirclePhylogramDrawer.prototype.CalcCoordinates = function() {
     //console.log(this.max_path_length);    
 
     if (this.settings.root_length) {
-        this.root_length = this.settings.root_length * (this.settings.width / 2);
+        this.root_length = this.settings.root_length * (this.settings.width);
         this.settings.width -= 2 * this.root_length;
     }
 
