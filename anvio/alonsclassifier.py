@@ -40,7 +40,7 @@ class AlonsClassifier:
         self.output_file = A('output_file')
         self.profile_db_path = A('profile_db')
         self.sample_detection_output = A('sample_detection_output')
-        self.data = {}
+        self.gene_coverages = {}
         self.samples = {}
         self.alpha = A('alpha')
         self.beta = A('beta')
@@ -56,7 +56,7 @@ class AlonsClassifier:
             # load sample list and gene_coverage_dict from the merged profile db
             self.profile_db = ProfileSuperclass(args)
             self.profile_db.init_gene_coverages_and_detection_dicts()
-            self.data = self.profile_db.gene_coverages_dict
+            self.gene_coverages = self.profile_db.gene_coverages_dict
             self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
 
@@ -93,14 +93,14 @@ class AlonsClassifier:
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
         self.samples = utils.get_columns_of_TAB_delim_file(self.data_file_path)
-        self.data = utils.get_TAB_delimited_file_as_dictionary(self.data_file_path, column_mapping=[int] + [float] * len(self.samples))
+        self.gene_coverages = utils.get_TAB_delimited_file_as_dictionary(self.data_file_path, column_mapping=[int] + [float] * len(self.samples))
 
 
     def apply_func_to_genes_in_sample(self, func, list_of_genes=None):
         """ Apply the give function on the list of genes in each sample. The function is expected to accept a list """
         if not list_of_genes:
-            list_of_genes = self.data.keys()
-        d = dict(zip(self.samples, [next(map(func, [[self.data[gene_id][sample_id] for gene_id in list_of_genes]])) for
+            list_of_genes = self.gene_coverages.keys()
+        d = dict(zip(self.samples, [next(map(func, [[self.gene_coverages[gene_id][sample_id] for gene_id in list_of_genes]])) for
                            sample_id in self.samples]))
         return d
 
@@ -126,19 +126,19 @@ class AlonsClassifier:
     def get_detection_of_genes(self, mean_coverage_in_samples, std_in_samples, gamma):
         """ Returns a dictionary (of dictionaries), where for each gene_id, and each sample_id the detection of the gene
         is determined. The criteria for detection is having coverage that is greater than 0 and also that is not more
-        than 3 (assuming gamma=3 for example) standard deviations below the mean coverage in the sample.
+        than gamma (default is gamma=3) standard deviations below the mean coverage in the sample.
         Notice that the mean coverage isn't the mean of all genes in the sample necesarilly. In fact it would be the mean of
         only the taxon-specific genes."""
         detection_of_genes = {}
         non_zero_non_detections = False
-        for gene_id in self.data:
+        for gene_id in self.gene_coverages:
             detection_of_genes[gene_id] = {}
             detection_of_genes[gene_id]['number_of_detections'] = 0
             for sample in self.samples:
-                detection_of_genes[gene_id][sample] = self.data[gene_id][sample] > max(0,mean_coverage_in_samples[sample] -
+                detection_of_genes[gene_id][sample] = self.gene_coverages[gene_id][sample] > max(0,mean_coverage_in_samples[sample] -
                                                                                  gamma*std_in_samples[sample])
                 detection_of_genes[gene_id]['number_of_detections'] += detection_of_genes[gene_id][sample]
-                if self.data[gene_id][sample] > 0 and self.data[gene_id][sample] < mean_coverage_in_samples[sample] - \
+                if self.gene_coverages[gene_id][sample] > 0 and self.gene_coverages[gene_id][sample] < mean_coverage_in_samples[sample] - \
                         gamma*std_in_samples[sample]:
                     non_zero_non_detections = True
         if non_zero_non_detections:
@@ -181,14 +181,14 @@ class AlonsClassifier:
             if not samples_with_gene:
                 return 0
             else:
-                adjusted_std = np.std([self.data[gene_id][sample_id]/mean_coverage_in_samples[sample_id] for sample_id in
+                adjusted_std = np.std([self.gene_coverages[gene_id][sample_id]/mean_coverage_in_samples[sample_id] for sample_id in
                                        samples_with_gene])
                 return adjusted_std
 
 
     def get_adjusted_stds(self, mean_coverage_in_samples, detection_of_genes):
         adjusted_std = {}
-        for gene_id in self.data:
+        for gene_id in self.gene_coverages:
             adjusted_std[gene_id] = self.get_adjusted_std_for_gene_id(gene_id, mean_coverage_in_samples,
                                                                  detection_of_genes)
         return adjusted_std
@@ -279,10 +279,10 @@ class AlonsClassifier:
     def get_gene_classes(self):
         """ returning the classification per gene along with detection in samples (i.e. for each sample, whether the
         genome has been detected in the sample or not """
-        taxon_specific_genes = list(self.data.keys())
+        taxon_specific_genes = list(self.gene_coverages.keys())
         converged = False
         loss = None
-        TSC_genes = list(self.data.keys())
+        TSC_genes = list(self.gene_coverages.keys())
 
         gene_class_information = {}
         while not converged:
@@ -307,7 +307,7 @@ class AlonsClassifier:
 
             self.run.warning('current value of loss function: %s ' % loss)
 
-            for gene_id in self.data:
+            for gene_id in self.gene_coverages:
                 gene_class_information[gene_id] = {}
                 gene_class_information[gene_id]['gene_specificity'] = taxon_specificity[gene_id]
                 gene_class_information[gene_id]['number_of_detections'] = detection_of_genes[gene_id]['number_of_detections']
