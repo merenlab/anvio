@@ -240,6 +240,10 @@ def gen_summary(collection_name):
 def store_collections_dict():
     return routes.store_collections_dict(args, d, request, response)
 
+@route('/store_description', method='POST')
+def store_description():
+    return routes.store_description(args, d, request, response)
+
 @route('/data/proteinclusterssummary', method='POST')
 def get_protein_clusters_summary():
     return routes.get_protein_clusters_summary(d, request)
