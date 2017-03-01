@@ -37,10 +37,12 @@ class AlonsClassifier:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.gene_coverages_data_file_path = A('data_file')
+        self.gene_detection_data_file_path = A('gene_detection_data_file')
         self.output_file = A('output_file')
         self.profile_db_path = A('profile_db')
         self.sample_detection_output = A('sample_detection_output')
         self.gene_coverages = {}
+        self.gene_detection = {}
         self.samples = {}
         self.alpha = A('alpha')
         self.beta = A('beta')
@@ -57,6 +59,7 @@ class AlonsClassifier:
             self.profile_db = ProfileSuperclass(args)
             self.profile_db.init_gene_coverages_and_detection_dicts()
             self.gene_coverages = self.profile_db.gene_coverages_dict
+            self.gene_detection = self.profile_db.gene_detection_dict 
             self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
 
@@ -94,8 +97,19 @@ class AlonsClassifier:
         """ Reads the coverage data from TAB delimited file """
         self.samples = utils.get_columns_of_TAB_delim_file(self.gene_coverages_data_file_path)
         self.gene_coverages = utils.get_TAB_delimited_file_as_dictionary(self.gene_coverages_data_file_path, column_mapping=[int] + [float] * len(self.samples))
-        
-
+        # checking if a gene_detection file was also supplied
+        if self.gene_detection_data_file_path:
+            self.gene_detection = utils.get_TAB_delimited_file_as_dictionary(self.gene_detection_data_file_path, column_mapping=[int] + [float] * len(self.samples))
+            # making sure that the tables are compatible, notice we're only checking if gene_detection contains everything that's in gene_coverages (and not vise versa)
+            for gene_id in self.gene_coverages:
+                if gene_id not in self.gene_detection:
+                    raise ConfigError("Your tables are not compatible. For example gene_id %s is in %s, but not in %s" % (gene_id, self.gene_coverages_data_file_path,
+                                                                                                                         self.gene_detection_data_file_path))
+            gene_detection_sample_list = next(iter(self.profile_db.gene_detection_dict.values())).keys()
+            for sample_id in next(iter(self.profile_db.gene_coverages_dict.values())).keys():
+                if sample_id not in gene_detection_sample_list:
+                    raise ConfigError("Your tables are not compatible. For example sample_id %s is in %s, but not in %s" % (sample_id, self.gene_coverages_data_file_path,
+                                                                                                                         self.gene_detection_data_file_path))
 
     def apply_func_to_genes_in_sample(self, func, list_of_genes=None):
         """ Apply the give function on the list of genes in each sample. The function is expected to accept a list """
