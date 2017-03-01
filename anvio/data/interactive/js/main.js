@@ -831,7 +831,6 @@ function getComboBoxContent(default_item, available_items){
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
     $.each(available_items, function(index, item) {
-        console.log(item);
         if (item.indexOf(':') == -1) {
             text_val = getPrettyName(item);
         } else {
