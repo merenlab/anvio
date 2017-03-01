@@ -308,6 +308,10 @@ function initData () {
                 element: document.getElementById("description-editor"),
                 toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|" ,"link", "image", "|" ,"preview"],
             });
+
+            descriptionEditor.codemirror.on("change", function(){
+                $('#description-editor').val(descriptionEditor.value());
+            });
             //descriptionEditor.value(description);
 
             contig_lengths = eval(contigLengthsResponse[0]);
@@ -766,6 +770,18 @@ function showDescription() {
         height: 500
     });
     descriptionEditor.togglePreview();
+}
+
+function storeDescription() {
+   $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/store_description?timestamp=' + new Date().getTime(),
+            data: {description: $('#description-editor').val()},
+            success: function(data) {
+                toastr.info("Description successfully saved to database.");
+            }
+        });
 }
 
 function onTreeClusteringChange() {

@@ -217,6 +217,10 @@ def get_sequence_for_split(split_name):
 def store_refined_bins():
     return routes.store_refined_bins(args, r, request, response)
 
+@route('/store_description', method='POST')
+def store_description():
+    return routes.store_description(args, d, request, response)
+
 @route('/data/completeness', method='POST')
 def completeness():
     return routes.completeness(d, request)
