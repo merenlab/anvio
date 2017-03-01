@@ -36,7 +36,7 @@ class AlonsClassifier:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.data_file_path = A('data_file')
+        self.gene_coverages_data_file_path = A('data_file')
         self.output_file = A('output_file')
         self.profile_db_path = A('profile_db')
         self.sample_detection_output = A('sample_detection_output')
@@ -63,7 +63,7 @@ class AlonsClassifier:
     def sanity_check(self):
         """Basic sanity check for class inputs"""
 
-        if self.profile_db_path is None and self.data_file_path is None:
+        if self.profile_db_path is None and self.gene_coverages_data_file_path is None:
             raise ConfigError("You must provide either a profile.db or a gene coverage matrix data file")
 
         # checking alpha
@@ -92,8 +92,9 @@ class AlonsClassifier:
 
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
-        self.samples = utils.get_columns_of_TAB_delim_file(self.data_file_path)
-        self.gene_coverages = utils.get_TAB_delimited_file_as_dictionary(self.data_file_path, column_mapping=[int] + [float] * len(self.samples))
+        self.samples = utils.get_columns_of_TAB_delim_file(self.gene_coverages_data_file_path)
+        self.gene_coverages = utils.get_TAB_delimited_file_as_dictionary(self.gene_coverages_data_file_path, column_mapping=[int] + [float] * len(self.samples))
+        
 
 
     def apply_func_to_genes_in_sample(self, func, list_of_genes=None):
