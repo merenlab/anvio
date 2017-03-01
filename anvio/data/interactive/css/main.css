@@ -537,3 +537,29 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .close-thick:after {
   content: '✖'; /* UTF-8 symbol */
 }
+
+
+.editor-preview h1 {
+    font-size: 36px;
+}
+
+.editor-preview h2 {
+    font-size: 30px;
+}
+
+.editor-preview h3 {
+    font-size: 24px;
+}
+
+.editor-preview h3 {
+    font-size: 18px;
+}
+
+.editor-preview h4 {
+    font-size: 14px;
+}
+
+.editor-preview a {
+    font-size: inherit;
+}
+
