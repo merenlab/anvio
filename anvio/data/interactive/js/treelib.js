@@ -1932,7 +1932,7 @@ function draw_tree(settings) {
     else
     {
         if (settings['tree-type'] == 'circlephylogram') {
-            layer_boundaries.push([0, radius]);
+            layer_boundaries.push([0, radius / 2]);
         }
         else
         {
