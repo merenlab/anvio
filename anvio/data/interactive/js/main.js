@@ -304,7 +304,10 @@ function initData () {
                 $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
             }
             $('#description-editor').val(description);
-            descriptionEditor = new SimpleMDE({ element: document.getElementById("description-editor") });
+            descriptionEditor = new SimpleMDE({ 
+                element: document.getElementById("description-editor"),
+                toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|" ,"link", "image", "|" ,"preview"],
+            });
             //descriptionEditor.value(description);
 
             contig_lengths = eval(contigLengthsResponse[0]);
