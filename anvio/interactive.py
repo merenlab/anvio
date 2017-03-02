@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
 from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
@@ -288,8 +288,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['default_view'] = 'single'
         self.default_view = self.p_meta['default_view']
 
-        self.p_meta['description'] = '_No description is available_'
-
         # set some default organizations of data:
         self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': sorted(item_names)},
                                       'Alphabetical:none:none': {'basic': sorted(item_names, reverse=True)}}
@@ -356,6 +354,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # also populate collections, if there are any
         self.collections.populate_collections_dict(self.profile_db_path)
+
+        # read description from self table, if it is not available get_description function will return placeholder text
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
         if self.title:
             self.title = self.title
