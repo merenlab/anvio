@@ -695,7 +695,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         append_mode=True)
 
         dbops.TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
+                                        data_dict=view_data_contigs,
                                         table_name='atomic_data_contigs',
                                         table_structure=t.atomic_data_table_structure,
                                         table_types=t.atomic_data_table_types,
