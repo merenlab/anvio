@@ -48,6 +48,7 @@ class AlonsClassifier:
         self.beta = A('beta')
         self.gamma = A('gamma')
         self.eta = A('eta')
+        self.zeta = A('zeta')
         self.additional_layers_to_append = A('additional_layers_to_append')
         self.samples_information_to_append = A('samples_information_to_append')
 
@@ -105,8 +106,8 @@ class AlonsClassifier:
                 if gene_id not in self.gene_detection:
                     raise ConfigError("Your tables are not compatible. For example gene_id %s is in %s, but not in %s" % (gene_id, self.gene_coverages_data_file_path,
                                                                                                                          self.gene_detection_data_file_path))
-            gene_detection_sample_list = next(iter(self.profile_db.gene_detection_dict.values())).keys()
-            for sample_id in next(iter(self.profile_db.gene_coverages_dict.values())).keys():
+            gene_detection_sample_list = next(iter(self.gene_detection.values())).keys()
+            for sample_id in next(iter(self.gene_coverages.values())).keys():
                 if sample_id not in gene_detection_sample_list:
                     raise ConfigError("Your tables are not compatible. For example sample_id %s is in %s, but not in %s" % (sample_id, self.gene_coverages_data_file_path,
                                                                                                                          self.gene_detection_data_file_path))
@@ -138,7 +139,7 @@ class AlonsClassifier:
         return std_in_samples
 
 
-    def get_detection_of_genes(self, mean_coverage_in_samples, std_in_samples, gamma):
+    def get_detection_of_genes(self, mean_coverage_in_samples, std_in_samples):
         """ Returns a dictionary (of dictionaries), where for each gene_id, and each sample_id the detection of the gene
         is determined. The criteria for detection is having coverage that is greater than 0 and also that is not more
         than gamma (default is gamma=3) standard deviations below the mean coverage in the sample.
@@ -150,11 +151,17 @@ class AlonsClassifier:
             detection_of_genes[gene_id] = {}
             detection_of_genes[gene_id]['number_of_detections'] = 0
             for sample in self.samples:
+                # getting gene detection according to coverage criteria
                 detection_of_genes[gene_id][sample] = self.gene_coverages[gene_id][sample] > max(0,mean_coverage_in_samples[sample] -
-                                                                                 gamma*std_in_samples[sample])
+                                                                                 self.gamma*std_in_samples[sample])
+                if self.gene_detection:
+                    # if we have the gene detection (previously known as "percent covered") information then we will also use it to determine detection in samples:
+                    # TODO: change threshold to user defined argument
+                    gene_detection_above_threshold = self.gene_detection[gene_id][sample] > self.zeta
+                    detection_of_genes[gene_id][sample] = detection_of_genes[gene_id][sample] * gene_detection_above_threshold
                 detection_of_genes[gene_id]['number_of_detections'] += detection_of_genes[gene_id][sample]
                 if self.gene_coverages[gene_id][sample] > 0 and self.gene_coverages[gene_id][sample] < mean_coverage_in_samples[sample] - \
-                        gamma*std_in_samples[sample]:
+                        self.gamma*std_in_samples[sample]:
                     non_zero_non_detections = True
         if non_zero_non_detections:
             # print('gene %s, in some sample has non-zero coverage %s, and it has been marked as not detected due '
@@ -307,7 +314,7 @@ class AlonsClassifier:
             # TODO: right now, single copy, and multi-copy genes would be treated identically. Hence, multi-copy genes
             # would skew both the mean and the std of the taxon-specific genes.
             std_of_TS_in_samples = self.get_std_in_samples(taxon_specific_genes)
-            detection_of_genes = self.get_detection_of_genes(mean_coverage_of_TS_in_samples, std_of_TS_in_samples, self.gamma)
+            detection_of_genes = self.get_detection_of_genes(mean_coverage_of_TS_in_samples, std_of_TS_in_samples)
             detection_of_genome_in_samples = self.get_detection_of_genome_in_samples(detection_of_genes, self.alpha, TSC_genes)
             samples_with_genome = [sample_id for sample_id in self.samples if detection_of_genome_in_samples[sample_id][
                 'detection']]
