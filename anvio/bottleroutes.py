@@ -341,14 +341,14 @@ def store_refined_bins(args, r, request, response):
     message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_name)
     return json.dumps({'status': 0, 'message': message})
 
+
 def store_description(args, d, request, response):
     if args.read_only:
         return
 
     db_path = d.pan_db_path or d.profile_db_path
-    db = dbops.DBClassFactory().get_db_object(db_path).db
-    db.set_meta_value('description', request.forms.get('description'))
-    db.disconnect()
+    dbops.update_description_in_db(db_path, request.forms.get('description'))
+
 
 def gen_summary(args, d, request, response, collection_name):
     set_default_headers(response)
