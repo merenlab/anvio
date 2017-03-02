@@ -45,7 +45,6 @@ class DB:
             self.create_self()
             self.set_version(client_version)
         else:
-
             self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 raise ConfigError("It seems the database '%s' was generated when your client was at version %s,\
