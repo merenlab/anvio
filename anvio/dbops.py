@@ -3292,6 +3292,23 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
+def update_description_in_db(anvio_db_path, description, run=run):
+    """Updates the description in an anvi'o database"""
+
+    if not isinstance(description, str):
+        raise ConfigError("Description parameter must be of type `string`.")
+
+    db_type = get_db_type(anvio_db_path)
+
+    anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
+    anvio_db.remove_meta_key_value_pair('description')
+    anvio_db.set_meta_value('description', description)
+    anvio_db.disconnect()
+
+    run.info_single("The anvi'o %s database has just been updated with a description that contains %d words\
+                     and %d characters." % (db_type, len(description.split()), len(description)))
+
+
 def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
     """Adds a new clustering into an anvi'o db"""
 
