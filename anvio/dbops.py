@@ -3292,6 +3292,21 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
+def get_description_in_db(anvio_db_path, run=run):
+    """Reads the description in an anvi'o database"""
+    db_type = get_db_type(anvio_db_path)
+
+    anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
+    description = None
+    try:
+        description = anvio_db.get_meta_value('description')
+    except ConfigError:
+        description = '_No description is available_'
+
+    anvio_db.disconnect()
+    return description
+
+
 def update_description_in_db(anvio_db_path, description, run=run):
     """Updates the description in an anvi'o database"""
 
