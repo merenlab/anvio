@@ -346,8 +346,11 @@ def store_description(args, d, request, response):
     if args.read_only:
         return
 
+    description = request.forms.get('description')
+
     db_path = d.pan_db_path or d.profile_db_path
-    dbops.update_description_in_db(db_path, request.forms.get('description'))
+    dbops.update_description_in_db(db_path, description)
+    d.p_meta['description'] = description
 
 
 def gen_summary(args, d, request, response, collection_name):
