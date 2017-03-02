@@ -342,7 +342,7 @@ def store_refined_bins(args, r, request, response):
     return json.dumps({'status': 0, 'message': message})
 
 def store_description(args, d, request, response):
-    if not args.read_only:
+    if args.read_only:
         return
 
     db_path = d.pan_db_path or d.profile_db_path
