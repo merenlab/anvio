@@ -596,7 +596,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         memory_usage = None
 
-        self.progress.new('Profiling using ' + str(self.num_threads) + ' threads')
+        self.progress.new('Profiling using ' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
         self.progress.update('initializing threads ...')
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
