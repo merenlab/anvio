@@ -127,6 +127,8 @@ def send_static(filename):
 def send_data(name):
     set_default_headers(response)
     if name == "init":
+        r = refine.RefineBins(args)
+        d = r.refine()
         return json.dumps( { "title": d.title,
                              "description": (d.p_meta['description']),
                              "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
