@@ -35,11 +35,15 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def set_default_headers(response):
-    response.set_header('Content-Type', 'application/json')
+def set_default_headers(response, isJson=True):
+    if isJson:
+        response.set_header('Content-Type', 'application/json')
+    
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+    return response
 
 
 def state_autoload(d, response):
