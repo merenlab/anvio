@@ -109,24 +109,19 @@ except HDF5Error as e:
 # bottle callbacks start
 #######################################################################################################################
 
-def set_default_headers(response):
-    response.set_header('Content-Type', 'application/json')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
-    response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
-
 @route('/')
 def redirect_to_app():
     redirect('/app/index.html')
 
 @route('/app/:filename#.*#')
 def send_static(filename):
-    set_default_headers(response)
-    return static_file(filename, root=static_dir)
+    response = static_file(filename, root=static_dir)
+    routes.set_default_headers(response, isJson=False)
+    return response
 
 @route('/data/<name>')
 def send_data(name):
-    set_default_headers(response)
+    routes.set_default_headers(response)
     if name == "init":
         return json.dumps( { "title": d.title,
                              "description": (d.p_meta['description']),
@@ -205,7 +200,7 @@ def set_state():
 
 @route('/data/proteinclusters/get_state')
 def get_parent_state():
-    set_default_headers(response)
+    routes.set_default_headers(response)
     return state_for_pcs
 
 @route('/data/hmm/<bin_name>/<gene_name>')
