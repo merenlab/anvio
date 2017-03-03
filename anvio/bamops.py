@@ -461,10 +461,9 @@ class GetReadsFromBAM:
         for bam_file_path in self.input_bam_files:
             try:
                 bam_file_object = BAMFileObject(bam_file_path).get()
+                bam_file_object.close()
             except ConfigError as e:
                 bad_bam_files.append(bam_file_path)
-
-            bam_file_object.close()
 
         if len(bad_bam_files):
             raise ConfigError('Samtools is not happy with some of your bam files. The following\
