@@ -74,6 +74,10 @@ option {
     overflow-y: auto;
 }
 
+.modal-title {
+    font-size: 14px;
+}
+
 #svg {
     width: 100%;
     height: 100%;
