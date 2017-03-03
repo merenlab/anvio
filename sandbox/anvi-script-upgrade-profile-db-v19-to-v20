@@ -47,6 +47,9 @@ def update_profile_db(profile_db_path, just_do_it = False):
     # drop the table
     profile_db._exec('DROP TABLE gene_coverages;')
 
+    # commit
+    profile_db._exec('COMMIT')
+
     # cleanup
     profile_db._exec('vacuum')
 
