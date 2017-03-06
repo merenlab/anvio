@@ -208,6 +208,23 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
                 node_id_to_node_in_old_tree[node_id] = ch_node_in_old_tree
                 node_ids_to_visit_in_old_tree.append(node_id)
 
+    for node in new_tree.traverse("preorder"):
+        if node.is_leaf():
+            continue
+
+        has_child_with_dist_or_int = False
+
+        for child in node.get_children():
+            if not child.is_leaf() or child.dist > 0:
+                has_child_with_dist_or_int = True
+                break
+
+        if has_child_with_dist_or_int:
+            continue
+
+        # swap childs alphabetically
+        node.children = sorted(node.get_children(), key=lambda x:x.name, reverse=True)
+
     return new_tree.write(format=1)
 
 

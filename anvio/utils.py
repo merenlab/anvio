@@ -532,12 +532,14 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
-def get_names_order_from_newick_tree(newick_tree, newick_format=1):
+def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False):
     filesnpaths.is_proper_newick(newick_tree)
 
     tree = Tree(newick_tree, format=newick_format)
 
-    return [n.name for n in tree.get_leaves()]
+    names = [n.name for n in tree.get_leaves()]
+
+    return list(reversed(names)) if reverse else names
 
 
 def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
