@@ -8,6 +8,7 @@ import numpy
 
 import anvio
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -375,6 +376,16 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         completeness = Completeness(args.contigs_db)
         if not len(completeness.sources):
             raise ConfigError("HMM's were not run for this contigs database :/")
+
+        if 'Campbell_et_al' not in completeness.sources:
+            raise ConfigError("Collection mode requires single-copy gene collection by Campbell et al. to be in the\
+                               contigs database. It seems you haven't run HMMs (or you have managed to run them\
+                               without Campbell et al.'s collection .. which is quite impressive) :/")
+
+        self.progress.new('Accessing HMM hits')
+        self.progress.update('...')
+        self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
+        self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database:
