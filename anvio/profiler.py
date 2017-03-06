@@ -604,12 +604,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
-                if (int(time.time()) - last_memory_update) > 5:
-                    memory_usage = utils.get_total_memory_usage()
-                    last_memory_update = int(time.time())
-
-                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
-                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
 
                 # if we have a contig back, it means we are good to go with it,
                 # otherwise it is garbage.
@@ -619,6 +613,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     discarded_contigs += 1
 
                 recieved_contigs += 1
+
+                if (int(time.time()) - last_memory_update) > 5:
+                    memory_usage = utils.get_total_memory_usage()
+                    last_memory_update = int(time.time())
+
+                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
+                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
 
                 # here you're about to witness the poor side of Python (or our use of it).
                 # the problem we run into here was the lack of action from the garbage
