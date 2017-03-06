@@ -174,7 +174,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # need to match these names:
         default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
         if 'newick' in default_clustering:
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'])
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
         elif 'basic' in default_clustering:
             self.displayed_item_names_ordered = default_clustering['basic']
         else:
