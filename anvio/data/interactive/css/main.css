@@ -102,10 +102,10 @@ html, body, #wrapper {
     left: calc(50% - 230px);
     height: 44px;
     text-align: center;
-    border-radius: 0px 0px 16px 16px;
+    border-radius: 0px 0px 8px 8px;
     border: 1px solid #D3D3D3;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 20px;
+    padding-right: 20px;
     opacity: 0.9;
 }
 
@@ -506,7 +506,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #title-panel-first-line {
-        font-size: 32px;
+        font-size: 26px;
     }
 }
 
