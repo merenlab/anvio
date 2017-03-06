@@ -36,12 +36,12 @@ if __name__ == '__main__':
     try:
         s = dbops.SamplesInformationDatabase(args.output_db_path, run, progress, quiet=False)
         s.create(args.samples_information, args.samples_order)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
-    except SamplesError, e:
-        print e
+    except SamplesError as e:
+        print(e)
         sys.exit(-3)

@@ -60,8 +60,8 @@ class Muscle:
 
         if not output[0] == '>':
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
-            raise ConfigError, "Drivers::Muscle: Something went wrong with this run :/ The output does not\
-                                look alright. You can find the output in this log file."
+            raise ConfigError("Drivers::Muscle: Something went wrong with this run :/ The output does not\
+                                look alright. You can find the output in this log file.")
 
         alignments = {}
 

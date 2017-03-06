@@ -46,7 +46,7 @@ states_dict = {'AA': 'a',
                'TG': 'k'}
 
 valid_chars = set(states_dict.values()) 
-reverse_states = dict([(states_dict[v], ''.join(set(v))) for v in set([''.join(sorted(k)) for k in states_dict.keys()])])
+reverse_states = dict([(states_dict[v], ''.join(set(v))) for v in set([''.join(sorted(k)) for k in list(states_dict.keys())])])
 
 
 def entropy(l):
@@ -66,7 +66,7 @@ class ContigVariability:
         self.split_sequence = split_sequence
 
         self.layer_names = sorted(self.split_data.keys())
-        self.layer_index = dict(zip(self.layer_names, range(0, len(self.layer_names))))
+        self.layer_index = dict(list(zip(self.layer_names, list(range(0, len(self.layer_names))))))
 
         self.positions_dict = {}
         self.num_positions_from_each_split = num_positions_from_each_split
@@ -78,7 +78,7 @@ class ContigVariability:
     def populate_positions_dict(self):
         '''We take a split, and create a record of each variable position in it.'''
         counter = Counter()
-        for variable_nt_positions_in_layer in [s['competing_nucleotides'].keys() for s in self.split_data.values()]:
+        for variable_nt_positions_in_layer in [list(s['competing_nucleotides'].keys()) for s in list(self.split_data.values())]:
             for pos in variable_nt_positions_in_layer:
                 counter[pos] += 1
 
@@ -100,7 +100,7 @@ class ContigVariability:
                 self.positions_dict[p]['variability'] += layer['variability'][p]
                 self.positions_dict[p]['coverages'].append(layer['coverage'][p])
 
-                if layer['competing_nucleotides'].has_key(p):
+                if p in layer['competing_nucleotides']:
                     content = layer['competing_nucleotides'][p]
                 else:
                     if layer['coverage'][p]:
@@ -112,7 +112,7 @@ class ContigVariability:
 
 
             avatar_set = set(self.positions_dict[p]['avatars'])
-            avatar_conversion = dict(zip(avatar_set, range(1, len(avatar_set) + 1)))
+            avatar_conversion = dict(list(zip(avatar_set, list(range(1, len(avatar_set) + 1)))))
             self.positions_dict[p]['identities'] = [avatar_conversion[a] for a in self.positions_dict[p]['avatars']]
             self.positions_dict[p]['mean_coverage'] = numpy.mean(self.positions_dict[p]['coverages'])
             self.positions_dict[p]['entropy'] = entropy(''.join(self.positions_dict[p]['avatars']))
@@ -122,7 +122,7 @@ class ContigVariability:
         for pos in positions_with_zero_entropy:
             self.positions_dict.pop(pos)
 
-        self.positions_selected = self.positions_dict.keys()
+        self.positions_selected = list(self.positions_dict.keys())
 
 
     def position_selection_heuristics(self):

@@ -52,11 +52,11 @@ def main(args):
     if args.bins_info:
         try:
             bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
-        except Exception, e:
-            raise ConfigError, "Someone was not happy with the TAB-delimited bins info file you provided. Here\
-                                is the complaint: %s" % e
+        except Exception as e:
+            raise ConfigError("Someone was not happy with the TAB-delimited bins info file you provided. Here\
+                                is the complaint: %s" % e)
     run.info('Num %s in the input file' % I(), len(input_data_file_content))
-    run.info('Num bins the input file describes', len(set([e['bin_name'] for e in input_data_file_content.values()])))
+    run.info('Num bins the input file describes', len(set([e['bin_name'] for e in list(input_data_file_content.values())])))
 
     # learning about the input names like a pro
     input_names = set(input_data_file_content.keys())
@@ -66,19 +66,19 @@ def main(args):
     # is no contigs database is associated with the profile database, so if there is none,
     # we cheat :
     if we_have_a_contigs_db:
-        db_names = set(contigs_basic_info.keys() if args.contigs_mode else splits_basic_info.keys())
+        db_names = set(list(contigs_basic_info.keys()) if args.contigs_mode else list(splits_basic_info.keys()))
     else:
         db_names = input_names
 
     entry_names_overlap_between_input_and_db = set.intersection(*[db_names, input_names])
 
     if not len(entry_names_overlap_between_input_and_db):
-        raise ConfigError, "There is no overlap between the %(item)s names found in your input file\
+        raise ConfigError("There is no overlap between the %(item)s names found in your input file\
                             and %(item)s names found in the database. This is odd! For instance one\
                             of the names from your file looks like this: '%(from_file)s', and this is\
                             an example name from the database: '%(from_db)s'. Please issue a report if\
                             you are almost certain that this is anvi'o's fault." \
-                                % {'item': I(), 'from_file': input_names.pop(), 'from_db': db_names.pop()}
+                                % {'item': I(), 'from_file': input_names.pop(), 'from_db': db_names.pop()})
 
     run.info('Num %s both input file and the db has' % I(), len(entry_names_overlap_between_input_and_db))
 
@@ -90,7 +90,7 @@ def main(args):
         if entry_name not in entry_names_overlap_between_input_and_db:
             continue
 
-        if not data.has_key(bin_name):
+        if bin_name not in data:
             data[bin_name] = set([])
 
         if args.contigs_mode:
@@ -103,7 +103,7 @@ def main(args):
         run.info_single('%d of %d contig names in the input file that matched to contig names in the database\
                          resolved into %d split names that described in %d bins.' % (len(entry_names_overlap_between_input_and_db),
                                                                                      len(input_data_file_content),
-                                                                                     sum([len(v) for v in data.values()]),
+                                                                                     sum([len(v) for v in list(data.values())]),
                                                                                      len(data)), nl_before = 1)
 
     if args.pan_or_profile_db:
@@ -116,7 +116,7 @@ def main(args):
 
 def sanity_check(args):
     if not args.pan_or_profile_db and not args.contigs_db:
-        raise ConfigError, "You must at least provide an anvi'o contigs database for this to work :("
+        raise ConfigError("You must at least provide an anvi'o contigs database for this to work :(")
 
     if args.pan_or_profile_db:
         dbops.is_pan_or_profile_db(args.pan_or_profile_db)
@@ -125,24 +125,24 @@ def sanity_check(args):
         dbops.is_contigs_db(args.contigs_db)
 
     if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db: 
-        raise ConfigError, "There is no need to provide a contigs database when you are working with an anvi'o pan\
-                            database"
+        raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan\
+                            database")
 
     if not args.contigs_db and args.contigs_mode:
-        raise ConfigError, "There is no reason for you to use the `--contigs-mode` flag when you have\
-                            not declared an anvi'o contigs database"
+        raise ConfigError("There is no reason for you to use the `--contigs-mode` flag when you have\
+                            not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
     if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'profile':
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:
-            raise ConfigError, "The profile database you provided is associated with an anvi'o contigs database (i.e.,\
+            raise ConfigError("The profile database you provided is associated with an anvi'o contigs database (i.e.,\
                                 it is not 'blank' or an ad hoc profile database). In this case, you must provide a path\
-                                for the contigs database. Sorry :/"
+                                for the contigs database. Sorry :/")
 
     if not args.collection_name:
-        raise ConfigError, "You must give a name for this collection."
+        raise ConfigError("You must give a name for this collection.")
 
     if not args.contigs_db:
         run.warning("You did not provide a contigs database. Fine. So be it. But know this: anvi'o has no way to check\
@@ -158,9 +158,9 @@ def sanity_check(args):
     try:
         utils.check_sample_id(args.collection_name)
     except:
-        raise ConfigError, '"%s" is not a proper collection name. A proper one should be a single word and not contain\
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
                             ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                            any space characters, and the collection name should not start with a digit.' % args.collection_name
+                            any space characters, and the collection name should not start with a digit.' % args.collection_name)
 
     filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
     if args.bins_info:
@@ -168,10 +168,10 @@ def sanity_check(args):
 
     num_occurences_of_entries = Counter([l.split('\t')[0] for l in open(args.data).readlines()])
     if max(num_occurences_of_entries.values()) != 1:
-        raise ConfigError, "Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two\
+        raise ConfigError("Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two\
                             bins, and neither there should be the same bin assignment for a given %(item)s. Long story\
                             short, each name should appear only once in your input file, and it is not the case :/" \
-                                                                        % {'item': 'contig' if args.contigs_mode else 'split'}
+                                                                        % {'item': 'contig' if args.contigs_mode else 'split'})
 
 
 
@@ -193,9 +193,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

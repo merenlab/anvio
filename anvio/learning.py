@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """A simple module with classes for learning operations"""
 
-import cPickle
+import pickle
 import numpy as np
 import sklearn.ensemble
 
@@ -49,7 +49,7 @@ class RF:
         rf.fit(np.array(data), labels)
         self.progress.end()
 
-        cPickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'w'))
+        pickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'w'))
         self.run.info('Classifier output', self.classifier_object_path)
 
     def predict_from_TAB_delimited_file(self, file_path):
@@ -60,7 +60,7 @@ class RF:
         if not self.classifier_initialized:
             self.initialize_classifier()
 
-        samples = data_dict.keys()
+        samples = list(data_dict.keys())
         self.run.info('Num samples to classify', "%d." % (len(samples)))
 
         data = []
@@ -68,10 +68,10 @@ class RF:
             datum = []
             for feature in self.features:
                 if feature not in data_dict[sample]:
-                    raise ConfigError, "RF prediction run into an issue. All features described in the classifier should be present\
+                    raise ConfigError("RF prediction run into an issue. All features described in the classifier should be present\
                                         for all observations in the data. However, that is not the case. For instance, feature\
                                         '%s' is in the classifier, but the entry '%s' in the input data does not have an observation\
-                                        for it :/ Not good." % (feature, sample)
+                                        for it :/ Not good." % (feature, sample))
                 datum.append(data_dict[sample][feature])
             data.append(datum)
 
@@ -90,15 +90,15 @@ class RF:
 
     def initialize_classifier(self):
         filesnpaths.is_file_exists(self.classifier_object_path)
-        classifier_obj = cPickle.load(open(self.classifier_object_path))
+        classifier_obj = pickle.load(open(self.classifier_object_path))
 
         try:
             self.features = classifier_obj['features']
             self.classes = classifier_obj['classes']
             self.classifier = classifier_obj['classifier']
         except:
-            raise ConfigError, "RF class does not like the classifier object it was sent for processing :/ Are you sure you\
-                                generated it the way you were supposed to?"
+            raise ConfigError("RF class does not like the classifier object it was sent for processing :/ Are you sure you\
+                                generated it the way you were supposed to?")
 
         self.classifier_initialized = True
 

@@ -182,6 +182,7 @@
                                             <th class="text-center">GC Content</th>
                                             <th class="text-center">Compl.</th>
                                             <th class="text-center">Red.</th>
+                                            <th class="text-center">SCG Domain</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -204,6 +205,7 @@
                                             {% if meta|lookup:"completeness_data_available" %}
                                             <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}%</td>
+                                            <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"scg_domain" }}</td>
                                             {% else %}
                                             <td class="text-center" style="vertical-align: middle;">N\A</td>
                                             <td class="text-center" style="vertical-align: middle;">N\A</td>

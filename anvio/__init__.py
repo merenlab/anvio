@@ -12,9 +12,8 @@ import pkg_resources
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
 try:
-    if sys.version_info < (2, 7, 5):
-        v = '.'.join([str(x) for x in sys.version_info[0:3]])
-        sys.stderr.write("Your active Python version is '%s'. Anything less than '2.7.5' will not do it for anvi'o :/\n" % v)
+    if sys.version_info.major != 3:
+        sys.stderr.write("Your active Python major version ('%d') is not compatible with what anvi'o expects :/ We recently switched to Python 3.\n" % sys.version_info.major)
         sys.exit(-1)
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
@@ -91,6 +90,15 @@ D = {
              'required': True,
              'help': "Anvi'o runinfo file path."}
                 ),
+    'description': (
+            ['--description'],
+            {'metavar': 'TEXT_FILE',
+             'required': False,
+             'help': "A plain text file that contains some description about the project. You can use Markdwon syntax.\
+                      The description text will be rendered and shown in all relevant interfaces, including the\
+                      anvi'o interactive interface, or anvi'o summary outputs."}
+                ),
+
     'additional-view': (
             ['-V', '--additional-view'],
             {'metavar': 'ADDITIONAL_VIEW',
@@ -289,16 +297,17 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
-    'show-outlier-snvs': (
-            ['--show-outlier-SNVs'],
+    'hide-outlier-SNVs': (
+            ['--hide-outlier-SNVs'],
             {'default': False,
              'action': 'store_true',
              'help': "During profiling, anvi'o marks positions of single-nucleotide variations (SNVs)\
                       that originate from places in contigs where coverage values are a bit 'sketchy'.\
-                      By default, when you inspect a split in applicable projects, the interface does\
-                      not show SNVs marked as outlier. Decleration of this flag changes that behavior,\
-                      and tells anvi'o to show anything and everything reported (There may or may not\
-                      be some historical data on this here: https://github.com/meren/anvio/issues/309)."}
+                      If you would like to avoid SNVs in those positions of splits in applicable projects\
+                      you can use this flag, and the interafce would hide SNVs that are marked as 'outlier'\
+                      (although it is clearly the best to see everything, no one will judge you if you end\
+                      up using this flag) (plus, there may or may not be some historical data on this here: \
+                      https://github.com/meren/anvio/issues/309)."}
                 ),
     'hmm-source': (
             ['--hmm-source'],
@@ -418,14 +427,6 @@ D = {
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
                 ),
-    'gen-serialized-profile': (
-            ['--gen-serialized-profile'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "When declared, anvi'o will store the profiling results in a serialized object that can be used for quick\
-                      re-profiling. However, this object can get very large, and take a lot of space on disk. It is essentially\
-                      useful for testing purposes, and for people who like to hack things."}
-                ),
     'list-contigs': (
             ['--list-contigs'],
             {'default': False,
@@ -433,6 +434,13 @@ D = {
              'help': "When declared, the program will list contigs in the BAM file and exit gracefully\
                       without any further analysis."}
                 ),
+    'list-splits': (
+            ['--list-splits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the program will list split names in the profile database and quite"}
+                ),
+
     'list-collections': (
             ['--list-collections'],
             {'default': False,
@@ -461,6 +469,11 @@ D = {
             ['--completeness-source'],
             {'metavar': 'NAME',
              'help': "Single-copy gene source to use to estimate completeness."}
+                ),
+    'split-name': (
+            ['--split-name'],
+            {'metavar': 'SPLIT_NAME',
+             'help': "Split name."}
                 ),
     'splits-of-interest': (
             ['--splits-of-interest'],
@@ -1040,6 +1053,14 @@ D = {
                       relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
                       processing time for large datasets."}
                 ),
+    'skip-auto-ordering': (
+            ['--skip-auto-ordering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the attempt to include automatically generated orders of items based on additional data\
+                      is skipped. In case those buggers cause issues with your data, and you still want to see your stuff and\
+                      deal with the other issue maybe later."}
+                ),
     'quick-summary': (
             ['--quick-summary'],
             {'default': False,
@@ -1080,6 +1101,27 @@ D = {
              'help': "If this is true, users will not receive a link via email to confirm their account but instead be validated\
                       automatically if there is no smtp configuration."}
                 ),
+    'queue-size': (
+            ['--queue-size'],
+            {'default': 0,
+             'metavar': 'INT',
+             'required': False,
+             'help': "The queue size for worker threads to store data to communicate to the main thread. The default is set by the\
+                      class based on the number of threads. If you have *any* hesitation about whther you know what you are doing,\
+                      you should not change this value."}
+                ),
+    'write-buffer-size': (
+            ['--write-buffer-size'],
+            {'default': 500,
+             'metavar': 'INT',
+             'required': False,
+             'help': "How many items should be kept in memory before they are written do the disk. The default is %(default)d.\
+                      The larger the buffer size, the less frequent the program will access to the disk, yet the more memory\
+                      will be consumed since the processed items will be cleared off the memory only after they are written\
+                      to the disk. The default buffer size will likely work for most cases, but if you have very large\
+                      contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
+                      the memory use never exceeds the size of the physical memory."}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -1113,7 +1155,9 @@ def set_version():
         # maybe anvi'o is not installed but it is being run from the codebase dir?
         # some hacky stuff to get version from the setup.py
         try:
-            exec([l.strip() for l in open(os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py').readlines() if l.strip().startswith('anvio_version')][0])
+            setup_py_path = os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py'
+            version_string = [l.strip() for l in open(setup_py_path).readlines() if l.strip().startswith('anvio_version')][0]
+            anvio_version = version_string.split('=')[1].strip().strip("'").strip('"')
         except:
             pass
 

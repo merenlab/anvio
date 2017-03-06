@@ -40,15 +40,15 @@ collections_splits_table = db.db.get_table_as_dict(t.collections_splits_table_na
 collections_info_table = db.db.get_table_as_dict(t.collections_info_table_name)
 db.disconnect()
 
-collection_names = collections_info_table.keys()
+collection_names = list(collections_info_table.keys())
 
 splits = {}
-for entry in collections_splits_table.values():
+for entry in list(collections_splits_table.values()):
     split = entry['split']
     collection_name = entry['collection_name']
     bin_name = entry['bin_name']
 
-    if splits.has_key(split):
+    if split in splits:
         splits[split][collection_name] = bin_name
     else:
         splits[split] = {collection_name: bin_name}
@@ -56,10 +56,10 @@ for entry in collections_splits_table.values():
 
 output = open(args.output_file, 'w')
 output.write('split\t%s\n' % '\t'.join(collection_names))
-for split in splits.keys():
+for split in list(splits.keys()):
     line = [split]
     for collection_name in collection_names:
-        if splits[split].has_key(collection_name):
+        if collection_name in splits[split]:
             line.append(splits[split][collection_name])
         else:
             line.append(None)

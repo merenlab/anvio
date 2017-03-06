@@ -64,7 +64,9 @@ var bin_count = 0;
 var layer_types;
 
 var categorical_data_colors = {};
+var categorical_stats = {};
 var stack_bar_colors = {};
+var legends = [];
 
 var context_menu_target_id = 0;
 var context_menu_layer_id = 0;
@@ -101,11 +103,24 @@ var autoload_collection;
 var mode;
 var samples_tree_hover = false;
 var bbox;
+
+var mouse_event_origin_x = 0;
+var mouse_event_origin_y = 0;
+
+var description;
+var descriptionEditor;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
 
+$(window).resize(function() {
+     // get current client size
+    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
+    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
+});
+
 $(document).ready(function() {
+    $(window).trigger('resize');
     toastr.options = {
         "closeButton": true,
         "debug": false,
@@ -213,6 +228,7 @@ function initData () {
         var collectionAutoloadResponse = [ response.collectionAutoload ];
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
+        var description = response.description;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
 
@@ -282,6 +298,22 @@ function initData () {
             bin_prefix = prefixResponse[0];
 
             document.title = titleResponse[0];
+            $('#title-panel-first-line').text(titleResponse[0]);
+            if (typeof description !== 'undefined')
+            {
+                $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
+            }
+            $('#description-editor').val(description);
+            descriptionEditor = new SimpleMDE({ 
+                element: document.getElementById("description-editor"),
+                toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|" ,"link", "image", "|" ,"preview"],
+            });
+
+            descriptionEditor.codemirror.on("change", function(){
+                $('#description-editor').val(descriptionEditor.value());
+            });
+            //descriptionEditor.value(description);
+
             contig_lengths = eval(contigLengthsResponse[0]);
 
             // if --state parameter given, autoload given state.
@@ -397,7 +429,7 @@ function onViewChange() {
 
                         // add layerdata columns to search window
                         $('#searchLayerList').empty();
-                        for (var i=0; i < layerdata[0].length; i++)
+                        for (var i=0; i < parameter_count; i++)
                         {
                             $('#searchLayerList').append(new Option(layerdata[0][i],i));
                         }
@@ -413,7 +445,9 @@ function onViewChange() {
 
                         $("#tbody_layers").empty();
 
-                        buildLayersTable(layer_order, views[current_view]);  
+                        buildLayersTable(layer_order, views[current_view]);
+                        populateColorDicts();
+                        buildLegendTables();
 
                         waitingDialog.hide();
                     }
@@ -422,6 +456,332 @@ function onViewChange() {
         });
 
     return defer.promise();
+}
+
+function populateColorDicts() {
+    for (var layer_id=0; layer_id < parameter_count; layer_id++)
+    {
+        layer_name = layerdata[0][layer_id];
+
+        if (layer_types[layer_id] == 1) {
+            if (!(layer_id in stack_bar_colors))
+            {
+                stack_bar_colors[layer_id] = new Array();
+                var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+                for (var j=0; j < bars.length; j++)
+                {
+                    stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
+                } 
+            }
+        }
+
+        if (layer_types[layer_id] == 2) {
+            if (!(layer_id in categorical_data_colors))
+            {
+                categorical_stats[layer_id] = {};
+                categorical_data_colors[layer_id] = {};
+                for (var i=1; i < layerdata.length; i++)
+                {
+                    var _category_name = layerdata[i][layer_id];
+                    if (_category_name == null || _category_name == '' || _category_name == 'null')
+                        _category_name = 'None';
+                    layerdata[i][layer_id] = _category_name;
+
+                    if (typeof categorical_data_colors[layer_id][_category_name] === 'undefined'){
+                        categorical_data_colors[layer_id][_category_name]  = getNamedCategoryColor(_category_name);
+                        categorical_stats[layer_id][_category_name] = 0;
+                    }
+
+                    categorical_stats[layer_id][_category_name]++;
+                }
+            }
+        }
+    }
+
+    var first_sample = Object.keys(samples_information_dict)[0];
+
+    if (typeof first_sample !== 'undefined')
+    {
+        for (sample_layer_name in samples_information_dict[first_sample])
+        {
+            if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
+            {
+                // no color table for numeric
+            }
+            else if (sample_layer_name.indexOf(';') > -1) // stack bar
+            {
+                if (!(sample_layer_name in samples_stack_bar_colors))
+                {
+                    samples_stack_bar_colors[sample_layer_name] = new Array();
+                    for (var j=0; j < sample_layer_name.split(";").length; j++)
+                    {
+                        samples_stack_bar_colors[sample_layer_name].push(randomColor());
+                    } 
+                }
+            }
+            else // categorical
+            {
+                if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
+                    samples_categorical_colors[sample_layer_name] = {};
+                    samples_categorical_stats[sample_layer_name] = {};
+                }
+
+                for (_sample in samples_information_dict)
+                {
+                    var _category_name = samples_information_dict[_sample][sample_layer_name];
+                    if (_category_name == null || _category_name == '' || _category_name == 'null')
+                        _category_name = 'None';
+                    samples_information_dict[_sample][sample_layer_name] = _category_name;
+
+                    if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
+                        samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                        samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                    }
+
+                    samples_categorical_stats[sample_layer_name][_category_name]++;
+                }
+            }
+        }
+    }
+}
+
+function buildLegendTables() {
+    if(typeof $('#legend_settings').data("ui-accordion") != "undefined"){
+        $('#legend_settings').accordion("destroy");
+        $('#legend_settings').empty();
+    }
+    
+    legends = [];
+
+    for (pindex in categorical_data_colors)
+    {
+        var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
+
+        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+
+        legends.push({
+            'name': getPrettyName(getLayerName(pindex)),
+            'source': 'categorical_data_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': names,
+            'stats': categorical_stats[pindex]
+        });
+    }
+
+    for (pindex in stack_bar_colors)
+    {
+        var layer_name = getLayerName(pindex);
+        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+
+        var pretty_name = getLayerName(pindex);
+        pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
+
+        legends.push({
+            'name': getPrettyName(pretty_name),
+            'source': 'stack_bar_colors',
+            'key': pindex,
+            'item_names': names,
+            'item_keys': keys,
+        });    
+    }
+
+    for (sample in samples_categorical_colors)
+    {
+        var names = Object.keys(samples_categorical_colors[sample]);
+
+        legends.push({
+            'name': getPrettyName(sample),
+            'source': 'samples_categorical_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': names,
+            'stats': samples_categorical_stats[sample]
+        });
+    }
+
+    for (sample in samples_stack_bar_colors)
+    {
+        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+
+        legends.push({
+            'name': getPrettyName(pretty_name),
+            'source': 'samples_stack_bar_colors',
+            'key': sample,
+            'item_names': names,
+            'item_keys': keys
+        });
+    }
+
+    for (var i=0; i < legends.length; i++)
+    {
+        var legend = legends[i];
+        var template = '<span>';
+
+        if (legends[i]['source'].indexOf('samples') > -1) {
+            template += '<span class="label label-default">Samples</span> '
+        } else {
+            template += '<span class="label label-default">Main</span> '
+        }
+
+        template += legend['name'] + '</span><div>';
+        if (legend.hasOwnProperty('stats')) {
+            template += `Sort: <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                        </div>
+                        <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
+                            <table class="col-md-12 table-spacing">
+                                <tr>
+                                    <td class="col-md-2">Rule: </td>
+                                    <td class="col-md-10">
+                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="count"> Count 
+                                            <select id="count_rule_`+i+`">
+                                                <option selected>==</option>
+                                                <option>&lt;</option>
+                                                <option>&gt;</option>
+                                            </select>
+                                            <input type="text" id="count_rule_value_`+i+`" size="3">
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2">Color: </td>
+                                    <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="clear: both; display:block;"></div>
+                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+        }
+        template += '<div id="legend_content_' + i + '"></div>';
+        template = template + '<div style="clear: both; display:block;"></div>';
+        $('#legend_settings').append(template + '</div>');
+
+        createLegendColorPanel(i); // this fills legend_content_X
+    }
+
+    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+        }
+    });
+}
+
+function batchColor(legend_id) {
+    var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
+    var color = $('#batch_colorpicker_' + legend_id).attr('color');
+    var legend = legends[legend_id];
+
+    for (var i=0; i < legend['item_keys'].length; i++)
+    {
+        if (rule == 'all') {
+            window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+        }
+        else if (rule == 'name') {
+            if (legend['item_names'][i].toLowerCase().indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            }
+        } 
+        else if (rule == 'count') {
+            if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            }
+        }
+    }
+
+    createLegendColorPanel(legend_id);
+}
+
+function createLegendColorPanel(legend_id) {
+    var legend = legends[legend_id];
+    var template = '';
+
+    for (var j = 0; j < legend['item_names'].length; j++) {
+
+        var _name = legend['item_names'][j];
+        var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
+
+        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+            continue;
+
+        if (legend.hasOwnProperty('stats')) {
+            _name = _name + ' (' + legend['stats'][_name] + ')';
+        }
+
+        template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
+                                '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
+                                'style="margin-right: 5px; background-color: ' + _color + '"' +
+                                'callback_source="' + legend['source'] + '"' +
+                                'callback_pindex="' + legend['key'] + '"' +
+                                'callback_name="' + legend['item_keys'][j] + '"' + 
+                               '></div>' + _name + '</div>';
+    }
+
+    $('#legend_content_' + legend_id).empty();
+    $('#legend_content_' + legend_id).html(template);
+
+    $('.legendcolorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'dark',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+        }
+    });
+}
+
+function orderLegend(legend_id, type) {
+    if (type == 'alphabetical') {
+        legends[legend_id]['item_names'] = legends[legend_id]['item_names'].sort();
+    }
+    else if (type == 'count') {
+        legends[legend_id]['item_names'] = legends[legend_id]['item_names'].sort(function(a,b){return legends[legend_id]['stats'][b]-legends[legend_id]['stats'][a]});
+    }
+
+    // in both cases we will move None to end.
+    legends[legend_id]['item_names'].push(legends[legend_id]['item_names'].splice(legends[legend_id]['item_names'].indexOf('None'), 1)[0]);
+
+    createLegendColorPanel(legend_id);
+}
+
+function showDescription() {
+    $('#description-dialog').dialog({        
+        width: 600,
+        height: 500
+    });
+    descriptionEditor.togglePreview();
+}
+
+function storeDescription() {
+   $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/store_description?timestamp=' + new Date().getTime(),
+            data: {description: $('#description-editor').val()},
+            success: function(data) {
+                toastr.info("Description successfully saved to database.");
+            }
+        });
 }
 
 function onTreeClusteringChange() {
@@ -482,27 +842,28 @@ function syncViews() {
 
 
 function getComboBoxContent(default_item, available_items){
+    available_items = Object.keys(available_items).sort()
     var combo = '';
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
-    $.each(available_items, function(index, value) {
-        if (index.indexOf(':') == -1) {
-            text_val = getPrettyName(index);
+    $.each(available_items, function(index, item) {
+        if (item.indexOf(':') == -1) {
+            text_val = getPrettyName(item);
         } else {
-            text_val = getClusteringPrettyName(index);
+            text_val = getClusteringPrettyName(item);
         }
 
-        if(index == default_item)
+        if(item == default_item)
         {
             combo += combo_item
-                        .replace('{val}', index)
+                        .replace('{val}', item)
                         .replace('{sel}', ' selected')
                         .replace('{text}', text_val);
         }
         else
         {
             combo += combo_item
-                        .replace('{val}', index)
+                        .replace('{val}', item)
                         .replace('{sel}', '')
                         .replace('{text}', text_val);
         }
@@ -587,18 +948,7 @@ function buildLayersTable(order, settings)
             else
             {
                 var height = '300';
-                var margin = '15';
-
-                // pick random color for stack bar items
-                if (!(layer_id in stack_bar_colors))
-                {
-                    stack_bar_colors[layer_id] = new Array();
-                    var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-                    for (var j=0; j < bars.length; j++)
-                    {
-                        stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
-                    } 
-                }             
+                var margin = '15';           
             }
 
             if (hasViewSettings)
@@ -687,11 +1037,6 @@ function buildLayersTable(order, settings)
                             break;
                         }
                     }
-                }
-
-                if (!(layer_id in categorical_data_colors))
-                {
-                    categorical_data_colors[layer_id] = {};
                 }
             }
             
@@ -893,6 +1238,7 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
+    state['background-opacity'] = $('#background_opacity').val();
 
     // sync views object and layers table
     syncViews();
@@ -976,10 +1322,6 @@ function serializeSettings(use_layer_names) {
 }
 
 function drawTree() {
-    // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
-
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
@@ -1431,12 +1773,16 @@ function exportSvg() {
     settings = last_settings; 
     drawLayerLegend(settings['layers'], settings['views'][current_view], settings['layer-order'], top, left);
     var detached_clones = $('#samples_tree path.clone').detach();
+    drawTitle(last_settings);
+    drawLegend();
 
     svgCrowbar();
 
     $('#samples_tree').prepend(detached_clones);
     $('#bin_legend').remove();
     $('#layer_legend').remove();
+    $('#title_group').remove();
+    $('#legend_group').remove();
 }
 
 function showStoreCollectionWindow() {
@@ -1507,6 +1853,9 @@ function storeRefinedBins() {
 
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
+
+    collection_name = collection_name.replace(/\W+/g, "_");
+    $('#storeCollection_name').val(collection_name);
 
     if (collection_name.length==0) {
         $('#storeCollection_name').focus();
@@ -2029,21 +2378,36 @@ function loadState()
                             if (state.hasOwnProperty('samples-tree-height')) {
                                 $('#samples_tree_height').val(state['samples-tree-height']);
                             }
+                            if (state.hasOwnProperty('background-opacity')) {
+                                $('#background_opacity').val(state['background-opacity']);
+                            }
 
                             // reload layers
                             var current_view = $('#views_container').val();
                             $("#tbody_layers").empty();
 
-                            if (state.hasOwnProperty('samples-categorical-colors'))
-                                samples_categorical_colors = state['samples-categorical-colors']; 
-                            if (state.hasOwnProperty('samples-stack-bar-colors'))
-                                samples_stack_bar_colors = state['samples-stack-bar-colors']; 
+                            if (state.hasOwnProperty('samples-categorical-colors')) {
+                                for (key in state['samples-categorical-colors']) {
+                                    if (key in samples_categorical_colors) {
+                                        samples_categorical_colors[key] = state['samples-categorical-colors'][key];
+                                    } 
+                                }
+                            }
+                            if (state.hasOwnProperty('samples-stack-bar-colors')) {
+                                for (key in state['samples-stack-bar-colors']) {
+                                    if (key in samples_stack_bar_colors) {
+                                        samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
+                                    } 
+                                }
+                            }
 
                             if (state.hasOwnProperty('samples-order'))
                                 $('#samples_order').val(state['samples-order']);
 
                             buildLayersTable(layer_order, views[current_view]);
                             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+                            buildLegendTables();
+
 
                             current_state_name = state_name;
                             $('#current_state').html('[current state: ' + current_state_name + ']');

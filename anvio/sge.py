@@ -40,12 +40,12 @@ QSUB_SCRIPT = """#!/bin/sh
 
 class Progress:
     def update(self, str):
-        print str
+        print(str)
 
 
 class Run:
     def info(self, str_1, str_2):
-        print "%s: %s" % (str(str_1), str(str_2))
+        print("%s: %s" % (str(str_1), str(str_2)))
 
 
 class SGE:
@@ -121,11 +121,11 @@ class SGE:
         self.check_sge_binaries()
 
         if not self.binary:
-            raise ConfigError, 'A binary has to be declared.'
+            raise ConfigError('A binary has to be declared.')
         if not self.command:
-            raise ConfigError, 'SGE module cannot run without a command.'
+            raise ConfigError('SGE module cannot run without a command.')
         if not self.tmp_dir:
-            raise ConfigError, 'SGE module needs a tmp dir.'
+            raise ConfigError('SGE module needs a tmp dir.')
 
         filesnpaths.is_file_exists(self.input_file_path)
         filesnpaths.is_output_file_writable(self.merged_results_file_path)
@@ -147,7 +147,7 @@ class SGE:
         self.progress.update('Partial results file are being concatenated ...')
         files_to_concat = glob.glob(os.path.join(self.tmp_dir, self.wild_card_for_partial_results))
         if not files_to_concat:
-            raise ConfigError, "Wild card '%s' didn't return any files to concatenate." % self.wild_card_for_partial_results
+            raise ConfigError("Wild card '%s' didn't return any files to concatenate." % self.wild_card_for_partial_results)
 
         utils.concatenate_files(self.merged_results_file_path, files_to_concat)
 
@@ -165,7 +165,7 @@ class SGE:
         if self.input_is_fasta:
             fasta = u.SequenceSource(self.input_file_path)
 
-            while fasta.next():
+            while next(fasta):
                 if (fasta.pos - 1) % self.num_entries_per_file == 0:
                     self.progress.update('Creating part: ~ %s' % (pp(next_part)))
 
@@ -221,7 +221,7 @@ class SGE:
         try:
             proc = subprocess.Popen(['qstat'], stdout=subprocess.PIPE)
         except OSError as e:
-            raise ConfigError, "qstat command was failed for the following reason: '%s'" % (e)
+            raise ConfigError("qstat command was failed for the following reason: '%s'" % (e))
 
         qstat_state_codes = {'Pending': ['qw', 'hqw', 'hRwq'],
                              'Running': ['r', 't', 'Rr', 'Rt'],
@@ -249,8 +249,8 @@ class SGE:
                             found = True
                             info_dict[s] += 1
                     if not found:
-                        raise ConfigError, "Unknown state for qstat: '%s' (known states: '%s')"\
-                                 % (state, ', '.join(info_dict.keys()))
+                        raise ConfigError("Unknown state for qstat: '%s' (known states: '%s')"\
+                                 % (state, ', '.join(list(info_dict.keys()))))
 
                 line_no += 1
             else:

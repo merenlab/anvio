@@ -39,13 +39,13 @@ def main(args):
         sys.exit()
 
     if not args.collection_name:
-        raise ConfigError, "You must declare a colection name. Use --list-collections flag\
-                            to list available ones."
+        raise ConfigError("You must declare a colection name. Use --list-collections flag\
+                            to list available ones.")
 
     if args.collection_name not in c.collections_dict:
-        raise ConfigError, "Are you sure collection name '%s' stored in this database? You know,\
+        raise ConfigError("Are you sure collection name '%s' stored in this database? You know,\
                             probably it is not at all :/ You can always use --list-collections\
-                            flag to see what is in there." % args.collection_name
+                            flag to see what is in there." % args.collection_name)
 
     # {'read_only': False, 'source_db_path': 'delete.db', 'num_splits': 1453, 'source_db_version': '13', 'bin_names': 'Bin_1', 'num_bins': 1}
     collection_info = c.collections_dict[args.collection_name]
@@ -69,9 +69,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(2)

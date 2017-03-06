@@ -46,8 +46,8 @@ class GeneCaller:
         self.gene_caller = gene_caller
 
         if self.gene_caller not in self.gene_callers:
-            raise ConfigError, "The gene caller you requested ('%s') is not available at this point.\
-                                here is a list of what we have: %s." % (', '.join(self.gene_callers))
+            raise ConfigError("The gene caller you requested ('%s') is not available at this point.\
+                                here is a list of what we have: %s." % (', '.join(self.gene_callers)))
 
 
     def process(self):

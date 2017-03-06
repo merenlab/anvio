@@ -13,7 +13,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__copyright__ = "Copyright 2017, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -24,12 +24,13 @@ __email__ = "a.murat.eren@gmail.com"
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Merge multiple anvio profiles')
 
-    parser.add_argument('input', metavar = 'RUNINFO_FILE', nargs='+',
-                        help = 'anvio RUNINFO files to create a merged output')
+    parser.add_argument('input', metavar = 'SINGLE_PROFILE(S)', nargs='+',
+                        help = "Anvo'o single profiles to merge")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     parser.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
+    parser.add_argument(*anvio.A('description'), **anvio.K('description'))
     parser.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
     parser.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
     parser.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
@@ -47,9 +48,9 @@ if __name__ == '__main__':
 
     try:
         merger.MultipleRuns(args).merge()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

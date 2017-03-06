@@ -8,6 +8,7 @@ import numpy
 
 import anvio
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -15,7 +16,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
 from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError
@@ -72,16 +73,16 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
         self.skip_init_functions = A('skip_init_functions')
+        self.skip_auto_ordering = A('skip_auto_ordering')
 
         if self.pan_db_path and self.profile_db_path:
-            raise ConfigError, "You can't set both a profile database and a pan database in arguments\
-                                you send to this class. What are you doing?"
+            raise ConfigError("You can't set both a profile database and a pan database in arguments\
+                                you send to this class. What are you doing?")
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.displayed_item_names_ordered = None
-        self.additional_layers = None
         self.auxiliary_profile_data_available = False
 
         self.samples_information_dict = {}
@@ -93,7 +94,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
-            raise ConfigError, "You can't anvi-interactive in manual mode with a collection name."
+            raise ConfigError("You can't anvi-interactive in manual mode with a collection name.")
 
         self.external_clustering = external_clustering
 
@@ -146,7 +147,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
-            self.p_meta['available_clusterings'] = self.clusterings.keys()
+            self.p_meta['available_clusterings'] = list(self.clusterings.keys())
             self.p_meta['default_clustering'] = self.external_clustering['default_clustering']
 
         if not self.state_autoload and 'default' in self.states_table.states:
@@ -157,22 +158,29 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.p_meta['clusterings']:
             if self.p_meta['merged']:
-                raise ConfigError, "This merged profile database does not seem to have any hierarchical clustering\
+                raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
                                     of splits that is required by the interactive interface. It may have been generated\
                                     by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
                                     clustering step may have been skipped by anvi-merge because you had too many stplits\
                                     to get the clustering in a reasonable amount of time. Please read the help menu for\
                                     anvi-merge, and/or refer to the tutorial: \
-                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging"
+                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
             else:
-                raise ConfigError, "This single profile database does not seem to have any hierarchical clustering\
+                raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
                                     that is required by the interactive interface. You must use `--cluster-contigs`\
                                     flag for single profiles to access to this functionality. Please read the help\
-                                    menu for anvi-profile, and/or refer to the tutorial."
+                                    menu for anvi-profile, and/or refer to the tutorial.")
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(self.p_meta['clusterings'][self.p_meta['default_clustering']]['newick'])
+        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
+        if 'newick' in default_clustering:
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
+        elif 'basic' in default_clustering:
+            self.displayed_item_names_ordered = default_clustering['basic']
+        else:
+            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
+                               never happen happened. The default clustering does not have a basic or newick type.")
 
         # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
@@ -185,25 +193,49 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.mode == 'full':
             self.init_non_singlecopy_gene_hmm_sources(self.displayed_item_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
 
+        # take care of additional layers, and update ordering information for items
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
-            self.additional_layers = self.additional_layers_path
+
+            self.additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.additional_layers_dict, assign_none_for_missing=True)
+            self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
+        self.auto_order_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
+
+
+    def auto_order_items_based_on_additional_layers_data(self):
+        if self.skip_auto_ordering:
+            return
+
+        self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        # go through additional layers that are not of type `bar`.
+        for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
+            self.progress.update('for "%s" ...' % layer)
+            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+            item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
+
+            self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
+            self.p_meta['clusterings']['>> %s' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple)]}
+
+            self.p_meta['available_clusterings'].append('>> %s_(reverse):none:none' % layer)
+            self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+
+        self.progress.end()
 
 
     def load_manual_mode(self, args):
         if self.contigs_db_path:
-            raise ConfigError, "When you want to use the interactive interface in manual mode, you must\
-                                not use a contigs database."
+            raise ConfigError("When you want to use the interactive interface in manual mode, you must\
+                                not use a contigs database.")
 
         if not self.profile_db_path:
-            raise ConfigError, "Even when you want to use the interactive interface in manual mode, you need\
+            raise ConfigError("Even when you want to use the interactive interface in manual mode, you need\
                                 to provide a profile database path. But you DO NOT need an already existing\
                                 profile database, since anvi'o will generate an empty one for you. The profile\
                                 database in this mode only used to read or store the 'state' of the display\
-                                for visualization purposes, or to allow you to create and store collections."
+                                for visualization purposes, or to allow you to create and store collections.")
 
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
@@ -211,34 +243,41 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
             profile_db = ProfileDatabase(self.profile_db_path)
             if profile_db.meta['contigs_db_hash']:
-                raise ConfigError, "Well. It seems the profile database is associated with a contigs database,\
+                raise ConfigError("Well. It seems the profile database is associated with a contigs database,\
                                     which means using it in manual mode is not the best way to use it. Probably\
                                     what you wanted to do is to let the manual mode create a new profile database\
                                     for you. Simply type in a new profile database path (it can be a file name\
-                                    that doesn't exist)."
+                                    that doesn't exist).")
+
+        if not self.tree and not self.view_data_path:
+            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
+                               anvi'o supposed to visualize? :(")
 
         if not self.tree:
-            raise ConfigError, "When you are running the interactive interface in manual mode, you must declare\
-                                at least the tree file. Please see the documentation for help."
+            self.run.warning("You haven't declared a tree file. Anvi'o will do its best to come up with an\
+                              organization of your items.")
 
         if self.view:
-            raise ConfigError, "You can't use '--view' parameter when you are running the interactive interface\
-                                in manual mode"
+            raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
+                                in manual mode")
 
         if self.show_views:
-            raise ConfigError, "Sorry, there are no views to show in manual mode :/"
+            raise ConfigError("Sorry, there are no views to show in manual mode :/")
 
         if self.show_states:
-            raise ConfigError, "Sorry, there are no states to show in manual mode :/"
+            raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
-        filesnpaths.is_file_exists(self.tree)
-        newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-        names_in_newick_tree = utils.get_names_order_from_newick_tree(newick_tree_text)
+        if self.tree:
+            filesnpaths.is_file_exists(self.tree)
+            newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
+            item_names = utils.get_names_order_from_newick_tree(newick_tree_text)
+        else:
+            item_names = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
         try:
-            names_in_newick_tree = [int(n) for n in names_in_newick_tree]
+            item_names = [int(n) for n in item_names]
         except:
             pass
 
@@ -248,15 +287,20 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
-
-        clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-        self.p_meta['default_clustering'] = clustering_id
-        self.p_meta['available_clusterings'] = [clustering_id, 'Alphabetical_(right_to_left):none:none', 'Alphabetical_(left_to_right):none:none']
-        self.p_meta['clusterings'] = {clustering_id: {'newick': newick_tree_text},
-                                      'Alphabetical_(right_to_left)': {'basic': sorted(names_in_newick_tree)},
-                                      'Alphabetical_(left_to_right)': {'basic': sorted(names_in_newick_tree, reverse=True)}}
-
         self.default_view = self.p_meta['default_view']
+
+        # set some default organizations of data:
+        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': sorted(item_names)},
+                                      'Alphabetical:none:none': {'basic': sorted(item_names, reverse=True)}}
+        self.p_meta['available_clusterings'] = ['Alphabetical_(reverse):none:none', 'Alphabetical:none:none']
+        self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
+
+        # if we have a tree, let's make arrangements for it:
+        if self.tree:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+            self.p_meta['default_clustering'] = clustering_id
+            self.p_meta['available_clusterings'].append(clustering_id)
+            self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
 
         if self.view_data_path:
             # sanity of the view data
@@ -270,13 +314,13 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
             # here using what is in the tree.
             ad_hoc_dict = {}
-            for item in names_in_newick_tree:
+            for item in item_names:
                 ad_hoc_dict[item] = {'names': item}
 
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
 
-        self.displayed_item_names_ordered = self.views[self.default_view]['dict'].keys()
+        self.displayed_item_names_ordered = list(self.views[self.default_view]['dict'].keys())
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
@@ -292,9 +336,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
             if num_names_missing_in_FASTA:
-                raise ConfigError, 'Some of the names in your view data does not have corresponding entries in the\
+                raise ConfigError('Some of the names in your view data does not have corresponding entries in the\
                                     FASTA file you provided. Here is an example to one of those %d names that occur\
-                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop())
+                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop()))
 
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
@@ -312,6 +356,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # also populate collections, if there are any
         self.collections.populate_collections_dict(self.profile_db_path)
 
+        # read description from self table, if it is not available get_description function will return placeholder text
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
+
         if self.title:
             self.title = self.title
 
@@ -324,11 +371,21 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             sys.exit()
 
         if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError, "%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name
+            raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name)
 
         completeness = Completeness(args.contigs_db)
         if not len(completeness.sources):
-            raise ConfigError, "HMM's were not run for this contigs database :/"
+            raise ConfigError("HMM's were not run for this contigs database :/")
+
+        if 'Campbell_et_al' not in completeness.sources:
+            raise ConfigError("Collection mode requires single-copy gene collection by Campbell et al. to be in the\
+                               contigs database. It seems you haven't run HMMs (or you have managed to run them\
+                               without Campbell et al.'s collection .. which is quite impressive) :/")
+
+        self.progress.new('Accessing HMM hits')
+        self.progress.update('...')
+        self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
+        self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database:
@@ -340,6 +397,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # the one we have. that will be LOVELY.
         self.load_full_mode(args)
 
+        # FIXME: `clusterings` should become `orderings` thorughout the code.
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
 
@@ -416,8 +474,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_pan_mode(self, args):
         if not self.pan_db_path:
-            raise ConfigError, "So you want to display a pan genome without a pan database? Anvi'o is\
-                                confused :/"
+            raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is\
+                                confused :/")
 
         PanSuperclass.__init__(self, args)
 
@@ -438,12 +496,12 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_full_mode(self, args):
         if not self.contigs_db_path:
-            raise ConfigError, "Anvi'o needs the contigs database to make sense of this run (or maybe you\
-                                should use the `--manual` flag if that's what your intention)."
+            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you\
+                                should use the `--manual` flag if that's what your intention).")
 
         if not self.profile_db_path:
-            raise ConfigError, "So you want to run anvi'o in full mode, but without a profile database?\
-                                Well. This does not make any sense."
+            raise ConfigError("So you want to run anvi'o in full mode, but without a profile database?\
+                                Well. This does not make any sense.")
 
         if not args.skip_init_functions:
             self.init_functions()
@@ -485,7 +543,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                          'Via "%s" table' % self.views[view]['table_name'],
                          lc='crimson',
                          mc='green' if view == self.default_view else 'crimson')
-            print
+            print()
             sys.exit()
 
         if self.show_states:
@@ -495,7 +553,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                          'Last modified %s' % self.states_table.states[state]['last_modified'],
                          lc='crimson',
                          mc='crimson')
-            print
+            print()
             sys.exit()
 
         # if the user has an additional view data, load it up into the self.views dict.
@@ -504,8 +562,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             additional_view_columns = utils.get_columns_of_TAB_delim_file(self.additional_view_path)
 
             if not additional_view_columns[-1] == '__parent__':
-                raise ConfigError, "The last column of the additional view must be '__parent__' with the proper\
-                                    parent information for each split."
+                raise ConfigError("The last column of the additional view must be '__parent__' with the proper\
+                                    parent information for each split.")
 
             column_mapping = [str] + [float] * (len(additional_view_columns) - 1) + [str]
 
@@ -516,8 +574,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the user specifies a view, set it as default:
         if self.view:
             if not self.view in self.views:
-                raise ConfigError, "The requested view ('%s') is not available for this run. Please see\
-                                          available views by running this program with --show-views flag." % self.view
+                raise ConfigError("The requested view ('%s') is not available for this run. Please see\
+                                          available views by running this program with --show-views flag." % self.view)
 
             self.default_view = self.view
 
@@ -552,8 +610,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.state_autoload:
             if not self.state_autoload in self.states_table.states:
-                raise ConfigError, "The requested state ('%s') is not available for this run. Please see\
-                                          available states by running this program with --show-states flag." % self.state_autoload
+                raise ConfigError("The requested state ('%s') is not available for this run. Please see\
+                                          available states by running this program with --show-states flag." % self.state_autoload)
 
 
     def check_names_consistency(self):
@@ -570,24 +628,24 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         splits_in_additional_view_but_not_in_tree = splits_in_additional_view - splits_in_tree if splits_in_additional_view else set([])
 
         if splits_in_additional_view_but_not_in_tree:
-            raise ConfigError, "There are some split names in your additional view data file ('%s') that are missing from\
+            raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from\
                                 split names characterized in the database. There are in fact %d of them. For instance,\
                                 here is a random split name that is in your additional view data, yet not in the database:\
                                 '%s'. This is not going to work for anvi'o :/" \
-                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop())
+                                    % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
             example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
-            raise ConfigError, 'Some split names found in your tree are missing in your view data. Hard to\
+            raise ConfigError('Some split names found in your tree are missing in your view data. Hard to\
                                 know what cuased this, but essentially your tree and your view does not\
                                 seem to be compatible. Here is a couple of splits that appear in the tree\
-                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view)
+                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view))
 
         if splits_in_tree_but_not_in_database:
-            raise ConfigError, 'Some split names found in your tree are missing from your database. Hard to\
+            raise ConfigError('Some split names found in your tree are missing from your database. Hard to\
                                 know why is this the case, but here is a couple of them: %s'\
-                                    % ', '.join(list(splits_in_tree_but_not_in_database)[0:5])
+                                    % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
             splits_in_additional_layers = set(sorted([l.split('\t')[0] for l in open(self.additional_layers_path).readlines()[1:]]))
@@ -610,7 +668,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def prune_view_dicts(self):
         self.progress.new('Pruning view dicts')
         self.progress.update('...')
-        splits_in_views = set(self.views.values()[0]['dict'].keys())
+        splits_in_views = set(list(self.views.values())[0]['dict'].keys())
         splits_to_remove = splits_in_views - set(self.displayed_item_names_ordered)
 
         for view in self.views:
@@ -623,11 +681,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def convert_view_data_into_json(self):
         '''This function's name must change to something more meaningful.'''
-
-        additional_layers_dict, additional_layers_headers = self.additional_layers_dict, self.additional_layers_headers
-        if self.additional_layers_path:
-            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=additional_layers_dict, assign_none_for_missing=True)
-            additional_layers_headers = additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -656,8 +709,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             json_header.extend(view_headers)
 
             # (6) then add 'additional' headers as the outer ring:
-            if additional_layers_headers:
-                json_header.extend(additional_layers_headers)
+            if self.additional_layers_headers:
+                json_header.extend(self.additional_layers_headers)
 
             # (7) finally add hmm search results
             if self.hmm_searches_header:
@@ -689,7 +742,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([additional_layers_dict[split_name][header] if split_name in additional_layers_dict else None for header in additional_layers_headers])
+                json_entry.extend([self.additional_layers_dict[split_name][header] if split_name in self.additional_layers_dict else None for header in self.additional_layers_headers])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -700,7 +753,6 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (8) send it along!
                 json_object.append(json_entry)
-
 
             self.views[view] = json_object
 

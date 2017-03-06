@@ -4,7 +4,7 @@
 import sys
 import random
 import argparse
-import ConfigParser
+import configparser
 
 import anvio
 import anvio.terminal as terminal
@@ -42,12 +42,12 @@ class Configuration:
             ratio = float(user_config.get(section, 'ratio'))
 
             if ratio > 1:
-                raise ConfigError, 'Ratio cannot be more than 1 (error for SNV location %d)' % location
+                raise ConfigError('Ratio cannot be more than 1 (error for SNV location %d)' % location)
             if ratio <= 0:
-                raise ConfigError, 'Ratio cannot be 0 or less (error for SNV location %d)' % location
+                raise ConfigError('Ratio cannot be 0 or less (error for SNV location %d)' % location)
 
             if location >= len(self.contig):
-                raise ConfigError, 'SNV position at %d for a contig that is %d nts long? Really?' % (location, len(self.contig))
+                raise ConfigError('SNV position at %d for a contig that is %d nts long? Really?' % (location, len(self.contig)))
 
             self.SNVs.append((location, ratio),)
 
@@ -118,16 +118,16 @@ if __name__ == '__main__':
                                         help = 'Configuration file')
 
     args = parser.parse_args()
-    user_config = ConfigParser.ConfigParser()
+    user_config = configparser.ConfigParser()
     user_config.read(args.configuration)
 
 
     try:
         config = Configuration(user_config)
         main(config)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

@@ -59,8 +59,8 @@ class Prodigal:
         fields = defline.split()
 
         if not len(fields) != 8 or fields[6] not in ['1', '-1']:
-            raise ConfigError, 'Somethings is wrong with this prodigal output :( The parser for the\
-                                version %s is failing to make sense of it.' % (self.installed_version)
+            raise ConfigError('Somethings is wrong with this prodigal output :( The parser for the\
+                                version %s is failing to make sense of it.' % (self.installed_version))
 
         hit['direction'] = 'f' if fields[6] == '1' else 'r'
         hit['start'] = int(fields[2]) - 1
@@ -83,12 +83,12 @@ class Prodigal:
         utils.is_program_exists('prodigal')
         output, ret_code = utils.get_command_output_from_shell('prodigal -v')
 
-        version_found = output.split('\n')[1].split()[1].split(':')[0].lower()
+        version_found = output.split(b'\n')[1].split()[1].split(b':')[0].lower().decode("utf-8")
 
         if version_found not in self.available_parsers:
-            raise ConfigError, "The prodigal version installed on your system is not compatible\
+            raise ConfigError("The prodigal version installed on your system is not compatible\
                                 with any of the versions anvi'o can work with. Please install\
-                                any of the following versions: %s" % (', '.join(self.available_parsers.keys()))
+                                any of the following versions: %s" % (', '.join(list(self.available_parsers.keys()))))
 
         self.installed_version = version_found
         self.parser = self.available_parsers[version_found]
@@ -120,17 +120,17 @@ class Prodigal:
 
         if not os.path.exists(self.proteins_in_contigs):
             self.progress.end()
-            raise ConfigError, "Something went wrong with prodigal, and it failed to generate the\
+            raise ConfigError("Something went wrong with prodigal, and it failed to generate the\
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path
+                                file if you were to ask for help." % log_file_path)
 
         self.progress.update('Processing gene calls ...')
 
         fasta = fastalib.SequenceSource(self.proteins_in_contigs)
 
         hit_id = 0
-        while fasta.next():
+        while next(fasta):
             gene_calls_dict[hit_id] = self.parser(fasta.id)
             protein_sequences_dict[hit_id] = fasta.seq.replace('*', '')
             hit_id += 1

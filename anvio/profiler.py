@@ -4,14 +4,15 @@
 
 import os
 import sys
+import time
 import pysam
 import shutil
+import multiprocessing
 
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.dictio as dictio
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
@@ -19,10 +20,8 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
-
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -34,7 +33,6 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 pp = terminal.pretty_print
-
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
@@ -59,6 +57,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.num_threads = int(A('num_threads'))
+        self.queue_size = int(A('queue_size'))
+        self.write_buffer_size = int(A('write_buffer_size'))
+        self.total_length_of_all_contigs = 0
+        self.total_coverage_values_for_all_contigs = 0
+        self.description_file_path = A('description')
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -84,7 +88,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             sys.exit()
 
         if not self.contigs_db_path:
-            raise ConfigError, "No contigs database, no profilin'. Bye."
+            raise ConfigError("No contigs database, no profilin'. Bye.")
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
@@ -92,15 +96,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         self.bam = None
-        self.contigs = {}
+        self.contigs = []
 
         self.database_paths = {'CONTIGS.db': self.contigs_db_path}
 
         self.profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
-
-        self.atomic_data = contigops.AtomicContigSplitData(self.progress)
 
         # following variable will be populated during the profiling, and its content will eventually
         # be stored in t.variable_nts_table_name
@@ -109,12 +111,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
+        # we don't know what we are about
+        self.description = None
+
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
-            raise ConfigError, "You can not run profiling without a contigs database. You can create\
+            raise ConfigError("You can not run profiling without a contigs database. You can create\
                                 one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
-                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/"
+                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/")
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(self.description_file_path)
+            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
                                                                    ok_if_exists=self.overwrite_output_destinations)
@@ -145,7 +154,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
-                       'gene_coverages_computed': self.a_meta['genes_are_called']}
+                       'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
         self.progress.end()
@@ -168,6 +177,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('anvio', anvio.__version__)
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('sample_id', self.sample_id)
+        self.run.info('description', 'Found (%d characters)' % len(self.description) if self.description else None)
         self.run.info('profile_db', self.profile_db_path, display_only=True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
@@ -182,53 +192,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('profile_AA_frequencies', self.profile_AA_frequencies)
         self.run.info('report_variability_full', self.report_variability_full)
-        self.run.info('gene_coverages_computed', self.a_meta['genes_are_called'])
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
         if self.blank:
             self.init_mock_profile()
-        elif self.input_file_path:
-            self.init_profile_from_BAM()
-            self.profile()
-            if self.gen_serialized_profile:
-                self.store_profile()
-        elif self.serialized_profile_path:
-            self.init_serialized_profile()
-        else:
-            raise ConfigError, "What are you doing? :( Whatever it is, anvi'o will have none of it."
 
-        self.generate_variabile_nts_table()
-        self.generate_variabile_aas_table()
-        self.generate_gene_coverages_table()
-        self.store_split_coverages()
-
-        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
-        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
-        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
-        # function create_new_view defined in the class TablesForViews.
-        view_data_splits, view_data_contigs = self.atomic_data.get_data(self.sample_id, self.contigs)
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
-                                        table_name='atomic_data_splits',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name='single')
-
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
-                                        table_name='atomic_data_contigs',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name=None)
-
-        # OK. if this is a blank profile, atomic_data_* tables will be completely empty. but having no
-        # split names in the profile database becomes very limiting for downstream analyses, so here
-        # we will generate a null atomic_data_splits table, only purpose of which will be to hold the
-        # split names
-        if self.blank:
             # creating a null view_data_splits dict:
-            view_data_splits = dict(zip(self.split_names, [dict(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:])))] * len(self.split_names)))
+            view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
             dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
             dbops.TablesForViews(self.profile_db_path).create_new_view(
                                            data_dict=view_data_splits,
@@ -236,13 +207,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                            table_structure=t.atomic_data_table_structure,
                                            table_types=t.atomic_data_table_types,
                                            view_name='single')
+        elif self.input_file_path:
+            self.init_profile_from_BAM()
+            self.profile()
+        else:
+            raise ConfigError("What are you doing? :( Whatever it is, anvi'o will have none of it.")
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
-
-        runinfo_serialized = self.generate_output_destination('RUNINFO.cp')
-        self.run.info('runinfo', runinfo_serialized)
-        self.run.store_info_dict(runinfo_serialized, strip_prefix=self.output_directory)
 
         if self.bam:
             self.bam.close()
@@ -252,11 +224,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def generate_variabile_aas_table(self):
         if self.skip_SNV_profiling or not self.profile_AA_frequencies:
-            # there is nothing to generate really..
-            self.run.info('AA_frequencies_table', False, quiet=True)
             return
-
-        self.progress.new('Computing AA frequencies at variable positions')
 
         variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
@@ -268,15 +236,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id] = set([])
             codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
 
-        gene_caller_ids_to_profile = codons_in_genes_to_profile_AA_frequencies_dict.keys()
-        num_gene_caller_ids_to_profile = len(gene_caller_ids_to_profile)
+        gene_caller_ids_to_profile = list(codons_in_genes_to_profile_AA_frequencies_dict.keys())
 
         for i in range(0, len(gene_caller_ids_to_profile)):
             gene_caller_id = gene_caller_ids_to_profile[i]
             codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
-
-            self.progress.update("Working on gene caller id '%d' (%d of %d) w/ %d codons of interest" \
-                                % (gene_caller_id, i + 1, num_gene_caller_ids_to_profile, len(codons_to_profile)))
 
             gene_call = self.genes_in_contigs_dict[gene_caller_id]
             contig_name = gene_call['contig']
@@ -290,28 +254,26 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 db_entry['coverage'] = e['coverage']
                 db_entry['departure_from_reference'] = e['departure_from_reference']
                 db_entry['codon_order_in_gene'] = codon_order
-                for aa in constants.codon_to_AA.values():
+                for aa in list(constants.codon_to_AA.values()):
                     db_entry[aa] = e['frequencies'][aa]
 
                 variable_aas_table.append(db_entry)
 
         variable_aas_table.store()
-        self.progress.end()
-        self.run.info('AA_frequencies_table', True, quiet=True)
+
+        # clear contents of set
+        self.codons_in_genes_to_profile_AA_frequencies.clear()
 
 
     def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
-            # there is nothing to generate really..
-            self.run.info('variable_nts_table', False, quiet=True)
             return
 
-        self.progress.new('NT Variability')
         variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
-        for contig in self.contigs.values():
+        for contig in self.contigs:
             for split in contig.splits:
-                for column_profile in split.column_profiles.values():
+                for column_profile in list(split.column_profiles.values()):
                     # let's figure out more about this particular variable position
                     pos_in_contig = column_profile['pos_in_contig']
 
@@ -347,51 +309,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     variable_nts_table.append(column_profile)
 
         variable_nts_table.store()
-        self.progress.end()
-        self.run.info('variable_nts_table', True, quiet=True)
-
-
-    def generate_gene_coverages_table(self):
-        gene_coverages_table = dbops.TableForGeneCoverages(self.profile_db_path, progress=self.progress)
-
-        self.progress.new('Profiling genes')
-        num_contigs = len(self.contigs)
-        contig_names = self.contigs.keys()
-        for i in range(0, num_contigs):
-            contig = contig_names[i]
-            self.progress.update('Processing contig %d of %d' % (i + 1, num_contigs))
-            # if no open reading frames were found in a contig, it wouldn't have an entry in the contigs table,
-            # therefore there wouldn't be any record of it in contig_ORFs; so we better check ourselves before
-            # we wreck ourselves and the ultimately the analysis of this poor user:
-            if contig in self.contig_name_to_genes:
-                gene_coverages_table.analyze_contig(self.contigs[contig], self.sample_id, self.contig_name_to_genes[contig])
-
-        gene_coverages_table.store()
-        self.progress.end()
-        self.run.info('gene_coverages_table', True, quiet=True)
 
 
     def store_split_coverages(self):
         output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
-
-        self.progress.new('Storing split coverages')
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True, open_in_append_mode=True)
 
         contigs_counter = 1
-        for contig_name in self.contigs:
-            self.progress.update('working on contig %s of %s' % (pp(contigs_counter), pp(len(self.contigs))))
-
-            for split in self.contigs[contig_name].splits:
+        for contig in self.contigs:
+            for split in contig.splits:
                 split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
 
             contigs_counter += 1
 
-        self.progress.end()
-
         split_coverage_values.close()
-
-        self.run.info('split_coverage_values', 'stored in %s' % output_file, display_only=True)
-        self.run.info('split_coverage_values', True, quiet=True)
 
 
     def set_sample_id(self):
@@ -431,72 +362,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                       (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
 
 
-    def init_serialized_profile(self):
-        self.progress.new('Init')
-        self.progress.update('Reading serialized profile')
-        self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
-        self.progress.end()
-
-        self.run.info('profile_loaded_from', self.serialized_profile_path)
-        self.run.info('num_contigs', pp(len(self.contigs)))
-
-        if self.contig_names_of_interest:
-            contigs_to_discard = set()
-            for contig in self.contigs:
-                if contig not in self.contig_names_of_interest:
-                    contigs_to_discard.add(contig)
-
-            if len(contigs_to_discard):
-                for contig in contigs_to_discard:
-                    self.contigs.pop(contig)
-            self.run.info('num_contigs_selected_for_analysis', pp(len(self.contigs)))
-
-        self.check_contigs()
-
-        # it brings good karma to let the user know what the hell is wrong with their data:
-        self.check_contigs_without_any_gene_calls(self.contigs.keys())
-
-        contigs_to_discard = set()
-        for contig in self.contigs.values():
-            if contig.length < self.min_contig_length:
-                contigs_to_discard.add(contig.name)
-        if len(contigs_to_discard):
-            for contig in contigs_to_discard:
-                self.contigs.pop(contig)
-            self.run.info('contigs_raw_longer_than_M', len(self.contigs))
-
-        self.check_contigs()
-
-
     def list_contigs(self):
         import signal
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-        if self.input_file_path:
-            self.progress.new('Init')
-            self.progress.update('Reading BAM File')
-            self.bam = pysam.Samfile(self.input_file_path, 'rb')
-            self.progress.end()
+        self.progress.new('Init')
+        self.progress.update('Reading BAM File')
+        self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        self.progress.end()
 
-            self.contig_names = self.bam.references
-            self.contig_lengths = self.bam.lengths
+        self.contig_names = self.bam.references
+        self.contig_lengths = self.bam.lengths
 
-            utils.check_contig_names(self.contig_names)
+        utils.check_contig_names(self.contig_names)
 
-            for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
-
-        else:
-            self.progress.new('Init')
-            self.progress.update('Reading serialized profile')
-            self.contigs = dictio.read_serialized_object(self.serialized_profile_path)
-            self.progress.end()
-
-            self.run.info('profile_loaded_from', self.serialized_profile_path)
-            self.run.info('num_contigs', pp(len(self.contigs)))
-
-            for tpl in sorted([(int(self.contigs[contig].length), contig) for contig in self.contigs]):
-                print '%-40s %s' % (tpl[1], pp(int(tpl[0])))
+        for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
+            print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
 
     def remove_contigs_that_are_shorter_than_min_contig_length(self):
@@ -507,7 +388,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contigs_longer_than_M.add(i)
 
         if not len(contigs_longer_than_M):
-            raise ConfigError, "0 contigs larger than %s nts." % pp(self.min_contig_length)
+            raise ConfigError("0 contigs larger than %s nts." % pp(self.min_contig_length))
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
             self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
@@ -566,13 +447,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
         for contig_name in self.contig_names:
             if contig_name not in self.contig_names_in_contigs_db:
-                raise ConfigError, "At least one contig name in your BAM file does not match contig names stored in the\
+                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the\
                                     contigs database. For instance, this is one contig name found in your BAM file: '%s',\
                                     and this is another one found in your contigs database: '%s'. You may be using an\
                                     contigs database for profiling that has nothing to do with the BAM file you are\
                                     trying to profile, or you may have failed to fix your contig names in your FASTA file\
                                     prior to mapping, which is described here: %s"\
-                                        % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS')
+                                        % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS'))
 
         self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
         self.run.info('num_contigs', self.num_contigs, quiet=True)
@@ -593,7 +474,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_reads_mapped = 0
         self.progress.end()
 
-        self.contig_names = self.contigs_basic_info.keys()
+        self.contig_names = list(self.contigs_basic_info.keys())
         self.contig_lengths = [self.contigs_basic_info[contig_name]['length'] for contig_name in self.contigs_basic_info]
         self.total_length = sum(self.contig_lengths)
         self.num_contigs = len(self.contig_names)
@@ -631,76 +512,204 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         return return_path
 
-
-    def profile(self):
-        """Big deal function"""
-
-        # So we start with essential stats. In the section below, we will simply go through each contig
-        # in the BAM file and populate the contigs dictionary for the first time.
-        for i in range(0, len(self.contig_names)):
-
-            contig_name = self.contig_names[i]
-
+    @staticmethod
+    def profile_contig_worker(available_index_queue, output_queue, info_dict):
+        bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
+        while True:
+            index = available_index_queue.get(True)
+            contig_name = info_dict['contig_names'][index]
             contig = contigops.Contig(contig_name)
-            contig.length = self.contig_lengths[i]
-            contig.split_length = self.a_meta['split_length']
-            contig.min_coverage_for_variability = self.min_coverage_for_variability
-            contig.skip_SNV_profiling = self.skip_SNV_profiling
-            contig.report_variability_full = self.report_variability_full
-
-            self.progress.new('Profiling "%s" (%d of %d) (%s nts)' % (contig.name,
-                                                                      i + 1,
-                                                                      len(self.contig_names),
-                                                                      pp(int(contig.length))))
+            contig.length = info_dict['contig_lengths'][index]
+            contig.split_length = info_dict['split_length']
+            contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
+            contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
+            contig.report_variability_full = info_dict['report_variability_full']
 
             # populate contig with empty split objects and
-            for split_name in self.contig_name_to_splits[contig_name]:
-                s = self.splits_basic_info[split_name]
-                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+            for split_name in info_dict['contig_name_to_splits'][contig_name]:
+                s = info_dict['splits_basic_info'][split_name]
+                split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
             # analyze coverage for each split
-            contig.analyze_coverage(self.bam, self.progress)
+            contig.analyze_coverage(bam_file)
 
             # test the mean coverage of the contig.
-            discarded_contigs_due_to_C = set([])
-            if contig.coverage.mean < self.min_mean_coverage:
-                # discard this contig and continue
-                discarded_contigs_due_to_C.add(contig.name)
-                self.progress.end()
-                continue
+            if contig.coverage.mean < info_dict['min_mean_coverage']:
+                 output_queue.put(None)
+                 continue
 
-            if not self.skip_SNV_profiling:
-                contig.analyze_auxiliary(self.bam, self.progress)
+            if not info_dict['skip_SNV_profiling']:
+                contig.analyze_auxiliary(bam_file)
 
-            self.progress.end()
+            output_queue.put(contig)
 
-            # add contig to the dict.
-            self.contigs[contig_name] = contig
+            for split in contig.splits:
+                del split.coverage
+                del split.auxiliary
+                del split
+            del contig.splits[:]
+            del contig.coverage
+            del contig
+
+        # we are closing this object here for clarity, although we 
+        # are not really closing it since the code never reaches here
+        # and the worker is killed by its parent:
+        bam_file.close()
+        return
 
 
-        if discarded_contigs_due_to_C:
-            self.run.info('contigs_after_C', pp(len(self.contigs)))
+    def profile(self):
+        manager = multiprocessing.Manager()
+        info_dict = manager.dict()
+        info_dict = {
+            'input_file_path': self.input_file_path,
+            'contig_names': self.contig_names,
+            'contig_lengths': self.contig_lengths,
+            'splits_basic_info': self.splits_basic_info,
+            'split_length': self.a_meta['split_length'],
+            'min_coverage_for_variability': self.min_coverage_for_variability,
+            'skip_SNV_profiling': self.skip_SNV_profiling,
+            'report_variability_full': self.report_variability_full,
+            'contig_name_to_splits': self.contig_name_to_splits,
+            'contig_sequences': self.contig_sequences,
+            'min_mean_coverage': self.min_mean_coverage
+        }
 
-        # set contig abundance
-        contigops.set_contigs_abundance(self.contigs)
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
 
-        self.check_contigs()
+        # put contig indices into the queue to be read from within
+        # the worker
+        for i in range(0, self.num_contigs):
+            available_index_queue.put(i)
 
+        processes = []
+        for i in range(0, self.num_threads):
+            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(available_index_queue, output_queue, info_dict)))
 
-    def store_profile(self):
-        output_file = self.generate_output_destination('PROFILE.cp')
-        self.progress.new('Storing Profile')
-        self.progress.update('Serializing information for %s contigs ...' % pp(len(self.contigs)))
-        dictio.write_serialized_object(self.contigs, output_file)
+        for proc in processes:
+            proc.start()
+
+        recieved_contigs = 0
+        discarded_contigs = 0
+        memory_usage = None
+
+        self.progress.new('Profiling using ' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
+        self.progress.update('initializing threads ...')
+        # FIXME: memory usage should be generalized.
+        last_memory_update = int(time.time())
+
+        while recieved_contigs < self.num_contigs:
+            try:
+                contig = output_queue.get()
+
+                # if we have a contig back, it means we are good to go with it,
+                # otherwise it is garbage.
+                if contig:
+                    self.contigs.append(contig)
+                else:
+                    discarded_contigs += 1
+
+                recieved_contigs += 1
+
+                if (int(time.time()) - last_memory_update) > 5:
+                    memory_usage = utils.get_total_memory_usage()
+                    last_memory_update = int(time.time())
+
+                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
+                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
+
+                # here you're about to witness the poor side of Python (or our use of it).
+                # the problem we run into here was the lack of action from the garbage
+                # collector on the processed objects. although we couldn't find any refs to
+                # these objects, garbage collecter kept them in the memory, and `del` statement
+                # on the `split` object did not yield any improvement either. so here we are
+                # accessing to the atomic data structures in our split objects to try to relieve
+                # the memory by encouraging the garbage collector to realize what's up
+                # explicitly.
+                if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+                    self.store_contigs_buffer()
+                    for c in self.contigs:
+                        for split in c.splits:
+                            del split.coverage
+                            del split.auxiliary
+                            del split
+                        del c.splits[:]
+                        del c.coverage
+                        del c
+                    del self.contigs[:]
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                break
+
+        for proc in processes:
+            proc.terminate()
+
+        self.store_contigs_buffer()
         self.progress.end()
-        self.run.info('profile_dict', output_file)
+
+        # FIXME: this needs to be checked:
+        if discarded_contigs > 0:
+            self.run.info('contigs_after_C', pp(recieved_contigs - discarded_contigs))
+
+        overall_mean_coverage = 1
+        if self.total_length_of_all_contigs != 0:
+            overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
+
+        # FIXME: We know this is ugly. You can keep your opinion to yourself.
+        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+
+        self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
 
-    def check_contigs(self):
-        if not len(self.contigs):
-            raise ConfigError, "0 contigs to work with. Bye."
+    def store_contigs_buffer(self):
+        for contig in self.contigs:
+            self.total_length_of_all_contigs += contig.length
+            self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
+
+            # we will divide every abundance after profiling is done.
+            contig.abundance = contig.coverage.mean
+            for split in contig.splits:
+                split.abundance = contig.coverage.mean
+
+        self.progress.verbose = False
+        self.generate_variabile_nts_table()
+        self.generate_variabile_aas_table()
+        self.store_split_coverages()
+        self.progress.verbose = True
+
+        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
+        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
+        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
+        # function create_new_view defined in the class TablesForViews.
+        view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
+
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_splits',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name='single',
+                                        append_mode=True)
+
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_contigs,
+                                        table_name='atomic_data_contigs',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name=None,
+                                        append_mode=True)
+
+
+    def check_contigs(self, num_contigs=None):
+        if not num_contigs:
+            num_contigs = len(self.contigs)
+
+        if not num_contigs:
+            raise ConfigError("0 contigs to work with. Bye.")
 
 
     def cluster_contigs(self):
@@ -729,27 +738,40 @@ class BAMProfiler(dbops.ContigsSuperclass):
                               rest of the parameters you may have declred. Most of them will not matter.")
 
             if not self.output_directory:
-                raise ConfigError, "If you want to generate a blank profile, you need to declare an output diretory path."
+                raise ConfigError("If you want to generate a blank profile, you need to declare an output diretory path.")
             if not self.sample_id:
-                raise ConfigError, "Mock profiles require a sample name to be declared. Because :/"
+                raise ConfigError("Mock profiles require a sample name to be declared. Because :/")
             return
 
         if (not self.input_file_path) and (not self.serialized_profile_path):
-            raise ConfigError, "You didn't declare any input files :/ If you intend to create a blank profile without any,\
+            raise ConfigError("You didn't declare any input files :/ If you intend to create a blank profile without any,\
                                 input file, you should be a bit more explicit about your intention (you know, in the help\
                                 there is a flag for it and all). Otherwise you should either provide an input BAM file, or\
-                                a serialized anvi'o profile. See '--help' maybe?"
+                                a serialized anvi'o profile. See '--help' maybe?")
         if self.input_file_path and self.serialized_profile_path:
-            raise ConfigError, "You can't declare both an input file and a serialized profile."
+            raise ConfigError("You can't declare both an input file and a serialized profile.")
         if self.serialized_profile_path and (not self.output_directory):
-            raise ConfigError, "When loading serialized profiles, you need to declare an output directory."
+            raise ConfigError("When loading serialized profiles, you need to declare an output directory.")
         if self.input_file_path and not os.path.exists(self.input_file_path):
-            raise ConfigError, "No such file: '%s'" % self.input_file_path
+            raise ConfigError("No such file: '%s'" % self.input_file_path)
         if self.serialized_profile_path and not os.path.exists(self.serialized_profile_path):
-            raise ConfigError, "No such file: '%s'" % self.serialized_profile_path
+            raise ConfigError("No such file: '%s'" % self.serialized_profile_path)
         if not self.min_coverage_for_variability >= 0:
-            raise ConfigError, "Minimum coverage for variability must be 0 or larger."
+            raise ConfigError("Minimum coverage for variability must be 0 or larger.")
         if not self.min_mean_coverage >= 0:
-            raise ConfigError, "Minimum mean coverage must be 0 or larger."
+            raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:
-            raise ConfigError, "Minimum contig length must be 0 or larger."
+            raise ConfigError("Minimum contig length must be 0 or larger.")
+
+        if self.num_threads < 1:
+            raise ConfigError("Nice try. Obviously, number of threds can not be less than 1.")
+
+        if not self.queue_size:
+            self.queue_size = self.num_threads * 2
+
+        if not self.write_buffer_size:
+            self.run.warning("You set the write buffer size to 0. Which means, the profiling data will be kept in memory until\
+                              the very end of the processing.")
+
+        if self.write_buffer_size < 0:
+            raise ConfigError('No. Write buffer size can not have a negative value.')

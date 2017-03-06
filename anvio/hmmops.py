@@ -26,7 +26,7 @@ progress = terminal.Progress()
 class SequencesForHMMHits:
     def __init__(self, contigs_db_path, sources=set([]), run=run, progress=progress):
         if not isinstance(sources, type(set([]))):
-            raise ConfigError, "'sources' variable has to be a set instance."
+            raise ConfigError("'sources' variable has to be a set instance.")
 
         self.sources = set([s for s in sources if s])
 
@@ -42,19 +42,19 @@ class SequencesForHMMHits:
 
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
-            raise ConfigError, 'Some of the requested sources were not found in the contigs database :/\
-                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources)
+            raise ConfigError('Some of the requested sources were not found in the contigs database :/\
+                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
 
         if len(self.sources):
             self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
             self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
         else:
-            self.sources = self.hmm_hits_info.keys()
+            self.sources = list(self.hmm_hits_info.keys())
 
 
     def get_hmm_hits_in_splits(self, splits_dict):
         split_names = set([])
-        for s in splits_dict.values():
+        for s in list(splits_dict.values()):
             split_names.update(s)
 
         hits_in_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'split', split_names)
@@ -71,11 +71,11 @@ class SequencesForHMMHits:
         hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
 
         hmm_hits_per_bin = {}
-        for bin_name in splits_dict.keys():
+        for bin_name in list(splits_dict.keys()):
             hmm_hits_per_bin[bin_name] = {}
 
         unique_ids_taken_care_of = set([])
-        for split_entry in hits_in_splits.values():
+        for split_entry in list(hits_in_splits.values()):
             hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
 
             hit_source = hmm_hit['source']
@@ -124,7 +124,7 @@ class SequencesForHMMHits:
         hmm_sequences_dict_for_splits = {}
 
         unique_hits_taken_care_of = set([])
-        for split_entry in hits_in_splits.values():
+        for split_entry in list(hits_in_splits.values()):
             hmm_hit = self.hmm_hits[split_entry['hmm_hit_entry_id']]
 
             split_name = split_entry['split']
@@ -176,7 +176,7 @@ class SequencesForHMMHits:
         """
 
         bin_names, hmm_sources = set([]), set([])
-        for v in hmm_sequences_dict_for_splits.values():
+        for v in list(hmm_sequences_dict_for_splits.values()):
             bin_names.add(v['bin_id'])
             hmm_sources.add(v['source'])
 
@@ -189,7 +189,7 @@ class SequencesForHMMHits:
                 d[bin_name][hmm_source] = {}
 
         # fill in gene_names
-        for v in hmm_sequences_dict_for_splits.values():
+        for v in list(hmm_sequences_dict_for_splits.values()):
             d[v['bin_id']][v['source']][v['gene_name']] = []
 
         # add genes into lists
@@ -230,7 +230,7 @@ class SequencesForHMMHits:
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not isinstance(wrap, int):
-            raise ConfigError, '"wrap" has to be an integer instance'
+            raise ConfigError('"wrap" has to be an integer instance')
 
         f = open(output_file_path, 'w')
 

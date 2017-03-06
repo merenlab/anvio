@@ -83,8 +83,8 @@ class Diamond:
     def check_output(self, expected_output, process='diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
-            raise ConfigError, "Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.run.log_file_path)
+            raise ConfigError("Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
+                                Please check the log file here: '%s." % (process, self.run.log_file_path))
 
 
     def makedb(self):
@@ -104,7 +104,7 @@ class Diamond:
         expected_output = self.target_db_path + '.dmnd'
         self.check_output(expected_output, 'makedb')
 
-        self.run.info('diamond makedb cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+        self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Diamond search db', expected_output)
 
 
@@ -130,7 +130,7 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
-        self.run.info('diamond blastp cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+        self.run.info('diamond blastp cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
@@ -152,7 +152,7 @@ class Diamond:
                     '-o', self.tabular_output_path,
                     '-p', self.num_threads]
 
-        self.run.info('diamond view cmd', ' '.join(map(lambda x: str(x), cmd_line)), quiet=True)
+        self.run.info('diamond view cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
         utils.run_command(cmd_line, self.run.log_file_path)
 

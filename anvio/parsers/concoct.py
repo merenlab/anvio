@@ -39,10 +39,10 @@ class CONCOCT(Parser):
         c = self.dicts['clusters']
 
         clusters_dict = {}
-        for bin_name in set([e['bin_name'] for e in c.values()]):
+        for bin_name in set([e['bin_name'] for e in list(c.values())]):
             clusters_dict[bin_name] = []
 
-        for entry in c.values():
+        for entry in list(c.values()):
             clusters_dict[entry['bin_name']].append(entry['split'])
 
         return clusters_dict

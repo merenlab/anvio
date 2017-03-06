@@ -54,15 +54,15 @@ def main(args):
     gene_names = set([g.strip() for g in args.gene_names.split(',')]) if args.gene_names else set([])
 
     if args.profile_db and not args.collection_name:
-        raise ConfigError, "You can't use this program with a profile database but without a collection name. Yes. Because."
+        raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
     if args.profile_db:
         dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
         splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-        run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in splits_dict.values()]), len(splits_dict)))
+        run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
     else:
         contigs_db = ContigsSuperclass(args, r = run, p = progress)
-        splits_dict = {os.path.basename(args.contigs_db[:-3]): contigs_db.splits_basic_info.keys()}
+        splits_dict = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
     s = SequencesForHMMHits(args.contigs_db, sources = sources)
@@ -76,10 +76,10 @@ def main(args):
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
 
     if not hmm_sequences_dict:
-        raise ConfigError, "Your selections resulted in 0 hits. There is nothing to report. Are you\
+        raise ConfigError("Your selections resulted in 0 hits. There is nothing to report. Are you\
                             sure you have the right set of gene names and sources? If you\
                             select an HMM source, and then use gene names that belong to another\
-                            source, the intersection of the two can be empty. Just saying."
+                            source, the intersection of the two can be empty. Just saying.")
 
     if args.return_best_hit:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
@@ -121,9 +121,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

@@ -17,7 +17,7 @@ progress = terminal.Progress()
 
 def update_profile_db_from_v5_to_v6(profile_db_path):
     if profile_db_path is None:
-        raise ConfigError, "No profile database is given."
+        raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
     dbops.is_profile_db(profile_db_path)
@@ -25,7 +25,7 @@ def update_profile_db_from_v5_to_v6(profile_db_path):
     # make sure the version is 5
     profile_db = db.DB(profile_db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '5':
-        raise ConfigError, "Version of this profile database is not 5 (hence, this script cannot really do anything)."
+        raise ConfigError("Version of this profile database is not 5 (hence, this script cannot really do anything).")
 
     is_merged = profile_db.get_meta_value('merged')
 
@@ -63,6 +63,6 @@ if __name__ == '__main__':
 
     try:
         update_profile_db_from_v5_to_v6(args.profile_db)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

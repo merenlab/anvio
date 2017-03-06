@@ -30,7 +30,7 @@ def main(args):
     filesnpaths.is_file_tab_delimited(args.protein_clusters)
 
     if not args.profile_db:
-        raise ConfigError, "Without a profile database, you do not exist as far as this program is concerned. True story :("
+        raise ConfigError("Without a profile database, you do not exist as far as this program is concerned. True story :(")
 
     collections = ccollections.Collections()
     collections.populate_collections_dict(args.profile_db)
@@ -40,19 +40,19 @@ def main(args):
         sys.exit()
 
     if args.collection_name not in collections.collections_dict:
-        raise ConfigError, "%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name
+        raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name)
 
     if not args.collection_name:
-        raise ConfigError, "You need to provide a collection name. You can use `--list-collections` flag if you\
-                            don't remember under what collection name you stored your PC bins."
+        raise ConfigError("You need to provide a collection name. You can use `--list-collections` flag if you\
+                            don't remember under what collection name you stored your PC bins.")
 
     PC_bins = collections.get_collection_dict(args.collection_name)
-    run.info('Collection "%s"' % args.collection_name, '%s protein cluster bins describes %s PCs.' % (len(PC_bins), pp(sum([len(v) for v in PC_bins.values()]))))
+    run.info('Collection "%s"' % args.collection_name, '%s protein cluster bins describes %s PCs.' % (len(PC_bins), pp(sum([len(v) for v in list(PC_bins.values())]))))
 
     protein_clusters_dict = utils.get_TAB_delimited_file_as_dictionary(args.protein_clusters)
     run.info('Protein clusters', '%s entries are read into the memory.' % pp(len(protein_clusters_dict)))
 
-    genomes = set([v['genome_name'] for v in protein_clusters_dict.values()])
+    genomes = set([v['genome_name'] for v in list(protein_clusters_dict.values())])
     run.info('Genomes found (%d)' % len(genomes), '%s.' % (', '.join(genomes)))
 
     run.info_single('Storing gene caller ids: ', nl_before=1, nl_after=1)
@@ -62,7 +62,7 @@ def main(args):
     for genome in genomes:
         for PC_bin in PC_bins:
             protein_clusters_of_interest = set(PC_bins[PC_bin])
-            gene_caller_ids = [v['gene_caller_id'] for v in protein_clusters_dict.values() if v['genome_name'] == genome and v['protein_cluster_id'] in protein_clusters_of_interest]
+            gene_caller_ids = [v['gene_caller_id'] for v in list(protein_clusters_dict.values()) if v['genome_name'] == genome and v['protein_cluster_id'] in protein_clusters_of_interest]
 
             output_file_name = 'gene-caller-ids_for-%s-%s-%s.txt' % (args.collection_name, genome, PC_bin)
             open(output_file_name, 'w').write('\n'.join(['%s' % gene_caller_id for gene_caller_id in gene_caller_ids]))
@@ -86,9 +86,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

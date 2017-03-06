@@ -38,7 +38,7 @@ def main(args):
     progress.end()
 
     if not len(annotation_sources):
-        raise ConfigError, "This contigs database does not have any functional annotations :/"
+        raise ConfigError("This contigs database does not have any functional annotations :/")
 
     if args.list_annotation_sources:
         run.warning('', 'ANNOTATION SOURCE%s FOUND' % 'S' if len(annotation_sources) > 1 else '', lc='yellow')
@@ -50,7 +50,7 @@ def main(args):
         sys.exit(0)
 
     if not args.output_file:
-        raise ConfigError, "You should provide an output file name."
+        raise ConfigError("You should provide an output file name.")
 
     filesnpaths.is_output_file_writable(args.output_file)
 
@@ -61,8 +61,8 @@ def main(args):
 
         missing_sources = [s for s in requested_sources if s not in annotation_sources]
         if len(missing_sources):
-            raise ConfigError, "One or more of the annotation sources you requested does not appear to be in the\
-                                contigs database :/ Here is the list: %s." % (', '.join(missing_sources))
+            raise ConfigError("One or more of the annotation sources you requested does not appear to be in the\
+                                contigs database :/ Here is the list: %s." % (', '.join(missing_sources)))
 
         run.info('Requested sources', '%s.' % (', '.join(requested_sources)))
 
@@ -78,7 +78,7 @@ def main(args):
     output = open(args.output_file, 'w')
     output.write('\t'.join(headers) + '\n')
     num_entries_reported = 0
-    for entry in annotations_dict.values():
+    for entry in list(annotations_dict.values()):
         output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure[1:]]) + '\n')
         num_entries_reported += 1
     output.close()
@@ -102,9 +102,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

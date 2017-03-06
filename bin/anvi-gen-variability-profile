@@ -58,14 +58,14 @@ if __name__ == '__main__':
     
     try:
         if args.engine not in variability_engines:
-            raise ConfigError, "You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine
+            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
         variability_engine = variability_engines[args.engine](args)
         variability_engine.process()
         variability_engine.report()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(2)

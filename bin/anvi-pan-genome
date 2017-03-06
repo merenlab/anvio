@@ -79,6 +79,7 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
     groupD.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+    groupD.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupD.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
@@ -97,12 +98,12 @@ if __name__ == '__main__':
     try:
         pan = panops.Pangenome(args, run, progress)
         pan.process()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
-    except HDF5Error, e:
-        print e
+    except HDF5Error as e:
+        print(e)
         sys.exit(-2)

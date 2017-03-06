@@ -35,11 +35,15 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def set_default_headers(response):
-    response.set_header('Content-Type', 'application/json')
+def set_default_headers(response, isJson=True):
+    if isJson:
+        response.set_header('Content-Type', 'application/json')
+    
     response.set_header('Pragma', 'no-cache')
     response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
     response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+    return response
 
 
 def state_autoload(d, response):
@@ -202,7 +206,7 @@ def inspect_pc(d, pc_name):
     return json.dumps(data)
 
 
-def charts(d, split_name, show_outlier_SNVs=False):
+def charts(d, split_name, hide_outlier_SNVs=False):
     data = {'layers': [],
              'index': None,
              'total': None,
@@ -212,7 +216,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
              'previous_contig_name': None,
              'next_contig_name': None,
              'genes': [],
-             'outlier_SNVs_shown': show_outlier_SNVs}
+             'outlier_SNVs_shown': not hide_outlier_SNVs}
 
     if split_name not in d.split_names:
         return data
@@ -230,7 +234,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
     ## get the variability information dict for split:
     progress.new('Variability')
     progress.update('Collecting info for "%s"' % split_name)
-    split_variability_info_dict = d.get_variability_information_for_split(split_name, return_outliers=show_outlier_SNVs)
+    split_variability_info_dict = d.get_variability_information_for_split(split_name, skip_outlier_SNVs=hide_outlier_SNVs)
 
     for layer in layers:
         progress.update('Formatting variability data: "%s"' % layer)
@@ -239,7 +243,7 @@ def charts(d, split_name, show_outlier_SNVs=False):
         data['variability'].append(split_variability_info_dict[layer]['variability'])
 
     levels_occupied = {1: []}
-    for entry_id in d.split_name_to_gene_caller_ids_dict[split_name]:
+    for entry_id in d.split_name_to_genes_in_splits_entry_ids[split_name]:
         gene_callers_id = d.genes_in_splits[entry_id]['gene_callers_id']
         p = d.genes_in_splits[entry_id]
         # p looks like this at this point:
@@ -293,7 +297,7 @@ def store_collections_dict(args, d, request, response):
         run.info_single('Lousy attempt from the user to store their collection under an empty source identifier name :/')
         return json.dumps("Error: Collection name cannot be empty.")
 
-    num_splits = sum(len(l) for l in data.values())
+    num_splits = sum(len(l) for l in list(data.values()))
     if not num_splits:
         run.info_single('The user to store 0 splits as a collection :/')
         return json.dumps("Error: There are no selections to store (you haven't selected anything).")
@@ -340,6 +344,17 @@ def store_refined_bins(args, r, request, response):
 
     message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (r.collection_name)
     return json.dumps({'status': 0, 'message': message})
+
+
+def store_description(args, d, request, response):
+    if args.read_only:
+        return
+
+    description = request.forms.get('description')
+
+    db_path = d.pan_db_path or d.profile_db_path
+    dbops.update_description_in_db(db_path, description)
+    d.p_meta['description'] = description
 
 
 def gen_summary(args, d, request, response, collection_name):
@@ -423,10 +438,10 @@ def get_items_ordering(args, d, request, response, items_ordering_id):
     if items_ordering_id in d.p_meta['clusterings']:
         items_ordering = d.p_meta['clusterings'][items_ordering_id]
 
-        if items_ordering.has_key('newick'):
+        if 'newick' in items_ordering:
             run.info_single("The newick order '%s' has been requested" % (items_ordering_id))
             return json.dumps(items_ordering['newick'])
-        elif items_ordering.has_key('basic'):
+        elif 'basic' in items_ordering:
             run.info_single("The list order '%s' has been requested" % (items_ordering_id))
             return json.dumps(items_ordering['basic'])
         else:
