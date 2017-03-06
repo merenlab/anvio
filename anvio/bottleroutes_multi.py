@@ -183,7 +183,7 @@ def debug(source, request):
     run.warning(None, header=source)
     run.warning(request.forms.dict, 'Forms', lc='yellow')
     run.warning(request.files.dict, 'Files', lc='yellow')
-    run.warning(request.headers.items(), 'Headers', lc='yellow')
+    run.warning(list(request.headers.items()), 'Headers', lc='yellow')
     run.warning(request.method, 'Method', lc='yellow')
 
 

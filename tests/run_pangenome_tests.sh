@@ -12,6 +12,7 @@ cp $files/mock_data_for_pangenomics/emapper/*.annotations     $output_dir/pan_te
 cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/example-PC-collection.txt $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/pan_test/
+cp $files/example_description.md                              $output_dir/pan_test/
 cd $output_dir/pan_test
 
 INFO "Generating contigs databases for external genomes"
@@ -28,10 +29,10 @@ INFO "Generating an anvi'o genomes storage"
 anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.h5
 
 INFO "Running the pangenome anaysis with default parameters"
-anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J TEST --use-ncbi-blast
+anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J TEST --use-ncbi-blast --description example_description.md
 
 INFO "Running the pangenome analysis again utilizing previous search results"
-anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J ANOTHER_TEST --use-ncbi-blast --min-occurrence 2
+anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default

@@ -64,19 +64,19 @@ class EggNOGMapper:
         self.COGs_data = cogs.COGsData(args)
 
         if not self.COGs_data.initialized:
-            raise ConfigError, "It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class\
+            raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class\
                                 depends on it, so this is the end of the road for you. If you set up your COG directory to\
                                 a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you\
                                 never set up one, then maybe it is time for you to take a look at the program\
-                                `anvi-setup-ncbi-cogs`."
+                                `anvi-setup-ncbi-cogs`.")
 
         try:
             self.num_threads = int(self.num_threads) if self.num_threads else None
-        except Exception, e:
-            raise ConfigError, "Someone didn't like the number of threads, and said [%s]. Shame on you :/" % e
+        except Exception as e:
+            raise ConfigError("Someone didn't like the number of threads, and said [%s]. Shame on you :/" % e)
 
         if database not in ['euk', 'bact', 'arch']:
-            raise ConfigError, "Wrong database (%s). eggnog-mapper knows only about euk, bact, or arch db types..." % (database)
+            raise ConfigError("Wrong database (%s). eggnog-mapper knows only about euk, bact, or arch db types..." % (database))
         else:
             self.database = database
 
@@ -126,14 +126,14 @@ class EggNOGMapper:
 
         if version_found not in self.available_parsers:
             if use_version:
-                raise ConfigError, "Anvi'o does not know about the version you requested. Here are the ones available: %s" % \
-                                                        (', '.join(self.available_parsers.keys()))
+                raise ConfigError("Anvi'o does not know about the version you requested. Here are the ones available: %s" % \
+                                                        (', '.join(list(self.available_parsers.keys()))))
             else:
-                raise ConfigError, "Bad news :( This version of anvi'o does not have a parser for the eggnog-mapper installed\
+                raise ConfigError("Bad news :( This version of anvi'o does not have a parser for the eggnog-mapper installed\
                                     on your system. This is the version you have on your system (if this looks totally alien\
                                     to you it may indicate another problem, in which case consider writing to anvi'o developers):\
                                     %s. For your reference, these are the versions anvi'o knows what to do with: %s" % \
-                                                        (version_found, ', '.join(self.available_parsers.keys()))
+                                                        (version_found, ', '.join(list(self.available_parsers.keys()))))
 
         self.installed_version = version_found
         self.parser = self.available_parsers[version_found]
@@ -160,19 +160,19 @@ class EggNOGMapper:
         fields = defline.strip('\n').split('\t')
 
         if len(fields) != 12:
-            raise ConfigError, "The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
-                                number of fields in the file (%d) is not matching to what is expected (%s)." % (self.installed_version, len(fields), 12)
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
+                                number of fields in the file (%d) is not matching to what is expected (%s)." % (self.installed_version, len(fields), 12))
 
         if not fields[0].startswith(self.gene_caller_id_prefix):
-            raise ConfigError, "Gene caller ids found in this annotation file does not start with the expected prefix. Anvi'o can not trust\
-                                this file :("
+            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. Anvi'o can not trust\
+                                this file :(")
 
         try:
             gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
         except:
-            raise ConfigError, "At least one gene caller id in this annotation file (%s) does not seem to look like what anvi'o is uses for\
+            raise ConfigError("At least one gene caller id in this annotation file (%s) does not seem to look like what anvi'o is uses for\
                                 gene calls. Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
-                                                (fields[0], self.gene_caller_id_prefix)
+                                                (fields[0], self.gene_caller_id_prefix))
 
         if fields[11] and fields[11] != 'NA' and not fields[11].startswith('Protein of unknown function'):
             self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[11], fields[2])
@@ -196,11 +196,11 @@ class EggNOGMapper:
 
     def store_annotations_in_db(self, drop_previous_annotations=False):
         if not self.contigs_db_path:
-            raise ConfigError, "EggNOGMapper::store_annotations_in_db() is speaking: you can't really call this function if you inherited\
-                                this class without a contigs database path :/ Well, yes, OK, you can call it, but it wouldn't work. Happy?"
+            raise ConfigError("EggNOGMapper::store_annotations_in_db() is speaking: you can't really call this function if you inherited\
+                                this class without a contigs database path :/ Well, yes, OK, you can call it, but it wouldn't work. Happy?")
 
         if not len(self.annotations_dict):
-            raise ConfigError, 'Annotations dictionary is empty :/ There is nothing to add to the database.'
+            raise ConfigError('Annotations dictionary is empty :/ There is nothing to add to the database.')
 
         gene_functions_table = dbops.TableForGeneFunctions(self.contigs_db_path)
         gene_functions_table.create(self.annotations_dict, drop_previous_annotations_first=drop_previous_annotations)
@@ -232,16 +232,16 @@ class EggNOGMapper:
         """
 
         if not self.contigs_db_path:
-            raise ConfigError, "EggNOGMapper::process() is speaking: you can't really call this function if you inherited\
-                                this class without a contigs database path :/ What are you doing?"
+            raise ConfigError("EggNOGMapper::process() is speaking: you can't really call this function if you inherited\
+                                this class without a contigs database path :/ What are you doing?")
 
         filesnpaths.is_output_dir_writable(output_dir)
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         if not contigs_db.meta['genes_are_called']:
-            raise ConfigError, "It seems genes were not called for this contigs database (%s). This is a\
+            raise ConfigError("It seems genes were not called for this contigs database (%s). This is a\
                                 total no-no since we will need them to get amino acid seqeunces for functional\
-                                annotationd :/" % self.contigs_db_path
+                                annotationd :/" % self.contigs_db_path)
 
         aa_sequences_list = contigs_db.db.get_table_as_list_of_tuples(t.gene_protein_sequences_table_name)
         num_aa_sequences = len(aa_sequences_list)
@@ -283,11 +283,11 @@ class EggNOGMapper:
 
         if not os.path.exists(self.annotations_file_name):
             self.progress.end()
-            raise ConfigError, "Something went wrong with eggnog-mapper :( The annotations file is not where it is supposed to be.\
+            raise ConfigError("Something went wrong with eggnog-mapper :( The annotations file is not where it is supposed to be.\
                                 If you are lucky, this log file will have enough output information for you to make sense of\
                                 what went wrong: '%s'. Due to this error, the output directory will be kept as is, and you\
                                 will have to remove it manually. Sorry about the inconvenience! Anvi'o developers know how much\
-                                it sucks when things just don't work." % os.path.join(output_dir, self.log_file_path)
+                                it sucks when things just don't work." % os.path.join(output_dir, self.log_file_path))
 
         self.progress.end()
 

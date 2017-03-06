@@ -44,9 +44,9 @@ essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_lengt
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
-        print "Error: The default clustering configuration file for %s runs, '%s',\n\
+        print("Error: The default clustering configuration file for %s runs, '%s',\n\
        is missing from data/clusterconfigs dir! I don't know how this happened,\n\
-       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config)
+       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config))
         sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
@@ -58,8 +58,7 @@ IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig",
 IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
-complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV',\
-                               'tgcayrkmvhdbTGCAYRKMVHDB')
+complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
 nucleotides = 'ATCGN'
 

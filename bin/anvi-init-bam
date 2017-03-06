@@ -35,7 +35,7 @@ def init_bam_file(input_file_path, output_file_path = None):
     if output_file_path:
         output_file_path = os.path.abspath(output_file_path)
         if not output_file_path.endswith('.bam'):
-            raise ConfigError, "The output file should end with extension '.bam'."
+            raise ConfigError("The output file should end with extension '.bam'.")
     else:
         output_file_path = input_file_path + '-sorted.bam'
 
@@ -50,7 +50,7 @@ def init_bam_file(input_file_path, output_file_path = None):
 
     run.info('Sorted BAM File', output_file_path)
     if not os.path.exists(output_file_path):
-        raise ConfigError, "Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :("
+        raise ConfigError("Sorry. Something went wrong. Samtools thinks it generated the sorted output, yet it is not there :(")
 
     progress.new('INDEX')
     progress.update('Indexing BAM File...')
@@ -73,9 +73,9 @@ if __name__ == '__main__':
     try:
         sys.exit(init_bam_file(input_file_path = args.input_file,
                                output_file_path = args.output_file,))
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

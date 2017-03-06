@@ -63,13 +63,13 @@ if __name__ == '__main__':
 
     try:
         results = completeness.get_info_for_splits(splits_of_interest, min_e_value = args.min_e_value)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
 
     run.warning('', header = 'Completeness for %d splits (p < %g)' % (len(splits_of_interest), args.min_e_value))
     for source in completeness.sources:
         run.info(source, '%.2f%% complete, %.2f%% redundant' % (results[source]['percent_complete'], results[source]['percent_redundancy']))
 
-    print
+    print()
 

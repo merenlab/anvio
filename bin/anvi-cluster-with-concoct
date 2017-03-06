@@ -39,13 +39,13 @@ if __name__ == '__main__':
     try:
         collection_name = args.collection_name.strip()
         if not len(collection_name):
-            raise ConfigError, 'Nice try. Collection name cannot be emtpy'
+            raise ConfigError('Nice try. Collection name cannot be emtpy')
         try:
             utils.check_sample_id(collection_name)
         except:
-            raise ConfigError, '"%s" is not a proper collection name. A proper one should be a single word and not contain\
+            raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
                                 ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                                any space characters, and the collection name should not start with a digit.' % collection_name
+                                any space characters, and the collection name should not start with a digit.' % collection_name)
 
         # make sure output file is writable before the analysis...
         if args.output_file:
@@ -59,9 +59,9 @@ if __name__ == '__main__':
         if not args.skip_store_in_db:
             c.store_clusters_in_db(collection_name = collection_name)
 
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

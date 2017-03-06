@@ -27,6 +27,12 @@ anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
 
+INFO "Exporting contig sequences from the contigs database"
+anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_contig_seqeunces.fa
+
+INFO "Exporting contig sequences from the contigs database in 'splits mode'"
+anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqeunces.fa --splits-mode
+
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/*
 
@@ -81,13 +87,16 @@ done
 
 
 INFO "Merging profiles"
-anvi-merge $output_dir/SAMPLE-*/RUNINFO.cp -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db
+anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
 
-INFO "Add a new variable into the RUNINFO file of the merged profile"
-anvi-script-update-runinfo-variable $output_dir/SAMPLES-MERGED/RUNINFO.mcp --variable TEST-VARIABLE --set-bool true
+INFO "Update the description in the merged profile"
+anvi-update-db-description -p $output_dir/SAMPLES-MERGED/PROFILE.db --description $files/example_description.md
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
+INFO "Generating per-nt position coverage values for a single split across samples"
+anvi-get-split-coverage -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
 
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
@@ -95,8 +104,8 @@ anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 INFO "Cluster contigs in the newly generated coverages file using 'canberra' distance, and 'complete' linkage"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt --distance canberra --linkage complete -o $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs_CANB_COMP.newick
 
-INFO "Generating network descriptions for samples based on ORFs and functions"
-anvi-gen-network -r $output_dir/SAMPLES-MERGED/RUNINFO.mcp -c $output_dir/CONTIGS.db
+#INFO "Generating network descriptions for samples based on ORFs and functions"
+#anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization $files/example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
@@ -184,6 +193,9 @@ anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Export gene coverage and detection data"
+anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED
 
 INFO "Show all available HMM sources"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o /dev/null -l

@@ -34,15 +34,15 @@ def main(args):
 
     if args.list and not args.table:
         for table in tables_in_database:
-            print table
+            print(table)
         sys.exit()
 
 
     if not args.table:
-        raise ConfigError, "You must specify a table name."
+        raise ConfigError("You must specify a table name.")
 
     if args.table not in tables_in_database:
-        raise ConfigError, "Table '%s' is not seem to be in this databse :/" % args.table
+        raise ConfigError("Table '%s' is not seem to be in this databse :/" % args.table)
 
     run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
 
@@ -59,7 +59,7 @@ def main(args):
         table_columns = [f for f in table_columns if f in fields_of_interest]
 
         if not len(table_columns):
-            raise ConfigError, "None of the fields you are interested in are in the table header..." 
+            raise ConfigError("None of the fields you are interested in are in the table header...") 
 
         run.info('Columns to report', '"%s"' % ', '.join(table_columns))
 
@@ -87,9 +87,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

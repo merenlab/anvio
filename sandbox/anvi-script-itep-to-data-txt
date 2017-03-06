@@ -37,17 +37,17 @@ def main(itep_clusters_path, output_file_path):
             _, cluster_id, genome_identifier = line.split('\t')
         except:
             progress.end()
-            raise ConfigError, "This input file does not seem to be an ITEP output\
+            raise ConfigError("This input file does not seem to be an ITEP output\
                                 this script is expecting (i.e., there aren't three\
-                                TAB-delimted columsn in this file)."
+                                TAB-delimted columsn in this file).")
 
         genome_name = genome_identifier.split('.peg')[0]
         genomes_found.add(genome_name)
 
-        if not itep_clusters.has_key(cluster_id):
+        if cluster_id not in itep_clusters:
             itep_clusters[cluster_id] = {}
 
-        if not itep_clusters[cluster_id].has_key(genome_name):
+        if genome_name not in itep_clusters[cluster_id]:
             itep_clusters[cluster_id][genome_name] = 0
 
         itep_clusters[cluster_id][genome_name] += 1
@@ -68,7 +68,7 @@ def main(itep_clusters_path, output_file_path):
 
     for cluster_id in cluster_ids_sorted:
         values_dict = itep_clusters[cluster_id]
-        values = [str(values_dict[g]) if values_dict.has_key(g) else '0' for g in genomes_found]
+        values = [str(values_dict[g]) if g in values_dict else '0' for g in genomes_found]
         output_file.write('\t'.join([cluster_id] + values) + '\n')
     
     output_file.close()
@@ -89,9 +89,9 @@ if __name__ == '__main__':
 
     try:
         main(args.itep_clusters, args.output_file)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

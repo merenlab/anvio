@@ -13,10 +13,8 @@ import sys
 import argparse
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
+import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -35,11 +33,12 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 def main(args):
-    merged_profile_db = db.DB(args.profile_db, anvio.__profile__version__)
-    contigs_db = db.DB(args.contigs_db, anvio.__contigs__version__)
+    dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
-    if(merged_profile_db.get_meta_value('merged') != True):
-        raise ConfigError, "'%s' does not seem to be a merged profile database :/" % args.profile_db
+    merged_profile_db = dbops.ProfileDatabase(args.profile_db)
+
+    if(merged_profile_db.meta['merged'] != True):
+        raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
 
     if args.output_dir:
         filesnpaths.gen_output_directory(args.output_dir)
@@ -47,29 +46,16 @@ def main(args):
         args.output_dir = os.path.dirname(os.path.abspath(args.profile_db))
 
     if not args.output_file_prefix:
-        args.output_file_prefix = merged_profile_db.get_meta_value('sample_id')
+        args.output_file_prefix = merged_profile_db.meta['sample_id']
 
-    samples = merged_profile_db.get_meta_value('samples').split(',')
-    contig_sequences_dict = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key = True)
-    splits_dict = contigs_db.get_table_as_dict(t.splits_info_table_name)
-    coverages = merged_profile_db.get_table_as_dict('mean_coverage_contigs')
-
+    coverages = merged_profile_db.db.get_table_as_dict('mean_coverage_contigs')
     merged_profile_db.disconnect()
-    contigs_db.disconnect()
 
     coverages_file = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
     splits_fasta = os.path.join(args.output_dir, args.output_file_prefix + '-SPLITS.fa')
 
-    utils.store_dict_as_TAB_delimited_file(coverages, coverages_file, ['contig'] + samples)
-
-    splits_fasta_f = fastalib.FastaOutput(splits_fasta)
-
-    for split_name in sorted(coverages.keys()):
-        s = splits_dict[split_name]
-        splits_fasta_f.write_id(split_name)
-        splits_fasta_f.write_seq(contig_sequences_dict[s['parent']]['sequence'][s['start']:s['end']], split = False)
-                                                                                                    # ^^^^^ This has nothing to do
-                                                                                                    # with our splits...
+    utils.store_dict_as_TAB_delimited_file(coverages, coverages_file, ['contig'] + sorted(list(merged_profile_db.samples)))
+    utils.export_sequences_from_contigs_db(args.contigs_db, splits_fasta, seq_names_to_export=sorted(coverages.keys()), splits_mode=True)
 
     run.info('Coverages file', coverages_file)
     run.info('Sequences file', splits_fasta)
@@ -87,6 +73,6 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)

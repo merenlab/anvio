@@ -74,19 +74,19 @@ class COGs:
 
     def process(self, aa_sequences_file_path=None):
         if self.search_with not in self.available_db_search_program_targets:
-            raise ConfigError, "Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
+            raise ConfigError("Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
                                 database formatted under the COGs data directory for that program :/ You may need to\
                                 re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
                                 anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
                                 time to point the right directory using the --cog-data-dir parameter." % \
-                                                                                (self.search_with, self.COG_data_dir)
+                                                                                (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
-            raise ConfigError, "You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
-                                sequences"
+            raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
+                                sequences")
 
         if aa_sequences_file_path and self.contigs_db_path:
-            raise ConfigError, "You can't provide both an AA sequences file and a contigs database. Choose one!"
+            raise ConfigError("You can't provide both an AA sequences file and a contigs database. Choose one!")
 
         if self.contigs_db_path:
             dbops.is_contigs_db(self.contigs_db_path)
@@ -125,7 +125,7 @@ class COGs:
 
     def store_hits_into_contigs_db(self):
         if not self.hits:
-            raise ConfigError, "COGs class has no hits to process. Did you forget to call search?"
+            raise ConfigError("COGs class has no hits to process. Did you forget to call search?")
 
         cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
@@ -235,12 +235,12 @@ class COGsData:
         if self.essential_files:
             self.init()
         elif panic_on_failure_to_init:
-            raise ConfigError, "It seems you don't have your COG data set up on this system. Whatever you were\
+            raise ConfigError("It seems you don't have your COG data set up on this system. Whatever you were\
                                 trying to do is not going to continue being done :( Did you setup your COGs? If\
                                 not, you can take a look at the program `anvi-setup-ncbi-cogs`. Maybe you did\
                                 setup into another directory than the default destination? If that is the case\
                                 maybe you can use the `--cog-data-dir` parameter if it is applicable? No? None\
-                                of these work? Well. Anvi'o hates it as much as you do when things come to this."
+                                of these work? Well. Anvi'o hates it as much as you do when things come to this.")
 
 
     def init(self):
@@ -341,7 +341,7 @@ class COGsSetup:
             return None
 
         essential_files = {}
-        for v in self.files.values():
+        for v in list(self.files.values()):
             if v['type'] == 'essential':
                 essential_files[v['formatted_file_name']] = J(self.COG_data_dir, v['formatted_file_name'])
 
@@ -350,9 +350,9 @@ class COGsSetup:
 
         for file_name in essential_files:
             if not os.path.exists(essential_files[file_name]):
-                raise ConfigError, "At least one essential formatted file that is necesary for COG operations is not where it should\
+                raise ConfigError("At least one essential formatted file that is necesary for COG operations is not where it should\
                                     be ('%s'). You should run COG setup, with the flag `--reset` if necessary, to make sure things\
-                                    are in order." % essential_files[file_name]
+                                    are in order." % essential_files[file_name])
 
         return essential_files
 
@@ -364,11 +364,11 @@ class COGsSetup:
             try:
                 os.mkdir(self.COG_data_dir)
                 open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
-            except Exception, e:
-                raise ConfigError, "So the COG data directory is not there, and anvi'o wants to create one. But it didn't\
+            except Exception as e:
+                raise ConfigError("So the COG data directory is not there, and anvi'o wants to create one. But it didn't\
                                     go that well. It could be due to permissions (which may require you to run this with sudo\
                                     or may need to ask your sys admin to do it for you since this is a one time operation), or\
-                                    it could be due to something totally irrelevant. Here is the error message: '%s'" % e
+                                    it could be due to something totally irrelevant. Here is the error message: '%s'" % e)
 
         filesnpaths.is_output_dir_writable(self.COG_data_dir)
 
@@ -387,8 +387,8 @@ class COGsSetup:
             self.wait_for_the_user()
 
         if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read().strip() != COG_DATA_VERSION:
-            raise ConfigError, "The version of your COG data directory is different than what anvi'o hoping to see.\
-                                It seems you need to (re)run anvi'o script to download and format COG data from NCBI."
+            raise ConfigError("The version of your COG data directory is different than what anvi'o hoping to see.\
+                                It seems you need to (re)run anvi'o script to download and format COG data from NCBI.")
 
         # get raw files
         self.get_raw_data()
@@ -550,7 +550,7 @@ class COGsSetup:
                 continue
 
             if not os.path.exists(file_path):
-                raise ConfigError, "Something is wrong :/ Raw files are not in place..."
+                raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
@@ -560,7 +560,7 @@ class COGsSetup:
             return
 
         try:
-            raw_input("Press ENTER to continue, or press CTRL + C to cancel...\n")
+            input("Press ENTER to continue, or press CTRL + C to cancel...\n")
         except:
             sys.exit()
 

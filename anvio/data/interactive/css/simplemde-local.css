@@ -1,0 +1,11 @@
+.editor-preview pre {
+    padding: 20px;
+    border: 1px solid #b7b7b7;
+    border-radius: 5px;
+    margin: 15px 30px;
+    overflow-x: auto;
+}
+
+.editor-preview code {
+    white-space: pre;
+}

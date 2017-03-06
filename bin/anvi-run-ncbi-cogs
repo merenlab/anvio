@@ -39,17 +39,17 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
     parser.add_argument(*anvio.A('temporary-dir-path'), **anvio.K('temporary-dir-path'))
 
-    parser.add_argument('--search-with', default='blastp', metavar="PROGRAM",
-                        help="What program to use for database searching. The default is NCBI's blastp,\
-                              but you can also use 'diamond' if you like.")
+    parser.add_argument('--search-with', default='diamond', metavar="PROGRAM",
+                        help="What program to use for database searching. The default is 'diamond',\
+                              but you can also use NCBI's 'blastp' if you like.")
 
     args = parser.parse_args()
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

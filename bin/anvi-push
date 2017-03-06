@@ -65,6 +65,6 @@ if __name__ == '__main__':
                         % (args.project_name))
 
         sys.stderr.write('\n')
-    except AnviServerError, e:
-        print e
+    except AnviServerError as e:
+        print(e)
         sys.exit(1)

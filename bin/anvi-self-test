@@ -38,18 +38,18 @@ def __catch_sig(signum, frame):
 
 def main(args):
     if args.suite not in tests:
-        raise ConfigError, "Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list\
-                            of tests available if you would like to try again: %s" % (args.suite, ', '.join(tests.keys()))
+        raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list\
+                            of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
 
     tests_dir_path = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '../tests'))
 
     test_files_found = [os.path.basename(p) for p in glob.glob(os.path.join(tests_dir_path, '*.sh'))]
 
-    for test in list(itertools.chain(*tests.values())):
+    for test in list(itertools.chain(*list(tests.values()))):
         if test not in test_files_found:
-            raise FilesNPathsError, "Anvi'o failed to locate the test file for '%s' ('%s')... What a\
+            raise FilesNPathsError("Anvi'o failed to locate the test file for '%s' ('%s')... What a\
                                      terrible start :( (it was looking for it under '%s')." \
-                                                % (test, tests[test], tests_dir_path)
+                                                % (test, tests[test], tests_dir_path))
 
     temporary_output_dir = filesnpaths.get_temp_directory_path()
 
@@ -61,13 +61,13 @@ def main(args):
     except KeyboardInterrupt:
         pass
 
-    print
-    print "Anvi'o's self-test is done, and", 
+    print()
+    print("Anvi'o's self-test is done, and", end=' ') 
     if args.debug:
-        print 'the temporary output files are still here: %s\n' % temporary_output_dir
+        print('the temporary output files are still here: %s\n' % temporary_output_dir)
     else:
         shutil.rmtree(temporary_output_dir)
-        print 'the temporary output files are cleaned.\n'
+        print('the temporary output files are cleaned.\n')
 
 
 if __name__ == '__main__':
@@ -78,7 +78,7 @@ if __name__ == '__main__':
                         help="Suite of tests to execute. By default this program will execute a full suite of example anvi'o\
                               commands to ensure your installation is ready to run all scenarios anvi'o developers could\
                               think of. Alternatively you can choose a specific test to run. Here is a full list of available\
-                              options: %s." % ', '.join(tests.keys()))
+                              options: %s." % ', '.join(list(tests.keys())))
     parser.add_argument('--debug', default=False, action='store_true',
                         help="This program will create a temporary output directory to store all output files, and will\
                               clean after itself by deleting it. The use of this flag will make sure the temporary output\
@@ -90,8 +90,8 @@ if __name__ == '__main__':
         signal.signal(signal.SIGINT, __catch_sig)
         main(args)
     except FilesNPathsError as e:
-        print e
+        print(e)
         sys.exit(-1)
     except ConfigError as e:
-        print e
+        print(e)
         sys.exit(-2)

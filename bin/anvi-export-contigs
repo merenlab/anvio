@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""A script to export a FASTA file of contigs from the contigs database."""
+"""A script to export a FASTA file of contigs (or splits) from a contigs database."""
 
 import sys
 import argparse
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
-import anvio.fastalib as fastalib
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
@@ -29,23 +25,26 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 def main(args):
-    utils.export_contigs_from_contigs_db(args.contigs_db, args.output_file)
-    run.info('Contigs FASTA', args.output_file)
+    utils.export_sequences_from_contigs_db(args.contigs_db, args.output_file, splits_mode=args.splits_mode)
+    run.info('Export mode', 'splits' if args.splits_mode else 'contigs')
+    run.info('Output FASTA', args.output_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export contigs from an anvi'o contigs database")
+    parser = argparse.ArgumentParser(description="Export contigs (or splits) from an anvi'o contigs database")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument('--splits-mode', default=False, action="store_true", help="Export split\
+                        sequences instead.")
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     args = parser.parse_args()
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-1)

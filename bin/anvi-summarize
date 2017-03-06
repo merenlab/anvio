@@ -41,10 +41,20 @@ def main(args):
         summary = summarizer.PanSummarizer(args)
     elif db_type == 'profile':
         args.profile_db = args.pan_or_profile_db
+        profile_db = dbops.ProfileDatabase(args.profile_db)
+
+        if not profile_db.meta['contigs_db_hash']:
+            raise ConfigError("This profile database is not affiliated with any contigs database. Anvi'o currently does not\
+                               summarize such stuff :/")
+        profile_db.disconnect()
+
+        if not args.contigs_db:
+            raise ConfigError("You must provide a contigs database when you summarize anvi'o profiles. True story.")
+
         summary = summarizer.ProfileSummarizer(args)
     else:
-        raise ConfigError, "Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this\
-                            program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db
+        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this\
+                            program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
 
     summary.process()
 
@@ -77,9 +87,9 @@ if __name__ == '__main__':
 
     try:
         main(args)
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)

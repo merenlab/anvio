@@ -83,7 +83,7 @@ class SamplesInformation:
             samples_information_dict_with_aliases[sample_name] = {}
 
         alias_index = 1
-        for attribute in samples_information_dict_from_file.values()[0]:
+        for attribute in list(samples_information_dict_from_file.values())[0]:
             alias = 'attr_%05d' % alias_index
             aliases_to_attributes_dict[alias] = attribute
             alias_index += 1
@@ -147,23 +147,23 @@ class SamplesInformation:
     def sanity_check(self):
         if self.sample_names_in_samples_information_file and self.sample_names_in_samples_order_file:
             if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
-                raise SamplesError, 'OK. Samples described in the information file and order file are not identical :/\
+                raise SamplesError('OK. Samples described in the information file and order file are not identical :/\
                                      Here are the %d sample names in the information file: "%s", versus the %d sample\
                                      names in the orders file: "%s". And here is the difference: "%s".'\
                                                             % (len(self.sample_names_in_samples_information_file),
                                                                self.sample_names_in_samples_information_file,
                                                                len(self.sample_names_in_samples_order_file),
                                                                self.sample_names_in_samples_order_file,
-                                                               list(set(self.sample_names_in_samples_information_file) - set(self.sample_names_in_samples_order_file)))
+                                                               list(set(self.sample_names_in_samples_information_file) - set(self.sample_names_in_samples_order_file))))
 
         if not self.samples_information_default_layer_order:
             # we still don't have a default order. we will try to recover from that here
             # by looking into what we have in the samples order informaiton
             if not len(self.samples_order_dict):
-                raise SamplesError, "Something is missing. Anvi'o is having hard time coming up with a default samples\
-                                    order for the samples database."
+                raise SamplesError("Something is missing. Anvi'o is having hard time coming up with a default samples\
+                                    order for the samples database.")
 
-            a_basic_order = [o['basic'] for o in self.samples_order_dict.values()][0]
-            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] for o in self.samples_order_dict.values()][0])
+            a_basic_order = [o['basic'] for o in list(self.samples_order_dict.values())][0]
+            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] for o in list(self.samples_order_dict.values())][0])
 
             self.samples_information_default_layer_order = a_basic_order or a_tree_order

@@ -36,9 +36,9 @@ if __name__ == '__main__':
     try:
         variable_nt_positions = VariabilityNetwork(args)
         variable_nt_positions.generate()
-    except ConfigError, e:
-        print e
+    except ConfigError as e:
+        print(e)
         sys.exit(-1)
-    except FilesNPathsError, e:
-        print e
+    except FilesNPathsError as e:
+        print(e)
         sys.exit(-2)
