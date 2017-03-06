@@ -440,8 +440,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .modal-dialog.modal-sm h3::before {
     display: block;
-    width: 100px;
-    height: 100px;
+    width: 160px;
+    height: 160px;
     margin-right: auto;
     margin-left: auto;
     margin-bottom: 25px;
