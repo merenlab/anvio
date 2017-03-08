@@ -1527,21 +1527,12 @@ def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
-        u = urllib.request.urlopen(url)
+        response = urllib.request.urlopen(url)
     except Exception as e:
         raise ConfigError("Something went wrong with your donwload attempt. Here is the\
                             problem: '%s'" % e)
 
-    meta = u.info()
-
-    try:
-        file_size = int(meta.getheaders("Content-Length")[0])
-    except:
-        raise ConfigError("Anvi'o failed to determine the size of the file you want to download, and\
-                            decided to quit because it's programmers didn't put enough effort into their\
-                            coding to handle that case. If you end up having this error, please send them\
-                            an e-mail. It will make them feel so embarrassed, that they will fix this\
-                            right away.")
+    file_size = int(response.headers['Content-Length'])
 
     f = open(output_file_path, 'wb')
 
@@ -1550,7 +1541,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     downloaded_size = 0
     while True:
-        buffer = u.read(10000)
+        buffer = response.read(10000)
 
         if buffer:
             downloaded_size += len(buffer)
