@@ -57,17 +57,18 @@ def main(args):
 
     try:
         for test in tests[args.suite]:
-            subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True)
+            if subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True) != 0:
+                raise ConfigError("It seems something went wrong while running your tests :/ Anvi'o hopes that the reason is clear\
+                                   from the lines above.")
     except KeyboardInterrupt:
         pass
 
     print()
-    print("Anvi'o's self-test is done, and", end=' ') 
     if args.debug:
-        print('the temporary output files are still here: %s\n' % temporary_output_dir)
+        print("Anvi'o's self-test is done, and the temporary output files are still here: %s\n" % temporary_output_dir)
     else:
         shutil.rmtree(temporary_output_dir)
-        print('the temporary output files are cleaned.\n')
+        print("Anvi'o's self-test is done, and the temporary output files are cleaned.\n")
 
 
 if __name__ == '__main__':
