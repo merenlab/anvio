@@ -440,7 +440,13 @@ class COGsSetup:
         progress.new('Formatting COG names file')
         progress.update('...')
         output = open(output_file_path, 'w')
-        for line in open(input_file_path, 'rU').readlines():
+
+        try:
+            lines = open(input_file_path).readlines()
+        except UnicodeDecodeError:
+            lines = open(input_file_path, encoding='ISO-8859-1').readlines()
+
+        for line in lines:
             if line.startswith('#'):
                 continue
             COG, function, name = line.strip('\n').split('\t')
@@ -478,7 +484,7 @@ class COGsSetup:
 
         # poor man's uncompress
         temp_fasta_path = filesnpaths.get_temp_file_path()
-        with open(temp_fasta_path, 'w') as f_out, gzip.open(input_file_path, 'rb') as f_in:
+        with open(temp_fasta_path, 'wb') as f_out, gzip.open(input_file_path, 'rb') as f_in:
             f_out.write(f_in.read())
 
         progress.end()
