@@ -45,16 +45,19 @@ def update_profile_db(profile_db_path, just_do_it = False):
     progress.update('...')
 
     # drop the table
-    profile_db._exec('DROP TABLE gene_coverages;')
-
     try:
-        # commit
+        profile_db._exec('DROP TABLE gene_coverages;')
+    except:
+        pass
+
+    # commit
+    try:
         profile_db._exec('COMMIT')
     except:
         pass
 
-    try:
     # cleanup
+    try:
         profile_db._exec('vacuum')
     except:
         pass
