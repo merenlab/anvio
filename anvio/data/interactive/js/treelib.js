@@ -568,8 +568,6 @@ function formatString(s) {
 
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
-var unnamed_intersection_counter = 0;
-
 function Node(label) {
     if (typeof label === 'undefined')
     {
@@ -1528,6 +1526,7 @@ function draw_tree(settings) {
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = {};
+    unnamed_intersection_counter = 0;
 
     if (clusteringData.constructor === Array)
     {
