@@ -421,7 +421,7 @@ class GenomeStorage(object):
         dbops.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
-        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']])).hexdigest()[0:12]
+        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
         contigs_db.disconnect()
 
         return genome_hash
