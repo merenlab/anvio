@@ -110,6 +110,7 @@ var mouse_event_origin_y = 0;
 
 var description;
 var descriptionEditor;
+var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -121,6 +122,19 @@ $(window).resize(function() {
 });
 
 $(document).ready(function() {
+
+    $.ajaxPrefilter(function(options) {
+        if (request_prefix) {
+            options.url = request_prefix + options.url;
+
+            if (options.type == 'POST')
+            {
+                 options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+            }
+        }
+        return options;
+    });
+
     $(window).trigger('resize');
     toastr.options = {
         "closeButton": true,
