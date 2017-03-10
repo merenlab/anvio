@@ -41,13 +41,7 @@ def main(args):
         raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list\
                             of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
 
-    anvio_dir = os.path.dirname(anvio.__file__)
-    
-    # if anvio dir is symlinked, follow the link and get the actual path
-    if os.path.islink(anvio_dir):
-      anvio_dir = os.readlink(anvio_dir)
-
-    tests_dir_path = os.path.abspath(os.path.join(anvio_dir, '../tests'))
+    tests_dir_path = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '../tests'))
 
     test_files_found = [os.path.basename(p) for p in glob.glob(os.path.join(tests_dir_path, '*.sh'))]
 
