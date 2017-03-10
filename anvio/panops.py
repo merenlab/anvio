@@ -114,6 +114,7 @@ class GenomeStorage(object):
             return
 
         # check whether function calls are available for all genomes involved, and whether function sources for each genome is identical
+        genomes_with_no_functional_annotation = []
         function_annotation_sources_per_genome = {}
         all_function_annotation_sources_observed = set([])
         for genome_name in self.genomes:
@@ -122,11 +123,28 @@ class GenomeStorage(object):
             sources = contigs_db.meta['gene_function_sources']
             contigs_db.disconnect()
 
-            if sources:
+            if not sources:
+                genomes_with_no_functional_annotation.append(genome_name)
+            else:
                 function_annotation_sources_per_genome[genome_name] = sources
                 all_function_annotation_sources_observed.update(sources)
 
-        if not len(all_function_annotation_sources_observed):
+        print(genomes_with_no_functional_annotation)
+        if genomes_with_no_functional_annotation:
+            if len(genomes_with_no_functional_annotation) == len(self.genomes):
+                self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
+                                  then your genomes have no functional annotation. SAD.")
+            else:
+                self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
+                                  can only use matching functional annotations across all genomes involved, having even one genome without\
+                                  any functions means that there will be no matching function across all. Things will continue to work, but\
+                                  you will have no functions at the end for your protein clusters." % \
+                                                (len(genomes_with_no_functional_annotation), len(self.genomes)))
+
+            # make sure it is clear.
+            function_annotation_sources_per_genome = {}
+            all_function_annotation_sources_observed = set([])
+        elif not len(all_function_annotation_sources_observed):
             self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
                               then your genomes have no functional annotation. It is sad.")
         else:
