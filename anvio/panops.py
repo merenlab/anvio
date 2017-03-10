@@ -129,7 +129,6 @@ class GenomeStorage(object):
                 function_annotation_sources_per_genome[genome_name] = sources
                 all_function_annotation_sources_observed.update(sources)
 
-        print(genomes_with_no_functional_annotation)
         if genomes_with_no_functional_annotation:
             if len(genomes_with_no_functional_annotation) == len(self.genomes):
                 self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
