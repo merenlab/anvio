@@ -184,8 +184,10 @@ class VariabilitySuper(object):
                                 Sorry, there is nothing to report here!")
 
         # populate substitution scoring matrices
+        self.progress.end()
         import anvio.data.SSMs as SSMs
-        self.substitution_scoring_matrices = SSMs.data[self.engine]
+        self.substitution_scoring_matrices = SSMs.get(self.engine)
+        self.progress.new('Init')
 
         ##################### LOAD ENGINE-SPECIFIC DATA #####################
         # data is one of them, since they will be read from different tables.
