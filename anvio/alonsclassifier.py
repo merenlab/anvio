@@ -394,21 +394,21 @@ class AlonsClassifier:
                                                                                                   'gene_class',
                                                                                                   'number_of_detections', 'portion_detected'] + additional_column_titles)
 
-    def classify(self):
-        self.gene_class_information, detection_of_genome_in_samples = self.get_gene_classes()
-        self.save_gene_class_information_in_additional_layers()
-
+    def save_detection_of_genome_in_samples_in_samples_information(self):
         if not self.samples_information_to_append:
             samples_information_column_titles = []
-            samples_information_dict = detection_of_genome_in_samples
+            samples_information_dict = self.detection_of_genome_in_samples
         else:
             samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
             samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
-                                                                                dict_to_append=detection_of_genome_in_samples,
+                                                                                dict_to_append=self.detection_of_genome_in_samples,
                                                                                 assign_none_for_missing=True,
                                                                                 column_mapping=[str]+[str]*len(
                                                                                     samples_information_column_titles))
         utils.store_dict_as_TAB_delimited_file(samples_information_dict, self.sample_detection_output,
                                                    headers=['samples','detection'] + samples_information_column_titles)
 
-
+    def classify(self):
+        self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
+        self.save_gene_class_information_in_additional_layers()
+        self.save_detection_of_genome_in_samples_in_samples_information()
