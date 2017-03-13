@@ -53,6 +53,7 @@ class AlonsClassifier:
         self.samples_information_to_append = A('samples_information_to_append')
         self.gene_class_information = {}
         self.detection_of_genome_in_samples = {}
+        self.profile_db = {}
 
         self.sanity_check()
         if self.profile_db_path is None:
@@ -61,9 +62,6 @@ class AlonsClassifier:
             # load sample list and gene_coverage_dict from the merged profile db
             self.profile_db = ProfileSuperclass(args)
             self.profile_db.init_gene_coverages_and_detection_dicts()
-            self.gene_coverages = self.profile_db.gene_coverages_dict
-            self.gene_detection = self.profile_db.gene_detection_dict
-            self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
 
     def sanity_check(self):
@@ -409,6 +407,11 @@ class AlonsClassifier:
                                                    headers=['samples','detection'] + samples_information_column_titles)
 
     def classify(self):
+        if self.profile_db:
+            # getting the coverage and detection dictionaries
+            self.gene_coverages = self.profile_db.gene_coverages_dict
+            self.gene_detection = self.profile_db.gene_detection_dict
+            self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
         self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
         self.save_gene_class_information_in_additional_layers()
         self.save_detection_of_genome_in_samples_in_samples_information()
