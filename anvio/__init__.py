@@ -1122,6 +1122,15 @@ D = {
                       contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
                       the memory use never exceeds the size of the physical memory."}
                 ),
+    'export-svg': (
+            ['--export-svg'],
+            {'default': False,
+            'type': str,
+             'metavar': 'FILE_PATH',
+             'required': False,
+             'help': "export svg help"}
+                ),
+
 }
 
 # two functions that works with the dictionary above.
