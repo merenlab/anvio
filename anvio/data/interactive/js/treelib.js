@@ -2917,6 +2917,14 @@ function redrawBins()
                 false);
         }
     }
+
+    try{
+        var fake_event = {'target': {'id': '#line' + order_to_node_map[0].id}};
+        lineMouseLeaveHandler(fake_event);
+    }catch(err){
+        console.log("Triggering mouseLeaveHandler failed.");
+        console.log(err);
+    }
 }
 
 
