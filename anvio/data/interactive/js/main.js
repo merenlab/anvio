@@ -1738,7 +1738,7 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg() {
+function exportSvg(dontDownload) {
     // check if tree parsed, which means there is a tree on the screen
     if ($.isEmptyObject(label_to_node_map)) 
         return;
@@ -1776,6 +1776,10 @@ function exportSvg() {
     var detached_clones = $('#samples_tree path.clone').detach();
     drawTitle(last_settings);
     drawLegend();
+
+    if (dontDownload == true) {
+        return;
+    }
 
     svgCrowbar();
 
