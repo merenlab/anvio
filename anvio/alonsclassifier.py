@@ -60,7 +60,7 @@ class AlonsClassifier:
             self.profile_db = ProfileSuperclass(args)
             self.profile_db.init_gene_coverages_and_detection_dicts()
             self.gene_coverages = self.profile_db.gene_coverages_dict
-            self.gene_detection = self.profile_db.gene_detection_dict 
+            self.gene_detection = self.profile_db.gene_detection_dict
             self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
 
 
@@ -377,23 +377,25 @@ class AlonsClassifier:
         except:
             raise ConfigError("The class id '%d' is not a valid one. Try one of these: '%s'" % (class_id, ', '.join(list(classes.keys()))))
 
-
-    def classify(self):
-        gene_class_information, detection_of_genome_in_samples = self.get_gene_classes()
-    
+    def save_gene_class_information_in_additional_layers(self):
         if not self.additional_layers_to_append:
             additional_column_titles = []
-            additional_layers_dict = gene_class_information
+            additional_layers_dict = self.gene_class_information
         else:
             additional_column_titles = utils.get_columns_of_TAB_delim_file(self.additional_layers_to_append)
             additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_to_append,
-                                                                                dict_to_append=gene_class_information,
+                                                                                dict_to_append=self.gene_class_information,
                                                                                 assign_none_for_missing=True,
-                                                                                column_mapping=[int]+[str]*len(additional_column_titles))
-    
+                                                                                column_mapping=[int] + [str] * len(additional_column_titles))
+
         utils.store_dict_as_TAB_delimited_file(additional_layers_dict, self.output_file, headers=['gene_callers_id',
-                                                                                                       'gene_class',
-                                                                                                       'number_of_detections', 'portion_detected'] + additional_column_titles)
+                                                                                                  'gene_class',
+                                                                                                  'number_of_detections', 'portion_detected'] + additional_column_titles)
+
+    def classify(self):
+        self.gene_class_information, detection_of_genome_in_samples = self.get_gene_classes()
+        self.save_gene_class_information_in_additional_layers()
+
         if not self.samples_information_to_append:
             samples_information_column_titles = []
             samples_information_dict = detection_of_genome_in_samples
