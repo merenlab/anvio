@@ -70,6 +70,9 @@ class AlonsClassifier:
         if self.profile_db_path is None and self.gene_coverages_data_file_path is None:
             raise ConfigError("You must provide either a profile.db or a gene coverage matrix data file")
 
+        if self.profile_db_path and self.gene_coverages_data_file_path:
+            raise ConfigError("You provided both a profile database and a gene coverage matrix data file, you \
+            must provide only one or the other (hint: if you have a profile database, the use that")
         # checking alpha
         if not isinstance(self.alpha, float):
             raise ConfigError("alpha value must be a type float.")
@@ -92,7 +95,10 @@ class AlonsClassifier:
         if self.eta <= 0 or self.eta > 1:
             raise ConfigError("eta value must be greater than zero and a max of 1, the value you supplied %s" % self.eta)
 
-
+        if self.collection_name:
+            if not self.profile_db_path:
+                raise ConfigError("You specified a collection name %s, but you provided a gene coverage matrix data file \
+                 collections are only available when working with a profile database." % self.collection_name)
 
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
