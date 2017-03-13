@@ -26,7 +26,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
 with SuppressAllOutput():
@@ -1555,6 +1555,45 @@ def download_file(url, output_file_path, progress=progress, run=run):
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
 
+
+def run_selenium_and_export_svg(url, filename, run):
+    if filesnpaths.is_file_exists(filename, dont_raise=True):
+        raise FilesNPathsError("The output file already exists. anvio does not like overwriting stuff.")
+
+    filesnpaths.is_output_file_writable(filename)
+    
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.common.exceptions import TimeoutException
+    except:
+        print("Selenium required for this functionality.")
+
+    driver = webdriver.Chrome()
+    driver.wait = WebDriverWait(driver, 10)
+    driver.set_window_size(1920, 1080)
+    driver.get(url)
+
+    try:
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID,"draw_delta_time"), "objects drawn in"))
+    except TimeoutException:
+        print("Timeout occured, could not get the SVG drawing in 600 seconds.")
+        driver.quit()
+    time.sleep(1)
+
+    driver.execute_script("exportSvg(true);")
+    time.sleep(1)
+
+    svg = driver.find_element_by_id('panel-center')
+
+    svg_file = open(filename, 'w')
+    svg_file.write(svg.get_attribute('innerHTML'))
+    svg_file.close()
+    driver.quit()
+
+    run.info_single('\'%s\' saved successfully.' % filename)
 
 def RepresentsInt(s):
     try:
