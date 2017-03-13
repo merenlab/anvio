@@ -52,7 +52,6 @@ if __name__ == '__main__':
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The gene_ids and sample_ids should match the ones in the gene_coverages data-file.")
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupB.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
