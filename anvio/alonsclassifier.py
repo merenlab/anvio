@@ -51,6 +51,9 @@ class AlonsClassifier:
         self.zeta = A('zeta')
         self.additional_layers_to_append = A('additional_layers_to_append')
         self.samples_information_to_append = A('samples_information_to_append')
+        self.collection_name = A('collection_name')
+        self.bin_id = A('bin_id')
+        self.bin_ids_file_path = A('bin_ids_file')
         self.gene_class_information = {}
         self.detection_of_genome_in_samples = {}
         self.profile_db = {}
