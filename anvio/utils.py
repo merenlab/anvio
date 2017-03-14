@@ -1556,12 +1556,12 @@ def download_file(url, output_file_path, progress=progress, run=run):
     run.info('Downloaded succesfully', output_file_path)
 
 
-def run_selenium_and_export_svg(url, filename, run):
-    if filesnpaths.is_file_exists(filename, dont_raise=True):
-        raise FilesNPathsError("The output file already exists. anvio does not like overwriting stuff.")
+def run_selenium_and_export_svg(url, output_file_path, run=run):
+    if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
+        raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
 
-    filesnpaths.is_output_file_writable(filename)
-    
+    filesnpaths.is_output_file_writable(output_file_path)
+
     try:
         from selenium import webdriver
         from selenium.webdriver.common.by import By
@@ -1569,7 +1569,9 @@ def run_selenium_and_export_svg(url, filename, run):
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.common.exceptions import TimeoutException
     except:
-        print("Selenium required for this functionality.")
+        raise ConfigError("You want to export SVGs? Well, you need the Python library 'selenium' to be able to\
+                           do that but you don't have it. If you are lucky, you probably can install it by\
+                           typing 'pip install selenium' or something :/")
 
     driver = webdriver.Chrome()
     driver.wait = WebDriverWait(driver, 10)
@@ -1588,12 +1590,13 @@ def run_selenium_and_export_svg(url, filename, run):
 
     svg = driver.find_element_by_id('panel-center')
 
-    svg_file = open(filename, 'w')
+    svg_file = open(output_file_path, 'w')
     svg_file.write(svg.get_attribute('innerHTML'))
     svg_file.close()
     driver.quit()
 
-    run.info_single('\'%s\' saved successfully.' % filename)
+    run.info_single('\'%s\' saved successfully.' % output_file_path)
+
 
 def RepresentsInt(s):
     try:
