@@ -39,9 +39,7 @@ if __name__ == '__main__':
     group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', "There are two output files that need to be defined: output-file for gene information (gene \
                                                         class and gene detection) and sample-detection-output for the detection of the reference genome across \
                                                          samples.")
-    group1.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-
-    group1.add_argument('-s', '--sample-detection-output', metavar='FILE', help="Output file for sample detection information")
+    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
                                                             outputs would be added to these files")
     groupB.add_argument('-A', '--additional-layers', metavar='FILE', dest='additional_layers_to_append', default=None,
