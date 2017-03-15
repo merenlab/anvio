@@ -404,7 +404,7 @@ class VariabilitySuper(object):
             coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
             e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
 
-            # this is where we will make use of the substitution scoring matrices framwork.
+            # this is where we will make use of the substitution scoring matrices framework.
             #
             # FIXME: here is some code to recover from a design flaw. we have competing_nts in the NT table, but we don't
             #        have competing_aas in the AA table. this should be fixed by removing the competing_nts from the NT
