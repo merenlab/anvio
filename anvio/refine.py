@@ -50,6 +50,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
+        self.title = A('title')
 
         dbops.is_contigs_db(self.contigs_db_path)
         dbops.is_profile_db(self.profile_db_path)
@@ -109,10 +110,12 @@ class RefineBins(dbops.DatabasesMetaclass):
 
         # set a more appropriate title
         bins = sorted(list(self.bins))
-        title = 'Refining %s%s from "%s"' % (', '.join(bins[0:3]),
-                                              ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
-                                              self.collection_name)
-        d.title = textwrap.fill(title)
+
+        if not self.title:
+            self.title = 'Refining %s%s from "%s"' % (', '.join(bins[0:3]),
+                                                      ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
+                                                      self.collection_name)
+        d.title = textwrap.fill(self.title)
 
         return d
 
