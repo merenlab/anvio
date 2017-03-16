@@ -1777,12 +1777,17 @@ function exportSvg(dontDownload) {
     drawTitle(last_settings);
     drawLegend();
 
+    var svg = document.getElementById('svg');
+    var viewBox = svg.getBBox();
+    svg.setAttribute('viewBox', viewBox['x'] + " " + viewBox['y'] + " " + viewBox['width'] + " " + viewBox['height'])
+
     if (dontDownload == true) {
         return;
     }
 
     svgCrowbar();
 
+    svg.removeAttribute('viewBox');
     $('#samples_tree').prepend(detached_clones);
     $('#bin_legend').remove();
     $('#layer_legend').remove();
