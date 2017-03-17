@@ -149,6 +149,23 @@
     </section>
 
 
+    <section>
+        <div class="container">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
+                </div>
+
+                <div id="collapse-description" class="panel-collapse collapse">
+
+                <div class="well" style="margin: 10px;">{% autoescape off %}{{ basics_pretty|lookup:"description" }}{% endautoescape %}</div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+
     <!-- BINS PANEL -->
     <section>
         <div class="container">
@@ -471,13 +488,13 @@
     {% endif %}
 
 
-    {% if meta|lookup:"gene_coverages_data_available" %}
-    <!-- FUNCTIONS PANEL -->
+    {% if meta|lookup:"contigs"|lookup:"genes_are_called" %}
+    <!-- GENES PANEL -->
     <section>
     <div class="container">
-        <div class="panel panel-info" id="functions_panel">
+        <div class="panel panel-info" id="genes_panel">
             <div class="panel-heading">
-                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#functions_panel" href="#collapse-functions">Genes &amp; Functions</a></h1>
+                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
             </div>
 
             <div id="collapse-functions" class="panel-collapse collapse">
@@ -504,7 +521,14 @@
                                         <td style="vertical-align: middle;">{{ bin }}</td>
                                         <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
                                         <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
-                                        <td class="text-center" style="vertical-align: middle;"><a href="{{ collection|lookup:bin|lookup:"files"|lookup:"functions" }}">🔗  Link</a></td>
+                                        <td class="text-center" style="vertical-align: middle;">🔗  
+                                                <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_calls" }}">genes</a> |
+                                                    {% if meta|lookup:"contigs"|lookup:"gene_coverages_data_available" %}
+                                                        gene_coverages | detection
+                                                    {% else %}
+                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_coverages" }}">gene_coverages</a> | <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_detection" }}">detection</a>
+                                                    {% endif %}
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -520,7 +544,7 @@
     <section>
         <div class="container">
             <div class="panel panel-warning">
-                <div class="panel-heading"><h3 class="panel-title">Functions <small>(none found)</small></h3></div>
+                <div class="panel-heading"><h3 class="panel-title">No gene calls are found</h3></div>
             </div>
         </div>
     </section>
