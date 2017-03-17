@@ -55,7 +55,7 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Bins that were identified in the <b>{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == '1' %}
+                Bins that were identified in the <b>{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
                 merged {% else %} single {% endif %}{% endif %}</b> profile database '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
                 database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accountig for
                 <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b>
@@ -75,7 +75,7 @@
 
                 <div id="collapse-basics" class="panel-collapse collapse in">
 
-                <div class="well" style="margin: 10px;">The {% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == '1' %} merged {% else %} single {% endif %}{% endif %} profile database that was generated
+                <div class="well" style="margin: 10px;">The {% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %} merged {% else %} single {% endif %}{% endif %} profile database that was generated
                                                         with the minimum contig length of <b>{{ meta|lookup:"profile"|lookup:"min_contig_length"|pretty }}</b>
                                                         contained <b>{{ meta|lookup:"profile"|lookup:"num_contigs"|pretty }}</b> contigs, which correspond to
                                                         <b>{{ meta|lookup:"percent_contigs_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
