@@ -1588,13 +1588,13 @@ function draw_tree(settings) {
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
-        var intersecion_counter = 0;
+        var intersection_counter = 0;
 
         order_counter = 0;
         while (q != null)
         {
             if (!q.IsLeaf()) {
-                q.label = "Int_" + (intersecion_counter++);
+                q.label = "Int_" + (intersection_counter++);
             }
 
             label_to_node_map[q.label] = q;
