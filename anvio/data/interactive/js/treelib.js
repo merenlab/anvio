@@ -571,7 +571,7 @@ function formatString(s) {
 function Node(label) {
     if (typeof label === 'undefined')
     {
-        label = 'UnnamedIntersection' + (unnamed_intersection_counter++);
+        label = 'UnnamedNode' + (unnamed_node_counter++);
     }
     this.ancestor = null;
     this.child = null;
@@ -1526,7 +1526,7 @@ function draw_tree(settings) {
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = {};
-    unnamed_intersection_counter = 0;
+    unnamed_node_counter = 0;
 
     if (clusteringData.constructor === Array)
     {
