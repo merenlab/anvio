@@ -7,6 +7,7 @@ import sys
 import gzip
 import numpy
 import shutil
+import mistune
 import textwrap
 
 from collections import Counter
@@ -389,6 +390,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('Number of contigs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
+                                                     ('SNVs profiled', self.p_meta['SNVs_profiled']),
+                                                     ('SAAVs profiled', self.p_meta['AA_frequencies_profiled']),
                                                     ],
                                          'contigs': [
                                                         ('Created on', self.p_meta['creation_date']),
@@ -398,7 +401,11 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                         ('Number of splits', pretty(int(self.a_meta['num_splits']))),
                                                         ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('K-mer size', self.a_meta['kmer_size']),
+                                                        ('Genes are called', self.a_meta['genes_are_called']),
+                                                        ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
+                                                        ('Gene function sources', ', '.join(self.a_meta['gene_function_sources'])),
                                                     ],
+                                        'description': mistune.markdown(self.p_meta['description']),
                                         }
 
         self.summary['max_shown_header_items'] = 10
@@ -559,8 +566,8 @@ class Bin:
 
         self.set_taxon_calls()
 
-        if self.summary.gene_coverages_dict:
-            self.store_gene_coverages_and_functions()
+        self.store_genes_basic_info()
+        self.store_gene_coverages_and_detection()
 
         self.store_profile_data()
 
@@ -692,31 +699,48 @@ class Bin:
         return gene_callers_ids_for_complete_genes
 
 
-    def get_gene_coverages_across_samples_dict(self):
-        d = {}
+    def get_gene_coverages_and_detection_across_samples_dicts(self):
+        """Returns gene coverages and gene detection values across samples for a bin."""
+        gene_coverages = {}
+        gene_detection = {}
 
         for gene_callers_id in self.gene_caller_ids:
-            d[gene_callers_id] = {}
+            gene_coverages[gene_callers_id], gene_detection[gene_callers_id] = {}, {}
 
             for sample_name in self.summary.p_meta['samples']:
-                d[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+                gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+                gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
 
-        return d
+        return (gene_coverages, gene_detection)
 
 
-    def store_gene_coverages_and_functions(self):
+    def store_gene_coverages_and_detection(self):
+        if self.summary.quick:
+            return
+
+        if not self.summary.gene_coverages_dict:
+            return
+
+        self.progress.update('Storing gene coverages ...')
+
+        headers = ['gene_callers_id'] + self.summary.p_meta['samples']
+        gene_coverages, gene_detection = self.get_gene_coverages_and_detection_across_samples_dicts()
+
+        utils.store_dict_as_TAB_delimited_file(gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
+        utils.store_dict_as_TAB_delimited_file(gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
+
+
+    def store_genes_basic_info(self):
         if self.summary.quick:
             return
 
         self.progress.update('Sorting out gene calls ...')
 
-        # here we get the dictionary `d`, which will be holding gene coverages
-        # then fill the rest up with funcitons and others stuff in the following
-        # for loop
-        d = self.get_gene_coverages_across_samples_dict()
+        d = {}
 
         headers = ['contig', 'start', 'stop', 'direction']
         for gene_callers_id in self.gene_caller_ids:
+            d[gene_callers_id] = {}
             # add sample independent information into `d`;
             for header in headers:
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
@@ -744,15 +768,15 @@ class Bin:
             stop = self.summary.genes_in_contigs_dict[gene_callers_id]['stop']
             d[gene_callers_id]['sequence'] = self.summary.contig_sequences[contig]['sequence'][start:stop]
 
-        output_file_obj = self.get_output_file_handle('functions.txt')
+        output_file_obj = self.get_output_file_handle('gene_calls.txt')
 
         if self.summary.gene_function_call_sources:
             sources = [[source, source + ' (ACCESSION)'] for source in self.summary.gene_function_call_sources]
-            headers = ['prot'] + headers + self.summary.p_meta['samples'] + [item for sublist in sources for item in sublist] + ['sequence']
+            headers = ['gene_callers_id'] + headers + [item for sublist in sources for item in sublist] + ['sequence']
         else:
-            headers = ['prot'] + headers + self.summary.p_meta['samples'] + ['sequence']
+            headers = ['gene_callers_id'] + headers + ['sequence']
 
-        self.progress.update('Stroing gene coverages and functions ...')
+        self.progress.update('Stroing genes basic info ...')
         utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
         self.bin_info_dict['genes'] = {'num_genes_found': len(self.gene_caller_ids)}
