@@ -1,6 +1,28 @@
 # coding: utf-8
 # pylint: disable=line-too-long
-"""Summarizes information for a collection."""
+"""Summarizes information for a collection.
+
+It also gives access to bin data that may be useful. For instance, did you know
+could totally do this to access to gene coverage and detection dicts for a given
+bin in a given collection:
+
+import anvio.summarizer as summarizer
+
+    >>> class Args: None
+    >>> args = Args()
+    >>> args.profile_db = 'SAMPLES-MERGED/PROFILE.db'
+    >>> args.contigs_db = 'CONTIGS.db'
+    >>> args.collection_name = "CONCOCT"
+
+    >>> summary = summarizer.ProfileSummarizer(args)
+    >>> summary.init()
+    >>> _bin = summarizer.Bin(summary, 'Bin_1')
+
+    # now you have these:
+    >>> _bin.gene_coverages
+    >>> _bin.gene_detection
+
+"""
 
 import os
 import sys
@@ -87,23 +109,26 @@ class SummarizerSuperClass(object):
             self.collections.populate_collections_dict(self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path) if self.contigs_db_path else None
 
-        if args.list_collections:
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        if A('list_collections'):
             self.collections.list_collections()
             sys.exit()
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.collection_name = A('collection_name')
         self.skip_check_collection_name = A('skip_check_collection_name')
         self.skip_init_functions = A('skip_init_functions')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
-        self.taxonomic_level = A('taxonomic_level')
+        self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
 
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
+        if self.output_directory:
+            self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
 
 
     def sanity_check(self):
@@ -113,8 +138,6 @@ class SummarizerSuperClass(object):
 
             if self.collection_name not in self.collections.collections_dict:
                 raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
-
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
 
     def get_output_file_handle(self, sub_directory=None, prefix='output.txt', overwrite=False, within=None, compress_output=False, add_project_name=False):
@@ -339,13 +362,17 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         self.init_splits_taxonomy(self.taxonomic_level)
 
+        self.collection_dict = {}
+        self.bins_info_dict = {}
+        self.initialized = False
 
-    def process(self):
+
+    def init(self):
         # init profile data for colletion.
-        collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
 
         # let bin names known to all
-        bin_ids = list(self.collection_profile.keys())
+        self.bin_ids = list(self.collection_profile.keys())
 
         # load completeness information if available
         self.completeness = completeness.Completeness(self.contigs_db_path)
@@ -364,8 +391,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['meta'] = {'quick': self.quick,
                                 'summary_type': self.summary_type,
                                 'output_directory': self.output_directory,
-                                'collection': bin_ids,
-                                'num_bins': len(bin_ids),
+                                'collection': self.bin_ids,
+                                'num_bins': len(self.bin_ids),
                                 'collection_name': self.collection_name,
                                 'total_nts_in_collection': 0,
                                 'num_contigs_in_collection': 0,
@@ -422,17 +449,29 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if self.non_single_copy_gene_hmm_data_available:
             self.summary['meta']['hmm_items'] = dict([(hmm_search_source, self.hmm_sources_info[hmm_search_source]['genes']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
+        # yay
+        self.initialized = True
+
+
+    def process(self):
+        if not self.initialized:
+            self.init()
+
+        if not self.output_directory:
+            raise ConfigError("It seems the summarizer class have been inherited without an `output_directory` argument :/ Show stopper\
+                               mistake stopped the show. Bye!")
+
         # summarize bins:
-        for i in range(0, len(bin_ids)):
-            bin_id = bin_ids[i]
-            self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(bin_ids)))
-            bin = Bin(self, bin_id, collection_dict[bin_id], self.run, self.progress)
+        for i in range(0, len(self.bin_ids)):
+            bin_id = self.bin_ids[i]
+            self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(self.bin_ids)))
+            bin = Bin(self, bin_id, self.run, self.progress)
             bin.output_directory = os.path.join(self.output_directory, 'bin_by_bin', bin_id)
             bin.bin_profile = self.collection_profile[bin_id]
 
             self.summary['collection'][bin_id] = bin.create()
-            self.summary['collection'][bin_id]['color'] = bins_info_dict[bin_id]['html_color'] or '#212121'
-            self.summary['collection'][bin_id]['source'] = bins_info_dict[bin_id]['source'] or 'unknown_source'
+            self.summary['collection'][bin_id]['color'] = self.bins_info_dict[bin_id]['html_color'] or '#212121'
+            self.summary['collection'][bin_id]['source'] = self.bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
             self.progress.end()
@@ -514,10 +553,22 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
 
 class Bin:
-    def __init__(self, summary, bin_id, split_ids, r=run, p=progress):
+    def __init__(self, summary, bin_id, r=run, p=progress):
         self.summary = summary
+
+        if not self.summary.initialized:
+            raise ConfigError("The summary object you sent to the `Bin` class to make sense of the bin '%s' does\
+                               not seem to have been initialized. Anvi'o could have taken care of it for you, but\
+                                it will not (not only because anvi'o is implemented by mean people, but also it kinda\
+                                likes to be explicit about this kind of stuff). Please initialize your summary object\
+                                first." % (bin_id))
+
+        if bin_id not in self.summary.bin_ids:
+            raise ConfigError("Bin '%s' does not seem to be in this summary :/ These are the ones in it: %s." % (bin_id, ', '.join(self.summary.bin_ids)))
+
+        self.split_ids = summary.collection_dict[bin_id]
+
         self.bin_id = bin_id
-        self.split_ids = split_ids
         self.progress = p
         self.run = r
         self.across_samples = {}
@@ -548,6 +599,18 @@ class Bin:
 
         self.gene_caller_ids = self.get_gene_caller_ids()
 
+        # make these dicts avilable:
+        self.gene_coverages = {}
+        self.gene_detection = {}
+
+        if self.summary.gene_coverages_dict:
+            for gene_callers_id in self.gene_caller_ids:
+                self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
+
+                for sample_name in self.summary.p_meta['samples']:
+                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
+
 
     def create(self):
         self.create_bin_dir()
@@ -567,6 +630,7 @@ class Bin:
         self.set_taxon_calls()
 
         self.store_genes_basic_info()
+
         self.store_gene_coverages_and_detection()
 
         self.store_profile_data()
@@ -699,21 +763,6 @@ class Bin:
         return gene_callers_ids_for_complete_genes
 
 
-    def get_gene_coverages_and_detection_across_samples_dicts(self):
-        """Returns gene coverages and gene detection values across samples for a bin."""
-        gene_coverages = {}
-        gene_detection = {}
-
-        for gene_callers_id in self.gene_caller_ids:
-            gene_coverages[gene_callers_id], gene_detection[gene_callers_id] = {}, {}
-
-            for sample_name in self.summary.p_meta['samples']:
-                gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
-                gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
-
-        return (gene_coverages, gene_detection)
-
-
     def store_gene_coverages_and_detection(self):
         if self.summary.quick:
             return
@@ -724,10 +773,9 @@ class Bin:
         self.progress.update('Storing gene coverages ...')
 
         headers = ['gene_callers_id'] + self.summary.p_meta['samples']
-        gene_coverages, gene_detection = self.get_gene_coverages_and_detection_across_samples_dicts()
 
-        utils.store_dict_as_TAB_delimited_file(gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
 
 
     def store_genes_basic_info(self):
