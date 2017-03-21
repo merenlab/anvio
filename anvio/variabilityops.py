@@ -184,8 +184,10 @@ class VariabilitySuper(object):
                                 Sorry, there is nothing to report here!")
 
         # populate substitution scoring matrices
+        self.progress.end()
         import anvio.data.SSMs as SSMs
-        self.substitution_scoring_matrices = SSMs.data[self.engine]
+        self.substitution_scoring_matrices = SSMs.get(self.engine)
+        self.progress.new('Init')
 
         ##################### LOAD ENGINE-SPECIFIC DATA #####################
         # data is one of them, since they will be read from different tables.
@@ -402,7 +404,7 @@ class VariabilitySuper(object):
             coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
             e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
 
-            # this is where we will make use of the substitution scoring matrices framwork.
+            # this is where we will make use of the substitution scoring matrices framework.
             #
             # FIXME: here is some code to recover from a design flaw. we have competing_nts in the NT table, but we don't
             #        have competing_aas in the AA table. this should be fixed by removing the competing_nts from the NT

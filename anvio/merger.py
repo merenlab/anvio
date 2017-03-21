@@ -271,9 +271,9 @@ class MultipleRuns:
             self.normalization_multiplier[input_profile_db_path] = smallest_sample_size * 1.0 / self.total_reads_mapped_per_sample[sample_id]
 
         PRETTY = lambda x: ', '.join(['%s: %.2f' % (self.profile_dbs_info_dict[s]['sample_id'], x[s]) for s in sorted(list(x.keys()))])
-        self.run.warning("anvio just set the normalization values for each sample based on\
-                          how many mapped reads they contained. All normalized coverages\
-                          will use this information: %s" % PRETTY(self.normalization_multiplier))
+        self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained.\
+                          This information will only be used to calculate the normalized coverage table. Here are those values: %s" %\
+                                            PRETTY(self.normalization_multiplier))
 
 
     def merge(self):

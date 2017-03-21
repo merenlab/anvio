@@ -571,7 +571,7 @@ function formatString(s) {
 function Node(label) {
     if (typeof label === 'undefined')
     {
-        label = 'UnnamedIntersection' + (unnamed_intersection_counter++);
+        label = 'UnnamedNode' + (unnamed_node_counter++);
     }
     this.ancestor = null;
     this.child = null;
@@ -1526,7 +1526,7 @@ function draw_tree(settings) {
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = {};
-    unnamed_intersection_counter = 0;
+    unnamed_node_counter = 0;
 
     if (clusteringData.constructor === Array)
     {
@@ -1588,10 +1588,15 @@ function draw_tree(settings) {
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
+        var intersection_counter = 0;
 
         order_counter = 0;
         while (q != null)
         {
+            if (!q.IsLeaf()) {
+                q.label = "Int_" + (intersection_counter++);
+            }
+
             label_to_node_map[q.label] = q;
             id_to_node_map[q.id] = q;
             
@@ -2916,6 +2921,14 @@ function redrawBins()
                 1,
                 false);
         }
+    }
+
+    try{
+        var fake_event = {'target': {'id': '#line' + order_to_node_map[0].id}};
+        lineMouseLeaveHandler(fake_event);
+    }catch(err){
+        console.log("Triggering mouseLeaveHandler failed.");
+        console.log(err);
     }
 }
 
