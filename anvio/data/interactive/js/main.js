@@ -167,8 +167,6 @@ $(document).ready(function() {
         }
     });
 
-    initData();
-
     // initialize colorpicker for search result highlight color.
     $('#picker_highlight').colpick({
         layout: 'hex',
@@ -212,9 +210,10 @@ $(document).ready(function() {
         }  
     });
 
+    initData();
 }); // document ready
 
-function initData () {
+function initData() {
     var timestamp = new Date().getTime(); 
 
     $.when(
@@ -284,6 +283,7 @@ function initData () {
             } else if (mode == 'server') {
                 $('.server-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
+                initProjectInfoBar();
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
