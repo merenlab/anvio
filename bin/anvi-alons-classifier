@@ -47,9 +47,9 @@ if __name__ == '__main__':
     groupB.add_argument('-D', '--gene_detection_data_file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of detection values of \
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The gene_ids and sample_ids should match the ones in the gene_coverages data-file.")
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', metavar='NUM', type=float, default=0.8,
                         help='portion of TSC genes required to decide a genome is detected in a sample (default 0.8)')

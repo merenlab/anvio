@@ -64,11 +64,15 @@ class AlonsClassifier:
             self.get_data_from_txt_file()
         else:
             # load sample list and gene_coverage_dict from the merged profile db
-            self.summary = summarizer.ProfileSummarizer(args)
-            self.summary.init()
-            if not self.collection_name:
-                self.gene_coverages = self.summary.gene_coverages_dict
-                self.gene_detection = self.summary.gene_detection_dict
+            args.init_gene_coverages = True
+            if self.collection_name:
+                self.summary = summarizer.ProfileSummarizer(args)
+                self.summary.init()
+            else:
+                self.profile_db = ProfileSuperclass(args)
+                self.profile_db.init_gene_coverages_and_detection_dicts()
+                self.gene_coverages = self.profile_db.gene_coverages_dict
+                self.gene_detection = self.profile_db.gene_detection_dict
                 self.samples = set(next(iter(self.gene_coverages.values())).keys())
 
 
