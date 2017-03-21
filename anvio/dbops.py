@@ -1014,6 +1014,7 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        init_gene_coverages = A('init_gene_coverages')
 
         if not self.profile_db_path:
             self.run.warning("ProfileSuperclass class called with args without profile_db member. Anvi'o will assume\
@@ -1074,6 +1075,9 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
+
+        if init_gene_coverages:
+            self.init_gene_coverages_and_detection_dicts()
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
@@ -1313,7 +1317,6 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
-        self.init_gene_coverages_and_detection_dicts()
 
 
 ####################################################################################################
@@ -1363,15 +1366,14 @@ class ProfileDatabase:
             self.db = None
 
 
-    def create(self, meta_values={}):
+    def touch(self):
+        """Creates an empty profile database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
         is_db_ok_to_create(self.db_path, 'profile')
 
         self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
-
-        for key in meta_values:
-            self.db.set_meta_value(key, meta_values[key])
-
-        self.db.set_meta_value('creation_date', time.time())
 
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
@@ -1383,6 +1385,17 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
 
         self.disconnect()
 
@@ -1511,6 +1524,46 @@ class ContigsDatabase:
             self.db = None
 
 
+    def get_date(self):
+        return time.time()
+
+
+    def get_hash(self):
+        return '%08x' % random.randrange(16**8)
+
+
+    def touch(self):
+        """Creates an empty contigs database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
+        is_db_ok_to_create(self.db_path, 'contigs')
+
+        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
+
+        # creating empty default tables
+        self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
+        self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
+        self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
+        self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
+        self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
+        self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
+        self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
+        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
+        self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
+        self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
+        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
+        self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
+        self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
+
+        return self.db
+
+
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
@@ -1520,8 +1573,6 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         debug = A('debug')
-
-        is_db_ok_to_create(self.db_path, 'contigs')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
@@ -1586,31 +1637,15 @@ class ContigsDatabase:
         if skip_gene_calling:
             skip_mindful_splitting = True
 
-        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
-
-        # creating empty default tables
-        self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
-        self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
-        self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
-        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
-        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
-        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
-        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
-        self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
-        self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
-        self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
-        self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
-        self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
-        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
-        self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
-        self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
-        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
+        # create a blank contigs database on disk, and set the self.db
+        self.touch()
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
         # this will be the unique information that will be passed downstream whenever this db is used:
-        contigs_db_hash = '%08x' % random.randrange(16**8)
+        contigs_db_hash = self.get_hash()
         self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
+
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
@@ -1662,7 +1697,7 @@ class ContigsDatabase:
         recovered_split_lengths = []
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
-        self.progress.new('South Loop')
+        self.progress.new('The South Loop')
         fasta.reset()
         while next(fasta):
             contig_name = fasta.id
@@ -1723,7 +1758,7 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
-        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
         if not skip_gene_calling:
@@ -1940,7 +1975,6 @@ class InfoTableForContigs:
 
 
     def store(self, db):
-        db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
@@ -1959,7 +1993,6 @@ class InfoTableForSplits:
 
 
     def store(self, db):
-        db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
