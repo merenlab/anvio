@@ -40,7 +40,7 @@ var label_to_node_map = {};
 var order_to_node_map = {};
 var leaf_count;
 var samples_id_to_node_map;
-var unnamed_intersection_counter;
+var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
@@ -1738,7 +1738,7 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg() {
+function exportSvg(dontDownload) {
     // check if tree parsed, which means there is a tree on the screen
     if ($.isEmptyObject(label_to_node_map)) 
         return;
@@ -1777,8 +1777,17 @@ function exportSvg() {
     drawTitle(last_settings);
     drawLegend();
 
+    var svg = document.getElementById('svg');
+    var viewBox = svg.getBBox();
+    svg.setAttribute('viewBox', viewBox['x'] + " " + viewBox['y'] + " " + viewBox['width'] + " " + viewBox['height'])
+
+    if (dontDownload == true) {
+        return;
+    }
+
     svgCrowbar();
 
+    svg.removeAttribute('viewBox');
     $('#samples_tree').prepend(detached_clones);
     $('#bin_legend').remove();
     $('#layer_legend').remove();
