@@ -97,6 +97,24 @@ class DB:
         self.commit()
 
 
+    def update_meta_value(self, key, value):
+        self.remove_meta_key_value_pair(key)
+        self.set_meta_value(key, value)
+
+
+    def copy_paste(self, table_name, source_db_path):
+        """Copy `table_name` data from another database (`source_db_path`) into yourself"""
+
+        source_db = DB(source_db_path, None, ignore_version=True)
+        data = source_db.get_all_rows_from_table(table_name)
+
+        if not len(data):
+            return
+
+        self._exec('''DELETE FROM %s''' % table_name)
+        self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
+
+
     def get_meta_value(self, key):
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
@@ -142,6 +160,11 @@ class DB:
 
     def get_all_rows_from_table(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
+        return response.fetchall()
+
+
+    def get_some_rows_from_table(self, table, where_clause):
+        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause))
         return response.fetchall()
 
 
