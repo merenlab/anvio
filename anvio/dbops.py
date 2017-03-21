@@ -1366,15 +1366,14 @@ class ProfileDatabase:
             self.db = None
 
 
-    def create(self, meta_values={}):
+    def touch(self):
+        """Creates an empty profile database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
         is_db_ok_to_create(self.db_path, 'profile')
 
         self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
-
-        for key in meta_values:
-            self.db.set_meta_value(key, meta_values[key])
-
-        self.db.set_meta_value('creation_date', time.time())
 
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
@@ -1386,6 +1385,17 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
 
         self.disconnect()
 
@@ -1527,6 +1537,8 @@ class ContigsDatabase:
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
 
+        is_db_ok_to_create(self.db_path, 'contigs')
+
         self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
 
         # creating empty default tables
@@ -1561,8 +1573,6 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         debug = A('debug')
-
-        is_db_ok_to_create(self.db_path, 'contigs')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
