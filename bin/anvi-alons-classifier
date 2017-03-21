@@ -36,10 +36,8 @@ if __name__ == '__main__':
     group0.add_argument('-d', '--data-file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of coverage values of \
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The matrix should include at least two samples")
-    group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', "There are two output files that need to be defined: output-file for gene information (gene \
-                                                        class and gene detection) and sample-detection-output for the detection of the reference genome across \
-                                                         samples.")
-    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    group1 = parser.add_argument_group('ESSENTIAL OUTPUTS')
+    group1.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
                                                             outputs would be added to these files")
     groupB.add_argument('-A', '--additional-layers', metavar='FILE', dest='additional_layers_to_append', default=None,
