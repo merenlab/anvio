@@ -580,10 +580,13 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip().split('\t')[1:]
 
-        if fields_of_interest:
-            vector = [float(fields[i]) for i in fields_of_interest]
-        else:
-            vector = [float(f) for f in fields]
+        try:
+            if fields_of_interest:
+                vector = [float(fields[i]) for i in fields_of_interest]
+            else:
+                vector = [float(f) for f in fields]
+        except ValueError:
+            raise ConfigError("Matrix should contain only numerical values.")
 
         vectors.append(vector)
 
