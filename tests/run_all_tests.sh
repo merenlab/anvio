@@ -176,7 +176,7 @@ INFO "Requesting collection info"
 anvi-script-get-collection-info -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C "cmdline_concoct_RENAMED"
 
 INFO "Summarizing CONCOCT results"
-anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'cmdline_concoct_RENAMED'
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'cmdline_concoct_RENAMED' --init-gene-coverages
 
 INFO "Generate a variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode

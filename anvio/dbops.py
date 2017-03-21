@@ -1014,6 +1014,7 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        init_gene_coverages = A('init_gene_coverages')
 
         if not self.profile_db_path:
             self.run.warning("ProfileSuperclass class called with args without profile_db member. Anvi'o will assume\
@@ -1074,6 +1075,9 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
+
+        if init_gene_coverages:
+            self.init_gene_coverages_and_detection_dicts()
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
@@ -1313,7 +1317,6 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
-        self.init_gene_coverages_and_detection_dicts()
 
 
 ####################################################################################################
