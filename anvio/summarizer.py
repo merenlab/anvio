@@ -90,6 +90,7 @@ class ArgsTemplateForSummarizerClass:
         self.list_collections = None
         self.debug = None
         self.quick_summary = False
+        self.init_gene_coverages = False
         self.skip_check_collection_name = False
         self.skip_init_functions = False
         self.cog_data_dir = None
@@ -118,6 +119,7 @@ class SummarizerSuperClass(object):
         self.collection_name = A('collection_name')
         self.skip_check_collection_name = A('skip_check_collection_name')
         self.skip_init_functions = A('skip_init_functions')
+        self.init_gene_coverages = A('init_gene_coverages')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
@@ -566,27 +568,29 @@ class Bin:
         if bin_id not in self.summary.bin_ids:
             raise ConfigError("Bin '%s' does not seem to be in this summary :/ These are the ones in it: %s." % (bin_id, ', '.join(self.summary.bin_ids)))
 
-        self.split_ids = summary.collection_dict[bin_id]
-
         self.bin_id = bin_id
+        self.split_names = summary.collection_dict[self.bin_id]
         self.progress = p
         self.run = r
+
         self.across_samples = {}
         self.bin_profile = {}
-
         self.bin_info_dict = {'files': {}}
+
+        # this will quickly populate self.contig_names, self.total_length, and self.num_contigs variables
+        self.process_contigs(quick=True)
 
         self.output_directory = None
         self.contig_lengths = []
 
-        # make sure all split_ids in the collection is actually in the contigs database.
-        # in collections stored in the contigs database, split_ids that are not in the
+        # make sure all split_names in the collection is actually in the contigs database.
+        # in collections stored in the contigs database, split_names that are not in the
         # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
-        missing_ids = [split_id for split_id in self.split_ids if split_id not in self.summary.split_sequences]
+        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.split_sequences]
         if len(missing_ids):
             for missing_id in missing_ids:
-                self.split_ids.remove(missing_id)
+                self.split_names.remove(missing_id)
 
             self.run.warning('%d split id(s) in bin "%s" reported by collection "%s" is not found in the\
                               contigs database and removed from the bin summary. If this does not make\
@@ -598,6 +602,7 @@ class Bin:
 
 
         self.gene_caller_ids = self.get_gene_caller_ids()
+        self.num_splits = len(self.split_names)
 
         # make these dicts avilable:
         self.gene_coverages = {}
@@ -617,7 +622,7 @@ class Bin:
 
         self.store_sequences_for_hmm_hits()
 
-        self.store_contigs_fasta()
+        self.process_contigs()
 
         if self.summary.completeness_data_available:
             self.access_completeness_scores()
@@ -651,7 +656,7 @@ class Bin:
     def access_completeness_scores(self):
         self.progress.update('Accessing completeness scores ...')
 
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = self.summary.completeness.get_info_for_splits(set(self.split_ids))
+        p_completion, p_redundancy, domain, domain_confidence, results_dict = self.summary.completeness.get_info_for_splits(set(self.split_names))
 
         self.bin_info_dict['completeness'] = results_dict
 
@@ -696,7 +701,7 @@ class Bin:
         info_dict = {}
 
         # lets limit our interest space into splits that are in our bin and have hmm hits from the get go:
-        split_ids_with_hmm_hits = [split_id for split_id in self.split_ids if split_id in self.summary.hmm_searches_dict]
+        split_names_with_hmm_hits = [split_id for split_id in self.split_names if split_id in self.summary.hmm_searches_dict]
 
         for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header:
             hmm_items = self.summary.hmm_sources_info[hmm_search_source]['genes']
@@ -706,7 +711,7 @@ class Bin:
             # keep track of unique identifiers of hmm hits to not count a single hit that spans across multiple splits:
             unique_identifiers_seen = set([])
 
-            for split_id in split_ids_with_hmm_hits:
+            for split_id in split_names_with_hmm_hits:
                 for hmm_item, unique_identifier in self.summary.hmm_searches_dict[split_id][hmm_search_source]:
                     hits_in_splits.append((split_id, hmm_item, unique_identifier),)
 
@@ -737,7 +742,7 @@ class Bin:
 
         genes_dict = {}
 
-        for split_name in self.split_ids:
+        for split_name in self.split_names:
             if split_name not in self.summary.split_name_to_genes_in_splits_entry_ids:
                 continue
 
@@ -835,7 +840,7 @@ class Bin:
             return
 
         s = SequencesForHMMHits(self.summary.contigs_db_path)
-        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_ids})
+        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]
         non_single_copy_gene_hmm_sources = self.summary.completeness.sources
@@ -850,7 +855,7 @@ class Bin:
                 output_file_obj.write('>%s\n%s\n' % (header, sequence))
 
 
-    def store_contigs_fasta(self):
+    def process_contigs(self, quick=False):
         """Storing contig sequences.
 
            This is not an easy problem. We split contigs into smaller sequences at the beginning. Only
@@ -864,24 +869,26 @@ class Bin:
            `_partial_X_Y` to the FASTA id, X and Y being the start and stop positions.
         """
 
-        if self.summary.quick:
-            self.bin_info_dict['total_length'] = sum([self.summary.splits_basic_info[split_name]['length'] for split_name in self.summary.splits_basic_info if split_name in self.split_ids])
-            self.bin_info_dict['num_contigs'] = len(set([self.summary.splits_basic_info[split_name]['parent'] for split_name in self.summary.splits_basic_info if split_name in self.split_ids]))
+        self.contig_names = set([self.summary.splits_basic_info[split_name]['parent'] for split_name in self.summary.splits_basic_info if split_name in self.split_names])
+        self.total_length = sum([self.summary.splits_basic_info[split_name]['length'] for split_name in self.summary.splits_basic_info if split_name in self.split_names])
+        self.num_contigs = len(self.contig_names)
+
+        self.bin_info_dict['total_length'] = self.total_length
+        self.bin_info_dict['contig_names'] = self.contig_names
+        self.bin_info_dict['num_contigs'] = len(self.contig_names)
+
+        if self.summary.quick or quick:
             return
 
         self.progress.update('Creating the FASTA file ...')
 
         # store original split names:
-        self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_ids))
+        self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_names))
 
         fasta_file = self.get_output_file_handle('contigs.fa')
 
-        # some null values:
-        self.bin_info_dict['total_length'] = 0
-        self.bin_info_dict['num_contigs'] = 0
-
         # this dict will keep all the contig ids found in this bin with split names ordered:
-        contigs_represented = utils.get_contigs_splits_dict(self.split_ids, self.summary.splits_basic_info)
+        contigs_represented = utils.get_contigs_splits_dict(self.split_names, self.summary.splits_basic_info)
 
         # now it is time to go through each contig found in contigs_represented to
         # figure out what fraction of the contig is in fact in this bin
@@ -926,12 +933,6 @@ class Bin:
                 fasta_file.write('>%s\n' % fasta_id)
                 fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False))
 
-                # fill in basic info about contigs in bin
-                len_seq = len(sequence)
-                self.bin_info_dict['total_length'] += len_seq
-                self.contig_lengths.append(len_seq)
-                self.bin_info_dict['num_contigs'] += 1
-
         fasta_file.close()
 
         self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
@@ -948,7 +949,7 @@ class Bin:
             return
 
         taxon_calls_counter = Counter()
-        for split_id in self.split_ids:
+        for split_id in self.split_names:
             if split_id in self.summary.splits_taxonomy_dict:
                 taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]] += 1
             else:
@@ -978,7 +979,7 @@ class Bin:
         self.progress.update('Computing basic stats ...')
 
         self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
-        self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_ids]) * 100
+        self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_names]) * 100
 
         self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'] if self.bin_info_dict['N50'] else 'NA')
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
