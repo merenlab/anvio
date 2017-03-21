@@ -12,6 +12,8 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 from anvio.dbops import ProfileSuperclass
+import anvio.filesnpaths as filesnpaths
+import anvio.summarizer as summarizer
 
 from anvio.errors import ConfigError
 
@@ -38,12 +40,8 @@ class AlonsClassifier:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.gene_coverages_data_file_path = A('data_file')
         self.gene_detection_data_file_path = A('gene_detection_data_file')
-        self.output_file = A('output_file')
         self.profile_db_path = A('profile_db')
-        self.sample_detection_output = A('sample_detection_output')
-        self.gene_coverages = {}
-        self.gene_detection = {}
-        self.samples = {}
+        self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
         self.beta = A('beta')
         self.gamma = A('gamma')
@@ -54,6 +52,9 @@ class AlonsClassifier:
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
+        self.gene_coverages = {}
+        self.gene_detection = {}
+        self.samples = {}
         self.gene_class_information = {}
         self.detection_of_genome_in_samples = {}
         self.profile_db = {}
@@ -63,8 +64,12 @@ class AlonsClassifier:
             self.get_data_from_txt_file()
         else:
             # load sample list and gene_coverage_dict from the merged profile db
-            self.profile_db = ProfileSuperclass(args)
-            self.profile_db.init_gene_coverages_and_detection_dicts()
+            self.summary = summarizer.ProfileSummarizer(args)
+            self.summary.init()
+            if not self.collection_name:
+                self.gene_coverages = self.summary.gene_coverages_dict
+                self.gene_detection = self.summary.gene_detection_dict
+                self.samples = set(next(iter(self.gene_coverages.values())).keys())
 
 
     def sanity_check(self):
@@ -254,13 +259,11 @@ class AlonsClassifier:
                 loss += beta
         return loss
 
-
     def get_number_of_detections_for_gene(self, detection_of_genes, gene_id, samples):
         detections = 0
         for sample_id in samples:
             detections += detection_of_genes[gene_id][sample_id]
         return detections
-
 
     def get_core_accessory_info(self, detection_of_genes, gene_id, samples_with_genome, eta):
         """ Returns 'core'/'accessory' classification for each gene. This is done using only the samples in which the
@@ -272,7 +275,6 @@ class AlonsClassifier:
             return 'accessory'
         else:
             return 'core'
-
 
     def get_gene_class(self, taxon_specificity, core_or_accessory):
         if taxon_specificity == 'None' or core_or_accessory == 'None':
@@ -297,7 +299,6 @@ class AlonsClassifier:
             print('%s is not valid. Value should be \'TS\' or \'TNS\'' % taxon_specificity)
             exit(1)
 
-
     def report_gene_class_information(self, gene_class_information,detection_of_genome_in_samples):
         C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[dict_id][field]==value])
 
@@ -305,7 +306,6 @@ class AlonsClassifier:
             self.run.info('Num class %s' % gene_class, C(gene_class_information, 'gene_class', gene_class))
 
         self.run.info('Num samples in which the genome is detected', C(detection_of_genome_in_samples, 'detection', True), mc='green')
-
 
     def get_gene_classes(self):
         """ returning the classification per gene along with detection in samples (i.e. for each sample, whether the
@@ -367,7 +367,6 @@ class AlonsClassifier:
 
         return gene_class_information, final_detection_of_genome_in_samples
 
-
     def get_specificity_from_class_id(self, class_id):
         try:
             class_id = int(class_id)
@@ -386,7 +385,7 @@ class AlonsClassifier:
         except:
             raise ConfigError("The class id '%d' is not a valid one. Try one of these: '%s'" % (class_id, ', '.join(list(classes.keys()))))
 
-    def save_gene_class_information_in_additional_layers(self):
+    def save_gene_class_information_in_additional_layers(self, additional_description=''):
         if not self.additional_layers_to_append:
             additional_column_titles = []
             additional_layers_dict = self.gene_class_information
@@ -396,12 +395,14 @@ class AlonsClassifier:
                                                                                 dict_to_append=self.gene_class_information,
                                                                                 assign_none_for_missing=True,
                                                                                 column_mapping=[int] + [str] * len(additional_column_titles))
-
-        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, self.output_file, headers=['gene_callers_id',
+        if additional_description:
+            additional_description = '-' + additional_description
+        additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
+        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, additional_layers_file_name, headers=['gene_callers_id',
                                                                                                   'gene_class',
                                                                                                   'number_of_detections', 'portion_detected'] + additional_column_titles)
 
-    def save_detection_of_genome_in_samples_in_samples_information(self):
+    def save_detection_of_genome_in_samples_in_samples_information(self, additional_description=''):
         if not self.samples_information_to_append:
             samples_information_column_titles = []
             samples_information_dict = self.detection_of_genome_in_samples
@@ -412,15 +413,59 @@ class AlonsClassifier:
                                                                                 assign_none_for_missing=True,
                                                                                 column_mapping=[str]+[str]*len(
                                                                                     samples_information_column_titles))
-        utils.store_dict_as_TAB_delimited_file(samples_information_dict, self.sample_detection_output,
+        if additional_description:
+            additional_description = '-' + additional_description
+        samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
+        utils.store_dict_as_TAB_delimited_file(samples_information_dict, samples_information_file_name,
                                                    headers=['samples','detection'] + samples_information_column_titles)
 
+    def save_gene_detection_and_coverage(self, additional_description=''):
+        if additional_description:
+            prefix = self.output_file_prefix + '-' + additional_description
+        else:
+            prefix = self.output_file_prefix
+        gene_coverages_file_name = prefix + '-gene-coverages.txt'
+        gene_detections_file_name = prefix + '-gene-detections.txt'
+        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, gene_coverages_file_name)
+        utils.store_dict_as_TAB_delimited_file(self.gene_detection, gene_detections_file_name)
+
+    def get_coverage_and_detection_dict(self,bin_id):
+        _bin = summarizer.Bin(self.summary, bin_id)
+        self.gene_coverages = _bin.gene_coverages
+        self.gene_detection = _bin.gene_detection
+        self.samples = set(next(iter(self.gene_coverages.values())).keys())
+
     def classify(self):
-        if self.profile_db:
-            # getting the coverage and detection dictionaries
-            self.gene_coverages = self.profile_db.gene_coverages_dict
-            self.gene_detection = self.profile_db.gene_detection_dict
-            self.samples = set(next(iter(self.profile_db.gene_coverages_dict.values())).keys())
-        self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
-        self.save_gene_class_information_in_additional_layers()
-        self.save_detection_of_genome_in_samples_in_samples_information()
+        if self.collection_name:
+            bin_names_in_collection = self.summary.bin_ids
+            if self.bin_ids_file_path:
+                filesnpaths.is_file_exists(self.bin_ids_file_path)
+                bin_names_of_interest = [line.strip() for line in open(self.bin_ids_file_path).readlines()]
+
+                missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
+                if len(missing_bins):
+                    raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
+                                        These are the bins that are missing: %s, these are the bins that are \
+                                        actually in your collection: %s" % (self.collection_name,missing_bins,bin_names_in_collection))
+            elif self.bin_id:
+                if self.bin_id not in bin_names_in_collection:
+                    raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
+                                      % (self.bin_id, self.collection_name))
+                bin_names_of_interest = [self.bin_id]
+            else:
+                bin_names_of_interest = bin_names_in_collection
+
+            for bin_id in bin_names_of_interest:
+                self.get_coverage_and_detection_dict(bin_id)
+                self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
+                self.save_gene_class_information_in_additional_layers(bin_id)
+                self.save_detection_of_genome_in_samples_in_samples_information(bin_id)
+                self.save_gene_detection_and_coverage(bin_id)
+
+
+
+        else:
+            # No collection provided so running on the entire detection table
+            self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
+            self.save_gene_class_information_in_additional_layers()
+            self.save_detection_of_genome_in_samples_in_samples_information()
