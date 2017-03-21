@@ -1053,6 +1053,15 @@ D = {
                       relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
                       processing time for large datasets."}
                 ),
+    'init-gene-coverages': (
+            ['--init-gene-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Initialize gene coverage and detection data. This is a very computationally expensive step, but it is\
+                      necessary when you need gene level coverage data. The reason this is very computationally expensive\
+                      is because anvi'o computes gene coverages by going back to actual coverage values of each gene to\
+                      average them, instead of using contig average coverage values, for extreme accuracy."}
+                ),
     'skip-auto-ordering': (
             ['--skip-auto-ordering'],
             {'default': False,
