@@ -369,7 +369,8 @@ class AlonsClassifier:
                                                                                        self.alpha,
                                                                                        genes_to_consider=TSC_genes)
 
-        return gene_class_information, final_detection_of_genome_in_samples
+        self.gene_class_information = gene_class_information
+        self.detection_of_genome_in_samples = final_detection_of_genome_in_samples
 
     def get_specificity_from_class_id(self, class_id):
         try:
@@ -461,7 +462,7 @@ class AlonsClassifier:
 
             for bin_id in bin_names_of_interest:
                 self.get_coverage_and_detection_dict(bin_id)
-                self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
+                self.get_gene_classes()
                 self.save_gene_class_information_in_additional_layers(bin_id)
                 self.save_detection_of_genome_in_samples_in_samples_information(bin_id)
                 self.save_gene_detection_and_coverage(bin_id)
@@ -470,6 +471,6 @@ class AlonsClassifier:
 
         else:
             # No collection provided so running on the entire detection table
-            self.gene_class_information, self.detection_of_genome_in_samples = self.get_gene_classes()
+            self.get_gene_classes()
             self.save_gene_class_information_in_additional_layers()
             self.save_detection_of_genome_in_samples_in_samples_information()
