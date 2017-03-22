@@ -1558,8 +1558,8 @@ function draw_tree(settings) {
             {
                 leaf_node.angle = angle_per_leaf / 2 + Math.toRadians(angle_min) + angle_per_leaf * i;
                 pt = [];
-                pt['x'] = radius * Math.cos(leaf_node.angle);
-                pt['y'] = radius * Math.sin(leaf_node.angle);
+                pt['x'] = (radius / 2) * Math.cos(leaf_node.angle);
+                pt['y'] = (radius / 2) * Math.sin(leaf_node.angle);
                 leaf_node.backarc = [];
                 leaf_node.backarc['x'] = pt['x'];
                 leaf_node.backarc['y'] = pt['y'];
