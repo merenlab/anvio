@@ -18,7 +18,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.clusteringconfuguration import ClusteringConfiguration
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -567,21 +566,9 @@ class MultipleRuns:
         self.run.info_single("Anvi'o hierarchical clustering of contigs...", nl_before=1, nl_after=1, mc="blue")
 
         if not self.skip_hierarchical_clustering:
-            for config_name in self.clustering_configs:
-                config_path = self.clustering_configs[config_name]
-
-                config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
-
-                try:
-                    clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=self.progress)
-                except Exception as e:
-                    self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
-                    self.progress.end()
-                    continue
-
-                _, distance, linkage = clustering_id.split(':')
-
-                dbops.add_hierarchical_clustering_to_db(self.merged_profile_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == constants.merged_default, run=self.run)
+            dbops.do_hierarchical_clusterings(self.split_names, self.merged_profile_db_path, self.clustering_configs, self.database_paths, self.output_directory, \
+                                              default_clustering_config=constants.merged_default, distance=self.distance, linkage=self.linkage, \
+                                              run=self.run, progress=self.progress)
 
 
     def get_split_parents(self):

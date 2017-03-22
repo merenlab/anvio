@@ -858,7 +858,7 @@ class Pangenome(GenomeStorage):
         # on this extra bit of inofrmation. becasue the clustering configurations framework in anvi'o
         # does not allow us to have variable information in these recipes, we are going to generate one
         # on the fly to have a more capable one.
-
+        updated_clustering_configs = {}
         for config_name in constants.clustering_configs['pan']:
             config_path = constants.clustering_configs['pan'][config_name]
 
@@ -876,25 +876,16 @@ class Pangenome(GenomeStorage):
             # write the content down in to file at the new path:
             open(enhanced_config_path, 'w').write(open(config_path).read() + additional_config_section)
 
-            # use it to generate a clustering configuration instance:
-            clustering_configuration = ClusteringConfiguration(enhanced_config_path, self.output_dir, db_paths={'PAN.db': self.pan_db_path})
+            # update the clustering configs:
+            updated_clustering_configs[config_name] = enhanced_config_path
 
-            try:
-                clustering_id, newick = clustering.order_contigs_simple(clustering_configuration, distance=self.distance, linkage=self.linkage, progress=self.progress)
-            except Exception as e:
-                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
-                self.progress.end()
-                continue
-
-            _, distance, linkage = clustering_id.split(':')
-
-            dbops.add_hierarchical_clustering_to_db(self.pan_db_path,
-                                                    config_name,
-                                                    newick,
-                                                    distance=distance,
-                                                    linkage=linkage,
-                                                    make_default=config_name == constants.pan_default,
-                                                    run=self.run)
+            # FIXME: This looks like a call to a function written by Frankenstein due to the missing optional named parameter of 
+            #        `split_names`. The next person who has time and energy to address this should first say "WTAF, Meren"
+            #        (preferrably outloud), then should fix the function header in dbops (to make the first parameter a named-optional
+            #        one), and finally correct all instances of `do_hierarchical_clusterings`:
+            dbops.do_hierarchical_clusterings([], self.pan_db_path, updated_clustering_configs, {'PAN.db': self.pan_db_path}, self.output_dir, \
+                                              default_clustering_config=constants.pan_default, distance=self.distance, linkage=self.linkage, \
+                                              run=self.run, progress=self.progress)
 
 
     def gen_samples_db(self):
