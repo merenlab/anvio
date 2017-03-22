@@ -525,21 +525,21 @@ function populateColorDicts() {
                 if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
                     samples_categorical_colors[sample_layer_name] = {};
                     samples_categorical_stats[sample_layer_name] = {};
-                }
 
-                for (_sample in samples_information_dict)
-                {
-                    var _category_name = samples_information_dict[_sample][sample_layer_name];
-                    if (_category_name == null || _category_name == '' || _category_name == 'null')
-                        _category_name = 'None';
-                    samples_information_dict[_sample][sample_layer_name] = _category_name;
+                    for (_sample in samples_information_dict)
+                    {
+                        var _category_name = samples_information_dict[_sample][sample_layer_name];
+                        if (_category_name == null || _category_name == '' || _category_name == 'null')
+                            _category_name = 'None';
+                        samples_information_dict[_sample][sample_layer_name] = _category_name;
 
-                    if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
-                        samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
-                        samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                        if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
+                            samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                            samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                        }
+
+                        samples_categorical_stats[sample_layer_name][_category_name]++;
                     }
-
-                    samples_categorical_stats[sample_layer_name][_category_name]++;
                 }
             }
         }
