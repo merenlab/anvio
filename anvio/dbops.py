@@ -313,13 +313,15 @@ class ContigsSuperclass(object):
 
             for e in list(non_singlecopy_gene_hmm_results_dict.values()):
                 hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
+                hmm_source = e['source']
+
                 if not e['split'] in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
 
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
-                self.hmm_searches_dict[e['split']][source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
+                self.hmm_searches_dict[e['split']][hmm_source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
         self.progress.end()
 
