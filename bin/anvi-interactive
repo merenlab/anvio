@@ -108,10 +108,10 @@ args = parser.parse_args()
 unique_session_id = random.randint(0,9999999999)
 
 try:
+    d = interactive.InputHandler(args)
+
     ip = args.ip_address
     args.port_number = utils.get_port_num(args.port_number, ip, run=run)
-
-    d = interactive.InputHandler(args)
 except ConfigError as e:
     print(e)
     sys.exit(-1)

@@ -86,11 +86,11 @@ args = parser.parse_args()
 unique_session_id = random.randint(0,9999999999)
 
 try:
-    ip = args.ip_address
-    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
-
     r = refine.RefineBins(args)
     d = r.refine()
+
+    ip = args.ip_address
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
 except ConfigError as e:
     print(e)
     sys.exit(-1)
