@@ -359,6 +359,8 @@ class GenomesDataStorage(HDF5_IO):
 
             self.progress.end()
 
+        output_file.close()
+
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
         unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
