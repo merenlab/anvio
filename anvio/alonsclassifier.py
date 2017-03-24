@@ -112,6 +112,7 @@ class AlonsClassifier:
                 raise ConfigError("You specified a collection name %s, but you provided a gene coverage matrix data file \
                  collections are only available when working with a profile database." % self.collection_name)
 
+
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
         self.samples = utils.get_columns_of_TAB_delim_file(self.gene_coverages_data_file_path)
@@ -129,6 +130,7 @@ class AlonsClassifier:
                 if sample_id not in gene_detection_sample_list:
                     raise ConfigError("Your tables are not compatible. For example sample_id %s is in %s, but not in %s" % (sample_id, self.gene_coverages_data_file_path,
                                                                                                                          self.gene_detection_data_file_path))
+
 
     def apply_func_to_genes_in_sample(self, func, list_of_genes=None):
         """ Apply the give function on the list of genes in each sample. The function is expected to accept a list """
@@ -185,6 +187,7 @@ class AlonsClassifier:
             # print('gene %s, in some sample has non-zero coverage %s, and it has been marked as not detected due '
                   # 'to the detection criteria' % (gene_id, data[gene_id][sample]))
                   print('some genes in some samples were marked as not detected due to the detection criteria')
+
         return detection_of_genes
 
 
@@ -249,6 +252,7 @@ class AlonsClassifier:
                     taxon_specificity[gene_id] = 'TS'
                 else:
                     taxon_specificity[gene_id] = 'TNS'
+
         return taxon_specificity
 
 
@@ -264,11 +268,13 @@ class AlonsClassifier:
                 loss += beta
         return loss
 
+
     def get_number_of_detections_for_gene(self, detection_of_genes, gene_id, samples):
         detections = 0
         for sample_id in samples:
             detections += detection_of_genes[gene_id][sample_id]
         return detections
+
 
     def get_core_accessory_info(self, detection_of_genes, gene_id, samples_with_genome, eta):
         """ Returns 'core'/'accessory' classification for each gene. This is done using only the samples in which the
@@ -280,6 +286,7 @@ class AlonsClassifier:
             return 'accessory'
         else:
             return 'core'
+
 
     def get_gene_class(self, taxon_specificity, core_or_accessory):
         if taxon_specificity == 'None' or core_or_accessory == 'None':
@@ -304,6 +311,7 @@ class AlonsClassifier:
             print('%s is not valid. Value should be \'TS\' or \'TNS\'' % taxon_specificity)
             exit(1)
 
+
     def report_gene_class_information(self, gene_class_information,samples_information):
         C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[dict_id][field]==value])
 
@@ -311,6 +319,7 @@ class AlonsClassifier:
             self.run.info('Num class %s' % gene_class, C(gene_class_information, 'gene_class', gene_class))
 
         self.run.info('Num samples in which the genome is detected', C(samples_information, 'detection', True), mc='green')
+
 
     def get_gene_classes(self):
         """ returning the classification per gene along with detection in samples (i.e. for each sample, whether the
@@ -320,22 +329,22 @@ class AlonsClassifier:
         loss = None
         TSC_genes = list(self.gene_coverages.keys())
 
-        gene_class_information = {}
         while not converged:
             # mean of coverage of all TS genes in each sample
             mean_coverage_of_TS_in_samples = self.get_mean_coverage_in_samples(taxon_specific_genes)
+
             # Get the standard deviation of the taxon-specific genes in a sample
             # TODO: right now, single copy, and multi-copy genes would be treated identically. Hence, multi-copy genes
             # would skew both the mean and the std of the taxon-specific genes.
             std_of_TS_in_samples = self.get_std_in_samples(taxon_specific_genes)
             detection_of_genes = self.get_detection_of_genes(mean_coverage_of_TS_in_samples, std_of_TS_in_samples)
             samples_information = self.get_samples_information(detection_of_genes, self.alpha, TSC_genes)
-            samples_with_genome = [sample_id for sample_id in self.samples if samples_information[sample_id][
-                'detection']]
+            samples_with_genome = [sample_id for sample_id in self.samples if samples_information[sample_id]['detection']]
             adjusted_stds = self.get_adjusted_stds(mean_coverage_of_TS_in_samples,detection_of_genes)
             taxon_specificity = self.get_taxon_specificity(adjusted_stds, detection_of_genes, self.beta)
             new_loss = self.get_loss_function_value(taxon_specificity, adjusted_stds, self.beta)
             epsilon = 2 * self.beta
+
             if loss is not None:
                 if abs(new_loss - loss) < epsilon:
                     converged = True
@@ -344,34 +353,28 @@ class AlonsClassifier:
             self.run.warning('current value of loss function: %s ' % loss)
 
             for gene_id in self.gene_coverages:
-                gene_class_information[gene_id] = {}
-                gene_class_information[gene_id]['gene_specificity'] = taxon_specificity[gene_id]
-                gene_class_information[gene_id]['number_of_detections'] = detection_of_genes[gene_id]['number_of_detections']
-                gene_class_information[gene_id]['core_or_accessory'] = self.get_core_accessory_info(detection_of_genes, gene_id,
-                                                                                               samples_with_genome, self.eta)
-                gene_class_information[gene_id]['gene_class'] = self.get_gene_class(gene_class_information[gene_id][
-                                                   'gene_specificity'], gene_class_information[gene_id]['core_or_accessory'])
+                # setup a dict for gene id:
+                g = {}
+
+                g['gene_specificity'] = taxon_specificity[gene_id]
+                g['number_of_detections'] = detection_of_genes[gene_id]['number_of_detections']
+                g['core_or_accessory'] = self.get_core_accessory_info(detection_of_genes, gene_id, samples_with_genome, self.eta)
+                g['gene_class'] = self.get_gene_class(g['gene_specificity'], g['core_or_accessory'])
+
                 # counting the number of positive samples that contain the gene
-                gene_class_information[gene_id]['detection_in_positive_samples'] = len([sample_id for sample_id in
-                                                                samples_with_genome if detection_of_genes[gene_id][sample_id]])
+                g['detection_in_positive_samples'] = len([sample_id for sample_id in samples_with_genome if detection_of_genes[gene_id][sample_id]])
+
                 # Getting the portion of positive samples that contain the gene
-                if gene_class_information[gene_id]['detection_in_positive_samples'] == 0:
-                    gene_class_information[gene_id]['portion_detected'] = 0
-                else:
-                    gene_class_information[gene_id]['portion_detected'] = gene_class_information[gene_id][
-                        'detection_in_positive_samples'] / len(samples_with_genome)
+                g['portion_detected'] = g['detection_in_positive_samples'] / len(samples_with_genome) if g['detection_in_positive_samples'] else 0
 
-            TSC_genes = [gene_id for gene_id in gene_class_information if gene_class_information[gene_id][
-                'gene_class']=='TSC']
+                self.gene_class_information[gene_id] = g
 
-            self.report_gene_class_information(gene_class_information, samples_information)
+            TSC_genes = [gene_id for gene_id in self.gene_class_information if self.gene_class_information[gene_id]['gene_class']=='TSC']
 
-        final_samples_information = self.get_samples_information(detection_of_genes,
-                                                                                       self.alpha,
-                                                                                       genes_to_consider=TSC_genes)
+            self.report_gene_class_information(self.gene_class_information, samples_information)
 
-        self.gene_class_information = gene_class_information
-        self.samples_information = final_samples_information
+        self.samples_information = self.get_samples_information(detection_of_genes, self.alpha, genes_to_consider=TSC_genes)
+
 
     def get_specificity_from_class_id(self, class_id):
         try:
@@ -391,6 +394,7 @@ class AlonsClassifier:
         except:
             raise ConfigError("The class id '%d' is not a valid one. Try one of these: '%s'" % (class_id, ', '.join(list(classes.keys()))))
 
+
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
         if not self.additional_layers_to_append:
             additional_column_titles = []
@@ -401,29 +405,35 @@ class AlonsClassifier:
                                                                                 dict_to_append=self.gene_class_information,
                                                                                 assign_none_for_missing=True,
                                                                                 column_mapping=[int] + [str] * len(additional_column_titles))
+
         if additional_description:
             additional_description = '-' + additional_description
+
         additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
-        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, additional_layers_file_name, headers=['gene_callers_id',
-                                                                                                  'gene_class',
-                                                                                                  'number_of_detections', 'portion_detected'] + additional_column_titles)
+        headers = headers=['gene_callers_id', 'gene_class', 'number_of_detections', 'portion_detected'] + additional_column_titles
+
+        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, additional_layers_file_name, headers=headers)
+
 
     def save_samples_information(self, additional_description=''):
         if not self.samples_information_to_append:
             samples_information_column_titles = []
             samples_information_dict = self.samples_information
         else:
+            column_mapping = [str] * (len(samples_information_column_titles) + 1)
             samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
             samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
-                                                                                dict_to_append=self.samples_information,
-                                                                                assign_none_for_missing=True,
-                                                                                column_mapping=[str]+[str]*len(
-                                                                                    samples_information_column_titles))
+                                                                                  dict_to_append=self.samples_information,
+                                                                                  assign_none_for_missing=True,
+                                                                                  column_mapping=column_mapping)
+
         if additional_description:
             additional_description = '-' + additional_description
+
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
         utils.store_dict_as_TAB_delimited_file(samples_information_dict, samples_information_file_name,
                                                    headers=['samples','detection'] + samples_information_column_titles)
+
 
     def save_gene_detection_and_coverage(self, additional_description=''):
         if additional_description:
@@ -435,11 +445,13 @@ class AlonsClassifier:
         utils.store_dict_as_TAB_delimited_file(self.gene_coverages, gene_coverages_file_name)
         utils.store_dict_as_TAB_delimited_file(self.gene_detection, gene_detections_file_name)
 
+
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
         self.gene_coverages = _bin.gene_coverages
         self.gene_detection = _bin.gene_detection
         self.samples = set(next(iter(self.gene_coverages.values())).keys())
+
 
     def classify(self):
         if self.collection_name:
@@ -467,8 +479,6 @@ class AlonsClassifier:
                 self.save_gene_class_information_in_additional_layers(bin_id)
                 self.save_samples_information(bin_id)
                 self.save_gene_detection_and_coverage(bin_id)
-
-
 
         else:
             # No collection provided so running on the entire detection table
