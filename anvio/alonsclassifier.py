@@ -420,8 +420,8 @@ class AlonsClassifier:
             samples_information_column_titles = []
             samples_information_dict = self.samples_information
         else:
-            column_mapping = [str] * (len(samples_information_column_titles) + 1)
             samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
+            column_mapping = [str] * (len(samples_information_column_titles) + 1)
             samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
                                                                                   dict_to_append=self.samples_information,
                                                                                   assign_none_for_missing=True,
