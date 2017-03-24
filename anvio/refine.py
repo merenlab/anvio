@@ -50,6 +50,7 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.debug = A('debug')
+        self.read_only = A('read_only')
 
         dbops.is_contigs_db(self.contigs_db_path)
         dbops.is_profile_db(self.profile_db_path)

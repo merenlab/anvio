@@ -67,6 +67,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.show_views = A('show_views')
         self.state_autoload = A('state_autoload')
         self.collection_autoload = A('collection_autoload')
+        self.read_only = A('read_only')
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
         self.list_collections = A('list_collections')

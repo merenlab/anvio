@@ -59,8 +59,8 @@ def state_all(d, response):
     return json.dumps(d.states_table.states)
 
 
-def save_state(args, d, request, response):
-    if args.read_only:
+def save_state(d, request, response):
+    if d.read_only:
         return json.dumps({'status_code': '0'})
 
     name = request.forms.get('name')
@@ -285,8 +285,8 @@ def charts(d, split_name, hide_outlier_SNVs=False):
     return json.dumps(data)
 
 
-def store_collections_dict(args, d, request, response):
-    if args.read_only:
+def store_collections_dict(d, request, response):
+    if d.read_only:
         return json.dumps("Sorry! This is a read-only instance.")
 
     source = request.forms.get('source')
@@ -329,7 +329,7 @@ def store_collections_dict(args, d, request, response):
     return json.dumps(msg)
 
 
-def store_refined_bins(args, r, request, response):
+def store_refined_bins(r, request, response):
     data = json.loads(request.forms.get('data'))
     colors = json.loads(request.forms.get('colors'))
 
@@ -346,8 +346,8 @@ def store_refined_bins(args, r, request, response):
     return json.dumps({'status': 0, 'message': message})
 
 
-def store_description(args, d, request, response):
-    if args.read_only:
+def store_description(d, request, response):
+    if d.read_only:
         return
 
     description = request.forms.get('description')
@@ -357,10 +357,10 @@ def store_description(args, d, request, response):
     d.p_meta['description'] = description
 
 
-def gen_summary(args, d, request, response, collection_name):
+def gen_summary(d, request, response, collection_name):
     set_default_headers(response)
 
-    if args.read_only:
+    if d.read_only:
         return json.dumps({'error': "Sorry! This is a read-only instance."})
 
     if d.manual_mode:
@@ -399,7 +399,7 @@ def gen_summary(args, d, request, response, collection_name):
     return json.dumps({'path': path})
 
 
-def send_summary_static(args, d, request, response, collection_name, filename):
+def send_summary_static(d, request, response, collection_name, filename):
     set_default_headers(response)
 
     if d.mode == 'pan':
@@ -410,7 +410,7 @@ def send_summary_static(args, d, request, response, collection_name, filename):
         return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
 
 
-def get_collection_dict(args, d, request, response, collection_name):
+def get_collection_dict(d, request, response, collection_name):
     run.info_single('Data for collection "%s" has been requested.' % collection_name)
     set_default_headers(response)
 
@@ -425,14 +425,14 @@ def get_collection_dict(args, d, request, response, collection_name):
                        'colors': colors_dict})
 
 
-def get_collections(args, d, request, response):
+def get_collections(d, request, response):
     csd = d.collections.collections_dict
     run.info_single('Collection sources has been requested (info dict with %d item(s) has been returned).' % len(csd), cut_after=None)
     set_default_headers(response)
     return json.dumps(csd)
 
 
-def get_items_ordering(args, d, request, response, items_ordering_id):
+def get_items_ordering(d, request, response, items_ordering_id):
     set_default_headers(response)
 
     if items_ordering_id in d.p_meta['clusterings']:
@@ -452,7 +452,7 @@ def get_items_ordering(args, d, request, response, items_ordering_id):
     return json.dumps("")
 
 
-def get_sequence_for_gene_call(args, d, request, response, gene_callers_id):
+def get_sequence_for_gene_call(d, request, response, gene_callers_id):
     set_default_headers(response)
 
     try:
@@ -472,7 +472,7 @@ def get_sequence_for_gene_call(args, d, request, response, gene_callers_id):
     return json.dumps({'sequence': sequence, 'header': header})
 
 
-def get_sequence_for_split(args, d, request, response, split_name):
+def get_sequence_for_split(d, request, response, split_name):
     set_default_headers(response)
 
     try:
@@ -484,7 +484,7 @@ def get_sequence_for_split(args, d, request, response, split_name):
     return json.dumps({'sequence': sequence, 'header': header})
 
 
-def get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name):
+def get_hmm_hit_from_bin(d, request, response, bin_name, gene_name):
     set_default_headers(response)
 
     if d.mode != 'collection':
@@ -506,7 +506,7 @@ def get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name):
     return json.dumps({'sequence': sequence, 'header': header})
 
 
-def get_view_data(args, d, request, response, view_id):
+def get_view_data(d, request, response, view_id):
     set_default_headers(response)
 
     return json.dumps(d.views[view_id])

@@ -177,11 +177,11 @@ def send_data(name):
 
 @route('/data/view/<view_id>')
 def get_view_data(view_id):
-    return routes.get_view_data(args, d, request, response, view_id)
+    return routes.get_view_data(d, request, response, view_id)
 
 @route('/tree/<items_ordering_id>')
 def get_items_ordering(items_ordering_id):
-    return routes.get_items_ordering(args, d, request, response, items_ordering_id)
+    return routes.get_items_ordering(d, request, response, items_ordering_id)
 
 @route('/data/proteinclusters/<pc_name>')
 def inspect_pc(pc_name):
@@ -205,39 +205,39 @@ def get_parent_state():
 
 @route('/data/hmm/<bin_name>/<gene_name>')
 def get_hmm_hit_from_bin(bin_name, gene_name):
-    return routes.get_hmm_hit_from_bin(args, d, request, response, bin_name, gene_name)
+    return routes.get_hmm_hit_from_bin(d, request, response, bin_name, gene_name)
 
 @route('/data/contig/<split_name>')
 def get_sequence_for_split(split_name):
-    return routes.get_sequence_for_split(args, d, request, response, split_name)
+    return routes.get_sequence_for_split(d, request, response, split_name)
 
 @route('/data/gene/<gene_callers_id>')
 def get_sequence_for_gene_call(gene_callers_id):
-    return routes.get_sequence_for_gene_call(args, d, request, response, gene_callers_id)
+    return routes.get_sequence_for_gene_call(d, request, response, gene_callers_id)
 
 @route('/data/collections')
 def collections():
-    return routes.get_collections(args, d, request, response)
+    return routes.get_collections(d, request, response)
 
 @route('/data/collection/<collection_source>')
 def get_collection_dict(collection_source):
-    return routes.get_collection_dict(args, d, request, response, collection_source)
+    return routes.get_collection_dict(d, request, response, collection_source)
 
 @route('/summary/<collection_name>/:filename#.*#')
 def send_summary_static(collection_name, filename):
-    return routes.send_summary_static(args, d, request, response, collection_name, filename)
+    return routes.send_summary_static(d, request, response, collection_name, filename)
 
 @route('/summarize/<collection_name>')
 def gen_summary(collection_name):
-    return routes.gen_summary(args, d, request, response, collection_name)
+    return routes.gen_summary(d, request, response, collection_name)
 
 @route('/store_collection', method='POST')
 def store_collections_dict():
-    return routes.store_collections_dict(args, d, request, response)
+    return routes.store_collections_dict(d, request, response)
 
 @route('/store_description', method='POST')
 def store_description():
-    return routes.store_description(args, d, request, response)
+    return routes.store_description(d, request, response)
 
 @route('/data/proteinclusterssummary', method='POST')
 def get_protein_clusters_summary():
@@ -257,7 +257,7 @@ def get_state():
 
 @route('/state/save', method='POST')
 def save_state():
-    return routes.save_state(args, d, request, response)
+    return routes.save_state(d, request, response)
 
 #######################################################################################################################
 # bottle callbacks end
