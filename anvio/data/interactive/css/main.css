@@ -207,8 +207,10 @@ html, body, #wrapper {
     width: 100%;
     height: 100%;
 }
+
 #multiUser {
-    width: 490px;
+    display: none;
+    width: 400px;
     border-right: 1px solid #d3d3d3;
     border-bottom: 1px solid #d3d3d3;
     padding-left: 10px;
@@ -507,6 +509,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #title-panel-first-line {
         font-size: 26px;
+    }
+
+    #multiUser {
+        width: 490px;
     }
 }
 
