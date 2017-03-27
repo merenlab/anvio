@@ -256,6 +256,12 @@ anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/exampl
 INFO "Exporting the state named 'default' from the merged profile"
 anvi-export-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state default -o $output_dir/SAMPLES-MERGED/default_state.json
 
+INFO "Splitting all bins in the CONCOCT collection stored in the merged profile"
+anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -o $output_dir/CONCOCT_BINS_SPLIT
+
+INFO "Splitting only Bin_1 from the merged profile"
+anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -o $output_dir/CONCOCT_BINS_SPLIT_ONLY_BIN_1 --bin-id Bin_1
+
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
@@ -264,6 +270,9 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -t $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt \
                  -V $files/additional_view.txt \
                  --split-hmm-layers
+
+INFO "Firing up the interfae to display the split bin, Bin_1"
+anvi-interactive -c $output_dir/CONCOCT_BINS_SPLIT/Bin_1/CONTIGS.db -p $output_dir/CONCOCT_BINS_SPLIT/Bin_1/PROFILE.db --title "Split bin, Bin_1"
 
 INFO "Firing up the interactive interface with the blank profile"
 anvi-interactive -c $output_dir/CONTIGS.db -p $output_dir/BLANK-PROFILE/PROFILE.db
