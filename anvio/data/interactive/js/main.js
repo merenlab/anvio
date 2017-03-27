@@ -2160,7 +2160,9 @@ function saveState()
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
         success: function(response) {
-            response = JSON.parse(response);
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
 
             if (response['status_code']==0)
             {
