@@ -272,6 +272,42 @@ def format_cmdline(cmdline):
     return cmdline
 
 
+def gzip_compress_file(input_file_path, output_file_path=None, keep_original=False):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not output_file_path:
+        output_file_path = input_file_path + '.gz'
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    import gzip
+    with open(input_file_path, 'rb') as f_in, gzip.open(output_file_path, 'wb') as f_out:
+        f_out.writelines(f_in)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
+
+def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=True):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not input_file_path.endswith('.gz'):
+        raise ConfigError("gzip_decompress_file function is upset because your input file ('%s') does not\
+                           end with a '.gz' extension :(")
+
+    if not output_file_path:
+        output_file_path = input_file_path[:-3]
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    import gzip
+    with gzip.open(input_file_path, 'rb') as f_in, open(output_file_path, 'wb') as f_out:
+        f_out.writelines(f_in)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
+
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
     cmdline = format_cmdline(cmdline)
