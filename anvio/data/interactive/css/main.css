@@ -115,6 +115,12 @@ html, body, #wrapper {
     line-height: 115%;
 }
 
+.home-button {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+
 #mouse_hover_panel {
     top: 0px;
     right: 0px;

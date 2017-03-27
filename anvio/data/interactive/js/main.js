@@ -315,12 +315,13 @@ function initData() {
             $('#title-panel-first-line').text(titleResponse[0]);
             
             if (mode == 'server') {
+                $('#title-panel').prepend('<button type="button" class="btn btn-default btn-sm home-button" onclick="top.location.href=\'/\';"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> Home</button>');
                 $('#title-panel-first-line').append(' <i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
             }
             
             if (typeof description !== 'undefined')
             {
-                $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
+                $('#title-panel-first-line').append('<button class="btn btn-xs btn-default" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
             }
             $('#description-editor').val(description);
             descriptionEditor = new SimpleMDE({ 
