@@ -282,6 +282,7 @@ function initData() {
             } else if (mode == 'server') {
                 $('.server-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
+                $('#title-panel-first-line')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
@@ -312,6 +313,11 @@ function initData() {
 
             document.title = titleResponse[0];
             $('#title-panel-first-line').text(titleResponse[0]);
+            
+            if (mode == 'server') {
+                $('#title-panel-first-line').append(' <i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+            }
+            
             if (typeof description !== 'undefined')
             {
                 $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
