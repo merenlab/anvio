@@ -242,6 +242,7 @@ function initData() {
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
         var description = response.description;
+        var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
 
@@ -282,7 +283,6 @@ function initData() {
             } else if (mode == 'server') {
                 $('.server-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
-                $('#title-panel-first-line')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
