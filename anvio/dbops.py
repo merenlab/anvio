@@ -96,6 +96,7 @@ class ContigsSuperclass(object):
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
         self.auxiliary_contigs_data_available = False
+        self.auxiliary_contigs_data_path = None
         self.nt_positions_info = None
 
         self.gene_function_call_sources = []
@@ -173,9 +174,10 @@ class ContigsSuperclass(object):
         contigs_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        auxiliary_contigs_data_path = ''.join(self.contigs_db_path[:-3]) + '.h5'
+        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.contigs_db_path)
         if os.path.exists(auxiliary_contigs_data_path):
             self.auxiliary_contigs_data_available = True
+            self.auxiliary_contigs_data_path = auxiliary_contigs_data_path
             self.nt_positions_info = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, self.a_meta['contigs_db_hash'])
             self.progress.end()
         else:
@@ -1069,7 +1071,7 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        self.auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+        self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
             self.auxiliary_profile_data_available = False
         else:
@@ -1690,7 +1692,7 @@ class ContigsDatabase:
 
         # create an instance from AuxiliaryDataForNtPositions to store information
         # about each nt position while looping over contigs
-        auxiliary_contigs_data_path = ''.join(self.db_path[:-3]) + '.h5'
+        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.db_path)
         nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
 
         contigs_info_table = InfoTableForContigs(split_length)
@@ -3334,6 +3336,14 @@ def get_split_names_in_profile_db(profile_db_path):
     profile_db.disconnect()
 
     return split_names
+
+
+def get_auxiliary_data_path_for_contigs_db(contigs_db_path):
+    return ''.join(contigs_db_path[:-3]) + '.h5'
+
+
+def get_auxiliary_data_path_for_profile_db(profile_db_path):
+    return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
 
 
 def get_description_in_db(anvio_db_path, run=run):
