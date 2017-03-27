@@ -19,7 +19,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 
-from anvio.errors import RefineError
+from anvio.errors import RefineError, ConfigError
 
 
 __author__ = "Ozcan Esen"
@@ -318,7 +318,10 @@ def store_collections_dict(d, request, response):
     # the db here is either a profile db, or a pan db, but it can't be both:
     db_path = d.pan_db_path or d.profile_db_path
     collections = dbops.TablesForCollections(db_path)
-    collections.append(source, data, bins_info_dict)
+    try:
+        collections.append(source, data, bins_info_dict)
+    except ConfigError as e:
+        return json.dumps(e.clear_text())
 
     # a new collection is stored in the database, but the interactive object
     # does not know about that and needs updatin'
