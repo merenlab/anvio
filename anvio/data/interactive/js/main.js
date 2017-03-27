@@ -126,10 +126,9 @@ $(document).ready(function() {
     $.ajaxPrefilter(function(options) {
         if (request_prefix) {
             options.url = request_prefix + options.url;
-
-            if (options.type == 'POST')
+            if (options.type.toLowerCase() == 'post')
             {
-                 options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+                options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
             }
         }
         return options;
