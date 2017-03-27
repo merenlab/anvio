@@ -11,12 +11,14 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
@@ -93,14 +95,15 @@ class MergedProfileSplitter:
                           test all these, variation between projects make it impossible to be 100% sure.")
 
         for bin_name in self.bin_names_of_interest:
-            self.progress.new('Splitting bin "%s"' % bin_name)
-            self.progress.update('...')
-
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
             b.do_profile_db()
 
-            self.progress.end()
+            if self.summary.auxiliary_contigs_data_available:
+                b.do_auxiliary_contigs_data()
+
+            if self.summary.auxiliary_profile_data_available:
+                b.do_auxiliary_profile_data()
 
         self.run.info('Num bins processed', len(self.bin_names_of_interest))
         self.run.info("Output directory", self.output_directory)
@@ -140,13 +143,16 @@ class BinSplitter(summarizer.Bin):
         self.max_num_splits_for_hierarchical_clustering = constants.max_num_splits_for_hierarchical_clustering
         self.skip_hierarchical_clustering = self.is_hierarchical_clustering_for_bin_OK()
 
+        # set your own db paths
+        self.bin_contigs_db_path = os.path.join(self.bin_output_directory, 'CONTIGS.db')
+        self.bin_profile_db_path = os.path.join(self.bin_output_directory, 'PROFILE.db')
+
 
     def do_contigs_db(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
         self.progress.update('Subsetting the contigs database')
 
-        bin_contigs_db_path = os.path.join(self.bin_output_directory, 'CONTIGS.db')
-
-        bin_contigs_db = dbops.ContigsDatabase(bin_contigs_db_path)
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
         bin_contigs_db.touch()
 
         # copy-paste tables that will largely stay the same from the parent
@@ -167,7 +173,7 @@ class BinSplitter(summarizer.Bin):
 
         # touch does not create the k-mers tables, so the resulting contigs db is missing them. we
         # will add them to the db here.
-        bin_contigs_db = dbops.ContigsDatabase(bin_contigs_db_path)
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
         k = dbops.KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
         for table_name in ['kmer_contigs', 'kmer_splits']:
             bin_contigs_db.db.create_table(table_name, k.kmers_table_structure, k.kmers_table_types)
@@ -191,15 +197,67 @@ class BinSplitter(summarizer.Bin):
                     'kmer_splits': ('contig', self.split_names),
                 }
 
-        self.migrate_data(tables, self.contigs_db_path, bin_contigs_db_path)
+        self.migrate_data(tables, self.contigs_db_path, self.bin_contigs_db_path)
+
+        self.progress.end()
+
+
+    def do_auxiliary_profile_data(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
+        self.progress.update('Subsetting the auxiliary data (for profile db)')
+
+        new_auxiliary_profile_data_path = dbops.get_auxiliary_data_path_for_profile_db(self.bin_profile_db_path)
+        parent_auxiliary_profile_data_path = self.summary.auxiliary_data_path
+
+        bin_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(new_auxiliary_profile_data_path,
+                                                                                self.contigs_db_hash,
+                                                                                create_new=True)
+
+        parent_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(parent_auxiliary_profile_data_path,
+                                                                                   self.summary.a_meta['contigs_db_hash'])
+
+        for split_name in self.split_names:
+            sample_coverages = parent_profile_auxiliary.get(split_name)
+            for sample_name in sample_coverages:
+                bin_profile_auxiliary.append(split_name, sample_name, sample_coverages[sample_name])
+
+        bin_profile_auxiliary.close()
+        parent_profile_auxiliary.close()
+
+        self.progress.update('Compressing the profile db auxiliary data file ...')
+        utils.gzip_compress_file(new_auxiliary_profile_data_path)
+
+        self.progress.end()
+
+
+    def do_auxiliary_contigs_data(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
+        self.progress.update('Subsetting the auxiliary data (for contigs db)')
+
+        new_auxiliary_contigs_data_path = dbops.get_auxiliary_data_path_for_contigs_db(self.bin_contigs_db_path)
+        parent_auxiliary_contigs_data_path = self.summary.auxiliary_contigs_data_path
+
+        bin_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(new_auxiliary_contigs_data_path,
+                                                                                self.contigs_db_hash,
+                                                                                create_new=True)
+
+        parent_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(parent_auxiliary_contigs_data_path,
+                                                                                self.summary.a_meta['contigs_db_hash'])
+
+        for contig_name in self.contig_names:
+            bin_contigs_auxiliary.append(contig_name, parent_contigs_auxiliary.get(contig_name))
+
+        bin_contigs_auxiliary.close()
+        parent_contigs_auxiliary.close()
+
+        self.progress.end()
 
 
     def do_profile_db(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
         self.progress.update('Subsetting the profile database')
 
-        bin_profile_db_path = os.path.join(self.bin_output_directory, 'PROFILE.db')
-
-        bin_profile_db = dbops.ProfileDatabase(bin_profile_db_path)
+        bin_profile_db = dbops.ProfileDatabase(self.bin_profile_db_path)
         bin_profile_db.touch()
 
         # copy-paste tables that will largely stay the same from the parent
@@ -230,13 +288,13 @@ class BinSplitter(summarizer.Bin):
 
         bin_profile_db.disconnect()
 
-        self.migrate_data(tables, self.profile_db_path, bin_profile_db_path)
+        self.migrate_data(tables, self.profile_db_path, self.bin_profile_db_path)
 
 
         self.progress.end()
  
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clusterings(self.split_names, bin_profile_db_path, constants.clustering_configs['merged'], self.database_paths,\
+            dbops.do_hierarchical_clusterings(self.split_names, self.bin_profile_db_path, constants.clustering_configs['merged'], self.database_paths,\
                                               self.bin_output_directory, default_clustering_config=constants.merged_default, \
                                               distance=self.distance, linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
