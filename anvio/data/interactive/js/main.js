@@ -283,7 +283,6 @@ function initData() {
             } else if (mode == 'server') {
                 $('.server-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
-                initProjectInfoBar();
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
