@@ -268,6 +268,7 @@ class BinSplitter(summarizer.Bin):
         # update some values
         bin_profile_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
         bin_profile_db.db.update_meta_value('available_clusterings', None)
+        bin_profile_db.db.update_meta_value('sample_id', self.bin_id)
 
         # setup the filtering rules for migrating data:
         tables = {}
