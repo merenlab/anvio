@@ -2530,22 +2530,7 @@ function draw_tree(settings) {
                 if ((layers[pindex]['height']) == 0)
                     continue;
 
-                var layer_title = layerdata[0][pindex];
-
-                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
-                    layer_title = named_layers[layer_title]['pretty_name'];
-                } else if(layer_title.substring(0, 5) == "hmmx_") {
-                    layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
-                } else if(layer_title.substring(0, 5) == "hmms_") {
-                    layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
-                } else {
-                    layer_title = layer_title.replace(/_/g, " ");
-                }
-
-                if (layer_title.indexOf('!') > -1 )
-                {
-                    layer_title = layer_title.split('!')[0];
-                }
+                var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
 
                 drawFixedWidthText('layer_labels', {
                         'x': 10,
@@ -2557,6 +2542,25 @@ function draw_tree(settings) {
                     total_radius,
                     layers[pindex]['height']);
             }
+        }
+    }
+    else
+    {
+        for (var i = 0; i < settings['layer-order'].length; i++) {
+            var layer_index = i+1;
+            var pindex = settings['layer-order'][i];
+            var layer = settings['views'][current_view][pindex];
+
+            // !!IMPORTANT!! no label for hidden layers, font-size: 0px causes bug on inkscape 0.91
+            if ((layers[pindex]['height']) == 0)
+                continue;
+
+            var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
+
+            drawRotatedText('layer_labels', {
+                'x': layer_boundaries[layer_index][1] - (layers[pindex]['height'] * 1/4),
+                'y': tree_max_y + 40,  
+            }, layer_title, -90, 'right', (layers[pindex]['height'] / 2) + 'px', 'sans-serif', '#000000', 0, 'baseline');   
         }
     }
 
