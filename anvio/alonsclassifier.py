@@ -198,8 +198,7 @@ class AlonsClassifier:
         samples_information = {}
         for sample_id in self.samples:
             samples_information[sample_id] = {}
-            number_of_detected_genes_in_sample = len([gene_id for gene_id in genes_to_consider if detection_of_genes[
-                gene_id][sample_id]])
+            number_of_detected_genes_in_sample = len([gene_id for gene_id in genes_to_consider if detection_of_genes[gene_id][sample_id]])
             samples_information[sample_id]['detection'] = number_of_detected_genes_in_sample > alpha * len(
                 genes_to_consider)
             samples_information[sample_id]['number_of_detected_genes'] = number_of_detected_genes_in_sample
