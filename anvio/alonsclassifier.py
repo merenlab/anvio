@@ -327,6 +327,7 @@ class AlonsClassifier:
         converged = False
         loss = None
         TSC_genes = list(self.gene_coverages.keys())
+        self.gene_class_information = {}
 
         while not converged:
             # mean of coverage of all TS genes in each sample
