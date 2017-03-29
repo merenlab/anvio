@@ -473,6 +473,7 @@ class AlonsClassifier:
                 bin_names_of_interest = bin_names_in_collection
 
             for bin_id in bin_names_of_interest:
+                self.run.info_single('Classifying genes in bin: %s' % bin_id)
                 self.get_coverage_and_detection_dict(bin_id)
                 self.get_gene_classes()
                 self.save_gene_class_information_in_additional_layers(bin_id)
