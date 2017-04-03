@@ -432,7 +432,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                         ('K-mer size', self.a_meta['kmer_size']),
                                                         ('Genes are called', self.a_meta['genes_are_called']),
                                                         ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
-                                                        ('Gene function sources', self.gene_function_call_sources),
+                                                        ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
                                                     ],
                                         'description': mistune.markdown(self.p_meta['description']),
                                         }
