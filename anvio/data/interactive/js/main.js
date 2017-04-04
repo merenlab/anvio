@@ -159,7 +159,7 @@ $(document).ready(function() {
     $('#picker_highlight').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -173,7 +173,7 @@ $(document).ready(function() {
     $('#grid_color').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -679,7 +679,7 @@ function buildLegendTables() {
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -743,7 +743,7 @@ function createLegendColorPanel(legend_id) {
     $('.legendcolorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
@@ -1177,7 +1177,7 @@ function buildLayersTable(order, settings)
         $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
             submit: 0,
-            colorScheme: 'dark',
+            colorScheme: 'light',
             onChange: function(hsb, hex, rgb, el, bySetColor) {
                 $(el).css('background-color', '#' + hex);
                 $(el).attr('color', '#' + hex);
@@ -1467,7 +1467,7 @@ function newBin(id, binState) {
     $('#bin_color_' + id).colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
