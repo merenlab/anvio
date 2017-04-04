@@ -900,6 +900,14 @@
                 $(targetTab).tab('show');
             }
         }
+
+        if (ev.keyCode === 83) { // S = 83
+            $('#toggle-panel-left').trigger('click');
+        }
+
+        if (ev.keyCode === 77) { // M = 77
+            $('#toggle-panel-right').trigger('click');
+        }
     });
 
     $('.nav-tabs a').on('shown.bs.tab', function (e) {
