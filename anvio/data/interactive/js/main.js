@@ -302,7 +302,7 @@ function initData () {
             $('#title-panel-first-line').text(titleResponse[0]);
             if (typeof description !== 'undefined')
             {
-                $('#title-panel-first-line').append('<button class="btn btn-xs" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
+                $('#title-panel-first-line').append('<button class="btn btn-xs btn-default" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
             }
             $('#description-editor').val(description);
             descriptionEditor = new SimpleMDE({ 
