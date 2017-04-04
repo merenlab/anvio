@@ -3377,15 +3377,13 @@ def update_description_in_db(anvio_db_path, description, run=run):
                      and %d characters." % (db_type, len(description.split()), len(description)))
 
 
-def do_hierarchical_clusterings(split_names, anvio_db_path, clustering_configs, database_paths, output_directory, default_clustering_config, \
+def do_hierarchical_clusterings(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
     """This is just an orphan function that computes hierarchical clustering results
        and calls the `add_hierarchical_clustering_to_db` function with correct input.
 
        Ugly but useful --yet another one of those moments in which we sacrifice
-       important principles for simple conveniences.
-
-       If you do not have `split names`, send an empty list (i.e., [])"""
+       important principles for simple conveniences."""
 
     from anvio.clusteringconfuguration import ClusteringConfiguration
     from anvio.clustering import order_contigs_simple
@@ -3393,7 +3391,7 @@ def do_hierarchical_clusterings(split_names, anvio_db_path, clustering_configs, 
     for config_name in clustering_configs:
         config_path = clustering_configs[config_name]
 
-        config = ClusteringConfiguration(config_path, output_directory, db_paths=database_paths, row_ids_of_interest=split_names)
+        config = ClusteringConfiguration(config_path, input_directory, db_paths=database_paths, row_ids_of_interest=split_names)
 
         try:
             clustering_id, newick = order_contigs_simple(config, distance=distance, linkage=linkage, progress=progress)
