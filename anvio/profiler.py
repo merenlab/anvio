@@ -21,7 +21,6 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
-from anvio.clusteringconfuguration import ClusteringConfiguration
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -715,9 +714,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def cluster_contigs(self):
         default_clustering_config = constants.blank_default if self.blank else constants.single_default
 
-        dbops.do_hierarchical_clusterings(self.split_names, self.profile_db_path, self.clustering_configs, self.database_paths, self.output_directory, \
-                                          default_clustering_config=default_clustering_config, distance=self.distance, linkage=self.linkage, \
-                                          run=self.run, progress=self.progress)
+        dbops.do_hierarchical_clusterings(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
+                                          input_directory=self.output_directory, default_clustering_config=default_clustering_config, \
+                                          distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def check_args(self):

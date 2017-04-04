@@ -879,13 +879,9 @@ class Pangenome(GenomeStorage):
             # update the clustering configs:
             updated_clustering_configs[config_name] = enhanced_config_path
 
-            # FIXME: This looks like a call to a function written by Frankenstein due to the missing optional named parameter of 
-            #        `split_names`. The next person who has time and energy to address this should first say "WTAF, Meren"
-            #        (preferrably outloud), then should fix the function header in dbops (to make the first parameter a named-optional
-            #        one), and finally correct all instances of `do_hierarchical_clusterings`:
-            dbops.do_hierarchical_clusterings([], self.pan_db_path, updated_clustering_configs, {'PAN.db': self.pan_db_path}, self.output_dir, \
-                                              default_clustering_config=constants.pan_default, distance=self.distance, linkage=self.linkage, \
-                                              run=self.run, progress=self.progress)
+            dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
+                                              input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
+                                              distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def gen_samples_db(self):
