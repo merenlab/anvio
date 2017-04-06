@@ -130,8 +130,14 @@ class SamplesInformation:
 
             attribute = self.aliases_to_attributes_dict[sample_attribute_tuples[0][2]]
             if attribute not in self.samples_order_dict:
-                self.samples_order_dict['>> ' + attribute] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples)])}
-                self.samples_order_dict['>> ' + attribute + ' (reverse)'] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples, reverse=True)])}
+                try:
+                    self.samples_order_dict['>> ' + attribute] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples)])}
+                    self.samples_order_dict['>> ' + attribute + ' (reverse)'] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples, reverse=True)])}
+                except TypeError:
+                    raise SamplesError("OK. Anvi'o has good and bad news. The bad news is that your samples information\
+                                        is kaput, because one of the columns in it has mixed data types (not everything has the\
+                                        same type). The good news is that we know what column is that: it is the column '%s'.\
+                                        Please take a look." % attribute)
 
 
     def populate_from_input_files(self, samples_information_path=None, samples_order_path=None):
