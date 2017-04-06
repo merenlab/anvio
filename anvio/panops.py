@@ -26,7 +26,6 @@ from anvio.drivers.blast import BLAST
 from anvio.drivers.muscle import Muscle
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
-from anvio.clusteringconfuguration import ClusteringConfiguration
 
 from anvio.errors import ConfigError, FilesNPathsError
 
