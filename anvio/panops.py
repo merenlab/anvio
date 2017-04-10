@@ -192,6 +192,14 @@ class GenomeStorage(object):
         self.storage_path = A('genomes_storage')
         self.genome_names_to_focus = A('genome_names')
 
+        if not self.storage_path:
+            raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
+                               yet there is nothing to initialize since genome storage path variable\
+                               (args.genomes_storage) is None. If you are an end user, please make sure\
+                               you provide the genomes storage paramater to whatever program you were\
+                               running. If you are a developer, you probably already figured what is\
+                               wrong. If you are a cat, you need to send us an e-mail immediately.")
+
         # let's take care of the genome names to focus, if there are any, first. 
         if self.genome_names_to_focus:
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
@@ -804,14 +812,17 @@ class Pangenome(GenomeStorage):
             if self.additional_view_data[PC]['num_genomes_pc_has_hits'] >= self.PC_min_occurrence:
                 PCs_of_interest.add(PC)
 
+        removed_PCs = 0
         for PC in PCs:
             if PC not in PCs_of_interest:
                 self.view_data.pop(PC)
                 self.view_data_presence_absence.pop(PC)
                 self.additional_view_data.pop(PC)
+                protein_clusters_dict.pop(PC)
+                removed_PCs += 1
 
         if self.PC_min_occurrence > 1:
-            self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clusters_dict) - len(PCs_of_interest))))
+            self.run.info('PCs min occurrence', '%d (the filter removed %d PCs)' % (self.PC_min_occurrence, removed_PCs))
 
         ########################################################################################
         #                           STORING FILTERED DATA IN THE DB
@@ -845,7 +856,6 @@ class Pangenome(GenomeStorage):
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
         pan_db.db.set_meta_value('additional_data_headers', ','.join(additional_data_structure[1:]))
         pan_db.disconnect()
-
 
         ########################################################################################
         #             CHEATING THE SYSTEM FOR AN ENHANCED CLUSTERING CONFIGURATION
@@ -881,6 +891,11 @@ class Pangenome(GenomeStorage):
             dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
                                               input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
                                               distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+
+        ########################################################################################
+        #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
+        ########################################################################################
+        return protein_clusters_dict
 
 
     def gen_samples_db(self):
@@ -1102,11 +1117,11 @@ class Pangenome(GenomeStorage):
         # compute alignments for genes within each PC (or don't)
         self.compute_alignments_for_PCs(protein_clusters_dict)
 
+        # populate the pan db with results
+        protein_clusters_dict = self.process_protein_clusters(protein_clusters_dict)
+
         # store protein clusters dict into the db
         self.store_protein_clusters(protein_clusters_dict)
-
-        # populate the pan db with results
-        self.process_protein_clusters(protein_clusters_dict)
 
         # gen samples info and order files
         self.gen_samples_db()
