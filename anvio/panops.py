@@ -1057,7 +1057,7 @@ class Pangenome(GenomeStorage):
     def compute_alignments_for_PCs(self, protein_clusters_dict):
         if self.skip_alignments:
             self.run.warning('Skipping gene alignments.')
-            return
+            return protein_clusters_dict
 
         r = terminal.Run()
         r.verbose = False
@@ -1089,6 +1089,8 @@ class Pangenome(GenomeStorage):
 
         self.progress.end()
 
+        return protein_clusters_dict
+
 
     def process(self):
         # check sanity
@@ -1115,7 +1117,7 @@ class Pangenome(GenomeStorage):
         del mcl_clusters
 
         # compute alignments for genes within each PC (or don't)
-        self.compute_alignments_for_PCs(protein_clusters_dict)
+        protein_clusters_dict = self.compute_alignments_for_PCs(protein_clusters_dict)
 
         # populate the pan db with results
         protein_clusters_dict = self.process_protein_clusters(protein_clusters_dict)
