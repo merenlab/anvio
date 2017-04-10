@@ -513,6 +513,9 @@ def restore_alignment(sequence, alignment_summary):
        See `summarize_alignment` for the `alignment_summary` compression.
     """
 
+    if not alignment_summary:
+        return sequence
+
     if isinstance(sequence, bytes):
         sequence = list(sequence.decode('utf-8'))
     elif isinstance(sequence, str):
