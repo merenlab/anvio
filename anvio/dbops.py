@@ -700,6 +700,7 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
+        self.protein_clusters_initialized = False
         self.protein_cluster_names = set([])
         self.protein_clusters_gene_alignments = {}
         self.protein_clusters_gene_alignments_available = False
@@ -765,6 +766,82 @@ class PanSuperclass(object):
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
+
+
+    def get_AA_sequences_for_PCs(self, pc_names=set([]), output_file_path=None, skip_alignments=False):
+        """Returns a dictionary of sequences (aligned or not) in a given protein cluster:
+
+        {
+            'PC_NAME_01': {
+                            'GENOME_NAME_A': [('gene_callers_id_x', 'sequence_x'),
+                                              ('gene_callers_id_y', 'sequence_y')],
+                            'GENOME_NAME_B': [('gene_callers_id_z', 'sequence_z')],
+                            (...)
+                          },
+            'PC_NAME_02': {
+                            (...)
+                          },
+            (...)
+        }
+
+        """
+
+        sequences = {}
+
+        if not isinstance(pc_names, type(set([]))) or not pc_names:
+            raise ConfigError("pc_names for get_AA_sequences_for_PCs must be a non-empty `list`.")
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
+                               but there is not genomes storage is available to get it." \
+                                    % 'a PC' if len(pc_names) > 1 else '%d PCs' % len(pc_names))
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.protein_clusters_initialized:
+            self.init_protein_clusters()
+
+        missing_pc_names = [p for p in pc_names if p not in self.protein_clusters]
+        if len(missing_pc_names[0:5]):
+            raise ConfigError("get_AA_sequences_for_PCs: %d of %d PC names are missing in the pan database. Not good :/\
+                               Here are some of the missing ones; %s" \
+                                        % (len(missing_pc_names), len(pc_names), ', '.join(missing_pc_names[0:5])))
+
+        if output_file_path:
+            output_file = open(output_file_path, 'w')
+
+        self.progress.new('Accessing protein cluster seqeunces')
+        sequence_counter = 0
+        for pc_name in pc_names:
+            self.progress.update("processing '%s' ..." % pc_name )
+            sequences[pc_name] = {}
+            for genome_name in self.protein_clusters[pc_name]:
+                sequences[pc_name][genome_name] = {}
+                for gene_callers_id in self.protein_clusters[pc_name][genome_name]:
+                    sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+
+                    if not skip_alignments and self.protein_clusters_gene_alignments_available:
+                        alignment_summary = self.protein_clusters_gene_alignments[genome_name][gene_callers_id]
+                        sequence = utils.restore_alignment(sequence, alignment_summary)
+
+                    sequences[pc_name][genome_name][gene_callers_id] = sequence
+                    sequence_counter += 1
+
+                    if output_file_path:
+                        output_file.write('>%08d|pc:%s|genome_name:%s|gene_callers_id:%d\n' % (sequence_counter,
+                                                                                              pc_name,
+                                                                                              genome_name,
+                                                                                              gene_callers_id))
+                        output_file.write('%s\n' % sequence)
+
+        self.progress.end()
+
+        if output_file_path:
+            output_file.close()
+            self.run.info('Output file', output_file_path)
+
+        return sequences
 
 
     def init_protein_clusters_functions(self):
@@ -897,6 +974,8 @@ class PanSuperclass(object):
 
         pan_db.disconnect()
         self.progress.end()
+
+        self.protein_clusters_initialized = True
 
 
     def load_pan_views(self, splits_of_interest=None):
