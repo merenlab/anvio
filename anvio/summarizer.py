@@ -271,9 +271,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     def generate_protein_clusters_file(self, collection_dict, compress_output=True):
         """Generates the proteins summary file"""
 
-        self.progress.new('Protein clusters summary file')
-        self.progress.update('...')
-
         # generate a dict of protein cluster ~ bin id relationships
         pc_name_to_bin_name= dict(list(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned))))
         for bin_id in collection_dict: 
@@ -297,10 +294,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 header.append(source)
 
         # if this is not a quick summary, have AA sequences in the output
-        header.append('aa_sequence') if not self.quick else None
+        AA_sequences = None
+        if not self.quick:
+            header.append('aa_sequence')
+            AA_sequences = self.get_AA_sequences_for_PCs(pc_names=self.protein_cluster_names)
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
+
+        #sequences = self.get_AA_sequences_for_PCs
+
+        self.progress.new('Protein clusters summary file')
+        self.progress.update('...')
 
         # uber loop for the file content
         unique_id = 1
@@ -327,7 +332,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             entry.append('')
                             entry.append('')
 
-                    entry.append(self.genomes_storage.get_gene_sequence(genome_name, gene_caller_id)) if not self.quick else None
+                    if not self.quick:
+                        entry.append(AA_sequences[pc_name][genome_name][gene_caller_id])
 
                     output_file_obj.write(('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n').encode('utf-8'))
                     unique_id += 1
