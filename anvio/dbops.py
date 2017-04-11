@@ -728,7 +728,7 @@ class PanSuperclass(object):
         self.progress.new('Initializing the pan database superclass')
 
         self.progress.update('Creating an instance of the pan database')
-        pan_db = PanDatabase(self.pan_db_path)
+        pan_db = PanDatabase(self.pan_db_path, run=self.run, progress=self.progress)
 
         self.progress.update('Setting profile self data dict')
         self.p_meta = pan_db.meta
@@ -761,7 +761,9 @@ class PanSuperclass(object):
         if 'genomes_storage' in args.__dict__ and args.genomes_storage:
             self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage,
                                                                        self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'])
+                                                                       genome_names_to_focus=self.p_meta['genome_names'],
+                                                                       run=self.run,
+                                                                       progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
@@ -839,7 +841,7 @@ class PanSuperclass(object):
 
         if output_file_path:
             output_file.close()
-            self.run.info('Output file', output_file_path)
+            self.run.info('Output file', output_file_path, lc='green')
 
         return sequences
 
