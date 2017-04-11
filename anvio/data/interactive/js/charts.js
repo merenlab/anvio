@@ -368,6 +368,7 @@ function Chart(options){
                             .attr("writing-mode", "tb")
                             .attr("font-size", "7px")
                             .attr("glyph-orientation-vertical", "0")
+                            .attr("style", "cursor:pointer;")
                             .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                             .attr('data-content', function(d) { 
                                 return '<table class="table table-striped" style="width: 100%; text-align: center;"> \
