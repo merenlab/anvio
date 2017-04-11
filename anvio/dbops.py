@@ -1289,7 +1289,7 @@ class ProfileSuperclass(object):
                 continue
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
-            d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
+            d[e['sample_id']]['competing_nucleotides'][e['pos']] = e
 
         return d
 
