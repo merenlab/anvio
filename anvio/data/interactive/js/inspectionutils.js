@@ -53,7 +53,8 @@ function getUrlVars() {
 
 
 function get_gene_functions_table_html(gene){
-    functions_table_html = '<h2>Gene Call</h2>';
+    functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+    functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
     functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
