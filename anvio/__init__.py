@@ -447,6 +447,12 @@ D = {
              'action': 'store_true',
              'help': "Show available collections and exit."}
                 ),
+    'list-bins': (
+            ['--list-bins'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available bins in a collection and exit."}
+                ),
     'list-states': (
             ['--list-states'],
             {'default': False,
@@ -501,6 +507,16 @@ D = {
             {'metavar': 'FILE',
              'help': "A file with anvi'o gene caller IDs. There should be only one column in the file, and each line\
                       should correspond to a unique gene caller id (without a column header)."}
+                ),
+    'pc-id': (
+            ['--pc-id'],
+            {'metavar': 'PROTEIN_CLUSTER_ID',
+             'help': "Protein cluster ID you are interested in."}
+                ),
+    'pc-ids-file': (
+            ['--pc-ids-file'],
+            {'metavar': 'FILE_PATH',
+             'help': "Text file for protein clusters (each line should contain be a unique protein cluster id)."}
                 ),
     'bin-id': (
             ['-b', '--bin-id'],
