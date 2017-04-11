@@ -371,12 +371,16 @@ function Chart(options){
                             .attr("style", "cursor:pointer;")
                             .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                             .attr('data-content', function(d) { 
-                                return '<table class="table table-striped" style="width: 100%; text-align: center;"> \
+                                return '<h2>Content</h2> \
+                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
                                             <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
-                                            <tr><td>Competing NTS</td><td>' + d.value['competing_nts'] +'</td></tr> \
-                                            <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'] +'</td></tr> \
+                                            <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
+                                            <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
                                             <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene': d.value['codon_order_in_gene']) +'</td></tr> \
                                             <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                        </table> \
+                                        <h2>Counts</h2> \
+                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
                                             <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
                                             <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
                                             <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
