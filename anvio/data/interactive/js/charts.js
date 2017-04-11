@@ -371,7 +371,8 @@ function Chart(options){
                             .attr("style", "cursor:pointer;")
                             .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                             .attr('data-content', function(d) { 
-                                return '<h2>Content</h2> \
+                                return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                                        <h2>Content</h2> \
                                         <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
                                             <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
                                             <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
