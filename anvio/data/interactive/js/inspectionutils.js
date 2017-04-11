@@ -187,6 +187,7 @@ function drawArrows(_start, _stop) {
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
            .attr('stroke', color)
            .attr('stroke-width', 6)
+           .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
