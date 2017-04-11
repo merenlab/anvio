@@ -202,6 +202,12 @@ function drawArrows(_start, _stop) {
 	    .attr('data-toggle', 'popover');
     });
     $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
 }
 
 
