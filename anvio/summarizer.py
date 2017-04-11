@@ -88,6 +88,7 @@ class ArgsTemplateForSummarizerClass:
         self.collection_name = None
         self.taxonomic_level = 't_genus'
         self.list_collections = None
+        self.list_bins = None
         self.debug = None
         self.quick_summary = False
         self.init_gene_coverages = False
@@ -117,6 +118,15 @@ class SummarizerSuperClass(object):
             sys.exit()
 
         self.collection_name = A('collection_name')
+
+        if A('list_bins'):
+            if not self.collection_name:
+                raise ConfigError("It may come across as a surprise, but you really can't list bins in a collection\
+                                   without providing a collection name. Bioinformatics. Never understands what you\
+                                   need and all :/")
+            self.collections.list_bins_in_collection(collection_name=self.collection_name)
+            sys.exit()
+
         self.skip_check_collection_name = A('skip_check_collection_name')
         self.skip_init_functions = A('skip_init_functions')
         self.init_gene_coverages = A('init_gene_coverages')
@@ -190,7 +200,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.output_directory = None
         self.genomes_storage_path = None
 
-        PanSuperclass.__init__(self, args, run, progress)
+        self.run = r
+        self.progress = p
+
+        PanSuperclass.__init__(self, args, self.run, self.progress)
         if not self.genomes_storage_is_available:
             raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
