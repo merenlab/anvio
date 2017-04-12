@@ -1285,6 +1285,8 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
+            e = utils.insert_consensus_and_departure_fields(e, engine='NT')
+
             if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
 

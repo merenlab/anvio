@@ -865,6 +865,30 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
     return contigs_splits_dict
 
 
+def insert_consensus_and_departure_fields(e, engine='NT'):
+    """ 
+    e is a row from variable_nucleotide_positions table defined in tables.
+    this function extends dictionary with consensus and departure from consensus.
+    """
+
+    if engine == 'NT':
+        freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
+    elif engine == 'AA':
+        aas = set(codon_to_AA.values())
+        freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
+
+    frequency_of_consensus = freqs_list[0][0]
+
+    e['n2n1ratio'] = freqs_list[1][0] / frequency_of_consensus if frequency_of_consensus else -1
+    e['consensus'] = freqs_list[0][1]
+
+    total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
+    coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
+    e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
+
+    return e
+
+
 def get_codon_order_to_nt_positions_dict(gene_call):
     """Returns a dictionary to translate codons in a gene to nucleotide positions"""
 
