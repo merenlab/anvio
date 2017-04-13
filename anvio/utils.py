@@ -539,11 +539,11 @@ def restore_alignment(sequence, alignment_summary):
     return alignment
 
 
-def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], separator='\t'):
+def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
     """Returns a dictionary where keys are the column indices, and items are the list of entries
     found in that that column"""
     filesnpaths.is_file_exists(input_file_path)
-    filesnpaths.is_file_tab_delimited(input_file_path)
+    filesnpaths.is_file_tab_delimited(input_file_path, expected_number_of_fields=expected_number_of_fields)
 
     d = {}
 
