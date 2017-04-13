@@ -203,7 +203,7 @@ class GenomeStorage(object):
         # let's take care of the genome names to focus, if there are any, first. 
         if self.genome_names_to_focus:
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
-                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0])[0]
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
             else:
                 self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
 
