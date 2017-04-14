@@ -36,9 +36,7 @@ function loadAll() {
         type: 'GET',
         cache: false,
         url: '/data/charts/' + contig_id,
-        success: function(data) {
-            contig_data = JSON.parse(data);
-
+        success: function(contig_data) {
             layers = contig_data.layers;
             coverage = contig_data.coverage;
             variability = [];
@@ -86,7 +84,7 @@ function loadAll() {
             $.ajax({
               type: 'GET',
               cache: false,
-              url: '/data/charts/get_state?timestamp=' + new Date().getTime(),
+              url: '/data/get_parent_state?timestamp=' + new Date().getTime(),
               success: function(state) {
                 createCharts(state);
               }

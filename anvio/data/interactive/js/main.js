@@ -1614,7 +1614,6 @@ function updateProteinClustersBin(bin_id) {
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
-            data = JSON.parse(data);
             PC_bins_summary_dict[bin_id] = data;
             $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
             $('#completeness_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
@@ -1637,9 +1636,7 @@ function updateComplateness(bin_id) {
         url: "/data/completeness",
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-        success: function(data){
-            completeness_info_dict = JSON.parse(data);
-
+        success: function(completeness_info_dict){
             stats = completeness_info_dict['stats'];
             refs = completeness_info_dict['refs'];
             averages = completeness_info_dict['averages'];
@@ -1866,16 +1863,17 @@ function storeRefinedBins() {
         }
     );
 
-    $.post("/store_refined_bins", {
-        data: JSON.stringify(data, null, 4),
-        colors: JSON.stringify(colors, null, 4),
-    },
-    function(server_response, status){
-        server_response = JSON.parse(server_response);
-        if (server_response.status == -1){
-            toastr.error(server_response.message, "You made the server upset :(");
-        } else {
-            toastr.info(server_response.message, "The server is on board");
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/store_refined_bins?timestamp=' + new Date().getTime(),
+        data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
+        success: function(data) {
+            if (data.status == -1){
+                toastr.error(data.message, "You made the server upset :(");
+            } else {
+                toastr.info(data.message, "The server is on board");
+            }
         }
     });
 }
