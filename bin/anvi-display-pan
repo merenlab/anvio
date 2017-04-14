@@ -7,20 +7,13 @@ and this file implements the bottle callbacks."""
 
 import os
 import sys
-import json
 import argparse
-import webbrowser
-import random
-
-from multiprocessing import Process
-from bottle import route, static_file, redirect, request, BaseRequest, response
-from bottle import run as run_server
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.interactive as interactive
-import anvio.bottleroutes as routes
+from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
 
@@ -36,10 +29,6 @@ __email__ = "a.murat.eren@gmail.com"
 
 run = terminal.Run()
 progress = terminal.Progress()
-
-
-# get the absolute path for static directory under anvio
-static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
 # setup the command line user interface
 parser = argparse.ArgumentParser(description="Start an anvi'o server to display a pan-genome")
@@ -81,14 +70,11 @@ groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
 args = parser.parse_args()
 
-unique_session_id = random.randint(0,9999999999)
-
 try:
     args.mode = 'pan'
     d = interactive.InputHandler(args)
 
-    ip = args.ip_address
-    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
+    args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
 except ConfigError as e:
     print(e)
     sys.exit(-1)
@@ -105,191 +91,5 @@ except HDF5Error as e:
     print(e)
     sys.exit(-5)
 
-
-#######################################################################################################################
-# bottle callbacks start
-#######################################################################################################################
-
-@route('/')
-def redirect_to_app():
-    redirect('/app/index.html')
-
-@route('/app/:filename#.*#')
-def send_static(filename):
-    response = static_file(filename, root=static_dir)
-    routes.set_default_headers(response, isJson=False)
-    return response
-
-@route('/data/<name>')
-def send_data(name):
-    routes.set_default_headers(response)
-    if name == "init":
-        return json.dumps( { "title": d.title,
-                             "description": (d.p_meta['description']),
-                             "clusterings": (d.p_meta['default_clustering'], d.p_meta['clusterings']),
-                             "views": (d.default_view, dict(list(zip(list(d.views.keys()), list(d.views.keys()))))),
-                             "contigLengths": dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info]),
-                             "defaultView": d.views[d.default_view],
-                             "mode": d.mode,
-                             "readOnly": args.read_only,
-                             "binPrefix": "PCB_",
-                             "sessionId": unique_session_id,
-                             "samplesOrder": d.samples_order_dict,
-                             "sampleInformation": d.samples_information_dict,
-                             "sampleInformationDefaultLayerOrder": d.samples_information_default_layer_order,
-                             "stateAutoload": d.state_autoload,
-                             "collectionAutoload": d.collection_autoload,
-                             "noPing": False,
-                             "inspectionAvailable": True,
-                             "sequencesAvailable": True if d.split_sequences else False})
-    elif name == "description":
-        return json.dumps(d.p_meta['description'])
-    elif name == "clusterings":
-        return json.dumps((d.p_meta['default_clustering'], d.p_meta['clusterings']), )
-    elif name == "views":
-        available_views = dict(list(zip(list(d.views.keys()), list(d.views.keys()))))
-        return json.dumps((d.default_view, available_views), )
-    elif name == "default_view":
-        return json.dumps(d.views[d.default_view])
-    elif name == "contig_lengths":
-        split_lengths = dict([tuple((c, d.splits_basic_info[c]['length']),) for c in d.splits_basic_info])
-        return json.dumps(split_lengths)
-    elif name == "title":
-        return json.dumps(d.title)
-    elif name == "mode":
-        return json.dumps(d.mode)
-    elif name == "read_only":
-        return json.dumps(args.read_only)
-    elif name == "bin_prefix":
-        return json.dumps("PCB_")
-    elif name == "session_id":
-        return json.dumps(unique_session_id)
-    elif name == "samples_order":
-        return json.dumps(d.samples_order_dict)
-    elif name == "samples_information":
-        return json.dumps(d.samples_information_dict)
-    elif name == "samples_information_default_layer_order":
-        return json.dumps(d.samples_information_default_layer_order)
-    elif name == "is_inspection_available":
-        return json.dumps(True)
-    elif name == "is_inspection_available":
-        return json.dumps(True if d.split_sequences else False)
-
-
-@route('/data/view/<view_id>')
-def get_view_data(view_id):
-    return routes.get_view_data(d, request, response, view_id)
-
-@route('/tree/<items_ordering_id>')
-def get_items_ordering(items_ordering_id):
-    return routes.get_items_ordering(d, request, response, items_ordering_id)
-
-@route('/data/proteinclusters/<pc_name>')
-def inspect_pc(pc_name):
-    return routes.inspect_pc(d, pc_name)
-
-@route('/data/get_AA_sequences_for_PC/<pc_name>')
-def get_AA_sequences_for_PC(pc_name):
-    return routes.get_AA_sequences_for_PC(d, pc_name)
-
-state_for_pcs = {}
-
-@route('/data/proteinclusters/set_state', method='POST')
-def set_state():
-    global state_for_pcs
-    state_for_pcs = request.forms.get('state')
-
-@route('/data/proteinclusters/get_state')
-def get_parent_state():
-    routes.set_default_headers(response)
-    return state_for_pcs
-
-@route('/data/hmm/<bin_name>/<gene_name>')
-def get_hmm_hit_from_bin(bin_name, gene_name):
-    return routes.get_hmm_hit_from_bin(d, request, response, bin_name, gene_name)
-
-@route('/data/contig/<split_name>')
-def get_sequence_for_split(split_name):
-    return routes.get_sequence_for_split(d, request, response, split_name)
-
-@route('/data/gene/<gene_callers_id>')
-def get_sequence_for_gene_call(gene_callers_id):
-    return routes.get_sequence_for_gene_call(d, request, response, gene_callers_id)
-
-@route('/data/collections')
-def collections():
-    return routes.get_collections(d, request, response)
-
-@route('/data/collection/<collection_source>')
-def get_collection_dict(collection_source):
-    return routes.get_collection_dict(d, request, response, collection_source)
-
-@route('/summary/<collection_name>/:filename#.*#')
-def send_summary_static(collection_name, filename):
-    return routes.send_summary_static(d, request, response, collection_name, filename)
-
-@route('/summarize/<collection_name>')
-def gen_summary(collection_name):
-    return routes.gen_summary(d, request, response, collection_name)
-
-@route('/store_collection', method='POST')
-def store_collections_dict():
-    return routes.store_collections_dict(d, request, response)
-
-@route('/store_description', method='POST')
-def store_description():
-    return routes.store_description(d, request, response)
-
-@route('/data/proteinclusterssummary', method='POST')
-def get_protein_clusters_summary():
-    return routes.get_protein_clusters_summary(d, request)
-
-@route('/state/autoload')
-def state_autoload():
-    return routes.state_autoload(d, response)
-
-@route('/state/all')
-def state_all():
-    return routes.state_all(d, response)
-
-@route('/state/get', method='POST')
-def get_state():
-    return routes.get_state(d, request, response)
-
-@route('/state/save', method='POST')
-def save_state():
-    return routes.save_state(d, request, response)
-
-#######################################################################################################################
-# bottle callbacks end
-#######################################################################################################################
-
-# increase maximum size of form data to 100 MB
-BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100 
-
-if args.dry_run:
-    run.info_single('Dry run, eh? Bye!', 'red', nl_before = 1, nl_after=1)
-    sys.exit()
-
-try:
-    server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
-    server_process.start()
-
-    if args.export_svg:
-        try:
-            utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, args.port_number), args.export_svg, run)
-        except Exception as e: 
-            print(e)
-        finally:
-            server_process.terminate()
-            sys.exit(0)
-
-    if not args.server_only:
-        webbrowser.open_new("http://%s:%d" % (ip, args.port_number))
-
-    run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % args.port_number, 'green', nl_before = 1, nl_after=1)
-    server_process.join()
-except KeyboardInterrupt:
-    run.warning('The server is being terminated.', header='Please wait...')
-    server_process.terminate()
-    sys.exit(0)
+app = BottleApplication(d, args)
+app.run_application(args.ip_address, args.port_number)

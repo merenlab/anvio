@@ -41,8 +41,8 @@ function loadAll() {
         type: 'GET',
         cache: false,
         url: '/data/proteinclusters/' + pc_name,
-        success: function(data) {
-            pc_data = JSON.parse(data);
+        success: function(_pc_data) {
+            pc_data = _pc_data;
             genomes = pc_data.genomes;
             gene_caller_ids = pc_data.gene_caller_ids;
             gene_caller_ids_in_genomes = pc_data.gene_caller_ids_in_genomes;
@@ -71,7 +71,7 @@ function loadAll() {
             $.ajax({
               type: 'GET',
               cache: false,
-              url: '/data/proteinclusters/get_state?timestamp=' + new Date().getTime(),
+              url: '/data/get_parent_state?timestamp=' + new Date().getTime(),
               success: function(_state) {
                 state = _state;
                 createDisplay();
