@@ -271,12 +271,18 @@
                                             <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
                                             <td style="width: 50px;">
                                                 <select class="type_multiple" style="width: 50px;" class="type">
+                                                    <option value="">Select</option>
+                                                    <option value="" disabled>-----Numerical Types-----</option>
                                                     <option value="bar">Bar</option>
                                                     <option value="intensity">Intensity</option>
+                                                    <option value="" disabled>-----Categorical Types-----</option>
+                                                    <option value="color">Color</option>
+                                                    <option value="text">Text</option>
                                                 </select>
                                             </td>
                                             <td>
                                                 <select class="normalization_multiple">
+                                                    <option value="">Select</option>
                                                     <option value="none">none</option>
                                                     <option value="sqrt">sqrt</option>
                                                     <option value="log">log</option>
@@ -319,62 +325,62 @@
                                         <!-- JS FILLS HERE -->
                                     </tbody>
                                 </table>
-                            </div>
 
-                            <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
-                            </div>
+                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                    <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
+                                </div>
 
-                            <div class="full-mode">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                <div class="full-mode">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
                                 </div>
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                </div>
-                            </div>
 
-                            <div class="pan-mode">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load collection of PCs</button>
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection of PCs</button>
+                                <div class="pan-mode">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load collection of PCs</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection of PCs</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
                                 </div>
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                </div>
-                            </div>
 
 
-                            <div class="collection-mode">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                <div class="collection-mode">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="manual-mode">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                <div class="manual-mode">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
                                 </div>
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                </div>
-                            </div>
 
-                            <div class="server-mode">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                    <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                <div class="server-mode">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
                                 </div>
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                </div>
-                            </div>
 
-                            <div class="refine-mode" style="display: none">
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                                <div class="refine-mode" style="display: none">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -868,7 +874,7 @@
     });
 
     document.body.addEventListener('keydown', function(ev) {
-        if (document.activeElement !== document.body)
+        if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
         {
             // shortcuts should not work if user is entering text to input.
             return false;
@@ -883,6 +889,14 @@
             {
                 $(targetTab).tab('show');
             }
+        }
+
+        if (ev.keyCode === 83) { // S = 83
+            $('#toggle-panel-left').trigger('click');
+        }
+
+        if (ev.keyCode === 77) { // M = 77
+            $('#toggle-panel-right').trigger('click');
         }
     });
 

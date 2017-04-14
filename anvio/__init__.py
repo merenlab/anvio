@@ -447,6 +447,12 @@ D = {
              'action': 'store_true',
              'help': "Show available collections and exit."}
                 ),
+    'list-bins': (
+            ['--list-bins'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available bins in a collection and exit."}
+                ),
     'list-states': (
             ['--list-states'],
             {'default': False,
@@ -501,6 +507,16 @@ D = {
             {'metavar': 'FILE',
              'help': "A file with anvi'o gene caller IDs. There should be only one column in the file, and each line\
                       should correspond to a unique gene caller id (without a column header)."}
+                ),
+    'pc-id': (
+            ['--pc-id'],
+            {'metavar': 'PROTEIN_CLUSTER_ID',
+             'help': "Protein cluster ID you are interested in."}
+                ),
+    'pc-ids-file': (
+            ['--pc-ids-file'],
+            {'metavar': 'FILE_PATH',
+             'help': "Text file for protein clusters (each line should contain be a unique protein cluster id)."}
                 ),
     'bin-id': (
             ['-b', '--bin-id'],
@@ -1053,6 +1069,15 @@ D = {
                       relevant interfaces or output files). The use of this flag may reduce the memory fingerprint and\
                       processing time for large datasets."}
                 ),
+    'init-gene-coverages': (
+            ['--init-gene-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Initialize gene coverage and detection data. This is a very computationally expensive step, but it is\
+                      necessary when you need gene level coverage data. The reason this is very computationally expensive\
+                      is because anvi'o computes gene coverages by going back to actual coverage values of each gene to\
+                      average them, instead of using contig average coverage values, for extreme accuracy."}
+                ),
     'skip-auto-ordering': (
             ['--skip-auto-ordering'],
             {'default': False,
@@ -1122,6 +1147,15 @@ D = {
                       contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
                       the memory use never exceeds the size of the physical memory."}
                 ),
+    'export-svg': (
+            ['--export-svg'],
+            {'default': False,
+            'type': str,
+             'metavar': 'FILE_PATH',
+             'required': False,
+             'help': "export svg help"}
+                ),
+
 }
 
 # two functions that works with the dictionary above.

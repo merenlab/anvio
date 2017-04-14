@@ -21,7 +21,6 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
-from anvio.clusteringconfuguration import ClusteringConfiguration
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -713,22 +712,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def cluster_contigs(self):
-        default_clustering = constants.blank_default if self.blank else constants.single_default
+        default_clustering_config = constants.blank_default if self.blank else constants.single_default
 
-        for config_name in self.clustering_configs:
-            config_path = self.clustering_configs[config_name]
-
-            config = ClusteringConfiguration(config_path, self.output_directory, db_paths=self.database_paths, row_ids_of_interest=self.split_names)
-
-            try:
-                clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=self.progress)
-            except Exception as e:
-                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
-                self.progress.end()
-                continue
-
-            dbops.add_hierarchical_clustering_to_db(self.profile_db_path, config_name, newick, distance=self.distance, linkage=self.linkage, \
-                                                    make_default=config_name == default_clustering, run=self.run)
+        dbops.do_hierarchical_clusterings(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
+                                          input_directory=self.output_directory, default_clustering_config=default_clustering_config, \
+                                          distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def check_args(self):

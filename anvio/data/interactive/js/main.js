@@ -40,7 +40,7 @@ var label_to_node_map = {};
 var order_to_node_map = {};
 var leaf_count;
 var samples_id_to_node_map;
-var unnamed_intersection_counter;
+var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
@@ -170,7 +170,7 @@ $(document).ready(function() {
     $('#picker_highlight').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -184,7 +184,7 @@ $(document).ready(function() {
     $('#grid_color').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -544,21 +544,21 @@ function populateColorDicts() {
                 if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
                     samples_categorical_colors[sample_layer_name] = {};
                     samples_categorical_stats[sample_layer_name] = {};
-                }
 
-                for (_sample in samples_information_dict)
-                {
-                    var _category_name = samples_information_dict[_sample][sample_layer_name];
-                    if (_category_name == null || _category_name == '' || _category_name == 'null')
-                        _category_name = 'None';
-                    samples_information_dict[_sample][sample_layer_name] = _category_name;
+                    for (_sample in samples_information_dict)
+                    {
+                        var _category_name = samples_information_dict[_sample][sample_layer_name];
+                        if (_category_name == null || _category_name == '' || _category_name == 'null')
+                            _category_name = 'None';
+                        samples_information_dict[_sample][sample_layer_name] = _category_name;
 
-                    if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
-                        samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
-                        samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                        if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
+                            samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                            samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                        }
+
+                        samples_categorical_stats[sample_layer_name][_category_name]++;
                     }
-
-                    samples_categorical_stats[sample_layer_name][_category_name]++;
                 }
             }
         }
@@ -698,7 +698,7 @@ function buildLegendTables() {
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -762,7 +762,7 @@ function createLegendColorPanel(legend_id) {
     $('.legendcolorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
@@ -1196,7 +1196,7 @@ function buildLayersTable(order, settings)
         $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
             submit: 0,
-            colorScheme: 'dark',
+            colorScheme: 'light',
             onChange: function(hsb, hex, rgb, el, bySetColor) {
                 $(el).css('background-color', '#' + hex);
                 $(el).attr('color', '#' + hex);
@@ -1486,7 +1486,7 @@ function newBin(id, binState) {
     $('#bin_color_' + id).colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
@@ -1757,7 +1757,7 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg() {
+function exportSvg(dontDownload) {
     // check if tree parsed, which means there is a tree on the screen
     if ($.isEmptyObject(label_to_node_map)) 
         return;
@@ -1796,8 +1796,17 @@ function exportSvg() {
     drawTitle(last_settings);
     drawLegend();
 
+    var svg = document.getElementById('svg');
+    var viewBox = svg.getBBox();
+    svg.setAttribute('viewBox', viewBox['x'] + " " + viewBox['y'] + " " + viewBox['width'] + " " + viewBox['height'])
+
+    if (dontDownload == true) {
+        return;
+    }
+
     svgCrowbar();
 
+    svg.removeAttribute('viewBox');
     $('#samples_tree').prepend(detached_clones);
     $('#bin_legend').remove();
     $('#layer_legend').remove();

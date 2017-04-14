@@ -36,12 +36,8 @@ if __name__ == '__main__':
     group0.add_argument('-d', '--data-file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of coverage values of \
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The matrix should include at least two samples")
-    group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', "There are two output files that need to be defined: output-file for gene information (gene \
-                                                        class and gene detection) and sample-detection-output for the detection of the reference genome across \
-                                                         samples.")
-    group1.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-
-    group1.add_argument('-s', '--sample-detection-output', metavar='FILE', help="Output file for sample detection information")
+    group1 = parser.add_argument_group('ESSENTIAL OUTPUTS')
+    group1.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
                                                             outputs would be added to these files")
     groupB.add_argument('-A', '--additional-layers', metavar='FILE', dest='additional_layers_to_append', default=None,
@@ -51,21 +47,24 @@ if __name__ == '__main__':
     groupB.add_argument('-D', '--gene_detection_data_file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of detection values of \
                                                                     genes in samples. The matrix should include row titles (with gene_ids) and column titles \
                                                                     (with sample names). The gene_ids and sample_ids should match the ones in the gene_coverages data-file.")
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
-    groupC.add_argument('-a', '--alpha', metavar='NUM', type=float, default=0.8,
+    groupC.add_argument('--alpha', metavar='NUM', type=float, default=0.8,
                         help='portion of TSC genes required to decide a genome is detected in a sample (default 0.8)')
-    groupC.add_argument('-b', '--beta', metavar='NUM', type=float, default=1.0,
-                        help='Weight of the number of non-taxon-specific genes in the loss function (default = 1). '
-                             'This means that if the adjusted standard deviation of a gene is greater than beta, '
-                             'then the gene will be classified as non-taxon-specific')
-    groupC.add_argument('-g', '--gamma', metavar='NUM', type=float, default=3.0,
+    groupC.add_argument('--beta', metavar='NUM', type=float, default=1.0,
+                        help='Weight of the number of non-taxon-specific genes in the loss function (default = 1). \
+                             This means that if the adjusted standard deviation of a gene is greater than beta, \
+                             then the gene will be classified as non-taxon-specific')
+    groupC.add_argument('--gamma', metavar='NUM', type=float, default=3.0,
                         help='This is used to define detection of genes. It is the number of standard deviation below '
                              'the mean value of the taxon specific genes for which a gene is considered detected (default 3.0)')
-    groupC.add_argument('-e', '--eta', metavar='NUM', type=float, default=0.95,
+    groupC.add_argument('--eta', metavar='NUM', type=float, default=0.95,
                         help='Threshold for deciding whether a gene is core or accessory (default is 0.95, hence if a '
                              'gene is detected in at least 95%% of the samples (in which the genome is detected) then '
                              'it is considered core')
-    groupC.add_argument('-z', '--zeta', metavar='NUM', type=float, default=0.75,
+    groupC.add_argument('--zeta', metavar='NUM', type=float, default=0.75,
                         help='Minimal gene detection value (formerly known as percent covered) in order to consider a gene \
                              as detected in a sample (default 0.75). Notice: this is required for a gene to be considered detected in a sample,\
                              but it is not sufficient. For more details, see --gamma')

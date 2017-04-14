@@ -109,7 +109,7 @@ function drawLegend() {
             $(rect).colpick({
                 layout: 'hex',
                 submit: 0,
-                colorScheme: 'dark',
+                colorScheme: 'light',
                 onChange: function(hsb, hex, rgb, el, bySetColor) {
                     $(el).css('fill', '#' + hex);
                     window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
@@ -571,7 +571,7 @@ function formatString(s) {
 function Node(label) {
     if (typeof label === 'undefined')
     {
-        label = 'UnnamedIntersection' + (unnamed_intersection_counter++);
+        label = 'UnnamedNode' + (unnamed_node_counter++);
     }
     this.ancestor = null;
     this.child = null;
@@ -1526,7 +1526,7 @@ function draw_tree(settings) {
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = {};
-    unnamed_intersection_counter = 0;
+    unnamed_node_counter = 0;
 
     if (clusteringData.constructor === Array)
     {
@@ -1558,8 +1558,8 @@ function draw_tree(settings) {
             {
                 leaf_node.angle = angle_per_leaf / 2 + Math.toRadians(angle_min) + angle_per_leaf * i;
                 pt = [];
-                pt['x'] = radius * Math.cos(leaf_node.angle);
-                pt['y'] = radius * Math.sin(leaf_node.angle);
+                pt['x'] = (radius / 2) * Math.cos(leaf_node.angle);
+                pt['y'] = (radius / 2) * Math.sin(leaf_node.angle);
                 leaf_node.backarc = [];
                 leaf_node.backarc['x'] = pt['x'];
                 leaf_node.backarc['y'] = pt['y'];
@@ -1588,10 +1588,15 @@ function draw_tree(settings) {
 
         var n = new NodeIterator(t.root);
         var q = n.Begin();
+        var intersection_counter = 0;
 
         order_counter = 0;
         while (q != null)
         {
+            if (!q.IsLeaf()) {
+                q.label = "Int_" + (intersection_counter++);
+            }
+
             label_to_node_map[q.label] = q;
             id_to_node_map[q.id] = q;
             
@@ -2525,22 +2530,7 @@ function draw_tree(settings) {
                 if ((layers[pindex]['height']) == 0)
                     continue;
 
-                var layer_title = layerdata[0][pindex];
-
-                if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
-                    layer_title = named_layers[layer_title]['pretty_name'];
-                } else if(layer_title.substring(0, 5) == "hmmx_") {
-                    layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
-                } else if(layer_title.substring(0, 5) == "hmms_") {
-                    layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
-                } else {
-                    layer_title = layer_title.replace(/_/g, " ");
-                }
-
-                if (layer_title.indexOf('!') > -1 )
-                {
-                    layer_title = layer_title.split('!')[0];
-                }
+                var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
 
                 drawFixedWidthText('layer_labels', {
                         'x': 10,
@@ -2552,6 +2542,25 @@ function draw_tree(settings) {
                     total_radius,
                     layers[pindex]['height']);
             }
+        }
+    }
+    else
+    {
+        for (var i = 0; i < settings['layer-order'].length; i++) {
+            var layer_index = i+1;
+            var pindex = settings['layer-order'][i];
+            var layer = settings['views'][current_view][pindex];
+
+            // !!IMPORTANT!! no label for hidden layers, font-size: 0px causes bug on inkscape 0.91
+            if ((layers[pindex]['height']) == 0)
+                continue;
+
+            var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
+
+            drawRotatedText('layer_labels', {
+                'x': layer_boundaries[layer_index][1] - (layers[pindex]['height'] * 1/4),
+                'y': tree_max_y + 40,  
+            }, layer_title, -90, 'right', (layers[pindex]['height'] / 2) + 'px', 'sans-serif', '#000000', 0, 'baseline');   
         }
     }
 
@@ -2916,6 +2925,14 @@ function redrawBins()
                 1,
                 false);
         }
+    }
+
+    try{
+        var fake_event = {'target': {'id': '#line' + order_to_node_map[0].id}};
+        lineMouseLeaveHandler(fake_event);
+    }catch(err){
+        console.log("Triggering mouseLeaveHandler failed.");
+        console.log(err);
     }
 }
 

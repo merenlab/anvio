@@ -79,7 +79,7 @@ class HDF5_IO(object):
             >>> h.close()
         """
 
-        new_data_obj = self.fp.create_dataset(path, (len(l),), dtype=np.dtype(data_type))
+        new_data_obj = self.fp.create_dataset(path, (len(l),), dtype=np.dtype(data_type), compression="gzip")
         new_data_obj[...] = np.array(l)
 
 
@@ -358,6 +358,8 @@ class GenomesDataStorage(HDF5_IO):
                 total_num_protein_sequences += 1
 
             self.progress.end()
+
+        output_file.close()
 
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')

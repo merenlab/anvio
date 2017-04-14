@@ -70,6 +70,8 @@ groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'
 groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
 groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
 groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
+groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 groupE.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
@@ -84,11 +86,11 @@ args = parser.parse_args()
 unique_session_id = random.randint(0,9999999999)
 
 try:
-    ip = args.ip_address
-    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
-
     r = refine.RefineBins(args)
     d = r.refine()
+
+    ip = args.ip_address
+    args.port_number = utils.get_port_num(args.port_number, ip, run=run)
 except ConfigError as e:
     print(e)
     sys.exit(-1)
@@ -250,6 +252,16 @@ if args.dry_run:
 try:
     server_process = Process(target=run_server, kwargs={'host': ip, 'port': args.port_number, 'quiet': True, 'server': 'cherrypy'})
     server_process.start()
+
+    if args.export_svg:
+        try:
+            utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, args.port_number), args.export_svg, run)
+        except Exception as e: 
+            print(e)
+        finally:
+            server_process.terminate()
+            sys.exit(0)
+
     webbrowser.open_new("http://%s:%d" % (ip, args.port_number))
     run.info_single('When you are finished, press CTRL+C to terminate the server.', 'green', nl_before = 1, nl_after=1)
     server_process.join()

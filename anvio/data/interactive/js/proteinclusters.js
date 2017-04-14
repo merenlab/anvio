@@ -23,7 +23,7 @@ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || 
 var genomes;
 var gene_caller_ids;
 var gene_caller_ids_in_genomes;
-var gene_aa_sequences_for_gene_caller_ids;
+var aa_sequences_in_pc;
 var previous_pc_name;
 var next_pc_name;
 var index;
@@ -46,7 +46,7 @@ function loadAll() {
             genomes = pc_data.genomes;
             gene_caller_ids = pc_data.gene_caller_ids;
             gene_caller_ids_in_genomes = pc_data.gene_caller_ids_in_genomes;
-            gene_aa_sequences_for_gene_caller_ids = pc_data.gene_aa_sequences_for_gene_caller_ids;
+            aa_sequences_in_pc = pc_data.aa_sequences_in_pc;
             previous_pc_name = pc_data.previous_pc_name;
             next_pc_name = pc_data.next_pc_name;
             index = pc_data.index;
@@ -136,7 +136,7 @@ function createDisplay(){
             sub_y_cord = y_cord + 5;
 
             pc_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = pc_data.gene_aa_sequences_for_gene_caller_ids[caller_id];
+                sequence = pc_data.aa_sequences_in_pc[layer][caller_id];
 
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);

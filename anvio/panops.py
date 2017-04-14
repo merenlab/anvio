@@ -26,7 +26,6 @@ from anvio.drivers.blast import BLAST
 from anvio.drivers.muscle import Muscle
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
-from anvio.clusteringconfuguration import ClusteringConfiguration
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -114,6 +113,7 @@ class GenomeStorage(object):
             return
 
         # check whether function calls are available for all genomes involved, and whether function sources for each genome is identical
+        genomes_with_no_functional_annotation = []
         function_annotation_sources_per_genome = {}
         all_function_annotation_sources_observed = set([])
         for genome_name in self.genomes:
@@ -122,11 +122,27 @@ class GenomeStorage(object):
             sources = contigs_db.meta['gene_function_sources']
             contigs_db.disconnect()
 
-            if sources:
+            if not sources:
+                genomes_with_no_functional_annotation.append(genome_name)
+            else:
                 function_annotation_sources_per_genome[genome_name] = sources
                 all_function_annotation_sources_observed.update(sources)
 
-        if not len(all_function_annotation_sources_observed):
+        if genomes_with_no_functional_annotation:
+            if len(genomes_with_no_functional_annotation) == len(self.genomes):
+                self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
+                                  then your genomes have no functional annotation. SAD.")
+            else:
+                self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
+                                  can only use matching functional annotations across all genomes involved, having even one genome without\
+                                  any functions means that there will be no matching function across all. Things will continue to work, but\
+                                  you will have no functions at the end for your protein clusters." % \
+                                                (len(genomes_with_no_functional_annotation), len(self.genomes)))
+
+            # make sure it is clear.
+            function_annotation_sources_per_genome = {}
+            all_function_annotation_sources_observed = set([])
+        elif not len(all_function_annotation_sources_observed):
             self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
                               then your genomes have no functional annotation. It is sad.")
         else:
@@ -176,10 +192,18 @@ class GenomeStorage(object):
         self.storage_path = A('genomes_storage')
         self.genome_names_to_focus = A('genome_names')
 
+        if not self.storage_path:
+            raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
+                               yet there is nothing to initialize since genome storage path variable\
+                               (args.genomes_storage) is None. If you are an end user, please make sure\
+                               you provide the genomes storage paramater to whatever program you were\
+                               running. If you are a developer, you probably already figured what is\
+                               wrong. If you are a cat, you need to send us an e-mail immediately.")
+
         # let's take care of the genome names to focus, if there are any, first. 
         if self.genome_names_to_focus:
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
-                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0])[0]
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
             else:
                 self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
 
@@ -421,7 +445,7 @@ class GenomeStorage(object):
         dbops.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
-        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']])).hexdigest()[0:12]
+        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
         contigs_db.disconnect()
 
         return genome_hash
@@ -788,14 +812,17 @@ class Pangenome(GenomeStorage):
             if self.additional_view_data[PC]['num_genomes_pc_has_hits'] >= self.PC_min_occurrence:
                 PCs_of_interest.add(PC)
 
+        removed_PCs = 0
         for PC in PCs:
             if PC not in PCs_of_interest:
                 self.view_data.pop(PC)
                 self.view_data_presence_absence.pop(PC)
                 self.additional_view_data.pop(PC)
+                protein_clusters_dict.pop(PC)
+                removed_PCs += 1
 
         if self.PC_min_occurrence > 1:
-            self.run.info('PCs min occurrence', '%d (the filter removed %s PCs)' % (self.PC_min_occurrence, (len(protein_clusters_dict) - len(PCs_of_interest))))
+            self.run.info('PCs min occurrence', '%d (the filter removed %d PCs)' % (self.PC_min_occurrence, removed_PCs))
 
         ########################################################################################
         #                           STORING FILTERED DATA IN THE DB
@@ -830,7 +857,6 @@ class Pangenome(GenomeStorage):
         pan_db.db.set_meta_value('additional_data_headers', ','.join(additional_data_structure[1:]))
         pan_db.disconnect()
 
-
         ########################################################################################
         #             CHEATING THE SYSTEM FOR AN ENHANCED CLUSTERING CONFIGURATION
         ########################################################################################
@@ -841,7 +867,7 @@ class Pangenome(GenomeStorage):
         # on this extra bit of inofrmation. becasue the clustering configurations framework in anvi'o
         # does not allow us to have variable information in these recipes, we are going to generate one
         # on the fly to have a more capable one.
-
+        updated_clustering_configs = {}
         for config_name in constants.clustering_configs['pan']:
             config_path = constants.clustering_configs['pan'][config_name]
 
@@ -859,25 +885,17 @@ class Pangenome(GenomeStorage):
             # write the content down in to file at the new path:
             open(enhanced_config_path, 'w').write(open(config_path).read() + additional_config_section)
 
-            # use it to generate a clustering configuration instance:
-            clustering_configuration = ClusteringConfiguration(enhanced_config_path, self.output_dir, db_paths={'PAN.db': self.pan_db_path})
+            # update the clustering configs:
+            updated_clustering_configs[config_name] = enhanced_config_path
 
-            try:
-                clustering_id, newick = clustering.order_contigs_simple(clustering_configuration, distance=self.distance, linkage=self.linkage, progress=self.progress)
-            except Exception as e:
-                self.run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
-                self.progress.end()
-                continue
+            dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
+                                              input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
+                                              distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
-            _, distance, linkage = clustering_id.split(':')
-
-            dbops.add_hierarchical_clustering_to_db(self.pan_db_path,
-                                                    config_name,
-                                                    newick,
-                                                    distance=distance,
-                                                    linkage=linkage,
-                                                    make_default=config_name == constants.pan_default,
-                                                    run=self.run)
+        ########################################################################################
+        #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
+        ########################################################################################
+        return protein_clusters_dict
 
 
     def gen_samples_db(self):
@@ -1039,7 +1057,7 @@ class Pangenome(GenomeStorage):
     def compute_alignments_for_PCs(self, protein_clusters_dict):
         if self.skip_alignments:
             self.run.warning('Skipping gene alignments.')
-            return
+            return protein_clusters_dict
 
         r = terminal.Run()
         r.verbose = False
@@ -1071,6 +1089,8 @@ class Pangenome(GenomeStorage):
 
         self.progress.end()
 
+        return protein_clusters_dict
+
 
     def process(self):
         # check sanity
@@ -1097,13 +1117,13 @@ class Pangenome(GenomeStorage):
         del mcl_clusters
 
         # compute alignments for genes within each PC (or don't)
-        self.compute_alignments_for_PCs(protein_clusters_dict)
+        protein_clusters_dict = self.compute_alignments_for_PCs(protein_clusters_dict)
+
+        # populate the pan db with results
+        protein_clusters_dict = self.process_protein_clusters(protein_clusters_dict)
 
         # store protein clusters dict into the db
         self.store_protein_clusters(protein_clusters_dict)
-
-        # populate the pan db with results
-        self.process_protein_clusters(protein_clusters_dict)
 
         # gen samples info and order files
         self.gen_samples_db()

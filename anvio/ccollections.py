@@ -80,7 +80,8 @@ class Collections:
             raise ConfigError('There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
                                 a programmer and accessing to the collections from your program, here is a reminder for you:\
                                 are you sure `populate_collections_dict` was called for whatever database you are trying to\
-                                get collections from?' % collection_name)
+                                get collections from? If you are a user, you can always try to use the `--list-collections`\
+                                flag and hope for the best.' % collection_name)
 
 
     def get_trimmed_dicts(self, collection_name, split_names = set([])):
@@ -175,11 +176,34 @@ class Collections:
         return bins_info_dict
 
 
+    def is_bin_in_collection(self, collection_name, bin_name):
+        self.sanity_check(collection_name)
+
+        bins_info_dict = self.get_bins_info_dict(collection_name)
+
+        if bin_name not in bins_info_dict:
+            raise ConfigError("The bin '%s' does not seem to be a member of the collection '%s'. If you want to see all bins in\
+                               this collection you can try to add `--list-bins` to your arguments." % (bin_name, collection_name))
+
+        return True
+
+
     def list_collections(self):
         self.run.warning('', 'COLLECTIONS FOUND', lc='yellow')
         for collection_name in self.collections_dict:
             c = self.collections_dict[collection_name]
             output = '%s (%d bins, representing %d items).' % (collection_name, c['num_bins'], c['num_splits'])
+            self.run.info_single(output)
+
+
+    def list_bins_in_collection(self, collection_name):
+        if collection_name not in self.collections_dict:
+            raise ConfigError("The collection name '%s' is not know to anyone here :/ You have to go back, Kate." % collection_name)
+
+        self.run.warning('', 'BINS IN COLLECTION "%s"' % collection_name, lc='yellow')
+        bins_info = self.get_bins_info_dict(collection_name)
+        for bin_name in sorted(bins_info.keys()):
+            output = '%s.' % (bin_name)
             self.run.info_single(output)
 
 

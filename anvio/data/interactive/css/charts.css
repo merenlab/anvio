@@ -283,6 +283,25 @@ a{
   border-left-color: #fff;
 }
 
+.popover-close-button {
+  color: #777;
+  font: 18px/100% arial, sans-serif;
+  position: absolute;
+  right: 8px;
+  text-decoration: none;
+  text-shadow: 0 1px 0 #fff;
+  top: 8px;
+  cursor: pointer;
+}
+
+.popover-close-button:hover {
+    text-decoration: none;
+}
+
+.popover-close-button:after {
+  content: '✖'; /* UTF-8 symbol */
+}
+
 table {
   color: #333; /* Lighten up font color */
   font-family: Helvetica, Arial, sans-serif; /* Nicer font */

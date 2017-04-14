@@ -59,4 +59,4 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --split-hmm-layers
 
 INFO "Summarizing CONCOCT results"
-anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT'
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT' --init-gene-coverages

@@ -368,9 +368,32 @@ function Chart(options){
                             .attr("writing-mode", "tb")
                             .attr("font-size", "7px")
                             .attr("glyph-orientation-vertical", "0")
-                            .attr("fill", function (d){return get_comp_nt_color(d.value);})
+                            .attr("style", "cursor:pointer;")
+                            .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
+                            .attr('data-content', function(d) { 
+                                return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                                        <h2>Content</h2> \
+                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                            <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
+                                            <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
+                                            <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
+                                            <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
+                                            <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
+                                            <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene': d.value['codon_order_in_gene']) +'</td></tr> \
+                                            <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                        </table> \
+                                        <h2>Counts</h2> \
+                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                            <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
+                                            <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
+                                            <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
+                                            <tr><td>C</td><td>' + d.value['C'] +'</td></tr> \
+                                            <tr><td>N</td><td>' + d.value['N'] +'</td></tr> \
+                                        </table>';
+                            })
+                            .attr('data-toggle', 'popover')
                             .text(function (d) {
-                                return d.value;
+                                return d.value['competing_nts'];
                             });
 
 

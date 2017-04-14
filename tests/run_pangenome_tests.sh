@@ -53,5 +53,8 @@ anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST
 INFO "Displaying the initial pangenome analysis results"
 anvi-display-pan -p TEST/TEST-PAN.db -s TEST/TEST-SAMPLES.db -g TEST-GENOMES.h5 --title "A mock pangenome analysis"
 
+INFO "Exporting aligned seqeunces for some protein clusters"
+anvi-export-pc-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -b PCB_1_CORE -o aligned_gene_sequences_in_PCB_1_CORE.fa
+
 INFO "Displaying the second pangenome analysis results"
 anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db -s TEST/ANOTHER_TEST-SAMPLES.db -g TEST-GENOMES.h5 --title "A mock pangenome analysis (with --min-occurrence 2)"
