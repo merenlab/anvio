@@ -166,7 +166,7 @@ def inspect_pc(d, pc_name):
             'index': None,
             'gene_caller_ids': [],
             'gene_caller_ids_in_genomes': {},
-            'gene_aa_sequences_for_gene_caller_ids': {},
+            'aa_sequences_in_pc': {},
             'previous_pc_name': None,
             'next_pc_name': None,
             'index': None,
@@ -179,10 +179,14 @@ def inspect_pc(d, pc_name):
     if not d.genomes_storage_is_available:
         return data
 
+    AA_sequences = d.get_AA_sequences_for_PCs(pc_names=set([pc_name]))
+
     # add the list of gene caller ids associated with this protein cluster into `data`:
     for genome_name in d.protein_clusters[pc_name]:
+        data['aa_sequences_in_pc'][genome_name] = {}
         for gene_callers_id in d.protein_clusters[pc_name][genome_name]:
             data['gene_caller_ids'].append((gene_callers_id, genome_name), )
+            data['aa_sequences_in_pc'][genome_name][gene_callers_id] = AA_sequences[pc_name][genome_name][gene_callers_id]
 
     # the dict that explains the distribution of genes in genomes:
     data['gene_caller_ids_in_genomes'] = d.protein_clusters[pc_name]
@@ -192,16 +196,6 @@ def inspect_pc(d, pc_name):
 
     # get some contextual stuff
     data['index'], data['total'], data['previous_pc_name'], data['next_pc_name'] = get_index_total_previous_and_next_items(d, pc_name)
-
-    for gene_callers_id, genome_name in data['gene_caller_ids']:
-        sequence = d.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
-
-        # restore alignment from the alignment summary if possible
-        if d.protein_clusters_gene_alignments_available:
-            alignment_summary = d.protein_clusters_gene_alignments[genome_name][gene_callers_id]
-            sequence = utils.restore_alignment(sequence, alignment_summary) if alignment_summary else sequence
-
-        data['gene_aa_sequences_for_gene_caller_ids'][gene_callers_id] = sequence
 
     return json.dumps(data)
 

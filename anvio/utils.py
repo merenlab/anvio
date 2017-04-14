@@ -26,7 +26,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
 with SuppressAllOutput():
@@ -272,6 +272,42 @@ def format_cmdline(cmdline):
     return cmdline
 
 
+def gzip_compress_file(input_file_path, output_file_path=None, keep_original=False):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not output_file_path:
+        output_file_path = input_file_path + '.gz'
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    import gzip
+    with open(input_file_path, 'rb') as f_in, gzip.open(output_file_path, 'wb') as f_out:
+        f_out.writelines(f_in)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
+
+def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=True):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not input_file_path.endswith('.gz'):
+        raise ConfigError("gzip_decompress_file function is upset because your input file ('%s') does not\
+                           end with a '.gz' extension :(")
+
+    if not output_file_path:
+        output_file_path = input_file_path[:-3]
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    import gzip
+    with gzip.open(input_file_path, 'rb') as f_in, open(output_file_path, 'wb') as f_out:
+        f_out.writelines(f_in)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
+
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
     cmdline = format_cmdline(cmdline)
@@ -477,6 +513,9 @@ def restore_alignment(sequence, alignment_summary):
        See `summarize_alignment` for the `alignment_summary` compression.
     """
 
+    if not alignment_summary:
+        return sequence
+
     if isinstance(sequence, bytes):
         sequence = list(sequence.decode('utf-8'))
     elif isinstance(sequence, str):
@@ -500,11 +539,11 @@ def restore_alignment(sequence, alignment_summary):
     return alignment
 
 
-def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], separator='\t'):
+def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
     """Returns a dictionary where keys are the column indices, and items are the list of entries
     found in that that column"""
     filesnpaths.is_file_exists(input_file_path)
-    filesnpaths.is_file_tab_delimited(input_file_path)
+    filesnpaths.is_file_tab_delimited(input_file_path, expected_number_of_fields=expected_number_of_fields)
 
     d = {}
 
@@ -580,10 +619,13 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip().split('\t')[1:]
 
-        if fields_of_interest:
-            vector = [float(fields[i]) for i in fields_of_interest]
-        else:
-            vector = [float(f) for f in fields]
+        try:
+            if fields_of_interest:
+                vector = [float(fields[i]) for i in fields_of_interest]
+            else:
+                vector = [float(f) for f in fields]
+        except ValueError:
+            raise ConfigError("Matrix should contain only numerical values.")
 
         vectors.append(vector)
 
@@ -821,6 +863,30 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
             contigs_splits_dict[s['parent']] = {s['order_in_parent']: split_id}
 
     return contigs_splits_dict
+
+
+def insert_consensus_and_departure_fields(e, engine='NT'):
+    """ 
+    e is a row from variable_nucleotide_positions table defined in tables.
+    this function extends dictionary with consensus and departure from consensus.
+    """
+
+    if engine == 'NT':
+        freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
+    elif engine == 'AA':
+        aas = set(codon_to_AA.values())
+        freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
+
+    frequency_of_consensus = freqs_list[0][0]
+
+    e['n2n1ratio'] = freqs_list[1][0] / frequency_of_consensus if frequency_of_consensus else -1
+    e['consensus'] = freqs_list[0][1]
+
+    total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
+    coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
+    e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
+
+    return e
 
 
 def get_codon_order_to_nt_positions_dict(gene_call):
@@ -1554,6 +1620,48 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
+
+
+def run_selenium_and_export_svg(url, output_file_path, run=run):
+    if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
+        raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
+
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.common.exceptions import TimeoutException
+    except:
+        raise ConfigError("You want to export SVGs? Well, you need the Python library 'selenium' to be able to\
+                           do that but you don't have it. If you are lucky, you probably can install it by\
+                           typing 'pip install selenium' or something :/")
+
+    driver = webdriver.Chrome()
+    driver.wait = WebDriverWait(driver, 10)
+    driver.set_window_size(1920, 1080)
+    driver.get(url)
+
+    try:
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID,"draw_delta_time"), "objects drawn in"))
+    except TimeoutException:
+        print("Timeout occured, could not get the SVG drawing in 600 seconds.")
+        driver.quit()
+    time.sleep(1)
+
+    driver.execute_script("exportSvg(true);")
+    time.sleep(1)
+
+    svg = driver.find_element_by_id('panel-center')
+
+    svg_file = open(output_file_path, 'w')
+    svg_file.write(svg.get_attribute('innerHTML'))
+    svg_file.close()
+    driver.quit()
+
+    run.info_single('\'%s\' saved successfully.' % output_file_path)
 
 
 def RepresentsInt(s):

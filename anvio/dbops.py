@@ -24,6 +24,7 @@ import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.kmers as kmers
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.contigops as contigops
 import anvio.samplesops as samplesops
 import anvio.filesnpaths as filesnpaths
@@ -33,7 +34,6 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 from anvio.parsers import parser_modules
 from anvio.tableops import Table
-from anvio.constants import codon_to_AA
 
 from anvio.drivers.hmmer import HMMer
 
@@ -96,6 +96,7 @@ class ContigsSuperclass(object):
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
         self.auxiliary_contigs_data_available = False
+        self.auxiliary_contigs_data_path = None
         self.nt_positions_info = None
 
         self.gene_function_call_sources = []
@@ -173,9 +174,10 @@ class ContigsSuperclass(object):
         contigs_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        auxiliary_contigs_data_path = ''.join(self.contigs_db_path[:-3]) + '.h5'
+        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.contigs_db_path)
         if os.path.exists(auxiliary_contigs_data_path):
             self.auxiliary_contigs_data_available = True
+            self.auxiliary_contigs_data_path = auxiliary_contigs_data_path
             self.nt_positions_info = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, self.a_meta['contigs_db_hash'])
             self.progress.end()
         else:
@@ -313,13 +315,15 @@ class ContigsSuperclass(object):
 
             for e in list(non_singlecopy_gene_hmm_results_dict.values()):
                 hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
+                hmm_source = e['source']
+
                 if not e['split'] in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
 
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
-                self.hmm_searches_dict[e['split']][source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
+                self.hmm_searches_dict[e['split']][hmm_source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
         self.progress.end()
 
@@ -552,7 +556,7 @@ class ContigsSuperclass(object):
         AA_counts_dict['total_gene_calls'] = len(gene_calls_of_interest)
 
         # add missing AAs into the dict .. if there are any
-        for AA in list(codon_to_AA.values()):
+        for AA in list(constants.codon_to_AA.values()):
             if AA not in AA_counts_dict['AA_counts']:
                 AA_counts_dict['AA_counts'][AA] = 0
 
@@ -696,6 +700,7 @@ class PanSuperclass(object):
 
         self.genome_names = []
         self.protein_clusters = {}
+        self.protein_clusters_initialized = False
         self.protein_cluster_names = set([])
         self.protein_clusters_gene_alignments = {}
         self.protein_clusters_gene_alignments_available = False
@@ -723,7 +728,7 @@ class PanSuperclass(object):
         self.progress.new('Initializing the pan database superclass')
 
         self.progress.update('Creating an instance of the pan database')
-        pan_db = PanDatabase(self.pan_db_path)
+        pan_db = PanDatabase(self.pan_db_path, run=self.run, progress=self.progress)
 
         self.progress.update('Setting profile self data dict')
         self.p_meta = pan_db.meta
@@ -756,11 +761,89 @@ class PanSuperclass(object):
         if 'genomes_storage' in args.__dict__ and args.genomes_storage:
             self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage,
                                                                        self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'])
+                                                                       genome_names_to_focus=self.p_meta['genome_names'],
+                                                                       run=self.run,
+                                                                       progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
+
+
+    def get_AA_sequences_for_PCs(self, pc_names=set([]), output_file_path=None, skip_alignments=False):
+        """Returns a dictionary of sequences (aligned or not) in a given protein cluster:
+
+        {
+            'PC_NAME_01': {
+                            'GENOME_NAME_A': [('gene_callers_id_x', 'sequence_x'),
+                                              ('gene_callers_id_y', 'sequence_y')],
+                            'GENOME_NAME_B': [('gene_callers_id_z', 'sequence_z')],
+                            (...)
+                          },
+            'PC_NAME_02': {
+                            (...)
+                          },
+            (...)
+        }
+
+        """
+
+        sequences = {}
+
+        if not isinstance(pc_names, type(set([]))) or not pc_names:
+            raise ConfigError("pc_names for get_AA_sequences_for_PCs must be a non-empty `list`.")
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
+                               but there is not genomes storage is available to get it." \
+                                    % 'a PC' if len(pc_names) > 1 else '%d PCs' % len(pc_names))
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.protein_clusters_initialized:
+            self.init_protein_clusters()
+
+        missing_pc_names = [p for p in pc_names if p not in self.protein_clusters]
+        if len(missing_pc_names[0:5]):
+            raise ConfigError("get_AA_sequences_for_PCs: %d of %d PC names are missing in the pan database. Not good :/\
+                               Here are some of the missing ones; %s" \
+                                        % (len(missing_pc_names), len(pc_names), ', '.join(missing_pc_names[0:5])))
+
+        if output_file_path:
+            output_file = open(output_file_path, 'w')
+
+        self.progress.new('Accessing protein cluster seqeunces')
+        sequence_counter = 0
+        for pc_name in pc_names:
+            self.progress.update("processing '%s' ..." % pc_name )
+            sequences[pc_name] = {}
+            for genome_name in self.protein_clusters[pc_name]:
+                sequences[pc_name][genome_name] = {}
+                for gene_callers_id in self.protein_clusters[pc_name][genome_name]:
+                    sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+
+                    if not skip_alignments and self.protein_clusters_gene_alignments_available:
+                        alignment_summary = self.protein_clusters_gene_alignments[genome_name][gene_callers_id]
+                        sequence = utils.restore_alignment(sequence, alignment_summary)
+
+                    sequences[pc_name][genome_name][gene_callers_id] = sequence
+                    sequence_counter += 1
+
+                    if output_file_path:
+                        output_file.write('>%08d|pc:%s|genome_name:%s|gene_callers_id:%d\n' % (sequence_counter,
+                                                                                              pc_name,
+                                                                                              genome_name,
+                                                                                              gene_callers_id))
+                        output_file.write('%s\n' % sequence)
+
+        self.progress.end()
+
+        if output_file_path:
+            output_file.close()
+            self.run.info('Output file', output_file_path, lc='green')
+
+        return sequences
 
 
     def init_protein_clusters_functions(self):
@@ -894,6 +977,8 @@ class PanSuperclass(object):
         pan_db.disconnect()
         self.progress.end()
 
+        self.protein_clusters_initialized = True
+
 
     def load_pan_views(self, splits_of_interest=None):
         pan_db = PanDatabase(self.pan_db_path)
@@ -1014,6 +1099,7 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        init_gene_coverages = A('init_gene_coverages')
 
         if not self.profile_db_path:
             self.run.warning("ProfileSuperclass class called with args without profile_db member. Anvi'o will assume\
@@ -1066,7 +1152,7 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
         self.progress.update('Accessing the auxiliary data file')
-        self.auxiliary_data_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+        self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
             self.auxiliary_profile_data_available = False
         else:
@@ -1074,6 +1160,9 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
         self.progress.end()
+
+        if init_gene_coverages:
+            self.init_gene_coverages_and_detection_dicts()
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
@@ -1196,11 +1285,13 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
+            e = utils.insert_consensus_and_departure_fields(e, engine='NT')
+
             if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
-            d[e['sample_id']]['competing_nucleotides'][e['pos']] = e['competing_nts']
+            d[e['sample_id']]['competing_nucleotides'][e['pos']] = e
 
         return d
 
@@ -1313,7 +1404,6 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
 
         self.init_split_sequences()
-        self.init_gene_coverages_and_detection_dicts()
 
 
 ####################################################################################################
@@ -1363,15 +1453,14 @@ class ProfileDatabase:
             self.db = None
 
 
-    def create(self, meta_values={}):
+    def touch(self):
+        """Creates an empty profile database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
         is_db_ok_to_create(self.db_path, 'profile')
 
         self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
-
-        for key in meta_values:
-            self.db.set_meta_value(key, meta_values[key])
-
-        self.db.set_meta_value('creation_date', time.time())
 
         # creating empty default tables
         self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
@@ -1383,6 +1472,17 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
 
         self.disconnect()
 
@@ -1511,6 +1611,46 @@ class ContigsDatabase:
             self.db = None
 
 
+    def get_date(self):
+        return time.time()
+
+
+    def get_hash(self):
+        return '%08x' % random.randrange(16**8)
+
+
+    def touch(self):
+        """Creates an empty contigs database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
+        is_db_ok_to_create(self.db_path, 'contigs')
+
+        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
+
+        # creating empty default tables
+        self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
+        self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
+        self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
+        self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
+        self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
+        self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
+        self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
+        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
+        self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
+        self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
+        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
+        self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
+        self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
+
+        return self.db
+
+
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
@@ -1520,8 +1660,6 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         debug = A('debug')
-
-        is_db_ok_to_create(self.db_path, 'contigs')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
@@ -1586,31 +1724,15 @@ class ContigsDatabase:
         if skip_gene_calling:
             skip_mindful_splitting = True
 
-        self.db = db.DB(self.db_path, anvio.__contigs__version__, new_database=True)
-
-        # creating empty default tables
-        self.db.create_table(t.hmm_hits_table_name, t.hmm_hits_table_structure, t.hmm_hits_table_types)
-        self.db.create_table(t.hmm_hits_info_table_name, t.hmm_hits_info_table_structure, t.hmm_hits_info_table_types)
-        self.db.create_table(t.hmm_hits_splits_table_name, t.hmm_hits_splits_table_structure, t.hmm_hits_splits_table_types)
-        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
-        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
-        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
-        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
-        self.db.create_table(t.genes_in_contigs_table_name, t.genes_in_contigs_table_structure, t.genes_in_contigs_table_types)
-        self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
-        self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
-        self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
-        self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
-        self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
-        self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
-        self.db.create_table(t.gene_protein_sequences_table_name, t.gene_protein_sequences_table_structure, t.gene_protein_sequences_table_types)
-        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
+        # create a blank contigs database on disk, and set the self.db
+        self.touch()
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
         # this will be the unique information that will be passed downstream whenever this db is used:
-        contigs_db_hash = '%08x' % random.randrange(16**8)
+        contigs_db_hash = self.get_hash()
         self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
+
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
@@ -1653,7 +1775,7 @@ class ContigsDatabase:
 
         # create an instance from AuxiliaryDataForNtPositions to store information
         # about each nt position while looping over contigs
-        auxiliary_contigs_data_path = ''.join(self.db_path[:-3]) + '.h5'
+        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.db_path)
         nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
 
         contigs_info_table = InfoTableForContigs(split_length)
@@ -1662,7 +1784,7 @@ class ContigsDatabase:
         recovered_split_lengths = []
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
-        self.progress.new('South Loop')
+        self.progress.new('The South Loop')
         fasta.reset()
         while next(fasta):
             contig_name = fasta.id
@@ -1723,7 +1845,7 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
-        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
         if not skip_gene_calling:
@@ -1940,7 +2062,6 @@ class InfoTableForContigs:
 
 
     def store(self, db):
-        db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
@@ -1959,7 +2080,6 @@ class InfoTableForSplits:
 
 
     def store(self, db):
-        db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
@@ -3301,9 +3421,16 @@ def get_split_names_in_profile_db(profile_db_path):
     return split_names
 
 
+def get_auxiliary_data_path_for_contigs_db(contigs_db_path):
+    return ''.join(contigs_db_path[:-3]) + '.h5'
+
+
+def get_auxiliary_data_path_for_profile_db(profile_db_path):
+    return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
+
+
 def get_description_in_db(anvio_db_path, run=run):
     """Reads the description in an anvi'o database"""
-    db_type = get_db_type(anvio_db_path)
 
     anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
     description = None
@@ -3331,6 +3458,34 @@ def update_description_in_db(anvio_db_path, description, run=run):
 
     run.info_single("The anvi'o %s database has just been updated with a description that contains %d words\
                      and %d characters." % (db_type, len(description.split()), len(description)))
+
+
+def do_hierarchical_clusterings(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
+                                distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
+    """This is just an orphan function that computes hierarchical clustering results
+       and calls the `add_hierarchical_clustering_to_db` function with correct input.
+
+       Ugly but useful --yet another one of those moments in which we sacrifice
+       important principles for simple conveniences."""
+
+    from anvio.clusteringconfuguration import ClusteringConfiguration
+    from anvio.clustering import order_contigs_simple
+
+    for config_name in clustering_configs:
+        config_path = clustering_configs[config_name]
+
+        config = ClusteringConfiguration(config_path, input_directory, db_paths=database_paths, row_ids_of_interest=split_names)
+
+        try:
+            clustering_id, newick = order_contigs_simple(config, distance=distance, linkage=linkage, progress=progress)
+        except Exception as e:
+            progress.end()
+            run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
+            continue
+
+        _, distance, linkage = clustering_id.split(':')
+
+        add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
 
 
 def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):

@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Export aligned sequences from anvi'o pan genomes"""
+
+import os
+import sys
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.summarizer as summarizer
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    if args.pc_id and args.pc_ids_file:
+        raise ConfigError('You should either declare a single PC name, or PC names in a file')
+
+    if (args.pc_id or args.pc_ids_file) and args.collection_name:
+        raise ConfigError('You can either declare specific list of PCs to work with (through `--pc-id` or `--pc-ids-file`) or\
+                           go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
+                           mixed. If you need to know what collections are available in the pan database, use the flag \
+                           `--list-collections`.')
+
+    if not args.output_file:
+        args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'protein-cluster-alignments-output-with-an-ugly-name.fa')
+
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    pc_ids = set([])
+    if (args.pc_id or args.pc_ids_file):
+        if args.pc_id:
+            pc_ids = set([args.pc_id])
+            run.info('Mode', 'Reporting alignments for a single protein cluster.')
+        else:
+            columns = utils.get_columns_of_TAB_delim_file(args.pc_ids_file, include_first_column=True)
+            if len(columns) != 1:
+                raise ConfigError("The input file for PC IDs must contain a single column. It seems yours has %d :/" % len(columns))
+
+            pc_ids = set([p.strip('\n') for p in open(args.pc_ids_file, 'rU').readlines()])
+            run.info('Mode', 'Reporting alignments for a list of protein clusters from an input file.')
+    elif args.collection_name:
+        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+        if not args.bin_id:
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag\
+                               `--list-bins`.")
+
+        pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
+        collection_dict = pan.collections.get_collection_dict(args.collection_name)
+        pc_ids = set(collection_dict[args.bin_id])
+
+        run.info('Mode', 'Reporting alignments for a protein clusters from in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
+    else:
+        run.info('Mode', 'Reporting alignments for all protein clusters.')
+
+    pan = dbops.PanSuperclass(args)
+    pan.init_protein_clusters()
+
+    if not pc_ids:
+        run.warning('By not specifying any criteria for protein cluster names to be reported, you elected to report everything.')
+
+        pc_ids = pan.protein_cluster_names
+
+        if len(pc_ids) > 2500:
+            run.warning('Congratulations. You have like a lot of PCs in this database. Maybe it is a good time to get a coffee or something.')
+
+    run.info('Number of protein clusters to report', len(pc_ids))
+
+    pan.get_AA_sequences_for_PCs(pc_names=pc_ids, output_file_path=args.output_file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Export aligned sequences from anvi'o pan genomes")
+
+    groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('OUTPUT FILE', "You get to chose an output file name to report things. The default will be\
+                                       an ugly name. So, be explicit.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+
+    groupC = parser.add_argument_group('SELECTION', "Which protein clusters should be exported. You can ask for a single PC,\
+                                       or multiple ones listed in a file, or you can use a collection and bin name to list PCs\
+                                       of interest. If you give nothing, this program will export alignments for every single PC\
+                                       found in the profile database (and this is called 'customer service').")
+    groupC.add_argument(*anvio.A('pc-id'), **anvio.K('pc-id'))
+    groupC.add_argument(*anvio.A('pc-ids-file'), **anvio.K('pc-ids-file'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupD = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
+    groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+    except SamplesError as e:
+        print(e)
+        sys.exit(-4)
+    except HDF5Error as e:
+        print(e)
+        sys.exit(-5)

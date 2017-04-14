@@ -287,6 +287,25 @@ pretty_names = {
     'tnf-splits': 'Sequence composition (w/independent splits)'
 };
 
+function getPrettyLayerTitle(layer_title) {
+    if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
+        layer_title = named_layers[layer_title]['pretty_name'];
+    } else if(layer_title.substring(0, 5) == "hmmx_") {
+        layer_title = layer_title.replace(/hmmx_/g, "").replace(/_/g, " ");
+    } else if(layer_title.substring(0, 5) == "hmms_") {
+        layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
+    } else {
+        layer_title = layer_title.replace(/_/g, " ");
+    }
+
+    if (layer_title.indexOf('!') > -1 )
+    {
+        layer_title = layer_title.split('!')[0];
+    }
+
+    return layer_title;
+}
+
 function getPrettyName(name)
 {
 

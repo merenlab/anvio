@@ -290,7 +290,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
-        colorScheme: 'dark',
+        colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);

@@ -53,7 +53,8 @@ function getUrlVars() {
 
 
 function get_gene_functions_table_html(gene){
-    functions_table_html = '<h2>Gene Call</h2>';
+    functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+    functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
     functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
@@ -186,6 +187,7 @@ function drawArrows(_start, _stop) {
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
            .attr('stroke', color)
            .attr('stroke-width', 6)
+           .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
@@ -201,7 +203,25 @@ function drawArrows(_start, _stop) {
            .attr('data-content', get_gene_functions_table_html(gene) + '')
 	    .attr('data-toggle', 'popover');
     });
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "placement": "top"});
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
+
+    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
+      var popover = $(e.target).data("bs.popover").$tip;
+      
+      if ($(popover).css('top').charAt(0) === '-') {
+        $(popover).css('top', '0px');
+      }
+
+      if ($(popover).css('left').charAt(0) === '-') {
+        $(popover).css('left', '0px');
+      }
+    });
 }
 
 
