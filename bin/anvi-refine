@@ -12,8 +12,8 @@ import argparse
 
 import anvio
 import anvio.utils as utils
-import anvio.refine as refine
 import anvio.terminal as terminal
+import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
@@ -72,9 +72,8 @@ groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 args = parser.parse_args()
 
 try:
-    r = refine.RefineBins(args)
-    d = r.refine()
-
+    args.mode = 'refine'
+    d = interactive.InputHandler(args)
     args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
 except ConfigError as e:
     print(e)

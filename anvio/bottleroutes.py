@@ -119,6 +119,10 @@ class BottleApplication(Bottle):
 
     def send_data(self, name):
         if name == "init":
+            bin_prefix = "Bin_"
+            if self.args.mode == 'refine':
+                bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
+
             return json.dumps( { "title":                               self.interactive.title,
                                  "description":                        (self.interactive.p_meta['description']),
                                  "clusterings":                        (self.interactive.p_meta['default_clustering'], self.interactive.p_meta['clusterings']),
@@ -127,7 +131,7 @@ class BottleApplication(Bottle):
                                  "defaultView":                        self.interactive.views[self.interactive.default_view],
                                  "mode":                               self.interactive.mode,
                                  "readOnly":                           self.read_only,
-                                 "binPrefix":                          "Bin_",
+                                 "binPrefix":                          bin_prefix,
                                  "sessionId":                          self.unique_session_id,
                                  "samplesOrder":                       self.interactive.samples_order_dict,
                                  "sampleInformation":                  self.interactive.samples_information_dict,
