@@ -107,7 +107,7 @@ class BottleApplication(Bottle):
 
     def run_application(self, ip, port):
         try:
-            server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': False, 'server': 'cherrypy'})
+            server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
 
             if not self.args.server_only:
