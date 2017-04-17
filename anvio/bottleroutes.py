@@ -17,7 +17,7 @@ from multiprocessing import Process
 
 from bottle import Bottle
 from bottle import BaseRequest
-from bottle import redirect, response, request, static_file
+from bottle import redirect, static_file
 
 import anvio
 import anvio.dbops as dbops
@@ -44,7 +44,7 @@ progress = terminal.Progress()
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
 
 class BottleApplication(Bottle):
-    def __init__(self, interactive, args):
+    def __init__(self, interactive, args, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
         self.args = args
@@ -57,6 +57,16 @@ class BottleApplication(Bottle):
 
         self.register_hooks()
         self.register_routes()
+
+        # this part is required to inject request and responses from anvi server
+        if mock_request or mock_response:
+            global request
+            global response
+            request = mock_request
+            response = mock_response
+        else:
+            from bottle import response, request
+
 
     def register_hooks(self):
         self.add_hook('before_request', self.set_default_headers)
