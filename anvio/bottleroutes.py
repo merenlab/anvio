@@ -115,6 +115,9 @@ class BottleApplication(Bottle):
 
     def send_static(self, filename):
         ret = static_file(filename, root=self.static_dir)
+        ret.set_header('Pragma', 'no-cache')
+        ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+        ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
         return ret
 
     def send_data(self, name):
@@ -461,9 +464,17 @@ class BottleApplication(Bottle):
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
-            return static_file(filename, root=os.path.join(os.path.dirname(self.interactive.pan_db_path), 'SUMMARY_%s' % collection_name))
+            ret = static_file(filename, root=os.path.join(os.path.dirname(self.interactive.pan_db_path), 'SUMMARY_%s' % collection_name))
+            ret.set_header('Pragma', 'no-cache')
+            ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+            ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+            return ret
         elif self.interactive.mode == 'full':
-            return static_file(filename, root=os.path.join(os.path.dirname(self.interactive.profile_db_path), 'SUMMARY_%s' % collection_name))
+            ret = static_file(filename, root=os.path.join(os.path.dirname(self.interactive.profile_db_path), 'SUMMARY_%s' % collection_name))
+            ret.set_header('Pragma', 'no-cache')
+            ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+            ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+            return ret
         else:
             return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
 
