@@ -123,7 +123,7 @@ class BottleApplication(Bottle):
     def send_data(self, name):
         if name == "init":
             bin_prefix = "Bin_"
-            if self.args.mode == 'refine':
+            if self.interactive.mode == 'refine':
                 bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
 
             return json.dumps( { "title":                               self.interactive.title,
@@ -426,7 +426,7 @@ class BottleApplication(Bottle):
         if self.read_only:
             return json.dumps({'error': "Sorry! This is a read-only instance."})
 
-        if self.args.mode == 'manual':
+        if self.interactive.mode == 'manual':
             return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
 
         run.info_single('A summary of collection "%s" has been requested.' % collection_name)
