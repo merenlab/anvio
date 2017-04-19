@@ -129,7 +129,7 @@ class BinSplitter(summarizer.Bin):
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
         self.clustering_configs = constants.clustering_configs['merged']
-        self.database_paths = {'CONTIGS.db': self.contigs_db_path}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
             raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\

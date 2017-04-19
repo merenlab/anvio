@@ -55,8 +55,8 @@ class RefineBins(dbops.DatabasesMetaclass):
         dbops.is_contigs_db(self.contigs_db_path)
         dbops.is_profile_db(self.profile_db_path)
 
-        self.database_paths = {'CONTIGS.db': self.contigs_db_path,
-                               'PROFILE.db': self.profile_db_path}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path),
+                               'PROFILE.db': os.path.abspath(self.profile_db_path)}
         self.is_merged = None
         self.split_names_of_interest = set([])
 
