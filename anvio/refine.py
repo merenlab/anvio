@@ -61,10 +61,11 @@ class RefineBins(dbops.DatabasesMetaclass):
         self.split_names_of_interest = set([])
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.is_merged = int(profile_db.meta['merged'])
+        self.is_merged = profile_db.meta['merged']
+        self.is_blank = profile_db.meta['blank']
         profile_db.disconnect()
 
-        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'single']
+        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'blank' if self.is_blank else 'single']
 
 
     def init(self):
