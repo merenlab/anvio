@@ -97,7 +97,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.bam = None
         self.contigs = []
 
-        self.database_paths = {'CONTIGS.db': self.contigs_db_path}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
 
         self.profile_db_path = None
 

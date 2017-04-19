@@ -82,7 +82,7 @@ class MultipleRuns:
 
         self.clustering_configs = constants.clustering_configs['merged']
 
-        self.database_paths = {'CONTIGS.db': self.contigs_db_path}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
 
         # we don't know what we are about
         self.description = None
