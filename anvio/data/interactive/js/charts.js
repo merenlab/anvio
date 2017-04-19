@@ -372,18 +372,21 @@ function Chart(options){
                             .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                             .attr('data-content', function(d) { 
                                 return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                                        <h2>Content</h2> \
+                                        <h3>Content</h3> \
                                         <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                            <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
+                                            <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
                                             <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
                                             <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
                                             <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
                                             <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
                                             <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
+                                            <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene': d.value['corresponding_gene_call']) +'</td></tr> \
                                             <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene': d.value['codon_order_in_gene']) +'</td></tr> \
                                             <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene': d.value['base_pos_in_codon']) +'</td></tr> \
                                             <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
                                         </table> \
-                                        <h2>Counts</h2> \
+                                        <h3>Counts</h3> \
                                         <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
                                             <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
                                             <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
