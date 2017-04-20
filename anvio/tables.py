@@ -138,7 +138,7 @@ views_table_types                    = [  'str'  ,      'str'    ]
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
 # become sample names. 
 atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability', '__parent__']
-atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,     'numeric'    ,  'numeric' ,   'numeric'  ,    'text'   ]
+atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,   'numeric' ,  'numeric' ,   'numeric'  ,    'text'   ]
 
 
 ####################################################################################################
