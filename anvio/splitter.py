@@ -287,6 +287,10 @@ class BinSplitter(summarizer.Bin):
 
                 tables[new_table_name] = ('contig', self.split_names)
 
+        # we need to migrate these guys, too.
+        tables[t.variable_nts_table_name] = ('split_name', self.split_names)
+        tables[t.variable_aas_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+
         bin_profile_db.disconnect()
 
         self.migrate_data(tables, self.profile_db_path, self.bin_profile_db_path)
