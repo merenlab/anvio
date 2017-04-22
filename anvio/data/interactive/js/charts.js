@@ -26,6 +26,7 @@ var variability;
 var maxVariability = 0;
 var geneParser;
 var contextSvg;
+var state;
 
 
 function loadAll() {
@@ -74,21 +75,23 @@ function loadAll() {
             position = index + " of " + total;
 
             if(next_contig_name)
-                next_str = '<a href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = state;" href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
 
             if(previous_contig_name)
-                prev_str = '<a href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = state;" href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
-            $.ajax({
-              type: 'GET',
-              cache: false,
-              url: '/data/get_parent_state?timestamp=' + new Date().getTime(),
-              success: function(state) {
-                createCharts(state);
-              }
-            });
+            if (typeof sessionStorage.state === 'undefined')
+            {
+                alert("Something went wrong, couldn't access to sessionStorage");
+            }
+            else
+            {
+                // backup the state, if user changes the page (prev, next) we are going to overwrite it.
+                state = sessionStorage.state;
+                createCharts(JSON.parse(state));
+            }
         }
     });
 
