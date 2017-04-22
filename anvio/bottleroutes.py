@@ -53,8 +53,6 @@ class BottleApplication(Bottle):
         self.unique_session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
-        self.parent_state = {}
-
         self.register_hooks()
         self.register_routes()
 
@@ -87,8 +85,6 @@ class BottleApplication(Bottle):
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get',                               callback=self.get_state,  method='POST')
         self.route('/state/save',                              callback=self.save_state, method='POST')
-        self.route('/data/set_parent_state',                   callback=self.set_parent_state, method='POST')
-        self.route('/data/get_parent_state',                   callback=self.get_parent_state)
         self.route('/data/charts/<split_name>',                callback=self.charts)
         self.route('/data/completeness',                       callback=self.completeness, method='POST')
         self.route('/data/collections',                        callback=self.get_collections)
@@ -209,15 +205,6 @@ class BottleApplication(Bottle):
 
         return json.dumps("")
 
-    # these two functions used for transferring state between
-    # main interface and charts page.
-    def set_parent_state(self):
-        self.parent_state = request.forms.get('state')
-        return json.dumps("")
-
-    def get_parent_state(self):
-        # already json
-        return self.parent_state
 
     def charts(self, split_name):
         data = {'layers': [],
