@@ -57,7 +57,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
-        self.taxonomic_level = A('taxonomic_level')
+        self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
         self.samples_information_db_path = A('samples_information_db')
@@ -134,19 +134,19 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.mode and self.manual_mode:
             self.mode = 'manual'
             self.run.info('Mode', self.mode, mc='red')
-            self.load_manual_mode(args)
+            self.load_manual_mode()
         elif self.mode == 'refine':
-            self.load_full_mode(args)
-            self.load_refine_mode(args)
+            self.load_full_mode()
+            self.load_refine_mode()
         elif self.mode == 'pan':
-            self.load_pan_mode(args)
+            self.load_pan_mode()
         elif self.collection_name or self.list_collections:
             self.mode = 'collection'
             self.run.info('Mode', self.mode, mc='green')
-            self.load_collection_mode(args)
+            self.load_collection_mode()
         else:
             self.mode = 'full'
-            self.load_full_mode(args)
+            self.load_full_mode()
 
         # make sure the samples information database, if there is one, is in fact compatible with the profile database
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
@@ -234,7 +234,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
 
-    def load_manual_mode(self, args):
+    def load_manual_mode(self):
         if self.contigs_db_path:
             raise ConfigError("When you want to use the interactive interface in manual mode, you must\
                                 not use a contigs database.")
@@ -400,7 +400,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         return clusterings
 
 
-    def load_refine_mode(self, args):
+    def load_refine_mode(self):
         self.split_names_of_interest = set([])
         self.is_merged = int(self.p_meta['merged'])
         self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'single']
@@ -408,7 +408,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         progress.new('Initializing')
         progress.update('Getting split names')
 
-        split_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+        split_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.bins = list(split_dict.keys())
 
         for split_names in list(split_dict.values()):
@@ -452,7 +452,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                       ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
                                                       self.collection_name))
 
-    def load_collection_mode(self, args):
+    def load_collection_mode(self):
         self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.list_collections:
@@ -460,9 +460,9 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             sys.exit()
 
         if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % args.collection_name)
+            raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
-        completeness = Completeness(args.contigs_db)
+        completeness = Completeness(self.contigs_db)
         if not len(completeness.sources):
             raise ConfigError("HMM's were not run for this contigs database :/")
 
@@ -484,7 +484,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # data structure fully initialized based on the profile database. Then, we using information about
         # bins in the selected collection, we will create another views data structure, and replace it with
         # the one we have. that will be LOVELY.
-        self.load_full_mode(args)
+        self.load_full_mode(self.args)
 
         # FIXME: `clusterings` should become `orderings` thorughout the code.
         self.p_meta['available_clusterings'] = []
@@ -561,16 +561,16 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.title = "Collection '%s' for %s" % (R(self.collection_name), R(self.p_meta['sample_id']))
 
 
-    def load_pan_mode(self, args):
+    def load_pan_mode(self):
         if not self.pan_db_path:
             raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is\
                                 confused :/")
 
-        PanSuperclass.__init__(self, args)
+        PanSuperclass.__init__(self, self.args)
 
         self.init_protein_clusters()
 
-        if not args.skip_init_functions:
+        if not self.skip_init_functions:
             self.init_protein_clusters_functions()
 
         self.init_additional_layer_data()
@@ -583,7 +583,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collections.populate_collections_dict(self.pan_db_path)
 
 
-    def load_full_mode(self, args):
+    def load_full_mode(self):
         if not self.contigs_db_path:
             raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you\
                                 should use the `--manual` flag if that's what your intention).")
@@ -592,10 +592,10 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("So you want to run anvi'o in full mode, but without a profile database?\
                                 Well. This does not make any sense.")
 
-        if not args.skip_init_functions:
+        if not self.skip_init_functions:
             self.init_functions()
 
-        ProfileSuperclass.__init__(self, args)
+        ProfileSuperclass.__init__(self, self.args)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
         # all the split sequences since only now we know the mun_contig_length that was used to profile
