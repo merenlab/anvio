@@ -83,8 +83,8 @@ class BottleApplication(Bottle):
         self.route('/tree/<items_ordering_id>',                callback=self.get_items_ordering)
         self.route('/state/autoload',                          callback=self.state_autoload)
         self.route('/state/all',                               callback=self.state_all)
-        self.route('/state/get',                               callback=self.get_state,  method='POST')
-        self.route('/state/save',                              callback=self.save_state, method='POST')
+        self.route('/state/get/<state_name>',                  callback=self.get_state)
+        self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
         self.route('/data/charts/<split_name>',                callback=self.charts)
         self.route('/data/completeness',                       callback=self.completeness, method='POST')
         self.route('/data/collections',                        callback=self.get_collections)
@@ -183,24 +183,21 @@ class BottleApplication(Bottle):
         return json.dumps(self.interactive.states_table.states)
 
 
-    def save_state(self):
+    def save_state(self, state_name):
         if self.read_only:
             return json.dumps({'status_code': '0'})
 
-        name = request.forms.get('name')
         content = request.forms.get('content')
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
-        self.interactive.states_table.store_state(name, content, last_modified)
+        self.interactive.states_table.store_state(state_name, content, last_modified)
 
         return json.dumps({'status_code': '1'})
 
 
-    def get_state(self):
-        name = request.forms.get('name')
-
-        if name in self.interactive.states_table.states:
-            state = self.interactive.states_table.states[name]
+    def get_state(self, state_name):
+        if state_name in self.interactive.states_table.states:
+            state = self.interactive.states_table.states[state_name]
             return json.dumps(state['content'])
 
         return json.dumps("")

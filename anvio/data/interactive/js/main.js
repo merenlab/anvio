@@ -2168,9 +2168,8 @@ function saveState()
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/state/save?timestamp=' + new Date().getTime(),
+        url: '/state/save/' + name + '?timestamp=' + new Date().getTime(),
         data: {
-            'name': name,
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
         success: function(response) {
@@ -2242,10 +2241,9 @@ function loadState()
             },
             onShow: function() {
                 $.ajax({
-                        type: 'POST',
+                        type: 'GET',
                         cache: false,
-                        url: '/state/get?timestamp=' + new Date().getTime(),
-                        data: {'name': state_name },
+                        url: '/state/get/' + state_name + '?timestamp=' + new Date().getTime(),
                         success: function(response) {
                             try{
                                 var state = JSON.parse(response);
