@@ -2766,7 +2766,7 @@ class TablesForCollections(Table):
         self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
 
 
-    def append(self, collection_name, collection_dict, bins_info_dict=None):
+    def append(self, collection_name, collection_dict, bins_info_dict={}):
         utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         if bins_info_dict:
