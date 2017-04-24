@@ -923,6 +923,14 @@ D = {
                       theoretical limit, and you can overwrite this heuristic by using this flag, which would\
                       tell anvi'o to attempt to cluster splits regardless."}
                 ),
+    'compress-auxiliary-data': (
+            ['--compress-auxiliary-data'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the auxiliary data file in the resulting output will be compressed. This\
+                      saves space, but it takes long. Also, if you are planning to compress the entire\
+                      later using GZIP, it is even useless to do. But you are the boss!"}
+                ),
     'cluster-contigs': (
             ['--cluster-contigs'],
             {'default': False,

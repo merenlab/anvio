@@ -125,6 +125,7 @@ class BinSplitter(summarizer.Bin):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
+        self.compress_auxiliary_data = A('compress_auxiliary_data')
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -224,8 +225,9 @@ class BinSplitter(summarizer.Bin):
         bin_profile_auxiliary.close()
         parent_profile_auxiliary.close()
 
-        self.progress.update('Compressing the profile db auxiliary data file ...')
-        utils.gzip_compress_file(new_auxiliary_profile_data_path)
+        if self.compress_auxiliary_data:
+            self.progress.update('Compressing the profile db auxiliary data file ...')
+            utils.gzip_compress_file(new_auxiliary_profile_data_path)
 
         self.progress.end()
 
