@@ -306,6 +306,12 @@ class BinSplitter(summarizer.Bin):
                                               default_clustering_config=constants.merged_default, distance=self.distance, \
                                               linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
+        # add a collection
+        collection_dict = {'ALL_SPLITS': self.split_names}
+        bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
+        collections = dbops.TablesForCollections(self.bin_profile_db_path)
+        collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
+
 
     def is_dbs_identical(self, source_db_path, target_db_path):
         """Check whether the two dbs have identical table names"""
