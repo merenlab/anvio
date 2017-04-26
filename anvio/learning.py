@@ -49,7 +49,7 @@ class RF:
         rf.fit(np.array(data), labels)
         self.progress.end()
 
-        pickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'w'))
+        pickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'wb'))
         self.run.info('Classifier output', self.classifier_object_path)
 
     def predict_from_TAB_delimited_file(self, file_path):
