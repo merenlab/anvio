@@ -90,7 +90,7 @@ class RF:
 
     def initialize_classifier(self):
         filesnpaths.is_file_exists(self.classifier_object_path)
-        classifier_obj = pickle.load(open(self.classifier_object_path))
+        classifier_obj = pickle.load(open(self.classifier_object_path, 'rb'))
 
         try:
             self.features = classifier_obj['features']
