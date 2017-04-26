@@ -54,7 +54,7 @@ def main(args):
         v = [1] * dim
 
         # add some random noise
-        for j in random.sample(list(range(0, dim)), random.randint(0, dim / 2)):
+        for j in random.sample(list(range(0, dim)), random.randint(0, int(dim / 2))):
             v[j] = 0
 
         data.append(v)
