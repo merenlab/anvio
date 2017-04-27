@@ -983,6 +983,12 @@ D = {
                       may result in very large output files and millions of reports, but you are the\
                       boss). Do not forget to take a look at '--min-coverage-for-variability' parameter"}
                 ),
+    'report-extended-deflines': (
+            ['--report-extended-deflines'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, the deflines in the resulting FASTA file will contain more information."}
+                ),
     'manual-mode': (
             ['--manual-mode'],
             {'default': False,
