@@ -433,7 +433,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-top: 4px;
     border-right: 1px solid #D3D3D3;
     background-color: #FFFFFF;
-    background-position: top right;
 }
 
 .dropdown-menu>li>p {
@@ -463,6 +462,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     opacity:0.4;
 }
 
+.nav-tabs {
+    background-position: top right;
+}
+
 
 @media only screen and (min-width:1460px){
     /* styles for browsers larger than 1460px; */
@@ -487,16 +490,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #fixed-navbar-div {
         width: 490px;
-        padding-left: 9px;
     }
 
     #mouse_hover_panel {
         width: 400px;
-    }
-
-    #fixed-navbar-div {
-        width: 490px;
-        padding-left: 9px;
     }
 
     .toggle-panel-left-pos {
