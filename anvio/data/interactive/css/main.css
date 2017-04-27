@@ -115,12 +115,6 @@ html, body, #wrapper {
     line-height: 115%;
 }
 
-.home-button {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-}
-
 #mouse_hover_panel {
     top: 0px;
     right: 0px;
@@ -216,13 +210,31 @@ html, body, #wrapper {
 
 #multiUser {
     display: none;
-    width: 400px;
-    border-right: 1px solid #d3d3d3;
-    border-bottom: 1px solid #d3d3d3;
-    padding-left: 10px;
-    padding-bottom: 5px;
-    padding-top: 5px;
+    width: 100%;
+    height: 38px;
+    padding: 4px;
     background-color: floralwhite;
+}
+
+#multiUser > .project-name {
+    display: inline-block;
+}
+
+#multiUser > .home-button {
+    float: left;
+    margin-right: 5px;
+}
+
+#multiUser > img {
+    float: left;
+    width: 31px;
+    height: 31px;
+    border: 1px solid lightgray;
+    margin-right: 5px;
+}
+
+#multiUser > .download-button {
+    float: right;
 }
 
 #sidebar {
@@ -430,7 +442,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     position: fixed;
     z-index: 500;
     width: 400px;
-    padding-top: 4px;
     border-right: 1px solid #D3D3D3;
     background-color: #FFFFFF;
 }
@@ -464,6 +475,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .nav-tabs {
     background-position: top right;
+    padding-top: 5px; 
 }
 
 
@@ -512,10 +524,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #title-panel-first-line {
         font-size: 26px;
-    }
-
-    #multiUser {
-        width: 490px;
     }
 }
 

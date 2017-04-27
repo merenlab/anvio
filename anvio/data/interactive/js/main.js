@@ -283,6 +283,10 @@ function initData() {
             } else if (mode == 'server') {
                 $('.server-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -313,12 +317,6 @@ function initData() {
 
             document.title = titleResponse[0];
             $('#title-panel-first-line').text(titleResponse[0]);
-            
-            if (mode == 'server') {
-                $('#title-panel').prepend('<button type="button" class="btn btn-default btn-sm home-button" onclick="top.location.href=\'/\';"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> Home</button>');
-                $('#title-panel-first-line').append(' <i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-            }
-            
             if (typeof description !== 'undefined')
             {
                 $('#title-panel-first-line').append('<button class="btn btn-xs btn-default" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
@@ -2450,3 +2448,5 @@ function loadState()
 
     return defer.promise();
 }
+
+
