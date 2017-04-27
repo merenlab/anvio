@@ -287,6 +287,7 @@ function initData() {
                 $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
                 $('#multiUser > img').attr('src', project.user_avatar);
                 $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
