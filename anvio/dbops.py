@@ -685,8 +685,11 @@ class ContigsSuperclass(object):
         self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
 
         output = open(output_file_path, 'w')
-        for split_name in sorted(self.splits_taxonomy_dict.keys()):
-            output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
+        for split_name in self.splits_basic_info:
+            if split_name in self.splits_taxonomy_dict:
+                output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
+            else:
+                output.write('{0}\t\n'.format(split_name))
         output.close()
 
         self.run.info("Output", output_file_path)
