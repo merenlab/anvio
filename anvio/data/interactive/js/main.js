@@ -279,16 +279,16 @@ function initData() {
             if (mode == 'refine')
             {
                 $('.refine-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/refine-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
             } else if (mode == 'server') {
                 $('.server-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
             } else if (mode == 'full') {
                 $('.full-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
             } else if (mode == 'pan') {
                 $('.pan-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/pan-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/pan-bg.png)');
 
                 $('#completion_title').attr('title', 'PCs').html('PCs');
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
@@ -297,10 +297,10 @@ function initData() {
 
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/collection-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/manual-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
             }
 
             if (readOnlyResponse[0] == true)
