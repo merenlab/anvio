@@ -114,8 +114,12 @@ class SamplesInformation:
         """Some attributes in the samples information dict may also be used as orders"""
 
         def F(v):
+            if isinstance(v, type(None)):
+                return ''
+
             if not v:
                 return 0.0
+
             try:
                 return float(v)
             except:
