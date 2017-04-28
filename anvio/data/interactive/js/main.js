@@ -1381,8 +1381,16 @@ function drawTree() {
                 if (autoload_collection !== null)
                 {
                     loadCollection(autoload_collection);
-                    autoload_collection = null
+                    autoload_collection = null;
                 }
+
+                if ($('#panel-left').is(':visible')) {
+                    setTimeout(toggleLeftPanel, 500);
+                }
+                if ($('#mouse_hover_panel').is(':visible')) {
+                    setTimeout(toggleRightPanel, 500);
+                }
+
             },
         });
 }
