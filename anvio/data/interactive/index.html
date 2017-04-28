@@ -45,6 +45,7 @@
     <script type="text/javascript" src="js/multiple.js"></script>
     <script type="text/javascript" src="js/search.js"></script>
     <script type="text/javascript" src="js/sample.js"></script>
+    <script type="text/javascript" src="js/animations.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -67,12 +68,12 @@
             <div id="title-panel-close-button"><a href="#" class="close-thick" onclick="$('#title-panel').hide();"></a>
             </div>
         </div>
-        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="$('#panel-left').toggle(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left-inner').text('&#9664;'); $('#toggle-panel-left').addClass('toggle-panel-left-pos'); } else { $('#toggle-panel-left-inner').text('&#9658;'); $('#toggle-panel-left').removeClass('toggle-panel-left-pos');  }">
+        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">SETTINGS</span>
         </div>
 
-        <div id="toggle-panel-right" onclick="$('#mouse_hover_panel').toggle(); if ($('#mouse_hover_panel').is(':visible')) { $('#toggle-panel-right-inner').text('&#9658;'); $('#toggle-panel-right').addClass('toggle-panel-right-pos'); } else { $('#toggle-panel-right-inner').text('&#9664;'); $('#toggle-panel-right').removeClass('toggle-panel-right-pos'); }">
-                <span id="toggle-panel-right-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">MOUSE</span>
+        <div id="toggle-panel-right" class="toggle-panel-right-pos" onclick="toggleRightPanel();">
+                <span id="toggle-panel-right-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">MOUSE</span>
         </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
