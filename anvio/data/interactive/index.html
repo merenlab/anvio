@@ -904,6 +904,28 @@
         if (ev.keyCode === 77) { // M = 77
             $('#toggle-panel-right').trigger('click');
         }
+
+        if (ev.keyCode === 68) { // D = 68
+            drawTree();
+        }
+
+        if (ev.keyCode === 84) { // T = 84
+            $('#title-panel').toggle();
+        }
+    });
+
+    document.body.addEventListener('keyup', function(ev) {
+        if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
+        {
+            // shortcuts should not work if user is entering text to input.
+            return false;
+        }
+
+        // we trigger export svg with keyup instead keydown because otherwise E char appears on
+        // operating system's native file save dialog
+        if (ev.keyCode === 69) { // E = 69
+            exportSvg();
+        }
     });
 
     $('.nav-tabs a').on('shown.bs.tab', function (e) {
