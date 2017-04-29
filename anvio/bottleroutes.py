@@ -8,6 +8,7 @@
 """
 
 import os
+import re
 import sys
 import json
 import random
@@ -125,6 +126,10 @@ class BottleApplication(Bottle):
         ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
         ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
         return ret
+
+    def random_hash(self, size=8):
+        r = random.getrandbits(size * 4)
+        return '{1:0{0}x}'.format(size, r)
 
     def send_data(self, name):
         if name == "init":
