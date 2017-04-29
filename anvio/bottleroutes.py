@@ -118,7 +118,7 @@ class BottleApplication(Bottle):
             sys.exit(0)
 
     def redirect_to_app(self):
-        redirect('/app/index.html')
+        redirect('/app/index.html?rand=' + self.random_hash(8))
 
     def send_static(self, filename):
         ret = static_file(filename, root=self.static_dir)
