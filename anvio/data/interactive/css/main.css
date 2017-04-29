@@ -119,7 +119,6 @@ html, body, #wrapper {
     top: 0px;
     right: 0px;
     position: absolute;
-    display: none;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
@@ -207,14 +206,34 @@ html, body, #wrapper {
     width: 100%;
     height: 100%;
 }
+
 #multiUser {
-    width: 490px;
-    border-right: 1px solid #d3d3d3;
-    border-bottom: 1px solid #d3d3d3;
-    padding-left: 10px;
-    padding-bottom: 5px;
-    padding-top: 5px;
+    display: none;
+    width: 100%;
+    height: 38px;
+    padding: 4px;
     background-color: floralwhite;
+}
+
+#multiUser > .project-name {
+    display: inline-block;
+}
+
+#multiUser > .home-button {
+    float: left;
+    margin-right: 5px;
+}
+
+#multiUser > img {
+    float: left;
+    width: 31px;
+    height: 31px;
+    border: 1px solid lightgray;
+    margin-right: 5px;
+}
+
+#multiUser > .download-button {
+    float: right;
 }
 
 #sidebar {
@@ -422,10 +441,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     position: fixed;
     z-index: 500;
     width: 400px;
-    padding-top: 4px;
     border-right: 1px solid #D3D3D3;
     background-color: #FFFFFF;
-    background-position: top right;
 }
 
 .dropdown-menu>li>p {
@@ -455,6 +472,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     opacity:0.4;
 }
 
+.nav-tabs {
+    background-position: top right;
+    padding-top: 5px; 
+}
+
 
 @media only screen and (min-width:1460px){
     /* styles for browsers larger than 1460px; */
@@ -479,16 +501,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #fixed-navbar-div {
         width: 490px;
-        padding-left: 9px;
     }
 
     #mouse_hover_panel {
         width: 400px;
-    }
-
-    #fixed-navbar-div {
-        width: 490px;
-        padding-left: 9px;
     }
 
     .toggle-panel-left-pos {
@@ -567,3 +583,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     font-size: inherit;
 }
 
+.sidebarPadding {
+    padding-top: 60px !important;
+}

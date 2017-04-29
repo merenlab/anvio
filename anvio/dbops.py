@@ -718,7 +718,7 @@ class PanSuperclass(object):
         self.functions_initialized = False
 
         try:
-            self.pan_db_path = args.pan_db
+            self.pan_db_path = self.args.pan_db
         except:
             self.run.warning('PanSuperclass class called with args without pan_db_path member! Returning prematurely.')
             return

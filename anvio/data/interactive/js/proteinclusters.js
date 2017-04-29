@@ -41,8 +41,8 @@ function loadAll() {
         type: 'GET',
         cache: false,
         url: '/data/proteinclusters/' + pc_name,
-        success: function(data) {
-            pc_data = JSON.parse(data);
+        success: function(_pc_data) {
+            pc_data = _pc_data;
             genomes = pc_data.genomes;
             gene_caller_ids = pc_data.gene_caller_ids;
             gene_caller_ids_in_genomes = pc_data.gene_caller_ids_in_genomes;
@@ -61,22 +61,23 @@ function loadAll() {
             position = index + " of " + total;
 
             if(next_pc_name)
-                next_str = '<a href="proteinclusters.html?id=' + next_pc_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="proteinclusters.html?id=' + next_pc_name + '"> | next &gt;&gt;&gt;</a>';
 
             if(previous_pc_name)
-                prev_str = '<a href="proteinclusters.html?id=' + previous_pc_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="proteinclusters.html?id=' + previous_pc_name + '">&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + pc_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
-            $.ajax({
-              type: 'GET',
-              cache: false,
-              url: '/data/proteinclusters/get_state?timestamp=' + new Date().getTime(),
-              success: function(_state) {
-                state = _state;
+            if (typeof sessionStorage.state === 'undefined')
+            {
+                alert("Something went wrong, couldn't access to sessionStorage");
+            }
+            else
+            {
+                // backup the state, if user changes the page (prev, next) we are going to overwrite it.
+                state = JSON.parse(sessionStorage.state);
                 createDisplay();
-              }
-            });
+            }
         }
     });
 

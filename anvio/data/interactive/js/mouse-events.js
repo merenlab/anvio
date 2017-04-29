@@ -547,29 +547,13 @@ function menu_callback(action, param) {
             break;
 
         case 'inspect_contig':
-            $.ajax({
-                type: 'POST',
-                cache: false,
-                async: false,
-                url: "/data/charts/set_state?timestamp=" + new Date().getTime(), 
-                data: {state: JSON.stringify(serializeSettings(true), null, 4)},
-                success: function() {
-                    window.open('charts.html?contig=' + item_name, '_blank');
-                }
-            });
+            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            window.open('charts.html?contig=' + item_name, '_blank');
             break;
 
         case 'inspect_protein_cluster':
-            $.ajax({
-                type: 'POST',
-                cache: false,
-                async: false,
-                url: "/data/proteinclusters/set_state?timestamp=" + new Date().getTime(), 
-                data: {state: JSON.stringify(serializeSettings(true), null, 4)},
-                success: function() {
-                    window.open('proteinclusters.html?id=' + item_name, '_blank');
-                }
-            });
+            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            window.open('proteinclusters.html?id=' + item_name, '_blank');
             break;
 
         case 'get_AA_sequences_for_PC':
@@ -578,8 +562,6 @@ function menu_callback(action, param) {
                 cache: false,
                 url: '/data/get_AA_sequences_for_PC/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    data = JSON.parse(data);
-
                     var output = '';
 
                     for (var key in data)
