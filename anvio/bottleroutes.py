@@ -9,6 +9,7 @@
 
 import os
 import re
+import io
 import sys
 import json
 import random
@@ -125,6 +126,31 @@ class BottleApplication(Bottle):
         ret.set_header('Pragma', 'no-cache')
         ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
         ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
+        # cache killer, it adds random query string to .js, .css source urls.
+        if filename.endswith('.html'):
+            pattern = re.compile(b".*(<script|<link).*(href|src)\=[\'\"]((?!http\:\/\/).+?)\".*", re.MULTILINE)
+
+            buff = io.BytesIO()
+            index = 0
+            for result in re.finditer(pattern, ret.body.read()):
+                pos = result.end(3)
+                suffix = b'?rand=' + self.random_hash(32).encode() 
+
+                # read chunk from original file and write to buffer, 
+                # then store pos to index, next iteration we are going 
+                # to read from that position
+                ret.body.seek(index)
+                buff.write(ret.body.read(pos - index))
+                buff.write(suffix)
+                index = pos
+
+            # write rest of the file
+            buff.write(ret.body.read())
+            ret.body = buff
+            ret.body.seek(0)
+            ret.headers['Content-Length'] = buff.getbuffer().nbytes
+
         return ret
 
     def random_hash(self, size=8):
