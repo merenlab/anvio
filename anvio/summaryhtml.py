@@ -37,11 +37,8 @@ try:
     except ImportError:
         local_settings.update({'TEMPLATE_DIRS': (template_dir,)})
 
-    settings.configure(**local_settings)
-
     try:
         import django
-        django.setup()
     except:
         pass
 
@@ -68,6 +65,9 @@ progress = terminal.Progress()
 
 class SummaryHTMLOutput:
     def __init__(self, summary_dict={}, r=run, p=progress):
+        settings.configure(**local_settings)
+        django.setup()
+
         self.run = r
         self.progress = p
         self.summary_dict = summary_dict

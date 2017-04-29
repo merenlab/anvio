@@ -45,25 +45,16 @@
     <script type="text/javascript" src="js/multiple.js"></script>
     <script type="text/javascript" src="js/search.js"></script>
     <script type="text/javascript" src="js/sample.js"></script>
+    <script type="text/javascript" src="js/animations.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="js/session.js"></script>
-    <script type="text/javascript" src="js/index.js"></script>
-
     <link rel="stylesheet" href="lib/simplemde-markdown-editor/dist/simplemde.min.css">
     <script src="lib/simplemde-markdown-editor/dist/simplemde.min.js"></script>
     <link rel="stylesheet" href="css/simplemde-local.css" type="text/css" />
-
-    <script>
-      $(document).ready(function(){
-      checkCookie();
-      });
-    </script>
-
 </head>
 
 <body>
@@ -77,12 +68,12 @@
             <div id="title-panel-close-button"><a href="#" class="close-thick" onclick="$('#title-panel').hide();"></a>
             </div>
         </div>
-        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="$('#panel-left').toggle(); if ($('#panel-left').is(':visible')) { $('#toggle-panel-left-inner').text('&#9664;'); $('#toggle-panel-left').addClass('toggle-panel-left-pos'); } else { $('#toggle-panel-left-inner').text('&#9658;'); $('#toggle-panel-left').removeClass('toggle-panel-left-pos');  }">
-            <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">SETTINGS</span>
+        <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
+            <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
 
-        <div id="toggle-panel-right" onclick="$('#mouse_hover_panel').toggle(); if ($('#mouse_hover_panel').is(':visible')) { $('#toggle-panel-right-inner').text('&#9658;'); $('#toggle-panel-right').addClass('toggle-panel-right-pos'); } else { $('#toggle-panel-right-inner').text('&#9664;'); $('#toggle-panel-right').removeClass('toggle-panel-right-pos'); }">
-                <span id="toggle-panel-right-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">MOUSE</span>
+        <div id="toggle-panel-right" class="toggle-panel-right-pos" onclick="toggleRightPanel();">
+                <span id="toggle-panel-right-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
         </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
@@ -91,7 +82,12 @@
         </div>
         <div id="panel-left">
             <div id="fixed-navbar-div">
-           <div id="multiUser" style="position: relative; bottom: 5px; right: 9px;"></div>
+                <div id="multiUser">
+                    <a href="/" target="_parent" class="btn btn-default btn-sm home-button"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> Home</a>
+                    <img src="#" />
+                    <span class="project-name"></span>
+                    <a href="/" class="btn btn-default btn-sm download-button"><span class="glyphicon glyphicon-download" aria-hidden="true"></span> Download</a>
+                </div>
                 <div role="tabpanel" style="margin: 0px;">
                     <ul class="nav nav-tabs" role="tablist">
                       <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
@@ -907,6 +903,28 @@
 
         if (ev.keyCode === 77) { // M = 77
             $('#toggle-panel-right').trigger('click');
+        }
+
+        if (ev.keyCode === 68) { // D = 68
+            drawTree();
+        }
+
+        if (ev.keyCode === 84) { // T = 84
+            $('#title-panel').toggle();
+        }
+    });
+
+    document.body.addEventListener('keyup', function(ev) {
+        if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
+        {
+            // shortcuts should not work if user is entering text to input.
+            return false;
+        }
+
+        // we trigger export svg with keyup instead keydown because otherwise E char appears on
+        // operating system's native file save dialog
+        if (ev.keyCode === 69) { // E = 69
+            exportSvg();
         }
     });
 

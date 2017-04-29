@@ -110,6 +110,7 @@ var mouse_event_origin_y = 0;
 
 var description;
 var descriptionEditor;
+var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -121,6 +122,18 @@ $(window).resize(function() {
 });
 
 $(document).ready(function() {
+
+    $.ajaxPrefilter(function(options) {
+        if (request_prefix) {
+            options.url = request_prefix + options.url;
+            if (options.type.toLowerCase() == 'post')
+            {
+                options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+            }
+        }
+        return options;
+    });
+
     $(window).trigger('resize');
     toastr.options = {
         "closeButton": true,
@@ -152,8 +165,6 @@ $(document).ready(function() {
             $('.circlephylogram_settings').hide();
         }
     });
-
-    initData();
 
     // initialize colorpicker for search result highlight color.
     $('#picker_highlight').colpick({
@@ -198,9 +209,10 @@ $(document).ready(function() {
         }  
     });
 
+    initData();
 }); // document ready
 
-function initData () {
+function initData() {
     var timestamp = new Date().getTime(); 
 
     $.when(
@@ -230,6 +242,7 @@ function initData () {
         var inspectionAvailable = response.inspectionAvailable;
         var sequencesAvailable = response.sequencesAvailable;
         var description = response.description;
+        var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
 
@@ -266,16 +279,21 @@ function initData () {
             if (mode == 'refine')
             {
                 $('.refine-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/refine-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
             } else if (mode == 'server') {
                 $('.server-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/server-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px')
             } else if (mode == 'full') {
                 $('.full-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/full-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
             } else if (mode == 'pan') {
                 $('.pan-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/pan-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/pan-bg.png)');
 
                 $('#completion_title').attr('title', 'PCs').html('PCs');
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
@@ -284,10 +302,10 @@ function initData () {
 
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/collection-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
-                $('#fixed-navbar-div').css('background-image', 'url(images/manual-bg.png)');
+                $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
             }
 
             if (readOnlyResponse[0] == true)
@@ -1363,8 +1381,16 @@ function drawTree() {
                 if (autoload_collection !== null)
                 {
                     loadCollection(autoload_collection);
-                    autoload_collection = null
+                    autoload_collection = null;
                 }
+
+                if ($('#panel-left').is(':visible')) {
+                    setTimeout(toggleLeftPanel, 500);
+                }
+                if ($('#mouse_hover_panel').is(':visible')) {
+                    setTimeout(toggleRightPanel, 500);
+                }
+
             },
         });
 }
@@ -1595,7 +1621,6 @@ function updateProteinClustersBin(bin_id) {
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
-            data = JSON.parse(data);
             PC_bins_summary_dict[bin_id] = data;
             $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
             $('#completeness_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
@@ -1618,9 +1643,7 @@ function updateComplateness(bin_id) {
         url: "/data/completeness",
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-        success: function(data){
-            completeness_info_dict = JSON.parse(data);
-
+        success: function(completeness_info_dict){
             stats = completeness_info_dict['stats'];
             refs = completeness_info_dict['refs'];
             averages = completeness_info_dict['averages'];
@@ -1847,16 +1870,17 @@ function storeRefinedBins() {
         }
     );
 
-    $.post("/store_refined_bins", {
-        data: JSON.stringify(data, null, 4),
-        colors: JSON.stringify(colors, null, 4),
-    },
-    function(server_response, status){
-        server_response = JSON.parse(server_response);
-        if (server_response.status == -1){
-            toastr.error(server_response.message, "You made the server upset :(");
-        } else {
-            toastr.info(server_response.message, "The server is on board");
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/store_refined_bins?timestamp=' + new Date().getTime(),
+        data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
+        success: function(data) {
+            if (data.status == -1){
+                toastr.error(data.message, "You made the server upset :(");
+            } else {
+                toastr.info(data.message, "The server is on board");
+            }
         }
     });
 }
@@ -2151,13 +2175,14 @@ function saveState()
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/state/save?timestamp=' + new Date().getTime(),
+        url: '/state/save/' + name + '?timestamp=' + new Date().getTime(),
         data: {
-            'name': name,
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
         success: function(response) {
-            response = JSON.parse(response);
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
 
             if (response['status_code']==0)
             {
@@ -2223,10 +2248,9 @@ function loadState()
             },
             onShow: function() {
                 $.ajax({
-                        type: 'POST',
+                        type: 'GET',
                         cache: false,
-                        url: '/state/get?timestamp=' + new Date().getTime(),
-                        data: {'name': state_name },
+                        url: '/state/get/' + state_name + '?timestamp=' + new Date().getTime(),
                         success: function(response) {
                             try{
                                 var state = JSON.parse(response);
@@ -2433,3 +2457,5 @@ function loadState()
 
     return defer.promise();
 }
+
+
