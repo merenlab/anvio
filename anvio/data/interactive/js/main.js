@@ -1773,12 +1773,21 @@ function exportSvg(dontDownload) {
     $('#tbody_bins tr').each(
         function(index, bin) {
             var bin_id = $(bin).attr('bin-id');
-            bins_to_draw.push({
+
+            var _bin_info = {
                 'name': $('#bin_name_' + bin_id).val(),
                 'color': $('#bin_color_' + bin_id).attr('color'),
-                'contig-length': $('#contig_length_' + bin_id).html(),
-                'contig-count': $('#contig_count_' + bin_id).val(),
-            });
+            };
+
+            if (mode == 'pan') {
+                _bin_info['pcs'] = $('#completeness_' + bin_id).val(); 
+                _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val(); 
+            } else {
+                _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
+                _bin_info['contig-count'] = $('#contig_count_' + bin_id).val();
+            }
+            
+            bins_to_draw.push(_bin_info);
         }
     );
 
