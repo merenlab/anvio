@@ -102,20 +102,6 @@ function drawLegend() {
                     $(this).css('stroke-width', '1');
                 });
 
-            rect.setAttribute('callback_source', legend['source']);
-            rect.setAttribute('callback_pindex', legend['key']);
-            rect.setAttribute('callback_name', legend['item_keys'][j]);
-
-            $(rect).colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'light',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('fill', '#' + hex);
-                    window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
-                }
-            });
-
             _left += line_height + gap;
 
             if (legend.hasOwnProperty('stats'))
