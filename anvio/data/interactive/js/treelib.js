@@ -102,20 +102,6 @@ function drawLegend() {
                     $(this).css('stroke-width', '1');
                 });
 
-            rect.setAttribute('callback_source', legend['source']);
-            rect.setAttribute('callback_pindex', legend['key']);
-            rect.setAttribute('callback_name', legend['item_keys'][j]);
-
-            $(rect).colpick({
-                layout: 'hex',
-                submit: 0,
-                colorScheme: 'light',
-                onChange: function(hsb, hex, rgb, el, bySetColor) {
-                    $(el).css('fill', '#' + hex);
-                    window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
-                }
-            });
-
             _left += line_height + gap;
 
             if (legend.hasOwnProperty('stats'))
@@ -154,9 +140,14 @@ function drawBinLegend(bins_to_draw, top, left) {
     top = top + 28;
     drawText('bin_legend', {'x': left, 'y': top }, 'Color', '10px');
     drawText('bin_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
-    drawText('bin_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
-    drawText('bin_legend', {'x': left + 230, 'y': top}, 'Length', '10px');
-
+    
+    if (mode == 'pan') {
+        drawText('bin_legend', {'x': left + 170, 'y': top}, 'PCs', '10px');
+        drawText('bin_legend', {'x': left + 230, 'y': top}, 'Gene Calls', '10px');
+    } else {
+        drawText('bin_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
+        drawText('bin_legend', {'x': left + 230, 'y': top}, 'Length', '10px');
+    }
 
     for (var bin_id=0; bin_id < bins_to_draw.length; bin_id++) {
         var bin = bins_to_draw[bin_id];
@@ -164,8 +155,14 @@ function drawBinLegend(bins_to_draw, top, left) {
 
         drawRectangle('bin_legend', left, top-8, 16, 16, bin['color'], 1, 'black');
         drawText('bin_legend', {'x': left + 30, 'y': top }, bin['name'], '12px');
-        drawText('bin_legend', {'x': left + 170, 'y': top}, bin['contig-count'], '12px');
-        drawText('bin_legend', {'x': left + 230, 'y': top}, bin['contig-length'], '12px');
+
+        if (mode == 'pan') {
+            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['pcs'], '12px');
+            drawText('bin_legend', {'x': left + 230, 'y': top}, bin['gene-calls'], '12px');
+        } else {
+            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['contig-count'], '12px');
+            drawText('bin_legend', {'x': left + 230, 'y': top}, bin['contig-length'], '12px');
+        }
     }
 }
 
