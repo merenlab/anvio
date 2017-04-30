@@ -299,12 +299,17 @@ class VariabilitySuper(object):
             self.run.info('Max departure from reference', self.max_departure_from_reference)
             self.filter('max departure from reference', lambda x: x['departure_from_reference'] > self.max_departure_from_reference)
 
+        # this is the first time we are going through each data entry. before things get thorny down below,
+        # we will use this opportunity to add gene_length as well as unique_pos_identifier_str for each entry.
+        # a more granular design may be necessary for exposure later on.
         for entry_id in self.data:
             v = self.data[entry_id]
             if self.engine == 'NT':
                 v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
             if self.engine == 'AA':
                 v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['corresponding_gene_call']), str(v['codon_order_in_gene'])])
+
+            v['gene_length'] = self.get_gene_length(v['corresponding_gene_call'])
 
         if self.min_occurrence == 1:
             return
@@ -584,6 +589,13 @@ class VariabilitySuper(object):
         self.filter_based_on_minimum_coverage_in_each_sample()
 
 
+    def get_gene_length(self, gene_callers_id):
+            if gene_callers_id in self.gene_lengths:
+                return self.gene_lengths[gene_callers_id]
+            else:
+                return -1
+
+
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
         self.progress.update('populating a dict to track corresponding gene ids for each unique position')
         unique_pos_identifier_to_corresponding_gene_id = {}
@@ -606,13 +618,13 @@ class VariabilitySuper(object):
 
         if self.engine == 'NT':
             new_structure = [t.variable_nts_table_structure[0]] + \
-                             ['unique_pos_identifier'] + \
+                             ['unique_pos_identifier', 'gene_length'] + \
                              [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + \
                              list(self.substitution_scoring_matrices.keys()) + \
                              ['consensus', 'departure_from_consensus', 'n2n1ratio']
         elif self.engine == 'AA':
             new_structure = [t.variable_nts_table_structure[0]] + \
-                             ['unique_pos_identifier'] + \
+                             ['unique_pos_identifier', 'gene_length'] + \
                              [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + \
                              list(self.substitution_scoring_matrices.keys()) + \
                              ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio']
@@ -706,6 +718,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                 pos_in_contig = split_info['start'] + pos
                 base_at_pos = contig_name_seq[pos_in_contig]
                 corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
+                gene_length = self.get_gene_length(corresponding_gene_call)
                 codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
 
                 in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
@@ -728,6 +741,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                           'unique_pos_identifier': unique_pos_identifier,
                                                           'unique_pos_identifier_str': '%s_%d' % (split, pos),
                                                           'corresponding_gene_call': corresponding_gene_call,
+                                                          'gene_length': gene_length,
                                                           'codon_order_in_gene': codon_order_in_gene,
                                                           'split_name': split}
                     self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
@@ -792,6 +806,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
             for gene_codon_key in splits_to_consider[split_name]:
                 corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
+                gene_length = self.get_gene_length(corresponding_gene_call)
 
                 for sample_name in splits_to_consider[split_name][gene_codon_key]:
                     unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
@@ -803,6 +818,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                           'split_name': split_name,
                                                           'contig_name': contig_name,
                                                           'corresponding_gene_call': corresponding_gene_call,
+                                                          'gene_length': gene_length,
                                                           'codon_order_in_gene': codon_order_in_gene,
                                                           'departure_from_reference': 0,
                                                           'coverage': None,
