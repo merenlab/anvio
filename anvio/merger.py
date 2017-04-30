@@ -285,7 +285,9 @@ class MultipleRuns:
 
         # set database paths
         self.merged_profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
+        self.database_paths['PROFILE.db'] = os.path.abspath(self.merged_profile_db_path)
         self.samples_db_path = os.path.join(self.output_directory, 'SAMPLES.db')
+        self.database_paths['SAMPLES.db'] = os.path.abspath(self.samples_db_path)
 
         profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
 
