@@ -265,10 +265,14 @@ class ClusteringConfiguration:
                     database_path = self.db_paths[database]
                 else:
                     database, table = matrix.split('::')
-                    database_path = os.path.join(self.input_directory, self.db_paths[database] if database in self.db_paths else database)
+                    database_path = os.path.abspath(self.db_paths[database]) if database in self.db_paths else os.path.abspath(database)
+
+                    # if its not there, let's try one more thing
+                    if not os.path.exists(database_path):
+                        database_path = os.path.abspath(os.path.join(self.input_directory, database))
 
                 if not os.path.exists(database_path):
-                    raise ConfigError('The database you requested (%s) is not in the input directory :/' % database)
+                    raise ConfigError("The database you requested (%s) is not where it was supposed to be ('%s') :/" % (database, database_path))
 
                 dbc = db.DB(database_path, None, ignore_version=True)
 
