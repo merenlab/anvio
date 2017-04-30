@@ -504,16 +504,21 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         if not self.quick:
             # generate a TAB-delimited text output file for bin summaries
-            summary_of_bins_matrix_output = {}
+            summary_of_bins = {}
             properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
             if self.completeness_data_available:
                 properties += ['percent_complete', 'percent_redundancy']
 
             for bin_name in self.summary['collection']:
-                summary_of_bins_matrix_output[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
+                summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
 
-            output_file_obj = self.get_output_file_handle(prefix='general_bins_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_bins_matrix_output, None, headers=['bins'] + properties, file_obj=output_file_obj)
+            output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
+            utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
+
+            # store summary of smaples dict. currently we are only reporting the number of reads mapped per sample
+            summary_of_samples = dict([(s, {'total_reads_mapped': self.p_meta['total_reads_mapped'][s]}) for s in self.p_meta['samples']])
+            output_file_obj = self.get_output_file_handle(prefix='samples_summary.txt')
+            utils.store_dict_as_TAB_delimited_file(summary_of_samples, None, headers=['samples', 'total_reads_mapped'], file_obj=output_file_obj)
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
