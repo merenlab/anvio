@@ -1069,8 +1069,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
             info_dict['partial_gene_calls'].add(gene_caller_id)
 
     info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
-    info_dict['gene_lengths'] = dict([(gene_caller_id, (c.genes_in_contigs_dict[gene_caller_id]['stop'] - c.genes_in_contigs_dict[gene_caller_id]['start'])) for gene_caller_id in info_dict['gene_caller_ids']])
-    info_dict['avg_gene_length'] = numpy.mean(list(info_dict['gene_lengths'].values()))
+    info_dict['avg_gene_length'] = numpy.mean([c.gene_lengths[gene_caller_id] for gene_caller_id in info_dict['gene_caller_ids']])
     info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
 
     # get completeness / contamination estimates
