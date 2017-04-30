@@ -462,7 +462,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
-        completeness = Completeness(self.contigs_db)
+        completeness = Completeness(self.contigs_db_path)
         if not len(completeness.sources):
             raise ConfigError("HMM's were not run for this contigs database :/")
 
@@ -484,7 +484,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # data structure fully initialized based on the profile database. Then, we using information about
         # bins in the selected collection, we will create another views data structure, and replace it with
         # the one we have. that will be LOVELY.
-        self.load_full_mode(self.args)
+        self.load_full_mode()
 
         # FIXME: `clusterings` should become `orderings` thorughout the code.
         self.p_meta['available_clusterings'] = []
