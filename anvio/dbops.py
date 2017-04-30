@@ -88,6 +88,7 @@ class ContigsSuperclass(object):
         self.contig_sequences = {}
 
         self.genes_in_contigs_dict = {}
+        self.gene_lengths = {}
         self.contig_name_to_genes = {}
         self.genes_in_splits = {} # keys of this dict are NOT gene caller ids. they are ids for each entry.
         self.genes_in_splits_summary_dict = {}
@@ -132,6 +133,9 @@ class ContigsSuperclass(object):
 
         self.progress.update('Reading genes in contigs table')
         self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
+        self.progress.update('Populating gene lengths dict')
+        self.gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start'])) for g in self.genes_in_contigs_dict])
 
         self.progress.update('Populating contig name to gene IDs dict')
         for contig_name in self.contigs_basic_info:
