@@ -108,8 +108,6 @@ var bbox;
 var mouse_event_origin_x = 0;
 var mouse_event_origin_y = 0;
 
-var description;
-var descriptionEditor;
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
 //  Init
@@ -318,20 +316,39 @@ function initData() {
 
             document.title = titleResponse[0];
             $('#title-panel-first-line').text(titleResponse[0]);
-            if (typeof description !== 'undefined')
-            {
-                $('#title-panel-first-line').append('<button class="btn btn-xs btn-default" onclick="showDescription();" style="margin-left: 15px;"><span class="glyphicon glyphicon-info-sign"></span> Description</button>');
-            }
-            $('#description-editor').val(description);
-            descriptionEditor = new SimpleMDE({ 
-                element: document.getElementById("description-editor"),
-                toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|" ,"link", "image", "|" ,"preview"],
-            });
 
-            descriptionEditor.codemirror.on("change", function(){
-                $('#description-editor').val(descriptionEditor.value());
+            $('#description-editor').val(description);
+            $('#description-editor').markdown({
+                'onShow': function (e) {
+                    $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
+                },
+                'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+                'additionalButtons': [
+                  [{
+                    data: [{
+                      name: 'cmdSave',
+                      title: 'Save',
+                      btnText: 'Save',
+                      btnClass: 'btn btn-success btn-sm',
+                      icon: {
+                        'glyph': 'glyphicon glyphicon-floppy-save',
+                      },
+                      callback: function(e) {
+                        $.ajax({
+                                type: 'POST',
+                                cache: false,
+                                url: '/store_description?timestamp=' + new Date().getTime(),
+                                data: {description: e.getContent()},
+                                success: function(data) {
+                                    toastr.info("Description successfully saved to database.");
+                                }
+                            });
+                      }
+                    }]
+                  }]
+                ],
+                'fullscreen': {'enable': false},
             });
-            //descriptionEditor.value(description);
 
             contig_lengths = eval(contigLengthsResponse[0]);
 
@@ -781,26 +798,6 @@ function orderLegend(legend_id, type) {
     legends[legend_id]['item_names'].push(legends[legend_id]['item_names'].splice(legends[legend_id]['item_names'].indexOf('None'), 1)[0]);
 
     createLegendColorPanel(legend_id);
-}
-
-function showDescription() {
-    $('#description-dialog').dialog({        
-        width: 600,
-        height: 500
-    });
-    descriptionEditor.togglePreview();
-}
-
-function storeDescription() {
-   $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/store_description?timestamp=' + new Date().getTime(),
-            data: {description: $('#description-editor').val()},
-            success: function(data) {
-                toastr.info("Description successfully saved to database.");
-            }
-        });
 }
 
 function onTreeClusteringChange() {
@@ -1390,7 +1387,9 @@ function drawTree() {
                 if ($('#mouse_hover_panel').is(':visible')) {
                     setTimeout(toggleRightPanel, 500);
                 }
-
+                if ($('#description-panel').is(':visible')) {
+                    setTimeout(toggleRight2Panel, 500);
+                }
             },
         });
 }

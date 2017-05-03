@@ -124,7 +124,20 @@ html, body, #wrapper {
     border-left: 1px solid #D3D3D3;
     padding: 15px;
     opacity: 0.9;
-    width: 300px;}
+    width: 300px;
+}
+
+#description-panel {
+    display: none;
+    top: 0px;
+    right: 0px;
+    position: absolute;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.9;
+    width: 350px;
+}
 
 #panel-left {
     position: absolute;
@@ -163,7 +176,7 @@ html, body, #wrapper {
     width: 15px;
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
-    top: calc(50% - 90px);
+    top: calc(50% - 45px);
     border-radius: 0px 10px 10px 0px;
     cursor: pointer;
     font-size: 10px;
@@ -184,7 +197,21 @@ html, body, #wrapper {
     width: 15px;
     background-color: #EEEEEE;
     border: solid 1px #DDDDDD;
-    top: calc(50% - 90px);
+    top: calc(50% + 10px);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+}
+
+#toggle-panel-right-2 {
+    position: absolute;
+    height: 120px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(50% - 120px);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
     font-size: 10px;
@@ -196,10 +223,17 @@ html, body, #wrapper {
     right: 300px !important;
 }
 
+.toggle-panel-right-pos-2 {
+    right: 350px !important;
+}
+
 #toggle-panel-right:hover {
     background-color: #DDDDDD;
 }
 
+#toggle-panel-right-2:hover {
+    background-color: #DDDDDD;
+}
 
 #wrapper {
     position: absolute;
@@ -515,6 +549,14 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         right: 400px !important;
     }
 
+    #description-panel {
+        width: 460px !important;
+    }
+
+    .toggle-panel-right-pos-2 {
+        right: 460px !important;
+    }
+
     #title-panel {
         min-width: 720px;
         left: calc(50% - 360px);
@@ -556,31 +598,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .close-thick:after {
   content: '✖'; /* UTF-8 symbol */
-}
-
-
-.editor-preview h1 {
-    font-size: 36px;
-}
-
-.editor-preview h2 {
-    font-size: 30px;
-}
-
-.editor-preview h3 {
-    font-size: 24px;
-}
-
-.editor-preview h3 {
-    font-size: 18px;
-}
-
-.editor-preview h4 {
-    font-size: 14px;
-}
-
-.editor-preview a {
-    font-size: inherit;
 }
 
 .sidebarPadding {

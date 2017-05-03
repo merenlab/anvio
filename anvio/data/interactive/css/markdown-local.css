@@ -1,0 +1,42 @@
+.md-editor {
+    height: calc(100% - 50px);
+}
+
+.md-editor textarea {
+    height: 100%;
+}
+
+.md-preview {
+    height: 100% !important;
+    min-height: 0px !important;
+    overflow: scroll;
+    min-width: 100%;
+}
+
+.md-editor .btn-group {
+    margin-bottom: 5px;
+}
+
+.md-preview h1 {
+    font-size: 36px;
+}
+
+.md-preview h2 {
+    font-size: 30px;
+}
+
+.md-preview h3 {
+    font-size: 24px;
+}
+
+.md-preview h3 {
+    font-size: 18px;
+}
+
+.md-preview h4 {
+    font-size: 14px;
+}
+
+.md-preview a {
+    font-size: inherit;
+}

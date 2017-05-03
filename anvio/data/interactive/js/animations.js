@@ -3,6 +3,7 @@ var SLIDE_STEP_SIZE = 15;
 
 var is_left_panel_sliding = false;
 var is_right_panel_sliding = false;
+var is_right_panel2_sliding = false;
 
 function toggleLeftPanel() {
     if (is_left_panel_sliding)
@@ -50,6 +51,14 @@ function toggleRightPanel() {
     if (is_right_panel_sliding)
         return;
 
+    if ($('#description-panel').is(':visible')) {
+        if (!is_right_panel2_sliding) {
+            toggleRight2Panel();
+        }
+        setTimeout(toggleRightPanel, SLIDE_INTERVAL * 2);
+        return;
+    }
+
     is_right_panel_sliding = true;
 
     if ($('#mouse_hover_panel').is(':visible')) {
@@ -82,6 +91,57 @@ function toggleRightPanel() {
                 $('#toggle-panel-right').addClass('toggle-panel-right-pos');
                 $('#toggle-panel-right-inner').html("&#9658;");
                 is_right_panel_sliding = false;
+            }
+        };
+        setTimeout(animation_frame, 1);
+    }
+}
+
+function toggleRight2Panel() {
+    if (is_right_panel2_sliding)
+        return;
+
+    if ($('#mouse_hover_panel').is(':visible')) {
+        if (!is_right_panel_sliding) {
+            toggleRightPanel();
+        }
+        setTimeout(toggleRight2Panel, SLIDE_INTERVAL * 2);
+        return;
+    }
+
+    is_right_panel2_sliding = true;
+
+    if ($('#description-panel').is(':visible')) {
+        var animation_frame = function(){ 
+            if ($('#description-panel')[0].getBoundingClientRect().left < document.body.clientWidth) {
+                $('#description-panel').css('left', parseInt($('#description-panel').css('left')) + SLIDE_STEP_SIZE);
+                $('#toggle-panel-right-2').css('left', $('#description-panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right-2').css('width')) + 'px');
+                setTimeout(animation_frame, SLIDE_INTERVAL);
+            }
+            else {
+                $('#description-panel').hide();
+                $('#toggle-panel-right-2').css('left', '');
+                $('#toggle-panel-right-2').removeClass('toggle-panel-right-pos-2');
+                $('#toggle-panel-right-2-inner').html('&#9664;');
+                is_right_panel2_sliding = false;
+            }
+        };
+        setTimeout(animation_frame, 1);
+    } else {
+        $('#description-panel').show();
+        $('#description-panel').css('left', document.body.clientWidth); 
+        var animation_frame = function(){ 
+            if ($('#description-panel')[0].getBoundingClientRect().right > document.body.clientWidth) {
+                $('#description-panel').css('left', parseInt($('#description-panel').css('left')) - SLIDE_STEP_SIZE);
+                $('#toggle-panel-right-2').css('left', $('#description-panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right-2').css('width')) + 'px');
+                setTimeout(animation_frame, SLIDE_INTERVAL);
+            }
+            else {
+                $('#description-panel').css('left', '');
+                $('#toggle-panel-right-2').css('left', '');
+                $('#toggle-panel-right-2').addClass('toggle-panel-right-pos-2');
+                $('#toggle-panel-right-2-inner').html("&#9658;");
+                is_right_panel2_sliding = false;
             }
         };
         setTimeout(animation_frame, 1);

@@ -28,6 +28,10 @@
 [submodule "anvio/data/interactive/lib/toastr"]
 	path = anvio/data/interactive/lib/toastr
 	url = https://github.com/CodeSeven/toastr.git
-[submodule "anvio/data/interactive/lib/simplemde-markdown-editor"]
-	path = anvio/data/interactive/lib/simplemde-markdown-editor
-	url = https://github.com/NextStepWebs/simplemde-markdown-editor.git
+[submodule "anvio/data/interactive/lib/marked"]
+	path = anvio/data/interactive/lib/marked
+	url = https://github.com/chjj/marked.git
+[submodule "anvio/data/interactive/lib/bootstrap-markdown"]
+	path = anvio/data/interactive/lib/bootstrap-markdown
+	url = https://github.com/toopay/bootstrap-markdown.git
+
