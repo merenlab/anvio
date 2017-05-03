@@ -11,6 +11,7 @@
     min-height: 0px !important;
     overflow: scroll;
     min-width: 100%;
+    padding: 6px;
 }
 
 .md-editor .btn-group {
