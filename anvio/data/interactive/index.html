@@ -880,6 +880,10 @@
     });
 
     document.body.addEventListener('keydown', function(ev) {
+        if (ev.keyCode == 27) { // ESC = 27
+            document.activeElement.blur();
+        }
+
         if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
         {
             // shortcuts should not work if user is entering text to input.
