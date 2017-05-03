@@ -672,7 +672,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # we will divide every abundance after profiling is done.
             contig.abundance = contig.coverage.mean
             for split in contig.splits:
-                split.abundance = contig.coverage.mean
+                split.abundance = split.coverage.mean
 
         self.progress.verbose = False
         self.generate_variabile_nts_table()
