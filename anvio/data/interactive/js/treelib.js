@@ -2602,9 +2602,10 @@ function draw_tree(settings) {
 
     // code below required to stop clicking on contigs while panning.
     var viewport = document.getElementById('svg');
-    viewport.addEventListener('mousedown', 
+    viewport.addEventListener('mousedown',
         function(event) { 
             dragging = false; 
+            document.activeElement.blur();
 
             mouse_event_origin_x = event.clientX;
             mouse_event_origin_y = event.clientY;
