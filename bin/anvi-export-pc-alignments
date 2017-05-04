@@ -84,7 +84,7 @@ def main(args):
 
     run.info('Number of protein clusters to report', len(pc_ids))
 
-    pan.get_AA_sequences_for_PCs(pc_names=pc_ids, output_file_path=args.output_file)
+    pan.write_AA_sequences_to_file(pc_names=pc_ids, output_file_path=args.output_file)
 
 
 if __name__ == '__main__':

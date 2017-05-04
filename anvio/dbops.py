@@ -777,7 +777,7 @@ class PanSuperclass(object):
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
-    def get_AA_sequences_for_PCs(self, pc_names=set([]), output_file_path=None, skip_alignments=False):
+    def get_AA_sequences_for_PCs(self, pc_names=set([]), skip_alignments=False):
         """Returns a dictionary of sequences (aligned or not) in a given protein cluster:
 
         {
@@ -805,9 +805,6 @@ class PanSuperclass(object):
                                but there is not genomes storage is available to get it." \
                                     % 'a PC' if len(pc_names) > 1 else '%d PCs' % len(pc_names))
 
-        if output_file_path:
-            filesnpaths.is_output_file_writable(output_file_path)
-
         if not self.protein_clusters_initialized:
             self.init_protein_clusters()
 
@@ -817,11 +814,8 @@ class PanSuperclass(object):
                                Here are some of the missing ones; %s" \
                                         % (len(missing_pc_names), len(pc_names), ', '.join(missing_pc_names[0:5])))
 
-        if output_file_path:
-            output_file = open(output_file_path, 'w')
-
         self.progress.new('Accessing protein cluster seqeunces')
-        sequence_counter = 0
+
         for pc_name in pc_names:
             self.progress.update("processing '%s' ..." % pc_name )
             sequences[pc_name] = {}
@@ -835,23 +829,34 @@ class PanSuperclass(object):
                         sequence = utils.restore_alignment(sequence, alignment_summary)
 
                     sequences[pc_name][genome_name][gene_callers_id] = sequence
-                    sequence_counter += 1
 
-                    if output_file_path:
+        self.progress.end()
+        
+        return sequences
+
+    def write_AA_sequences_to_file(self, pc_names=set([]), skip_alignments=False, output_file_path=None):
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        output_file = open(output_file_path, 'w')
+        sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
+        
+        self.progress.new('Writing protein cluster seqeunces to file')
+        sequence_counter = 0
+        for pc_name in pc_names:
+            for genome_name in sequences[pc_name]:
+                for gene_callers_id in sequences[pc_name][genome_name]:
                         output_file.write('>%08d|pc:%s|genome_name:%s|gene_callers_id:%d\n' % (sequence_counter,
                                                                                               pc_name,
                                                                                               genome_name,
                                                                                               gene_callers_id))
-                        output_file.write('%s\n' % sequence)
+                        output_file.write('%s\n' % sequences[pc_name][genome_name][gene_callers_id])
+                        sequence_counter += 1
+                        self.progress.update("processing '%s' ..." % pc_name)
 
         self.progress.end()
-
-        if output_file_path:
-            output_file.close()
-            self.run.info('Output file', output_file_path, lc='green')
-
-        return sequences
-
+        output_file.close()
+        self.run.info('Output file', output_file_path, lc='green')
 
     def init_protein_clusters_functions(self):
         self.progress.new('Initializing functions for protein clusters')
