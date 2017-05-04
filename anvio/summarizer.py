@@ -38,7 +38,6 @@ import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.sequence as sequence
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
@@ -952,6 +951,7 @@ class Bin:
                     sequence += self.summary.split_sequences[contigs_represented[contig_id][split_order]]
 
                 fasta_id = contig_id + appendix
+                self.contig_lengths.append(len(sequence))
 
                 self.progress.update('Creating the FASTA file :: Writing contig sequence into file ...')
                 fasta_file.write('>%s\n' % fasta_id)
