@@ -858,6 +858,28 @@ class PanSuperclass(object):
         output_file.close()
         self.run.info('Output file', output_file_path, lc='green')
 
+    def write_AA_sequences_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None):
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        output_file = open(output_file_path, 'w')
+        sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
+
+        additional_data = PanDatabase(self.pan_db_path).db.get_table_as_dict('additional_data')
+
+        for genome_name in self.genome_names:
+            output_file.write('>%s\n' % genome_name)
+            for pc_name in sequences:
+                if additional_data[pc_name]['SCG'] != 1:
+                    continue
+
+                sequence = next(iter(sequences[pc_name][genome_name].values()))
+                output_file.write('%s' % sequence)
+
+            output_file.write('\n\n')
+
+        output_file.close()
+
     def init_protein_clusters_functions(self):
         self.progress.new('Initializing functions for protein clusters')
         self.progress.update('...')
