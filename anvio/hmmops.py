@@ -18,6 +18,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.drivers.muscle import Muscle
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -226,19 +227,66 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX'):
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
 
-        f = open(output_file_path, 'w')
+        if concatenate_genes:
+            # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
 
-        for gene_unique_id in hmm_sequences_dict_for_splits:
-            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
+            # lets learn about what we have in this dictionary first.
+            gene_names = list(set([x['gene_name'] for x in hmm_sequences_dict_for_splits.values()]))
+            bin_names = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+            # gene lenghts are especially important to accommodate missing genes with proper number of
+            # gap characters
+            gene_lengths = {}
 
-            f.write('>%s\n' % header)
-            f.write('%s\n' % sequence)
+            # buld a simpler dict that keeps genes sequences for each bin for a given gene name
+            genes_in_bins_dict = {}
+            for entry in hmm_sequences_dict_for_splits.values():
+                gene_name = entry['gene_name']
+                bin_name = entry['bin_id']
+                sequence = entry['sequence']
+                if gene_name in genes_in_bins_dict:
+                    genes_in_bins_dict[gene_name][bin_name] = sequence
+                else:
+                    genes_in_bins_dict[gene_name] = {bin_name: sequence}
+
+            # align homolog sequences across bins
+            m = Muscle(run=terminal.Run(verbose=False))
+            for gene_name in genes_in_bins_dict:
+                genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
+                                                            for bin_name in genes_in_bins_dict[gene_name] \
+                                                                               if bin_name in genes_in_bins_dict[gene_name]]
+                genes_in_bins_dict[gene_name] = m.run_muscle_stdin(genes_list)
+                gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
+
+            # concatenate all of them and write them in a file
+            f = open(output_file_path, 'w')
+            for bin_name in bin_names:
+                sequence = separator.join([genes_in_bins_dict[gene_name][bin_name] if bin_name in genes_in_bins_dict[gene_name] \
+                                                                                   else '-' * gene_lengths[gene_name] \
+                                                            for gene_name in gene_names])
+                if wrap:
+                    sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+
+                f.write('>%s|genes:%s|separator:%s\n' % (bin_name, ','.join(gene_names), separator))
+                f.write('%s\n' % sequence)
+
+            f.close()
+        else:
+            f = open(output_file_path, 'w')
+
+            for gene_unique_id in hmm_sequences_dict_for_splits:
+                header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
+
+                if wrap:
+                    sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+
+                f.write('>%s\n' % header)
+                f.write('%s\n' % sequence)
+
+            f.close()
