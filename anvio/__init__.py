@@ -370,6 +370,13 @@ D = {
                       the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good\
                       for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'concatenate-genes': (
+            ['--concatenate-genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Concatenate output genes in the same order to create a multi-gene alignment output that is suitable\
+                      for phylogenomic analyses."}
+                ),
     'list-available-gene-names': (
             ['-L', '--list-available-gene-names'],
             {'default': False,
