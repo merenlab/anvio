@@ -377,6 +377,19 @@ D = {
              'help': "Concatenate output genes in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
                 ),
+    'concatenate-pcs': (
+            ['--concatenate-pcs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Concatenate output PCs in the same order to create a multi-gene alignment output that is suitable\
+                      for phylogenomic analyses."}
+                ),
+    'skip-multiple-gene-calls': (
+            ['--skip-multiple-gene-calls'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When generating concatenated output skip PCs contain multiple gene calls."}
+                ),
     'list-available-gene-names': (
             ['-L', '--list-available-gene-names'],
             {'default': False,

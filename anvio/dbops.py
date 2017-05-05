@@ -12,6 +12,8 @@ import random
 import hashlib
 import datetime
 import textwrap
+
+from io import StringIO
 from itertools import chain
 from collections import Counter
 
@@ -858,25 +860,51 @@ class PanSuperclass(object):
         output_file.close()
         self.run.info('Output file', output_file_path, lc='green')
 
-    def write_AA_sequences_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None):
+    def write_AA_sequences_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
         sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
 
-        additional_data = PanDatabase(self.pan_db_path).db.get_table_as_dict('additional_data')
+        output_buffer = dict({})
+        for genome_name in self.genome_names:
+            output_buffer[genome_name] = StringIO()
+
+        skipped_pcs = []
+        for pc_name in pc_names:
+            multiple_gene_calls = False
+            multiple_gene_call_genome = None
+            sequence_length = None
+
+            for genome_name in self.genome_names:
+                if len(sequences[pc_name][genome_name]) > 1:
+                    multiple_gene_calls = True
+                    multiple_gene_call_genome = genome_name
+                elif len(sequences[pc_name][genome_name]) == 1:
+                    sequence_length = len(next(iter(sequences[pc_name][genome_name].values())))
+
+            if multiple_gene_calls:
+                if skip_multiple_gene_calls:
+                    skipped_pcs.append(pc_name)
+                    continue
+                else:
+                    raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag --skip-multiple-gene-calls" % (pc_name, multiple_gene_call_genome))
+
+            for genome_name in self.genome_names:
+                if len(sequences[pc_name][genome_name]) == 1:
+                    output_buffer[genome_name].write(next(iter(sequences[pc_name][genome_name].values())))
+                else:
+                    output_buffer[genome_name].write("-" * sequence_length)
+
+        if len(skipped_pcs):
+            self.run.warning("These PCs contains multiple gene calls and skipped during concatenation.\n '%s'" % (", ".join(skipped_pcs)))
 
         for genome_name in self.genome_names:
             output_file.write('>%s\n' % genome_name)
-            for pc_name in sequences:
-                if additional_data[pc_name]['SCG'] != 1:
-                    continue
-
-                sequence = next(iter(sequences[pc_name][genome_name].values()))
-                output_file.write('%s' % sequence)
-
+            output_file.write(output_buffer[genome_name].getvalue())
             output_file.write('\n\n')
+            output_buffer[genome_name].close()
 
         output_file.close()
 

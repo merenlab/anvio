@@ -84,8 +84,10 @@ def main(args):
 
     run.info('Number of protein clusters to report', len(pc_ids))
 
-    pan.write_AA_sequences_to_file(pc_names=pc_ids, output_file_path=args.output_file)
-
+    if args.concatenate_pcs:
+        pan.write_AA_sequences_for_phylogenomics(pc_names=pc_ids, output_file_path=args.output_file, skip_multiple_gene_calls=args.skip_multiple_gene_calls)
+    else:
+        pan.write_AA_sequences_to_file(pc_names=pc_ids, output_file_path=args.output_file)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export aligned sequences from anvi'o pan genomes")
@@ -110,6 +112,10 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
     groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+
+    groupE = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
+    groupE.add_argument(*anvio.A('concatenate-pcs'), **anvio.K('concatenate-pcs'))
+    groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
 
     args = parser.parse_args()
 
