@@ -37,6 +37,7 @@ from collections import Counter
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.sequence as seqlib
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -1060,7 +1061,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
         seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
         info_dict['gene_caller_ids'] = list(c.genes_in_contigs_dict.keys())
 
-    info_dict['gc_content'] = sequence.Composition(seq).GC_content
+    info_dict['gc_content'] = seqlib.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)
 
     info_dict['partial_gene_calls'] = set([])
