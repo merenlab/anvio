@@ -1721,6 +1721,7 @@ class ContigsDatabase:
         skip_gene_calling = A('skip_gene_calling')
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
+        ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         debug = A('debug')
 
         if external_gene_calls:
@@ -1811,7 +1812,7 @@ class ContigsDatabase:
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:
-                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(external_gene_calls)
+                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(external_gene_calls, ignore_internal_stop_codons)
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
 
@@ -2453,7 +2454,7 @@ class TablesForGeneCalls(Table):
                                 should be multiply of 3. It is not the case for all, which is a deal breaker.")
 
 
-    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path):
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, ignore_internal_stop_codons=False):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
 
         # take care of gene calls dict
@@ -2472,12 +2473,15 @@ class TablesForGeneCalls(Table):
             contig_sequences[fasta.id] = fasta.seq
         fasta.close()
 
+        num_genes_with_internal_stops = 0
         number_of_impartial_gene_calls = 0
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
             contig_name = gene_call['contig']
 
             if contig_name not in contig_sequences:
+                # remove the partial contigs database so things don't get screwed later
+                os.remove(self.db_path)
                 raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
                                     does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
@@ -2490,10 +2494,34 @@ class TablesForGeneCalls(Table):
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
 
-            protein_sequences[gene_callers_id] = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
+            protein_sequence = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
+
+            # check if there are any internal stops:
+            if protein_sequence.find('*') > -1:
+                if ignore_internal_stop_codons:
+                    protein_sequence = protein_sequence.replace('*', 'X')
+                    num_genes_with_internal_stops += 1
+                else:
+                    os.remove(self.db_path)
+                    raise ConfigError("Oops. Anvi'o run into an amino acid seqeunce (that corresponds to the gene callers id '%s')\
+                                       which had an internal stop codon :/ This usually indicates that your external gene calls\
+                                       have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
+                                       codons on your own risk. It will probably look very ugly on your screen, but here is the\
+                                       DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since\
+                                       anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
+
+            protein_sequences[gene_callers_id] = protein_sequence
 
         # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
+
+        if num_genes_with_internal_stops:
+            percent_genes_with_internal_stops = num_genes_with_internal_stops * 100.0 / len(gene_calls_dict)
+            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal\
+                              stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X'\
+                              characters, and stored them in the contigs database that way. %d of your genes, which corresponded\
+                              to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
+                                        (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
 
         if number_of_impartial_gene_calls:
             self.run.warning('%d of your %d gene calls were impartial, hence the translated protein sequences for those\

@@ -914,7 +914,7 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
-def get_DNA_sequence_translated(sequence, gene_callers_id, do_not_return_stop=True):
+def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
@@ -931,10 +931,13 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, do_not_return_stop=Tr
 
         translated_sequence += single_letter_code
 
-    if translated_sequence.endswith('*') and do_not_return_stop:
-        return translated_sequence[:-1]
-    else:
-        return translated_sequence
+    if translated_sequence.endswith('*'):
+        if return_with_stops:
+            pass
+        else:
+            translated_sequence = translated_sequence[:-1]
+
+    return translated_sequence
 
 
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):

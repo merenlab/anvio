@@ -173,6 +173,18 @@ D = {
                       calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
                       v2.6.7 or v1.0). An example file can be found via the URL https://goo.gl/TqCWT2"}
                 ),
+    'ignore-internal-stop-codons': (
+            ['--ignore-internal-stop-codons'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that your custom gene calls\
+                      result in amino acid seqeunces with stop codons in the middle, it will complain about it. You can use this flag\
+                      to tell anvi'o to don't check for internal stop codons, EVEN THOUGH IT MEANS THERE IS MOST LIKELY SOMETHING\
+                      WRONG WITH YOUR EXTERNAL GENE CALLS FILE. Anvi'o will understand that sometimes we don't want to care, and will\
+                      not judge you. Instead, it will replace every stop codon residue in the amino acid sequence with an 'X' character.\
+                      Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it\
+                      if you didn't like failures at the first place (smiley)."}
+                ),
     'skip-SNV-profiling': (
             ['--skip-SNV-profiling'],
             {'default': False,
