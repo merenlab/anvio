@@ -836,6 +836,7 @@ class PanSuperclass(object):
         
         return sequences
 
+
     def write_AA_sequences_to_file(self, pc_names=set([]), skip_alignments=False, output_file_path=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -859,6 +860,7 @@ class PanSuperclass(object):
         self.progress.end()
         output_file.close()
         self.run.info('Output file', output_file_path, lc='green')
+
 
     def write_AA_sequences_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False):
         if output_file_path:
@@ -907,6 +909,7 @@ class PanSuperclass(object):
             output_buffer[genome_name].close()
 
         output_file.close()
+
 
     def init_protein_clusters_functions(self):
         self.progress.new('Initializing functions for protein clusters')
@@ -1080,7 +1083,6 @@ class PanSuperclass(object):
 
 
     def get_summary_for_PC_id(self, protein_cluster_id):
-
         summary = {'genomes_contributing': set([]), 'num_gene_calls': 0, 'functions': {}}
 
         for genome_name in self.protein_clusters[protein_cluster_id]:
