@@ -45,18 +45,7 @@ def main(args):
     filesnpaths.is_output_file_writable(args.output_file)
 
     pc_ids = set([])
-    if (args.pc_id or args.pc_ids_file):
-        if args.pc_id:
-            pc_ids = set([args.pc_id])
-            run.info('Mode', 'Reporting alignments for a single protein cluster.')
-        else:
-            columns = utils.get_columns_of_TAB_delim_file(args.pc_ids_file, include_first_column=True)
-            if len(columns) != 1:
-                raise ConfigError("The input file for PC IDs must contain a single column. It seems yours has %d :/" % len(columns))
-
-            pc_ids = set([p.strip('\n') for p in open(args.pc_ids_file, 'rU').readlines()])
-            run.info('Mode', 'Reporting alignments for a list of protein clusters from an input file.')
-    elif args.collection_name:
+    if args.collection_name or args.list_collections or args.list_bins:
         pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if not args.bin_id:
@@ -68,6 +57,17 @@ def main(args):
         pc_ids = set(collection_dict[args.bin_id])
 
         run.info('Mode', 'Reporting alignments for a protein clusters from in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
+    elif (args.pc_id or args.pc_ids_file):
+        if args.pc_id:
+            pc_ids = set([args.pc_id])
+            run.info('Mode', 'Reporting alignments for a single protein cluster.')
+        else:
+            columns = utils.get_columns_of_TAB_delim_file(args.pc_ids_file, include_first_column=True)
+            if len(columns) != 1:
+                raise ConfigError("The input file for PC IDs must contain a single column. It seems yours has %d :/" % len(columns))
+
+            pc_ids = set([p.strip('\n') for p in open(args.pc_ids_file, 'rU').readlines()])
+            run.info('Mode', 'Reporting alignments for a list of protein clusters from an input file.')
     else:
         run.info('Mode', 'Reporting alignments for all protein clusters.')
 
