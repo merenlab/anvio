@@ -27,7 +27,7 @@ function toggleLeftPanel() {
                 is_left_panel_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     } else {
         $('#panel-left').show();
         var animation_frame = function(){ 
@@ -44,7 +44,7 @@ function toggleLeftPanel() {
                 is_left_panel_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     }
 }
 
@@ -77,7 +77,7 @@ function toggleRightPanel() {
                 is_right_panel_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     } else {
         $('#mouse_hover_panel').show();
         var animation_frame = function(){ 
@@ -94,7 +94,7 @@ function toggleRightPanel() {
                 is_right_panel_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     }
 }
 
@@ -127,7 +127,7 @@ function toggleRight2Panel() {
                 is_right_panel2_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     } else {
         $('#description-panel').show();
         $('#description-panel').css('left', document.body.clientWidth); 
@@ -145,6 +145,6 @@ function toggleRight2Panel() {
                 is_right_panel2_sliding = false;
             }
         };
-        setTimeout(animation_frame, 1);
+        animation_frame();
     }
 }
