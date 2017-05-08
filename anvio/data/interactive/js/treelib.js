@@ -2696,6 +2696,9 @@ function draw_tree(settings) {
     console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
     console.log('[info] Total objects in SVG: ' + total_object_count);
 
+    if (parseFloat(total_object_count) > 5000) {
+        ANIMATIONS_ENABLED = false; // defined in animations.js
+    }
 }
 
 function redrawBins()

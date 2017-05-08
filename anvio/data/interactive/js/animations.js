@@ -1,3 +1,4 @@
+var ANIMATIONS_ENABLED = true;
 var SLIDE_INTERVAL = 4;
 var SLIDE_STEP_SIZE = 15;
 
@@ -13,7 +14,7 @@ function toggleLeftPanel() {
 
     if ($('#panel-left').is(':visible')) {
         var animation_frame = function(){ 
-            if ($('#panel-left')[0].getBoundingClientRect().right > 0) {
+            if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().right > 0) {
                 $('#panel-left').css('left', parseInt($('#panel-left').css('left')) - SLIDE_STEP_SIZE);
                 $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
@@ -30,7 +31,7 @@ function toggleLeftPanel() {
     } else {
         $('#panel-left').show();
         var animation_frame = function(){ 
-            if ($('#panel-left')[0].getBoundingClientRect().left < 0) {
+            if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().left < 0) {
                 $('#panel-left').css('left', parseInt($('#panel-left').css('left')) + SLIDE_STEP_SIZE);
                 $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
@@ -63,7 +64,7 @@ function toggleRightPanel() {
 
     if ($('#mouse_hover_panel').is(':visible')) {
         var animation_frame = function(){ 
-            if ($('#mouse_hover_panel')[0].getBoundingClientRect().left < document.body.clientWidth) {
+            if (ANIMATIONS_ENABLED && $('#mouse_hover_panel')[0].getBoundingClientRect().left < document.body.clientWidth) {
                 $('#mouse_hover_panel').css('left', parseInt($('#mouse_hover_panel').css('left')) + SLIDE_STEP_SIZE);
                 $('#toggle-panel-right').css('left', $('#mouse_hover_panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right').css('width')) + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
@@ -80,7 +81,7 @@ function toggleRightPanel() {
     } else {
         $('#mouse_hover_panel').show();
         var animation_frame = function(){ 
-            if ($('#mouse_hover_panel')[0].getBoundingClientRect().right > document.body.clientWidth) {
+            if (ANIMATIONS_ENABLED && $('#mouse_hover_panel')[0].getBoundingClientRect().right > document.body.clientWidth) {
                 $('#mouse_hover_panel').css('left', parseInt($('#mouse_hover_panel').css('left')) - SLIDE_STEP_SIZE);
                 $('#toggle-panel-right').css('left', $('#mouse_hover_panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right').css('width')) + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
@@ -113,7 +114,7 @@ function toggleRight2Panel() {
 
     if ($('#description-panel').is(':visible')) {
         var animation_frame = function(){ 
-            if ($('#description-panel')[0].getBoundingClientRect().left < document.body.clientWidth) {
+            if (ANIMATIONS_ENABLED && $('#description-panel')[0].getBoundingClientRect().left < document.body.clientWidth) {
                 $('#description-panel').css('left', parseInt($('#description-panel').css('left')) + SLIDE_STEP_SIZE);
                 $('#toggle-panel-right-2').css('left', $('#description-panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right-2').css('width')) + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
@@ -131,7 +132,7 @@ function toggleRight2Panel() {
         $('#description-panel').show();
         $('#description-panel').css('left', document.body.clientWidth); 
         var animation_frame = function(){ 
-            if ($('#description-panel')[0].getBoundingClientRect().right > document.body.clientWidth) {
+            if (ANIMATIONS_ENABLED && $('#description-panel')[0].getBoundingClientRect().right > document.body.clientWidth) {
                 $('#description-panel').css('left', parseInt($('#description-panel').css('left')) - SLIDE_STEP_SIZE);
                 $('#toggle-panel-right-2').css('left', $('#description-panel')[0].getBoundingClientRect().left - parseInt($('#toggle-panel-right-2').css('width')) + 'px');
                 setTimeout(animation_frame, SLIDE_INTERVAL);
