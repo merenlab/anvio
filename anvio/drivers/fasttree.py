@@ -9,6 +9,7 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+from anvio.fastalib import ReadFasta
 
 from anvio.errors import ConfigError
 
@@ -44,6 +45,10 @@ class FastTree:
 
         run.info("Input aligment file path", input_file_path)
         run.info("Output file path", output_file_path)
+
+        aligments = ReadFasta(input_file_path, quiet=True)
+        run.info("Aligment names", ", ".join(aligments.ids))
+        run.info("Aligment sequence lengths", ", ".join(map(str, map(len, aligments.sequences))))
         
         input_file = open(input_file_path, 'rb')
 
