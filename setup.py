@@ -28,7 +28,8 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
-include_dirs_for_concoct = [numpy.get_include(), '/opt/local/include/']
+include_dirs_for_concoct = [numpy.get_include(), '/opt/local/include/', '/usr/local/include/']
+library_dirs_for_concoct = ['/opt/local/lib/', '/usr/local/lib/']
 
 setup(
     name = "anvio",
@@ -44,7 +45,7 @@ setup(
     cmdclass = {'build_ext': build_ext},
     ext_modules = [
                     Extension("anvio.vbgmm", sources=["./anvio/extensions/concoct/vbgmm.pyx", "./anvio/extensions/concoct/c_vbgmm_fit.c"],
-                                libraries =['gsl',  'gslcblas'], include_dirs=include_dirs_for_concoct),
+                                libraries =['gsl', 'gslcblas'], include_dirs=include_dirs_for_concoct, library_dirs=library_dirs_for_concoct),
                   ],
 
     author = "anvi'o Authors",
