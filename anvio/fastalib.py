@@ -55,20 +55,21 @@ class FastaOutput:
 
 
 class ReadFasta:
-    def __init__(self, f_name):
+    def __init__(self, f_name, quiet=False):
         self.ids = []
         self.sequences = []
 
         self.fasta = SequenceSource(f_name)
 
         while next(self.fasta):
-            if self.fasta.pos % 1000 == 0 or self.fasta.pos == 1:
+            if (not quiet) and (self.fasta.pos % 1000 == 0 or self.fasta.pos == 1):
                 sys.stderr.write('\r[fastalib] Reading FASTA into memory: %s' % (self.fasta.pos))
                 sys.stderr.flush()
             self.ids.append(self.fasta.id)
             self.sequences.append(self.fasta.seq)
 
-        sys.stderr.write('\n')
+        if not quiet:
+            sys.stderr.write('\n')
 
     def close(self):
         self.fasta.close()
