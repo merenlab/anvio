@@ -46,9 +46,9 @@ class FastTree:
         run.info("Input aligment file path", input_file_path)
         run.info("Output file path", output_file_path)
 
-        aligments = ReadFasta(input_file_path, quiet=True)
-        run.info("Aligment names", ", ".join(aligments.ids))
-        run.info("Aligment sequence lengths", ", ".join(map(str, map(len, aligments.sequences))))
+        alignments = ReadFasta(input_file_path, quiet=True)
+        run.info("Alignment names", ", ".join(alignments.ids))
+        run.info("Alignment sequence lengths", ", ".join(map(str, map(len, alignments.sequences))))
         
         input_file = open(input_file_path, 'rb')
 
