@@ -35,14 +35,34 @@ class FastTree:
 
         utils.is_program_exists('FastTree')
 
-    def create_tree_from_aligment_file(self, file_path):
-        filesnpaths.is_file_fasta_formatted(file_path)
-        return self.run_command(open(file_path, 'rb'))
+    def run_command(self, input_file_path, output_file_path):
+        input_file_path = os.path.abspath(input_file_path)
+        filesnpaths.is_file_fasta_formatted(input_file_path)
 
-    def create_tree_from_aligment_text(self, aligment_text):
-        return self.run_command(io.BytesIO(aligment_text))
+        output_file_path = os.path.abspath(output_file_path)
+        filesnpaths.is_output_file_writable(output_file_path)
 
-    def run_command(self, input_buffer):
+        run.info("Input aligment file path", input_file_path)
+        run.info("Output file path", output_file_path)
+        
+        input_file = open(input_file_path, 'rb')
+
         fasttree = Popen(self.command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
-        newick_tree = fasttree.communicate(input=input_buffer.read())[0].decode('utf-8')
-        return newick_tree
+        output = fasttree.communicate(input=input_file.read())
+        input_file.close()
+        
+        output_stdout = output[0].decode().rstrip()
+        output_stderr = output[1].decode().splitlines()
+
+        run.info("Version", output_stderr[0])
+        for line in output_stderr[1:]:
+            line = line.split(":")
+            if len(line) == 2:
+                run.info(line[0], line[1].strip())
+            else:
+                run.info("Info", ":".join(line))
+        
+        if filesnpaths.is_proper_newick(output_stdout):
+            output_file = open(output_file_path, 'w')
+            output_file.write(output_stdout)
+            output_file.close()
