@@ -48,8 +48,13 @@ class FastTree:
 
         alignments = ReadFasta(input_file_path, quiet=True)
         run.info("Alignment names", ", ".join(alignments.ids))
-        run.info("Alignment sequence lengths", ", ".join(map(str, map(len, alignments.sequences))))
-        
+
+        alignment_lengths = map(len, alignments.sequences)
+        if len(set(alignment_lengths)) == 1:
+            run.info("Alignment sequence length", alignment_lengths[0])
+        else:
+            raise ConfigError("Alignment lengths are not equal in input file.")
+
         input_file = open(input_file_path, 'rb')
 
         fasttree = Popen(self.command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
