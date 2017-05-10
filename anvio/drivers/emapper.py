@@ -165,7 +165,7 @@ class EggNOGMapper:
 
         if not fields[0].startswith(self.gene_caller_id_prefix):
             raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. Anvi'o can not trust\
-                                this file :(")
+                                this file :(. This is the prefix that anvi'o expected: %s" % self.gene_caller_id_prefix)
 
         try:
             gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
