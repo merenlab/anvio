@@ -513,6 +513,13 @@ D = {
             {'metavar': 'SPLIT_NAME',
              'help': "Split name."}
                 ),
+    'program': (
+            ['--program'],
+            {'metavar': 'PROGRAM_NAME',
+             'help': "Program name.",
+             'required': False,
+             'default': 'default'}
+                ),
     'splits-of-interest': (
             ['--splits-of-interest'],
             {'metavar': 'FILE',

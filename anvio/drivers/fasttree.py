@@ -9,7 +9,6 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-from anvio.fastalib import ReadFasta
 
 from anvio.errors import ConfigError
 
@@ -37,24 +36,6 @@ class FastTree:
         utils.is_program_exists('FastTree')
 
     def run_command(self, input_file_path, output_file_path):
-        input_file_path = os.path.abspath(input_file_path)
-        filesnpaths.is_file_fasta_formatted(input_file_path)
-
-        output_file_path = os.path.abspath(output_file_path)
-        filesnpaths.is_output_file_writable(output_file_path)
-
-        run.info("Input aligment file path", input_file_path)
-        run.info("Output file path", output_file_path)
-
-        alignments = ReadFasta(input_file_path, quiet=True)
-        run.info("Alignment names", ", ".join(alignments.ids))
-
-        alignment_lengths = map(len, alignments.sequences)
-        if len(set(alignment_lengths)) == 1:
-            run.info("Alignment sequence length", alignment_lengths[0])
-        else:
-            raise ConfigError("Alignment lengths are not equal in input file.")
-
         input_file = open(input_file_path, 'rb')
 
         fasttree = Popen(self.command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
