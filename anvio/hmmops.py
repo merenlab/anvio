@@ -227,7 +227,7 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX'):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None):
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not isinstance(wrap, int):
@@ -235,10 +235,23 @@ class SequencesForHMMHits:
 
         if concatenate_genes:
             # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
+            gene_names = None
 
             # lets learn about what we have in this dictionary first.
-            gene_names = list(set([x['gene_name'] for x in hmm_sequences_dict_for_splits.values()]))
-            bin_names = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
+            bin_names_in_dict = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
+            gene_names_in_dict = sorted(list(set([x['gene_name'] for x in hmm_sequences_dict_for_splits.values()])))
+
+            # if the function is called with a particular set and order of genes, use those, otherwise
+            # stick with the gene names / order we found in the dictionary.
+            if genes_order:
+                genes_in_genes_order_but_missing_in_dict = [g for g in genes_order if g not in gene_names_in_dict]
+                if len(genes_in_genes_order_but_missing_in_dict):
+                    raise ConfigError("One or more gene names in the genes order list does seem to appear in the main dictionary\
+                                       (which translates to 'terrible news'). Here are the genes that cause this issue: '%s'" \
+                                                    % (', '.join(genes_in_genes_order_but_missing_in_dict)))
+                gene_names = genes_order
+            else:
+                gene_names = gene_names_in_dict
 
             # gene lenghts are especially important to accommodate missing genes with proper number of
             # gap characters
@@ -266,7 +279,7 @@ class SequencesForHMMHits:
 
             # concatenate all of them and write them in a file
             f = open(output_file_path, 'w')
-            for bin_name in bin_names:
+            for bin_name in bin_names_in_dict:
                 sequence = separator.join([genes_in_bins_dict[gene_name][bin_name] if bin_name in genes_in_bins_dict[gene_name] \
                                                                                    else '-' * gene_lengths[gene_name] \
                                                             for gene_name in gene_names])
