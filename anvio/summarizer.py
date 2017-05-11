@@ -1112,7 +1112,7 @@ class AdHocRunGenerator:
        This is a class to take in a view data matrix at minimum, and create all
        necessary files for an anvi'o interactive interface call in manual mode."""
 
-    def __init__(self, view_data_path, run=run, progress=progress):
+    def __init__(self, view_data_path, skip_clustering_view_data=False, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -1121,6 +1121,8 @@ class AdHocRunGenerator:
         self.tree_file_path = None
         self.matrix_data_for_clustering = None
         self.additional_view_data_file_path = None
+
+        self.skip_clustering_view_data = skip_clustering_view_data
 
         self.samples_info_file_path = None
         self.samples_order_file_path = None
@@ -1191,7 +1193,7 @@ class AdHocRunGenerator:
     def generate(self):
         self.sanity_check()
 
-        if not self.tree_file_path:
+        if not self.tree_file_path and not self.skip_clustering_view_data:
             self.gen_clustering_of_view_data()
 
         self.gen_samples_db()
@@ -1207,10 +1209,9 @@ class AdHocRunGenerator:
 
         self.tree_file_path = self.get_output_file_path('tree.txt')
 
-        if self.matrix_data_for_clustering:
-            clustering.get_newick_tree_data(self.matrix_data_for_clustering, self.tree_file_path, distance = self.distance, linkage=self.linkage)
-        else:
-            clustering.get_newick_tree_data(self.view_data_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
+        data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
+
+        clustering.get_newick_tree_data(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
 
         self.progress.end()
 
