@@ -299,8 +299,8 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
-        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': sorted(item_names)},
-                                      'Alphabetical:none:none': {'basic': sorted(item_names, reverse=True)}}
+        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': [str(i) for i in sorted(item_names)]},
+                                      'Alphabetical:none:none': {'basic': [str(i) for i in sorted(item_names, reverse=True)]}}
         self.p_meta['available_clusterings'] = ['Alphabetical_(reverse):none:none', 'Alphabetical:none:none']
         self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
 
@@ -324,7 +324,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # here using what is in the tree.
             ad_hoc_dict = {}
             for item in item_names:
-                ad_hoc_dict[item] = {'names': item}
+                ad_hoc_dict[item] = {'names': str(item)}
 
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
@@ -370,6 +370,7 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.title:
             self.title = self.title
+
 
     def cluster_splits_of_interest(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
