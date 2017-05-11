@@ -973,7 +973,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var norm = 'log';
+                var norm = (mode == 'full') ? 'log' : 'none';
             }
 
             var template = '<tr>' +
@@ -1106,7 +1106,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'log');
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full') ? 'log' : 'none');
                 var min    = getNamedLayerDefaults(layer_name, 'min', 0);
                 var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                 var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
