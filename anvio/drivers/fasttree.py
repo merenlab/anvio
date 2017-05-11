@@ -46,13 +46,22 @@ class FastTree:
         output_stderr = output[1].decode().splitlines()
 
         run.info("Version", output_stderr[0])
+        warning = ""
         for line in output_stderr[1:]:
-            line = line.split(":")
-            if len(line) == 2:
-                run.info(line[0], line[1].strip())
+            if len(warning) > 0 or line.startswith("WARNING! "):
+                warning += line + "\n"
+                if line == "":
+                    run.warning(warning)
+                    warning = ""
+            elif line.startswith("      "):
+                pass
             else:
-                run.info("Info", ":".join(line))
-        
+                line = line.split(":")
+                if len(line) == 2:
+                    run.info(line[0], line[1].strip())
+                else:
+                    run.info("Info", ":".join(line))
+            
         if filesnpaths.is_proper_newick(output_stdout):
             output_file = open(output_file_path, 'w')
             output_file.write(output_stdout)
