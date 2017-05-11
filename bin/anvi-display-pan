@@ -42,7 +42,7 @@ groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters an
                                                                    nice to have).")
 groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
-groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
 groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
