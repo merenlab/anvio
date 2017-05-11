@@ -13,6 +13,7 @@ import io
 import sys
 import json
 import random
+import requests
 import datetime
 import webbrowser
 from multiprocessing import Process
@@ -80,6 +81,7 @@ class BottleApplication(Bottle):
     def register_routes(self):
         self.route('/',                                        callback=self.redirect_to_app)
         self.route('/app/:filename#.*#',                       callback=self.send_static)
+        self.route('/data/news',                               callback=self.get_news)
         self.route('/data/<name>',                             callback=self.send_data)
         self.route('/data/view/<view_id>',                     callback=self.get_view_data)
         self.route('/tree/<items_ordering_id>',                callback=self.get_items_ordering)
@@ -152,6 +154,34 @@ class BottleApplication(Bottle):
             ret.headers['Content-Length'] = buff.getbuffer().nbytes
 
         return ret
+
+    def get_news(self):
+        news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
+        news_items = news_markdown.text.split("***")
+        
+        """ FORMAT
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        """
+        ret = []
+        for news_item in news_items:
+            if len(news_item) < 5:
+                # too short to parse, just skip it
+                continue
+
+            ret.append({
+                    'date': news_item.split("(")[1].split(")")[0].strip(),
+                    'title': news_item.split("#")[1].split("(")[0].strip(),
+                    'content': news_item.split("#\n")[1].strip()
+                })
+
+        return json.dumps(ret)
 
     def random_hash(self, size=8):
         r = random.getrandbits(size * 4)
