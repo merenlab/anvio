@@ -6,6 +6,32 @@
    HMM source, and returnes sequences of HMM hits. This program is useful when you
    want to get actual sequencs for each single-copy gene hit in a particular genome
    bin.
+
+  You want to play with it? This is how you could quickly test it:
+
+  Downloaded the anvi'o data pack for the infant gut data, which is here:
+
+    https://ndownloader.figshare.com/files/8252861
+
+  Uunpack it and went into it:
+
+    tar -zxvf INFANTGUTTUTORIAL.tar.gz && cd INFANT-GUT-TUTORIAL
+
+  Import the collection `merens`:
+
+    anvi-import-collection additional-files/collections/merens.txt -p PROFILE.db -c CONTIGS.db -C merens
+
+  Then I run the program `anvi-get-sequences-for-hmm-hits` in the anvi'o master this way:
+
+    anvi-get-sequences-for-hmm-hits -p PROFILE.db \
+                                    -c CONTIGS.db \
+                                    -C merens \
+                                    -o OUTPUT.fa \
+                                    --hmm-source Campbell_et_al \
+                                    --gene-names Ribosomal_L27,Ribosomal_L28,Ribosomal_L3 \
+                                    --return-best-hit \
+                                    --get-aa-sequences \
+                                    --concatenate
 """
 
 import os
@@ -37,6 +63,9 @@ progress = terminal.Progress()
 
 
 def main(args):
+    gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+
     if args.list_hmm_sources:
         info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
         for source in info_table:
@@ -46,18 +75,33 @@ def main(args):
 
     if args.list_available_gene_names:
         info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
-        for source in info_table:
+        for source in hmm_sources or info_table:
             t = info_table[source]
             run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
         sys.exit(0)
 
-    if args.concatenate_genes and not args.return_best_hit:
-        raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
-                           the best hit (using the `--report-best-hit`) flag to avoid issues if there are more than one\
-                           hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
-                           is not that kind of a platform :/")
+    # let's do some initial checks if the user is interested in concatanating genes. FIXME: these should probably go into the
+    # SequencesForHMMHits class sanity check.
+    if args.concatenate_genes:
+        if not args.return_best_hit:
+            raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
+                               the best hit (using the `--report-best-hit`) flag to avoid issues if there are more than one\
+                               hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
+                               is not that kind of a platform :/")
 
-    gene_names = set([g.strip() for g in args.gene_names.split(',')]) if args.gene_names else set([])
+        if len(hmm_sources) != 1:
+            raise ConfigError("If you want your genes to be concatenated, you should be requesting a single HMM source. Why?\
+                               In fact we are not exactly sure why. But when we think of it, we couldn't come up with a \
+                               scenario where the user might truly be interested in concatenating genes from multiple HMM\
+                               sources, and we wanted to add a control in case they are making a mistake w/o realizing. If you\
+                               are sure this is what you must do for the question you are interested in, please send an\
+                               e-mail to the anvi'o discussion group, and convince us .. or you can just delete this if block\
+                               to avoid this check if you are not in the mood. We know the feeling.")
+
+        if not len(gene_names):
+            run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
+                         genes defined in the HMM source '%s'." % list(hmm_sources)[0])
+
 
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
@@ -70,15 +114,14 @@ def main(args):
         contigs_db = ContigsSuperclass(args, r = run, p = progress)
         splits_dict = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
 
-    sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
-    s = SequencesForHMMHits(args.contigs_db, sources = sources)
+    s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
     if len(gene_names):
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', gene_names)
+        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
 
     if not hmm_sequences_dict:
@@ -101,8 +144,16 @@ def main(args):
 
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
 
+    # FIXME: We need the user to be able to define this:
     separator = 'XXX' if args.get_aa_sequences else 'NNN'
-    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, args.output_file, concatenate_genes=args.concatenate_genes, separator=separator)
+
+    # the magic is happening here:
+    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, \
+                                     args.output_file, \
+                                     concatenate_genes=args.concatenate_genes, \
+                                     separator=separator, \
+                                     genes_order=list(gene_names) if len(gene_names) else None)
+
     run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
     run.info('Genes are concatenated', args.concatenate_genes)
     run.info('Output', args.output_file)
