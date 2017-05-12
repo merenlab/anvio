@@ -234,6 +234,18 @@ class SequencesForHMMHits:
             raise ConfigError('"wrap" has to be an integer instance')
 
         if concatenate_genes:
+            if len(self.sources) != 1:
+                raise ConfigError("If you want your genes to be concatenated, you should be requesting a single HMM source. Why?\
+                                   In fact we are not exactly sure why. But when we think of it, we couldn't come up with a \
+                                   scenario where the user might truly be interested in concatenating genes from multiple HMM\
+                                   sources, and we wanted to add a control in case they are making a mistake w/o realizing. If you\
+                                   are sure this is what you must do for the question you are interested in, please send an\
+                                   e-mail to the anvi'o discussion group, and convince us .. or you can just delete this if block\
+                                   to avoid this check if you are not in the mood. We know the feeling.")
+
+            hmm_source = self.sources.pop()
+            gene_names_in_source = [g.strip() for g in self.hmm_hits_info[hmm_source]['genes'].split(',')]
+
             # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
             gene_names = None
 
@@ -244,11 +256,12 @@ class SequencesForHMMHits:
             # if the function is called with a particular set and order of genes, use those, otherwise
             # stick with the gene names / order we found in the dictionary.
             if genes_order:
-                genes_in_genes_order_but_missing_in_dict = [g for g in genes_order if g not in gene_names_in_dict]
-                if len(genes_in_genes_order_but_missing_in_dict):
-                    raise ConfigError("One or more gene names in the genes order list does seem to appear in the main dictionary\
-                                       (which translates to 'terrible news'). Here are the genes that cause this issue: '%s'" \
-                                                    % (', '.join(genes_in_genes_order_but_missing_in_dict)))
+                genes_in_genes_order_but_missing_in_hmm_source = [g for g in genes_order if g not in gene_names_in_source]
+                if len(genes_in_genes_order_but_missing_in_hmm_source):
+                    raise ConfigError("One or more gene names in the genes order list does seem to appear among the genes described\
+                                       by the HMM source %s (which translates to 'terrible news'). Here are the genes that cause this\
+                                       issue if you want to fix this: '%s'" \
+                                                  % (hmm_source, ', '.join(genes_in_genes_order_but_missing_in_hmm_source)))
                 gene_names = genes_order
             else:
                 gene_names = gene_names_in_dict
@@ -268,7 +281,8 @@ class SequencesForHMMHits:
                 else:
                     genes_in_bins_dict[gene_name] = {bin_name: sequence}
 
-            # align homolog sequences across bins
+
+             # align homolog sequences across bins
             m = Muscle(run=terminal.Run(verbose=False))
             for gene_name in genes_in_bins_dict:
                 genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
@@ -279,15 +293,38 @@ class SequencesForHMMHits:
 
             # concatenate all of them and write them in a file
             f = open(output_file_path, 'w')
+            gene_names_missing_from_everywhere = []
             for bin_name in bin_names_in_dict:
-                sequence = separator.join([genes_in_bins_dict[gene_name][bin_name] if bin_name in genes_in_bins_dict[gene_name] \
-                                                                                   else '-' * gene_lengths[gene_name] \
-                                                            for gene_name in gene_names])
+                sequences_list = []
+
+                for gene_name in gene_names:
+                    if gene_name in genes_in_bins_dict:
+                        if bin_name in genes_in_bins_dict[gene_name]:
+                            sequences_list.append(genes_in_bins_dict[gene_name][bin_name])
+                        else:
+                            sequences_list.append('-' * gene_lengths[gene_name])
+                    else:
+                        # if we are here, it means this is a gene that has been missing form the hmm hits dict, since it
+                        # was not in any of the bins the dict described, but the user requested to have it in the
+                        # alignment anyway. This can happen when the user wants to concatanate genes from one or more
+                        # low-completion bins. We will keep track of them, and tell the user.
+                        sequences_list.append('-' * 42)
+                        gene_names_missing_from_everywhere.append(gene_name)
+
+                sequence = separator.join(sequences_list)
+
                 if wrap:
                     sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
                 f.write('>%s|genes:%s|separator:%s\n' % (bin_name, ','.join(gene_names), separator))
                 f.write('%s\n' % sequence)
+
+            if len(gene_names_missing_from_everywhere):
+                run.warning("You asked for some genes that were missing from all bins this class had in the\
+                HMM hits dictionary (here is a list of them: '%s'). Not knowing what to do with this werid\
+                situation, anvi'o put gap characters for all of them and retained your order. Here are those\
+                genes that missed the party: '%s'" % \
+                    (', '.join(bin_names_in_dict), ', '.join(gene_names_missing_from_everywhere)))
 
             f.close()
         else:
