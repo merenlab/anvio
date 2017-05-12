@@ -389,6 +389,13 @@ D = {
              'help': "Concatenate output genes in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
                 ),
+    'separator': (
+            ['--separator'],
+            {'metavar': 'STRING',
+             'default': 'XXX',
+             'type': str,
+             'help': "Characters to separate things (the default is whatever is most suitable)."}
+                ),
     'concatenate-pcs': (
             ['--concatenate-pcs'],
             {'default': False,
