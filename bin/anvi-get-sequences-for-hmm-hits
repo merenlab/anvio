@@ -89,15 +89,6 @@ def main(args):
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
 
-        if len(hmm_sources) != 1:
-            raise ConfigError("If you want your genes to be concatenated, you should be requesting a single HMM source. Why?\
-                               In fact we are not exactly sure why. But when we think of it, we couldn't come up with a \
-                               scenario where the user might truly be interested in concatenating genes from multiple HMM\
-                               sources, and we wanted to add a control in case they are making a mistake w/o realizing. If you\
-                               are sure this is what you must do for the question you are interested in, please send an\
-                               e-mail to the anvi'o discussion group, and convince us .. or you can just delete this if block\
-                               to avoid this check if you are not in the mood. We know the feeling.")
-
         if not len(gene_names):
             run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
                          genes defined in the HMM source '%s'." % list(hmm_sources)[0])
@@ -145,7 +136,10 @@ def main(args):
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
 
     # FIXME: We need the user to be able to define this:
-    separator = 'XXX' if args.get_aa_sequences else 'NNN'
+    if args.separator:
+        separator = args.separator
+    else:
+        separator = 'XXX' if args.get_aa_sequences else 'NNN'
 
     # the magic is happening here:
     s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, \
@@ -175,6 +169,10 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
     parser.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
     parser.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
+    parser.add_argument(*anvio.A('separator'), **anvio.K('separator', {'help': 'A word that will be used to\
+                                  sepaate concatenated gene sequences from each other (IF you are using this\
+                                  program with `--concatenate-genes` flag). The default is "XXX" for amino\
+                                  acid sequences, and "NNN" for DNA sequences'}))
 
     args = parser.parse_args()
 
