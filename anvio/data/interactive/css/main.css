@@ -124,7 +124,7 @@ html, body, #wrapper {
     border-left: 1px solid #D3D3D3;
     padding: 15px;
     opacity: 0.9;
-    width: 300px;
+    width: 350px;
 }
 
 #description-panel {
@@ -137,6 +137,53 @@ html, body, #wrapper {
     border-left: 1px solid #D3D3D3;
     opacity: 0.9;
     width: 350px;
+}
+
+#news-panel {
+    display: none;
+    top: 0px;
+    right: 0px;
+    position: absolute;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.9;
+    width: 350px;
+    padding: 10px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    overflow-y: scroll;
+}
+
+.news-item {
+    display: block;
+    position: relative;
+    border: 1px solid lightgray;
+    background-color: white;
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+
+.news-item > .news-date {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 10px;
+}
+
+.news-item > h1 {
+    margin-top: 0px;
+    font-size: 16px;
+}
+
+.blue-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #2681EF;
+    margin-right: 4px;
 }
 
 #panel-left {
@@ -219,11 +266,29 @@ html, body, #wrapper {
     right: 0px;
 }
 
+#toggle-panel-right-3 {
+    position: absolute;
+    height: 80px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(50% - 210px);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+}
+
 .toggle-panel-right-pos {
-    right: 300px !important;
+    right: 350px !important;
 }
 
 .toggle-panel-right-pos-2 {
+    right: 350px !important;
+}
+
+.toggle-panel-right-pos-3 {
     right: 350px !important;
 }
 
@@ -538,7 +603,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #mouse_hover_panel {
-        width: 400px;
+        width: 460px;
     }
 
     .toggle-panel-left-pos {
@@ -546,14 +611,23 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     .toggle-panel-right-pos {
-        right: 400px !important;
+        right: 460px !important;
     }
 
     #description-panel {
         width: 460px !important;
     }
 
+    #news-panel {
+        width: 460px !important;
+    }
+
+
     .toggle-panel-right-pos-2 {
+        right: 460px !important;
+    }
+
+    .toggle-panel-right-pos-3 {
         right: 460px !important;
     }
 

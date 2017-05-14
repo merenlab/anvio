@@ -33,6 +33,7 @@
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
     <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js"></script>
     <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js"></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -71,13 +72,18 @@
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
 
-        <div id="toggle-panel-right" class="toggle-panel-right-pos" onclick="toggleRightPanel();">
+        <div id="toggle-panel-right" class="toggle-panel-right-pos" onclick="toggleRightPanel('#mouse_hover_panel');">
                 <span id="toggle-panel-right-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
         </div>
 
-        <div id="toggle-panel-right-2" onclick="toggleRight2Panel();">
+        <div id="toggle-panel-right-2" onclick="toggleRightPanel('#description-panel');">
                 <span id="toggle-panel-right-2-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">DESCRIPTIO<u>N</u></span>
         </div>
+
+        <div id="toggle-panel-right-3" onclick="toggleRightPanel('#news-panel');">
+                <span id="toggle-panel-right-3-inner">&#9658;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">NEWS</span>
+        </div>
+
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -585,6 +591,11 @@
     <div id="description-panel">
         <textarea id="description-editor" rows="10"></textarea>
     </div>
+
+    <div id="news-panel">
+        <h1 style="font-size: 22px; display: inline-block;">What's New</h1><a href="#" style="color: gray; margin-top: 36px; float: right;" onclick="newsMarkRead(); ">Mark everything as read</a>
+        <div id="news-panel-inner">
+    </div>
     <!-- DIALOGS SECTION -->
 
     <!-- LOAD STATE -->
@@ -911,6 +922,10 @@
 
         if (ev.keyCode === 78) { // N = 78
             $('#toggle-panel-right-2').trigger('click');
+        }
+
+        if (ev.keyCode === 66) { // B = 66
+            $('#toggle-panel-right-3').trigger('click');
         }
 
         if (ev.keyCode === 68) { // D = 68
