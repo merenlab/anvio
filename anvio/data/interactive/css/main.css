@@ -116,6 +116,7 @@ html, body, #wrapper {
 }
 
 #mouse_hover_panel {
+    display: none;
     top: 0px;
     right: 0px;
     position: absolute;
