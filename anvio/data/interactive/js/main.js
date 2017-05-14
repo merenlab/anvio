@@ -196,6 +196,10 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    //if (getCookie('news_checked') == null) {
+        checkNews();checkNews();
+    //}
+
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
     }, false);
@@ -209,6 +213,33 @@ $(document).ready(function() {
 
     initData();
 }); // document ready
+
+function checkNews() {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/news?timestamp=' + new Date().getTime(),
+        success: function(news) {
+            var last_seen_hash = getCookie('last_seen_hash');
+            var hash_found = false;
+            var notify_user = false;
+
+            for (var i=0; i < news.length; i++) {
+                var news_item = news[i];
+                console.log(md5(news_item['title']));
+                $('#news-panel-inner').append('<div class="news-item"> \
+                                              <h1><span class="blue-dot"></span>'+news_item['title']+'</h1> \
+                                              <span class="news-date">'+news_item['date']+'</span>'+marked(news_item['content'])+'</div>')
+            }
+            createCookie('news_checked', 'yes', 1); // expiration is 1 days
+        }
+    });    
+}
+
+function newsMarkRead() {
+    // TO DO
+    $('.blue-dot').remove();
+}
 
 function initData() {
     var timestamp = new Date().getTime(); 
@@ -1383,12 +1414,6 @@ function drawTree() {
 
                 if ($('#panel-left').is(':visible')) {
                     setTimeout(toggleLeftPanel, 500);
-                }
-                if ($('#mouse_hover_panel').is(':visible')) {
-                    setTimeout(toggleRightPanel, 500);
-                }
-                if ($('#description-panel').is(':visible')) {
-                    setTimeout(toggleRight2Panel, 500);
                 }
             },
         });
