@@ -196,9 +196,9 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
-    //if (getCookie('news_checked') == null) {
-        checkNews();checkNews();
-    //}
+    if (getCookie('news_checked') == null) {
+        checkNews();
+    }
 
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
@@ -222,23 +222,32 @@ function checkNews() {
         success: function(news) {
             var last_seen_hash = getCookie('last_seen_hash');
             var hash_found = false;
-            var notify_user = false;
+            var unread_count = 0;
 
             for (var i=0; i < news.length; i++) {
                 var news_item = news[i];
-                console.log(md5(news_item['title']));
+                if (hash_found || last_seen_hash == md5(news_item['title'])) {
+                    hash_found = true;
+                } else {
+                    unread_count++;
+                }
                 $('#news-panel-inner').append('<div class="news-item"> \
-                                              <h1><span class="blue-dot"></span>'+news_item['title']+'</h1> \
+                                              <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
                                               <span class="news-date">'+news_item['date']+'</span>'+marked(news_item['content'])+'</div>')
             }
             createCookie('news_checked', 'yes', 1); // expiration is 1 days
+
+            if (unread_count > 0) {
+                $('#toggle-panel-right-3').css('color', '#FF0000');
+            }
         }
-    });    
+    });
 }
 
 function newsMarkRead() {
-    // TO DO
     $('.blue-dot').remove();
+    $('#toggle-panel-right-3').css('color', '#000000');
+    createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
 }
 
 function initData() {
