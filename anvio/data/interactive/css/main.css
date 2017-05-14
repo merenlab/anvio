@@ -168,13 +168,13 @@ html, body, #wrapper {
 
 .news-item > .news-date {
     position: absolute;
-    top: 5px;
+    top: 3px;
     right: 10px;
     font-size: 10px;
 }
 
 .news-item > h1 {
-    margin-top: 0px;
+    margin-top: 7px;
     font-size: 16px;
 }
 
