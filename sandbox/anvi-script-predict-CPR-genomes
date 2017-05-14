@@ -44,7 +44,7 @@ def main(args):
     if args.output_file:
         filesnpaths.is_output_file_writable(args.output_file)
 
-    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+    if args.output_file and filesnpaths.is_file_exists(args.output_file, dont_raise=True):
         raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name.\
                            Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."\
                                     % args.output_file)
