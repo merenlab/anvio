@@ -73,6 +73,7 @@ function toggleRightPanel(name) {
     }
 
     if ($('#news-panel').is(':visible')) {
+        checkNews();
         $('#toggle-panel-right-3').addClass('toggle-panel-right-pos-3');
         $('#toggle-panel-right-3-inner').html('&#9658;');
     } else {
