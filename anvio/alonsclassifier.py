@@ -486,3 +486,5 @@ class AlonsClassifier:
             self.get_gene_classes()
             self.save_gene_class_information_in_additional_layers()
             self.save_samples_information()
+            self.save_gene_detection_and_coverage()
+
