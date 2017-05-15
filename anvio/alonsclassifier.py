@@ -52,6 +52,7 @@ class AlonsClassifier:
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
+        self.store_gene_detections_and_gene_coverages_tables = A('store_gene_detections_and_gene_coverages_tables')
         self.gene_coverages = {}
         self.gene_detection = {}
         self.samples = {}
@@ -479,12 +480,14 @@ class AlonsClassifier:
                 self.get_gene_classes()
                 self.save_gene_class_information_in_additional_layers(bin_id)
                 self.save_samples_information(bin_id)
-                self.save_gene_detection_and_coverage(bin_id)
+                if self.store_gene_detections_and_gene_coverages_tables:
+                    self.save_gene_detection_and_coverage(bin_id)
 
         else:
             # No collection provided so running on the entire detection table
             self.get_gene_classes()
             self.save_gene_class_information_in_additional_layers()
             self.save_samples_information()
-            self.save_gene_detection_and_coverage()
+            if self.store_gene_detections_and_gene_coverages_tables:
+                self.save_gene_detection_and_coverage()
 

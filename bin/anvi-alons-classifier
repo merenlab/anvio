@@ -51,6 +51,8 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
+    groupB.add_argument('--store-gene-detections-and-gene-coverages-tables', action='store_true', default=False, help='If declared, then the gene-coverages and gene-detections tables would be saved.\
+                        This is only relevant when working with a profile database')
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--min-portion-of-TSC', metavar='NUM', type=float, default=0.8,
                         help='portion of TSC genes required to decide a genome is detected in a sample (default 0.8)')
