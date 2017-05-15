@@ -86,6 +86,9 @@ class AlonsClassifier:
         if self.profile_db_path and self.gene_coverages_data_file_path:
             raise ConfigError("You provided both a profile database and a gene coverage matrix data file, you \
             must provide only one or the other (hint: if you have a profile database, the use that")
+
+        # checking output file
+        filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
         # checking alpha
         if not isinstance(self.alpha, float):
             raise ConfigError("alpha value must be a type float.")
