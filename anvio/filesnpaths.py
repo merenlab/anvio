@@ -188,11 +188,13 @@ def is_file_exists(file_path, dont_raise=False):
     return True
 
 
-def is_output_file_writable(file_path):
+def is_output_file_writable(file_path, ok_if_exists=True):
     if not file_path:
         raise FilesNPathsError("No output file is declared...")
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
         raise FilesNPathsError("You do not have permission to generate the output file '%s'" % file_path)
+    if os.path.exists(file_path) and not ok_if_exists:
+        raise FilesNPathsError("The file, '%s', already exists. anvio does not like overwriting stuff." % file_path)
     return True
 
 
