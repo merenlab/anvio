@@ -421,11 +421,12 @@ class AlonsClassifier:
 
     def save_samples_information(self, additional_description=''):
         if not self.samples_information_to_append:
-            samples_information_column_titles = []
+            samples_information_column_titles = list(self.samples_information[next(iter(self.samples_information))])
             samples_information_dict = self.samples_information
         else:
             samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
-            column_mapping = [str] * (len(samples_information_column_titles) + 1)
+            column_mapping = [str] * (len(samples_information_column_titles) + 2)
+            self.run.warning(self.samples_information)
             samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
                                                                                   dict_to_append=self.samples_information,
                                                                                   assign_none_for_missing=True,
@@ -436,7 +437,7 @@ class AlonsClassifier:
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
         utils.store_dict_as_TAB_delimited_file(samples_information_dict, samples_information_file_name,
-                                                   headers=['samples','detection'] + samples_information_column_titles)
+                                                   headers=['samples'] + samples_information_column_titles)
 
 
     def save_gene_detection_and_coverage(self, additional_description=''):
