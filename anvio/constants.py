@@ -29,7 +29,7 @@ single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default="presence-absence"
 
-max_num_splits_for_hierarchical_clustering = 20000
+max_num_items_for_hierarchical_clustering = 20000
 
 # default methods for hierarchical cluster analyses
 distance_metric_default = 'euclidean'
