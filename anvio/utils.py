@@ -1089,6 +1089,9 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
         names_dict[input_fasta.id] = input_fasta.ids
 
+    output_fasta.close()
+    names_file.close()
+
     return output_fasta_path, names_file_path, names_dict
 
 
