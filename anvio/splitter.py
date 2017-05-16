@@ -141,7 +141,7 @@ class BinSplitter(summarizer.Bin):
         filesnpaths.gen_output_directory(self.bin_output_directory)
 
         # let's see whether we are going to do any hierarchical clustering:
-        self.max_num_splits_for_hierarchical_clustering = constants.max_num_splits_for_hierarchical_clustering
+        self.max_num_splits_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
         self.skip_hierarchical_clustering = self.is_hierarchical_clustering_for_bin_OK()
 
         # set your own db paths

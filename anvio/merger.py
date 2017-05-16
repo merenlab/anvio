@@ -52,7 +52,7 @@ class MultipleRuns:
         self.progress = progress
         self.run = run
 
-        self.max_num_splits_for_hierarchical_clustering = constants.max_num_splits_for_hierarchical_clustering
+        self.max_num_splits_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.sample_id = A('sample_name')
@@ -315,7 +315,7 @@ class MultipleRuns:
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
             self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
                               to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
-                                                                % pp(self.max_num_splits_for_hierarchical_clustering))
+                                                                % pp(self.num_splits))
 
         self.total_reads_mapped_per_sample =  dict([(v['sample_id'], int(v['total_reads_mapped'][v['sample_id']])) for v in list(self.profile_dbs_info_dict.values())])
 
