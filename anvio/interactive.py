@@ -166,19 +166,26 @@ class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.collection_autoload = 'default'
 
         if not self.p_meta['clusterings']:
-            if self.p_meta['merged']:
-                raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
-                                    of splits that is required by the interactive interface. It may have been generated\
-                                    by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                    clustering step may have been skipped by anvi-merge because you had too many stplits\
-                                    to get the clustering in a reasonable amount of time. Please read the help menu for\
-                                    anvi-merge, and/or refer to the tutorial: \
-                                    http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+            if self.p_meta['db_type'] == 'pan':
+                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
+                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
+                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
+                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
+                                                            % (self.p_meta['project_name']))
             else:
-                raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
-                                    that is required by the interactive interface. You must use `--cluster-contigs`\
-                                    flag for single profiles to access to this functionality. Please read the help\
-                                    menu for anvi-profile, and/or refer to the tutorial.")
+                if self.p_meta['merged']:
+                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
+                                       of splits that is required by the interactive interface. It may have been generated\
+                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                       clustering step may have been skipped by anvi-merge because you had too many stplits\
+                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
+                                       anvi-merge, and/or refer to the tutorial: \
+                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                else:
+                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
+                                       that is required by the interactive interface. You must use `--cluster-contigs`\
+                                       flag for single profiles to access to this functionality. Please read the help\
+                                       menu for anvi-profile, and/or refer to the tutorial.")
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
