@@ -785,14 +785,6 @@ class Pangenome(GenomeStorage):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
-        def store_file(data, path, headers=None):
-            if not headers:
-                headers = ['contig'] + sorted(list(data.values())[0].keys())
-
-            utils.store_dict_as_TAB_delimited_file(data, path, headers=headers)
-
-            return path
-
         PCs = list(protein_clusters_dict.keys())
 
         for PC in PCs:
