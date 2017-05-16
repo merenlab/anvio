@@ -1577,7 +1577,8 @@ class PanDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', 'num_protein_clusters', 'num_genes_in_protein_clusters', 'gene_alignments_computed']:
+            for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
+                        'num_protein_clusters', 'num_genes_in_protein_clusters', 'gene_alignments_computed', 'PCs_clustered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
