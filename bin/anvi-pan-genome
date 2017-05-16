@@ -86,6 +86,14 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     groupE = parser.add_argument_group("ORGANIZING PCs", "These are stuff that will change the clustering dendrogram of your PCs.")
+    groupE.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
+                                to generate a hierarchical clustering of your PCs once it identifies them so you can use\
+                                `anvi-display-pan` to play with it. But if you want to skip this step, this is your flag."}))
+    groupE.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
+                                want anvi'o to try to generate a hierarchical clustering of your PCs even if the number of PCs exceeds\
+                                its suggested limit for hierarchical clustering, you can use this flag to enforce it. Are you are a\
+                                rebel of some sorts? Or did computers made you upset? Express your anger towards machine using this\
+                                flag."}))
     groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
                       'The distance metric for the clustering of PCs. If you do not use this flag,\
                        the default distance metric will be used for each clustering configuration\

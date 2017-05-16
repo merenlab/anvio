@@ -477,6 +477,8 @@ class Pangenome(GenomeStorage):
         self.run = run
         self.progress = progress
 
+        self.max_num_PCs_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
@@ -492,6 +494,8 @@ class Pangenome(GenomeStorage):
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
         self.description_file_path = A('description')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
+        self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
 
         # when it is time to organize PCs
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -524,6 +528,7 @@ class Pangenome(GenomeStorage):
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage_hash,
                        'project_name': self.project_name,
+                       'PCs_clustered': False,
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
@@ -590,12 +595,16 @@ class Pangenome(GenomeStorage):
 
         if self.min_percent_identity < 0 or self.min_percent_identity > 100:
             raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is\
-                                pretty cute, too." % self.min_percent_identity)
+                               pretty cute, too." % self.min_percent_identity)
 
 
         if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
             raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for\
-                                the anvi'o class Pangenome.")
+                               the anvi'o class Pangenome.")
+
+        if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
+                               while also asking it to enforce it.")
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
@@ -825,6 +834,24 @@ class Pangenome(GenomeStorage):
             self.run.info('PCs min occurrence', '%d (the filter removed %d PCs)' % (self.PC_min_occurrence, removed_PCs))
 
         ########################################################################################
+        #            CAN WE CLUSTER THIS STUFF? DOES THE USER WANT US TO TRY REGARDLESS?
+        ########################################################################################
+        if len(protein_clusters_dict) > self.max_num_PCs_for_hierarchical_clustering:
+            if self.enforce_hierarchical_clustering:
+                self.run.warning("You have %s PCs, which exceeds the number of PCs anvi'o is comfortable to cluster. But\
+                                  since you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
+                                  to create a hierarchical clustering of your PCs anyway. It may take a bit of \
+                                  time. Pour yourself a coffee. Or go to a nice vacation. See you in 10 mins, or next year \
+                                  or never." % pp(len(protein_clusters_dict)))
+            else:
+                self.run.warning("It seems you have %s protein clusters in your pangenome. This exceeds the soft limit\
+                                  of %s for anvi'o to attempt to create a hierarchical clustering of your protein clusters\
+                                  (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
+                                  clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
+                                            % (pp(len(protein_clusters_dict)), pp(self.max_num_PCs_for_hierarchical_clustering)))
+                self.skip_hierarchical_clustering = True
+
+        ########################################################################################
         #                           STORING FILTERED DATA IN THE DB
         ########################################################################################
         table_structure=['PC'] + sorted(self.genomes.keys())
@@ -858,16 +885,28 @@ class Pangenome(GenomeStorage):
         pan_db.disconnect()
 
         ########################################################################################
-        #             CHEATING THE SYSTEM FOR AN ENHANCED CLUSTERING CONFIGURATION
+        #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
-        # so we want to use the clustering configurations for pan genomomic analyses to order
-        # protein clusters. however, we want to add something into the clustering configuraiton
-        # file, which depends on the number of genomes we have. this addition is 'num_genomes_pc_has_hits'
-        # data, which pulls together protein clusters that are distributed across genomes similarly based
-        # on this extra bit of inofrmation. becasue the clustering configurations framework in anvi'o
-        # does not allow us to have variable information in these recipes, we are going to generate one
-        # on the fly to have a more capable one.
+        return protein_clusters_dict
+
+
+    def cluster_protein_clusters(self):
+        """Uses a clustering configuration to add hierarchical clustering of protein clusters into the pan db
+
+        Note how this function cheats the system to create an enchanced clustering configuration:
+        We want to use the clustering configurations for pan genomomic analyses to order
+        protein clusters. however, we want to add something into the clustering configuraiton
+        file, which depends on the number of genomes we have. this addition is 'num_genomes_pc_has_hits'
+        data, which pulls together protein clusters that are distributed across genomes similarly based
+        on this extra bit of inofrmation. becasue the clustering configurations framework in anvi'o
+        does not allow us to have variable information in these recipes, we are going to generate one
+        on the fly to have a more capable one."""
+
+        if self.skip_hierarchical_clustering:
+            return
+
         updated_clustering_configs = {}
+
         for config_name in constants.clustering_configs['pan']:
             config_path = constants.clustering_configs['pan'][config_name]
 
@@ -891,11 +930,6 @@ class Pangenome(GenomeStorage):
             dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
                                               input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
                                               distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
-
-        ########################################################################################
-        #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
-        ########################################################################################
-        return protein_clusters_dict
 
 
     def gen_samples_db(self):
@@ -1124,6 +1158,9 @@ class Pangenome(GenomeStorage):
 
         # store protein clusters dict into the db
         self.store_protein_clusters(protein_clusters_dict)
+
+        # generate a hierarchical clustering of protein clusters (or don't)
+        self.cluster_protein_clusters()
 
         # gen samples info and order files
         self.gen_samples_db()
