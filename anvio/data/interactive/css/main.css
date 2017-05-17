@@ -155,6 +155,14 @@ html, body, #wrapper {
     overflow-y: scroll;
 }
 
+#news-panel code {
+	  padding: 1.4px 2px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f3f3f3;
+    border-radius: 2px;
+}
+
 .news-item {
     display: block;
     position: relative;
