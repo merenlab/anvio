@@ -704,8 +704,11 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                                 curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
                             } else {
                                 curnode.edge_length = parseFloat(token[i]);
+                                console.log(curnode.edge_length);
                             }
-                            this.has_edge_lengths = true;
+                            if (parseFloat(token[i]) > 0) {
+                                this.has_edge_lengths = true;
+                            }
                             i++;
                         }
                         break;
@@ -777,7 +780,9 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                                 } else {
                                     curnode.edge_length = parseFloat(token[i]);
                                 }
-                                this.has_edge_lengths = true;
+                                if (parseFloat(token[i]) > 0) {
+                                    this.has_edge_lengths = true;
+                                }
                                 i++;
                             }
                             break;
