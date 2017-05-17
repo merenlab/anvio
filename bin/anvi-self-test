@@ -26,8 +26,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 tests = {'mini': ['run_mini_test.sh'],
          'full': ['run_all_tests.sh', 'run_pangenome_tests.sh'],
-         'pangenomics': ['run_pangenome_tests.sh'],
-         'alons-classifier': ['run_alons-classifier_tests.sh']}
+         'pangenomics': ['run_pangenome_tests.sh']}
 
 
 def __catch_sig(signum, frame):
