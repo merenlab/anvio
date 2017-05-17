@@ -156,29 +156,36 @@ class BottleApplication(Bottle):
         return ret
 
     def get_news(self):
-        news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
-        news_items = news_markdown.text.split("***")
-        
-        """ FORMAT
-        # Title with spaces (01.01.1970) #
-        Lorem ipsum, dolor sit amet
-        ***
-        # Title with spaces (01.01.1970) #
-        Lorem ipsum, dolor sit amet
-        ***
-        # Title with spaces (01.01.1970) #
-        Lorem ipsum, dolor sit amet
-        """
         ret = []
-        for news_item in news_items:
-            if len(news_item) < 5:
-                # too short to parse, just skip it
-                continue
+        try:
+            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
+            news_items = news_markdown.text.split("***")
+            
+            """ FORMAT
+            # Title with spaces (01.01.1970) #
+            Lorem ipsum, dolor sit amet
+            ***
+            # Title with spaces (01.01.1970) #
+            Lorem ipsum, dolor sit amet
+            ***
+            # Title with spaces (01.01.1970) #
+            Lorem ipsum, dolor sit amet
+            """
+            for news_item in news_items:
+                if len(news_item) < 5:
+                    # too short to parse, just skip it
+                    continue
 
+                ret.append({
+                        'date': news_item.split("(")[1].split(")")[0].strip(),
+                        'title': news_item.split("#")[1].split("(")[0].strip(),
+                        'content': news_item.split("#\n")[1].strip()
+                    })
+        except:
             ret.append({
-                    'date': news_item.split("(")[1].split(")")[0].strip(),
-                    'title': news_item.split("#")[1].split("(")[0].strip(),
-                    'content': news_item.split("#\n")[1].strip()
+                    'date': '',
+                    'title': 'Something has failed',
+                    'content': 'Anvi\'o failed to retrieve any news for you, maybe you do not have internet connection or something :('
                 })
 
         return json.dumps(ret)
