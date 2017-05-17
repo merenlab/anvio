@@ -95,7 +95,6 @@ args = parser.parse_args()
 try:
     d = interactive.InputHandler(args)
     args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-
 except ConfigError as e:
     print(e)
     sys.exit(-1)
@@ -112,6 +111,9 @@ except HDF5Error as e:
     print(e)
     sys.exit(-5)
 
+if args.dry_run:
+    run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
+    sys.exit()
 
 app = BottleApplication(d, args)
 app.run_application(args.ip_address, args.port_number)
