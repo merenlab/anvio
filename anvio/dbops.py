@@ -2084,8 +2084,8 @@ class SamplesInformationDatabase:
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
-        self.db.set_meta_value('sample_names_for_order', ','.join(sorted(samples.sample_names_in_samples_order_file)) if samples.sample_names_in_samples_order_file else None)
-        self.db.set_meta_value('samples_information_default_layer_order', ','.join(sorted(samples.samples_information_default_layer_order)) if hasattr(samples, 'samples_information_default_layer_order') else None)
+        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
 
         self.disconnect()
 
