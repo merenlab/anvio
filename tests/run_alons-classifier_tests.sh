@@ -6,9 +6,37 @@ SETUP_WITH_OUTPUT_DIR $1
 #####################################
 
 # Setting the folder where the files are
-files=$files/example_files_for_alons_classifier/
+files=$files/mock_files_for_alons_classifier
+
+INFO "Initializing raw BAM files"
+# init raw bam files.
+for f in 41 62 74 75 79 94
+do
+    anvi-init-bam $files/HMP00$f.bam --output-file $output_dir/HMP00$f.bam
+    echo
+done
+
+INFO "Generating the TEST contigs database"
+anvi-gen-contigs-database -f $files/TEST.fa -o $output_dir/CONTIGS.db
+
+# profiling generates individual directiorues uner $output_dir directory for each sample.
+for f in 41 62 74 75 79 94
+do
+    INFO "Profiling sample SAMPLE-$f"
+    anvi-profile -i $output_dir/HMP00$f.bam -o $output_dir/HMP00$f -c $output_dir/CONTIGS.db --skip-SNV-profiling
+    echo
+done
+
+
+INFO "Merging profiles"
+# merge samples
+anvi-merge $output_dir/HMP00*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --skip-concoct-binning
+
+INFO "Importing collection"
+anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db $files/TEST-COLLECTION.txt -C TEST
+
 INFO "Run anvi-alons-classifier on PROFILE database"
-anvi-alons-classifier -p $files/PROFILE.db -c $files/CONTIGS.db -O $output_dir/TEST-ALL --store-gene-detections-and-gene-coverages-tables
+anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL --store-gene-detections-and-gene-coverages-tables
 
 INFO "Running anvi-alons-classifier on TAB-delimited files (no PROFILE database)"
 anvi-alons-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
@@ -21,10 +49,10 @@ anvi-gen-samples-info-database -D $output_dir/TEST-ALL-samples-information.txt -
 #anvi-import-state -p $output_dir/TEST-ALL-manual-profile.db --state $files/TEST-state.json --name default
 
 INFO "Running anvi-alons-classifier on a collection"
-anvi-alons-classifier -p $files/PROFILE.db -c $files/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
+anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
 
 INFO "Running anvi-alons-classifier on a bin"
-anvi-alons-classifier -p $files/PROFILE.db -c $files/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
+anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
 
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
