@@ -93,7 +93,7 @@ groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 args = parser.parse_args()
 
 try:
-    d = interactive.InputHandler(args)
+    d = interactive.Interactive(args)
     args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
 except ConfigError as e:
     print(e)
