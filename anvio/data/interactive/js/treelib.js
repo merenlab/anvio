@@ -2561,7 +2561,7 @@ function draw_tree(settings) {
 
             drawRotatedText('layer_labels', {
                 'x': layer_boundaries[layer_index][1] - (layers[pindex]['height'] * 1/4),
-                'y': tree_max_y + 40,  
+                'y': tree_max_y + height_per_leaf / 2 + 40,  
             }, layer_title, -90, 'right', (layers[pindex]['height'] / 2) + 'px', 'sans-serif', '#000000', 0, 'baseline');   
         }
     }
@@ -2580,7 +2580,7 @@ function draw_tree(settings) {
     else if (settings['tree-type'] == 'phylogram')
     {
         createBin('viewport', 'samples');
-        $('#samples').attr('transform', 'rotate(90)');
+        $('#samples').attr('transform', 'rotate(90) translate(0,-' + parseInt(height_per_leaf) / 2 + ')');
         drawSamples();
     }
 
