@@ -39,7 +39,7 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-class InputHandler(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
+class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     """The class that loads everything for the interactive interface. Wow. Such glory."""
     def __init__(self, args, external_clustering=None):
         self.args = args
