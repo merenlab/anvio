@@ -27,6 +27,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.drivers as drivers
 
 from anvio.errors import RefineError, ConfigError
 
@@ -104,6 +105,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_AA_sequences_for_PC/<pc_name>',  callback=self.get_AA_sequences_for_PC)
         self.route('/data/proteinclusters/<pc_name>',          callback=self.inspect_pc)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
+        self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
 
     def run_application(self, ip, port):
         try:
@@ -665,3 +667,6 @@ class BottleApplication(Bottle):
 
         message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (self.interactive.collection_name)
         return json.dumps({'status': 0, 'message': message})
+
+    def get_available_phylogeny_programs(self):
+        return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
