@@ -2190,6 +2190,24 @@ function showSaveStateWindow()
     });
 }
 
+function showGeneratePhylogeneticTreeWindow() {
+   $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(available_programs) {
+            $('#available_phylogeny_programs').empty();
+            for (var i=0; i < available_programs.length; i++) {
+                if (available_programs[i] == 'default')
+                    continue;
+        
+                $('#available_phylogeny_programs').append(new Option(available_programs[i]))
+            }
+            $('#modPhylogeneticTree').modal('show');
+        }
+    });
+}
+
 function saveState() 
 {
     var name = $('#saveState_name').val();
