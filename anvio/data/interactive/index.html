@@ -415,6 +415,7 @@
                                         <select id="samples_order" class="form-control input-xs">
                                             <!-- JS FILLS HERE -->
                                         </select>
+                                         <button type="button" class="btn btn-default btn-sm pan-mode" onclick="$('#modPhylogeneticTree').modal('show');" style="margin-top: 8px;" ><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                     </div>
                             </div>
 
@@ -782,6 +783,50 @@
                 </div>
 
                 <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERATE PHYLOGENETIC TREE -->
+    <div class="modal fade" id="modPhylogeneticTree">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Generate new phylogenetic tree</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Name:</label>  
+                        <div class="col-md-8">
+                            <input type="text">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">PC Bin:</label>  
+                        <div class="col-md-8">
+                            <select></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Program:</label>  
+                        <div class="col-md-8">
+                            <select></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Skip multiple gene calls:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" data-dismiss="modal" type="button">Generate</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
