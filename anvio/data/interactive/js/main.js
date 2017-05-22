@@ -2221,14 +2221,23 @@ function showGeneratePhylogeneticTreeWindow() {
 }
 
 function generatePhylogeneticTree() {
-   $.ajax({
+
+    pc_list = []
+    pcs_id = $('#phylogeny_pc').val()
+    for (var i=0; i < SELECTED[pcs_id].length; i++) {
+        if (label_to_node_map[SELECTED[pcs_id][i]].IsLeaf()) {
+            pcs_list.push(SELECTED[pcs_id][i]);
+        } 
+    }
+
+    $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
             'skip_multiple_genes': null,
             'program': null,
-            'pcs': SELECTED[$('#phylogeny_pc').val()]
+            'pcs': pc_list
         },
         success: function(response) {
 
