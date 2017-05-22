@@ -13,6 +13,7 @@ import io
 import sys
 import json
 import random
+import tempfile
 import requests
 import datetime
 import webbrowser
@@ -673,6 +674,24 @@ class BottleApplication(Bottle):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
 
     def generate_tree(self):
-        pcs = json.loads(request.forms.get('pcs'))
-        skip_multiple_gene_calls = json.loads(request.forms.get('skip_multiple_gene_calls'))
-        program = json.loads(request.forms.get('program'))
+        pcs = set(request.forms.getall('pcs[]'))
+        skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
+        program = request.forms.get('program')
+
+        temp_fasta_file = tempfile.NamedTemporaryFile()
+        temp_tree_file = tempfile.NamedTemporaryFile()
+        tree_text = None
+        
+        try:
+            self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file.name, skip_multiple_gene_calls=skip_multiple_gene_calls)
+            drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file.name, temp_tree_file.name)
+            tree_text = temp_tree_file.read().decode()
+        except Exception as e:
+            message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
+            return json.dumps({'status': 1, 'message': message})
+        finally:
+            temp_fasta_file.close()
+            temp_tree_file.close()
+
+        return json.dumps({'status': 0, 'tree': tree_text})
+
