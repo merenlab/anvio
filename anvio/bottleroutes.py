@@ -106,6 +106,7 @@ class BottleApplication(Bottle):
         self.route('/data/proteinclusters/<pc_name>',          callback=self.inspect_pc)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
+        self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
 
     def run_application(self, ip, port):
         try:
@@ -670,3 +671,8 @@ class BottleApplication(Bottle):
 
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
+
+    def generate_tree(self):
+        pcs = json.loads(request.forms.get('pcs'))
+        skip_multiple_gene_calls = json.loads(request.forms.get('skip_multiple_gene_calls'))
+        program = json.loads(request.forms.get('program'))
