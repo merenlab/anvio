@@ -2201,8 +2201,17 @@ function showGeneratePhylogeneticTreeWindow() {
                 if (available_programs[i] == 'default')
                     continue;
 
-                $('#available_phylogeny_programs').append(new Option(available_programs[i]))
+                $('#phylogeny_programs').append(new Option(available_programs[i]))
             }
+
+            $('#tbody_bins tr').each(
+                function(index, bin) {
+                    var bin_id = $(bin).attr('bin-id');
+                    var bin_name = $('#bin_name_' + bin_id).val();
+
+                    $('#phylogeny_pc').append('<option value="' + bin_id + '">' + bin_name + '</option>');
+                }
+            );
             $('#modPhylogeneticTree').modal('show');
         }
     });
