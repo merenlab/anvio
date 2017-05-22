@@ -2221,13 +2221,17 @@ function showGeneratePhylogeneticTreeWindow() {
 }
 
 function generatePhylogeneticTree() {
-
-    pc_list = []
-    pcs_id = $('#phylogeny_pc').val()
+    pc_list = [];
+    pcs_id = $('#phylogeny_pc').val();
     for (var i=0; i < SELECTED[pcs_id].length; i++) {
         if (label_to_node_map[SELECTED[pcs_id][i]].IsLeaf()) {
-            pcs_list.push(SELECTED[pcs_id][i]);
+            pc_list.push(SELECTED[pcs_id][i]);
         } 
+    }
+
+    if (pc_list.length == 0) {
+        alert("The Bin you selected does not contain any PCs.");
+        return;
     }
 
     $.ajax({
@@ -2235,12 +2239,18 @@ function generatePhylogeneticTree() {
         cache: false,
         url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
-            'skip_multiple_genes': null,
-            'program': null,
+            'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
+            'program': $('#phylogeny_programs').val(),
             'pcs': pc_list
         },
         success: function(response) {
-
+            if (response['status'] != 0) {
+                alert(response['message']);
+                return;
+            } else {
+                samples_order_dict[$('#phylogeny_name').val()] = {'basic': '', 'newick': response['tree']};
+                $('#samples_order').append('<option value="'+ $('#phylogeny_name').val() + '">' + $('#phylogeny_name').val() + '</option>');
+            }
         }
     });
 }
