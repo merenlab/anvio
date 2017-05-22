@@ -13,7 +13,6 @@ import io
 import sys
 import json
 import random
-import tempfile
 import requests
 import datetime
 import webbrowser
@@ -26,9 +25,10 @@ from bottle import redirect, static_file
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
-import anvio.drivers as drivers
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import RefineError, ConfigError
 
@@ -678,14 +678,14 @@ class BottleApplication(Bottle):
         skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
 
-        temp_fasta_file = tempfile.NamedTemporaryFile()
-        temp_tree_file = tempfile.NamedTemporaryFile()
+        temp_fasta_file = filesnpaths.get_temp_file_path()
+        temp_tree_file = filesnpaths.get_temp_file_path()
         tree_text = None
         
         try:
-            self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file.name, skip_multiple_gene_calls=skip_multiple_gene_calls)
-            drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file.name, temp_tree_file.name)
-            tree_text = temp_tree_file.read().decode()
+            self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
+            drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
+            tree_text = open(temp_tree_file,'rb').read().decode()
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
