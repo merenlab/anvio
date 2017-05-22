@@ -2191,7 +2191,10 @@ function showSaveStateWindow()
 }
 
 function showGeneratePhylogeneticTreeWindow() {
-   $.ajax({
+    $('#phylogeny_pc').empty();
+    $('#phylogeny_programs').empty();
+
+    $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/phylogeny/programs?timestamp=' + new Date().getTime(),
