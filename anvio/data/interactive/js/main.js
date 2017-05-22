@@ -2217,6 +2217,22 @@ function showGeneratePhylogeneticTreeWindow() {
     });
 }
 
+function generatePhylogeneticTree() {
+   $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
+        data: {
+            'skip_multiple_genes': null,
+            'program': null,
+            'pcs': SELECTED[$('#phylogeny_pc').val()]
+        },
+        success: function(response) {
+
+        }
+    });
+}
+
 function saveState() 
 {
     var name = $('#saveState_name').val();
