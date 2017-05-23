@@ -2194,7 +2194,7 @@ function showGeneratePhylogeneticTreeWindow() {
     $('#phylogeny_pc').empty();
     $('#phylogeny_programs').empty();
     $('#modPhylogeneticTree :input').attr("disabled", false);
-
+    $('.generating-tree').hide();
     $.ajax({
         type: 'GET',
         cache: false,
@@ -2242,6 +2242,7 @@ function generatePhylogeneticTree() {
     }
 
     $('#modPhylogeneticTree :input').attr("disabled", true);
+    $('.generating-tree').show();
     $.ajax({
         type: 'POST',
         cache: false,
