@@ -463,6 +463,12 @@ td > input[type='checkbox'] {
     border-color: #555;
 }
 
+.generating-tree {
+    padding: 10px;
+    background-color: seashell;
+    border: 1px solid #F0F0F0;
+}
+
 div#tooltip_content tr:nth-child(even) {background: rgba(100,100,100,0.1);}
 div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
