@@ -689,9 +689,6 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
-        finally:
-            temp_fasta_file.close()
-            temp_tree_file.close()
 
         return json.dumps({'status': 0, 'tree': tree_text})
 
