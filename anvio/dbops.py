@@ -35,6 +35,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.parsers import parser_modules
+from anvio.drivers import muscle
 from anvio.tableops import Table
 
 from anvio.drivers.hmmer import HMMer
@@ -869,6 +870,16 @@ class PanSuperclass(object):
         output_file = open(output_file_path, 'w')
         sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
 
+        if not self.protein_clusters_gene_alignments_available:
+            run.warning("Protein clusters did not aligned during pangenomic analysis, we are going to do it now and it may take some time.")
+            progress.new("Aligning sequences")
+
+        get_first_value = lambda x: next(iter(x.values()))
+        get_first_key = lambda x: next(iter(x.keys()))
+
+        silent_run = terminal.Run()
+        silent_run.verbose = False
+
         output_buffer = dict({})
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
@@ -883,21 +894,41 @@ class PanSuperclass(object):
                 if len(sequences[pc_name][genome_name]) > 1:
                     multiple_gene_calls = True
                     multiple_gene_call_genome = genome_name
-                elif len(sequences[pc_name][genome_name]) == 1:
-                    sequence_length = len(next(iter(sequences[pc_name][genome_name].values())))
+                elif self.protein_clusters_gene_alignments_available and len(sequences[pc_name][genome_name]) == 1:
+                    sequence_length = len(get_first_value(sequences[pc_name][genome_name]))
 
             if multiple_gene_calls:
                 if skip_multiple_gene_calls:
                     skipped_pcs.append(pc_name)
                     continue
                 else:
-                    raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag --skip-multiple-gene-calls" % (pc_name, multiple_gene_call_genome))
+                    raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag \
+                                        --skip-multiple-gene-calls" % (pc_name, multiple_gene_call_genome))
+
+            if not self.protein_clusters_gene_alignments_available:            
+                sequences_to_align = []
+                for genome_name in self.genome_names:
+                    if len(sequences[pc_name][genome_name]) == 1:
+                        sequences_to_align.append((genome_name, get_first_value(sequences[pc_name][genome_name])))
+                
+                progress.update("Processing '" + pc_name + "'")
+                aligned_sequences = muscle.Muscle(run=silent_run).run_muscle_stdin(sequences_list=sequences_to_align)
+
+                for genome_name in aligned_sequences:
+                    gene_caller_id = get_first_key(sequences[pc_name][genome_name])
+                    sequences[pc_name][genome_name][gene_caller_id] = aligned_sequences[genome_name]
+
+                    if not sequence_length:
+                        sequence_length = len(aligned_sequences[genome_name])
 
             for genome_name in self.genome_names:
                 if len(sequences[pc_name][genome_name]) == 1:
-                    output_buffer[genome_name].write(next(iter(sequences[pc_name][genome_name].values())))
+                    output_buffer[genome_name].write(get_first_value(sequences[pc_name][genome_name]))
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
+        
+        if not self.protein_clusters_gene_alignments_available:
+            progress.end() 
 
         if len(skipped_pcs):
             self.run.warning("These PCs contains multiple gene calls and skipped during concatenation.\n '%s'" % (", ".join(skipped_pcs)))
