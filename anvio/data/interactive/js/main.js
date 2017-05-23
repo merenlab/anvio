@@ -736,6 +736,10 @@ function buildLegendTables() {
                                 </tr>
                                 <tr>
                                     <td class="col-md-2"></td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
                                     <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
                                 </tr>
                             </table>
@@ -766,10 +770,15 @@ function buildLegendTables() {
 function batchColor(legend_id) {
     var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
     var color = $('#batch_colorpicker_' + legend_id).attr('color');
+    var randomize_color = $('#batch_randomcolor_' + legend_id).is(':checked');
     var legend = legends[legend_id];
 
     for (var i=0; i < legend['item_keys'].length; i++)
     {
+        if (randomize_color) {
+            color = randomColor();
+        }
+
         if (rule == 'all') {
             window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
         }
