@@ -2193,6 +2193,7 @@ function showSaveStateWindow()
 function showGeneratePhylogeneticTreeWindow() {
     $('#phylogeny_pc').empty();
     $('#phylogeny_programs').empty();
+    $('#modPhylogeneticTree :input').attr("disabled", false);
 
     $.ajax({
         type: 'GET',
@@ -2221,6 +2222,7 @@ function showGeneratePhylogeneticTreeWindow() {
 }
 
 function generatePhylogeneticTree() {
+    new_phylogeny_name = $('#phylogeny_name').val();
     pc_list = [];
     pcs_id = $('#phylogeny_pc').val();
     for (var i=0; i < SELECTED[pcs_id].length; i++) {
@@ -2234,6 +2236,12 @@ function generatePhylogeneticTree() {
         return;
     }
 
+    if (samples_order_dict.hasOwnProperty(new_phylogeny_name)) {
+        alert("The name '" + new_phylogeny_name + "' already exists, please give another name. ");
+        return;
+    }
+
+    $('#modPhylogeneticTree :input').attr("disabled", true);
     $.ajax({
         type: 'POST',
         cache: false,
@@ -2249,7 +2257,9 @@ function generatePhylogeneticTree() {
                 return;
             } else {
                 samples_order_dict[$('#phylogeny_name').val()] = {'basic': '', 'newick': response['tree']};
-                $('#samples_order').append('<option value="'+ $('#phylogeny_name').val() + '">' + $('#phylogeny_name').val() + '</option>');
+                $('#samples_order').append('<option value="'+ new_phylogeny_name + '">' + new_phylogeny_name + '</option>');
+                $('#samples_order').val(new_phylogeny_name);
+                $('#modPhylogeneticTree').modal('hide');
             }
         }
     });
