@@ -2532,13 +2532,14 @@ function draw_tree(settings) {
                     continue;
 
                 var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
+                var font_size = Math.min(parseFloat(layers[pindex]['height']), parseFloat(settings['max-font-size-label']));
 
                 drawFixedWidthText('layer_labels', {
                         'x': 10,
-                        'y': 0 - layer_boundaries[layer_index][1] + (layers[pindex]['height'] * 3/4) 
+                        'y': 0 - layer_boundaries[layer_index][0] - (layers[pindex]['height'] / 2) + (font_size * 1/3) 
                     }, 
                     layer_title, 
-                    layers[pindex]['height'] + 'px',
+                    font_size + 'px',
                     layers[pindex]['color'],
                     total_radius,
                     layers[pindex]['height']);
@@ -2557,11 +2558,12 @@ function draw_tree(settings) {
                 continue;
 
             var layer_title = getPrettyLayerTitle(layerdata[0][pindex]);
+            var font_size = Math.min(parseFloat(layers[pindex]['height']) / 2, parseFloat(settings['max-font-size-label']));
 
             drawRotatedText('layer_labels', {
-                'x': layer_boundaries[layer_index][1] - (layers[pindex]['height'] * 1/4),
+                'x': layer_boundaries[layer_index][1] - (layers[pindex]['height'] / 2) + (font_size * 1/3),
                 'y': tree_max_y + height_per_leaf / 2 + 40,  
-            }, layer_title, -90, 'right', (layers[pindex]['height'] / 2) + 'px', 'sans-serif', '#000000', 0, 'baseline');   
+            }, layer_title, -90, 'right', font_size + 'px', 'sans-serif', '#000000', 0, 'baseline');   
         }
     }
 
