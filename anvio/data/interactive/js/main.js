@@ -1305,7 +1305,8 @@ function serializeSettings(use_layer_names) {
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
-
+    state['max-font-size-label'] = $('#max_font_size_label').val();
+    
     // sync views object and layers table
     syncViews();
 
@@ -2419,6 +2420,9 @@ function loadState()
                             }
                             if (state.hasOwnProperty('max-font-size')) {
                                 $('#max_font_size').val(state['max-font-size']);
+                            }
+                            if (state.hasOwnProperty('max-font-size-label')) {
+                                $('#max_font_size_label').val(state['max-font-size-label']);
                             }
                             if (state.hasOwnProperty('layer-margin'))
                                 $('#layer-margin').val(state['layer-margin']);
