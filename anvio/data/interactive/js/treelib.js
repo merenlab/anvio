@@ -2288,15 +2288,19 @@ function draw_tree(settings) {
                             {
                                 var align = 'left';
                                 var new_angle = q.angle * 180.0 / Math.PI;
+                                var offset_xy = [];
+                                var _radius = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
+                                var font_gap = Math.atan(layer_fonts[layer_index] / _radius) / 3;
+                                
                                 if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
                                     align = 'right';
                                     new_angle += 180.0;
+                                    offset_xy['x'] = Math.cos(q.angle - font_gap) * _radius;
+                                    offset_xy['y'] = Math.sin(q.angle - font_gap) * _radius;
+                                } else {
+                                    offset_xy['x'] = Math.cos(q.angle + font_gap) * _radius;
+                                    offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;       
                                 }
-
-                                var offset_xy = [];
-                                var _radius = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
-                                offset_xy['x'] = Math.cos(q.angle) * _radius;
-                                offset_xy['y'] = Math.sin(q.angle) * _radius;
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
                                 drawRotatedText('layer_' + layer_index, offset_xy, _label, new_angle, align, layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height'], 'center');
