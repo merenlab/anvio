@@ -423,6 +423,7 @@
                                         <select id="samples_order" class="form-control input-xs">
                                             <!-- JS FILLS HERE -->
                                         </select>
+                                         <button type="button" class="btn btn-default btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                     </div>
                             </div>
 
@@ -790,6 +791,55 @@
                 </div>
 
                 <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERATE PHYLOGENETIC TREE -->
+    <div class="modal fade" id="modPhylogeneticTree">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Generate new phylogenetic tree</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Name:</label>  
+                        <div class="col-md-8">
+                            <input type="text" id="phylogeny_name" value="New_phylogeny_1">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">PC Bin:</label>  
+                        <div class="col-md-8">
+                            <select id="phylogeny_pc"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Program:</label>  
+                        <div class="col-md-8">
+                            <select id="phylogeny_programs"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Skip multiple gene calls:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="phylogeny_skip_multiple_gene_calls" checked="checked" />
+                        </div>
+                    </div>
+                    <div class="col-md-12 generating-tree" style="display: none">
+                        <img src="images/loading.gif" /> <b>Generating tree...</b><br />
+                        This process may take long depending of Bin size.
+                    </div>
+                </div>
+
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="generatePhylogeneticTree();" type="button">Generate</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>

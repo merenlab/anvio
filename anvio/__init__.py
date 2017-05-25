@@ -1209,13 +1209,18 @@ D = {
                 ),
     'export-svg': (
             ['--export-svg'],
-            {'default': False,
-            'type': str,
+            {'type': str,
              'metavar': 'FILE_PATH',
              'required': False,
-             'help': "export svg help"}
+             'help': "The SVG output file path."}
                 ),
-
+    'tab-delimited': (
+            ['--tab-delimited'],
+            {'default': False,
+             'required': False,
+             'action': 'store_true',
+             'help': "Use the TAB-delimited format for the output file."}
+                ),
 }
 
 # two functions that works with the dictionary above.

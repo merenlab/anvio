@@ -65,7 +65,7 @@ def main(config):
 
     L = len(config.contig)
 
-    av_num_short_reads_needed = L / x * c
+    av_num_short_reads_needed = int(L / x * c)
 
     for i in range(0, av_num_short_reads_needed):
         if (i + 1) % 100 == 0:
