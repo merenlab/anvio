@@ -25,8 +25,10 @@ from bottle import redirect, static_file
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import RefineError, ConfigError
 
@@ -104,6 +106,8 @@ class BottleApplication(Bottle):
         self.route('/data/get_AA_sequences_for_PC/<pc_name>',  callback=self.get_AA_sequences_for_PC)
         self.route('/data/proteinclusters/<pc_name>',          callback=self.inspect_pc)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
+        self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
+        self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
 
     def run_application(self, ip, port):
         try:
@@ -665,3 +669,26 @@ class BottleApplication(Bottle):
 
         message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (self.interactive.collection_name)
         return json.dumps({'status': 0, 'message': message})
+
+    def get_available_phylogeny_programs(self):
+        return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
+
+    def generate_tree(self):
+        pcs = set(request.forms.getall('pcs[]'))
+        skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
+        program = request.forms.get('program')
+
+        temp_fasta_file = filesnpaths.get_temp_file_path()
+        temp_tree_file = filesnpaths.get_temp_file_path()
+        tree_text = None
+        
+        try:
+            self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
+            drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
+            tree_text = open(temp_tree_file,'rb').read().decode()
+        except Exception as e:
+            message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+        return json.dumps({'status': 0, 'tree': tree_text})
+
