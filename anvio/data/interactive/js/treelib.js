@@ -2167,7 +2167,7 @@ function draw_tree(settings) {
                                 var _offsetx = layer_boundaries[layer_index][0] + layer_fonts[layer_index] * MONOSPACE_FONT_ASPECT_RATIO;
                                 var offset_xy = [];
                                 offset_xy['x'] = _offsetx;
-                                offset_xy['y'] = q.xy['y'];
+                                offset_xy['y'] = q.xy['y'] + layer_fonts[layer_index] / 4;
                                 var _label = (layerdata_dict[q.label][pindex] == null) ? '' : layerdata_dict[q.label][pindex];
 
                                 drawRotatedText('layer_' + layer_index, offset_xy, _label, 0, 'left', layer_fonts[layer_index], "monospace", layers[pindex]['color'], layers[pindex]['height'], 'center');
