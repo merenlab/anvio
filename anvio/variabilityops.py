@@ -42,6 +42,9 @@ class VariabilitySuper(object):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        if args.engine not in variability_engines:
+            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
         self.data = {}
 
         self.splits_of_interest = set([])
@@ -52,14 +55,14 @@ class VariabilitySuper(object):
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
-        self.min_departure_from_reference = A('min_departure_from_reference', float)
-        self.max_departure_from_reference = A('max_departure_from_reference', float)
-        self.min_departure_from_consensus = A('min_departure_from_consensus', float)
-        self.max_departure_from_consensus = A('max_departure_from_consensus', float)
-        self.min_occurrence = A('min_occurrence', int)
-        self.num_positions_from_each_split = A('num_positions_from_each_split', int)
-        self.min_scatter = A('min_scatter', int)
-        self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int)
+        self.min_departure_from_reference = A('min_departure_from_reference', float) or 0
+        self.max_departure_from_reference = A('max_departure_from_reference', float) or 1
+        self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
+        self.max_departure_from_consensus = A('max_departure_from_consensus', float) or 1
+        self.min_occurrence = A('min_occurrence', int) or 1
+        self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
+        self.min_scatter = A('min_scatter', int) or 0
+        self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
         self.quince_mode = A('quince_mode', bool)
@@ -68,6 +71,7 @@ class VariabilitySuper(object):
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
+        self.gene_caller_id = A('gene_caller_id', null)
 
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
@@ -81,6 +85,7 @@ class VariabilitySuper(object):
             raise ConfigError("The superclass is inherited with an unknown engine. Anvi'o needs an adult :(")
 
         # Initialize the contigs super
+        filesnpaths.is_file_exists(self.contigs_db_path)
         dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
         self.init_contig_sequences()
 
@@ -100,16 +105,41 @@ class VariabilitySuper(object):
             self.samples_of_interest = set([])
 
         self.progress.update('Any genes of interest?')
-        if self.genes_of_interest_path:
+        if self.genes_of_interest_path and self.gene_caller_id:
+            self.progress.end()
+            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
+                               as a file at the same time, obviously.")
+
+        if self.gene_caller_id:
+            try:
+                self.gene_caller_id = int(self.gene_caller_id)
+            except:
+                raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(self.gene_caller_id))
+
+            self.genes_of_interest = set([self.gene_caller_id])
+        elif self.genes_of_interest_path:
             filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+
             try:
                 self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
             except ValueError:
                 self.progress.end()
                 raise ConfigError("Well. Anvi'o was working on your genes of interest .. and ... those gene IDs did not\
-                                    look like anvi'o gene caller ids :/ Anvi'o is sad now.")
+                                   look like anvi'o gene caller ids :/ Anvi'o is now sad.")
         else:
             self.genes_of_interest = set([])
+
+        self.progress.update('Setting up genes of interest data ..')
+        if self.genes_of_interest:
+            # check for genes that do not appear in the contigs database
+            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.gene_callers_id_to_split_name_dict]
+            if bad_gene_caller_ids:
+                self.progress.end()
+                raise ConfigError("The gene caller id you provided is not known to this contigs database. You have only 2 lives\
+                                   left. 2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(")
+
+            # if we know gene names, we know split names. set split names straight:
+            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
 
         self.progress.update('Making sure you are not playing games ..')
         if self.engine not in ['NT', 'AA']:
@@ -142,7 +172,6 @@ class VariabilitySuper(object):
                 raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
-
 
         self.progress.update('Attempting to get our splits of interest sorted ..')
         if self.collection_name:
@@ -613,8 +642,9 @@ class VariabilitySuper(object):
 
         return unique_pos_identifier_to_codon_order_in_gene
 
+
     def report(self):
-        self.progress.new('Reporting')
+        self.progress.new('Reporting variability data')
 
         if self.engine == 'NT':
             new_structure = [t.variable_nts_table_structure[0]] + \
@@ -642,7 +672,7 @@ class VariabilitySuper(object):
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(self.data)))
-        self.run.info('Output File', self.args.output_file)
+        self.run.info('Output File', self.output_file_path)
         self.run.info('Num %s positions reported' % self.engine, pp(len(set([e['unique_pos_identifier'] for e in list(self.data.values())]))))
 
 
@@ -866,6 +896,141 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     next_available_entry_id += 1
 
         self.progress.end()
+
+
+class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
+    def __init__(self, args={}, p=progress, r=run):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.engine = A('engine', null)
+        self.tab_delimited_output = A('tab_delimited', null)
+
+        if not self.engine:
+            raise ConfigError("You somehow managed to call the ConsensusSequences class with an args object that does not\
+                               contain an engine variable. Not appropriate.")
+
+        if self.engine not in variability_engines:
+            raise ConfigError("Anvi'o does not know how to make sene of the variability engine '%s :/" % self.engine)
+
+        if self.engine == 'NT':
+            VariableNtPositionsEngine.__init__(self, args=args, r=self.run, p=self.progress)
+        elif self.engine == 'AA':
+            VariableAAPositionsEngine.__init__(self, args=args, r=self.run, p=self.progress)
+
+        self.sequence_variants_in_samples_dict = {}
+
+
+    def populate_seqeunce_variants_in_samples_dict(self):
+        """Populates the main dictionary that keeps track of variants for each sample."""
+
+        # no data no play.
+        if not self.data:
+            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons\
+                               to this. One, anvi'o variability engines reported nothing (in which case you should have gotten\
+                               an error much earler). Two, you are a programmer and failed to call the 'process()' on your\
+                               instance from this class. Do you see how the second option is much more likely? :/")
+
+        # learn about the gene seqeunces per gene call.
+        gene_sequences = {}
+        for gene_callers_id in self.genes_of_interest:
+            _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
+            gene_sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
+
+        # here we populate a dictionary with all the right items but witout any real data.
+        sample_names = set([e['sample_id'] for e in self.data.values()])
+        for sample_name in sample_names:
+            self.sequence_variants_in_samples_dict[sample_name] = {}
+
+            for gene_callers_id in self.genes_of_interest:
+                self.sequence_variants_in_samples_dict[sample_name][gene_callers_id] = {'sequence_as_list': list(gene_sequences[gene_callers_id]),
+                                                                                        'num_changes': 0, 'gene_callers_id': gene_callers_id,
+                                                                                        'in_pos_1': 0, 'in_pos_2': 0, 'in_pos_3': 0}
+
+        # here we will go through every single variant in our data, and correct replace
+        # some items in sequences for each sample based on variability infomration.
+        self.progress.new('Populating sequence variants in samples data')
+        self.progress.update('processing %d variants ...' % len(self.data))
+        for entry in list(self.data.values()):
+            sample_name = entry['sample_id']
+            gene_callers_id = entry['corresponding_gene_call']
+
+            # the dict item we will be playing with
+            d = self.sequence_variants_in_samples_dict[sample_name][gene_callers_id]
+
+            reference = entry['reference']
+            consensus = entry['consensus']
+
+            if reference != consensus:
+                codon_order = entry['codon_order_in_gene']
+                base_pos_in_codon = entry['base_pos_in_codon']
+
+                nt_position_to_update = ((codon_order * 3) + base_pos_in_codon) - 1
+
+                # update the entry.
+                d['sequence_as_list'][nt_position_to_update] = consensus
+                d['num_changes'] += 1
+                d['in_pos_%d' % base_pos_in_codon] += 1
+
+        self.progress.end()
+
+
+    def get_formatted_consensus_sequence_entry(self, key, sample_name, gene_callers_id):
+        """Gets a sample naem and gene callers id, returns a well-formatted dict for sequence
+           entry using the `self.sequence_variants_in_samples_dict`.
+
+           `key` must be unique string identifier."""
+
+        F = self.sequence_variants_in_samples_dict[sample_name][gene_callers_id]
+        return {'key': key,
+                'sample_name':  sample_name,
+                'gene_caller_id': gene_callers_id,
+                'num_changes': F['num_changes'],
+                'in_pos_1': F['in_pos_1'],
+                'in_pos_2': F['in_pos_2'],
+                'in_pos_3': F['in_pos_3'],
+                'sequence': ''.join(F['sequence_as_list'])}
+
+
+    def report(self):
+        if not self.sequence_variants_in_samples_dict:
+            self.populate_seqeunce_variants_in_samples_dict()
+
+        self.progress.new('Generating the report')
+        self.progress.update('...')
+
+        output_d = {}
+        counter = 1
+        for sample_name in self.sequence_variants_in_samples_dict:
+            for gene_callers_id in self.sequence_variants_in_samples_dict[sample_name]:
+                d = self.get_formatted_consensus_sequence_entry('e%.7d' % (counter), sample_name, gene_callers_id)
+                counter += 1
+
+                if self.tab_delimited_output:
+                    output_d[d['key']] = d
+                else:
+                    key = '|'.join([d['key'],
+                                    'sample_name:%s' % d['sample_name'],
+                                    'gene_caller_id:%d' % d['gene_caller_id'],
+                                    'num_changes:%s' % d['num_changes'],
+                                    'in_pos_1:%d' % d['in_pos_1'],
+                                    'in_pos_2:%d' % d['in_pos_2'],
+                                    'in_pos_3:%d' % d['in_pos_3']])
+                    output_d[key] = d['sequence']
+
+        if self.tab_delimited_output:
+            utils.store_dict_as_TAB_delimited_file(output_d, self.output_file_path, headers=['entry_id', 'sample_name', 'gene_caller_id', 'num_changes', 'in_pos_1', 'in_pos_2', 'in_pos_3', 'sequence'])
+        else:
+            utils.store_dict_as_FASTA_file(output_d, self.output_file_path)
+
+        self.progress.end()
+
+        self.run.info('Num genes reported', pp(len(self.genes_of_interest)))
+        self.run.info('Num sequences reported', pp(len(self.sequence_variants_in_samples_dict)))
+        self.run.info('Output File', self.output_file_path)
 
 
 class VariabilityNetwork:
