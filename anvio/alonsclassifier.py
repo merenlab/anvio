@@ -179,8 +179,9 @@ class AlonsClassifier:
             detection_of_genes[gene_id]['number_of_detections'] = 0
             detection_of_genes[gene_id]['detected_in_non_positive_samples'] = False
             for sample in self.samples:
-                if sample in self.positive_samples:
+                if sample in self.positive_samples or sample not in self.negative_samples:
                 # getting gene detection according to coverage criteria
+                # samples that are ambiguous (neither negative nor positive)
                     detection_of_genes[gene_id][sample] = self.gene_coverages[gene_id][sample] > max(0,mean_coverage_in_samples[sample] -
                                                                                  self.gamma*std_in_samples[sample])
                 else:
@@ -247,7 +248,7 @@ class AlonsClassifier:
         
         # First find all positive samples that also contain the gene
         positive_samples_with_gene = []
-        for sample_id in (s for s in self.samples if self.samples_information[s]['detection']):
+        for sample_id in self.positive_samples:
             if detection_of_genes[gene_id][sample_id]:
                 positive_samples_with_gene.append(sample_id)
         if not positive_samples_with_gene:
@@ -392,37 +393,37 @@ class AlonsClassifier:
     def get_gene_classes(self):
         """ returning the classification per gene along with detection in samples (i.e. for each sample, whether the
         genome has been detected in the sample or not """
-        taxon_specific_genes = list(self.gene_coverages.keys())
+        TSC_genes = set(self.gene_coverages.keys())
         converged = False
         loss = None
-        TSC_genes = list(self.gene_coverages.keys())
         self.gene_class_information = {}
         # Initializing all the samples to be positive
         self.positive_samples = self.samples
         self.negative_samples = {}
+        self.adjusted_stds = 0
+        self.adjusted_mean = dict.fromkeys(TSC_genes,1)
 
         while not converged:
             # mean of coverage of all TS genes in each sample
-            mean_coverage_of_TS_in_samples = self.get_mean_coverage_in_samples(taxon_specific_genes)
+            mean_coverage_of_TS_in_samples = self.get_mean_coverage_in_samples(TSC_genes)
 
             # Get the standard deviation of the taxon-specific genes in a sample
             # TODO: right now, single copy, and multi-copy genes would be treated identically. Hence, multi-copy genes
             # would skew both the mean and the std of the taxon-specific genes.
-            std_of_TS_in_samples = self.get_std_in_samples(taxon_specific_genes)
+            std_of_TS_in_samples = self.get_std_in_samples(TSC_genes)
             detection_of_genes = self.get_detection_of_genes(mean_coverage_of_TS_in_samples, std_of_TS_in_samples)
             self.get_samples_information(detection_of_genes, self.alpha, TSC_genes)
             self.positive_samples = {sample_id for sample_id in self.samples if self.samples_information[sample_id]['detection']}
-            self.negative_samples = self.samples - self.positive_samples
-            adjusted_stds, adjusted_mean = self.get_adjusted_stds(mean_coverage_of_TS_in_samples,detection_of_genes)
-            coverage_consistency = self.get_coverage_consistency(adjusted_stds, detection_of_genes, self.beta)
+            self.negative_samples = {sample_id for sample_id in self.samples if self.samples_information[sample_id]['detection'] == False}
+            self.adjusted_stds, self.adjusted_mean = self.get_adjusted_stds(mean_coverage_of_TS_in_samples,detection_of_genes)
+            coverage_consistency = self.get_coverage_consistency(self.adjusted_stds, detection_of_genes, self.beta)
             gene_specificity = self.get_gene_specificity(detection_of_genes)
             taxon_specificity = self.get_taxon_specificity(coverage_consistency, gene_specificity)
-            new_loss = self.get_loss_function_value(taxon_specificity, adjusted_stds, self.beta)
+            new_loss = self.get_loss_function_value(taxon_specificity, self.adjusted_stds, self.beta)
             epsilon = 2 * self.beta
 
             if loss is not None:
-                if abs(new_loss - loss) < epsilon:
-                    converged = True
+                converged = True
             loss = new_loss
 
             self.run.warning('current value of loss function: %s ' % loss)
@@ -436,8 +437,8 @@ class AlonsClassifier:
                 g['number_of_detections'] = detection_of_genes[gene_id]['number_of_detections']
                 g['core_or_accessory'] = self.get_core_accessory_info(detection_of_genes, gene_id, self.eta)
                 g['gene_class'] = self.get_gene_class(taxon_specificity[gene_id], g['core_or_accessory'])
-                g['adjusted_stds'] = adjusted_stds[gene_id]
-                g['adjusted_mean'] = adjusted_mean[gene_id]
+                g['adjusted_stds'] = self.adjusted_stds[gene_id]
+                g['adjusted_mean'] = self.adjusted_mean[gene_id]
 
                 # counting the number of positive samples that contain the gene
                 g['detection_in_positive_samples'] = len([sample_id for sample_id in self.positive_samples if detection_of_genes[gene_id][sample_id]])
@@ -448,7 +449,7 @@ class AlonsClassifier:
 
                 self.gene_class_information[gene_id] = g
 
-            TSC_genes = [gene_id for gene_id in self.gene_class_information if self.gene_class_information[gene_id]['gene_class']=='TSC']
+            TSC_genes = {gene_id for gene_id in self.gene_class_information if self.gene_class_information[gene_id]['gene_class']=='TSC'}
 
             self.report_gene_class_information()
 
