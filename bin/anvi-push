@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A program to 'push' analyses to anvi'server.
+
+   Takes multiple files in, sends them to the server."""
+
+import sys
+import getpass
+import argparse
+
+import anvio
+
+from anvio.serverAPI import AnviServerAPI, AnviServerError
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Push stuff to an anvi'server")
+    
+    groupA = parser.add_argument_group('SERVER DETAILS', "Details of how to access to an anvi'server instance.")
+    groupA.add_argument(*anvio.A('user'), **anvio.K('user', {'required': True}))
+    groupA.add_argument(*anvio.A('host'), **anvio.K('host', {'required': True}))
+    groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number', {'default': 80, 'help': 'Port number\
+                                    for the server. Probably you do not need to change this. The default value is\
+                                    %(default)d should work for most cases.'}))
+
+    groupB = parser.add_argument_group("PROJECT DETAILS", "What to send to the server")
+    groupB.add_argument(*anvio.A('project-name'), **anvio.K('project-name', {'required': True}))
+    groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+    groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
+    groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
+    groupB.add_argument(*anvio.A('samples-information'), **anvio.K('samples-information'))
+    groupB.add_argument(*anvio.A('samples-order'), **anvio.K('samples-order'))
+
+    groupC = parser.add_argument_group("RISKY CLICKS", "As the name suggests!")
+    groupC.add_argument(*anvio.A('delete-if-exists'), **anvio.K('delete-if-exists'))
+    
+    args = parser.parse_args()
+    
+    args.password = getpass.getpass('Enter your password for the server: ')
+    
+    try:
+        # crete an instance from AnviServerAPI
+        server = AnviServerAPI(args)
+
+        # login:
+        response = server.login()
+
+        sys.stderr.write('\n')
+        sys.stderr.write('* The user "%s" (%s %s) has succesfully logged in.\n'\
+                        % (args.user, response['data']['firstname'], response['data']['lastname']))
+
+        # push!
+        response = server.push(delete_if_exists = args.delete_if_exists)
+
+        if response['status'] == 'ok':
+            sys.stderr.write('* Your project "%s" has been created on the remote server!\n'\
+                        % (args.project_name))
+
+        sys.stderr.write('\n')
+    except AnviServerError, e:
+        print e
+        sys.exit(1)
