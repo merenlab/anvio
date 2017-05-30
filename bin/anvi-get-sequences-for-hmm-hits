@@ -89,11 +89,6 @@ def main(args):
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
 
-        if not len(gene_names):
-            run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
-                         genes defined in the HMM source '%s'." % list(hmm_sources)[0])
-
-
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
@@ -135,7 +130,6 @@ def main(args):
 
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
 
-    # FIXME: We need the user to be able to define this:
     if args.separator:
         separator = args.separator
     else:
