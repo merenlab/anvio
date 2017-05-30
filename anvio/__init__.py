@@ -392,7 +392,7 @@ D = {
     'separator': (
             ['--separator'],
             {'metavar': 'STRING',
-             'default': 'XXX',
+             'default': None,
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
                 ),
