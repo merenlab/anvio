@@ -85,7 +85,7 @@ def main(args):
     if args.concatenate_genes:
         if not args.return_best_hit:
             raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
-                               the best hit (using the `--report-best-hit`) flag to avoid issues if there are more than one\
+                               the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one\
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
 
