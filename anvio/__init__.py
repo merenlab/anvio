@@ -113,23 +113,34 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
-    'samples-information': (
-            ['-D', '--samples-information'],
-            {'metavar': 'SAMPLES-INFO',
+    'samples-information-file': (
+            ['-D', '--samples-information-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with information about samples in your dataset. Each row in this\
                       file must correspond to a sample name. Each column must contain a unique attribute.\
                       Please refer to the documentation to learn more about the structure and purpose of\
                       this file."}
                 ),
-    'samples-order': (
-            ['-R', '--samples-order'],
-            {'metavar': 'SAMPLES-ORDER',
+    'samples-order-file': (
+            ['-R', '--samples-order-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
                       the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
                       tree structurei that describes the organization of each sample. Anvi'o will look for a\
                       comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
                       for more info. Also you shouldn't hesitate to try to find the right file format until you get\
                       it working. There are stringent checks on this file, and you will not break anything while trying!."}
+                ),
+    'single-order-file': (
+            ['-r', '--single-order-file'],
+            {'metavar': 'FILE',
+             'help': "A file with a single samples order. It could be a newick formatted tree, or it could be an array.\
+                      But when you use this parameter, you must also use the parameter `--order-name` to give it a name."}
+                ),
+    'order-name': (
+            ['-n', '--order-name'],
+            {'metavar': 'NAME',
+             'help': "A name for your single order. It better be a simple name without fancy characters or space."}
                 ),
     'split-length': (
             ['-L', '--split-length'],

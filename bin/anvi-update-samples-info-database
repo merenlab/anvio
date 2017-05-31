@@ -27,15 +27,25 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Update exists anvi'o samples information database.")
 
-    parser.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
-    parser.add_argument(*anvio.A('samples-information'), **anvio.K('samples-information'))
-    parser.add_argument(*anvio.A('samples-order'), **anvio.K('samples-order'))
+    groupA = parser.add_argument_group('DB', "Samples information database to update")
+    groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
+
+    groupB = parser.add_argument_group('BIG INPUTS', "Full-blown input files as described in http://merenlab.org/2015/11/10/samples-db/.\
+                                        You don't have to have both, either of them will also work.")
+    groupB.add_argument(*anvio.A('samples-information-file'), **anvio.K('samples-information-file'))
+    groupB.add_argument(*anvio.A('samples-order-file'), **anvio.K('samples-order-file'))
+
+    groupC = parser.add_argument_group('SMALL INPUTS', "For lazy people.")
+    groupC.add_argument(*anvio.A('single-order-file'), **anvio.K('single-order-file'))
+    groupC.add_argument(*anvio.A('order-name'), **anvio.K('order-name'))
+
+    args = parser.parse_args()
 
     args = parser.parse_args()
 
     try:
         s = dbops.SamplesInformationDatabase(args.samples_information_db, run, progress, quiet=False)
-        s.update(args.samples_information, args.samples_order)
+        s.update(args.samples_information_file, args.samples_order_file, args.single_order_file, args.order_name)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

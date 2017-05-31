@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """Module to make sense of samples information and samples order input"""
 
+import os
 
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -110,6 +111,63 @@ class SamplesInformation:
         self.run.info('Samples order', 'Loaded for %d attributes' % len(self.samples_order_dict), quiet=self.quiet)
 
 
+    def process_single_order_data(self, single_order_path, single_order_name):
+        """Just inject a single order into the `self.samples_order_dict`"""
+
+        if not single_order_path:
+            return
+
+        if not single_order_name:
+            raise SamplesError("You provided a file for a single order, but not a name for it. This is a no no :/")
+
+        filesnpaths.is_file_plain_text(single_order_path)
+
+        single_order_file_content = [l.strip('\n') for l in open(single_order_path, 'rU').readlines()]
+
+        if len(single_order_file_content) != 1:
+            raise SamplesError("The single order file should contain a single line of information. It can't have nothing,\
+                                it can't have too much. Just a single newick tree, or a comma-separated list of sample\
+                                names.")
+
+        _order = single_order_file_content.pop()
+
+        # if you are reading this line, please brace yourself to possibly one of the silliest
+        # bunch of lines in the anvi'o codebase. the reason we are doing this this way is quite
+        # a long story, and deserves a FIXME, but in order to utilize the excellent function
+        # in the filesnpaths module to check the contents of the samples order dict rigirously,
+        # we need to have this information in a file. a better way could have been implementing
+        # a filesnpaths.is_proper_samples_order_content function next to the currently available
+        # filesnpaths.is_proper_samples_order_file (the latter would call the former with a dict
+        # and it would be much more flexible), but we can't import utils form within filesnpaths.
+        # without utils we don't have a get_TAB_delimited_file_as_dictionary function, and we are
+        # definitely not going to implement it in two places :( recovering from a poor design by
+        # doing something even poorer? couldn't have we fixed this once and for all instead of
+        # writing this paragraph? well. just remember that you are thinking about a rethorical
+        # question in a comment section. so sometimes we do things that are not quite productive.
+        temp_samples_order_file_path = filesnpaths.get_temp_file_path()
+        temp_samples_order_file = open(temp_samples_order_file_path, 'w')
+        temp_samples_order_file.write('\t'.join(['attributes', 'basic', 'newick']) + '\n')
+
+        if filesnpaths.is_proper_newick(_order, dont_raise=True):
+            temp_samples_order_file.write('\t'.join([single_order_name, '', _order]) + '\n')
+            self.samples_order_dict[single_order_name] = {'newick': _order, 'basic': None}
+        else:
+            temp_samples_order_file.write('\t'.join([single_order_name, _order, '']) + '\n')
+            self.samples_order_dict[single_order_name] = {'basic': _order, 'newick': None}
+
+        temp_samples_order_file.close()
+
+        sample_names_in_samples_order_file = filesnpaths.is_proper_samples_order_file(temp_samples_order_file_path)
+        os.remove(temp_samples_order_file_path)
+
+        if not self.sample_names_in_samples_information_file:
+            self.sample_names_in_samples_order_file = sample_names_in_samples_order_file
+
+        self.available_orders.add(single_order_name)
+
+        self.run.info('Samples order', "A single order for '%s' is also loaded" % single_order_name, quiet=self.quiet)
+
+
     def update_samples_order_dict(self):
         """Some attributes in the samples information dict may also be used as orders"""
 
@@ -144,9 +202,16 @@ class SamplesInformation:
                                         Please take a look." % attribute)
 
 
-    def populate_from_input_files(self, samples_information_path=None, samples_order_path=None):
+    def populate_from_input_files(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
+        if not samples_information_path and not samples_order_path and not single_order_path:
+            raise SamplesError("At least one of the input files must be declared to create or to update an\
+                                anvi'o samples information database :/ But maybe not. Maybe anvi'o should be\
+                                able to create an empty samples information database, too. Do you need this?\
+                                Write to us!")
+
         self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
+        self.process_single_order_data(single_order_path, single_order_name)
         self.update_samples_order_dict()
 
         self.sanity_check()
@@ -173,7 +238,7 @@ class SamplesInformation:
                 raise SamplesError("Something is missing. Anvi'o is having hard time coming up with a default samples\
                                     order for the samples database.")
 
-            a_basic_order = [o['basic'] for o in list(self.samples_order_dict.values())][0]
+            a_basic_order = [o['basic'].split(',') if o['basic'] else None for o in list(self.samples_order_dict.values())][0]
             a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] for o in list(self.samples_order_dict.values())][0])
 
             self.samples_information_default_layer_order = a_basic_order or a_tree_order
