@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """Module to make sense of samples information and samples order input"""
 
+import os
 
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -157,6 +158,7 @@ class SamplesInformation:
         temp_samples_order_file.close()
 
         sample_names_in_samples_order_file = filesnpaths.is_proper_samples_order_file(temp_samples_order_file_path)
+        os.remove(temp_samples_order_file_path)
 
         if not self.sample_names_in_samples_information_file:
             self.sample_names_in_samples_order_file = sample_names_in_samples_order_file
