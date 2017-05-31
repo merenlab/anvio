@@ -30,12 +30,15 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-def is_proper_newick(newick_data):
+def is_proper_newick(newick_data, dont_raise=False):
     try:
         return Tree(newick_data, format=1)
     except Exception as e:
-        raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ete2 had\
-                                 to say about this: '%s'. Pity :/" % e)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had\
+                                    to say about this: '%s'. Pity :/" % e)
 
 
 def is_proper_hdf5_file(hdf5_file_path):
