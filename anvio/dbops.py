@@ -2074,16 +2074,11 @@ class SamplesInformationDatabase:
         return self.samples_information_default_layer_order
 
 
-    def create(self, samples_information_path=None, samples_order_path=None):
-        if not samples_information_path and not samples_order_path:
-            raise ConfigError("You must declare at least one of the input files to create a samples information\
-                                database. Neither samples information, nor samples order file has been passed to\
-                                the class :(")
-
+    def create(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
         is_db_ok_to_create(self.db_path, 'samples')
 
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.populate_from_input_files(samples_information_path, samples_order_path)
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
 
         self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
 
@@ -2094,14 +2089,17 @@ class SamplesInformationDatabase:
         self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
 
 
-    def update(self, samples_information_path=None, samples_order_path=None):
-        if not samples_information_path and not samples_order_path:
-            raise ConfigError("You must declare at least one of the input files to update a samples information\
-                                database. Neither samples information, nor samples order file has been passed to\
-                                the class :(")
+    def update(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
+        # first recover what is already in the database
+        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
 
+        # inherit a samples object and update its member dicts:
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.populate_from_input_files(samples_information_path, samples_order_path)
+        samples.samples_order_dict = samples_order_dict
+        samples.samples_information_dict = samples_information_dict
+
+        # add what we have now
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
 
         self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=False)
 
@@ -2117,12 +2115,18 @@ class SamplesInformationDatabase:
             self.db.drop_table(t.samples_order_table_name)
             self.db.drop_table(t.samples_attribute_aliases_table_name)
             self.db.drop_table(t.samples_information_table_name)
+
+            self.db.remove_meta_key_value_pair('samples')
+            self.db.remove_meta_key_value_pair('available_orders')
+            self.db.remove_meta_key_value_pair('sample_names_for_order')
+            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
         else:
             # know thyself
             self.db.set_meta_value('db_type', 'samples_information')
 
             # set some useful meta values:
             self.db.set_meta_value('creation_date', time.time())
+
 
         # first create the easy one: the samples_order table.
         available_orders = list(samples.samples_order_dict.keys())
@@ -2143,11 +2147,6 @@ class SamplesInformationDatabase:
         self.db.create_table(t.samples_information_table_name, samples_information_table_structure, samples_information_table_types)
         db_entries = [tuple([sample] + [samples.samples_information_dict[sample][h] for h in samples_information_table_structure[1:]]) for sample in samples.samples_information_dict]
         self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
-
-        if update:
-            self.db.remove_meta_key_value_pair('samples')
-            self.db.remove_meta_key_value_pair('samples_names_for_order')
-            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
