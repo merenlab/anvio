@@ -51,6 +51,9 @@ anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/sampl
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/example_state.json --name default
 
+INFO "Listing collections available"
+anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
