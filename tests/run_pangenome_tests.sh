@@ -50,6 +50,9 @@ anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST
 INFO "Summarizing the pan, using the test collection"
 anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -o TEST_SUMMARY
 
+INFO "Listing collections available"
+anvi-show-collections-and-bins -p TEST/TEST-PAN.db
+
 INFO "Displaying the initial pangenome analysis results"
 anvi-display-pan -p TEST/TEST-PAN.db -s TEST/TEST-SAMPLES.db -g TEST-GENOMES.h5 --title "A mock pangenome analysis"
 

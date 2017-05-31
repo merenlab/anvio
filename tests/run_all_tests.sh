@@ -262,6 +262,9 @@ anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C
 INFO "Splitting only Bin_1 from the merged profile"
 anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -o $output_dir/CONCOCT_BINS_SPLIT_ONLY_BIN_1 --bin-id Bin_1
 
+INFO "Listing all collections and bins available in the merged profile"
+anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
