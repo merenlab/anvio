@@ -1431,10 +1431,6 @@ function drawTree() {
                     loadCollection(autoload_collection);
                     autoload_collection = null;
                 }
-
-                if ($('#panel-left').is(':visible')) {
-                    setTimeout(toggleLeftPanel, 500);
-                }
             },
         });
 }
