@@ -30,6 +30,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
 
@@ -675,8 +676,11 @@ class BottleApplication(Bottle):
 
     def generate_tree(self):
         pcs = set(request.forms.getall('pcs[]'))
+        name = request.forms.get('name')
         skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
+        store_tree = request.forms.get('store_tree')
+        print(store_tree)
 
         temp_fasta_file = filesnpaths.get_temp_file_path()
         temp_tree_file = filesnpaths.get_temp_file_path()
@@ -686,6 +690,14 @@ class BottleApplication(Bottle):
             self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
+
+            if store_tree:
+                if not self.interactive.samples_information_db_path:
+                    raise ConfigError("This project does not have samples db")
+
+                samples_information_db = SamplesInformationDatabase(self.interactive.samples_information_db_path)
+                samples_information_db.update(single_order_path=temp_tree_file, single_order_name=name)
+                self.interactive.samples_order_dict[name] = {'newick': tree_text, 'basic': ''}
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
