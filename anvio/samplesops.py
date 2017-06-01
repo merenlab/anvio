@@ -239,6 +239,6 @@ class SamplesInformation:
                                     order for the samples database.")
 
             a_basic_order = [o['basic'].split(',') if o['basic'] else None for o in list(self.samples_order_dict.values())][0]
-            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] for o in list(self.samples_order_dict.values())][0])
+            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] if o['newick'] else None for o in list(self.samples_order_dict.values())][0])
 
             self.samples_information_default_layer_order = a_basic_order or a_tree_order
