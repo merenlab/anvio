@@ -485,8 +485,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
-        # profile database:
-        self.collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))[0]
+        # profile database along with other info:
+        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
@@ -519,7 +519,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
-            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name'])
+            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name', 'source'])
 
             views_for_collection[view] = d
 
@@ -548,11 +548,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # get completeness estimate
             p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
+            bin_source = bins_info_dict[bin_id]['source']
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
                 self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
                 self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+                self.views[view]['dict'][bin_id]['source'] = bin_source
 
             current_bin += 1
         self.progress.end()
