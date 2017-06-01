@@ -2266,6 +2266,7 @@ function generatePhylogeneticTree() {
                 samples_order_dict[$('#phylogeny_name').val()] = {'basic': '', 'newick': response['tree']};
                 $('#samples_order').append('<option value="'+ new_phylogeny_name + '">' + new_phylogeny_name + '</option>');
                 $('#samples_order').val(new_phylogeny_name);
+                $('#samples_order').trigger('change');
                 $('#modPhylogeneticTree').modal('hide');
             }
         }
