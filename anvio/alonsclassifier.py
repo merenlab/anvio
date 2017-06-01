@@ -11,6 +11,7 @@ import anvio
 import numpy as np
 import pandas as pd
 import anvio.utils as utils
+import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
@@ -19,7 +20,7 @@ from math import ceil
 from math import floor
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
-
+from matplotlib.backends.backend_pdf import PdfPages
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -35,14 +36,32 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def get_IQR(v):
+def get_non_outliers(v):
     """ returns the interqurtile range (IQR) for the input pandas series"""
     q1 = np.percentile(v, 25)
     q3 = np.percentile(v, 75)
     IQR = q3 - q1
-    outliers = (v < q1 - 1.5 * IQR) | (v > q3 + 1.5 * IQR)
-    number_of_outliers = sum(outliers)
-    return IQR, number_of_outliers
+    non_outliers = (v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR)
+    return non_outliers
+
+
+def plot_outliers(pdf_output_file, v, non_outliers, sample_id):
+    """ Takes a PdfFile object (matplotlib.backends.backend_pdf), a vector of coverage, and a boolean vector of 
+    the non-outlier indexes, and plots the non-outliers in blue and the outliers in red"""
+    # reseting the index so that the points would be plotted according to the sorting order
+    v.reset_index(inplace=True,drop=True)
+    plt.plot(v,'ro')
+    plt.plot(v[non_outliers.values],'bo')
+    plt.title("%s - sorted coverage values with outliers" % sample_id)
+    plt.savefig(pdf_output_file, format='pdf')
+    plt.close()
+
+    # plotting a histogram of the non-outliers
+    # This would allow to see if they resemble a normal distribution
+    plt.histogram(v[non_outliers])
+    plt.title("%s - histogram of non-outliers" % sample_id)
+    plt.savefig(pdf_output_file, format='pdf')
+    plt.close()
 
 
 def get_sliding_window(N, window_portion, overlap=None):
@@ -213,37 +232,26 @@ class AlonsClassifier:
         # get the indixes that sort each column separately TODO: delete this part if you don't need it
         sorting_indexes = self.gene_coverages_filtered.apply(lambda x: x.sort_values(ascending=True).index)
         # TODO: I'm creating a copy but probably I don't need to
-        self.gene_coverages_filtered = self.gene_coverages.copy
-        # run the sliding window for each positive sample
+        self.gene_coverages_filtered = self.gene_coverages.copy()
+        coverages_pdf_output = self.output_file_prefix + additional_description + '-coverages.pdf'
+        coverages_pdf_output_file = PdfPages(coverages_pdf_output)
+        # creating dataframe for non-outliers (see usage below)
+        non_outliers = pd.DataFrame().reindex_like(self.gene_coverages)
         for sample in self.positive_samples:
-            # a vector of the sorted, nonzero values of coverages for the sample
-            v = self.gene_coverages_filtered[sample][self.gene_coverages_filtered[sample] > 0].sort_values(inplace=False)
-            # The number of nonzero values
-            N = len(v)
-            # getting the indexes for the sliding window
-            window_indexes = get_sliding_window(N, self.gamma)
-            windows_df = pd.DataFrame(None, index = range(len(window_indexes)), columns=['IQR', 'number_of_outliers'])
-            for j in range(len(window_indexes)):
-                # getting the Interquartile Range (IQR), number of outliers for each window for each sliding window
-                index = window_indexes[j]
-                windows_df['IQR'][j], windows_df['number_of_outliers'][j] = get_IQR(v[index[0]:index[1]])
-        # Find the window with the lowest number of outliers (and lowest IQR if multiple windows share the 
-        # minimal number of outliers)
-        min_window = windows_df.sort_values(by=['number_of_outliers','IQR']).head(1)
-        i = min_window.index[0]
-        max_index = window_indexes[i][1]
-        min_index = window_indexes[i][0]
-        if windows_df['number_of_outliers'][i] == 0:
-            # Checking to see if neighboring windows also have zero outliers
-            while i + 1 < len(window_indexes) and windows_df['number_of_outliers'][i + 1] == 0:
-                i += 1
-                max_index = window_indexes[i][1]
-            i = min_window.index[0]
-            while i - 1 >= 0 and windows_df['number_of_outliers'][i - 1] == 0:
-                i -= 1
-                min_index = window_indexes[i][0]
-            
-        
+            # a vector of the coverages for the sample
+            v = self.gene_coverages_filtered[sample].copy()
+            # set coverage to zero if not above gene detection threshold
+            v[self.gene_detections[sample] < self.zeta] = 0
+            # sorting the coverage values
+            v.sort_values(inplace=True)
+            # get non-outliers according to the Interquartile range
+            non_outliers[sample] = get_non_outliers(v)
+            plot_outliers(coverages_pdf_output_file, v, non_outliers[sample], sample)
+        coverages_pdf_output_file.close()
+
+        # finding the genes that are non-outliers in the majority of samples
+        # the required majority is defined by the user defined argument self.eta (--core-min-detection)
+        taxon_specific_core = outliers[non_outliers.sum(axis=1) >= self.number_of_positive_samples*self.eta].index
 
 
     def get_samples_information(self, detection_of_genes, alpha, genes_to_consider=None):
