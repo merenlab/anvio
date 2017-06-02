@@ -145,9 +145,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.keep_ids and args.exclude_ids:
-        e = ConfigError("Only one of --exclude-ids and --keep-ids can be specified.")
-        print(e)
-        sys.exit()
+        raise ConfigError("Only one of --exclude-ids and --keep-ids can be specified.")
 
     try:
         remove_short_contigs_from_fasta(args)
