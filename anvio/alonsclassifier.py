@@ -128,8 +128,8 @@ class AlonsClassifier:
         self.number_of_positive_samples = None
         self.negative_samples = pd.DataFrame.empty
         self.number_of_negative_samples = None
-        self.gene_class_information = {}
-        self.samples_information = {}
+        self.gene_class_information = pd.DataFrame.empty
+        self.samples_information = pd.DataFrame.empty
         self.profile_db = {}
         self.gene_presence_absence_in_samples = pd.DataFrame.empty
         self.gene_coverages_filtered = pd.DataFrame.empty
@@ -252,21 +252,20 @@ class AlonsClassifier:
         MDG_samples_information_table_name      = 'MDG_classifier_samples_information'
         MDG_samples_information_table_structure = ['samples', 'presence', 'number_of_detected_genes', 'number_of_taxon_specific_core_detected']
         MDG_samples_information_table_types     = ['str', 'bool', 'int', 'int']
-        sample_information_empy_dict = dict.fromkeys(MDG_samples_information_table_structure[1:])
-        # create an empty dictionary
-        samples_information = dict.fromkeys(self.samples, sample_information_empy_dict)
+        # create an empty dataframe
+        samples_information = pd.DataFrame(index=self.samples, columns=MDG_samples_information_table_structure[1:])
         
         # Compute the number of detected genes per samples
         number_of_genes_in_sampels = self.gene_presence_absence_in_samples.sum(axis=0)
         for sample in self.samples:
-            samples_information[sample]['number_of_detected_genes'] = number_of_genes_in_sampels[sample]
+            samples_information['number_of_detected_genes'][sample]= number_of_genes_in_sampels[sample]
 
         self.positive_samples = set(number_of_genes_in_sampels[number_of_genes_in_sampels/ self.Ng > self.alpha].index)
         self.negative_samples = set(number_of_genes_in_sampels[number_of_genes_in_sampels / self.Ng > self.beta].index) - self.positive_samples
         for sample in self.positive_samples:
-            samples_information[sample]['presence'] = True
+            samples_information['presence'][sample] = True
         for sample in self.negative_samples:
-            samples_information[sample]['presence'] = False
+            samples_information['presence'][sample] = False
         self.samples_information = samples_information
 
         self.number_of_positive_samples = len(self.positive_samples)
@@ -406,6 +405,7 @@ class AlonsClassifier:
 
 
     def report_gene_class_information(self):
+        # TODO: change to pandas
         C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[dict_id][field]==value])
 
         for gene_class in ['TSC', 'TSA', 'TNC', 'TNA', 'None']:
@@ -420,7 +420,7 @@ class AlonsClassifier:
         genome has been detected in the sample or not """
         # need to start a new gene_class_information dict
         # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
-        self.gene_class_information = {}
+        self.gene_class_information = pd.DataFrame(index=self.gene_coverages.index,columns=['gene_class'])
         # use a gene detection threshold to determine gene presence/absence in samples
         self.set_gene_presence_absence_in_samples()
         # use a gene presence threshold classify samples as positive, negative or ambiguous
@@ -430,11 +430,10 @@ class AlonsClassifier:
 
         # set the gene classes
         for gene_id in self.gene_coverages_filtered.index:
-            self.gene_class_information[gene_id] = {}
             if gene_id in non_outliers_all:
-                self.gene_class_information[gene_id]['gene_class'] = self.get_gene_class('TS', 'core')
+                self.gene_class_information['gene_class'][gene_id] = self.get_gene_class('TS', 'core')
             else:
-                self.gene_class_information[gene_id]['gene_class'] = self.get_gene_class(None,None)
+                self.gene_class_information['gene_class'][gene_id] = self.get_gene_class(None,None)
 
 
     def get_specificity_from_class_id(self, class_id):
@@ -472,11 +471,12 @@ class AlonsClassifier:
         if additional_description:
             additional_description = '-' + additional_description
         additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
-        additional_layers_df.to_csv(additional_layers_file_name, sep='\t')
+        additional_layers_df.to_csv(additional_layers_file_name, sep='\t', index_label='gene_callers_id')
 
 
     def save_samples_information(self, additional_description=''):
-        self.run.warning(self.samples_information)
+        # TODO: there used to be this here:
+        #self.run.warning(self.samples_information)
         if not self.samples_information_to_append:
             samples_information_df = self.samples_information
         else:
@@ -492,7 +492,7 @@ class AlonsClassifier:
             additional_description = '-' + additional_description
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
-        samples_information_df.to_csv(samples_information_file_name, sep='\t')
+        samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
     def save_gene_detection_and_coverage(self, additional_description=''):
         if additional_description:
@@ -501,8 +501,8 @@ class AlonsClassifier:
             prefix = self.output_file_prefix
         gene_coverages_file_name = prefix + '-gene-coverages.txt'
         gene_detections_file_name = prefix + '-gene-detections.txt'
-        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t')
-        self.gene_detections.to_csv(gene_detections_file_name, sep='\t')
+        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t', index_label='gene_callers_id')
+        self.gene_detections.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
 
 
     def get_coverage_and_detection_dict(self,bin_id):
