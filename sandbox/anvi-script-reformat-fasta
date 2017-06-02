@@ -25,6 +25,9 @@ progress = terminal.Progress()
 
 
 def remove_short_contigs_from_fasta(args):
+    if args.keep_ids and args.exclude_ids:
+        raise ConfigError("Only one of --exclude-ids and --keep-ids can be specified.")
+
     filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_file_exists(args.contigs_fasta)
 
@@ -143,9 +146,6 @@ if __name__ == '__main__':
                               mandatory to declare one, but it is a very good idea to have it.")
 
     args = parser.parse_args()
-
-    if args.keep_ids and args.exclude_ids:
-        raise ConfigError("Only one of --exclude-ids and --keep-ids can be specified.")
 
     try:
         remove_short_contigs_from_fasta(args)
