@@ -458,26 +458,22 @@ class AlonsClassifier:
 
 
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
-        # TODO: change everything here to work with pandas
         if not self.additional_layers_to_append:
             additional_column_titles = []
-            additional_layers_dict = self.gene_class_information
+            additional_layers_df = self.gene_class_information
         else:
-            additional_layers_dict = pd.read_table(self.additional_layers_to_append),
+            additional_layers_df = pd.read_table(self.additional_layers_to_append),
             try:
-                pd.concat([a1,b1],axis=1, verify_integrity=True)
+                # concatinating the gene_class_information with the user provided additional layers
+                additional_layers_df.join(self.gene_class_information, how='outer', verify_integrity=True)
             except ValueError as e:
                 raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
                 you have columns in your --additional-layers file with the following columns: %s" % (e, self.gene_class_information.columns.tolist()))
-            additional_column_titles = additional_layers_df.columns
 
         if additional_description:
             additional_description = '-' + additional_description
-
         additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
-        headers = headers=['gene_callers_id', 'gene_class'] + additional_column_titles
-
-        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, additional_layers_file_name, headers=headers)
+        additional_layers_df.to_csv(additional_layers_file_name)
 
 
     def save_samples_information(self, additional_description=''):
