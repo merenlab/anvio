@@ -24,9 +24,9 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def remove_short_contigs_from_fasta(args):
+def reformat_FASTA(args):
     if args.keep_ids and args.exclude_ids:
-        raise ConfigError("Only one of --exclude-ids and --keep-ids can be specified.")
+        raise ConfigError("You can't use`--exclude-ids and --keep-ids together :/")
 
     filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_file_exists(args.contigs_fasta)
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        remove_short_contigs_from_fasta(args)
+        reformat_FASTA(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
