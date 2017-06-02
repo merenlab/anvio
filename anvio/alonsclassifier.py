@@ -121,8 +121,8 @@ class AlonsClassifier:
         self.bin_ids_file_path = A('bin_ids_file')
         self.store_gene_detections_and_gene_coverages_tables = A('store_gene_detections_and_gene_coverages_tables')
         self.exclude_samples = A('exclude_samples')
-        self.gene_coverages = {}
-        self.gene_detections = {}
+        self.gene_coverages = pd.DataFrame.empty
+        self.gene_detections = pd.DataFrame.empty
         self.samples = {}
         self.positive_samples = pd.DataFrame.empty
         self.number_of_positive_samples = None
@@ -137,8 +137,8 @@ class AlonsClassifier:
         # check that there is a file like this
         if self.exclude_samples:
             filesnpaths.is_file_exists(self.exclude_samples)
-            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(args.input_ids, 'rU').readlines()])
-            run.info('The following samples will be excluded: %s' % self.samples_to_exclude)
+            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(args.exclude_samples, 'rU').readlines()])
+            run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
         else:
             self.samples_to_exclude = set([])
 
@@ -508,6 +508,7 @@ class AlonsClassifier:
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
         self.gene_coverages = pd.DataFrame.from_dict(_bin.gene_coverages, orient='index', dtype=float)
+        print(self.gene_coverages)
         self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
         self.Ng = len(self.gene_coverages.index)
         self.gene_detections = pd.DataFrame.from_dict(_bin.gene_detection, orient='index', dtype=float)
@@ -536,9 +537,9 @@ class AlonsClassifier:
                 bin_names_of_interest = bin_names_in_collection
 
             for bin_id in bin_names_of_interest:
-                self.get_gene_classes()
                 self.run.info_single('Classifying genes in bin: %s' % bin_id)
                 self.get_coverage_and_detection_dict(bin_id)
+                self.get_gene_classes()
                 self.save_gene_class_information_in_additional_layers(bin_id)
                 self.save_samples_information(bin_id)
                 if self.store_gene_detections_and_gene_coverages_tables:

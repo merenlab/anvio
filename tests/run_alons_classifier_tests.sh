@@ -51,7 +51,7 @@ INFO "Running anvi-alons-classifier on a bin"
 anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
 
 INFO "Running anvi-alons-classifier on a bin with samples to exclude"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $output_dir/samples_to_exclude.txt
+anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
 INFO "A round of dry run to get the profile db created"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
