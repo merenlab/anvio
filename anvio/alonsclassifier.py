@@ -10,7 +10,6 @@
 import anvio
 import numpy as np
 import pandas as pd
-import anvio.utils as utils
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -473,7 +472,7 @@ class AlonsClassifier:
         if additional_description:
             additional_description = '-' + additional_description
         additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
-        additional_layers_df.to_csv(additional_layers_file_name)
+        additional_layers_df.to_csv(additional_layers_file_name, sep='\t')
 
 
     def save_samples_information(self, additional_description=''):
@@ -493,7 +492,7 @@ class AlonsClassifier:
             additional_description = '-' + additional_description
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
-        samples_information_df.to_csv(samples_information_file_name)
+        samples_information_df.to_csv(samples_information_file_name, sep='\t')
 
     def save_gene_detection_and_coverage(self, additional_description=''):
         if additional_description:
@@ -502,8 +501,8 @@ class AlonsClassifier:
             prefix = self.output_file_prefix
         gene_coverages_file_name = prefix + '-gene-coverages.txt'
         gene_detections_file_name = prefix + '-gene-detections.txt'
-        utils.store_dict_as_TAB_delimited_file(pd.DataFrame.to_dict(self.gene_coverages), gene_coverages_file_name)
-        utils.store_dict_as_TAB_delimited_file(pd.DataFrame.to_dict(self.gene_detections), gene_detections_file_name)
+        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t')
+        self.gene_detections.to_csv(gene_detections_file_name, sep='\t')
 
 
     def get_coverage_and_detection_dict(self,bin_id):
