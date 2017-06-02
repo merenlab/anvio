@@ -462,13 +462,13 @@ class AlonsClassifier:
             additional_column_titles = []
             additional_layers_df = self.gene_class_information
         else:
-            additional_layers_df = pd.read_table(self.additional_layers_to_append),
+            additional_layers_df = pd.read_table(self.additional_layers_to_append)
             try:
                 # concatinating the gene_class_information with the user provided additional layers
-                additional_layers_df.join(self.gene_class_information, how='outer', verify_integrity=True)
+                additional_layers_df.join(self.gene_class_information, how='outer')
             except ValueError as e:
                 raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following columns: %s" % (e, self.gene_class_information.columns.tolist()))
+                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_information.columns.tolist()))
 
         if additional_description:
             additional_description = '-' + additional_description
@@ -477,27 +477,23 @@ class AlonsClassifier:
 
 
     def save_samples_information(self, additional_description=''):
-        # TODO: change everything here to work with pandas
-        self.samples_information = pd.DataFrame.to_dict(self.samples_information)
+        self.run.warning(self.samples_information)
         if not self.samples_information_to_append:
-            samples_information_column_titles = list(self.samples_information[next(iter(self.samples_information))])
-            samples_information_dict = self.samples_information
+            samples_information_df = self.samples_information
         else:
-            samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
-            column_mapping = [str] * (len(samples_information_column_titles) + 2)
-            self.run.warning(self.samples_information)
-            samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
-                                                                                  dict_to_append=self.samples_information,
-                                                                                  assign_none_for_missing=True,
-                                                                                  column_mapping=column_mapping)
+            samples_information_df = pd.read_table(self.samples_information_to_append)
+            try:
+                # concatinating the samples_information with the user provided samples_information file 
+                samples_information_df.join(self.samples_information, how='outer')
+            except ValueError as e:
+                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
+                you have columns in your --additional-layers file with the following title: %s" % (e, self.samples_information.columns.tolist()))
 
         if additional_description:
             additional_description = '-' + additional_description
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
-        utils.store_dict_as_TAB_delimited_file(samples_information_dict, samples_information_file_name,
-                                                   headers=['samples'] + samples_information_column_titles)
-
+        samples_information_df.to_csv(samples_information_file_name)
 
     def save_gene_detection_and_coverage(self, additional_description=''):
         if additional_description:
