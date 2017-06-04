@@ -2358,6 +2358,10 @@ function loadState()
     {
         state_name = autoload_state;
         autoload_state = null // to prevent load again.
+
+        if ($('#panel-left').is(':visible')) {
+            setTimeout(toggleLeftPanel, 500);
+        }
     }
     else
     {
