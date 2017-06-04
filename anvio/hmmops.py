@@ -300,6 +300,7 @@ class SequencesForHMMHits:
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
             genes_in_bins_dict[gene_name] = m.run_muscle_stdin(genes_list)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
+        self.progress.end()
 
         # concatenate all of them and write them in a file
         f = open(output_file_path, 'w')
@@ -326,7 +327,7 @@ class SequencesForHMMHits:
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            f.write('>%s|genes:%s|separator:%s\n' % (bin_name, ','.join(gene_names), separator))
+            f.write('>%s genes:%s|separator:%s\n' % (bin_name, ','.join(gene_names), separator))
             f.write('%s\n' % sequence)
 
         if len(gene_names_missing_from_everywhere):
