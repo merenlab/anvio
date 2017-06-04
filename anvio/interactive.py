@@ -498,6 +498,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
 
+        # we just cleared out all orderings the full mode added, let's make sure to add the
+        # user tree if there is one.
+        self.add_user_tree()
+
         # setting up a new view:
         views_for_collection = {}
         for view in self.views:
@@ -680,16 +684,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['clusterings'] = self.clusterings
 
-        if self.tree:
-            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-            if not self.p_meta['clusterings']:
-                self.p_meta['default_clustering'] = clustering_id
-                self.p_meta['available_clusterings'] = [clustering_id]
-                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
-                run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
-            else:
-                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
-                run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
+        # add user tree if there is one
+        self.add_user_tree()
 
         # set title
         if self.title:
@@ -711,6 +707,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if not self.state_autoload in self.states_table.states:
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see\
                                           available states by running this program with --show-states flag." % self.state_autoload)
+
+
+    def add_user_tree(self):
+        if self.tree:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+            if not self.p_meta['clusterings']:
+                self.p_meta['default_clustering'] = clustering_id
+                self.p_meta['available_clusterings'] = [clustering_id]
+                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
+                run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
+            else:
+                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+                run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
     def check_names_consistency(self):
