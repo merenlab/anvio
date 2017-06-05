@@ -29,7 +29,10 @@ pp = terminal.pretty_print
 
 
 class HDF5_IO(object):
-    def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False):
+    def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+        self.run = run
+        self.progress = progress
+
         self.file_path = file_path
 
         if open_in_append_mode and not create_new:
@@ -106,6 +109,10 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
 
         self.quiet = quiet
 
+        # set sample and split names in the auxiliary data file
+        self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys()))
+        self.split_names_in_db = list(self.fp['/data/coverages'].keys())
+
 
     def is_known_split(self, split_name):
         if not self.path_exists('/data/coverages/%s' % split_name):
@@ -116,24 +123,47 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         self.add_integer_list('/data/coverages/%s/%s' % (split_name, sample_id), coverage_list)
 
 
-    def get(self, split_name, sample_names=[]):
-        self.is_known_split(split_name)
-
+    def check_sample_names(self, sample_names, split_name=None):
         if sample_names:
             if not isinstance(sample_names, set):
                 raise HDF5Error('The type of sample names must be a "set".')
 
-        # let's learn what we have
-        sample_names_in_db = list(self.fp['/data/coverages/%s' % split_name].keys())
-
         if sample_names:
             for sample_name in sample_names:
-                missing_samples = [sample_name for sample_name in sample_names if sample_name not in sample_names_in_db]
+                missing_samples = [sample_name for sample_name in sample_names if sample_name not in self.sample_names_in_db]
                 if len(missing_samples):
                     raise HDF5Error("Some sample names you requested are missing from the auxiliary data file. Here\
                                         they are: '%s'" % (', '.join(missing_samples)))
-        else:
-            sample_names = list(self.fp['/data/coverages/%s' % split_name].keys())
+            return sample_name
+
+        return self.sample_names_in_db
+
+
+    def get_all(self, sample_names=[]):
+        self.progress.new('Recovering split coverages')
+        sample_names = self.check_sample_names(sample_names)
+
+        split_coverages = {}
+        num_splits, counter = len(self.split_names_in_db), 1
+        for i in range(0, num_splits):
+            self.progress.update('%d of %d splits ...' % (counter, num_splits))
+
+            split_name = self.split_names_in_db[i]
+            split_coverages[split_name] = {}
+            for sample_name in self.sample_names_in_db:
+                split_coverages[split_name][sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
+
+            counter += 1
+
+        self.progress.end()
+
+        return split_coverages
+
+
+    def get(self, split_name, sample_names=[]):
+        self.is_known_split(split_name)
+
+        sample_names = self.check_sample_names(sample_names)
 
         d = {}
         for sample_name in sample_names:
