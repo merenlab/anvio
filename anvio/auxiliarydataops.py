@@ -141,12 +141,14 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
 
     def get_all(self, sample_names=[]):
         self.progress.new('Recovering split coverages')
+        self.progress.update('...')
         sample_names = self.check_sample_names(sample_names)
 
         split_coverages = {}
         num_splits, counter = len(self.split_names_in_db), 1
         for i in range(0, num_splits):
-            self.progress.update('%d of %d splits ...' % (counter, num_splits))
+            if num_splits > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             split_name = self.split_names_in_db[i]
             split_coverages[split_name] = {}

@@ -1315,12 +1315,13 @@ class ProfileSuperclass(object):
         # recover all split coverage data at once:
         split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
 
-        self.progress.new('Recovering gene coverage and detection data')
+        self.progress.new('Computing gene coverage and detection data')
+        self.progress.update('...')
 
         num_splits, counter = len(self.split_names), 1
         # go through all the split names
         for split_name in self.split_names:
-            if num_splits > 10 and counter % 10 == 0:
+            if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             # recover split coverage values from the auxiliary data file:
