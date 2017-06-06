@@ -36,6 +36,7 @@
 
 import os
 import sys
+import copy
 import argparse
 
 import anvio
@@ -45,7 +46,8 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.dbops import ContigsSuperclass
-from anvio.hmmops import SequencesForHMMHits
+from anvio.hmmops import SequencesForHMMHits, SequencesForHMMHitsForMultipleContigsDBs
+from anvio.genomestorage import GenomeStorage
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -62,8 +64,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):
-    gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+def load_regular(args):
     hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
 
     if args.list_hmm_sources:
@@ -80,15 +81,6 @@ def main(args):
             run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
         sys.exit(0)
 
-    # let's do some initial checks if the user is interested in concatanating genes. FIXME: these should probably go into the
-    # SequencesForHMMHits class sanity check.
-    if args.concatenate_genes:
-        if not args.return_best_hit:
-            raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
-                               the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one\
-                               hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
-                               is not that kind of a platform :/")
-
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
@@ -101,11 +93,83 @@ def main(args):
         splits_dict = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
-
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
+
+    return hmm_sequences_dict
+
+
+def load_external(args):
+    G = GenomeStorage(args)
+    G.load_genomes_descriptions(skip_functions=True)
+    G.init_external_genomes()
+
+    # learn about hmm sources observed at least one in a genome among all genomes
+    hmm_sources_found = set([])
+    for genome_name in G.genomes:
+        [hmm_sources_found.add(s) for s in G.genomes[genome_name]['hmm_sources_info'].keys()]
+
+    # find out hmm_sources that occur in all genomes
+    hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
+    for genome_name in G.genomes:
+        [hmm_sources_in_all_genomes.remove(s) for s in hmm_sources_found if s not in G.genomes[genome_name]['hmm_sources_info']]
+
+    if not len(hmm_sources_in_all_genomes):
+        raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
+
+    if args.list_hmm_sources:
+        for source in hmm_sources_in_all_genomes:
+            s = list(G.genomes.values())[0]['hmm_sources_info'][source]
+            run.info_single('%s [type: %s] [num genes: %d]' % (source, s['search_type'], len(s['genes'])))
+        sys.exit(0)
+
+    if args.list_available_gene_names:
+        for source in hmm_sources_in_all_genomes:
+            s = list(G.genomes.values())[0]['hmm_sources_info'][source]
+            run.info_single('%s [type: %s]: %s' % (source, s['search_type'], ', '.join(sorted(s['genes']))), nl_after = 2)
+        sys.exit(0)
+
+    # if the user specified hmm_sources, let's make sure they occur across all genomes
+    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+    if hmm_sources:
+        hmm_sources_dont_occur_in_all_genomes = [s for s in hmm_sources if s not in hmm_sources_in_all_genomes]
+        if len(hmm_sources_dont_occur_in_all_genomes):
+            raise ConfigError("Not all external genomes has the following HMM sources: '%s'." % (', '.join(hmm_sources_dont_occur_in_all_genomes)))
+    else:
+        hmm_sources = hmm_sources_in_all_genomes
+
+    s = SequencesForHMMHitsForMultipleContigsDBs([(g['name'], g['path']) for g in G.genomes.values()], sources = hmm_sources)
+    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(return_amino_acid_sequences=args.get_aa_sequences)
+
+    return hmm_sequences_dict
+
+
+def main(args):
+    if args.external_genomes and (args.contigs_db or args.profile_db):
+        raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
+                           profile db prameters.")
+
+    if not (args.external_genomes or args.contigs_db or args.profile_db):
+        raise ConfigError("You gotta give this program some input files :/ Come on.")
+
+    # let's do some initial checks if the user is interested in concatanating genes. FIXME: these should probably go into the
+    # SequencesForHMMHits class sanity check.
+    if args.concatenate_genes:
+        if not args.return_best_hit:
+            raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
+                               the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one\
+                               hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
+                               is not that kind of a platform :/")
+
+    if args.external_genomes:
+        hmm_sequences_dict = load_external(args)
+    else:
+        hmm_sequences_dict = load_regular(args)
+
+    print(hmm_sequences_dict)
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
+    gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
@@ -135,6 +199,10 @@ def main(args):
     else:
         separator = 'XXX' if args.get_aa_sequences else 'NNN'
 
+    # make sure an output file name is provided.
+    if not args.output_file:
+        args.output_file = 'sequences-for-hmm-hits.fa'
+
     # the magic is happening here:
     s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, \
                                      args.output_file, \
@@ -148,25 +216,55 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Get sequences for HMM hits")
+    parser = argparse.ArgumentParser(description="Get sequences for HMM hits from many inputs.")
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    parser.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    parser.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
-    parser.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
-    parser.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-    parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    parser.add_argument(*anvio.A('list-available-gene-names'), **anvio.K('list-available-gene-names'))
-    parser.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
-    parser.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
-    parser.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
-    parser.add_argument(*anvio.A('separator'), **anvio.K('separator', {'help': 'A word that will be used to\
+    groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
+                                        provide a contigs database, and call it a day. In this case the program will return you\
+                                        everything from it.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\
+                                        stored in them. If you go this way, you still will need to provide a contigs database. If you\
+                                        just specify a collection name, you will get hits from every bin in it. You can also use\
+                                        the bin name or bin ids file parameters to specify your interest more precisely.")
+    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+
+    groupC = parser.add_argument_group('INPUT OPTION #3: EXTERNAL GENOMES FILE', "If you have multiple contigs databases without any profile\
+                                        database, you can start with this one. In this case you are not supposed to provide a profile\
+                                        database or an individual contigs database. This is for people who want to use this just\
+                                        with a bunch of FASTA files with their genomes.")
+    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupD = parser.add_argument_group('HMM STUFF', "This is where you can specify an HMM source, and/or a list of genes to filter\
+                                        your results.")
+    groupD.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    groupD.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))
+    groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    groupD.add_argument(*anvio.A('list-available-gene-names'), **anvio.K('list-available-gene-names'))
+
+    groupE = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be a FASTA file, and you better give it\
+                                        a nice name..")
+    groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+
+    groupF = parser.add_argument_group('THE ALPHABET', "The sequences are reported in DNA alphabet, but you can also get them\
+                                        translated just like all the other cool kids.")
+    groupF.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
+
+    groupG = parser.add_argument_group('PHYLOGENOMICS? K!', "If you want, you can get your sequences concatanated. In this case\
+                                       anwi'o will use muscle to align every homolog, and concatenate them the order you specified\
+                                       using the `gene-names` argument. Each concatenated sequence will be separated from the other\
+                                       ones by the `separator`.")
+    groupG.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
+    groupG.add_argument(*anvio.A('separator'), **anvio.K('separator', {'help': 'A word that will be used to\
                                   sepaate concatenated gene sequences from each other (IF you are using this\
                                   program with `--concatenate-genes` flag). The default is "XXX" for amino\
                                   acid sequences, and "NNN" for DNA sequences'}))
+
+    groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
+    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
 
     args = parser.parse_args()
 
