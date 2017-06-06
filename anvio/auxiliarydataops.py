@@ -110,8 +110,8 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         self.quiet = quiet
 
         # set sample and split names in the auxiliary data file
-        self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys()))
-        self.split_names_in_db = list(self.fp['/data/coverages'].keys())
+        self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys())) if not create_new else set([])
+        self.split_names_in_db = list(self.fp['/data/coverages'].keys()) if not create_new else list()
 
 
     def is_known_split(self, split_name):
