@@ -1179,8 +1179,19 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
+        # this one is a large dictionary with coverage values for every nucletoide positon in every sample for
+        # every split and initialized by the member function `init_split_coverage_values_per_nt_dict` --unless the
+        # member funciton `init_gene_coverages_and_detection_dicts` is not called first, in which case it is
+        # automatically initialized from within that function.
+        self.split_coverage_values_per_nt_dict = None
+
+        # these are initialized by the member function `init_gene_coverages_and_detection_dicts`. but you knew
+        # that already becasue you are a smart ass.
         self.gene_coverages_dict = {}
         self.gene_detection_dict = {}
+
+        # this one becomes the object that gives access to the auxiliary data ops for split coverages
+        # used heavily in interactive interface to show stuff (see bottle routes and all).
         self.split_coverage_values = None
 
         self.auxiliary_profile_data_available = None
@@ -1264,11 +1275,10 @@ class ProfileSuperclass(object):
         self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
-    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
-        """This function will fill process the auxiliary data and fill two dictionaries:
+    def init_split_coverage_values_per_nt_dict(self):
+        """This function will fill process the auxiliary data and fill this dictionary:
 
-            - self.gene_detection_dict
-            - self.gene_coverages_dict
+            - self.split_coverage_values_per_nt_dict
 
            If this is taking forever and you want to kill Meren, everyone will understand you.
         """
@@ -1291,6 +1301,16 @@ class ProfileSuperclass(object):
                               Good luck with your downstream endeavors.")
             return
 
+        self.split_coverage_values_per_nt_dict = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
+
+
+    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
+        """This function will fill process the `self.split_coverage_values_per_nt_dict`and fill two dictionaries:
+
+            - self.gene_detection_dict
+            - self.gene_coverages_dict
+        """
+
         run = terminal.Run(verbose=False)
         progress = terminal.Progress(verbose=False)
         contigs_db = ContigsSuperclass(self.args, r=run, p=progress)
@@ -1311,18 +1331,21 @@ class ProfileSuperclass(object):
                               think about whether we can be less lazy about stuff, and do things better.")
 
         sample_names = self.p_meta['samples']
-        split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
-        self.progress.new('Recovering gene coverage and detection data')
+        if not self.split_coverage_values_per_nt_dict:
+            self.init_split_coverage_values_per_nt_dict()
+
+        self.progress.new('Computing gene coverage and detection data')
+        self.progress.update('...')
 
         num_splits, counter = len(self.split_names), 1
         # go through all the split names
         for split_name in self.split_names:
-            if num_splits > 10 and counter % 10 == 0:
+            if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             # recover split coverage values from the auxiliary data file:
-            split_coverage = split_coverages.get(split_name)
+            split_coverage = self.split_coverage_values_per_nt_dict[split_name]
 
             # identify entry ids for genes in `split_name`
             genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
