@@ -44,6 +44,9 @@ class GenomeStorage(object):
         self.run = run
         self.progress = progress
 
+        self.internal_genomes_dict = None 
+        self.external_genomes_dict = None
+
         self.storage_path = None
         self.genomes_storage = None
         self.genome_names_to_focus = None
@@ -54,34 +57,48 @@ class GenomeStorage(object):
         self.functions_are_available = False
         self.function_annotation_sources = set([])
 
-
-    def load_genomes_descriptions(self, skip_functions=False):
-        """Reads internal and external genome files, populates self.genomes"""
-
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        input_file_for_internal_genomes = A('internal_genomes')
-        input_file_for_external_genomes = A('external_genomes')
+        self.input_file_for_internal_genomes = A('internal_genomes')
+        self.input_file_for_external_genomes = A('external_genomes')
 
-        fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
-        fields_for_external_genomes_input = ['name', 'contigs_db_path']
+        if self.input_file_for_internal_genomes or self.input_file_for_external_genomes:
+            self.read_genome_paths_from_input_files()
 
-        internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if input_file_for_internal_genomes else {}
-        external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if input_file_for_external_genomes else {}
 
-        self.internal_genome_names = list(internal_genomes_dict.keys())
-        self.external_genome_names = list(external_genomes_dict.keys())
+    def sanity_check(self):
+        i, n = list(self.internal_genomes_dict.keys()), list(self.external_genomes_dict.keys())
 
-        if not self.internal_genome_names and not self.external_genome_names:
+        if not i and not n:
             raise ConfigError("You in fact tried to create a genomes storage file without providing any internal or external genome\
                                 descriptions! You got 5 anvi'o points for being awesome, but this is not gonna work since you really\
                                 need to provide at least one of those descriptions :/")
 
-        if len(self.internal_genome_names) + len(self.external_genome_names) != len(set(self.internal_genome_names + self.external_genome_names)):
+        if len(i) + len(n) != len(set(i + n)):
             raise ConfigError("Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
                                 seem to be the case with your input :/")
 
+
+    def read_genome_paths_from_input_files(self):
+        """Reads internal and external genome files, populates self.genomes"""
+
+        fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
+        fields_for_external_genomes_input = ['name', 'contigs_db_path']
+
+        self.internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if self.input_file_for_internal_genomes else {}
+        self.external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if self.input_file_for_external_genomes else {}
+
+
+    def load_genomes_descriptions(self, skip_functions=False):
+        """Load genome descriptions from int/ext genome dictionaries"""
+
+        # start with a sanity check to make sure name are distinct
+        self.sanity_check()
+
+        self.internal_genome_names = list(self.internal_genomes_dict.keys())
+        self.external_genome_names = list(self.external_genomes_dict.keys())
+
         # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
-        for source, input_file in [(external_genomes_dict, input_file_for_external_genomes), (internal_genomes_dict, input_file_for_internal_genomes)]:
+        for source, input_file in [(self.external_genomes_dict, self.input_file_for_external_genomes), (self.internal_genomes_dict, self.input_file_for_internal_genomes)]:
             for genome_name in source:
                 self.genomes[genome_name] = source[genome_name]
                 for db_path_var in ['contigs_db_path', 'profile_db_path']:
