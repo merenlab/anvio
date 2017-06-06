@@ -28,7 +28,7 @@ class SequencesForHMMHits:
         if not isinstance(sources, type(set([]))):
             raise ConfigError("'sources' variable has to be a set instance.")
 
-        self.sources = sources 
+        self.sources = sources
 
         self.hmm_hits = {}
         self.hmm_hits_info = {}
