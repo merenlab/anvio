@@ -41,12 +41,12 @@ import argparse
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
+import anvio.hmmopswrapper as hmmopswrapper
 
 from anvio.dbops import ContigsSuperclass
-from anvio.hmmops import SequencesForHMMHits
-from anvio.genomestorage import GenomeDescriptions 
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -63,46 +63,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def load_regular(args):
-    if args.list_hmm_sources:
-        info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
-        for source in info_table:
-            t = info_table[source]
-            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
-        sys.exit(0)
-
-    if args.list_available_gene_names:
-        info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
-        for source in set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else None or info_table:
-            t = info_table[source]
-            run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
-        sys.exit(0)
-
-    if args.profile_db and not args.collection_name:
-        raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
-
-    if args.profile_db:
-        dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
-        splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-        run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
-    else:
-        contigs_db = ContigsSuperclass(args, r = run, p = progress)
-        contigs_db_name = os.path.basename(args.contigs_db[:-3])
-        splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
-
-    return splits_dict
-
-
-def load_external(args):
-    G = GenomeDescriptions(args)
-    G.load_genomes_descriptions(skip_functions=True)
-    hmm_sources_in_all_genomes = G.get_HMM_sources_common_to_all_genomes()
-
-    # FIXME: prepare splits dict
-
-    return {}
-
-
 def main(args):
     if args.external_genomes and (args.contigs_db or args.profile_db):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
@@ -111,8 +71,6 @@ def main(args):
     if not (args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
-    # let's do some initial checks if the user is interested in concatanating genes. FIXME: these should probably go into the
-    # SequencesForHMMHits class sanity check.
     if args.concatenate_genes:
         if not args.return_best_hit:
             raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
@@ -122,13 +80,41 @@ def main(args):
 
     hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
 
+    # the following if/else block either uses SequencesForHMMHits or the wrapper class 
+    # SequencesForHMMHitsWrapperForMultipleContigs (if there are multiple contigs files)
+    # to get sequences, and construct `splits_dict` depending on the input files. it is
+    # shitty code, and can be improved.
     if args.external_genomes:
-        splits_dict = load_external(args)
-        sys.exit()
-        s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+        s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, hmm_sources) 
+        splits_dict = s.splits_dict
     else:
-        splits_dict = load_regular(args)
-        s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+        if args.list_hmm_sources:
+            info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
+            for source in info_table:
+                t = info_table[source]
+                run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+            sys.exit(0)
+
+        if args.list_available_gene_names:
+            info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
+            for source in set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else None or info_table:
+                t = info_table[source]
+                run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
+            sys.exit(0)
+
+        if args.profile_db and not args.collection_name:
+            raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
+
+        if args.profile_db:
+            dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+            splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+            run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
+        else:
+            contigs_db = ContigsSuperclass(args, r = run, p = progress)
+            contigs_db_name = os.path.basename(args.contigs_db[:-3])
+            splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
+
+        s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
 
