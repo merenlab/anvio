@@ -4,7 +4,6 @@
     HMM related operations.
 """
 
-import os
 import textwrap
 
 import anvio
@@ -22,68 +21,35 @@ progress = terminal.Progress()
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path=None, name_path_tuples_for_contigs_dbs=[], sources=set([]), run=run, progress=progress):
-        # FIXME; THIS GUY SHOULD ACCEPT EXTERNAL GENOMES FILE.
+    def __init__(self, contigs_db_path, sources=set([]), run=run, progress=progress):
         self.run = run
         self.progress = progress
-
-        if not isinstance(name_path_tuples_for_contigs_dbs, type([])):
-            raise ConfigError("name_path_tuples_for_contigs_dbs variable has to be a `list` instance.")
 
         if not isinstance(sources, type(set([]))):
             raise ConfigError("'sources' variable has to be a set instance.")
 
-        if contigs_db_path and name_path_tuples_for_contigs_dbs:
-            raise ConfigError("You either should send a contigs db path, OR a (name, path) tuple list to this class.")
+        self.sources = set([s for s in sources if s])
 
-        if not (contigs_db_path or name_path_tuples_for_contigs_dbs):
-            raise ConfigError("Neither a contigs db path, nor a (name, path) list for contigs found :/")
+        # take care of contigs db related stuff and move on:
+        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+        self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
+        self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
+        self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
+        self.aa_sequences = contigs_db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
+        contigs_db.disconnect()
 
-        # if we only have a single contigs db path, which will be the case 90% of the time,
-        # we convert it to a name/tuple list
-        if contigs_db_path:
-            self.name_path_tuples_for_contigs_dbs = [(os.path.basename(contigs_db_path[:-3]), contigs_db_path)]
+        missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
+        if len(missing_sources):
+            raise ConfigError('Some of the requested sources were not found in the contigs database :/\
+                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
+
+        if len(self.sources):
+            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
+            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
         else:
-            self.name_path_tuples_for_contigs_dbs = name_path_tuples_for_contigs_dbs
-
-        self.sources = sources
-
-        # FIXME CHECK SOURCES
-
-        self.hmm_hits = {}
-        self.hmm_hits_info = {}
-        self.hmm_hits_splits = {}
-        self.contig_sequences = {}
-        self.aa_sequences = {}
-        self.genes_in_contigs = {}
-        self.splits_dict = {}
-
-        for contigs_db_name, contigs_db_path in self.name_path_tuples_for_contigs_dbs:
-            # take care of contigs db related stuff and move on:
-            contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
-            self.hmm_hits[contigs_db_name] = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
-            self.hmm_hits_info[contigs_db_name] = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
-            self.hmm_hits_splits[contigs_db_name] = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-            self.contig_sequences[contigs_db_name] = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-            self.aa_sequences[contigs_db_name] = contigs_db.get_table_as_dict(t.gene_protein_sequences_table_name)
-            self.genes_in_contigs[contigs_db_name] = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
-            self.splits_dict[contigs_db_name] = list(contigs_db.get_table_as_dict(t.splits_info_table_name).keys())
-            contigs_db.disconnect()
-
-            missing_sources = [s for s in self.sources if s not in self.hmm_hits_info[contigs_db_name]]
-            if len(missing_sources):
-                raise ConfigError('Some of the requested sources were not found in the contigs database :/\
-                                    Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
-
-            if len(self.sources):
-                self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
-                self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
-            else:
-                self.sources = list(self.hmm_hits_info[contigs_db_name].keys())
-
-
-    def check_sources(self):
-        pass
+            self.sources = list(self.hmm_hits_info.keys())
 
 
     def get_hmm_hits_in_splits(self, splits_dict):
@@ -403,12 +369,3 @@ class SequencesForHMMHits:
             self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order)
         else:
             self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order)
-
-
-class SequencesForHMMHitsForMultipleContigsDBs(SequencesForHMMHits):
-    def __init__(self, name_path_tuples_for_contigs_dbs, sources=set([]), run=run, progress=progress):
-        SequencesForHMMHits.__init__(self, contigs_db_path=None, name_path_tuples_for_contigs_dbs=name_path_tuples_for_contigs_dbs, sources=sources, run=run, progress=progress)
-
-
-    def get_sequences_dict_for_hmm_hits_in_splits(self, return_amino_acid_sequences=False, return_best_hits=False):
-        pass
