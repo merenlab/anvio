@@ -1148,7 +1148,7 @@ class PanSuperclass(object):
         collection, bins_info, self.protein_clusters_in_pan_db_but_not_binned \
                     = self.collections.get_trimmed_dicts(collection_name, set(self.protein_clusters.keys()))
 
-        # currenlty we are not really doing anything with this one, but we will be filling this up with
+        # currently we are not really doing anything with this one, but we will be filling this up with
         # all sorts of amazing later.
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
@@ -1711,7 +1711,7 @@ class ContigsDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
+            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
                 self.meta[key] = int(self.meta[key])
 
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
