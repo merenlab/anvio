@@ -1148,7 +1148,7 @@ class PanSuperclass(object):
         collection, bins_info, self.protein_clusters_in_pan_db_but_not_binned \
                     = self.collections.get_trimmed_dicts(collection_name, set(self.protein_clusters.keys()))
 
-        # currenlty we are not really doing anything with this one, but we will be filling this up with
+        # currently we are not really doing anything with this one, but we will be filling this up with
         # all sorts of amazing later.
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
