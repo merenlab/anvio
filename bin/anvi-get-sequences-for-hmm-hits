@@ -36,7 +36,6 @@
 
 import os
 import sys
-import copy
 import argparse
 
 import anvio
@@ -46,8 +45,8 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.dbops import ContigsSuperclass
-from anvio.hmmops import SequencesForHMMHits, SequencesForHMMHitsForMultipleContigsDBs
-from anvio.genomestorage import GenomeStorage
+from anvio.hmmops import SequencesForHMMHits
+from anvio.genomestorage import GenomeDescriptions 
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -65,8 +64,6 @@ progress = terminal.Progress()
 
 
 def load_regular(args):
-    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
-
     if args.list_hmm_sources:
         info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
         for source in info_table:
@@ -76,7 +73,7 @@ def load_regular(args):
 
     if args.list_available_gene_names:
         info_table = SequencesForHMMHits(args.contigs_db).hmm_hits_info
-        for source in hmm_sources or info_table:
+        for source in set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else None or info_table:
             t = info_table[source]
             run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
         sys.exit(0)
@@ -90,57 +87,20 @@ def load_regular(args):
         run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
     else:
         contigs_db = ContigsSuperclass(args, r = run, p = progress)
-        splits_dict = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
+        contigs_db_name = os.path.basename(args.contigs_db[:-3])
+        splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
 
-    s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
-    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
-
-    return hmm_sequences_dict
+    return splits_dict
 
 
 def load_external(args):
-    G = GenomeStorage(args)
+    G = GenomeDescriptions(args)
     G.load_genomes_descriptions(skip_functions=True)
-    G.init_external_genomes()
+    hmm_sources_in_all_genomes = G.get_HMM_sources_common_to_all_genomes()
 
-    # learn about hmm sources observed at least one in a genome among all genomes
-    hmm_sources_found = set([])
-    for genome_name in G.genomes:
-        [hmm_sources_found.add(s) for s in G.genomes[genome_name]['hmm_sources_info'].keys()]
+    # FIXME: prepare splits dict
 
-    # find out hmm_sources that occur in all genomes
-    hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
-    for genome_name in G.genomes:
-        [hmm_sources_in_all_genomes.remove(s) for s in hmm_sources_found if s not in G.genomes[genome_name]['hmm_sources_info']]
-
-    if not len(hmm_sources_in_all_genomes):
-        raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
-
-    if args.list_hmm_sources:
-        for source in hmm_sources_in_all_genomes:
-            s = list(G.genomes.values())[0]['hmm_sources_info'][source]
-            run.info_single('%s [type: %s] [num genes: %d]' % (source, s['search_type'], len(s['genes'])))
-        sys.exit(0)
-
-    if args.list_available_gene_names:
-        for source in hmm_sources_in_all_genomes:
-            s = list(G.genomes.values())[0]['hmm_sources_info'][source]
-            run.info_single('%s [type: %s]: %s' % (source, s['search_type'], ', '.join(sorted(s['genes']))), nl_after = 2)
-        sys.exit(0)
-
-    # if the user specified hmm_sources, let's make sure they occur across all genomes
-    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
-    if hmm_sources:
-        hmm_sources_dont_occur_in_all_genomes = [s for s in hmm_sources if s not in hmm_sources_in_all_genomes]
-        if len(hmm_sources_dont_occur_in_all_genomes):
-            raise ConfigError("Not all external genomes has the following HMM sources: '%s'." % (', '.join(hmm_sources_dont_occur_in_all_genomes)))
-    else:
-        hmm_sources = hmm_sources_in_all_genomes
-
-    s = SequencesForHMMHitsForMultipleContigsDBs([(g['name'], g['path']) for g in G.genomes.values()], sources = hmm_sources)
-    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(return_amino_acid_sequences=args.get_aa_sequences)
-
-    return hmm_sequences_dict
+    return {}
 
 
 def main(args):
@@ -160,12 +120,17 @@ def main(args):
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
 
-    if args.external_genomes:
-        hmm_sequences_dict = load_external(args)
-    else:
-        hmm_sequences_dict = load_regular(args)
+    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
 
-    print(hmm_sequences_dict)
+    if args.external_genomes:
+        splits_dict = load_external(args)
+        sys.exit()
+        s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+    else:
+        splits_dict = load_regular(args)
+        s = SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+
+    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
