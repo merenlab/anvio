@@ -184,6 +184,21 @@ D = {
                       calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
                       v2.6.7 or v1.0). An example file can be found via the URL https://goo.gl/TqCWT2"}
                 ),
+    'external-genomes': (
+            ['-e', '--external-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists anvi'o contigs databases. The first item\
+                      in the header line should read 'name', and the second should read 'contigs_db_path'. Each line in the\
+                      file should describe a single entry, where the first column is the name of the genome (or MAG), and\
+                      the second column is the anvi'o contigs database generated for this genome."}
+                ),
+    'internal-genomes': (
+            ['-i', '--internal-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A four-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
+                      'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
+                      can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
+                ),
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,

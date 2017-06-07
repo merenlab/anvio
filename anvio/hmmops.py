@@ -1,11 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes for HMM related operations.
-
-    * HMMSearch takes care of searches using HMM profiles. It simply takes genes.txt and
-    genes.hmm.gz files as input and returns a dictionary back with results. See anvio/data/hmm
-    directory for examples.
+    HMM related operations.
 """
 
 import textwrap
@@ -25,7 +21,7 @@ progress = terminal.Progress()
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), run=run, progress=progress):
+    def __init__(self, contigs_db_path, sources=set([]), init=True, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -33,7 +29,19 @@ class SequencesForHMMHits:
             raise ConfigError("'sources' variable has to be a set instance.")
 
         self.sources = set([s for s in sources if s])
+        self.hmm_hits = {}
+        self.hmm_hits_info ={}
+        self.hmm_hits_splits = {}
+        self.contig_sequences = {}
+        self.aa_sequences = {}
+        self.genes_in_contigs = {}
+        self.splits_in_contigs = {}
 
+        if contigs_db_path:
+            self.init_dicts(contigs_db_path)
+
+
+    def init_dicts(self, contigs_db_path):
         # take care of contigs db related stuff and move on:
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
         self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
@@ -42,18 +50,13 @@ class SequencesForHMMHits:
         self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
         self.aa_sequences = contigs_db.get_table_as_dict(t.gene_protein_sequences_table_name)
         self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
+        self.splits_in_contigs = list(contigs_db.get_table_as_dict(t.splits_info_table_name).keys())
         contigs_db.disconnect()
 
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             raise ConfigError('Some of the requested sources were not found in the contigs database :/\
                                 Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
-
-        if len(self.sources):
-            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
-            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
-        else:
-            self.sources = list(self.hmm_hits_info.keys())
 
 
     def get_hmm_hits_in_splits(self, splits_dict):
@@ -122,6 +125,13 @@ class SequencesForHMMHits:
             `return_best_hit=True` will filter the resulting dictionary to remove weak hits if there are more
             than one hit for a given gene name in a bin for a given hmm source.
         """
+
+        # trim hmm hits if sources
+        if len(self.sources):
+            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
+            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
+        else:
+            self.sources = list(self.hmm_hits_info.keys())
 
         hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
 
