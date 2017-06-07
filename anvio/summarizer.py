@@ -1246,4 +1246,3 @@ class AdHocRunGenerator:
         samples_db_output_path = self.get_output_file_path('samples.db')
         s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
         s.create(self.samples_info_file_path, self.samples_order_file_path)
-
