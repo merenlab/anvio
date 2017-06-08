@@ -680,7 +680,6 @@ class BottleApplication(Bottle):
         skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
         store_tree = request.forms.get('store_tree')
-        print(store_tree)
 
         temp_fasta_file = filesnpaths.get_temp_file_path()
         temp_tree_file = filesnpaths.get_temp_file_path()
