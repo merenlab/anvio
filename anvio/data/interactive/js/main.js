@@ -2271,6 +2271,7 @@ function generatePhylogeneticTree() {
                 $('#samples_order').val(new_phylogeny_name);
                 $('#samples_order').trigger('change');
                 $('#modPhylogeneticTree').modal('hide');
+                drawTree();
             }
         }
     });
