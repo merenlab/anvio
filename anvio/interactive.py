@@ -596,6 +596,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.collections.populate_collections_dict(self.pan_db_path)
 
+        # set title for the pangenome
+        if self.title:
+            self.title = self.title
+        else:
+            self.title = self.p_meta['project_name'].replace('-', ' ').replace('_', ' ')
+
 
     def load_full_mode(self):
         if not self.contigs_db_path:
