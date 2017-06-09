@@ -11,6 +11,7 @@ import tempfile
 
 import anvio
 import anvio.fastalib as u
+import anvio.constants as constants
 
 from anvio.terminal import Run
 from anvio.terminal import Progress
@@ -28,6 +29,10 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
+is_bad_column_name = lambda col: len([char for char in col if char not in allowed_chars])
 
 
 def is_proper_newick(newick_data, dont_raise=False):
@@ -83,9 +88,12 @@ def is_proper_samples_information_file(file_path):
     # quick checks for the header
     columns = f.readline().strip('\n').split('\t')
 
-    if columns[0] != 'samples':
-        raise  SamplesError("The first column of the first row of an anvi'o samples information file\
-                              must say 'samples'.")
+    bad_column_names = [col for col in columns if is_bad_column_name(''.join(col.split('!')[0]))]
+    if bad_column_names:
+        raise SamplesError("Well, anvi'o does not like some of the column names in your samples information file. The\
+                            best practice is to limit the characters that make up the column name to ASCII letters,\
+                            digits, and the underscore character ('_'). No spaces, or funky characters unless they are\
+                            necessary for various data types. Here are the perpetuators: '%s'." % ', '.join(bad_column_names))
 
     if len(columns[1:]) != len(set(columns[1:])):
         raise SamplesError("Every column name in the anvi'o samples information file must be unique (obviously).")
