@@ -93,7 +93,7 @@ def is_proper_samples_information_file(file_path):
         raise SamplesError("Well, anvi'o does not like some of the column names in your samples information file. The\
                             best practice is to limit the characters that make up the column name to ASCII letters,\
                             digits, and the underscore character ('_'). No spaces, or funky characters unless they are\
-                            necessary for various data types. Here are the perpetuators: '%s'." % ', '.join(bad_column_names))
+                            necessary for various data types. Here are the perpetrators: '%s'." % ', '.join(bad_column_names))
 
     if len(columns[1:]) != len(set(columns[1:])):
         raise SamplesError("Every column name in the anvi'o samples information file must be unique (obviously).")
