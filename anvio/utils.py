@@ -1022,7 +1022,7 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
 
     if len([c for c in content if c not in allowed_chars]):
         raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters\
-                            to ASCII letters, digits, and the underscore ('_') character character." % variable_name)
+                            to ASCII letters, digits, and the underscore ('_') character." % variable_name)
 
 
 def check_contig_names(contig_names, dont_raise=False):
