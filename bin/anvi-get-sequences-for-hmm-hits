@@ -43,6 +43,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
 
@@ -120,7 +121,12 @@ def main(args):
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
-    gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+    # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
+    if filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
+        gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
+    else:
+        gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
