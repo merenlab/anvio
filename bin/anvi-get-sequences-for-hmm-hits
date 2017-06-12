@@ -122,7 +122,7 @@ def main(args):
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
-    if filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
+    if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
         gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
     else:
         gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
