@@ -181,7 +181,7 @@ class VariabilitySuper(object):
                 self.progress.end()
                 raise ConfigError('When you declare a collection id, you must also declare a bin name\
                                     (from which the split names of interest will be acquired)')
-            if self.splits_of_interest or self.splits_of_interest_path:
+            if self.collection_name and self.splits_of_interest_path:
                 self.progress.end()
                 raise ConfigError("You declared a collection id and one or more bin names so anvi'o can find out\
                                     splits of interest, but you also have specified informaiton for split names?\
