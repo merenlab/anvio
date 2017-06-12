@@ -644,7 +644,7 @@ class Bin:
                     self.gene_detection_dict[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
 
         # populate coverage values per nucleutide for the bin.
-        if len(self.summary.split_coverage_values_per_nt_dict):
+        if self.summary.split_coverage_values_per_nt_dict:
             for split_name in self.split_names:
                 self.split_coverage_values_per_nt_dict[split_name] = self.summary.split_coverage_values_per_nt_dict[split_name]
 
