@@ -1076,6 +1076,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     # get completeness / contamination estimates
     p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
+    info_dict['hmm_sources_info'] = c.hmm_sources_info
     info_dict['percent_complete'] = p_completion
     info_dict['percent_redundancy'] = p_redundancy
     info_dict['scg_domain'] = domain
@@ -1245,4 +1246,3 @@ class AdHocRunGenerator:
         samples_db_output_path = self.get_output_file_path('samples.db')
         s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
         s.create(self.samples_info_file_path, self.samples_order_file_path)
-

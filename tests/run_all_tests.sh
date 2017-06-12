@@ -212,8 +212,18 @@ anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o $output_dir/ABC_tra
 INFO "Get AA sequences for HMM hits for a bin in a collection"
 anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt --get-aa-sequences
 
+INFO "Generate a new samples information database with a single newick order"
+anvi-gen-samples-info-database --single-order $files/samples-single-order-newick.txt -n A_BASIC_ORDER -o $output_dir/SAMPLES.db
+rm $output_dir/SAMPLES.db
+
 INFO "Generate a samples information database with samples information and samples order"
 anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/samples-order.txt -o $output_dir/SAMPLES.db
+
+INFO "Update an existing samples database with a basic order"
+anvi-update-samples-info-database -s $output_dir/SAMPLES.db --single-order $files/samples-single-order-basic.txt -n ADDITIONAL_BASIC_ORDER
+
+INFO "Update an existing samples database with a newick tree order"
+anvi-update-samples-info-database -s $output_dir/SAMPLES.db --single-order $files/samples-single-order-newick.txt -n ADDITIONAL_NEWICK_ORDER
 
 INFO "Get linkmers from all BAM files for some distant positions"
 anvi-report-linkmers --contigs-and-positions $files/distant_positions_for_linkmers.txt -i $output_dir/*.bam -o $output_dir/distant_linkmers.txt

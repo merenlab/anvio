@@ -485,8 +485,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
-        # profile database:
-        self.collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))[0]
+        # profile database along with other info:
+        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
@@ -497,6 +497,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # FIXME: `clusterings` should become `orderings` thorughout the code.
         self.p_meta['available_clusterings'] = []
         self.p_meta['clusterings'] = {}
+
+        # we just cleared out all orderings the full mode added, let's make sure to add the
+        # user tree if there is one.
+        self.add_user_tree()
 
         # setting up a new view:
         views_for_collection = {}
@@ -519,7 +523,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
-            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name'])
+            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name', 'source'])
 
             views_for_collection[view] = d
 
@@ -548,11 +552,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # get completeness estimate
             p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
+            bin_source = bins_info_dict[bin_id]['source']
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
                 self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
                 self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+                self.views[view]['dict'][bin_id]['source'] = bin_source
 
             current_bin += 1
         self.progress.end()
@@ -589,6 +595,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.default_view = self.p_meta['default_view']
 
         self.collections.populate_collections_dict(self.pan_db_path)
+
+        # set title for the pangenome
+        if self.title:
+            self.title = self.title
+        else:
+            self.title = self.p_meta['project_name'].replace('-', ' ').replace('_', ' ')
 
 
     def load_full_mode(self):
@@ -678,16 +690,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['clusterings'] = self.clusterings
 
-        if self.tree:
-            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-            if not self.p_meta['clusterings']:
-                self.p_meta['default_clustering'] = clustering_id
-                self.p_meta['available_clusterings'] = [clustering_id]
-                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
-                run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
-            else:
-                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
-                run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
+        # add user tree if there is one
+        self.add_user_tree()
 
         # set title
         if self.title:
@@ -709,6 +713,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if not self.state_autoload in self.states_table.states:
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see\
                                           available states by running this program with --show-states flag." % self.state_autoload)
+
+
+    def add_user_tree(self):
+        if self.tree:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+            if not self.p_meta['clusterings']:
+                self.p_meta['default_clustering'] = clustering_id
+                self.p_meta['available_clusterings'] = [clustering_id]
+                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
+                run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
+            else:
+                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+                run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
     def check_names_consistency(self):

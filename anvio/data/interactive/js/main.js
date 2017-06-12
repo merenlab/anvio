@@ -2254,19 +2254,24 @@ function generatePhylogeneticTree() {
         cache: false,
         url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
+            'name': $('#phylogeny_name').val(),
             'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
-            'pcs': pc_list
+            'pcs': pc_list,
+            'store_tree': $('#phylogeny_store_generated_tree').is(':checked'),
         },
         success: function(response) {
             if (response['status'] != 0) {
                 alert(response['message']);
+                showGeneratePhylogeneticTreeWindow();
                 return;
             } else {
                 samples_order_dict[$('#phylogeny_name').val()] = {'basic': '', 'newick': response['tree']};
                 $('#samples_order').append('<option value="'+ new_phylogeny_name + '">' + new_phylogeny_name + '</option>');
                 $('#samples_order').val(new_phylogeny_name);
+                $('#samples_order').trigger('change');
                 $('#modPhylogeneticTree').modal('hide');
+                drawTree();
             }
         }
     });
@@ -2354,6 +2359,10 @@ function loadState()
     {
         state_name = autoload_state;
         autoload_state = null // to prevent load again.
+
+        if ($('#panel-left').is(':visible')) {
+            setTimeout(toggleLeftPanel, 500);
+        }
     }
     else
     {
