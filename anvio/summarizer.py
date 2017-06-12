@@ -632,7 +632,6 @@ class Bin:
         self.gene_coverages = {}
         self.gene_detection = {}
         self.split_coverage_values_per_nt_dict = {}
-        self.collection_profile = {}
 
         # populate gene coverage and detection dictionaries
         if self.summary.gene_coverages_dict:
@@ -647,9 +646,6 @@ class Bin:
         if self.summary.split_coverage_values_per_nt_dict:
             for split_name in self.split_names:
                 self.split_coverage_values_per_nt_dict[split_name] = self.summary.split_coverage_values_per_nt_dict[split_name]
-
-        # make the collection profile data available through the class
-        self.collection_profile = self.summary.collection_profile[self.bin_id]
 
 
     def create(self):
