@@ -113,23 +113,34 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
-    'samples-information': (
-            ['-D', '--samples-information'],
-            {'metavar': 'SAMPLES-INFO',
+    'samples-information-file': (
+            ['-D', '--samples-information-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with information about samples in your dataset. Each row in this\
                       file must correspond to a sample name. Each column must contain a unique attribute.\
                       Please refer to the documentation to learn more about the structure and purpose of\
                       this file."}
                 ),
-    'samples-order': (
-            ['-R', '--samples-order'],
-            {'metavar': 'SAMPLES-ORDER',
+    'samples-order-file': (
+            ['-R', '--samples-order-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
                       the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
                       tree structurei that describes the organization of each sample. Anvi'o will look for a\
                       comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
                       for more info. Also you shouldn't hesitate to try to find the right file format until you get\
                       it working. There are stringent checks on this file, and you will not break anything while trying!."}
+                ),
+    'single-order-file': (
+            ['-r', '--single-order-file'],
+            {'metavar': 'FILE',
+             'help': "A file with a single samples order. It could be a newick formatted tree, or it could be an array.\
+                      But when you use this parameter, you must also use the parameter `--order-name` to give it a name."}
+                ),
+    'order-name': (
+            ['-n', '--order-name'],
+            {'metavar': 'NAME',
+             'help': "A name for your single order. It better be a simple name without fancy characters or space."}
                 ),
     'split-length': (
             ['-L', '--split-length'],
@@ -172,6 +183,21 @@ D = {
                       frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial\
                       calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
                       v2.6.7 or v1.0). An example file can be found via the URL https://goo.gl/TqCWT2"}
+                ),
+    'external-genomes': (
+            ['-e', '--external-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists anvi'o contigs databases. The first item\
+                      in the header line should read 'name', and the second should read 'contigs_db_path'. Each line in the\
+                      file should describe a single entry, where the first column is the name of the genome (or MAG), and\
+                      the second column is the anvi'o contigs database generated for this genome."}
+                ),
+    'internal-genomes': (
+            ['-i', '--internal-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A four-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
+                      'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
+                      can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],

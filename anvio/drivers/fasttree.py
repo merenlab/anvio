@@ -55,6 +55,8 @@ class FastTree:
                     warning = ""
             elif line.startswith("      "):
                 pass
+            elif 'seconds' in line:
+                pass
             else:
                 line = line.split(":")
                 if len(line) == 2:

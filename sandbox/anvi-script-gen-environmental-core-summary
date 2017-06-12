@@ -5,7 +5,7 @@ import sys
 import numpy as numpy
 
 import anvio
-import anvio.panops as panops
+import anvio.genomestorage as genomestorage
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
@@ -35,7 +35,7 @@ def main(args):
 
     progress.new('Initializing stuff')
     progress.update('Loading gneome descriptions')
-    G = panops.GenomeStorage(args)
+    G = genomestorage.GenomeStorage(args)
     G.load_genomes_descriptions(skip_functions=True)
 
     progress.update('Loading files for pangenome')

@@ -1148,7 +1148,7 @@ class PanSuperclass(object):
         collection, bins_info, self.protein_clusters_in_pan_db_but_not_binned \
                     = self.collections.get_trimmed_dicts(collection_name, set(self.protein_clusters.keys()))
 
-        # currenlty we are not really doing anything with this one, but we will be filling this up with
+        # currently we are not really doing anything with this one, but we will be filling this up with
         # all sorts of amazing later.
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
@@ -1179,8 +1179,19 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
+        # this one is a large dictionary with coverage values for every nucletoide positon in every sample for
+        # every split and initialized by the member function `init_split_coverage_values_per_nt_dict` --unless the
+        # member funciton `init_gene_coverages_and_detection_dicts` is not called first, in which case it is
+        # automatically initialized from within that function.
+        self.split_coverage_values_per_nt_dict = None
+
+        # these are initialized by the member function `init_gene_coverages_and_detection_dicts`. but you knew
+        # that already becasue you are a smart ass.
         self.gene_coverages_dict = {}
         self.gene_detection_dict = {}
+
+        # this one becomes the object that gives access to the auxiliary data ops for split coverages
+        # used heavily in interactive interface to show stuff (see bottle routes and all).
         self.split_coverage_values = None
 
         self.auxiliary_profile_data_available = None
@@ -1264,11 +1275,10 @@ class ProfileSuperclass(object):
         self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
 
 
-    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
-        """This function will fill process the auxiliary data and fill two dictionaries:
+    def init_split_coverage_values_per_nt_dict(self):
+        """This function will fill process the auxiliary data and fill this dictionary:
 
-            - self.gene_detection_dict
-            - self.gene_coverages_dict
+            - self.split_coverage_values_per_nt_dict
 
            If this is taking forever and you want to kill Meren, everyone will understand you.
         """
@@ -1291,6 +1301,16 @@ class ProfileSuperclass(object):
                               Good luck with your downstream endeavors.")
             return
 
+        self.split_coverage_values_per_nt_dict = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
+
+
+    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
+        """This function will fill process the `self.split_coverage_values_per_nt_dict`and fill two dictionaries:
+
+            - self.gene_detection_dict
+            - self.gene_coverages_dict
+        """
+
         run = terminal.Run(verbose=False)
         progress = terminal.Progress(verbose=False)
         contigs_db = ContigsSuperclass(self.args, r=run, p=progress)
@@ -1311,18 +1331,21 @@ class ProfileSuperclass(object):
                               think about whether we can be less lazy about stuff, and do things better.")
 
         sample_names = self.p_meta['samples']
-        split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
 
-        self.progress.new('Recovering gene coverage and detection data')
+        if not self.split_coverage_values_per_nt_dict:
+            self.init_split_coverage_values_per_nt_dict()
+
+        self.progress.new('Computing gene coverage and detection data')
+        self.progress.update('...')
 
         num_splits, counter = len(self.split_names), 1
         # go through all the split names
         for split_name in self.split_names:
-            if num_splits > 10 and counter % 10 == 0:
+            if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             # recover split coverage values from the auxiliary data file:
-            split_coverage = split_coverages.get(split_name)
+            split_coverage = self.split_coverage_values_per_nt_dict[split_name]
 
             # identify entry ids for genes in `split_name`
             genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
@@ -1688,7 +1711,7 @@ class ContigsDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called']:
+            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
                 self.meta[key] = int(self.meta[key])
 
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
@@ -2074,16 +2097,11 @@ class SamplesInformationDatabase:
         return self.samples_information_default_layer_order
 
 
-    def create(self, samples_information_path=None, samples_order_path=None):
-        if not samples_information_path and not samples_order_path:
-            raise ConfigError("You must declare at least one of the input files to create a samples information\
-                                database. Neither samples information, nor samples order file has been passed to\
-                                the class :(")
-
+    def create(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
         is_db_ok_to_create(self.db_path, 'samples')
 
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.populate_from_input_files(samples_information_path, samples_order_path)
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
 
         self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
 
@@ -2094,14 +2112,17 @@ class SamplesInformationDatabase:
         self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
 
 
-    def update(self, samples_information_path=None, samples_order_path=None):
-        if not samples_information_path and not samples_order_path:
-            raise ConfigError("You must declare at least one of the input files to update a samples information\
-                                database. Neither samples information, nor samples order file has been passed to\
-                                the class :(")
+    def update(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
+        # first recover what is already in the database
+        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
 
+        # inherit a samples object and update its member dicts:
         samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.populate_from_input_files(samples_information_path, samples_order_path)
+        samples.samples_order_dict = samples_order_dict
+        samples.samples_information_dict = samples_information_dict
+
+        # add what we have now
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
 
         self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=False)
 
@@ -2117,12 +2138,18 @@ class SamplesInformationDatabase:
             self.db.drop_table(t.samples_order_table_name)
             self.db.drop_table(t.samples_attribute_aliases_table_name)
             self.db.drop_table(t.samples_information_table_name)
+
+            self.db.remove_meta_key_value_pair('samples')
+            self.db.remove_meta_key_value_pair('available_orders')
+            self.db.remove_meta_key_value_pair('sample_names_for_order')
+            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
         else:
             # know thyself
             self.db.set_meta_value('db_type', 'samples_information')
 
             # set some useful meta values:
             self.db.set_meta_value('creation_date', time.time())
+
 
         # first create the easy one: the samples_order table.
         available_orders = list(samples.samples_order_dict.keys())
@@ -2143,11 +2170,6 @@ class SamplesInformationDatabase:
         self.db.create_table(t.samples_information_table_name, samples_information_table_structure, samples_information_table_types)
         db_entries = [tuple([sample] + [samples.samples_information_dict[sample][h] for h in samples_information_table_structure[1:]]) for sample in samples.samples_information_dict]
         self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
-
-        if update:
-            self.db.remove_meta_key_value_pair('samples')
-            self.db.remove_meta_key_value_pair('samples_names_for_order')
-            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
 
         # store samples described into the self table
         self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)

@@ -24,7 +24,10 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def remove_short_contigs_from_fasta(args):
+def reformat_FASTA(args):
+    if args.keep_ids and args.exclude_ids:
+        raise ConfigError("You can't use`--exclude-ids and --keep-ids together :/")
+
     filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_file_exists(args.contigs_fasta)
 
@@ -34,12 +37,20 @@ def remove_short_contigs_from_fasta(args):
     if prefix:
         utils.is_this_name_OK_for_database('contig name prefix', prefix)
 
-    if args.input_ids:
-        filesnpaths.is_file_exists(args.input_ids)
-        input_ids = set([l.split('\t')[0].strip() for l in open(args.input_ids, 'rU').readlines()])
-        run.info('Input IDs to remove', '%d found' % len(input_ids))
+    if args.exclude_ids:
+        filesnpaths.is_file_exists(args.exclude_ids)
+        exclude_ids = set([l.split('\t')[0].strip() for l in open(args.exclude_ids, 'rU').readlines()])
+        run.info('Input IDs to remove', '%d found' % len(exclude_ids))
     else:
-        input_ids = set([])
+        exclude_ids = set([])
+
+    if args.keep_ids:
+        filesnpaths.is_file_exists(args.keep_ids)
+        keep_ids = set([l.split('\t')[0].strip() for l in open(args.keep_ids, 'rU').readlines()])
+        run.info('Input IDs to consider', '%d found' % len(keep_ids))
+    else:
+        keep_ids = set([])
+
 
     output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
@@ -54,12 +65,18 @@ def remove_short_contigs_from_fasta(args):
     total_num_contigs_removed = 0
 
     while next(fasta):
+
         l = len(fasta.seq)
 
         total_num_nucleotides += l
         total_num_contigs += 1
 
-        if input_ids and fasta.id.split()[0] in input_ids:
+        if keep_ids and fasta.id.split()[0] not in keep_ids:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
+
+        if exclude_ids and fasta.id.split()[0] in exclude_ids:
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
@@ -106,8 +123,14 @@ if __name__ == '__main__':
                         help="Minimum length of contigs to keep (contigs shorter than this value\
                               will not be included in the output file). The default is %(default)d,\
                               so nothing will be removed if you do not declare a minimum size.")
-    parser.add_argument('-i', '--input-ids', required=False, metavar='TXT FILE',
-                        help="IDs to remove from the FASTA file.")
+    parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
+                        help="IDs to remove from the FASTA file. You cannot provide both\
+                              --keep-ids and --exclude-ids.")
+    parser.add_argument('-I', '--keep-ids', required=False, metavar='TXT FILE',
+                        help="If provided, all IDs not in this file will be excluded from the\
+                              reformatted FASTA file. Any additional filters (such as --min-len)\
+                              will still be applied to the IDs in this file. You cannot provide both\
+                              --exclude-ids and --keep-ids.")
     parser.add_argument('-o', '--output-file', required=True, metavar='FASTA FILE',
                         help="Output file path.")
     parser.add_argument('--simplify-names', default=False, action="store_true",
@@ -122,11 +145,10 @@ if __name__ == '__main__':
                               in case you need to go back to this information later. It is not\
                               mandatory to declare one, but it is a very good idea to have it.")
 
-
     args = parser.parse_args()
 
     try:
-        remove_short_contigs_from_fasta(args)
+        reformat_FASTA(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
