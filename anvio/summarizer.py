@@ -631,7 +631,10 @@ class Bin:
         # make these dicts avilable:
         self.gene_coverages = {}
         self.gene_detection = {}
+        self.split_coverage_values_per_nt_dict = {}
+        self.collection_profile = {}
 
+        # populate gene coverage and detection dictionaries
         if self.summary.gene_coverages_dict:
             for gene_callers_id in self.gene_caller_ids:
                 self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
@@ -639,6 +642,14 @@ class Bin:
                 for sample_name in self.summary.p_meta['samples']:
                     self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
                     self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
+
+        # populate coverage values per nucleutide for the bin.
+        if len(self.summary.split_coverage_values_per_nt_dict):
+            for split_name in self.split_names:
+                self.split_coverage_values_per_nt_dict[split_name] = self.summary.split_coverage_values_per_nt_dict[split_name]
+
+        # make the collection profile data available through the class
+        self.collection_profile = self.summary.collection_profile[self.bin_id]
 
 
     def create(self):
