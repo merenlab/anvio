@@ -1451,7 +1451,7 @@ class ProfileSuperclass(object):
 
                 # finalize averages per bin:
                 for sample_name in samples_template:
-                    averages[sample_name] = numpy.mean(averages[sample_name])
+                    averages[sample_name] = numpy.mean([a or 0 for a in averages[sample_name]])
 
                 self.collection_profile[bin_id][table_name] = averages
 
