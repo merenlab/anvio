@@ -16,12 +16,13 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
+import anvio.variability as variability
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.constants import codon_to_AA
 
 
 __author__ = "A. Murat Eren"
@@ -424,16 +425,15 @@ class VariabilitySuper(object):
             e = utils.insert_consensus_and_departure_fields(self.data[key], engine=self.engine)
 
             # this is where we will make use of the substitution scoring matrices framework.
-            #
-            # FIXME: here is some code to recover from a design flaw. we have competing_nts in the NT table, but we don't
-            #        have competing_aas in the AA table. this should be fixed by removing the competing_nts from the NT
-            #        table, and that information should be recoverd here just like the way we recover this for AAs down
-            #        below (see how `competing_items` is recovered for engine == 'AA').
             if self.engine == 'NT':
                 competing_items = list(e['competing_nts'])
-            if self.engine == 'AA':
-                competing_items = [freqs_list[0][1], freqs_list[1][1] if freqs_list[1][0] else freqs_list[0][1]]
-                e['competing_aas'] = ''.join(sorted(competing_items))
+            elif self.engine == 'AA':
+                aa_frequency_dict = Counter(dict([(aa, e[aa]) for aa in constants.amino_acids]))
+                aa_sorted_frequency_tuples_list = aa_frequency_dict.most_common()
+                competing_items = variability.get_competing_items(e['reference'], aa_sorted_frequency_tuples_list)
+                e['competing_aas'] = ''.join(competing_items)
+            else:
+                raise ConfigError("You cray :( Ain't nobody got an engine for %s." % self.engine)
 
             for m in self.substitution_scoring_matrices:
                 try:
@@ -883,7 +883,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                     # DEALING WITH AAs ##################################################################
                     # here we need to put all the codons into the data table for this sample
-                    for codon in set(codon_to_AA.values()):
+                    for codon in set(constants.codon_to_AA.values()):
                         self.data[next_available_entry_id][codon] = 0
 
                     # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
