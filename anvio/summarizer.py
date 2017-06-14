@@ -420,6 +420,8 @@ class SAAVsAndProteinStructuresSummary:
             filesnpaths.is_file_tab_delimited(self.genes_file_path)
             filesnpaths.is_file_tab_delimited(self.samples_file_path)
 
+        self.run.info('Input source', 'Databases' if init_from_databases else 'Flat files')
+
         if not self.output_directory or not self.input_directory:
             raise ConfigError("You must declare both input and output directories.")
 
@@ -432,6 +434,9 @@ class SAAVsAndProteinStructuresSummary:
 
         self.input_directory = os.path.abspath(self.input_directory)
         filesnpaths.is_file_exists(self.input_directory)
+
+        self.run.info('Input directory', self.input_directory)
+        self.run.info('Output directory', self.output_directory)
 
         self.sanity_checked = True
 
@@ -463,6 +468,16 @@ class SAAVsAndProteinStructuresSummary:
 
         self.perspectives = [os.path.basename(d) for d in glob.glob('%s/04_structure/*' % self.input_directory) if os.path.isdir(d)]
 
+        self.run.info('Num genes', len(self.genes))
+        self.run.info('Num samples', len(self.samples))
+        self.run.info('Sample views', ', '.join(self.views))
+        self.run.info('Gene views', ', '.join(self.perspectives))
+        self.run.info('Images soft linked', self.soft_link_images, mc='red' if self.soft_link_images else 'yellow')
+
+        if(len(self.genes)) > 50:
+            self.run.warning('You seem to have a lot of genes to process. Nice. The output may be quite large,\
+                              just so you know :/')
+
         self.summary['meta'] = {'summary_type': self.summary_type,
                                 'output_directory': self.output_directory,
                                 'images_soft_linked': self.soft_link_images,
@@ -490,10 +505,14 @@ class SAAVsAndProteinStructuresSummary:
 
 
     def populate_samples_per_view_dict(self):
+        self.progress.new('Populating samples per view data')
+        self.progress.update('...')
+
         self.samples_per_view = {}
         self.samples_per_view_with_padding = {}
 
         for view in self.views:
+            self.progress.update('Working on "%s" ...' % view)
             self.samples_per_view[view] = {}
             for sample in self.samples:
                 r = self.samples[sample][view]
@@ -502,6 +521,7 @@ class SAAVsAndProteinStructuresSummary:
 
                 self.samples_per_view[view][r].append(sample)
 
+        self.progress.update('...')
         # FIXME: this is a shitty workaround for the html display.. I'm sure Ozcan could do some
         #        magic with the template to make this unnecessary.
         for view in self.samples_per_view:
@@ -512,6 +532,8 @@ class SAAVsAndProteinStructuresSummary:
                 for i in range(0, max_num_samples - len(self.samples_per_view[view][variable])):
                     self.samples_per_view_with_padding[view][variable].append(None)
 
+        self.progress.end()
+
 
     def populate_by_view_dict(self):
         """This one connects the actual data and images.
@@ -519,9 +541,15 @@ class SAAVsAndProteinStructuresSummary:
            It also copies data into the output directory, or creates soft links.
         """
 
+        self.progress.new('Populating views dict')
+
         image_path_template = "%(input_directory)s/04_structure/%(perspective)s/%(gene)s/%(sample)s/%(sample)s_0001.png"
 
-        for gene in self.genes:
+        gene_names = sorted(self.genes.keys())
+        num_genes = len(gene_names)
+        for index in range(0, num_genes):
+            gene = gene_names[index]
+            self.progress.update("gene '%s' (%d of %d) ..." % (str(gene), index + 1, num_genes))
             self.by_view[gene] = {}
             for view in self.samples_per_view.keys():
                 self.by_view[gene][view] = {}
@@ -542,6 +570,8 @@ class SAAVsAndProteinStructuresSummary:
                                 image_path = new_image_path
 
                             self.by_view[gene][view][perspective][variable][sample] = image_path
+
+        self.progress.end()
 
 
     def process(self):
