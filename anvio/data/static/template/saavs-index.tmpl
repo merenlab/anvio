@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Anvi'o">
+    <base target="_blank">
+
+    <title>Index</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href=".html/css/bootstrap.css" rel="stylesheet">
+    <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href=".html/css/anvio.css" rel="stylesheet">
+</head>
+
+<body>
+    <div style="margin-top:50px"></div>
+
+    {% for gene in data|lookup:"gene_names" %}
+    <section>
+        <div class="container-fluid">
+            <div class="panel panel-info" id="{{ gene }}_panel">
+
+                <div class="panel-heading">
+                    <h1 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#{{ gene }}_panel" href="#collapse-{{ gene }}">{{ gene }}</a> |
+                        <a href=https://www.google.com/search?q={{ data|lookup:"genes"|lookup:gene|lookup:"function" }} target="_blank">{{ data|lookup:"genes"|lookup:gene|lookup:"function" }}</a> |
+                        <a href=http://pfam.xfam.org/family/{{ data|lookup:"genes"|lookup:gene|lookup:"accession" }} target="_blank">{{ data|lookup:"genes"|lookup:gene|lookup:"accession" }}</a>
+                    </h1>
+                </div>
+
+                <div id="collapse-{{ gene }}" class="panel-collapse">
+                    <div class="panel-body">
+
+                        {% for view in data|lookup:"samples_per_view" %}
+                        <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h1 class="panel-title"><a data-toggle="collapse" data-parent="#{{ gene }}-{{ view }}_panel" href="#collapse-{{ gene }}-{{ view }}">{{ view }}</a></h1>
+                        </div>
+
+                        <div id="collapse-{{ gene }}-{{ view }}" class="panel-collapse collapse">
+                        <div class="panel-body">
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                    <tbody>
+                                        {% for variable in data|lookup:"views_and_variables"|lookup:view %}
+                                        <tr>
+                                            <td style="vertical-align: middle; width: 10px;"><b>{{ variable }}</b></td>
+                                            {% for sample in data|lookup:"samples_per_view_with_padding"|lookup:view|lookup:variable %}
+                                                {% if data|lookup:"by_view"|lookup:gene|lookup:view|lookup:variable|lookup:sample %}
+                                                <td style="vertical-align: middle;"><img src="{{ data|lookup:"by_view"|lookup:gene|lookup:view|lookup:variable|lookup:sample }}" width="130px;" /></td>
+                                                {% else %}
+                                                <td style="vertical-align: middle;">&nbsp;</td>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+                        {% endfor %}
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+    {% endfor %}
+
+
+
+    <div style="margin-bottom:200px"></div>
+
+    <!-- jQuery -->
+    <script src="js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="js/bootstrap.min.js"></script>
+
+    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
+    <script src="bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+    $(document).ready(function() {
+        $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+    });
+</script>
+</body>
+</html>
