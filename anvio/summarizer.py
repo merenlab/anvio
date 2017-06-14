@@ -29,6 +29,7 @@ import sys
 import gzip
 import numpy
 import shutil
+import hashlib
 import mistune
 import textwrap
 
@@ -356,6 +357,161 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         output_file_obj.close()
 
         self.progress.end()
+
+
+class SAAVsAndProteinStructuresSummary:
+    """Creates an über dictionary of 'summary' for anvi'o profiles."""
+    def __init__(self, args=None, r=run, p=progress):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+
+        self.summary = {}
+        self.summary_type = 'saav'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.samples_db_path = A('samples_information_db')
+        self.input_directory = A('input_dir')
+        self.output_directory = A('output_dir')
+
+        self.genes_file_path = A('genes')
+        self.samples_file_path = A('samples')
+
+        self.genes = None
+        self.samples = None
+        self.views = None
+
+        self.initialized = False
+        self.sanity_checked = False
+
+
+    def sanity_check(self):
+        init_from_databases = False
+        if self.profile_db_path or self.contigs_db_path or self.samples_db_path:
+            init_from_databases = True
+
+        if init_from_databases:
+            if not self.profile_db_path or not self.contigs_db_path or not self.samples_db_path:
+                raise ConfigError("If you want to initialize from databases, you must provide all of them: profile db\
+                                   contigs db, and samples db.")
+
+            if self.genes_file_path or self.samples_file_path:
+                raise ConfigError("Well, if you want initialize from databases, you should not provide any genes or\
+                                   samples files.")
+        else:
+            if not self.genes_file_path or not self.samples_file_path:
+                raise ConfigError("If you want to initialize from files, you must provide both genes file and samples\
+                                   file.")
+
+            filesnpaths.is_file_tab_delimited(self.genes_file_path)
+            filesnpaths.is_file_tab_delimited(self.samples_file_path)
+
+        if not self.output_directory or not self.input_directory:
+            raise ConfigError("You must declare both input and output directories.")
+
+        if self.output_directory == self.input_directory:
+            raise ConfigError("The input and the output directories can't be the same.")
+
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'images'))
+
+        self.input_directory = os.path.abspath(self.input_directory)
+        filesnpaths.is_file_exists(self.input_directory)
+
+        self.sanity_checked = True
+
+
+    def init_from_databases(self):
+        raise ConfigError("Initializing from databases is not yet impemented.")
+
+        DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
+
+        # now recover these:
+        self.genes = {}
+        self.samples = {}
+        self.views = {}
+
+
+    def init_from_files(self):
+        self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
+        self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
+        self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
+
+    def init(self):
+        self.sanity_check()
+
+        if self.profile_db_path:
+            self.init_from_databases()
+        else:
+            self.init_from_files()
+
+        self.summary['meta'] = {'summary_type': self.summary_type,
+                                'output_directory': self.output_directory}
+
+        # FIXME: the garbage down below is quite disturbing and must be taken care of.
+        samples_per_view = {}
+        for view in self.views:
+            samples_per_view[view] = {}
+            for sample in self.samples:
+                r = self.samples[sample][view]
+                if r not in samples_per_view[view]:
+                    samples_per_view[view][r] = []
+
+                samples_per_view[view][r].append(sample)
+
+        # this is a shitty workaround for the html display
+        samples_per_view_with_padding = {}
+        for view in samples_per_view:
+            samples_per_view_with_padding[view] = {}
+            max_num_samples = max([len(samples_per_view[view][r]) for r in samples_per_view[view]])
+            for variable in samples_per_view[view]:
+                samples_per_view_with_padding[view][variable] = sorted(samples_per_view[view][variable])
+                for i in range(0, max_num_samples - len(samples_per_view[view][variable])):
+                    samples_per_view_with_padding[view][variable].append(None)
+
+        # 04_structure_figures/1248/ANE_004_05M/ANE_004_05M0001.png
+        by_view = {}
+        for gene in self.genes:
+            by_view[gene] = {}
+            for view in samples_per_view.keys():
+                by_view[gene][view] = {}
+                for variable in sorted(samples_per_view[view].keys()):
+                    by_view[gene][view][variable] = {}
+                    for sample in samples_per_view[view][variable]:
+                        image_path = "04_structure_figures/%s/%s/%s0001.png" % (str(gene), sample, sample)
+                        new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+                        shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+                        by_view[gene][view][variable][sample] = new_image_path
+
+        views_and_variables = {}
+        for view in samples_per_view:
+            views_and_variables[view] = sorted(samples_per_view[view].keys())
+        
+        self.summary['data'] = {'gene_names': sorted(list(self.genes.keys())),
+                                'samples': self.samples,
+                                'by_view': by_view,
+                                'views_and_variables': views_and_variables,
+                                'views': sorted(samples_per_view.keys()),
+                                'genes': self.genes,
+                                'samples_per_view': samples_per_view,
+                                'samples_per_view_with_padding': samples_per_view_with_padding}
+
+        self.initialized = True
+
+
+    def process(self):
+        if not self.initialized:
+            self.init()
+
+        if not self.sanity_checked:
+            self.sanity_check()
+
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=False)
 
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
