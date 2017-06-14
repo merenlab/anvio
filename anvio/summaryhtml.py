@@ -74,7 +74,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan']:
+        if self.summary_type not in ['profile', 'pan', 'saav']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -99,7 +99,9 @@ class SummaryHTMLOutput:
     def render(self, quick=False):
         self.progress.update("Processing the template for type '%s' ..." % self.summary_type)
 
-        if self.summary_type == 'pan':
+        if self.summary_type == 'saav':
+                rendered = render_to_string('saavs-index.tmpl', self.summary_dict)
+        elif self.summary_type == 'pan':
             rendered = render_to_string('pan-index.tmpl', self.summary_dict)
         elif self.summary_type == 'profile':
             if quick:
