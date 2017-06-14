@@ -376,13 +376,20 @@ class SAAVsAndProteinStructuresSummary:
         self.samples_db_path = A('samples_information_db')
         self.input_directory = A('input_dir')
         self.output_directory = A('output_dir')
+        self.soft_link_images = A('soft_link_images')
 
         self.genes_file_path = A('genes')
         self.samples_file_path = A('samples')
 
+        # dicts that will be recovered from input files
         self.genes = None
         self.samples = None
         self.views = None
+
+        # dicts that will be populated by the init function
+        self.by_view = {}
+        self.samples_per_view = {}
+        self.samples_per_view_with_padding = {}
 
         self.initialized = False
         self.sanity_checked = False
@@ -452,57 +459,79 @@ class SAAVsAndProteinStructuresSummary:
 
         self.summary['meta'] = {'summary_type': self.summary_type,
                                 'output_directory': self.output_directory,
+                                'images_soft_linked': self.soft_link_images,
                                 'anvio_version': anvio.__version__}
 
-        # FIXME: the garbage down below is quite disturbing and must be taken care of.
-        samples_per_view = {}
-        for view in self.views:
-            samples_per_view[view] = {}
-            for sample in self.samples:
-                r = self.samples[sample][view]
-                if r not in samples_per_view[view]:
-                    samples_per_view[view][r] = []
-
-                samples_per_view[view][r].append(sample)
-
-        # this is a shitty workaround for the html display
-        samples_per_view_with_padding = {}
-        for view in samples_per_view:
-            samples_per_view_with_padding[view] = {}
-            max_num_samples = max([len(samples_per_view[view][r]) for r in samples_per_view[view]])
-            for variable in samples_per_view[view]:
-                samples_per_view_with_padding[view][variable] = sorted(samples_per_view[view][variable])
-                for i in range(0, max_num_samples - len(samples_per_view[view][variable])):
-                    samples_per_view_with_padding[view][variable].append(None)
-
-        # 04_structure_figures/1248/ANE_004_05M/ANE_004_05M0001.png
-        by_view = {}
-        for gene in self.genes:
-            by_view[gene] = {}
-            for view in samples_per_view.keys():
-                by_view[gene][view] = {}
-                for variable in sorted(samples_per_view[view].keys()):
-                    by_view[gene][view][variable] = {}
-                    for sample in samples_per_view[view][variable]:
-                        image_path = "04_structure_figures/%s/%s/%s0001.png" % (str(gene), sample, sample)
-                        new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
-                        shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
-                        by_view[gene][view][variable][sample] = new_image_path
+        # populate dicts
+        self.populate_samples_per_view_dict()
+        self.populate_by_view_dict()
 
         views_and_variables = {}
-        for view in samples_per_view:
-            views_and_variables[view] = sorted(samples_per_view[view].keys())
+        for view in self.samples_per_view:
+            views_and_variables[view] = sorted(self.samples_per_view[view].keys())
         
         self.summary['data'] = {'gene_names': sorted(list(self.genes.keys())),
                                 'samples': self.samples,
-                                'by_view': by_view,
+                                'by_view': self.by_view,
                                 'views_and_variables': views_and_variables,
-                                'views': sorted(samples_per_view.keys()),
+                                'views': sorted(self.samples_per_view.keys()),
                                 'genes': self.genes,
-                                'samples_per_view': samples_per_view,
-                                'samples_per_view_with_padding': samples_per_view_with_padding}
+                                'samples_per_view': self.samples_per_view,
+                                'samples_per_view_with_padding': self.samples_per_view_with_padding}
 
         self.initialized = True
+
+
+    def populate_samples_per_view_dict(self):
+        self.samples_per_view = {}
+        self.samples_per_view_with_padding = {}
+
+        for view in self.views:
+            self.samples_per_view[view] = {}
+            for sample in self.samples:
+                r = self.samples[sample][view]
+                if r not in self.samples_per_view[view]:
+                    self.samples_per_view[view][r] = []
+
+                self.samples_per_view[view][r].append(sample)
+
+        # FIXME: this is a shitty workaround for the html display.. I'm sure Ozcan could do some
+        #        magic with the template to make this unnecessary.
+        for view in self.samples_per_view:
+            self.samples_per_view_with_padding[view] = {}
+            max_num_samples = max([len(self.samples_per_view[view][r]) for r in self.samples_per_view[view]])
+            for variable in self.samples_per_view[view]:
+                self.samples_per_view_with_padding[view][variable] = sorted(self.samples_per_view[view][variable])
+                for i in range(0, max_num_samples - len(self.samples_per_view[view][variable])):
+                    self.samples_per_view_with_padding[view][variable].append(None)
+
+
+    def populate_by_view_dict(self):
+        """This one connects the actual data and images.
+        
+           It also copies data into the output directory, or creates soft links.
+        """
+
+        image_path_template = "%(input_directory)s/04_structure_figures/%(gene)s/%(sample)s/%(sample)s0001.png"
+
+        for gene in self.genes:
+            self.by_view[gene] = {}
+            for view in self.samples_per_view.keys():
+                self.by_view[gene][view] = {}
+                for variable in sorted(self.samples_per_view[view].keys()):
+                    self.by_view[gene][view][variable] = {}
+                    for sample in self.samples_per_view[view][variable]:
+                        image_path = image_path_template % {'input_directory': self.input_directory,
+                                                            'gene': str(gene),
+                                                            'sample': sample}
+
+                        # if user wants a fully populated output directory, update the image_path variable
+                        if not self.soft_link_images:
+                            new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+                            shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+                            image_path = new_image_path
+
+                        self.by_view[gene][view][variable][sample] = image_path
 
 
     def process(self):

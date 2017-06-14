@@ -55,7 +55,7 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins across {{ data|lookup:"samples"|length }} samples.
+                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins across {{ data|lookup:"samples"|length }} samples. {% if meta|lookup:"images_soft_linked" %}<b>Warning</b>: The images in this output are soft linked, which means the output directory will only work on this computer.{% endif %}
             </div>
         </div>
     </header>
