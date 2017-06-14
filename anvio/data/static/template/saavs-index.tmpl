@@ -55,7 +55,8 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins across {{ data|lookup:"samples"|length }} samples. {% if meta|lookup:"images_soft_linked" %}<b>Warning</b>: The images in this output are soft linked, which means the output directory will only work on this computer.{% endif %}
+                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins
+                across {{ data|lookup:"samples"|length }} samples with {{ data|lookup:"perspectives"|length }} perspective(s). {% if meta|lookup:"images_soft_linked" %}<b>Warning</b>: The images in this output are soft linked, which means the output directory will only work on this computer.{% endif %}
             </div>
         </div>
     </header>
@@ -87,22 +88,46 @@
                         <div class="panel-body">
                         <div class="panel panel-default">
                             <div class="panel-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
-                                    <tbody>
-                                        {% for variable in data|lookup:"views_and_variables"|lookup:view %}
-                                        <tr>
-                                            <td style="vertical-align: middle; width: 10px;"><b>{{ variable }}</b></td>
-                                            {% for sample in data|lookup:"samples_per_view_with_padding"|lookup:view|lookup:variable %}
-                                                {% if data|lookup:"by_view"|lookup:gene|lookup:view|lookup:variable|lookup:sample %}
-                                                <td style="vertical-align: middle;"><img src="{{ data|lookup:"by_view"|lookup:gene|lookup:view|lookup:variable|lookup:sample }}" width="130px;" /></td>
-                                                {% else %}
-                                                <td style="vertical-align: middle;">&nbsp;</td>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+
+                                <div role="tabpanel" style="margin: 10px;">
+                                    <!-- Nav tabs -->
+                                    <ul class="nav nav-tabs" role="tablist">
+                                    {% for perspective in data|lookup:'perspectives' %}
+                                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ perspective }}" aria-controls="{{ perspective }}" role="tab" data-toggle="tab">{{ perspective }}</a></li>
+                                    {% endfor %}
+                                    </ul>
+
+                                    <!-- TABS -->
+                                    <div class="tab-content">
+                                    {% for perspective in data|lookup:"perspectives" %}
+                                    <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ perspective }}">
+                                        <table class="table table-striped sortable" id="tblGrid_bin">
+                                            <tbody>
+                                                {% for variable in data|lookup:"views_and_variables"|lookup:view %}
+                                                <tr>
+                                                    <td style="vertical-align: middle; width: 10px;"><b>{{ variable }}</b></td>
+                                                    {% for sample in data|lookup:"samples_per_view_with_padding"|lookup:view|lookup:variable %}
+                                                        {% if data|lookup:"by_view"|lookup:gene|lookup:view|lookup:perspective|lookup:variable|lookup:sample %}
+                                                        <td style="vertical-align: middle;"><img src="{{ data|lookup:"by_view"|lookup:gene|lookup:view|lookup:perspective|lookup:variable|lookup:sample }}" width="130px;" /></td>
+                                                        {% else %}
+                                                        <td style="vertical-align: middle;">&nbsp;</td>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+
+                                    </div>
+                                    {% endfor %}
+                                    </div>
+                                </div>
+
+
+
+
+
+
                             </div>
                         </div>
                         </div>
