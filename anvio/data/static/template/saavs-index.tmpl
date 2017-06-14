@@ -93,14 +93,14 @@
                                     <!-- Nav tabs -->
                                     <ul class="nav nav-tabs" role="tablist">
                                     {% for perspective in data|lookup:'perspectives' %}
-                                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ perspective }}" aria-controls="{{ perspective }}" role="tab" data-toggle="tab">{{ perspective }}</a></li>
+                                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ gene }}-{{ view }}-{{ perspective }}" aria-controls="{{ gene }}-{{ view }}-{{ perspective }}" role="tab" data-toggle="tab">{{ perspective }}</a></li>
                                     {% endfor %}
                                     </ul>
 
                                     <!-- TABS -->
                                     <div class="tab-content">
                                     {% for perspective in data|lookup:"perspectives" %}
-                                    <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ perspective }}">
+                                    <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ gene }}-{{ view }}-{{ perspective }}">
                                         <table class="table table-striped sortable" id="tblGrid_bin">
                                             <tbody>
                                                 {% for variable in data|lookup:"views_and_variables"|lookup:view %}
