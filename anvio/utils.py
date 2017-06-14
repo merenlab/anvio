@@ -874,7 +874,7 @@ def insert_consensus_and_departure_fields(e, engine='NT'):
     if engine == 'NT':
         freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
     elif engine == 'AA':
-        aas = set(codon_to_AA.values())
+        aas = set(constants.codon_to_AA.values())
         freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
 
     frequency_of_consensus = freqs_list[0][0]
