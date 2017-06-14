@@ -451,7 +451,8 @@ class SAAVsAndProteinStructuresSummary:
             self.init_from_files()
 
         self.summary['meta'] = {'summary_type': self.summary_type,
-                                'output_directory': self.output_directory}
+                                'output_directory': self.output_directory,
+                                'anvio_version': anvio.__version__}
 
         # FIXME: the garbage down below is quite disturbing and must be taken care of.
         samples_per_view = {}
