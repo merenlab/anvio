@@ -9,7 +9,7 @@
     <meta name="author" content="Anvi'o">
     <base target="_blank">
 
-    <title>Index</title>
+    <title>SAAVs and Protein Structures</title>
 
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
@@ -20,7 +20,46 @@
 </head>
 
 <body>
-    <div style="margin-top:50px"></div>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a href="http://merenlab.org/projects/anvio">Anvi'o Project Page</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio">Anvi'o Repository</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/issues">Report an Issue</a>
+                    </li>
+                    <li>
+                        <a href="http://merenlab.org/people">Contact</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+
+    <header class="image-bg-fluid-height">
+        <div class="header-summary-div">
+            <div style="width: 200px;">
+                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+            </div>
+            <div class="header-text">
+                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins across {{ data|lookup:"samples"|length }} samples.
+            </div>
+        </div>
+    </header>
+
 
     {% for gene in data|lookup:"gene_names" %}
     <section>
