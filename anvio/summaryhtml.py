@@ -85,7 +85,7 @@ class SummaryHTMLOutput:
         self.progress.new('Rendering')
         index_html = self.render(quick)
 
-        self.run.info('HTML Output', index_html)
+        self.run.info('HTML Output', index_html, nl_before=1, nl_after=1, mc='green')
 
         return index_html
 
