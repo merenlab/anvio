@@ -27,6 +27,7 @@ import anvio.summarizer as summarizer
 import os
 import sys
 import gzip
+import glob
 import numpy
 import shutil
 import hashlib
@@ -386,6 +387,9 @@ class SAAVsAndProteinStructuresSummary:
         self.samples = None
         self.views = None
 
+        # dicts that will be recovered by traversing the input directory
+        self.perspectives = {}
+
         # dicts that will be populated by the init function
         self.by_view = {}
         self.samples_per_view = {}
@@ -457,6 +461,8 @@ class SAAVsAndProteinStructuresSummary:
         else:
             self.init_from_files()
 
+        self.perspectives = [os.path.basename(d) for d in glob.glob('%s/04_structure/*' % self.input_directory) if os.path.isdir(d)]
+
         self.summary['meta'] = {'summary_type': self.summary_type,
                                 'output_directory': self.output_directory,
                                 'images_soft_linked': self.soft_link_images,
@@ -469,12 +475,13 @@ class SAAVsAndProteinStructuresSummary:
         views_and_variables = {}
         for view in self.samples_per_view:
             views_and_variables[view] = sorted(self.samples_per_view[view].keys())
-        
+
         self.summary['data'] = {'gene_names': sorted(list(self.genes.keys())),
                                 'samples': self.samples,
                                 'by_view': self.by_view,
                                 'views_and_variables': views_and_variables,
                                 'views': sorted(self.samples_per_view.keys()),
+                                'perspectives': sorted(self.perspectives),
                                 'genes': self.genes,
                                 'samples_per_view': self.samples_per_view,
                                 'samples_per_view_with_padding': self.samples_per_view_with_padding}
@@ -512,26 +519,29 @@ class SAAVsAndProteinStructuresSummary:
            It also copies data into the output directory, or creates soft links.
         """
 
-        image_path_template = "%(input_directory)s/04_structure_figures/%(gene)s/%(sample)s/%(sample)s0001.png"
+        image_path_template = "%(input_directory)s/04_structure/%(perspective)s/%(gene)s/%(sample)s/%(sample)s_0001.png"
 
         for gene in self.genes:
             self.by_view[gene] = {}
             for view in self.samples_per_view.keys():
                 self.by_view[gene][view] = {}
-                for variable in sorted(self.samples_per_view[view].keys()):
-                    self.by_view[gene][view][variable] = {}
-                    for sample in self.samples_per_view[view][variable]:
-                        image_path = image_path_template % {'input_directory': self.input_directory,
-                                                            'gene': str(gene),
-                                                            'sample': sample}
+                for perspective in self.perspectives:
+                    self.by_view[gene][view][perspective] = {}
+                    for variable in sorted(self.samples_per_view[view].keys()):
+                        self.by_view[gene][view][perspective][variable] = {}
+                        for sample in self.samples_per_view[view][variable]:
+                            image_path = image_path_template % {'input_directory': self.input_directory,
+                                                                'gene': str(gene),
+                                                                'sample': sample,
+                                                                'perspective': perspective}
 
-                        # if user wants a fully populated output directory, update the image_path variable
-                        if not self.soft_link_images:
-                            new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
-                            shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
-                            image_path = new_image_path
+                            # if user wants a fully populated output directory, update the image_path variable
+                            if not self.soft_link_images:
+                                new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+                                shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+                                image_path = new_image_path
 
-                        self.by_view[gene][view][variable][sample] = image_path
+                            self.by_view[gene][view][perspective][variable][sample] = image_path
 
 
     def process(self):
