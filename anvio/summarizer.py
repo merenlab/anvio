@@ -393,7 +393,6 @@ class SAAVsAndProteinStructuresSummary:
         # dicts that will be populated by the init function
         self.by_view = {}
         self.samples_per_view = {}
-        self.samples_per_view_with_padding = {}
 
         self.initialized = False
         self.sanity_checked = False
@@ -498,8 +497,7 @@ class SAAVsAndProteinStructuresSummary:
                                 'views': sorted(self.samples_per_view.keys()),
                                 'perspectives': sorted(self.perspectives),
                                 'genes': self.genes,
-                                'samples_per_view': self.samples_per_view,
-                                'samples_per_view_with_padding': self.samples_per_view_with_padding}
+                                'samples_per_view': self.samples_per_view}
 
         self.initialized = True
 
@@ -509,7 +507,6 @@ class SAAVsAndProteinStructuresSummary:
         self.progress.update('...')
 
         self.samples_per_view = {}
-        self.samples_per_view_with_padding = {}
 
         for view in self.views:
             self.progress.update('Working on "%s" ...' % view)
@@ -520,20 +517,6 @@ class SAAVsAndProteinStructuresSummary:
                     self.samples_per_view[view][r] = []
 
                 self.samples_per_view[view][r].append(sample)
-
-        self.progress.update('...')
-        # FIXME: this is a shitty workaround for the html display.. I'm sure Ozcan could do some
-        #        magic with the template to make this unnecessary.
-        for view in self.samples_per_view:
-            self.samples_per_view_with_padding[view] = {}
-            max_num_samples = max([len(self.samples_per_view[view][r]) for r in self.samples_per_view[view]])
-            for variable in self.samples_per_view[view]:
-                self.samples_per_view_with_padding[view][variable] = sorted(self.samples_per_view[view][variable])
-                for i in range(0, max_num_samples - len(self.samples_per_view[view][variable])):
-                    self.samples_per_view_with_padding[view][variable].append(None)
-
-        self.progress.end()
-
 
     def populate_by_view_dict(self):
         """This one connects the actual data and images.
