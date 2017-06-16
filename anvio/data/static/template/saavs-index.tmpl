@@ -48,7 +48,6 @@
         <!-- /.container -->
     </nav>
 
-
     <header class="image-bg-fluid-height">
         <div class="header-summary-div">
             <div style="width: 200px;">
@@ -62,84 +61,9 @@
     </header>
 
 
-    {% for gene in data|lookup:"gene_names" %}
-    <section>
-        <div class="container-fluid">
-            <div class="panel panel-info" id="{{ gene }}_panel">
+    <div id="content">
 
-                <div class="panel-heading">
-                    <h1 class="panel-title">
-                        <a data-toggle="collapse" data-parent="#{{ gene }}_panel" href="#collapse-{{ gene }}">{{ gene }}</a> |
-                        <a href=https://www.google.com/search?q={{ data|lookup:"genes"|lookup:gene|lookup:"function" }} target="_blank">{{ data|lookup:"genes"|lookup:gene|lookup:"function" }}</a> |
-                        <a href=http://pfam.xfam.org/family/{{ data|lookup:"genes"|lookup:gene|lookup:"accession" }} target="_blank">{{ data|lookup:"genes"|lookup:gene|lookup:"accession" }}</a>
-                    </h1>
-                </div>
-
-                <div id="collapse-{{ gene }}" class="panel-collapse">
-                    <div class="panel-body">
-
-                        {% for view in data|lookup:"samples_per_view" %}
-                        <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h1 class="panel-title"><a data-toggle="collapse" data-parent="#{{ gene }}-{{ view }}_panel" href="#collapse-{{ gene }}-{{ view }}">{{ view }}</a></h1>
-                        </div>
-
-                        <div id="collapse-{{ gene }}-{{ view }}" class="panel-collapse collapse">
-                        <div class="panel-body">
-                        <div class="panel panel-default">
-                            <div class="panel-body">
-
-                                <div role="tabpanel" style="margin: 10px;">
-                                    <!-- Nav tabs -->
-                                    <ul class="nav nav-tabs" role="tablist">
-                                    {% for perspective in data|lookup:'perspectives' %}
-                                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ gene }}-{{ view }}-{{ perspective }}" aria-controls="{{ gene }}-{{ view }}-{{ perspective }}" role="tab" data-toggle="tab">{{ perspective }}</a></li>
-                                    {% endfor %}
-                                    </ul>
-
-                                    <!-- TABS -->
-                                    <div class="tab-content">
-                                    {% for perspective in data|lookup:"perspectives" %}
-                                    <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ gene }}-{{ view }}-{{ perspective }}">
-                                        <table class="table table-striped sortable" id="tblGrid_bin">
-                                            <tbody>
-                                                {% for variable in data|lookup:"views_and_variables"|lookup:view %}
-                                                <tr>
-                                                    <td style="vertical-align: middle; width: 10px;"><b>{{ variable }}</b></td>
-                                                    {% for sample in data|lookup:"samples_per_view_with_padding"|lookup:view|lookup:variable %}
-                                                        {% if data|lookup:"by_view"|lookup:gene|lookup:view|lookup:perspective|lookup:variable|lookup:sample %}
-                                                        <td style="vertical-align: middle;"><img src="{{ data|lookup:"by_view"|lookup:gene|lookup:view|lookup:perspective|lookup:variable|lookup:sample }}" width="130px;" /></td>
-                                                        {% else %}
-                                                        <td style="vertical-align: middle;">&nbsp;</td>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-
-                                    </div>
-                                    {% endfor %}
-                                    </div>
-                                </div>
-
-
-                            </div>
-                        </div>
-                        </div>
-                        </div>
-                        </div>
-                        {% endfor %}
-
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-    {% endfor %}
-
+    </div>
 
 
     <div style="margin-bottom:200px"></div>
@@ -155,7 +79,88 @@
 
     <!-- Activate tooltips... -->
     <script type="text/javascript">
+
+    var saav_data = {{ data|convert_to_json|safe }};
+
+    function generate_panel_content(element, gene) {
+        var parent = $(element).closest('.panel');
+
+        if ($(element).attr('has-content') != 'true') {
+            $(element).attr('has-content', 'true'); 
+            var content = `<div id="collapse-${gene}" class="panel-collapse">
+                           <div class="panel-body">
+                            ${ Object.keys(saav_data["samples_per_view"]).map(view =>`
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">${view}</a></h1>
+                                </div>
+                                <div id="collapse-${gene}-${view}" class="panel-collapse collapse">
+                                    <div class="panel-body">
+                                        <div class="panel panel-default">
+                                            <div class="panel-body">
+                                                <div role="tabpanel" style="margin: 10px;">
+                                                    <!-- Nav tabs -->
+                                                    <ul class="nav nav-tabs" role="tablist">
+                                                        ${ saav_data["perspectives"].map((perspective, index) =>`
+                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">${perspective}</a></li>`).join('')}
+                                                    </ul>
+                                                    <!-- TABS -->
+                                                    <div class="tab-content">
+                                                        ${ saav_data["perspectives"].map((perspective, index) =>`
+                                                        <div role="tabpanel" class="tab-pane fade${ (index==0) ? ' in active' : '' }" id="${gene}-${view}-${perspective}">
+                                                            <table class="table table-striped sortable" id="tblGrid_bin">
+                                                                <tbody>
+                                                                     ${ saav_data["views_and_variables"][view].map(variable =>`
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
+                                                                        <td>
+                                                                            ${ saav_data["samples_per_view"][view][variable].map(sample =>`
+                                                                            <a href="${saav_data["by_view"][gene][view][perspective][variable][sample]}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable][sample]}" width="130px;" /></a>
+                                                                            `).join('')}
+                                                                        </td>
+                                                                    </tr>
+                                                                    `).join('')}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`).join('')}
+                        </div>
+                        </div>`;
+
+            $(parent).append(content);
+        }
+    }
+
     $(document).ready(function() {
+        saav_data['gene_names'].forEach(function(gene) {
+
+            var func = saav_data['genes'][gene]['function'];
+            var accession = saav_data['genes'][gene]['accession'];
+
+            var content = `<section>
+                            <div class="container-fluid">
+                            <div class="panel panel-info" id="${gene}_panel">
+                                <div class="panel-heading">
+                                    <h1 class="panel-title">
+                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">${gene}</a> |
+                                        <a href="https://www.google.com/search?q=${func}" target="_blank">${func}</a> |
+                                        <a href="http://pfam.xfam.org/family/${accession}" target="_blank">${accession}</a>
+                                    </h1>
+                                </div>
+                            </div>
+                            </div>
+                          </section>`;
+
+            $('#content').append(content);
+        });
+
         $("body").tooltip({ selector: '[data-toggle=tooltip]' });
     });
 </script>
