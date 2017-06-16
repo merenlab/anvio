@@ -518,6 +518,8 @@ class SAAVsAndProteinStructuresSummary:
 
                 self.samples_per_view[view][r].append(sample)
 
+        self.progress.end()
+
     def populate_by_view_dict(self):
         """This one connects the actual data and images.
         
