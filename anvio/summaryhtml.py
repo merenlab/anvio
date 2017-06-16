@@ -3,6 +3,7 @@
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os
+import json
 import shutil
 
 import anvio
@@ -159,3 +160,7 @@ def pretty(n):
         return pp(int(n))
     except ValueError:
         return n
+
+@register.filter(name='convert_to_json')
+def convert_to_json(obj):
+    return json.dumps(obj)
