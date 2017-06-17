@@ -4,6 +4,8 @@
 
 import os
 import json
+import zlib
+import base64
 import shutil
 
 import anvio
@@ -164,3 +166,12 @@ def pretty(n):
 @register.filter(name='convert_to_json')
 def convert_to_json(obj):
     return json.dumps(obj)
+
+@register.filter(name='base64_encode')
+def base64_encode(data):
+    return base64.b64encode(data)
+
+@register.filter(name='zlib_encode')
+def zlib_encode(data):
+    return zlib.compress(data.encode("utf-8"))
+
