@@ -71,6 +71,9 @@
     <!-- jQuery -->
     <script src=".html/js/jquery.min.js"></script>
 
+    <!-- Pako lib for ZLib inflation & deflation -->
+    <script src=".html/js/pako.min.js"></script>
+
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/bootstrap.min.js"></script>
 
@@ -79,8 +82,31 @@
 
     <!-- Activate tooltips... -->
     <script type="text/javascript">
+    // https://stackoverflow.com/questions/4507316/zlib-decompression-client-side
+    // Decode base64 (convert ascii to binary)
+    var strData     = atob('{{ data|convert_to_json|zlib_encode|base64_encode|safe }}');
 
-    var saav_data = {{ data|convert_to_json|safe }};
+    // Convert binary string to character-number array
+    var charData    = strData.split('').map(function(x){return x.charCodeAt(0);});
+
+    // Turn number array into byte-array
+    var binData     = new Uint8Array(charData);
+
+    // Pako magic
+    var data        = pako.inflate(binData);
+    
+    // convert binary back to string
+    var strData = "";
+    for (var i=0; i < data.length; i++) {
+        strData += String.fromCharCode(data[i]);
+    }
+
+    var saav_data = JSON.parse(strData);
+
+    delete strData;
+    delete data;
+    delete charData;
+    delete binData;
 
     function generate_panel_content(element, gene) {
         var parent = $(element).closest('.panel');
