@@ -17,6 +17,15 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
+$(document).ready(function() {
+    document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
+    document.body.addEventListener('click', function() { 
+        $('#default_right_click_menu').hide();
+        $('#collection_mode_right_click_menu').hide();
+        $('#pan_mode_right_click_menu').hide();
+        $('#branch_right_click_menu').hide();
+    }, false);
+});
 
 function getBinId() {
     var radios = document.getElementsByName('active_bin');
@@ -251,14 +260,14 @@ function lineMouseEnterHandler(event) {
     {
         drawPie('tree_bin',
             'hover',
-            p1.angle - angle_per_leaf / 2,
-            p2.angle + angle_per_leaf / 2,
+            p1.angle - p1.size / 2,
+            p2.angle + p2.size / 2,
             distance(p.backarc, {
                 'x': 0,
                 'y': 0
             }),
             total_radius,
-            (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+            (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
             bin_color,
             0.3,
             false);
@@ -604,7 +613,6 @@ function menu_callback(action, param) {
             });
             break;
     }
-
 }
 
 // globals related single background
@@ -616,10 +624,7 @@ var origin_y;
 
 function updateSingleBackgroundGlobals()
 {
-    if (typeof tree_type === 'undefined')
-        return;
-
-    if (tree_type == 'phylogram')
+    if (last_settings['tree-type'] == 'phylogram')
     {
         var path_event = document.getElementById('path_event');
         var rect = path_event.getBoundingClientRect();
@@ -627,7 +632,7 @@ function updateSingleBackgroundGlobals()
         rect_left = rect.left;
         rect_width = rect.width;
     }
-    else // circlephylogram
+    else if (last_settings['tree-type'] == 'circlephylogram')
     {
         var root = document.getElementById('line_origin');
         var rect = root.getBoundingClientRect();
@@ -641,24 +646,31 @@ function getNodeFromEvent(event)
 {
     if (event.target.id == 'path_event')
     {
-        if (tree_type == 'phylogram')
+        if (last_settings['tree-type'] == 'phylogram')
         {
             return order_to_node_map[leaf_count - parseInt((event.clientX - rect_left) / (rect_width / leaf_count)) - 1];
         }
-        else
+        else if (last_settings['tree-type'] == 'circlephylogram')
         {
             var _y = event.clientY - origin_y;
             var _x = event.clientX - origin_x;
-            var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
+            var angle = Math.atan2(_y, _x);// - angle_per_leaf / 2;
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
+            for (var i=0; i < leaf_count; i++) {
+                var node = order_to_node_map[i];
+                if ((angle > (node.angle - node.size / 2)) && (angle < (node.angle + node.size / 2))) {
+                    return node;
+                }
+            }
+/*
             var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min']) - (angle_per_leaf / 2)) / angle_per_leaf);
             
             if (order < 1 || order > leaf_count)
                 order = 0;
 
-            return order_to_node_map[order]
+            return order_to_node_map[order]*/
         }
     }
     else
