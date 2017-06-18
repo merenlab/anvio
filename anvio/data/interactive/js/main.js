@@ -21,17 +21,13 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+
 var VERSION = '0.2.1';
-
-var VIEWER_WIDTH;
-var VIEWER_HEIGHT;
-var dragging = false;
-
-var zoomBox = {};
-var drawing_zoom = false;
-
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+var VIEWER_WIDTH;
+var VIEWER_HEIGHT;
+
 
 var scale = 0;
 
@@ -44,12 +40,10 @@ var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
-var tree_type;
 var margin;
 var order_counter;
 
 var total_radius = 0;
-var layer_boundaries;
 
 var SELECTED = new Array();
 var clusteringData;
@@ -104,9 +98,6 @@ var autoload_collection;
 var mode;
 var samples_tree_hover = false;
 var bbox;
-
-var mouse_event_origin_x = 0;
-var mouse_event_origin_y = 0;
 
 var request_prefix = getParameterByName('request_prefix');
 var collapsedNodes = []; 
@@ -1408,11 +1399,11 @@ function drawTree() {
         {
             dialogSize: 'sm',
             onShow: function() {
-                draw_tree(settings); // call treelib.js where the magic happens
+                var drawer = new Drawer(settings);
+                drawer.draw();
 
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
-                // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
                 last_settings = serializeSettings();
 
                 redrawBins();
