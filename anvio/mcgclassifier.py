@@ -64,7 +64,7 @@ def get_non_outliers(v):
     IQR = q3 - q1
     # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
     # even if the IQR includes zero)
-    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))
+    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))[0]
     mean = np.mean(v[non_outliers_indices])
     std = np.std(v[non_outliers_indices])
     return non_outliers_indices, mean, std
@@ -220,24 +220,60 @@ class mcg:
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
 
 
+    def plot_TS(self, non_outliers_indices, mean_TS, std_TS, additional_description=''):
+        """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
+        (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
+        coverages_pdf_output = self.output_file_prefix + additional_description + '-coverages.pdf'
+        pdf_output_file = PdfPages(coverages_pdf_output)
+        for sample in self.positive_samples:
+            v = self.coverage_values_per_nt[sample]
+            min_y = min(v)
+            range_y = max(v) - min_y
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.set_xlabel = 'Gene Number (ordered)'
+            ax.set_ylabel = r'$Gene Coverage^2$'
+            ax.text(0.25 * len(v), min_y + 10**0.75*range_y, u'Mean = %d\n Standard deviation = %d' % (mean_TS[sample], std_TS[sample]))
+            sorting_indices = np.argsort(v)
+            x1 = range(len(v))
+            y2 = v[non_outliers_indices[sample]]
+            x2 = [np.where(sorting_indices == i)[0][0] for i in non_outliers_indices[sample]]
+            ax.semilogy(x1,v[sorting_indices],'r.')
+            ax.semilogy(x2,v[non_outliers_indices[sample]],'b.')
+            fig.suptitle("%s - sorted coverage values with outliers" % sample)
+            plt.savefig(pdf_output_file, format='pdf')
+            plt.close()
+            # plotting a histogram of the non-outliers
+            # This would allow to see if they resemble a normal distribution
+            hist_range = (min(v[non_outliers_indices[sample]]),max(v[non_outliers_indices[sample]]))
+            number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (std_TS[sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
+            print(v[non_outliers_indices[sample]])
+            print(number_of_hist_bins)
+            print(hist_range)
+            plt.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range)
+            plt.title("%s - histogram of non-outliers" % sample)
+            plt.savefig(pdf_output_file, format='pdf')
+            plt.close()
+
+        # close the pdf file
+        pdf_output_file.close()
+
+
     def get_taxon_specific_genes_in_samples(self, additional_description=''):
         """ Use only positive samples to identify the single copy taxon specific genes in each sample:
             
         """
+        non_outliers_indices = {}
+        mean_TS = {}
+        std_TS = {}
         for sample in self.positive_samples:
             # loop through positive samples
             # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
-            non_outliers_indices, mean, std = get_non_outliers(self.coverage_values_per_nt[sample])
-            self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean, std))
+            non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
+            self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
 
+        self.plot_TS(non_outliers_indices,mean_TS,std_TS, additional_description)
 
-            #when you plot:
-            # sorting_indices = get the sorting indexes
-            # outliers_indices =  get the indexes of the outliers
-            # y1 = v
-            # x1 = range(length(v))
-            # y2 = v[outliers_indices]
-            # x2 = [np.where(sorting_indices == i)[0][0] for i in outliers_indices]]
 
             
 
