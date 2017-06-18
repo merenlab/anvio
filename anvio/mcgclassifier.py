@@ -42,11 +42,17 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict):
     """
     progress.new('Merging coverage values accross splits')
     d = {}
-    for sample in split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys():
-        self.progress.update('Merging coverage values in sample %s' % sample)
+    samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
+    number_of_samples = len(samples)
+    number_of_finished = 0
+    for sample in samples:
+        progress.update('Merging coverage values in sample %s' % sample)
         d[sample] = np.empty([1,0])
         for split in split_coverage_values_per_nt_dict:
             d[sample] = np.append(d[sample],split_coverage_values_per_nt_dict[split][sample])
+        #d[sample] = np.array(d[sample])
+        number_of_finished += 1
+        progress.update("Finished sample %d out of %d" % (number_of_finished,number_of_samples))
     progress.end()
     return d
 
@@ -58,10 +64,10 @@ def get_non_outliers(v):
     IQR = q3 - q1
     # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
     # even if the IQR includes zero)
-    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & v > 0)
+    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))
     mean = np.mean(v[non_outliers_indices])
     std = np.std(v[non_outliers_indices])
-    return non_outliers
+    return non_outliers_indices, mean, std
 
 
 class mcg:
@@ -90,7 +96,7 @@ class mcg:
         self.gene_coverages = pd.DataFrame.empty
         self.gene_detections = pd.DataFrame.empty
         self.samples = {}
-        self.positive_samples = pd.DataFrame.empty
+        self.positive_samples = []
         self.number_of_positive_samples = None
         self.negative_samples = pd.DataFrame.empty
         self.number_of_negative_samples = None
@@ -122,8 +128,8 @@ class mcg:
                 self.summary.init()
             else:
                 self.profile_db = ProfileSuperclass(args)
-                self.init_split_coverage_values_per_nt_dict()
-                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.split_coverage_values_per_nt_dict)
+                self.profile_db.init_split_coverage_values_per_nt_dict()
+                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict)
 
                 self.profile_db.init_gene_coverages_and_detection_dicts()
                 self.gene_coverages = pd.DataFrame.from_dict(self.profile_db.gene_coverages_dict, orient='index', dtype=float)
@@ -158,16 +164,13 @@ class mcg:
         if not isinstance(self.alpha, float):
             raise ConfigError("alpha value must be a type float.")
         # alpha must be a min of 0 and smaller than 0.5
-        if a < 0 | a >= 0.5:
+        if self.alpha < 0 or self.alpha >= 0.5:
             raise ConfigError("alpha must be a minimum of 0 and smaller than 0.5")
 
         # Checking beta
         if not isinstance(self.beta, float):
             raise ConfigError("beta value must be a type float.")
         self.check_if_valid_portion_value("beta", self.beta)
-        if self.beta > self.alpha:
-            raise ConfigError("beta value must be smaller than alpha value. The beta value you specified is %s while the alpha value\
-            is %s" % (self.beta, self.alpha))
 
         # Checking gamma
         if not isinstance(self.gamma, float):
@@ -199,7 +202,7 @@ class mcg:
         
         detection = {}
         for sample in self.samples:
-            detection[sample] = numpy.count_nonzero(self.coverage_values_per_nt) / self.total_length
+            detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
                 samples_information['presence'][sample] = True
@@ -210,6 +213,12 @@ class mcg:
                 samples_information['presence'][sample] = None
             samples_information['detection'][sample] = detection[sample]
 
+        self.positive_samples = positive_samples
+        self.negative_samples = negative_samples
+        self.samples_information = samples_information
+        self.run.warning('The number of positive samples is %s' % len(self.positive_samples))
+        self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
+
 
     def get_taxon_specific_genes_in_samples(self, additional_description=''):
         """ Use only positive samples to identify the single copy taxon specific genes in each sample:
@@ -218,7 +227,8 @@ class mcg:
         for sample in self.positive_samples:
             # loop through positive samples
             # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
-            non_outliers, mean, std = get_non_outliers(self.coverage_values_per_nt[sample])
+            non_outliers_indices, mean, std = get_non_outliers(self.coverage_values_per_nt[sample])
+            self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean, std))
 
 
             #when you plot:
@@ -247,7 +257,6 @@ class mcg:
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
         self.gene_coverages = pd.DataFrame.from_dict(_bin.gene_coverages, orient='index', dtype=float)
-        print(self.gene_coverages)
         self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
         self.Ng = len(self.gene_coverages.index)
         self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.summary.split_coverage_values_per_nt_dict)
@@ -289,5 +298,5 @@ class mcg:
         else:
             # No collection provided so running on the entire detection table
             self.get_gene_classes()
-            self.save_gene_class_information_in_additional_layers()
-            self.save_samples_information()
+            #self.save_gene_class_information_in_additional_layers()
+            #self.save_samples_information()

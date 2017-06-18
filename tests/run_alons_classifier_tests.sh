@@ -36,39 +36,39 @@ INFO "Importing collection"
 anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db $files/TEST-COLLECTION.txt -C TEST
 
 INFO "Run anvi-alons-classifier on PROFILE database"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL --store-gene-detections-and-gene-coverages-tables
-
-INFO "Running anvi-alons-classifier on TAB-delimited files (no PROFILE database)"
-anvi-alons-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
-
-INFO "Generating a samples information database with samples information"
-anvi-gen-samples-info-database -D $output_dir/TEST-ALL-samples-information.txt -o $output_dir/TEST-ALL-SAMPLES.db
-
-INFO "Running anvi-alons-classifier on a collection"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
-
-INFO "Running anvi-alons-classifier on a bin"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
-
-INFO "Running anvi-alons-classifier on a bin with samples to exclude"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
-INFO "A round of dry run to get the profile db created"
-# fire up the browser to show how does the merged samples look like.
-anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
-                 -A $output_dir/TEST-ALL-additional-layers.txt \
-                 -p $output_dir/TEST-ALL-manual-profile.db \
-                 -s $output_dir/TEST-ALL-SAMPLES.db \
-                 --manual \
-                 --dry-run
-
-INFO "Importing a default state into newly generated profile database"
-anvi-import-state -p $output_dir/TEST-ALL-manual-profile.db --state $files/default.json --name default
-
-INFO "Firing up the interactive interface"
-# fire up the browser to show how does the merged samples look like.
-anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
-                 -A $output_dir/TEST-ALL-additional-layers.txt \
-                 -p $output_dir/TEST-ALL-manual-profile.db \
-                 -s $output_dir/TEST-ALL-SAMPLES.db \
-                 --title "Alon's gene classifier" \
-                 --manual
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL
+##
+#INFO "Running anvi-alons-classifier on TAB-delimited files (no PROFILE database)"
+#anvi-alons-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
+#
+#INFO "Generating a samples information database with samples information"
+#anvi-gen-samples-info-database -D $output_dir/TEST-ALL-samples-information.txt -o $output_dir/TEST-ALL-SAMPLES.db
+#
+#INFO "Running anvi-alons-classifier on a collection"
+#anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
+#
+#INFO "Running anvi-alons-classifier on a bin"
+#anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
+#
+#INFO "Running anvi-alons-classifier on a bin with samples to exclude"
+#anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
+#INFO "A round of dry run to get the profile db created"
+## fire up the browser to show how does the merged samples look like.
+#anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
+#                 -A $output_dir/TEST-ALL-additional-layers.txt \
+#                 -p $output_dir/TEST-ALL-manual-profile.db \
+#                 -s $output_dir/TEST-ALL-SAMPLES.db \
+#                 --manual \
+#                 --dry-run
+#
+#INFO "Importing a default state into newly generated profile database"
+#anvi-import-state -p $output_dir/TEST-ALL-manual-profile.db --state $files/default.json --name default
+#
+#INFO "Firing up the interactive interface"
+## fire up the browser to show how does the merged samples look like.
+#anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
+#                 -A $output_dir/TEST-ALL-additional-layers.txt \
+#                 -p $output_dir/TEST-ALL-manual-profile.db \
+#                 -s $output_dir/TEST-ALL-SAMPLES.db \
+#                 --title "Alon's gene classifier" \
+#                 --manual
