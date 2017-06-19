@@ -72,6 +72,44 @@ def get_non_outliers(v):
     return non_outliers_indices, mean, std
 
 
+def get_new_mean(_mean, x, N):
+    """ Helper function to calculate a new mean after removing one data point."""
+    new_mean = N/(N-1)*_mean - 1/(N-1)*x
+    return new_mean
+
+
+def get_new_std(_mean, _std, x, ):
+    p = N/(N-1)
+    new_std = np.sqrt(p * _std**2 - ((_mean - x)**2)*p/(N-1))
+    
+def single_distribution_EM(v, _indices=None, _mean=None, _std=None):
+    if _indices is None:
+        _indices = set(range(len(v)))
+    else:
+        _indices = set(_indices)
+    if _mean is None:
+        _mean = np.mean(v[_indices])
+    if _std is None:
+        _std = np.std(v[_indices])
+
+    converged = False
+    while not convereged:
+        w = v[_indices]
+        N = len(_indices)
+        # creating the pdf function to apply
+        _pdf = lambda x: norm.pdf(x, _mean, _std)
+        # applying pdf to all values
+        w_pdf = np.apply_along_axis(_pdf, 0, w)
+        likelihood = np.sum(w_pdf)
+        i = np.argmin(w_pdf)
+        # translating the index to be relative to v
+        i = _indices[i]
+        new_mean = get_new_mean(_mean, v[i], N)
+        new_std = get_new_std(_mean, _std, v[i], N)
+        new_indices = _indices - {i}
+        np.apply_along_axis(_pdf, 0, w)
+
+
 class mcg:
     def __init__(self, args, run=run, progress=progress):
         self.run = run
@@ -247,9 +285,11 @@ class mcg:
             sorting_indices = np.argsort(v)
             x1 = range(len(v))
             y2 = v[non_outliers_indices[sample]]
-            x2 = [np.where(sorting_indices == i)[0][0] for i in non_outliers_indices[sample]]
-            ax.semilogy(x1,v[sorting_indices],'r.')
-            ax.semilogy(x2,v[non_outliers_indices[sample]],'b.')
+            reverse_sorted_indices = np.zeros(len(sorting_indices))
+            reverse_sorted_indices[sorting_indices] = range(len(reverse_sorted_indices))
+            x2 = reverse_sorted_indices[non_outliers_indices[sample]]
+            ax.semilogy(x1,v[sorting_indices],'r.', rasterized=True)
+            ax.semilogy(x2,v[non_outliers_indices[sample]],'b.', rasterized=True)
             fig.suptitle("%s - sorted coverage values with outliers" % sample)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
@@ -281,6 +321,7 @@ class mcg:
             non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
 #            TS_nucs[sample], mean_TS[sample], std_TS[sample] = single_distribution_EM(self.coverage_values_per_nt[sample], non_outliers_indices[sample], mean_TS[sample], std_TS[sample])
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
+            self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices), self.total_length))
 
         self.plot_TS(non_outliers_indices,mean_TS,std_TS, additional_description)
 
