@@ -83,6 +83,7 @@ Drawer.prototype.draw = function() {
 
     this.calculate_layer_boundaries();
     total_radius = this.layer_boundaries[this.layer_boundaries.length - 1][1];
+    beginning_of_layers = this.layer_boundaries[1][0];
     
     this.draw_layer_backgrounds();
     this.draw_guide_lines();
