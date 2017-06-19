@@ -1552,8 +1552,6 @@ function draw_tree(settings) {
 
 function redrawBins()
 {
-    return;
-    
     // check if tree parsed, if not there is nothing to redraw.
     if ($.isEmptyObject(label_to_node_map)) 
         return;
@@ -1673,8 +1671,8 @@ function redrawBins()
 
             var pie = drawPie('bin',
                 'bin_background_' + i,
-                start.angle - angle_per_leaf / 2,
-                end.angle + angle_per_leaf / 2,
+                start.angle - start.size / 2,
+                end.angle + end.size / 2,
                 beginning_of_layers,
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
@@ -1756,11 +1754,11 @@ function redrawBins()
         {
             drawPie('bin',
                 'bin_outer_' + 1,
-                start.angle - angle_per_leaf / 2,
-                end.angle + angle_per_leaf / 2,
+                start.angle - start.size / 2,
+                end.angle + end.size / 2,
                 total_radius + outer_ring_margin + outer_ring_size,
                 total_radius + outer_ring_margin + outer_ring_size * 2,
-                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                (end.angle - start.angle + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
                 1,
                 false);     
