@@ -493,48 +493,7 @@ Drawer.prototype.calculate_tree_coordinates = function() {
         } 
         else
         {   
-            // calculate internal nodes.
-            if (this.settings['tree-type'] == 'circlephylogram')
-            {
-                var left_angle = p.child.angle;
-                var right_angle = p.child.GetRightMostSibling().angle;
-
-                p.angle = left_angle + (right_angle - left_angle) / 2;
-                p.radius = parseFloat(this.radius) - (this.root_length + (p.path_length / this.max_path_length) * (parseFloat(this.radius) / 2));
-
-                var pt = [];
-                pt['x'] = p.radius * Math.cos(p.angle);
-                pt['y'] = p.radius * Math.sin(p.angle);
-
-                p.xy['x'] = pt['x'];
-                p.xy['y'] = pt['y'];
-
-                var q = p.child;
-                while (q) {
-                    pt = [];
-
-                    pt['x'] = p.radius * Math.cos(q.angle);
-                    pt['y'] = p.radius * Math.sin(q.angle);
-
-                    q.backarc = [];
-                    q.backarc['x'] = pt['x'];
-                    q.backarc['y'] = pt['y'];
-
-                    q = q.sibling;
-                }
-            }
-            else
-            {
-                var pt = [];
-                pt['x'] = this.left + (p.path_length / this.max_path_length) * this.settings.width;
-
-                var pl = p.child.xy;
-                var pr = p.child.GetRightMostSibling().xy;
-
-                pt['y'] = pl['y'] + (pr['y'] - pl['y']) / 2;
-                p.xy['x'] = pt['x'];
-                p.xy['y'] = pt['y'];
-            }
+            this.calculate_internal_node_coordinate(p);
         }
         p = n.Next();
     }
@@ -571,6 +530,50 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         this.last_y = pt['y'];
         this.leaf_count++;
 
+        p.xy['x'] = pt['x'];
+        p.xy['y'] = pt['y'];
+    }
+};
+
+Drawer.prototype.calculate_internal_node_coordinate = function(p) {
+    if (this.settings['tree-type'] == 'circlephylogram')
+    {
+        var left_angle = p.child.angle;
+        var right_angle = p.child.GetRightMostSibling().angle;
+
+        p.angle = left_angle + (right_angle - left_angle) / 2;
+        p.radius = parseFloat(this.radius) - (this.root_length + (p.path_length / this.max_path_length) * (parseFloat(this.radius) / 2));
+
+        var pt = [];
+        pt['x'] = p.radius * Math.cos(p.angle);
+        pt['y'] = p.radius * Math.sin(p.angle);
+
+        p.xy['x'] = pt['x'];
+        p.xy['y'] = pt['y'];
+
+        var q = p.child;
+        while (q) {
+            pt = [];
+
+            pt['x'] = p.radius * Math.cos(q.angle);
+            pt['y'] = p.radius * Math.sin(q.angle);
+
+            q.backarc = [];
+            q.backarc['x'] = pt['x'];
+            q.backarc['y'] = pt['y'];
+
+            q = q.sibling;
+        }
+    }
+    else
+    {
+        var pt = [];
+        pt['x'] = this.left + (p.path_length / this.max_path_length) * this.settings.width;
+
+        var pl = p.child.xy;
+        var pr = p.child.GetRightMostSibling().xy;
+
+        pt['y'] = pl['y'] + (pr['y'] - pl['y']) / 2;
         p.xy['x'] = pt['x'];
         p.xy['y'] = pt['y'];
     }
