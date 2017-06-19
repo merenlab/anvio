@@ -38,13 +38,14 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict):
+def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
     """ Helper function that accepts a split_coverage_values_per_nt_dict and returns a dictionary with
     samples as keys and the concatenated coverage values for all splits as one array
     """
     progress.new('Merging coverage values accross splits')
     d = {}
-    samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
+    if samples is None:
+        samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
     number_of_samples = len(samples)
     number_of_finished = 0
     for sample in samples:
@@ -127,18 +128,20 @@ class mcg:
             if self.collection_name:
                 self.summary = summarizer.ProfileSummarizer(args)
                 self.summary.init()
+                self.samples = set(self.summary.p_meta['samples']) - self.samples_to_exclude
             else:
                 self.profile_db = ProfileSuperclass(args)
+                self.samples = set(self.profile_db.p_meta['samples']) - self.samples_to_exclude
                 self.profile_db.init_split_coverage_values_per_nt_dict()
-                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict)
+                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
 
                 self.profile_db.init_gene_coverages_and_detection_dicts()
                 self.gene_coverages = pd.DataFrame.from_dict(self.profile_db.gene_coverages_dict, orient='index', dtype=float)
+                # Removing samples if the user asked to exclude them
                 self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
                 self.Ng = len(self.gene_coverages.index)
                 self.gene_detections = pd.DataFrame.from_dict(self.profile_db.gene_detection_dict, orient='index', dtype=float)
                 self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
-                self.samples = set(self.gene_coverages.columns)
                 # getting the total length of all contigs 
                 self.total_length = self.profile_db.p_meta['total_length']
 
@@ -298,10 +301,9 @@ class mcg:
         self.gene_coverages = pd.DataFrame.from_dict(_bin.gene_coverages, orient='index', dtype=float)
         self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
         self.Ng = len(self.gene_coverages.index)
-        self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.summary.split_coverage_values_per_nt_dict)
+        self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.summary.split_coverage_values_per_nt_dict, self.samples)
         self.gene_detections = pd.DataFrame.from_dict(_bin.gene_detection, orient='index', dtype=float)
         self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
-        self.samples = set(self.gene_coverages.columns.values)
         self.total_length = _bin.total_length
 
 
