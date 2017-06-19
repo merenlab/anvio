@@ -229,12 +229,12 @@ class mcg:
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
         # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
-        plot_dir = self.output_file_prefix + '-TS-plots' + '/' + additional_description
+        plot_dir = self.output_file_prefix + '-TS-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
         number_of_fininshed = 0
         for sample in self.positive_samples:
-            coverages_pdf_output = plot_dir + sample + '-coverages.pdf'
+            coverages_pdf_output = plot_dir + additional_description + '-' + sample + '-coverages.pdf'
             pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
             min_y = min(v)
@@ -265,6 +265,7 @@ class mcg:
             pdf_output_file.close()
             number_of_fininshed += 1
             self.progress.update("Finished %d of %d" % (number_of_fininshed, self.number_of_positive_samples))
+        self.progress.end()
 
 
     def get_taxon_specific_genes_in_samples(self, additional_description=''):
@@ -278,12 +279,13 @@ class mcg:
             # loop through positive samples
             # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
             non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
+#            TS_nucs[sample], mean_TS[sample], std_TS[sample] = single_distribution_EM(self.coverage_values_per_nt[sample], non_outliers_indices[sample], mean_TS[sample], std_TS[sample])
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
 
         self.plot_TS(non_outliers_indices,mean_TS,std_TS, additional_description)
 
 
-    def get_gene_classes(self):
+    def get_gene_classes(self, additional_description=''):
         """ The main process of this class - computes the class information for each gene"""
         # need to start a new gene_class_information dict
         # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
@@ -293,7 +295,7 @@ class mcg:
         self.init_sample_detection_information()
 
         # find the taxon-specific genes for each sample
-        self.get_taxon_specific_genes_in_samples()
+        self.get_taxon_specific_genes_in_samples(additional_description)
 
 
     def get_coverage_and_detection_dict(self,bin_id):
@@ -330,11 +332,11 @@ class mcg:
             for bin_id in bin_names_of_interest:
                 self.run.info_single('Classifying genes in bin: %s' % bin_id)
                 self.get_coverage_and_detection_dict(bin_id)
-                self.get_gene_classes()
-                self.save_gene_class_information_in_additional_layers(bin_id)
-                self.save_samples_information(bin_id)
-                if self.store_gene_detections_and_gene_coverages_tables:
-                    self.save_gene_detection_and_coverage(bin_id)
+                self.get_gene_classes(bin_id)
+                #self.save_gene_class_information_in_additional_layers(bin_id)
+                #self.save_samples_information(bin_id)
+                #if self.store_gene_detections_and_gene_coverages_tables:
+                #    self.save_gene_detection_and_coverage(bin_id)
 
         else:
             # No collection provided so running on the entire detection table
