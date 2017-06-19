@@ -431,6 +431,12 @@ class VariabilitySuper(object):
                 aa_frequency_dict = Counter(dict([(aa, e[aa]) for aa in constants.amino_acids]))
                 aa_sorted_frequency_tuples_list = aa_frequency_dict.most_common()
                 competing_items = variability.get_competing_items(e['reference'], aa_sorted_frequency_tuples_list)
+
+                if not competing_items:
+                    # this is a position that did have variation with SNVs, but all of them turned out to be synonymous.
+                    # we will just list this one as itself.
+                    competing_items = [aa_sorted_frequency_tuples_list[0][0]] * 2
+
                 e['competing_aas'] = ''.join(competing_items)
             else:
                 raise ConfigError("You cray :( Ain't nobody got an engine for %s." % self.engine)
