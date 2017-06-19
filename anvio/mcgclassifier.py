@@ -7,6 +7,7 @@
 """
 
 
+import os
 import anvio
 import numpy as np
 import scipy as sp
@@ -18,6 +19,7 @@ import anvio.filesnpaths as filesnpaths
 
 from math import ceil
 from math import floor
+from scipy.stats import norm
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from matplotlib.backends.backend_pdf import PdfPages
@@ -46,13 +48,12 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict):
     number_of_samples = len(samples)
     number_of_finished = 0
     for sample in samples:
-        progress.update('Merging coverage values in sample %s' % sample)
         d[sample] = np.empty([1,0])
         for split in split_coverage_values_per_nt_dict:
             d[sample] = np.append(d[sample],split_coverage_values_per_nt_dict[split][sample])
         #d[sample] = np.array(d[sample])
         number_of_finished += 1
-        progress.update("Finished sample %d out of %d" % (number_of_finished,number_of_samples))
+        progress.update("Finished sample %d of %d" % (number_of_finished,number_of_samples))
     progress.end()
     return d
 
@@ -214,23 +215,29 @@ class mcg:
             samples_information['detection'][sample] = detection[sample]
 
         self.positive_samples = positive_samples
+        self.number_of_positive_samples = len(self.positive_samples)
         self.negative_samples = negative_samples
         self.samples_information = samples_information
-        self.run.warning('The number of positive samples is %s' % len(self.positive_samples))
+        self.run.warning('The number of positive samples is %s' % self.number_of_positive_samples)
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
 
 
     def plot_TS(self, non_outliers_indices, mean_TS, std_TS, additional_description=''):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
-        coverages_pdf_output = self.output_file_prefix + additional_description + '-coverages.pdf'
-        pdf_output_file = PdfPages(coverages_pdf_output)
+        # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
+        plot_dir = self.output_file_prefix + '-TS-plots' + '/' + additional_description
+        os.makedirs(plot_dir, exist_ok=True)
+        self.progress.new('Saving figures of taxon specific distributions to pdf')
+        number_of_fininshed = 0
         for sample in self.positive_samples:
+            coverages_pdf_output = plot_dir + sample + '-coverages.pdf'
+            pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
             min_y = min(v)
             range_y = max(v) - min_y
             fig = plt.figure()
-            ax = fig.add_subplot(111)
+            ax = fig.add_subplot(111, rasterized=True)
             ax.set_xlabel = 'Gene Number (ordered)'
             ax.set_ylabel = r'$Gene Coverage^2$'
             ax.text(0.25 * len(v), min_y + 10**0.75*range_y, u'Mean = %d\n Standard deviation = %d' % (mean_TS[sample], std_TS[sample]))
@@ -247,16 +254,14 @@ class mcg:
             # This would allow to see if they resemble a normal distribution
             hist_range = (min(v[non_outliers_indices[sample]]),max(v[non_outliers_indices[sample]]))
             number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (std_TS[sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
-            print(v[non_outliers_indices[sample]])
-            print(number_of_hist_bins)
-            print(hist_range)
-            plt.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range)
+            plt.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
             plt.title("%s - histogram of non-outliers" % sample)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
-
-        # close the pdf file
-        pdf_output_file.close()
+            # close the pdf file
+            pdf_output_file.close()
+            number_of_fininshed += 1
+            self.progress.update("Finished %d of %d" % (number_of_fininshed, self.number_of_positive_samples))
 
 
     def get_taxon_specific_genes_in_samples(self, additional_description=''):
@@ -274,8 +279,6 @@ class mcg:
 
         self.plot_TS(non_outliers_indices,mean_TS,std_TS, additional_description)
 
-
-            
 
     def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
