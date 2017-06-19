@@ -472,18 +472,6 @@ Drawer.prototype.calculate_tree_coordinates = function() {
         this.max_path_length = max_path_length;
     }
 
-    this.leaf_count = 0;
-    this.leaf_angle = Math.toRadians(Math.abs(this.settings['angle-max'] - this.settings['angle-min'])) / this.tree.num_leaves;
-    this.leaf_gap = this.height / (this.tree.num_leaves - 1);
-
-    if (this.tree.rooted) {
-        this.node_gap = this.settings.width / this.tree.num_leaves;
-        this.left += this.node_gap;
-        this.width -= this.node_gap;
-    } else {
-        this.node_gap = this.settings.width / (this.tree.num_leaves - 1);
-    }
-
     var n = new NodeIterator(this.tree.root);
     var p = n.Begin();
     while (p != null) {
