@@ -439,6 +439,10 @@ Drawer.prototype.calculate_leaf_sizes = function() {
     for (var i=0; i < this.tree.num_leaves; i++) {
         q = order_to_node_map[i];
         q.size = q.size * (total_width / total_size);
+
+        if (typeof this.smallest_leaf_size === 'undefined' || q.size < this.smallest_leaf_size) {
+            this.smallest_leaf_size = q.size;
+        }
     }
 };
 
@@ -879,14 +883,14 @@ Drawer.prototype.calculate_layer_boundaries = function() {
 };
 
 Drawer.prototype.calculate_font_size_for_text_layer = function(layer) {
+    var leaf_perimeter;
     if (this.settings['tree-type'] == 'circlephylogram') {
         var margin = (this.settings['custom-layer-margin']) ? parseFloat(layer.get_visual_attribute('margin')) : parseFloat(this.settings['layer-margin']);
-        var layer_perimeter = ((parseFloat(this.settings['angle-max']) - parseFloat(this.settings['angle-min'])) / 360) * (2 * Math.PI * this.layer_boundaries[layer.order - 1][1]);
+        var leaf_perimeter = this.smallest_leaf_size * (this.layer_boundaries[layer.order - 1][1] + margin);
     } else {
-        var layer_perimeter = this.width;
+        var leaf_perimeter = this.smallest_leaf_size;
     }
-
-    var layer_font = Math.min((layer_perimeter / this.tree.num_leaves), parseFloat(this.settings['max-font-size']));
+    var layer_font = Math.min(leaf_perimeter, parseFloat(this.settings['max-font-size']));
 
     this.layer_fonts[layer.order] = layer_font;
 
