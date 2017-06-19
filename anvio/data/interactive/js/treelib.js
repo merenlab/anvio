@@ -1632,7 +1632,7 @@ function redrawBins()
                 false);
 
             var align = 'left';
-            var angle = (end.angle + start.angle) / 2;
+            var angle = (end.angle + end.size / 2 + start.angle - start.size / 2) / 2;
             var new_angle = angle * 180.0 / Math.PI;
             if ((angle > Math.PI / 2.0) && (angle < 1.5 * Math.PI)) {
                 align = 'right';
@@ -1643,7 +1643,7 @@ function redrawBins()
             {
                 // so much trigonometry, sorry :(
                 var bin_label_radius = total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1);
-                var bin_label_angle = (end.angle + start.angle) / 2;
+                var bin_label_angle = (end.angle + end.size / 2 + start.angle - start.size / 2) / 2;
 
                 var bin_label_px = bin_label_radius * Math.cos(bin_label_angle);
                 var bin_label_py = bin_label_radius * Math.sin(bin_label_angle);
