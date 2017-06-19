@@ -55,6 +55,10 @@ class VariablityTestFactory:
 def get_competing_items(reference, items_frequency_tuples_list):
     """Resolves competing nts and aas.
 
+       This function will return None if there is no varaition and the most frequent
+       item is equal to the reference. But will NOT return None if there is no
+       variation AND the most frequence item is different than the reference.
+
        `items_frequency_tuples_list` MUST BE SORTED & should look like this:
 
             >>> [('Val', 69), ('Asn', 0), ('Gln', 0), ('Cys', 0), ('Glu', 0), ...]
@@ -74,7 +78,8 @@ def get_competing_items(reference, items_frequency_tuples_list):
     elif (len(items_frequency_tuples_list) == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item != reference:
         # ^^^^^ the list has only one item, or the second item has 0 frequency ^^^^^
         # again, there is no variation, but the most frequent base DIFFERS from the reference.
-        # much more interesting.
+        # much more interesting. We are not returning None here, becasue we do not want this
+        # information to be confused wit hthe true case of no variation (see the case above).
         return [most_frequent_item, most_frequent_item]
     else:
         # the only other option is to have multiple bases in items_frequency_tuples_list.
