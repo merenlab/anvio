@@ -276,7 +276,7 @@ class mcg:
         self.progress.new('Saving figures of taxon specific distributions to pdf')
         number_of_fininshed = 0
         for sample in self.positive_samples:
-            coverages_pdf_output = plot_dir + '-' + sample + additional_description + '-coverages.pdf'
+            coverages_pdf_output = plot_dir + sample + additional_description + '-coverages.pdf'
             pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
             min_y = min(v)
@@ -378,7 +378,7 @@ class mcg:
                 self.run.info_single('Classifying genes in bin: %s' % bin_id)
                 self.get_coverage_and_detection_dict(bin_id)
                 self.additional_description = bin_id
-                self.get_gene_classes(bin_id)
+                self.get_gene_classes()
                 #self.save_gene_class_information_in_additional_layers(bin_id)
                 #self.save_samples_information(bin_id)
                 #if self.store_gene_detections_and_gene_coverages_tables:
