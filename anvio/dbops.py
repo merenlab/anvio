@@ -3445,7 +3445,7 @@ def is_contigs_db(db_path):
 
 def is_pan_or_profile_db(db_path):
     if get_db_type(db_path) not in ['pan', 'profile']:
-        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble.")
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
 
 
 def is_profile_db(db_path):
