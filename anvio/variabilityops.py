@@ -10,6 +10,9 @@ import os
 import sys
 import copy
 import random
+import numpy as np
+
+from scipy.stats import entropy
 
 import anvio
 import anvio.tables as t
@@ -26,8 +29,8 @@ from anvio.errors import ConfigError
 
 
 __author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
-__credits__ = []
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = ['Alon Shaiber']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -67,6 +70,7 @@ class VariabilitySuper(object):
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
         self.quince_mode = A('quince_mode', bool)
+        self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
         self.genes_of_interest_path = A('genes_of_interest', null)
@@ -84,6 +88,9 @@ class VariabilitySuper(object):
 
         if self.engine not in variability_engines:
             raise ConfigError("The superclass is inherited with an unknown engine. Anvi'o needs an adult :(")
+
+        self.comprehensive_stats_headers = []
+        self.comprehensive_variability_scores_computed = False
 
         # Initialize the contigs super
         filesnpaths.is_file_exists(self.contigs_db_path)
@@ -146,6 +153,9 @@ class VariabilitySuper(object):
         if self.engine not in ['NT', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
+        # set items of interest while you are at it.
+        self.items = constants.amino_acids if self.engine == 'AA' else constants.nucleotides
+
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
             raise ConfigError('You need to provide a profile database.')
@@ -206,7 +216,7 @@ class VariabilitySuper(object):
 
         self.progress.update('Reading the data ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.sample_ids = profile_db.samples # we set this now, but we will overwrite it with args.samples_of_interest if necessary
+        self.sample_ids = sorted(list(profile_db.samples)) # we set this now, but we will overwrite it with args.samples_of_interest if necessary
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
@@ -306,7 +316,7 @@ class VariabilitySuper(object):
                                     the profile database: %s' % ', '.join(samples_missing_from_db))
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
-            self.sample_ids = self.samples_of_interest
+            self.sample_ids = sorted(list(self.samples_of_interest))
             self.filter('samples of interest', lambda x: x['sample_id'] not in self.samples_of_interest)
 
         if self.genes_of_interest:
@@ -603,6 +613,140 @@ class VariabilitySuper(object):
         self.check_if_data_is_empty()
 
 
+    def compute_comprehensive_variability_scores(self):
+        """Comprehensive stats"""
+
+        if self.skip_comprehensive_variability_scores:
+            self.run.warning("Anvi'o will skip comprehensive variability score computations.")
+            return
+
+        if not self.quince_mode:
+            self.run.warning("Comprehensive variability score computations can only be done with `--quince-mode`")
+            return
+
+        unique_positions_and_frequencies_dict = self.get_unique_positions_and_frequencies_dict()
+
+        self.progress.new('Comprehensive stats')
+        self.progress.update('...')
+
+        comprehensive_stats = {}
+        self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
+                                           ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
+
+        self.progress.update('Initializing numpy formatted substitution matrices...')
+        item_indices_for_substitution_scoring_matrices = {}
+        numpy_matrices_for_substitution_scoring_matrices = {}
+        for m in self.substitution_scoring_matrices:
+            item_indices_for_substitution_scoring_matrices[m] = [self.items.index(item) for item in self.substitution_scoring_matrices[m].keys()]
+
+            items = list(self.substitution_scoring_matrices[m].keys())
+            num_items = len(items)
+            numpy_matrices_for_substitution_scoring_matrices[m] = np.zeros([num_items, num_items])
+            for i in range(num_items):
+                for j in range(num_items):
+                    if i == j:
+                        numpy_matrices_for_substitution_scoring_matrices[m][i][j] = 0
+                    else:
+                        numpy_matrices_for_substitution_scoring_matrices[m][i][j] = self.substitution_scoring_matrices[m][items[i]][items[j]]
+
+        self.progress.update('Running comprehensive stats across all unique positions X samples')
+        unique_positions = list(unique_positions_and_frequencies_dict.keys())
+        num_unique_positions = len(unique_positions)
+        for unique_pos_index in range(num_unique_positions):
+            unique_pos = unique_positions[unique_pos_index]
+
+            if unique_pos_index % 100 == 0:
+                self.progress.update('Running comprehensive stats: %s of %s ...' % (pp(unique_pos_index + 1), pp(num_unique_positions)))
+
+            comprehensive_stats = {}
+
+            # first create a vector of frequencies for all samples
+            list_of_sample_frequencies = []
+            for sample_id in self.sample_ids:
+                list_of_sample_frequencies.append([unique_positions_and_frequencies_dict[unique_pos][sample_id][f] for f in self.items])
+                comprehensive_stats[sample_id] = {}
+
+            # create a numpy array for all samples, and sum sample frequencies
+            list_of_sample_frequencies = np.array(list_of_sample_frequencies)
+            sum_sample_frequencies = sum(list_of_sample_frequencies)
+
+            list_of_sample_frequencies_normalized = np.divide(np.array(list_of_sample_frequencies), np.sum(list_of_sample_frequencies, axis=1)[:, np.newaxis])
+            sum_sample_frequencies_normalized = sum(list_of_sample_frequencies_normalized)
+
+            for i in range(0, len(self.sample_ids)):
+                sample_id = self.sample_ids[i]
+
+                comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
+
+                # compute Kullback-Leibler divergence for raw counts
+                kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
+                kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
+
+                comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
+                comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
+
+                if not comprehensive_stats[sample_id]['entropy']:
+                    for m in self.substitution_scoring_matrices:
+                        comprehensive_stats[sample_id][m + '_weighted'] = None
+                else:
+                    for m in self.substitution_scoring_matrices:
+                        # here we subsample AND reorder our sample frequencies based on what items
+                        # appear in the substitution matrix `m`. see the code above this for loop
+                        # to remember how they are set.
+                        S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
+                        S = S / sum(S)
+
+                        if np.count_nonzero(S) > 1:
+                            normalization_factor = 1 / (1 - np.sum(np.square(S)))
+                            A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
+                            comprehensive_stats[sample_id][m + '_weighted'] = A
+                        else:
+                            comprehensive_stats[sample_id][m + '_weighted'] = None
+
+            # update self.data with comprehensive stats
+            for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
+                e = self.data[entry_id]
+                s = e['sample_id']
+
+                for h in self.comprehensive_stats_headers:
+                    e[h] = comprehensive_stats[s][h]
+
+        self.progress.end()
+
+        self.comprehensive_variability_scores_computed = True
+
+
+    def get_unique_positions_and_frequencies_dict(self):
+        """From the self.data object, creates a dict that contains item frequencies for
+           each sample for each unique position identifier."""
+
+        unique_positions_and_frequencies_dict = {}
+
+        template = dict.fromkeys(self.items, 0)
+
+        if not self.unique_pos_id_to_entry_id:
+            self.gen_unique_pos_identifier_to_entry_id_dict()
+
+        self.progress.new('The unique positions and frequencies dict')
+        self.progress.update('generating ..')
+
+        for entry_ids in self.unique_pos_id_to_entry_id.values():
+            unique_pos_identifier = self.data[list(entry_ids)[0]]['unique_pos_identifier_str']
+            unique_positions_and_frequencies_dict[unique_pos_identifier] = {}
+
+            for entry_id in entry_ids:
+                v = self.data[entry_id]
+                unique_positions_and_frequencies_dict[unique_pos_identifier][v['sample_id']] = copy.deepcopy(template)
+
+                for item in self.items:
+                    if v[item]:
+                        unique_positions_and_frequencies_dict[unique_pos_identifier][v['sample_id']][item] = v[item]
+
+        self.progress.end()
+
+        return unique_positions_and_frequencies_dict
+
+
     def process(self):
         self.init_commons()
 
@@ -622,6 +766,8 @@ class VariabilitySuper(object):
             self.recover_base_frequencies_for_all_samples()
 
         self.filter_based_on_minimum_coverage_in_each_sample()
+
+        self.compute_comprehensive_variability_scores()
 
 
     def get_gene_length(self, gene_callers_id):
@@ -657,13 +803,15 @@ class VariabilitySuper(object):
                              ['unique_pos_identifier', 'gene_length'] + \
                              [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + \
                              list(self.substitution_scoring_matrices.keys()) + \
-                             ['consensus', 'departure_from_consensus', 'n2n1ratio']
+                             ['consensus', 'departure_from_consensus', 'n2n1ratio'] + \
+                             self.comprehensive_stats_headers
         elif self.engine == 'AA':
             new_structure = [t.variable_nts_table_structure[0]] + \
                              ['unique_pos_identifier', 'gene_length'] + \
                              [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + \
                              list(self.substitution_scoring_matrices.keys()) + \
-                             ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio']
+                             ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
+                             self.comprehensive_stats_headers
 
 
         if self.include_contig_names_in_output:
