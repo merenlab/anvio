@@ -112,11 +112,7 @@ Drawer.prototype.draw = function() {
     initialize_area_zoom(); // area-zoom.js
     this.show_drawing_statistics();
     
-    /*  
-    if (parseFloat(total_object_count) > 5000 || parseFloat(leaf_count) > 5000) {
-        ANIMATIONS_ENABLED = false; // defined in animations.js
-    }
-    */
+    ANIMATIONS_ENABLED = false;
 };
 
 Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
