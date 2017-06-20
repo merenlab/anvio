@@ -19,6 +19,7 @@
  */
 
 var Drawer = function(settings) {
+    this.timer = new BasicTimer('tree_draw');
     this.settings = settings;
     
     this.tree_svg_id = 'tree';
@@ -109,6 +110,7 @@ Drawer.prototype.draw = function() {
 
     this.bind_tree_events();
     initialize_area_zoom(); // area-zoom.js
+    this.show_drawing_statistics();
     
     /*  
     if (parseFloat(total_object_count) > 5000 || parseFloat(leaf_count) > 5000) {
@@ -1339,11 +1341,23 @@ Drawer.prototype.draw_samples = function() {
         $('#samples').attr('transform', 'rotate(90)');
         drawSamples(); // in sample.js
     }
-}
+};
 
 Drawer.prototype.update_title_panel = function() {
     var _sub_title = "Items order: <b>" + getClusteringPrettyName(settings['order-by']) + "</b> | ";
         _sub_title += "Current view: <b>" + this.settings['current-view'] + "</b> | ";
         _sub_title += "Sample order: <b>" + this.settings['samples-order'] + "</b>";
     $('#title-panel-second-line').html(_sub_title);
-}
+};
+
+Drawer.prototype.show_drawing_statistics = function() {
+    var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
+    var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
+
+    $('#draw_delta_time').html(this.tree.num_leaves + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+
+    console.log('[info] Leaf count: ' + this.tree.num_leaves);
+    console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
+    console.log('[info] Total objects in SVG: ' + total_object_count);
+
+};
