@@ -1691,12 +1691,13 @@ function redrawBins()
         }
         else
         {
+            var height = end.xy['y'] + end.size / 2 - start.xy['y'] + start.size / 2;
 
             drawPhylogramRectangle('bin',
                 'bin_outer_' + i,
                 total_radius + outer_ring_margin,
-                (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2,
-                end.xy.y + end.size / 2 - start.xy.y - start.size / 2,
+                start.xy['y'] - start.size / 2 + height / 2,
+                height,
                 outer_ring_size,
                 color,
                 1,
@@ -1725,8 +1726,8 @@ function redrawBins()
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
                 beginning_of_layers,
-                (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2,
-                end.xy.y + end.size / 2 - start.xy.y - start.size / 2,
+                start.xy['y'] - start.size / 2 + height / 2,
+                height,
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius + margin - beginning_of_layers,
                 color,
                 (show_grid) ? 0 : 0.1,
