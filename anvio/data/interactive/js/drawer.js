@@ -73,10 +73,10 @@ Drawer.prototype.draw = function() {
     this.generate_tooltips();
     this.normalize_values();
     this.calculate_bar_sizes();
+    this.calculate_leaf_sizes();
 
     if (this.has_tree) 
     {
-        this.calculate_leaf_sizes();
         this.calculate_tree_coordinates();
         this.draw_tree();
     }
@@ -435,7 +435,16 @@ Drawer.prototype.calculate_leaf_sizes = function() {
         order_to_node_map[i].size = size;
     }
 
-    var total_width = Math.toRadians(parseFloat(this.settings['angle-max']) - parseFloat(this.settings['angle-min']));
+    var total_width;
+
+    if (this.settings['tree-type'] == 'circlephylogram')
+    {
+        var total_width = Math.toRadians(parseFloat(this.settings['angle-max']) - parseFloat(this.settings['angle-min']));
+    }
+    else
+    {
+        var total_width = this.width;
+    }
 
     for (var i=0; i < this.tree.num_leaves; i++) {
         q = order_to_node_map[i];
@@ -512,10 +521,14 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
     else // phylogram
     {
         var pt = [];
-        pt['x'] = this.left + (p.path_length / this.max_path_length) * this.width;
-        pt['y'] = this.top + (this.leaf_count * this.leaf_gap);
 
-        this.last_y = pt['y'];
+        if (p.order == 0) {
+            pt['y'] = p.size / 2;
+        } else {
+            var prev_leaf = order_to_node_map[p.order - 1];
+            pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
+        }
+        pt['x'] = this.height - (p.path_length / this.max_path_length) * this.height;
         this.leaf_count++;
 
         p.xy['x'] = pt['x'];
@@ -556,7 +569,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
     else
     {
         var pt = [];
-        pt['x'] = this.left + (p.path_length / this.max_path_length) * this.settings.width;
+        pt['x'] = this.height - (p.path_length / this.max_path_length) * this.height;
 
         var pl = p.child.xy;
         var pr = p.child.GetRightMostSibling().xy;
@@ -578,19 +591,33 @@ Drawer.prototype.draw_tree = function() {
 
     // draw root
 
-    var p0 = this.tree.root.xy
+/*    var p0 = this.tree.root.xy
     var p1 = {'x': 0, 'y': 0};
 
     drawLine(this.tree_svg_id, this.tree.root, p0, p1);
-
+*/
     var n = new NodeIterator(this.tree.root);
     var p = n.Begin();
     while (p != null) {
         if (p.IsLeaf()) 
-        {    
-            var p0 = p.xy
-            var p1 = p.backarc;
-            drawLine(this.tree_svg_id, p, p0, p1);
+        {
+            if (this.settings['tree-type'] == 'circlephylogram') {
+                var p0 = p.xy
+                var p1 = p.backarc;
+                drawLine(this.tree_svg_id, p, p0, p1);
+            }
+            else
+            {
+                var p0 = p.xy
+                var p1 = [];
+                var anc = p.ancestor;
+                if (anc) {
+                    p1['x'] = anc.xy['x'];
+                    p1['y'] = p0['y'];
+
+                    drawLine(this.tree_svg_id, p, p0, p1);
+                }
+            }
         }
         else
         {
@@ -688,6 +715,10 @@ Drawer.prototype.initialize_screen = function() {
     if (this.radius == 0) {
         this.radius = (this.height > this.width) ? this.height : this.width;
     }
+
+    // this global variable required for calculating the event position
+    // look at getNodeFromEvents function in mouse-events.js
+    original_width = this.width;
 };
 
 Drawer.prototype.draw_categorical_layers = function() {
@@ -711,6 +742,8 @@ Drawer.prototype.draw_categorical_layers = function() {
                 } 
                 else 
                 {
+                    var _label = (this.layerdata_dict[q.label][layer.index] == null) ? '' : this.layerdata_dict[q.label][layer.index];
+                    
                     if (this.settings['tree-type'] == 'circlephylogram')
                     {
                         var align = 'left';
@@ -728,7 +761,6 @@ Drawer.prototype.draw_categorical_layers = function() {
                             offset_xy['x'] = Math.cos(q.angle + font_gap) * _radius;
                             offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;       
                         }
-                        var _label = (this.layerdata_dict[q.label][layer.index] == null) ? '' : this.layerdata_dict[q.label][layer.index];
 
                         drawRotatedText('layer_' + layer.order, 
                                         offset_xy, 
@@ -744,6 +776,21 @@ Drawer.prototype.draw_categorical_layers = function() {
                     else
                     {
 
+                        var _offsetx = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
+                        var offset_xy = [];
+                        offset_xy['x'] = _offsetx;
+                        offset_xy['y'] = q.xy['y'] + this.layer_fonts[layer.order] / 4;
+
+                        drawRotatedText('layer_' + layer.order, 
+                                        offset_xy, 
+                                        _label, 
+                                        0,
+                                        'left',
+                                        this.layer_fonts[layer.order],
+                                        "monospace",
+                                        layer.get_visual_attribute('color'),
+                                        layer.get_visual_attribute('height'),
+                                        'center');
                     }
                 }
             }
@@ -822,14 +869,14 @@ Drawer.prototype.draw_categorical_layers = function() {
                 }
                 else
                 {
-                    var height = end.xy['y'] - start.xy['y'];
+                    var height = end.xy['y'] + end.size / 2 - start.xy['y'] + start.size / 2;
 
-                    drawPhylogramRectangle('layer_' + layer_index,
-                        'categorical_' + layer_index + '_' + j, // path_<layer>_<id>
-                        layer_boundaries[layer_index][0],
-                        start.xy['y'] + height / 2,
-                        height + height_per_leaf,
-                        layer_boundaries[layer_index][1] - layer_boundaries[layer_index][0],
+                    drawPhylogramRectangle('layer_' + layer.order,
+                        'categorical_' + layer.order + '_' + j, // path_<layer>_<id>
+                        this.layer_boundaries[layer.order][0],
+                        start.xy['y'] - start.size / 2 + height / 2,
+                        height,
+                        this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
                         color,
                         1,
                         false);
@@ -843,13 +890,13 @@ Drawer.prototype.calculate_layer_boundaries = function() {
     this.layer_boundaries = new Array();
 
     if (this.settings['tree-type'] == 'phylogram') {
-        if (has_tree) 
+        if (this.has_tree) 
         {
-            this.layer_boundaries([0, width]);
+            this.layer_boundaries.push([0, this.height]);
         }
         else
         {
-            this.layer_boundaries([0, 0]);
+            this.layer_boundaries.push([0, 0]);
         } 
     }
     else
@@ -917,9 +964,9 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             drawPhylogramRectangle('event_catcher_' + layer.order,
                 'event',
                 this.layer_boundaries[layer.order][0],
-                tree_max_y / 2,
-                tree_max_y + height_per_leaf,
-                this.layer_boundaries[layer.order][1] - layer_boundaries[layer.order][0],
+                this.width / 2,
+                this.width,
+                this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
                 '#ffffff',
                 0,
                 true);  
@@ -958,8 +1005,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
                 this.layer_boundaries[layer.order][0],
-                tree_max_y / 2,
-                tree_max_y + height_per_leaf,
+                this.width / 2,
+                this.width,
                 this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
                 _bgcolor,
                 _opacity,
@@ -1007,6 +1054,7 @@ Drawer.prototype.draw_guide_lines = function() {
                 } else {
                     drawGuideLine('guide_lines', q.id, q.angle, q.radius, beginning_of_layers);
                 }
+
             }
         }
         q = n.Next();
@@ -1049,7 +1097,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         {
                             numeric_cache.push(
                                 "M",
-                                layer_boundaries[layer.order][1], 
+                                this.layer_boundaries[layer.order][1], 
                                 q.xy['y'] - q.size / 2
                                 );
                         }
@@ -1059,7 +1107,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                             this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
                             q.xy['y'] - q.size / 2, 
                             "L", 
-                            this.layer_boundaries[layer.ordar][1] - this.layerdata_dict[q.label][layer.index], 
+                            this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
                             q.xy['y'] + q.size / 2
                             );
 
@@ -1288,7 +1336,7 @@ Drawer.prototype.draw_samples = function() {
     else if (this.settings['tree-type'] == 'phylogram')
     {
         createBin('viewport', 'samples');
-        $('#samples').attr('transform', 'rotate(90) translate(0,-' + parseInt(height_per_leaf) / 2 + ')');
+        $('#samples').attr('transform', 'rotate(90)');
         drawSamples(); // in sample.js
     }
 }
