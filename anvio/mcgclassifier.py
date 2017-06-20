@@ -144,6 +144,7 @@ class mcg:
         self.samples_information = pd.DataFrame.empty
         self.gene_presence_absence_in_samples = pd.DataFrame.empty
         self.gene_coverages_filtered = pd.DataFrame.empty
+        self.additional_description = ''
         self.total_length = None
 
         if self.exclude_samples:
@@ -263,16 +264,19 @@ class mcg:
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
 
 
-    def plot_TS(self, non_outliers_indices, mean_TS, std_TS, additional_description=''):
+    def plot_TS(self, non_outliers_indices, mean_TS, std_TS):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
         # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
+        additional_description = ''
+        if self.additional_description:
+            additional_description = '-' + self.additional_description
         plot_dir = self.output_file_prefix + '-TS-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
         number_of_fininshed = 0
         for sample in self.positive_samples:
-            coverages_pdf_output = plot_dir + additional_description + '-' + sample + '-coverages.pdf'
+            coverages_pdf_output = plot_dir + '-' + sample + additional_description + '-coverages.pdf'
             pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
             min_y = min(v)
@@ -308,7 +312,7 @@ class mcg:
         self.progress.end()
 
 
-    def get_taxon_specific_genes_in_samples(self, additional_description=''):
+    def get_taxon_specific_genes_in_samples(self):
         """ Use only positive samples to identify the single copy taxon specific genes in each sample:
             
         """
@@ -323,10 +327,10 @@ class mcg:
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
             self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices), self.total_length))
 
-        self.plot_TS(non_outliers_indices,mean_TS,std_TS, additional_description)
+        self.plot_TS(non_outliers_indices,mean_TS,std_TS)
 
 
-    def get_gene_classes(self, additional_description=''):
+    def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
         # need to start a new gene_class_information dict
         # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
@@ -336,7 +340,7 @@ class mcg:
         self.init_sample_detection_information()
 
         # find the taxon-specific genes for each sample
-        self.get_taxon_specific_genes_in_samples(additional_description)
+        self.get_taxon_specific_genes_in_samples()
 
 
     def get_coverage_and_detection_dict(self,bin_id):
@@ -373,6 +377,7 @@ class mcg:
             for bin_id in bin_names_of_interest:
                 self.run.info_single('Classifying genes in bin: %s' % bin_id)
                 self.get_coverage_and_detection_dict(bin_id)
+                self.additional_description = bin_id
                 self.get_gene_classes(bin_id)
                 #self.save_gene_class_information_in_additional_layers(bin_id)
                 #self.save_samples_information(bin_id)
