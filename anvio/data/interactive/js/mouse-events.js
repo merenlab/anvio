@@ -275,11 +275,14 @@ function lineMouseEnterHandler(event) {
     else
     {  
         var _x = (p.ancestor) ? p.ancestor.xy.x : p.xy.x;
+        var begin = p1.xy.y - p1.size / 2;
+        var end = p2.xy.y + p2.size / 2;
+
         drawPhylogramRectangle('tree_bin',
             'hover',
              _x,
-            (p1.xy.y + p2.xy.y) / 2,
-            p2.xy.y - p1.xy.y + height_per_leaf,
+            (begin + end) / 2,
+            end - begin,
             total_radius - _x,
             bin_color,
             0.3,
@@ -618,6 +621,7 @@ function menu_callback(action, param) {
 // globals related single background
 var rect_left;
 var rect_width;
+var original_width; // this will be set in Drawer.initialize_screen;
 
 var origin_x;
 var origin_y;
@@ -648,7 +652,14 @@ function getNodeFromEvent(event)
     {
         if (last_settings['tree-type'] == 'phylogram')
         {
-            return order_to_node_map[leaf_count - parseInt((event.clientX - rect_left) / (rect_width / leaf_count)) - 1];
+            var _x = original_width - ((event.clientX - rect_left) * (window['original_width'] / rect_width));
+            
+            for (var i=0; i < leaf_count; i++) {
+                var node = order_to_node_map[i];
+                if ((_x > (node.xy['y'] - node.size / 2)) && (_x < (node.xy['y'] + node.size / 2))) {
+                    return node;
+                }
+            }
         }
         else if (last_settings['tree-type'] == 'circlephylogram')
         {
@@ -664,13 +675,6 @@ function getNodeFromEvent(event)
                     return node;
                 }
             }
-/*
-            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min']) - (angle_per_leaf / 2)) / angle_per_leaf);
-            
-            if (order < 1 || order > leaf_count)
-                order = 0;
-
-            return order_to_node_map[order]*/
         }
     }
     else
