@@ -1766,11 +1766,13 @@ function redrawBins()
         }
         else
         {
+            var height = end.xy['y'] + end.size / 2 - start.xy['y'] + start.size / 2;
+            
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
                 total_radius + outer_ring_margin + outer_ring_size,
-                (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2,
-                end.xy.y + end.size / 2 - start.xy.y - start.size / 2,
+                start.xy['y'] - start.size / 2 + height / 2,
+                height,
                 outer_ring_size,
                 color,
                 1,
