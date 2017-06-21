@@ -279,30 +279,43 @@ class mcg:
             coverages_pdf_output = plot_dir + sample + additional_description + '-coverages.pdf'
             pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
-            min_y = min(v)
-            range_y = max(v) - min_y
-            fig = plt.figure()
-            ax = fig.add_subplot(111, rasterized=True)
-            ax.set_xlabel = 'Gene Number (ordered)'
-            ax.set_ylabel = r'$Gene Coverage^2$'
-            ax.text(0.25 * len(v), min_y + 10**0.75*range_y, u'Mean = %d\n Standard deviation = %d' % (mean_TS[sample], std_TS[sample]))
+            # Using argsort so we can use the non_oulier indices
             sorting_indices = np.argsort(v)
-            x1 = range(len(v))
-            y2 = v[non_outliers_indices[sample]]
+            # we would need the reverse of the sorting of the indices to create the x axis for the non-outliers
             reverse_sorted_indices = np.zeros(len(sorting_indices))
             reverse_sorted_indices[sorting_indices] = range(len(reverse_sorted_indices))
+
+            # plotting the ordered coverage values (per nucleotide)
+            # the non-outliers are plotted in blue
+            # the outlier values are plotted in red
+            fig = plt.figure()
+            ax = fig.add_subplot(111, rasterized=True)
+            ax.set_xlabel = 'Nucleotide Number (ordered)'
+            ax.set_ylabel = r'$Nucleotide Coverage^2$'
+            x1 = range(len(v)) # FIXME: this shouldn't be in the loop (only here because I need to fix the mock data)
             x2 = reverse_sorted_indices[non_outliers_indices[sample]]
+            y2 = v[non_outliers_indices[sample]]
+            # plot all in red
             ax.semilogy(x1,v[sorting_indices],'r.', rasterized=True)
+            # plot on top the non-outliers in blue
             ax.semilogy(x2,v[non_outliers_indices[sample]],'b.', rasterized=True)
             fig.suptitle("%s - sorted coverage values with outliers" % sample)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
+
             # plotting a histogram of the non-outliers
             # This would allow to see if they resemble a normal distribution
             hist_range = (min(v[non_outliers_indices[sample]]),max(v[non_outliers_indices[sample]]))
+            # computing the number of bins so that the width of a bin is ~1/4 of the standard deviation
             number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (std_TS[sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
-            plt.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
-            plt.title("%s - histogram of non-outliers" % sample)
+            fig = plt.figure()
+            ax = fig.add_subplot(111, rasterized=True)
+            ax.set_xlabel = 'Coverage'
+            ax.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
+            fig.suptitle("%s - histogram of non-outliers" % sample)
+            # adding the mean and std of the non-outliers as text to the plot
+            text_for_hist = u'$\mu = %d$\n $\sigma = %d$' % (mean_TS[sample], std_TS[sample])
+            ax.text(0.8, 0.9, text_for_hist, ha='center', va='center', transform=ax.transAxes)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
             # close the pdf file
