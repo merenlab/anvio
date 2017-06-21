@@ -887,7 +887,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
 
-        self.progress.new('Recovering base frequencies for all')
+        self.progress.new('Recovering NT data')
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
@@ -924,7 +924,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         num_splits = len(split_names_to_consider)
         for split_index in range(num_splits):
             split = split_names_to_consider[split_index]
-            self.progress.update('accessing split coverages and updating variable positions dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
+            self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
 
             split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
@@ -982,7 +982,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
 
     def recover_base_frequencies_for_all_samples(self):
-        self.progress.new('Recovering AA frequencies for all')
+        self.progress.new('Recovering AA data')
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
@@ -1017,7 +1017,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         num_splits = len(split_names_to_consider)
         for split_index in range(num_splits):
             split_name = split_names_to_consider[split_index]
-            self.progress.update('accessing split coverages and updating variable positions dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
+            self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
 
             split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
 
