@@ -89,17 +89,16 @@ Drawer.prototype.draw = function() {
     this.calculate_layer_boundaries();
     total_radius = this.layer_boundaries[this.layer_boundaries.length - 1][1];
     beginning_of_layers = this.layer_boundaries[1][0];
-    
+    layer_boundaries = this.layer_boundaries;
+
     this.draw_layer_backgrounds();
     this.draw_guide_lines();
     this.draw_categorical_layers();
     this.draw_numerical_layers();
     this.draw_stack_bar_layers();
     this.draw_layer_names();
-    this.draw_collapsed_layers();
-
-    layer_boundaries = this.layer_boundaries;
     this.draw_samples();
+    
     rebuildIntersections();
     createBin('tree_bin', 'bin');
     
@@ -424,35 +423,6 @@ Drawer.prototype.collapse_nodes = function() {
         cnode.child_nodes = [];
         cnode.child = null;
         cnode.collapsed = true;
-    }
-};
-
-Drawer.prototype.draw_collapsed_layers = function() {
-    for (var i=0; i < collapsedNodes.length; i++) {
-        var cnode = label_to_node_map[collapsedNodes[i]];
-
-        if (this.settings['tree-type'] == 'circlephylogram') {
-            drawPie('tree_bin',
-                'collapsed_bg_' + cnode.id,
-                cnode.angle - cnode.size / 2,
-                cnode.angle + cnode.size / 2,
-                this.layer_boundaries[0][1], 
-                this.layer_boundaries[this.layer_boundaries.length - 1][1],
-                (cnode.size > Math.PI) ? 1 : 0,
-                "#FFFFFF",
-                1,
-                true);
-        } else {
-            drawPhylogramRectangle('tree_bin',
-                'collapsed_bg_' + cnode.id, 
-                this.layer_boundaries[0][1],
-                cnode.xy['y'],
-                cnode.size,
-                this.layer_boundaries[this.layer_boundaries.length - 1][1] - this.layer_boundaries[0][1],
-                "#FFFFFF",
-                1,
-                true);
-        }
     }
 };
 
