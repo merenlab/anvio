@@ -254,7 +254,6 @@ class VariabilitySuper(object):
 
     def filter(self, filter_name, test_func):
         self.progress.new('Filtering based on "%s"' % filter_name)
-        num_entries_before_filter = len(self.data)
 
         entry_ids_to_remove, counter = set([]), 0
 
@@ -268,20 +267,9 @@ class VariabilitySuper(object):
                 entry_ids_to_remove.add(entry_id)
                 continue
 
-        self.progress.update('removing %s entries from data ...' % pp(len(entry_ids_to_remove)))
-        for entry_id in entry_ids_to_remove:
-            self.data.pop(entry_id)
-
-        num_entries_after_filter = len(self.data)
-
         self.progress.end()
 
-        self.run.info('Remaining entries after "%s" filter' % filter_name,
-                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
-                                                          pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc='green')
-
-        self.check_if_data_is_empty()
+        self.remove_entries_from_data(entry_ids_to_remove, reason=filter_name)
 
 
     def check_if_data_is_empty(self):
@@ -375,13 +363,9 @@ class VariabilitySuper(object):
             if not unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] >= self.min_occurrence:
                 entry_ids_to_remove.add(entry_id)
 
-        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
-        for entry_id in entry_ids_to_remove:
-            self.data.pop(entry_id)
-
         self.progress.end()
 
-        self.check_if_data_is_empty()
+        self.remove_entries_from_data(entry_ids_to_remove, reason="preliminary filters")
 
 
     def set_unique_pos_identification_numbers(self):
@@ -467,8 +451,6 @@ class VariabilitySuper(object):
 
         self.run.info('Min scatter', self.min_scatter)
 
-        num_entries_before_filter = len(self.data)
-
         # we need the unique pos_id to entry id dict filled for this function:
         self.gen_unique_pos_identifier_to_entry_id_dict()
 
@@ -488,17 +470,37 @@ class VariabilitySuper(object):
             if scatter < self.min_scatter:
                 entry_ids_to_remove.update(entry_ids)
 
-        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
-        for entry_id in entry_ids_to_remove:
-            self.data.pop(entry_id)
-
-        num_entries_after_filter = len(self.data)
 
         self.progress.end()
 
-        self.run.info('Remaining entries after "minimum scatter" filter',
-                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
-                                                          pp(num_entries_before_filter - num_entries_after_filter)),
+        self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
+
+
+    def remove_entries_from_data(self, entry_ids_to_remove=set([]), reason="unknown reason"):
+        """Safely remove entries from self.data"""
+
+        self.progress.new('Data removal')
+        self.progress.update('...')
+
+        num_entries_before = len(self.data)
+
+        self.progress.update('removing %s entries from data...' % pp(len(entry_ids_to_remove)))
+        unique_pos_ids_to_remove = set([])
+        for entry_id in entry_ids_to_remove:
+            unique_pos_ids_to_remove.add(self.data[entry_id]['unique_pos_identifier_str'])
+            self.data.pop(entry_id)
+
+        self.progress.update('removing %s unique positions...' % pp(len(unique_pos_ids_to_remove)))
+        for unique_pos_id in unique_pos_ids_to_remove:
+            self.unique_pos_id_to_entry_id.pop(unique_pos_id)
+
+        num_entries_after = len(self.data)
+
+        self.progress.end()
+
+        self.run.info('Remaining entries after "%s"' % (reason),
+                      '%s (%s was removed)' % (pp(num_entries_after),
+                                               pp(num_entries_before - num_entries_after)),
                       mc='green')
 
         self.check_if_data_is_empty()
@@ -512,8 +514,6 @@ class VariabilitySuper(object):
             return
 
         self.run.info('Min coverage in all samples', '%dX' % self.min_coverage_in_each_sample)
-
-        num_entries_before_filter = len(self.data)
 
         # we need to make sure we have an up-to-date dictionary for unque position to entry id conversion:
         self.gen_unique_pos_identifier_to_entry_id_dict()
@@ -531,20 +531,9 @@ class VariabilitySuper(object):
             if min_coverage_in_a_sample < self.min_coverage_in_each_sample:
                 entry_ids_to_remove.update(entry_ids)
 
-        self.progress.update('removing %s entries from table ...' % pp(len(entry_ids_to_remove)))
-        for entry_id in entry_ids_to_remove:
-            self.data.pop(entry_id)
-
-        num_entries_after_filter = len(self.data)
-
         self.progress.end()
 
-        self.run.info('Remaining entries after "minimum cov in all samples" filter',
-                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
-                                                          pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc='green')
-
-        self.check_if_data_is_empty()
+        self.remove_entries_from_data(entry_ids_to_remove, "min cov in all samples")
 
 
     def filter_based_on_num_positions_from_each_split(self):
@@ -553,8 +542,6 @@ class VariabilitySuper(object):
         else:
             self.run.info('Num positions to keep from each split', '(all positions)')
             return
-
-        num_entries_before_filter = len(self.data)
 
         self.progress.new('Filtering based on -n')
 
@@ -580,20 +567,9 @@ class VariabilitySuper(object):
         self.progress.update('Identifying entry ids to remove ...')
         entry_ids_to_remove = set([entry_id for entry_id in self.data if self.data[entry_id]['unique_pos_identifier'] in unique_positions_to_remove])
 
-        self.progress.update('Removing %d positions ...' % len(unique_positions_to_remove))
-        for entry_id in entry_ids_to_remove:
-            self.data.pop(entry_id)
-
-        num_entries_after_filter = len(self.data)
-
         self.progress.end()
 
-        self.run.info('Remaining entries after num positions filter',
-                      '%s (filter removed %s entries)' % (pp(num_entries_after_filter),
-                                                          pp(num_entries_before_filter - num_entries_after_filter)),
-                      mc='green')
-
-        self.check_if_data_is_empty()
+        self.remove_entries_from_data(entry_ids_to_remove, reason="max num positions from each split")
 
 
     def compute_comprehensive_variability_scores(self):
