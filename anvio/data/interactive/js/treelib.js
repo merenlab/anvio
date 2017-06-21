@@ -582,10 +582,8 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.collapsed = false;
-    this.max_child_x = 0;
-    this.max_child_radius = 0;
+    this.max_child_path = 0;
 }
-
 //--------------------------------------------------------------------------------------------------
 Node.prototype.IsLeaf = function() {
     return (!this.child);

@@ -410,7 +410,7 @@ Drawer.prototype.collapse_nodes = function() {
                 q.edge_length = q.ancestor.edge_length + d;
             }
 
-            max_edge = Math.max(max_edge, q.edge_length);
+            max_edge = Math.max(max_edge, (q.collapsed) ? q.edge_length + q.max_child_path : q.edge_length);
 
             if (q.IsLeaf()) {
                 sum_size += q.size;
@@ -515,7 +515,7 @@ Drawer.prototype.calculate_tree_coordinates = function() {
             q.path_length = q.ancestor.path_length + d;
         }
 
-        this.max_path_length = Math.max(this.max_path_length, q.path_length);
+        this.max_path_length = Math.max(this.max_path_length, (q.collapsed) ? q.path_length + q.max_child_path : q.path_length);
         q = n.Next();
     }
 
@@ -715,7 +715,6 @@ Drawer.prototype.draw_tree = function() {
                 var tp1_y = p0['y'] - p.size / 2;
                 var tp2_y = p0['y'] + p.size / 2;
             } else {
-                console.log(p.max_child_path);
                 var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
                 var tp1_x = _radius * Math.cos(p.angle + p.size / 2);
                 var tp1_y = _radius * Math.sin(p.angle + p.size / 2);
