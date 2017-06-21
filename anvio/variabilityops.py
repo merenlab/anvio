@@ -479,15 +479,24 @@ class VariabilitySuper(object):
     def remove_entries_from_data(self, entry_ids_to_remove=set([]), reason="unknown reason"):
         """Safely remove entries from self.data"""
 
-        self.progress.new('Data removal')
+        if not entry_ids_to_remove:
+            return
+
+        self.progress.new('Data removal for "%s"' % reason)
         self.progress.update('...')
 
         num_entries_before = len(self.data)
 
+        # when data is removed, one of the dictionaries to also update is `self.unique_pos_id_to_entry_id`,
+        # however, not at all stages of the process this dictionary is present. hence, we need to determine
+        # whether we need to work with it early on:
+        unique_pos_id_to_entry_id_needs_updating = 'unique_pos_identifier_str' in self.data[next(iter(entry_ids_to_remove))]
+
         self.progress.update('removing %s entries from data...' % pp(len(entry_ids_to_remove)))
         unique_pos_ids_to_remove = set([])
         for entry_id in entry_ids_to_remove:
-            unique_pos_ids_to_remove.add(self.data[entry_id]['unique_pos_identifier_str'])
+            if unique_pos_id_to_entry_id_needs_updating:
+                unique_pos_ids_to_remove.add(self.data[entry_id]['unique_pos_identifier_str'])
             self.data.pop(entry_id)
 
         self.progress.update('removing %s unique positions...' % pp(len(unique_pos_ids_to_remove)))
