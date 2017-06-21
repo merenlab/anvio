@@ -256,31 +256,6 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(line);
-
-    if (p.collapsed) {
-        var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        triangle.setAttribute('id', line.getAttribute('id'));
-        triangle.setAttribute('vector-effect', 'non-scaling-stroke');
-        triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
-
-        var tp1_x, tp1_y, tp2_x, tp2_y;
-        if ($('#tree_type').val() == 'phylogram') {
-            var tp1_x = p.max_child_x;
-            var tp1_y = p0['y'] - height_per_leaf / 2;
-
-            var tp2_x = p.max_child_x;
-            var tp2_y = p0['y'] + height_per_leaf / 2;
-        } else {
-            var tp1_x = p.max_child_radius * Math.cos(p.angle + angle_per_leaf / 2);
-            var tp1_y = p.max_child_radius * Math.sin(p.angle + angle_per_leaf / 2);
-
-            var tp2_x = p.max_child_radius * Math.cos(p.angle - angle_per_leaf / 2);
-            var tp2_y = p.max_child_radius * Math.sin(p.angle - angle_per_leaf / 2);
-        }
-        triangle.setAttribute('points', p1['x'] + ',' + p1['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
-        svg.appendChild(triangle);
-    }
-
     return line;
 }
 

@@ -185,7 +185,7 @@ function lineContextMenuHandler(event) {
 
         return false;
     } else {
-        if (collapsedNodes.indexOf(context_menu_target_id) == -1) {
+        if (collapsedNodes.indexOf(id_to_node_map[context_menu_target_id].label) == -1) {
             $('.menuItemCollapse').show();
             $('.menuItemExpand').hide();
         } else {
@@ -232,6 +232,9 @@ function lineMouseEnterHandler(event) {
         return;
 
     var p = getNodeFromEvent(event);
+
+    if (p.collapsed)
+        return;
 
     $('#path_hover').remove();
 
@@ -323,6 +326,9 @@ function lineMouseLeaveHandler(event) {
     }
 
     if (!p)
+        return;
+
+    if (p.collapsed)
         return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {
@@ -525,12 +531,12 @@ function menu_callback(action, param) {
 
     switch (action) {
         case 'collapse':
-            collapsedNodes.push(context_menu_target_id);
+            collapsedNodes.push(item_name);
             drawTree();
             break;
 
         case 'expand':
-            collapsedNodes.splice(collapsedNodes.indexOf(context_menu_target_id), 1);
+            collapsedNodes.splice(collapsedNodes.indexOf(item_name), 1);
             drawTree();
             break;
 
