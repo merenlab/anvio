@@ -937,12 +937,12 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             if p not in u:
                 u[p] = v['unique_pos_identifier']
 
-
         split_names_to_consider = list(splits_to_consider_dict.keys())
         num_splits = len(split_names_to_consider)
         for split_index in range(num_splits):
             split = split_names_to_consider[split_index]
             self.progress.update('accessing split coverages and updating variable positions dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
+
             split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
             split_info = self.splits_basic_info[split]
@@ -1030,10 +1030,11 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                 d[gene_codon_key] = copy.deepcopy(samples_wanted)
                 d[gene_codon_key].remove(v['sample_id'])
 
-        counter = 0
-        for split_name in splits_to_consider_dict:
-            counter += 1
-            self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
+        split_names_to_consider = list(splits_to_consider_dict.keys())
+        num_splits = len(split_names_to_consider)
+        for split_index in range(num_splits):
+            split_name = split_names_to_consider[split_index]
+            self.progress.update('accessing split coverages and updating variable positions dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
 
             split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
 
