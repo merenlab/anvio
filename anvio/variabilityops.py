@@ -614,12 +614,38 @@ class VariabilitySuper(object):
 
 
     def compute_comprehensive_variability_scores(self):
-        """Comprehensive stats"""
+        """
+            Comprehensive stats - we compute scores that take into consideration the entire vector of variability
+            and not only the two most competing items (and thus it is comprehensive).
+            Currently the scores that are included are: site-entropy, site-Kullback-Leibler divergence (both a 
+            raw score and a normalized score (see below)), and weighted substitution scores (i.e. BLOSUM).
+            
+            site-entropy - the entropy of the items in a single site (in a sample).
+
+            Kullback-Leibler divergence raw - the Kullback-Leibler divergence of the frequencies in a sample
+            compared to the raw frequencies of the sum of occurances in the same site accross samples.
+
+            Kullback-Leibler divergence normalized - the Kullback-Leibler divergence of the frequencies in a sample
+            compared to the frequencies of the sum of normalized occurances in the same site accross samples. Where
+            the normalization is such that the occernce of items is normalized to sum to one in each sample. This method
+            eliminates the effect of coverage on the score. The disadvantage of this method is that if there is a sample with
+            low coverage then any noise (like a single sequencing error) could have a major effect. It is recommended 
+            to use this score in combination with the --min-coverage-in-each-sample.
+            
+            Weighted substitution scores - the weights per substitution score is weighted by the joint frequency of the items
+            i.e. sum(S_{i,j}*pi*pj) where i does not equal j (i.e. the substitution of an item with itself is not considered)
+        """
 
         if self.skip_comprehensive_variability_scores:
             self.run.warning("Anvi'o will skip comprehensive variability score computations.")
             return
 
+        # FIXME: In the future we should separate this function into two:
+        #   1. scores that require quince mode - these are scores that are computed according 
+        #       to the occurence accross samples, and hence they require quince mode
+        #       for example: Kullbak-Leibler divergence
+        #   2. scores that dont require quince mode - these are calculated per sample (e.g. entropy, BLOSUM)
+        # For now we just require quince mode for all scores
         if not self.quince_mode:
             self.run.warning("Comprehensive variability score computations can only be done with `--quince-mode`")
             return
@@ -633,6 +659,10 @@ class VariabilitySuper(object):
         self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
                                            ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
 
+        # converting the substitution matrices from dict of dicts to numpy matrix (to allow vector operations later on)
+        # we keep track of the indices of the items for the following reasons:
+        #    1. in case the substitution matrix has only a sub-set of the items
+        #    2. to make sure the order of items is compatible between this matrix and the items frequency vectors (and thus allow vector operations - see below)
         self.progress.update('Initializing numpy formatted substitution matrices...')
         item_indices_for_substitution_scoring_matrices = {}
         numpy_matrices_for_substitution_scoring_matrices = {}
@@ -645,6 +675,8 @@ class VariabilitySuper(object):
             for i in range(num_items):
                 for j in range(num_items):
                     if i == j:
+                        # We set the substitution score of an item with itself to zero. This way we only consider substitutions to other items
+                        # (and dont consider substitution of an item with itself)
                         numpy_matrices_for_substitution_scoring_matrices[m][i][j] = 0
                     else:
                         numpy_matrices_for_substitution_scoring_matrices[m][i][j] = self.substitution_scoring_matrices[m][items[i]][items[j]]
@@ -670,34 +702,53 @@ class VariabilitySuper(object):
             list_of_sample_frequencies = np.array(list_of_sample_frequencies)
             sum_sample_frequencies = sum(list_of_sample_frequencies)
 
+            # normalizing frequencies (so they add to 1) (notice that by deviding by a column vector we divide each row of the matrix by the sum that
+            # corresponds to that row)
             list_of_sample_frequencies_normalized = np.divide(np.array(list_of_sample_frequencies), np.sum(list_of_sample_frequencies, axis=1)[:, np.newaxis])
             sum_sample_frequencies_normalized = sum(list_of_sample_frequencies_normalized)
 
             for i in range(0, len(self.sample_ids)):
                 sample_id = self.sample_ids[i]
 
+                # compute entropy
                 comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
 
                 # compute Kullback-Leibler divergence for raw counts
                 kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
+                # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
                 kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
 
                 comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
                 comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
 
+                # computing weighted substitution score
+                # we compute a weighted score for each existing substitution matrix
                 if not comprehensive_stats[sample_id]['entropy']:
+                    # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
+                    # so no need to calculate substitution score
                     for m in self.substitution_scoring_matrices:
                         comprehensive_stats[sample_id][m + '_weighted'] = None
                 else:
                     for m in self.substitution_scoring_matrices:
-                        # here we subsample AND reorder our sample frequencies based on what items
-                        # appear in the substitution matrix `m`. see the code above this for loop
+                        # here we subsample AND reorder our sample frequencies based on the items that
+                        # appear in the substitution matrix `m`. see the code above with the for loop
                         # to remember how they are set.
                         S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
                         S = S / sum(S)
 
                         if np.count_nonzero(S) > 1:
+                            # because the substitution matrix might hold only a subset of the items,
+                            # we could have positions in which the entropy is greater than zero, but 
+                            # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
+                            # hence to avoid devision by zero we make sure there is more than one nonzero frequency
+
+                            # a normalization score is needed since we dont consider a substitution of an item with itself.
+                            # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
+                            # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
+                            # are not valid weights.
                             normalization_factor = 1 / (1 - np.sum(np.square(S)))
+                            # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
+                            # this means that each substitution score between two items is weighted by the product of the weight of the items
                             A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
                             comprehensive_stats[sample_id][m + '_weighted'] = A
                         else:
