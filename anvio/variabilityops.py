@@ -426,11 +426,6 @@ class VariabilitySuper(object):
         if not len(keys):
             keys = list(self.data.keys())
 
-        # preparing this for later use:
-        missing_items_from_substitution_matrices = {}
-        for m in self.substitution_scoring_matrices:
-            missing_items_from_substitution_matrices[m] = set([])
-
         for key in keys:
             e = self.data[key]
             item_frequencies = utils.get_variabile_item_frequencies(e, self.engine)
@@ -456,18 +451,6 @@ class VariabilitySuper(object):
                     e[m] = self.substitution_scoring_matrices[m][competing_items[0]][competing_items[1]]
                 except KeyError:
                     e[m] = None
-
-                    for item in competing_items:
-                        if item not in self.substitution_scoring_matrices[m]:
-                            missing_items_from_substitution_matrices[m].add(item)
-
-        for m in self.substitution_scoring_matrices:
-            if missing_items_from_substitution_matrices[m]:
-                self.run.warning("Some items were missing from your substitution matrix. Probably this is not a big\
-                                  deal and/or probably you have already been expecting this since you know everything\
-                                  anyway. But here is a list of things that were found in your variability profile,\
-                                  but not in your matrix: '%s'." % (', '.join(missing_items_from_substitution_matrices[m])),
-                                 header="Missing items from '%s'" % m)
 
 
     def filter_based_on_scattering_factor(self):
