@@ -52,7 +52,7 @@ class VariablityTestFactory:
         return y
 
 
-def get_competing_items(reference, items_frequency_tuples_list):
+def get_competing_items(reference, items_frequency_tuples_list=[]):
     """Resolves competing nts and aas.
 
        This function will return None if there is no varaition and the most frequent
@@ -67,15 +67,19 @@ def get_competing_items(reference, items_frequency_tuples_list):
 
     """
 
+    num_items = len(items_frequency_tuples_list)
+    if not num_items:
+        raise ConfigError("Wat. You sent an empty list to `get_competing_items` :(")
+
     # get the most frequent base
     most_frequent_item = items_frequency_tuples_list[0][0]
 
-    if (len(items_frequency_tuples_list) == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item == reference:
+    if (num_items == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item == reference:
         # ^^^^^ the list has only one item, or the second item has 0 frequency ^^^^^
         # so there is no variation, and the most frequent base IS the reference.
         # nothing to see here.
         return None
-    elif (len(items_frequency_tuples_list) == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item != reference:
+    elif (num_items == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item != reference:
         # ^^^^^ the list has only one item, or the second item has 0 frequency ^^^^^
         # again, there is no variation, but the most frequent base DIFFERS from the reference.
         # much more interesting. We are not returning None here, becasue we do not want this
@@ -89,11 +93,11 @@ def get_competing_items(reference, items_frequency_tuples_list):
         # we don't care about that.
 
         # FIXME: CONGRATULATIONS. YOU DID FIND THE SHITTIEST PIECE OF CODE IN THIS
-        #        REPOSITORY. IF YOU SEND US AN E-MAIL, EVAN WILL RESPOND WITH A
+        #        REPOSITORY. IF YOU SEND US AN E-MAIL, SOMEONE WILL RESPOND WITH A
         #        FORMAL APOLOGY FOR THIS MONSTROSITY.
-        if(len(items_frequency_tuples_list)) > 2 and items_frequency_tuples_list[1][1] == items_frequency_tuples_list[2][1]:
+        if num_items > 2 and items_frequency_tuples_list[1][1] == items_frequency_tuples_list[2][1]:
             frequency_of_the_second = items_frequency_tuples_list[1][1]
-            second_most_frequent_items = sorted([tpl[0] for tpl in items_frequency_tuples_list if tpl[1] == frequency_of_the_second], reverse=True)
+            second_most_frequent_items = sorted([tpl[0] for tpl in items_frequency_tuples_list if tpl[1] == frequency_of_the_second and tpl[0] != most_frequent_item], reverse=True)
             return sorted([most_frequent_item, second_most_frequent_items[0]])
         else:
             second_most_frequent_item = items_frequency_tuples_list[1][0]
@@ -112,7 +116,6 @@ class ColumnProfile:
 
         self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'reference': reference,
                         'coverage': coverage, 'departure_from_reference': 0, 'competing_nts': None, 'worth_reporting': False}
-
 
         nt_counts = Counter(column)
         for nt in nucleotides:
