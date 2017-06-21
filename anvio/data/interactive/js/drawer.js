@@ -71,9 +71,13 @@ Drawer.prototype.draw = function() {
 
     this.initialize_tree();
     this.generate_mock_data_for_collapsed_nodes();
+    this.collapse_nodes();
+
     this.generate_tooltips();
     this.normalize_values();
     this.calculate_bar_sizes();
+    
+    this.assign_leaf_order();
     this.calculate_leaf_sizes();
 
     if (this.has_tree) 
@@ -92,11 +96,10 @@ Drawer.prototype.draw = function() {
     this.draw_numerical_layers();
     this.draw_stack_bar_layers();
     this.draw_layer_names();
+    this.draw_collapsed_layers();
 
     layer_boundaries = this.layer_boundaries;
     this.draw_samples();
-
-
     rebuildIntersections();
     createBin('tree_bin', 'bin');
     
@@ -117,7 +120,7 @@ Drawer.prototype.draw = function() {
 
 Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
     for (var i=0; i < collapsedNodes.length; i++) {
-        var q = id_to_node_map[collapsedNodes[i]];
+        var q = label_to_node_map[collapsedNodes[i]];
 
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
@@ -338,33 +341,9 @@ Drawer.prototype.initialize_tree = function() {
         this.tree.ComputeDepths();
         this.tree.ComputeWeights(this.tree.root);
 
-        var intersection_counter = 0;
-        var order_counter = 0;
-        
-        var n = new NodeIterator(this.tree.root);
-        var q = n.Begin();
-
-        while (q != null) {
-            if (!q.IsLeaf()) {
-                q.label = "Int_" + (intersection_counter++);
-            }
-
-            label_to_node_map[q.label] = q;
-            id_to_node_map[q.id] = q;
-
-            q.order = order_counter++;
-            order_to_node_map[q.order] = q;
-
-            q = n.Next();
-        }
-
-        leaf_count = this.tree.num_leaves;
-
         var n = new NodeIterator(this.tree.root);
         var q = n.Begin();
         var intersection_counter = 0;
-
-        order_counter = 0;
         while (q != null)
         {
             if (!q.IsLeaf()) {
@@ -373,6 +352,7 @@ Drawer.prototype.initialize_tree = function() {
 
             label_to_node_map[q.label] = q;
             id_to_node_map[q.id] = q;
+            q.size = 1;
 
             var _n = new NodeIterator(q);
             var _q = _n.Begin();
@@ -383,37 +363,97 @@ Drawer.prototype.initialize_tree = function() {
                 _q = _n.Next();
             }
 
-            if (collapsedNodes.indexOf(q.id) > -1) {
-                q.collapsed = true;
-
-                for (var i=0; i < q.child_nodes.length; i++) {
-                    p = id_to_node_map[q.child_nodes[i]];
-                    if (this.settings['tree-type'] == 'circlephylogram') {
-                        q.max_child_radius = Math.max(q.max_child_radius, p.radius, p.max_child_radius);
-                    } else {
-                        q.max_child_x =  Math.max(q.max_child_x, p.xy.x, p.max_child_x);
-                    }    
-                }
-                q.child_nodes = []
-                q.child = null;
-            }
             q=n.Next();
         }
-
-        var n = new NodeIterator(this.tree.root);
-        var q = n.Begin();
-
-        var order_counter = 0;   
-        while (q != null) {
-            if (q.IsLeaf()) {
-                q.order = order_counter++;
-                order_to_node_map[q.order] = q;
-            }
-            q=n.Next();
-        }
-        this.tree.num_leaves = order_counter;
-        leaf_count = this.tree.num_leaves;
     }    
+};
+
+Drawer.prototype.assign_leaf_order = function() {
+    var n = new NodeIterator(this.tree.root);
+    var q = n.Begin();
+
+    var order_counter = 0;   
+    while (q != null) {
+        if (q.IsLeaf()) {
+            q.order = order_counter++;
+            order_to_node_map[q.order] = q;
+        }
+        q=n.Next();
+    }
+    this.tree.num_leaves = order_counter;
+    leaf_count = this.tree.num_leaves;
+};
+
+Drawer.prototype.collapse_nodes = function() {
+    for (var i=0; i < collapsedNodes.length; i++) {
+        var cnode = label_to_node_map[collapsedNodes[i]];
+
+        var max_edge = 0;
+        var sum_size = 0;
+        var n = new PreorderIterator(cnode);
+        var q = n.Begin();
+        while (q != null) {
+            if (q == cnode) {
+                 q = n.Next();
+                continue;
+            }
+
+            var d = q.edge_length;
+            
+            if (d < 0.00001) {
+                d = 0.0;
+            }
+            
+            if (q.ancestor == cnode) {
+                q.edge_length = d;
+            } else {
+                q.edge_length = q.ancestor.edge_length + d;
+            }
+
+            max_edge = Math.max(max_edge, q.edge_length);
+
+            if (q.IsLeaf()) {
+                sum_size += q.size;
+            }
+            q = n.Next();
+        }
+
+        cnode.max_child_path = max_edge;
+        cnode.size = sum_size / 2;
+
+        cnode.child_nodes = [];
+        cnode.child = null;
+        cnode.collapsed = true;
+    }
+};
+
+Drawer.prototype.draw_collapsed_layers = function() {
+    for (var i=0; i < collapsedNodes.length; i++) {
+        var cnode = label_to_node_map[collapsedNodes[i]];
+
+        if (this.settings['tree-type'] == 'circlephylogram') {
+            drawPie('tree_bin',
+                'collapsed_bg_' + cnode.id,
+                cnode.angle - cnode.size / 2,
+                cnode.angle + cnode.size / 2,
+                this.layer_boundaries[0][1], 
+                this.layer_boundaries[this.layer_boundaries.length - 1][1],
+                (cnode.size > Math.PI) ? 1 : 0,
+                "#FFFFFF",
+                1,
+                true);
+        } else {
+            drawPhylogramRectangle('tree_bin',
+                'collapsed_bg_' + cnode.id, 
+                this.layer_boundaries[0][1],
+                cnode.xy['y'],
+                cnode.size,
+                this.layer_boundaries[this.layer_boundaries.length - 1][1] - this.layer_boundaries[0][1],
+                "#FFFFFF",
+                1,
+                true);
+        }
+    }
 };
 
 Drawer.prototype.bind_tree_events = function() {
@@ -428,9 +468,7 @@ Drawer.prototype.calculate_leaf_sizes = function() {
     var total_size = 0;
 
     for (var i=0; i < this.tree.num_leaves; i++) {
-        var size = 1 + i;
-        total_size += size;
-        order_to_node_map[i].size = size;
+        total_size += order_to_node_map[i].size;
     }
 
     var total_width;
@@ -458,7 +496,13 @@ Drawer.prototype.calculate_tree_coordinates = function() {
     this.max_path_length = 0;
     this.tree.root.path_length = this.tree.root.edge_length;
 
-    var n = new NodeIterator(this.tree.root);
+    if (this.settings['tree-type'] == 'circlephylogram') {
+        this.root_length = (this.radius / 2) * this.root_length;
+    } else {
+        this.root_length = (this.height) * this.root_length;
+    }
+
+    var n = new PreorderIterator(this.tree.root);
     var q = n.Begin();
     while (q != null) {
         var d = q.edge_length;
@@ -473,10 +517,6 @@ Drawer.prototype.calculate_tree_coordinates = function() {
 
         this.max_path_length = Math.max(this.max_path_length, q.path_length);
         q = n.Next();
-    }
-
-    if (typeof max_path_length !== 'undefined') {
-        this.max_path_length = max_path_length;
     }
 
     var n = new NodeIterator(this.tree.root);
@@ -495,7 +535,6 @@ Drawer.prototype.calculate_tree_coordinates = function() {
 };
 
 Drawer.prototype.calculate_leaf_coordinate = function(p) {
-    // calc leaf nodes.
     if (this.settings['tree-type'] == 'circlephylogram')
     {
         if (p.order == 0) {
@@ -505,9 +544,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
             p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
         }
 
-        p.radius = parseFloat(this.radius) - (this.root_length + (p.path_length / this.max_path_length) * (parseFloat(this.radius) / 2));
-
-        this.leaf_count++;
+        p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
 
         var pt = [];
         pt['x'] = p.radius * Math.cos(p.angle);
@@ -526,8 +563,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
             var prev_leaf = order_to_node_map[p.order - 1];
             pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
         }
-        pt['x'] = this.height - (p.path_length / this.max_path_length) * this.height;
-        this.leaf_count++;
+        pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
 
         p.xy['x'] = pt['x'];
         p.xy['y'] = pt['y'];
@@ -541,7 +577,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
         var right_angle = p.child.GetRightMostSibling().angle;
 
         p.angle = left_angle + (right_angle - left_angle) / 2;
-        p.radius = parseFloat(this.radius) - (this.root_length + (p.path_length / this.max_path_length) * (parseFloat(this.radius) / 2));
+        p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
 
         var pt = [];
         pt['x'] = p.radius * Math.cos(p.angle);
@@ -567,7 +603,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
     else
     {
         var pt = [];
-        pt['x'] = this.height - (p.path_length / this.max_path_length) * this.height;
+        pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
 
         var pl = p.child.xy;
         var pr = p.child.GetRightMostSibling().xy;
@@ -585,24 +621,19 @@ Drawer.prototype.draw_tree = function() {
     drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
 
     if (this.settings['tree-type'] == 'phylogram')
-        $('#tree_bin').attr('transform', 'rotate(90)'); 
+        $('#tree_bin').attr('transform', 'rotate(90)');
 
-    // draw root
+    this.draw_root();
 
-/*    var p0 = this.tree.root.xy
-    var p1 = {'x': 0, 'y': 0};
-
-    drawLine(this.tree_svg_id, this.tree.root, p0, p1);
-*/
     var n = new NodeIterator(this.tree.root);
     var p = n.Begin();
     while (p != null) {
         if (p.IsLeaf()) 
         {
             if (this.settings['tree-type'] == 'circlephylogram') {
-                var p0 = p.xy
-                var p1 = p.backarc;
-                drawLine(this.tree_svg_id, p, p0, p1);
+                    var p0 = p.xy
+                    var p1 = p.backarc;
+                    drawLine(this.tree_svg_id, p, p0, p1);
             }
             else
             {
@@ -673,28 +704,47 @@ Drawer.prototype.draw_tree = function() {
             var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
             triangle.setAttribute('id', 'line' + p.id);
             triangle.setAttribute('vector-effect', 'non-scaling-stroke');
+            triangle.setAttribute('fill', '#FFFFFF');
             triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
 
             var tp1_x, tp1_y, tp2_x, tp2_y;
             if (this.settings['tree-type'] == 'phylogram') {
-                var tp1_x = p.max_child_x;
-                var tp1_y = p0['y'] - height_per_leaf / 2;
+                var tp1_x = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.height) - this.root_length));
+                var tp2_x = tp1_x;
 
-                var tp2_x = p.max_child_x;
-                var tp2_y = p0['y'] + height_per_leaf / 2;
+                var tp1_y = p0['y'] - p.size / 2;
+                var tp2_y = p0['y'] + p.size / 2;
             } else {
-                var tp1_x = p.max_child_radius * Math.cos(p.angle + angle_per_leaf / 2);
-                var tp1_y = p.max_child_radius * Math.sin(p.angle + angle_per_leaf / 2);
+                console.log(p.max_child_path);
+                var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
+                var tp1_x = _radius * Math.cos(p.angle + p.size / 2);
+                var tp1_y = _radius * Math.sin(p.angle + p.size / 2);
 
-                var tp2_x = p.max_child_radius * Math.cos(p.angle - angle_per_leaf / 2);
-                var tp2_y = p.max_child_radius * Math.sin(p.angle - angle_per_leaf / 2);
+                var tp2_x = _radius * Math.cos(p.angle - p.size / 2);
+                var tp2_y = _radius * Math.sin(p.angle - p.size / 2);
             }
-            triangle.setAttribute('points', p1['x'] + ',' + p1['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
-            document.getElementById('viewport').appendChild(triangle);
+            triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
+            document.getElementById('tree').appendChild(triangle);
         }
 
         p = n.Next();
     }
+};
+
+Drawer.prototype.draw_root = function() {
+    var p0 = this.tree.root.xy
+    var p1 = [];
+
+    if (this.settings['tree-type'] == 'circlephylogram') {
+        p1['x'] = 0;
+        p1['y'] = 0;
+    } else {
+        p1['x'] = 0;
+        p1['y'] = p0['y'];
+    }
+    
+    drawLine(this.tree_svg_id, this.tree.root, p0, p1);
+
 };
 
 Drawer.prototype.initialize_screen = function() {
@@ -899,7 +949,7 @@ Drawer.prototype.calculate_layer_boundaries = function() {
     }
     else
     {
-        this.layer_boundaries.push([0, this.radius]);
+        this.layer_boundaries.push([0, parseFloat(this.radius) / 2]);
     }
 
     this.iterate_layers(function(layer) {
@@ -1044,7 +1094,7 @@ Drawer.prototype.draw_guide_lines = function() {
     var q = n.Begin();
 
     while (q != null) {
-        if (q.IsLeaf()) {
+        if (q.IsLeaf() && !q.collapsed) {
             odd_even_flag = odd_even_flag * -1;
             if (odd_even_flag > 0) {
                 if (this.settings['tree-type'] == 'phylogram') {
@@ -1231,6 +1281,10 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         for (var i=0; i < this.tree.num_leaves; i++) {
             q = order_to_node_map[i];
+
+            if (q.collapsed)
+                continue;
+
             var offset = 0;
             for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
             {
@@ -1355,5 +1409,4 @@ Drawer.prototype.show_drawing_statistics = function() {
     console.log('[info] Leaf count: ' + this.tree.num_leaves);
     console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
     console.log('[info] Total objects in SVG: ' + total_object_count);
-
 };
