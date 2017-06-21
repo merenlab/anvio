@@ -338,7 +338,7 @@ class mcg:
             non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
 #            TS_nucs[sample], mean_TS[sample], std_TS[sample] = single_distribution_EM(self.coverage_values_per_nt[sample], non_outliers_indices[sample], mean_TS[sample], std_TS[sample])
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
-            self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices), self.total_length))
+            self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices[sample]), self.total_length))
 
         self.plot_TS(non_outliers_indices,mean_TS,std_TS)
 
