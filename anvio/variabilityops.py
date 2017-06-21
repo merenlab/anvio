@@ -432,20 +432,20 @@ class VariabilitySuper(object):
             missing_items_from_substitution_matrices[m] = set([])
 
         for key in keys:
-            e = utils.insert_consensus_and_departure_fields(self.data[key], engine=self.engine)
+            e = self.data[key]
+            item_frequencies = utils.get_variabile_item_frequencies(e, self.engine)
+            e['n2n1ratio'], e['consensus'], e['departure_from_consensus'] = utils.get_consensus_and_departure_data(item_frequencies)
 
             # this is where we will make use of the substitution scoring matrices framework.
             if self.engine == 'NT':
                 competing_items = list(e['competing_nts'])
             elif self.engine == 'AA':
-                aa_frequency_dict = Counter(dict([(aa, e[aa]) for aa in constants.amino_acids]))
-                aa_sorted_frequency_tuples_list = aa_frequency_dict.most_common()
-                competing_items = variability.get_competing_items(e['reference'], aa_sorted_frequency_tuples_list)
+                competing_items = variability.get_competing_items(e['reference'], item_frequencies)
 
                 if not competing_items:
                     # this is a position that did have variation with SNVs, but all of them turned out to be synonymous.
                     # we will just list this one as itself.
-                    competing_items = [aa_sorted_frequency_tuples_list[0][0]] * 2
+                    competing_items = [item_frequencies[0][0]] * 2
 
                 e['competing_aas'] = ''.join(competing_items)
             else:

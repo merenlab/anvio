@@ -9,14 +9,15 @@ import time
 import socket
 import shutil
 import psutil
-import urllib.request, urllib.error, urllib.parse
 import smtplib
 import textwrap
 import subprocess
-import multiprocessing
 import configparser
+import multiprocessing
+import urllib.request, urllib.error, urllib.parse
 
 from email.mime.text import MIMEText
+from collections import Counter
 
 import anvio
 import anvio.db as db
@@ -865,28 +866,37 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
     return contigs_splits_dict
 
 
-def insert_consensus_and_departure_fields(e, engine='NT'):
+def get_variabile_item_frequencies(e, engine='NT'):
     """ 
     e is a row from variable_nucleotide_positions table defined in tables.
     this function extends dictionary with consensus and departure from consensus.
     """
 
-    if engine == 'NT':
-        freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
-    elif engine == 'AA':
-        aas = set(constants.codon_to_AA.values())
-        freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
+    items = constants.nucleotides if engine=='NT' else constants.amino_acids
+    frequency_dict = Counter(dict([(item, e[item]) for item in items]))
+    return frequency_dict.most_common()
 
-    frequency_of_consensus = freqs_list[0][0]
 
-    e['n2n1ratio'] = freqs_list[1][0] / frequency_of_consensus if frequency_of_consensus else -1
-    e['consensus'] = freqs_list[0][1]
+def get_consensus_and_departure_data(variable_item_frequencies):
+    """Make sense of `variable_item_frequencies`.
 
-    total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
+       The format of `variable_item_frequencies` follows this:
+
+           >>> [('A', 45), ('T', 5), ('G', 0), ('N', 0), ('C', 0)]
+
+       For a given entry of the variable_XX_frequencies table, the `variable_item_frequencies`
+       tuple can be obtained via `get_variabile_item_frequencies`.
+    """
+
+    frequency_of_consensus = variable_item_frequencies[0][1]
+    total_frequency_of_all_but_the_consensus = sum([tpl[1] for tpl in variable_item_frequencies[1:]])
     coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
-    e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
 
-    return e
+    n2n1ratio = variable_item_frequencies[1][1] / frequency_of_consensus if frequency_of_consensus else -1
+    consensus = variable_item_frequencies[0][0]
+    departure_from_consensus = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
+
+    return (n2n1ratio, consensus, departure_from_consensus)
 
 
 def get_codon_order_to_nt_positions_dict(gene_call):
