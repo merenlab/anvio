@@ -87,8 +87,17 @@ def get_competing_items(reference, items_frequency_tuples_list):
         # clearly, the `reference` nucleotide (which is the observed nucleotide in
         # the contig for this particular `pos`) may not be one of these. but here,
         # we don't care about that.
-        second_most_frequent_item = items_frequency_tuples_list[1][0]
-        return sorted([most_frequent_item, second_most_frequent_item])
+
+        # FIXME: CONGRATULATIONS. YOU DID FIND THE SHITTIEST PIECE OF CODE IN THIS
+        #        REPOSITORY. IF YOU SEND US AN E-MAIL, EVAN WILL RESPOND WITH A
+        #        FORMAL APOLOGY FOR THIS MONSTROSITY.
+        if(len(items_frequency_tuples_list)) > 2 and items_frequency_tuples_list[1][1] == items_frequency_tuples_list[2][1]:
+            frequency_of_the_second = items_frequency_tuples_list[1][1]
+            second_most_frequent_items = sorted([tpl[0] for tpl in items_frequency_tuples_list if tpl[1] == frequency_of_the_second], reverse=True)
+            return sorted([most_frequent_item, second_most_frequent_items[0]])
+        else:
+            second_most_frequent_item = items_frequency_tuples_list[1][0]
+            return sorted([most_frequent_item, second_most_frequent_item])
 
 
 class ColumnProfile:
