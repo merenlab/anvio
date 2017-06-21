@@ -916,16 +916,16 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
         split_pos_to_unique_pos_identifier = {}
-        splits_to_consider = {}
+        splits_to_consider_dict = {}
         for split_name in splits_wanted:
-            splits_to_consider[split_name] = {}
+            splits_to_consider_dict[split_name] = {}
             split_pos_to_unique_pos_identifier[split_name] = {}
 
         self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
         for entry_id in self.data:
             v = self.data[entry_id]
             p = v['pos']
-            d = splits_to_consider[v['split_name']]
+            d = splits_to_consider_dict[v['split_name']]
             u = split_pos_to_unique_pos_identifier[v['split_name']]
 
             if p in d:
@@ -937,17 +937,18 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             if p not in u:
                 u[p] = v['unique_pos_identifier']
 
-        counter = 0
-        for split in splits_to_consider:
-            counter += 1
-            self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
 
+        split_names_to_consider = list(splits_to_consider_dict.keys())
+        num_splits = len(split_names_to_consider)
+        for split_index in range(num_splits):
+            split = split_names_to_consider[split_index]
+            self.progress.update('accessing split coverages and updating variable positions dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
             split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
             split_info = self.splits_basic_info[split]
             contig_name_name = split_info['parent']
 
-            for pos in splits_to_consider[split]:
+            for pos in splits_to_consider_dict[split]:
                 unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
                 contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
                 pos_in_contig = split_info['start'] + pos
@@ -958,7 +959,7 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
-                for sample in splits_to_consider[split][pos]:
+                for sample in splits_to_consider_dict[split][pos]:
                     self.data[next_available_entry_id] = {'contig_name': contig_name_name,
                                                           'departure_from_reference': 0,
                                                           'reference': base_at_pos,
@@ -1013,15 +1014,15 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
 
-        splits_to_consider = {}
+        splits_to_consider_dict = {}
         for split_name in splits_wanted:
-            splits_to_consider[split_name] = {}
+            splits_to_consider_dict[split_name] = {}
 
         self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
         for entry_id in self.data:
             v = self.data[entry_id]
             gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
-            d = splits_to_consider[v['split_name']]
+            d = splits_to_consider_dict[v['split_name']]
 
             if gene_codon_key in d:
                 d[gene_codon_key].remove(v['sample_id'])
@@ -1030,7 +1031,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                 d[gene_codon_key].remove(v['sample_id'])
 
         counter = 0
-        for split_name in splits_to_consider:
+        for split_name in splits_to_consider_dict:
             counter += 1
             self.progress.update('accessing split coverages and updating variable positions dict :: %s' % pp(counter))
 
@@ -1039,11 +1040,11 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             split_info = self.splits_basic_info[split_name]
             contig_name = split_info['parent']
 
-            for gene_codon_key in splits_to_consider[split_name]:
+            for gene_codon_key in splits_to_consider_dict[split_name]:
                 corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
                 gene_length = self.get_gene_length(corresponding_gene_call)
 
-                for sample_name in splits_to_consider[split_name][gene_codon_key]:
+                for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
                     unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
                     reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
