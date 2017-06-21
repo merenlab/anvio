@@ -307,6 +307,8 @@ class mcg:
             # This would allow to see if they resemble a normal distribution
             hist_range = (min(v[non_outliers_indices[sample]]),max(v[non_outliers_indices[sample]]))
             # computing the number of bins so that the width of a bin is ~1/4 of the standard deviation
+            # FIXME: need to make it so the bins are only of integers (so the smallest bin is of width 1
+            # and that bins are integers)
             number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (std_TS[sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
             fig = plt.figure()
             ax = fig.add_subplot(111, rasterized=True)
