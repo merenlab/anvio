@@ -419,7 +419,7 @@ Drawer.prototype.collapse_nodes = function() {
         }
 
         cnode.max_child_path = max_edge;
-        cnode.size = sum_size / 4;
+        cnode.size = Math.max(1, sum_size / 4);
 
         cnode.child_nodes = [];
         cnode.child = null;
@@ -743,7 +743,6 @@ Drawer.prototype.draw_root = function() {
     }
     
     drawLine(this.tree_svg_id, this.tree.root, p0, p1);
-
 };
 
 Drawer.prototype.initialize_screen = function() {
