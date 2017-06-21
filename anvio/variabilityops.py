@@ -470,7 +470,6 @@ class VariabilitySuper(object):
             if scatter < self.min_scatter:
                 entry_ids_to_remove.update(entry_ids)
 
-
         self.progress.end()
 
         self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
@@ -499,9 +498,10 @@ class VariabilitySuper(object):
                 unique_pos_ids_to_remove.add(self.data[entry_id]['unique_pos_identifier_str'])
             self.data.pop(entry_id)
 
-        self.progress.update('removing %s unique positions...' % pp(len(unique_pos_ids_to_remove)))
-        for unique_pos_id in unique_pos_ids_to_remove:
-            self.unique_pos_id_to_entry_id.pop(unique_pos_id)
+        if self.unique_pos_id_to_entry_id:
+            self.progress.update('removing %s unique positions...' % pp(len(unique_pos_ids_to_remove)))
+            for unique_pos_id in unique_pos_ids_to_remove:
+                self.unique_pos_id_to_entry_id.pop(unique_pos_id)
 
         num_entries_after = len(self.data)
 
