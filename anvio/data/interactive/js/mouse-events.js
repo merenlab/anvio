@@ -286,7 +286,7 @@ function lineMouseEnterHandler(event) {
              _x,
             (begin + end) / 2,
             end - begin,
-            total_radius - _x,
+            Math.abs(total_radius - _x),
             bin_color,
             0.3,
             false);
@@ -660,7 +660,7 @@ function getNodeFromEvent(event)
         {
             var _x = original_width - ((event.clientX - rect_left) * (window['original_width'] / rect_width));
             
-            for (var i=0; i < leaf_count; i++) {
+            for (var i=0; i < order_to_node_map.length; i++) {
                 var node = order_to_node_map[i];
                 if ((_x > (node.xy['y'] - node.size / 2)) && (_x < (node.xy['y'] + node.size / 2))) {
                     return node;
@@ -675,7 +675,7 @@ function getNodeFromEvent(event)
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            for (var i=0; i < leaf_count; i++) {
+            for (var i=0; i < order_to_node_map.length; i++) {
                 var node = order_to_node_map[i];
                 if ((angle > (node.angle - node.size / 2)) && (angle < (node.angle + node.size / 2))) {
                     return node;
