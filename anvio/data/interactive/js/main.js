@@ -33,7 +33,7 @@ var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
-var order_to_node_map = {};
+var order_to_node_map = new Array();
 var leaf_count;
 var samples_id_to_node_map;
 var unnamed_node_counter;
