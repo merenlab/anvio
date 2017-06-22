@@ -67,7 +67,7 @@ Drawer.prototype.draw = function() {
 
     id_to_node_map = new Array();
     label_to_node_map = {};
-    order_to_node_map = {};
+    order_to_node_map = new Array();
 
     this.initialize_tree();
     this.generate_mock_data_for_collapsed_nodes();
@@ -79,12 +79,22 @@ Drawer.prototype.draw = function() {
     
     this.assign_leaf_order();
     this.calculate_leaf_sizes();
+        
+    createBin('svg', 'viewport');
+    createBin('viewport', 'tree_bin');
+    createBin('tree_bin', 'tree');
+    drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
+    createBin('tree_bin', 'guide_lines');
 
-    if (this.has_tree) 
-    {
+    //if (this.has_tree) 
+  //  {
         this.calculate_tree_coordinates();
         this.draw_tree();
-    }
+/*    }
+    else
+    {
+        this.generate_mock_coordinates();
+    }*/
 
     this.calculate_layer_boundaries();
     total_radius = this.layer_boundaries[this.layer_boundaries.length - 1][1];
@@ -112,6 +122,7 @@ Drawer.prototype.draw = function() {
 
     this.bind_tree_events();
     initialize_area_zoom(); // area-zoom.js
+    this.update_title_panel();
     this.show_drawing_statistics();
     
     ANIMATIONS_ENABLED = false;
@@ -136,6 +147,46 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
         }
 
         this.layerdata_dict[q.label] = mock_data;
+    }
+};
+
+Drawer.prototype.generate_mock_coordinates = function() {
+    for (var i=0; i < order_to_node_map.length; i++) {
+        var p = order_to_node_map[i];
+
+        if (this.settings['tree-type'] == 'circlephylogram')
+        {
+            if (p.order == 0) {
+                p.angle = p.size / 2;
+            } else {
+                var prev_leaf = order_to_node_map[p.order - 1];
+                p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
+            }
+
+            p.radius = this.radius / 2;
+
+            var pt = [];
+            pt['x'] = p.radius * Math.cos(p.angle);
+            pt['y'] = p.radius * Math.sin(p.angle);
+
+            p.xy['x'] = pt['x'];
+            p.xy['y'] = pt['y'];
+        }
+        else // phylogram
+        {
+            var pt = [];
+
+            if (p.order == 0) {
+                pt['y'] = p.size / 2;
+            } else {
+                var prev_leaf = order_to_node_map[p.order - 1];
+                pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
+            }
+            pt['x'] = this.height;
+
+            p.xy['x'] = pt['x'];
+            p.xy['y'] = pt['y'];
+        }
     }
 };
 
@@ -310,8 +361,8 @@ Drawer.prototype.calculate_bar_sizes = function() {
                         }
 
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
-                        $('#min' + pindex).attr('title', min_max_str);
-                        $('#max' + pindex).attr('title', min_max_str);
+                        $('#min' + layer.index).attr('title', min_max_str);
+                        $('#max' + layer.index).attr('title', min_max_str);
 
 
                     }
@@ -364,23 +415,48 @@ Drawer.prototype.initialize_tree = function() {
 
             q=n.Next();
         }
-    }    
+    }
+    else
+    {
+        for (var i = 0; i < clusteringData.length; i++) {
+            var q = new Node(clusteringData[i]);
+
+            q.size = 1;
+            q.child_nodes = [q.id];
+            id_to_node_map[q.id] = q;
+            label_to_node_map[q.label] = q;
+        }
+    }  
 };
 
 Drawer.prototype.assign_leaf_order = function() {
-    var n = new NodeIterator(this.tree.root);
-    var q = n.Begin();
+    if (this.has_tree) {
+        var n = new NodeIterator(this.tree.root);
+        var q = n.Begin();
 
-    var order_counter = 0;   
-    while (q != null) {
-        if (q.IsLeaf()) {
-            q.order = order_counter++;
-            order_to_node_map[q.order] = q;
+        var order_counter = 0;   
+        while (q != null) {
+            if (q.IsLeaf()) {
+                q.order = order_counter++;
+                order_to_node_map[q.order] = q;
+            }
+            q=n.Next();
         }
-        q=n.Next();
+        
+        this.tree.num_leaves = order_counter;
+        leaf_count = this.tree.num_leaves;
     }
-    this.tree.num_leaves = order_counter;
-    leaf_count = this.tree.num_leaves;
+    else
+    {
+        for (var i = 0; i < clusteringData.length; i++) {
+            var q = label_to_node_map[clusteringData[i]];
+
+            q.order = i;
+            order_to_node_map[i] = q;
+        }
+
+        leaf_count = clusteringData.length;
+    }
 };
 
 Drawer.prototype.collapse_nodes = function() {
@@ -437,7 +513,7 @@ Drawer.prototype.bind_tree_events = function() {
 Drawer.prototype.calculate_leaf_sizes = function() {
     var total_size = 0;
 
-    for (var i=0; i < this.tree.num_leaves; i++) {
+    for (var i=0; i < order_to_node_map.length; i++) {
         total_size += order_to_node_map[i].size;
     }
 
@@ -452,7 +528,7 @@ Drawer.prototype.calculate_leaf_sizes = function() {
         var total_width = this.width;
     }
 
-    for (var i=0; i < this.tree.num_leaves; i++) {
+    for (var i=0; i < order_to_node_map.length; i++) {
         q = order_to_node_map[i];
         q.size = q.size * (total_width / total_size);
 
@@ -463,44 +539,52 @@ Drawer.prototype.calculate_leaf_sizes = function() {
 };
 
 Drawer.prototype.calculate_tree_coordinates = function() {
-    this.max_path_length = 0;
-    this.tree.root.path_length = this.tree.root.edge_length;
+    if (this.has_tree) {
+        this.max_path_length = 0;
+        this.tree.root.path_length = this.tree.root.edge_length;
 
-    if (this.settings['tree-type'] == 'circlephylogram') {
-        this.root_length = (this.radius / 2) * this.root_length;
-    } else {
-        this.root_length = (this.height) * this.root_length;
+        if (this.settings['tree-type'] == 'circlephylogram') {
+            this.root_length = (this.radius / 2) * this.root_length;
+        } else {
+            this.root_length = (this.height) * this.root_length;
+        }
+
+        var n = new PreorderIterator(this.tree.root);
+        var q = n.Begin();
+        while (q != null) {
+            var d = q.edge_length;
+            
+            if (d < 0.00001) {
+                d = 0.0;
+            }
+            
+            if (q != this.tree.root) {
+                q.path_length = q.ancestor.path_length + d;
+            }
+
+            this.max_path_length = Math.max(this.max_path_length, (q.collapsed) ? q.path_length + q.max_child_path : q.path_length);
+            q = n.Next();
+        }
+
+        var n = new NodeIterator(this.tree.root);
+        var p = n.Begin();
+        while (p != null) {
+            if (p.IsLeaf()) 
+            {
+                this.calculate_leaf_coordinate(p);
+            } 
+            else
+            {   
+                this.calculate_internal_node_coordinate(p);
+            }
+            p = n.Next();
+        }
     }
-
-    var n = new PreorderIterator(this.tree.root);
-    var q = n.Begin();
-    while (q != null) {
-        var d = q.edge_length;
-        
-        if (d < 0.00001) {
-            d = 0.0;
+    else
+    {
+        for (var i=0; i < order_to_node_map.length; i++) {
+            this.calculate_leaf_coordinate(order_to_node_map[i]);
         }
-        
-        if (q != this.tree.root) {
-            q.path_length = q.ancestor.path_length + d;
-        }
-
-        this.max_path_length = Math.max(this.max_path_length, (q.collapsed) ? q.path_length + q.max_child_path : q.path_length);
-        q = n.Next();
-    }
-
-    var n = new NodeIterator(this.tree.root);
-    var p = n.Begin();
-    while (p != null) {
-        if (p.IsLeaf()) 
-        {
-            this.calculate_leaf_coordinate(p);
-        } 
-        else
-        {   
-            this.calculate_internal_node_coordinate(p);
-        }
-        p = n.Next();
     }
 };
 
@@ -514,7 +598,11 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
             p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
         }
 
-        p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+        if (this.has_tree) {
+            p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+        } else {
+            p.radius = this.radius / 2;
+        }
 
         var pt = [];
         pt['x'] = p.radius * Math.cos(p.angle);
@@ -533,7 +621,12 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
             var prev_leaf = order_to_node_map[p.order - 1];
             pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
         }
-        pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+
+        if (this.has_tree) {
+            pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+        } else {
+            pt['x'] = this.height;
+        }
 
         p.xy['x'] = pt['x'];
         p.xy['y'] = pt['y'];
@@ -585,119 +678,134 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
 };
 
 Drawer.prototype.draw_tree = function() {
-    createBin('svg', 'viewport');
-    createBin('viewport', 'tree_bin');
-    createBin('tree_bin', 'tree');
-    drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
-
     if (this.settings['tree-type'] == 'phylogram')
         $('#tree_bin').attr('transform', 'rotate(90)');
 
-    this.draw_root();
+    if (this.has_tree) {
+        this.draw_root();
 
-    var n = new NodeIterator(this.tree.root);
-    var p = n.Begin();
-    while (p != null) {
-        if (p.IsLeaf()) 
-        {
-            if (this.settings['tree-type'] == 'circlephylogram') {
-                    var p0 = p.xy
-                    var p1 = p.backarc;
-                    drawLine(this.tree_svg_id, p, p0, p1);
+        var n = new NodeIterator(this.tree.root);
+        var p = n.Begin();
+        while (p != null) {
+            if (p.IsLeaf()) 
+            {
+                this.draw_leaf(p);
             }
             else
             {
-                var p0 = p.xy
-                var p1 = [];
-                var anc = p.ancestor;
-                if (anc) {
-                    p1['x'] = anc.xy['x'];
-                    p1['y'] = p0['y'];
-
-                    drawLine(this.tree_svg_id, p, p0, p1);
-                }
+                this.draw_internal_node(p);
             }
+
+            if (p.collapsed) {
+                this.draw_collapsed_node(p);
+            }
+
+            p = n.Next();
         }
-        else
-        {
-            if (this.settings['tree-type'] == 'circlephylogram')
-            {
-                var p0 = [];
-                var p1 = [];
-
-                p0['x'] = p.xy['x'];
-                p0['y'] = p.xy['y'];
-
-                var anc = p.ancestor;
-                if (anc) {
-                    p0 = p.xy;
-                    p1 = p.backarc;
-
-                    drawLine(this.tree_svg_id, p, p0, p1);
-                }
-                p0 = p.child.backarc;
-                p1 = p.child.GetRightMostSibling().backarc;
-
-                var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
-                drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
-            }
-            else
-            {
-                var p0 = [];
-                var p1 = [];
-
-                p0['x'] = p.xy['x'];
-                p0['y'] = p.xy['y'];
-
-                var anc = p.ancestor;
-                if (anc) {
-                    p1['x'] = anc.xy['x'];
-                    p1['y'] = p0['y'];
-
-                    drawLine(this.tree_svg_id, p, p0, p1);
-                }
-
-                // vertical line
-                var pl = p.child.xy;
-                var pr = p.child.GetRightMostSibling().xy;
-
-                p0['x'] = p0['x'];
-                p0['y'] = pl['y'];
-                p1['x'] = p0['x'];
-                p1['y'] = pr['y'];
-
-                drawLine(this.tree_svg_id, p, p0, p1, true);
-            }
+    } else {
+        for (var i=0; i < order_to_node_map.length; i++) {
+            var p = order_to_node_map[i];
+            p.backarc = p.xy;
+            this.draw_leaf(p);
         }
-
-        if (p.collapsed) {
-            var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-            triangle.setAttribute('id', 'line' + p.id);
-            triangle.setAttribute('vector-effect', 'non-scaling-stroke');
-            triangle.setAttribute('fill', '#FFFFFF');
-            triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
-
-            var tp1_x, tp1_y, tp2_x, tp2_y;
-            if (this.settings['tree-type'] == 'phylogram') {
-                var tp1_x = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.height) - this.root_length));
-                var tp2_x = tp1_x;
-
-                var tp1_y = p0['y'] - p.size / 2;
-                var tp2_y = p0['y'] + p.size / 2;
-            } else {
-                var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
-                var tp1_x = _radius * Math.cos(p.angle + p.size / 2);
-                var tp1_y = _radius * Math.sin(p.angle + p.size / 2);
-
-                var tp2_x = _radius * Math.cos(p.angle - p.size / 2);
-                var tp2_y = _radius * Math.sin(p.angle - p.size / 2);
-            }
-            triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
-            document.getElementById('tree').appendChild(triangle);
-        }
-
-        p = n.Next();
     }
+};
+
+Drawer.prototype.draw_leaf = function(p) {
+    if (this.settings['tree-type'] == 'circlephylogram') {
+            var p0 = p.xy
+            var p1 = p.backarc;
+            drawLine(this.tree_svg_id, p, p0, p1);
+    }
+    else
+    {
+        var p0 = p.xy
+        var p1 = [];
+        var anc = p.ancestor;
+        if (anc) {
+            p1['x'] = anc.xy['x'];
+            p1['y'] = p0['y'];
+
+            drawLine(this.tree_svg_id, p, p0, p1);
+        }
+    }
+};
+
+Drawer.prototype.draw_internal_node = function(p) {
+    if (this.settings['tree-type'] == 'circlephylogram')
+    {
+        var p0 = [];
+        var p1 = [];
+
+        p0['x'] = p.xy['x'];
+        p0['y'] = p.xy['y'];
+
+        var anc = p.ancestor;
+        if (anc) {
+            p0 = p.xy;
+            p1 = p.backarc;
+
+            drawLine(this.tree_svg_id, p, p0, p1);
+        }
+        p0 = p.child.backarc;
+        p1 = p.child.GetRightMostSibling().backarc;
+
+        var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
+        drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
+    }
+    else
+    {
+        var p0 = [];
+        var p1 = [];
+
+        p0['x'] = p.xy['x'];
+        p0['y'] = p.xy['y'];
+
+        var anc = p.ancestor;
+        if (anc) {
+            p1['x'] = anc.xy['x'];
+            p1['y'] = p0['y'];
+
+            drawLine(this.tree_svg_id, p, p0, p1);
+        }
+
+        // vertical line
+        var pl = p.child.xy;
+        var pr = p.child.GetRightMostSibling().xy;
+
+        p0['x'] = p0['x'];
+        p0['y'] = pl['y'];
+        p1['x'] = p0['x'];
+        p1['y'] = pr['y'];
+
+        drawLine(this.tree_svg_id, p, p0, p1, true);
+    }
+};
+
+Drawer.prototype.draw_collapsed_node = function(p) {
+    var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    triangle.setAttribute('id', 'line' + p.id);
+    triangle.setAttribute('vector-effect', 'non-scaling-stroke');
+    triangle.setAttribute('fill', '#FFFFFF');
+    triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
+
+    var tp1_x, tp1_y, tp2_x, tp2_y;
+    if (this.settings['tree-type'] == 'phylogram') {
+        var tp1_x = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.height) - this.root_length));
+        var tp2_x = tp1_x;
+
+        var tp1_y = p0['y'] - p.size / 2;
+        var tp2_y = p0['y'] + p.size / 2;
+    } else {
+        var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
+        var tp1_x = _radius * Math.cos(p.angle + p.size / 2);
+        var tp1_y = _radius * Math.sin(p.angle + p.size / 2);
+
+        var tp2_x = _radius * Math.cos(p.angle - p.size / 2);
+        var tp2_y = _radius * Math.sin(p.angle - p.size / 2);
+    }
+    triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
+    document.getElementById('tree').appendChild(triangle);
 };
 
 Drawer.prototype.draw_root = function() {
@@ -990,8 +1098,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         else 
         {
             var _first = order_to_node_map[0];
-            var _last = order_to_node_map[this.tree.num_leaves - 1];
-
+            var _last = order_to_node_map[order_to_node_map.length - 1];
             drawPie('event_catcher_' + layer.order,
                 'event',
                 _first.angle - _first.size / 2,
@@ -1033,7 +1140,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             var _first = order_to_node_map[0];
-            var _last = order_to_node_map[this.tree.num_leaves - 1];
+            var _last = order_to_node_map[order_to_node_map.length - 1];
 
             drawPie('layer_background_' + layer.order,
                 'all',
@@ -1052,8 +1159,6 @@ Drawer.prototype.draw_layer_backgrounds = function() {
 Drawer.prototype.draw_guide_lines = function() {
     if (!this.has_tree)
         return;
-
-    createBin('tree_bin', 'guide_lines');
 
     var beginning_of_layers = this.layer_boundaries[0][1];
     var odd_even_flag = -1;
@@ -1087,7 +1192,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var numeric_cache = [];
 
-        for (var i=0; i < this.tree.num_leaves; i++) {
+        for (var i=0; i < order_to_node_map.length; i++) {
             q = order_to_node_map[i];
 
             if (this.settings['tree-type'] == 'phylogram') {
@@ -1127,7 +1232,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                             q.xy['y'] + q.size / 2
                             );
 
-                        if (q.order == this.tree.num_leaves - 1) {
+                        if (q.order == order_to_node_map.length - 1) {
                             numeric_cache.push(
                                 "L", 
                                 this.layer_boundaries[layer.order][1], 
@@ -1193,7 +1298,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
                         numeric_cache.push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 1, cx, cy);
 
-                        if (q.order == this.tree.num_leaves - 1) {
+                        if (q.order == order_to_node_map.length - 1) {
                             var bx = Math.cos(end_angle) * inner_radius;
                             var by = Math.sin(end_angle) * inner_radius;
 
@@ -1247,7 +1352,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
         if (!layer.is_stackbar)
             return;
 
-        for (var i=0; i < this.tree.num_leaves; i++) {
+        for (var i=0; i < order_to_node_map.length; i++) {
             q = order_to_node_map[i];
 
             if (q.collapsed)
@@ -1362,7 +1467,7 @@ Drawer.prototype.draw_samples = function() {
 };
 
 Drawer.prototype.update_title_panel = function() {
-    var _sub_title = "Items order: <b>" + getClusteringPrettyName(settings['order-by']) + "</b> | ";
+    var _sub_title = "Items order: <b>" + getClusteringPrettyName(this.settings['order-by']) + "</b> | ";
         _sub_title += "Current view: <b>" + this.settings['current-view'] + "</b> | ";
         _sub_title += "Sample order: <b>" + this.settings['samples-order'] + "</b>";
     $('#title-panel-second-line').html(_sub_title);
@@ -1372,9 +1477,9 @@ Drawer.prototype.show_drawing_statistics = function() {
     var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
     var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
 
-    $('#draw_delta_time').html(this.tree.num_leaves + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+    $('#draw_delta_time').html(order_to_node_map.length + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 
-    console.log('[info] Leaf count: ' + this.tree.num_leaves);
+    console.log('[info] Leaf count: ' + order_to_node_map.length);
     console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
     console.log('[info] Total objects in SVG: ' + total_object_count);
 };
