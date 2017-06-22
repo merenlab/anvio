@@ -86,17 +86,10 @@ Drawer.prototype.draw = function() {
     drawLine('tree', {'id': '_origin'}, {'x': 0, 'y': 0}, {'x': 0, 'y': 0}, false);
     createBin('tree_bin', 'guide_lines');
 
-    //if (this.has_tree) 
-  //  {
-        this.calculate_tree_coordinates();
-        this.draw_tree();
-/*    }
-    else
-    {
-        this.generate_mock_coordinates();
-    }*/
-
+    this.calculate_tree_coordinates();
+    this.draw_tree();
     this.calculate_layer_boundaries();
+
     total_radius = this.layer_boundaries[this.layer_boundaries.length - 1][1];
     beginning_of_layers = this.layer_boundaries[1][0];
     layer_boundaries = this.layer_boundaries;
@@ -113,6 +106,7 @@ Drawer.prototype.draw = function() {
     createBin('tree_bin', 'bin');
     
     this.initialize_tree_observer();
+
     // Scale to fit window
     bbox = svg.getBBox();
     zoom_reset();
@@ -147,46 +141,6 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
         }
 
         this.layerdata_dict[q.label] = mock_data;
-    }
-};
-
-Drawer.prototype.generate_mock_coordinates = function() {
-    for (var i=0; i < order_to_node_map.length; i++) {
-        var p = order_to_node_map[i];
-
-        if (this.settings['tree-type'] == 'circlephylogram')
-        {
-            if (p.order == 0) {
-                p.angle = p.size / 2;
-            } else {
-                var prev_leaf = order_to_node_map[p.order - 1];
-                p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
-            }
-
-            p.radius = this.radius / 2;
-
-            var pt = [];
-            pt['x'] = p.radius * Math.cos(p.angle);
-            pt['y'] = p.radius * Math.sin(p.angle);
-
-            p.xy['x'] = pt['x'];
-            p.xy['y'] = pt['y'];
-        }
-        else // phylogram
-        {
-            var pt = [];
-
-            if (p.order == 0) {
-                pt['y'] = p.size / 2;
-            } else {
-                var prev_leaf = order_to_node_map[p.order - 1];
-                pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
-            }
-            pt['x'] = this.height;
-
-            p.xy['x'] = pt['x'];
-            p.xy['y'] = pt['y'];
-        }
     }
 };
 

@@ -197,7 +197,7 @@ function redrawBins()
                 beginning_of_layers,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
-                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius + margin - beginning_of_layers,
+                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius - beginning_of_layers,
                 color,
                 (show_grid) ? 0 : 0.1,
                 false);
@@ -249,13 +249,13 @@ function redrawBins()
         }
     }
 
-/*    try{
+    try{
         var fake_event = {'target': {'id': '#line' + order_to_node_map[0].id}};
         lineMouseLeaveHandler(fake_event);
     }catch(err){
         console.log("Triggering mouseLeaveHandler failed.");
         console.log(err);
-    }*/
+    }
 }
 
 
