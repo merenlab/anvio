@@ -738,6 +738,8 @@ Drawer.prototype.draw_internal_node = function(p) {
 };
 
 Drawer.prototype.draw_collapsed_node = function(p) {
+    var p0 = p.xy
+
     var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     triangle.setAttribute('id', 'line' + p.id);
     triangle.setAttribute('vector-effect', 'non-scaling-stroke');
