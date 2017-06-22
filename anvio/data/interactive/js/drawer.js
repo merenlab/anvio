@@ -421,6 +421,7 @@ Drawer.prototype.initialize_tree = function() {
         for (var i = 0; i < clusteringData.length; i++) {
             var q = new Node(clusteringData[i]);
 
+            q.id = i + 1;
             q.size = 1;
             q.child_nodes = [q.id];
             id_to_node_map[q.id] = q;
@@ -625,7 +626,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         if (this.has_tree) {
             pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
         } else {
-            pt['x'] = this.height;
+            pt['x'] = 0;
         }
 
         p.xy['x'] = pt['x'];
