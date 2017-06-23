@@ -80,8 +80,6 @@ Tree.prototype.NewNode = function(label) {
 
 //--------------------------------------------------------------------------------------------------
 Tree.prototype.Parse = function(str, edge_length_norm) {
-    str = str.replace('"', "");
-
     str = str.replace(/\(/g, "|(|");
     str = str.replace(/\)/g, "|)|");
     str = str.replace(/,/g, "|,|");
@@ -107,33 +105,22 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     while ((state != 99) && (this.error == 0)) {
         switch (state) {
             case 0:
-                if (ctype_alnum(token[i].charAt(0))) {
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     this.num_leaves++;
                     label = token[i];
                     curnode.label = label;
                     i++;
                     state = 1;
                 } else {
-                    if (token[i].charAt(0) == "'") {
-                        label = token[i];
-                        label = label.replace(/^'/, "");
-                        label = label.replace(/'$/, "");
-                        this.num_leaves++;
-                        curnode.label = label;
-                        i++;
-                        state = 1;
-                    } else {
-                        switch (token[i]) {
-                            case '(':
-                                state = 2;
-                                break;
+                    switch (token[i]) {
+                        case '(':
+                            state = 2;
+                            break;
 
-                            default:
-                                state = 99;
-                                this.error = 1; // syntax
-                                break;
-                        }
-
+                        default:
+                            state = 99;
+                            this.error = 1; // syntax
+                            break;
                     }
                 }
                 break;
@@ -224,7 +211,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
 
             case 3: // finishchildren
-                if (ctype_alnum(token[i].charAt(0))) {
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     curnode.label = token[i];
                     i++;
                 } else {
