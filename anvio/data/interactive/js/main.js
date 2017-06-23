@@ -1950,9 +1950,12 @@ function storeCollection() {
 
             for (var i=0; i < SELECTED[bin_id].length; i++)
             {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
+                var node_label = SELECTED[bin_id][i];
+                var node = label_to_node_map[node_label];
+
+                if (!node.IsLeaf() && !node.collapsed)
                 {
-                    data[bin_name].push(SELECTED[bin_id][i]);
+                    data[bin_name].push(node_label);
                 }
             }
         }

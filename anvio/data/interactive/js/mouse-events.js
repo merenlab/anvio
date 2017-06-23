@@ -74,9 +74,6 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
-    if (p.collapsed)
-        return;
-
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
         newBin();
 
@@ -233,9 +230,6 @@ function lineMouseEnterHandler(event) {
 
     var p = getNodeFromEvent(event);
 
-    if (p.collapsed)
-        return;
-
     $('#path_hover').remove();
 
     if (typeof p === 'undefined' || p.id == 0)
@@ -326,9 +320,6 @@ function lineMouseLeaveHandler(event) {
     }
 
     if (!p)
-        return;
-
-    if (p.collapsed)
         return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {

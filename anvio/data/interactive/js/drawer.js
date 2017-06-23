@@ -455,7 +455,7 @@ Drawer.prototype.collapse_nodes = function() {
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
 
-        cnode.child_nodes = [];
+        cnode.child_nodes = [cnode.id];
         cnode.child = null;
         cnode.collapsed = true;
     }
@@ -512,7 +512,7 @@ Drawer.prototype.calculate_tree_coordinates = function() {
         var q = n.Begin();
         while (q != null) {
             var d = q.edge_length;
-            
+
             if (d < 0.00001) {
                 d = 0.0;
             }
@@ -777,15 +777,15 @@ Drawer.prototype.draw_collapsed_node = function(p) {
         var tp1_x = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.height) - this.root_length));
         var tp2_x = tp1_x;
 
-        var tp1_y = p0['y'] - p.size / 2;
-        var tp2_y = p0['y'] + p.size / 2;
+        var tp1_y = p0['y'] - p.size / 3;
+        var tp2_y = p0['y'] + p.size / 3;
     } else {
         var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
-        var tp1_x = _radius * Math.cos(p.angle + p.size / 2);
-        var tp1_y = _radius * Math.sin(p.angle + p.size / 2);
+        var tp1_x = _radius * Math.cos(p.angle + p.size / 3);
+        var tp1_y = _radius * Math.sin(p.angle + p.size / 3);
 
-        var tp2_x = _radius * Math.cos(p.angle - p.size / 2);
-        var tp2_y = _radius * Math.sin(p.angle - p.size / 2);
+        var tp2_x = _radius * Math.cos(p.angle - p.size / 3);
+        var tp2_y = _radius * Math.sin(p.angle - p.size / 3);
     }
     triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
     document.getElementById('tree').appendChild(triangle);
