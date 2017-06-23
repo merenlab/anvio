@@ -358,6 +358,10 @@ Drawer.prototype.initialize_tree = function() {
             id_to_node_map[q.id] = q;
             q.size = 1;
 
+            if (!this.tree.has_edge_lengths) {
+                q.edge_length = 1;
+            }
+
             var _n = new NodeIterator(q);
             var _q = _n.Begin();
 
@@ -554,7 +558,13 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         }
 
         if (this.has_tree) {
-            p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+            if (this.tree_has_edge_length) {
+                p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+            }
+            else
+            {
+                p.radius = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * ((this.radius / 2) - this.root_length);
+            }
         } else {
             p.radius = this.radius / 2;
         }
@@ -578,7 +588,11 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         }
 
         if (this.has_tree) {
-            pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+            if (this.tree_has_edge_length) {
+                pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+            } else {
+                pt['x'] = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * (this.height - this.root_length);
+            }
         } else {
             pt['x'] = 0;
         }
@@ -595,7 +609,14 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
         var right_angle = p.child.GetRightMostSibling().angle;
 
         p.angle = left_angle + (right_angle - left_angle) / 2;
-        p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+        
+        if (this.tree_has_edge_length) {
+            p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
+        }
+        else
+        {
+            p.radius = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * ((this.radius / 2) - this.root_length);
+        }
 
         var pt = [];
         pt['x'] = p.radius * Math.cos(p.angle);
@@ -621,7 +642,12 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
     else
     {
         var pt = [];
-        pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+
+        if (this.tree_has_edge_length) {
+            pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
+        } else {
+            pt['x'] = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * (this.height - this.root_length);
+        }
 
         var pl = p.child.xy;
         var pr = p.child.GetRightMostSibling().xy;
