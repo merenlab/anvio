@@ -82,9 +82,6 @@ Tree.prototype.NewNode = function(label) {
 Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace('"', "");
 
-    // Strip NEXUS-style comments
-    str = str.replace(/\[[^\[]+\]/g, "");
-
     str = str.replace(/\(/g, "|(|");
     str = str.replace(/\)/g, "|)|");
     str = str.replace(/,/g, "|,|");
