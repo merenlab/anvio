@@ -558,7 +558,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         }
 
         if (this.has_tree) {
-            if (this.tree_has_edge_length) {
+            if (this.tree.has_edge_lengths) {
                 p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
             }
             else
@@ -588,7 +588,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         }
 
         if (this.has_tree) {
-            if (this.tree_has_edge_length) {
+            if (this.tree.has_edge_lengths) {
                 pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
             } else {
                 pt['x'] = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * (this.height - this.root_length);
@@ -610,7 +610,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
 
         p.angle = left_angle + (right_angle - left_angle) / 2;
         
-        if (this.tree_has_edge_length) {
+        if (this.tree.has_edge_lengths) {
             p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
         }
         else
@@ -643,7 +643,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
     {
         var pt = [];
 
-        if (this.tree_has_edge_length) {
+        if (this.tree.has_edge_lengths) {
             pt['x'] = this.root_length + (p.path_length / this.max_path_length) * (this.height - this.root_length);
         } else {
             pt['x'] = this.root_length + ((this.tree.root.depth - p.depth) / this.tree.root.depth) * (this.height - this.root_length);
