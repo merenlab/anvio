@@ -629,18 +629,18 @@ class Bin:
         self.num_splits = len(self.split_names)
 
         # make these dicts avilable:
-        self.gene_coverages_dict = {}
-        self.gene_detection_dict = {}
+        self.gene_coverages = {}
+        self.gene_detection = {}
         self.split_coverage_values_per_nt_dict = {}
 
         # populate gene coverage and detection dictionaries
         if self.summary.gene_coverages_dict:
             for gene_callers_id in self.gene_caller_ids:
-                self.gene_coverages_dict[gene_callers_id], self.gene_detection_dict[gene_callers_id] = {}, {}
+                self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages_dict[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
-                    self.gene_detection_dict[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
+                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
+                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -810,8 +810,8 @@ class Bin:
 
         headers = ['gene_callers_id'] + self.summary.p_meta['samples']
 
-        utils.store_dict_as_TAB_delimited_file(self.gene_coverages_dict, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_detection_dict, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
 
 
     def store_genes_basic_info(self):
