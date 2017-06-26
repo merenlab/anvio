@@ -597,12 +597,12 @@ function menu_callback(action, param) {
 
         case 'inspect_contig':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open('charts.html?contig=' + item_name, '_blank');
+            window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
         case 'inspect_protein_cluster':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open('proteinclusters.html?id=' + item_name, '_blank');
+            window.open(generate_inspect_link('pc', item_name), '_blank');
             break;
 
         case 'get_AA_sequences_for_PC':
@@ -621,6 +621,36 @@ function menu_callback(action, param) {
                 }
             });
             break;
+    }
+}
+
+function generate_inspect_link(type, item_name) {
+    if (mode == 'server') {
+        var path = window.parent.location.pathname;
+
+        if (type == 'inspect') {
+            path = path + '/inspect/' + item_name
+        }
+        else if (type == 'pc') {
+            path = path + '/pc/' + item_name
+        }
+
+        var view_key = request_prefix.substr(request_prefix.lastIndexOf('/') + 1, request_prefix.length);
+
+        if (view_key != 'no_view_key') {
+            path = path + '?view_key=' + view_key;
+        }
+
+        return path;
+    }
+    else
+    {
+        if (type == 'inspect') {
+            return 'charts.html?id=' + item_name;
+        } 
+        else if (type == 'pc') {
+            return 'proteinclusters.html?id=' + item_name;
+        }
     }
 }
 
