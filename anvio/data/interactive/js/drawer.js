@@ -70,8 +70,11 @@ Drawer.prototype.draw = function() {
     order_to_node_map = new Array();
 
     this.initialize_tree();
-    this.generate_mock_data_for_collapsed_nodes();
-    this.collapse_nodes();
+
+    if (this.has_tree) {
+        this.generate_mock_data_for_collapsed_nodes();
+        this.collapse_nodes();
+    }
 
     this.generate_tooltips();
     this.normalize_values();
@@ -123,6 +126,9 @@ Drawer.prototype.draw = function() {
 };
 
 Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
+    if (!this.has_tree)
+        return;
+
     for (var i=0; i < collapsedNodes.length; i++) {
         var q = label_to_node_map[collapsedNodes[i]];
 
@@ -838,70 +844,66 @@ Drawer.prototype.draw_categorical_layers = function() {
 
         var layer_items = [];
 
-        var n = new NodeIterator(this.tree.root);
-        var q = n.Begin();
+        for (var node_i=0; node_i < order_to_node_map.length; node_i++) {
+            q = order_to_node_map[node_i];
 
-        while (q != null) {
-            if (q.IsLeaf()) {
-                if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
+            if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
+            {
+                layer_items.push(this.layerdata_dict[q.label][layer.index]);
+            } 
+            else 
+            {
+                var _label = (this.layerdata_dict[q.label][layer.index] == null) ? '' : this.layerdata_dict[q.label][layer.index];
+                
+                if (this.settings['tree-type'] == 'circlephylogram')
                 {
-                    layer_items.push(this.layerdata_dict[q.label][layer.index]);
-                } 
-                else 
-                {
-                    var _label = (this.layerdata_dict[q.label][layer.index] == null) ? '' : this.layerdata_dict[q.label][layer.index];
+                    var align = 'left';
+                    var new_angle = q.angle * 180.0 / Math.PI;
+                    var offset_xy = [];
+                    var _radius = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
+                    var font_gap = Math.atan(this.layer_fonts[layer.order] / _radius) / 3;
                     
-                    if (this.settings['tree-type'] == 'circlephylogram')
-                    {
-                        var align = 'left';
-                        var new_angle = q.angle * 180.0 / Math.PI;
-                        var offset_xy = [];
-                        var _radius = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
-                        var font_gap = Math.atan(this.layer_fonts[layer.order] / _radius) / 3;
-                        
-                        if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
-                            align = 'right';
-                            new_angle += 180.0;
-                            offset_xy['x'] = Math.cos(q.angle - font_gap) * _radius;
-                            offset_xy['y'] = Math.sin(q.angle - font_gap) * _radius;
-                        } else {
-                            offset_xy['x'] = Math.cos(q.angle + font_gap) * _radius;
-                            offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;       
-                        }
-
-                        drawRotatedText('layer_' + layer.order, 
-                                        offset_xy, 
-                                        _label, 
-                                        new_angle, 
-                                        align,
-                                        this.layer_fonts[layer.order], 
-                                        "monospace",
-                                        layer.get_visual_attribute('color'),
-                                        layer.get_visual_attribute('height'),
-                                        'center');
-                    } 
-                    else
-                    {
-
-                        var _offsetx = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
-                        var offset_xy = [];
-                        offset_xy['x'] = _offsetx;
-                        offset_xy['y'] = q.xy['y'] + this.layer_fonts[layer.order] / 4;
-
-                        drawRotatedText('layer_' + layer.order, 
-                                        offset_xy, 
-                                        _label, 
-                                        0,
-                                        'left',
-                                        this.layer_fonts[layer.order],
-                                        "monospace",
-                                        layer.get_visual_attribute('color'),
-                                        layer.get_visual_attribute('height'),
-                                        'center');
+                    if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
+                        align = 'right';
+                        new_angle += 180.0;
+                        offset_xy['x'] = Math.cos(q.angle - font_gap) * _radius;
+                        offset_xy['y'] = Math.sin(q.angle - font_gap) * _radius;
+                    } else {
+                        offset_xy['x'] = Math.cos(q.angle + font_gap) * _radius;
+                        offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;       
                     }
+
+                    drawRotatedText('layer_' + layer.order, 
+                                    offset_xy, 
+                                    _label, 
+                                    new_angle, 
+                                    align,
+                                    this.layer_fonts[layer.order], 
+                                    "monospace",
+                                    layer.get_visual_attribute('color'),
+                                    layer.get_visual_attribute('height'),
+                                    'center');
+                } 
+                else
+                {
+
+                    var _offsetx = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
+                    var offset_xy = [];
+                    offset_xy['x'] = _offsetx;
+                    offset_xy['y'] = q.xy['y'] + this.layer_fonts[layer.order] / 4;
+
+                    drawRotatedText('layer_' + layer.order, 
+                                    offset_xy, 
+                                    _label, 
+                                    0,
+                                    'left',
+                                    this.layer_fonts[layer.order],
+                                    "monospace",
+                                    layer.get_visual_attribute('color'),
+                                    layer.get_visual_attribute('height'),
+                                    'center');
                 }
             }
-            q = n.Next();
         }
 
         if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent) {
