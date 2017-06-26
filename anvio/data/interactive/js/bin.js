@@ -31,14 +31,15 @@ function redrawBins()
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
         for (var j = SELECTED[bin_id].length - 1; j >= 0; j--) {
-            if (typeof label_to_node_map[SELECTED[bin_id][j]] === 'undefined')
+            var node = label_to_node_map[SELECTED[bin_id][j]];
+            if (typeof node === 'undefined')
             {
                 SELECTED[bin_id].splice(j, 1);
                 continue;
             }
 
-            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
-                leaf_list[label_to_node_map[SELECTED[bin_id][j]].order] = bin_id;
+            if (node.IsLeaf() && !node.collapsed) {
+                leaf_list[node.order] = bin_id;
             }
         }
     }
