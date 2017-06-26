@@ -290,7 +290,6 @@ class mcg:
             print("total length for %s is %s" % (sample, self.total_length))
             print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample]))
             print("number of non zero in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
-            print(self.coverage_values_per_nt[sample][0:31])
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
@@ -413,7 +412,7 @@ class mcg:
 
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
-        self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.summary.split_coverage_values_per_nt_dict, self.samples)
+        self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.split_coverage_values_per_nt_dict, self.samples)
         # getting the total length of all contigs 
         self.total_length = _bin.total_length
         self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection)
