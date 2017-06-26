@@ -30,7 +30,19 @@ var state;
 
 
 function loadAll() {
-    contig_id = getUrlVars()["contig"];
+    var request_prefix = getParameterByName('request_prefix');
+    $.ajaxPrefilter(function(options) {
+        if (request_prefix) {
+            options.url = request_prefix + options.url;
+            if (options.type.toLowerCase() == 'post')
+            {
+                options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+            }
+        }
+        return options;
+    });
+
+    contig_id = getParameterByName('id');
     document.title = contig_id + " detailed";
 
     $.ajax({
