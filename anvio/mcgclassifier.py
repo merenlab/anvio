@@ -133,6 +133,7 @@ class mcg:
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.exclude_samples = A('exclude_samples')
+        self.include_samples = A('include_samples')
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = pd.DataFrame.empty
@@ -152,10 +153,22 @@ class mcg:
         if self.exclude_samples:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.exclude_samples)
-            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(args.exclude_samples, 'rU').readlines()])
+            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'rU').readlines()])
+            if not self.samples_to_exclude:
+                raise ConfigError("You asked to exclude samples, but provided an empty list.")
             run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
         else:
             self.samples_to_exclude = set([])
+
+        if self.include_samples:
+            # check that there is a file like this
+            filesnpaths.is_file_exists(self.include_samples)
+            self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'rU').readlines()])
+            if not self.samples_to_include:
+                raise ConfigError("You provided an empty list of samples to include.")
+            run.info('Including Samples', 'The following samples will be included: %s' % self.samples_to_include,)
+        else:
+            self.samples_to_include = set([])
 
         # run sanity check on all input arguments
         self.sanity_check()
@@ -169,20 +182,15 @@ class mcg:
             if self.collection_name:
                 self.summary = summarizer.ProfileSummarizer(args)
                 self.summary.init()
-                self.samples = set(self.summary.p_meta['samples']) - self.samples_to_exclude
+                self.init_samples(self.summary.p_meta['samples'])
+                
             else:
                 self.profile_db = ProfileSuperclass(args)
-                self.samples = set(self.profile_db.p_meta['samples']) - self.samples_to_exclude
+                self.init_samples(self.profile_db.p_meta['samples'])
                 self.profile_db.init_split_coverage_values_per_nt_dict()
-                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
-
                 self.profile_db.init_gene_coverages_and_detection_dicts()
-                self.gene_coverages = pd.DataFrame.from_dict(self.profile_db.gene_coverages_dict, orient='index', dtype=float)
-                # Removing samples if the user asked to exclude them
-                self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
-                self.Ng = len(self.gene_coverages.index)
-                self.gene_detections = pd.DataFrame.from_dict(self.profile_db.gene_detection_dict, orient='index', dtype=float)
-                self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
+                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
+                self.init_coverage_and_detection_dataframes(self.profile_db.gene_coverages_dict, self.profile_db.gene_detection_dict)
                 # getting the total length of all contigs 
                 self.total_length = self.profile_db.p_meta['total_length']
 
@@ -230,6 +238,35 @@ class mcg:
                 raise ConfigError("You specified a collection name %s, but you provided a gene coverage self.gene_coverages_filtered data file \
                  collections are only available when working with a profile database." % self.collection_name)
 
+        if self.exclude_samples and self.include_samples:
+            raise ConfigError("You cannot use both --include-samples and --exclude-samples! Please choose one.")
+
+
+    def init_samples(self, samples_list):
+        """ Create the set of samples according to user input and store it in self.samples"""
+        samples = set(samples_list) - self.samples_to_exclude
+        if self.include_samples:
+            samples_to_include_that_are_not_there = self.samples_to_include - samples
+            if samples_to_include_that_are_not_there:
+                raise ConfigError("You requested to include some samples that are not in the profile database. Here are the samples in the profile database: %s. \
+                                And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
+            samples = self.samples_to_include
+        self.samples = samples
+            
+
+    def init_coverage_and_detection_dataframes(self, gene_coverages_dict, gene_detection_dict):
+        """
+        Populate the following: self.gene_coverages, self.Ng, self.gene_detections
+        Notice that this function could get as input either an object of ProfileSuperclass or of summarizer.Bin
+        """
+        self.gene_coverages = pd.DataFrame.from_dict(gene_coverages_dict, orient='index', dtype=float)
+        self.Ng = len(self.gene_coverages.index)
+        self.gene_detections = pd.DataFrame.from_dict(gene_detection_dict, orient='index', dtype=float)
+
+        if self.include_samples or self.exclude_samples:
+            # Only include samples that the user want
+            self.gene_coverages = self.gene_coverages[list(self.samples)]
+            self.gene_detections = self.gene_detections[list(self.samples)]
 
     def init_sample_detection_information(self):
         """ Determine  positive, negative, and ambiguous samples with the genome detection information 
@@ -250,8 +287,8 @@ class mcg:
         for sample in self.samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
-            print("total length is %s" % self.total_length)
-            print("number of non zero is %s " % np.count_nonzero(self.coverage_values_per_nt[sample]))
+            print("total length for %s is %s" % (sample, self.total_length))
+            print("number of non zero in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
@@ -374,14 +411,10 @@ class mcg:
 
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
-        self.gene_coverages = pd.DataFrame.from_dict(_bin.gene_coverages, orient='index', dtype=float)
-        self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
-        self.Ng = len(self.gene_coverages.index)
         self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.summary.split_coverage_values_per_nt_dict, self.samples)
-        self.gene_detections = pd.DataFrame.from_dict(_bin.gene_detection, orient='index', dtype=float)
-        self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
+        # getting the total length of all contigs 
         self.total_length = _bin.total_length
-
+        self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection)
 
     def classify(self):
         if self.collection_name:

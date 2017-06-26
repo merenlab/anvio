@@ -52,6 +52,9 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONT
 # #
 INFO "Running anvi-mcg-classifier on a bin with samples to exclude"
 anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
+
+INFO "Running anvi-mcg-classifier on a bin with samples to include"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --include-samples $files/samples_to_include.txt
 # INFO "A round of dry run to get the profile db created"
 # ## a dry-run of the interactive so it creates a profile database
 # anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
