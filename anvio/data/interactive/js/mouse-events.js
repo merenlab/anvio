@@ -74,6 +74,9 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
+    if (p.collapsed)
+        return;
+
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
         newBin();
 
@@ -235,6 +238,9 @@ function lineMouseEnterHandler(event) {
     if (typeof p === 'undefined' || p.id == 0)
         return; // skip root
 
+    if (p.collapsed)
+        return;
+
     var bin_id = getBinId();
 
     if (bin_id === 'undefined')
@@ -320,6 +326,9 @@ function lineMouseLeaveHandler(event) {
     }
 
     if (!p)
+        return;
+
+    if (p.collapsed)
         return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {

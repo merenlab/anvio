@@ -455,7 +455,7 @@ Drawer.prototype.collapse_nodes = function() {
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
 
-        cnode.child_nodes = [cnode.id];
+        cnode.child_nodes = [];
         cnode.child = null;
         cnode.collapsed = true;
     }
