@@ -288,7 +288,9 @@ class mcg:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
             print("total length for %s is %s" % (sample, self.total_length))
+            print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample]))
             print("number of non zero in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
+            print(self.coverage_values_per_nt[sample][0:31])
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
