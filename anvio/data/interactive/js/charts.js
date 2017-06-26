@@ -103,6 +103,7 @@ function loadAll() {
                 // backup the state, if user changes the page (prev, next) we are going to overwrite it.
                 state = sessionStorage.state;
                 createCharts(JSON.parse(state));
+                $('.loading-screen').hide();
             }
         }
     });
