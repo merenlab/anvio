@@ -244,9 +244,12 @@ class mcg:
         positive_samples = []
         negative_samples = []
         
-        
+        self.progress.new("Setting presence/absence in samples")        
+        num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
+            if num_samples > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d samples...' % (counter, num_samples))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
@@ -257,6 +260,8 @@ class mcg:
             else:
                 samples_information['presence'][sample] = None
             samples_information['detection'][sample] = detection[sample]
+            counter += 1
+        self.progress.end()
 
         self.positive_samples = positive_samples
         self.number_of_positive_samples = len(self.positive_samples)
@@ -264,6 +269,7 @@ class mcg:
         self.samples_information = samples_information
         self.run.warning('The number of positive samples is %s' % self.number_of_positive_samples)
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
+
 
 
     def plot_TS(self, non_outliers_indices, mean_TS, std_TS):
@@ -336,14 +342,18 @@ class mcg:
         non_outliers_indices = {}
         mean_TS = {}
         std_TS = {}
+        num_samples, counter = len(self.samples), 1
+        self.progress.new("Finding taxon specific genes in samples")
         for sample in self.positive_samples:
+            if num_samples > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d samples...' % (counter, num_samples))
             # loop through positive samples
             # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
             non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
 #            TS_nucs[sample], mean_TS[sample], std_TS[sample] = single_distribution_EM(self.coverage_values_per_nt[sample], non_outliers_indices[sample], mean_TS[sample], std_TS[sample])
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
             self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices[sample]), self.total_length))
-
+        self.progress.end()
         self.plot_TS(non_outliers_indices,mean_TS,std_TS)
 
 
