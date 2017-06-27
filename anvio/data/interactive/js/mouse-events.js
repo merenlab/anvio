@@ -624,35 +624,6 @@ function menu_callback(action, param) {
     }
 }
 
-function generate_inspect_link(type, item_name) {
-    if (mode == 'server') {
-        var path = window.parent.location.pathname;
-
-        if (type == 'inspect') {
-            path = path + '/inspect/' + item_name
-        }
-        else if (type == 'pc') {
-            path = path + '/pc/' + item_name
-        }
-
-        var view_key = request_prefix.substr(request_prefix.lastIndexOf('/') + 1, request_prefix.length);
-
-        if (view_key != 'no_view_key') {
-            path = path + '?view_key=' + view_key;
-        }
-
-        return path;
-    }
-    else
-    {
-        if (type == 'inspect') {
-            return 'charts.html?id=' + item_name;
-        } 
-        else if (type == 'pc') {
-            return 'proteinclusters.html?id=' + item_name;
-        }
-    }
-}
 
 // globals related single background
 var rect_left;

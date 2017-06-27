@@ -93,6 +93,55 @@ function fire_up_ncbi_blast(item_name, program, database, target)
     });
 }
 //--------------------------------------------------------------------------------------------------
+
+function generate_inspect_link(type, item_name) {
+    if (self == top) {
+        // local anvio
+        var url = window.location.href.split('?')[0];
+
+        if (url.endsWith('index.html')) {
+            // on index page
+            if (type == 'inspect') {
+                return 'charts.html?id=' + item_name;
+            } 
+            else if (type == 'proteinclusters') {
+                return 'proteinclusters.html?id=' + item_name;
+            }
+        }
+        else
+        {
+            // on charts or pc page, so changing the ?id= part enough
+            return url + '?id=' + item_name;
+        }
+    }
+    else
+    {
+        // anvi server
+        var url = window.parent.location.href.split('?')[0];
+        var new_url = "";
+
+        if (url.endsWith('/inspect') || url.endsWith('/proteinclusters')) {
+            // on charts or pc page
+            new_url = url;
+        }
+        else
+        {
+            // on main page
+            new_url = url + '/' + type;
+        }
+
+        new_url = new_url + '?id=' + item_name;
+
+        var view_key = request_prefix.substr(request_prefix.lastIndexOf('/') + 1, request_prefix.length);
+        if (view_key != 'no_view_key') {
+            new_url = new_url + '&view_key=' + view_key;
+        }
+
+        return new_url;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
