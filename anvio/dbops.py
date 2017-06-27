@@ -905,7 +905,7 @@ class PanSuperclass(object):
                     raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag \
                                         --skip-multiple-gene-calls" % (pc_name, multiple_gene_call_genome))
 
-            if not self.protein_clusters_gene_alignments_available:            
+            if not self.protein_clusters_gene_alignments_available:
                 sequences_to_align = []
                 for genome_name in self.genome_names:
                     if len(sequences[pc_name][genome_name]) == 1:
@@ -931,7 +931,11 @@ class PanSuperclass(object):
             progress.end() 
 
         if len(skipped_pcs):
-            self.run.warning("These PCs contains multiple gene calls and skipped during concatenation.\n '%s'" % (", ".join(skipped_pcs)))
+            self.run.warning("%s of %s PCs contained multiple gene calls, and skipped during concatenation.\n '%s'" \
+                                                        % (pp(len(skipped_pcs)), pp(len(pc_names)), ", ".join(skipped_pcs)))
+
+        if len(skipped_pcs) == len(pc_names):
+            raise ConfigError("Well. You have no PCs left.. Bye :/")
 
         for genome_name in self.genome_names:
             output_file.write('>%s\n' % genome_name)
