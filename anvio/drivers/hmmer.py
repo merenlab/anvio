@@ -44,7 +44,8 @@ class HMMer:
         self.tmp_dirs = []
 
 
-    def run_hmmscan(self, source, target, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+    def run_hmmscan(self, source, alphabet, context, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+        target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
             raise ConfigError("You have an unknown target :/ Target, which defines an alphabet and context\
@@ -58,7 +59,8 @@ class HMMer:
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')
-        self.run.info('Target', target)
+        self.run.info('Alphabet', alphabet)
+        self.run.info('Context', context)
         self.run.info('Domain', domain if domain else 'N\\A')
         self.run.info('Pfam model', hmm)
         self.run.info('Number of genes', len(genes_in_model))
@@ -103,7 +105,7 @@ class HMMer:
         self.progress.new('Processing')
         self.progress.update('Performing HMM scan ...')
 
-        cmd_line = ['hmmscan',
+        cmd_line = ['nhmmscan' if alphabet == 'DNA' else 'hmmscan',
                     '-o', self.hmm_scan_output, cut_off_flag,
                     '--cpu', self.num_threads_to_use,
                     '--tblout', self.hmm_scan_hits_shitty,
