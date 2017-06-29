@@ -115,6 +115,23 @@ class DB:
         self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
 
 
+    def get_max_value_in_column(self, table_name, column_name):
+        response = self._exec("""SELECT MAX(%s) FROM %s""" % (column_name, table_name))
+        rows = response.fetchall()
+
+        val = rows[0][0]
+
+        if isinstance(val, type(None)):
+            return None
+
+        try:
+            val = int(val)
+        except ValueError:
+            pass
+
+        return val
+
+
     def get_meta_value(self, key):
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
