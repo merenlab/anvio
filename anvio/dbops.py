@@ -2990,6 +2990,7 @@ class TablesForHMMHits(Table):
         gene_calls_table.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=None,
                                                                                     gene_calls_dict=additional_gene_calls,
                                                                                     ignore_internal_stop_codons=True)
+        gene_calls_table.populate_genes_in_splits_tables()
 
         # refresh the gene calls dict
         self.init_gene_calls_dict()
