@@ -214,7 +214,7 @@ function createCharts(state){
        .attr('transform', 'translate(50, 10)');
 
     // Define arrow markers
-    ['green', 'gray'].forEach(function(color){
+    ['green', 'gray', 'firebrick'].forEach(function(color){
       defs.append('svg:marker')
           .attr('id', 'arrow_' + color )
           .attr('markerHeight', 2)
