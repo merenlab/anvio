@@ -337,7 +337,8 @@ class BottleApplication(Bottle):
                 level_ok = True
                 for gene_tuple in levels_occupied[level]:
                     if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
-                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100):
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100) or \
+                                (p['start_in_split'] <= gene_tuple[0] - 100 and p['stop_in_split'] >= gene_tuple[1] + 100):
                         level_ok = False
                         break
                 if level_ok:
