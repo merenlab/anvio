@@ -21,35 +21,29 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+
 var VERSION = '0.2.1';
-
-var VIEWER_WIDTH;
-var VIEWER_HEIGHT;
-var dragging = false;
-
-var zoomBox = {};
-var drawing_zoom = false;
-
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+var VIEWER_WIDTH;
+var VIEWER_HEIGHT;
+
 
 var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
-var order_to_node_map = {};
+var order_to_node_map = new Array();
 var leaf_count;
 var samples_id_to_node_map;
 var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
-var tree_type;
 var margin;
 var order_counter;
 
 var total_radius = 0;
-var layer_boundaries;
 
 var SELECTED = new Array();
 var clusteringData;
@@ -105,10 +99,8 @@ var mode;
 var samples_tree_hover = false;
 var bbox;
 
-var mouse_event_origin_x = 0;
-var mouse_event_origin_y = 0;
-
 var request_prefix = getParameterByName('request_prefix');
+var collapsedNodes = []; 
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -1407,11 +1399,11 @@ function drawTree() {
         {
             dialogSize: 'sm',
             onShow: function() {
-                draw_tree(settings); // call treelib.js where the magic happens
+                var drawer = new Drawer(settings);
+                drawer.draw();
 
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
-                // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
                 last_settings = serializeSettings();
 
                 redrawBins();
@@ -1958,9 +1950,12 @@ function storeCollection() {
 
             for (var i=0; i < SELECTED[bin_id].length; i++)
             {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
+                var node_label = SELECTED[bin_id][i];
+                var node = label_to_node_map[node_label];
+
+                if (!node.IsLeaf() && !node.collapsed)
                 {
-                    data[bin_name].push(SELECTED[bin_id][i]);
+                    data[bin_name].push(node_label);
                 }
             }
         }

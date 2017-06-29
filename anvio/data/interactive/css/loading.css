@@ -1,0 +1,32 @@
+.loading-screen {
+  z-index: 9999;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  padding: 0px;
+  margin: 0px;
+  display: block;
+  background: #FFFFFF;
+}
+
+.loading-screen .spinner-container {
+  left: calc(50% - 40px);
+  top: calc(50% - 40px);
+  display: block;
+  position: absolute;
+  font-size: 20px;
+}
+
+.loader {
+    border: 6px solid #f3f3f3; /* Light grey */
+    border-top: 6px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
