@@ -28,7 +28,7 @@ progress = terminal.Progress()
 def main(args):
     c = ContigsSuperclass(args)
 
-    output_file_path = args.output_file if args.output_file else 'search_results.txt'
+    output_file_path = args.output_file if args.output_file else 'sequences_for_gene_calls.txt'
     filesnpaths.is_output_file_writable(output_file_path)
 
     gene_caller_ids_is_a_file = False
