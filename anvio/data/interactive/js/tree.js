@@ -295,6 +295,30 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     }
 }
 
+Tree.prototype.Serialize = function() {
+    return this.SerializeNode(this.root) + ";";
+};
+
+Tree.prototype.SerializeNode = function(node) {
+    var text = "";
+
+    if (node.child) {
+        text += "(" + this.SerializeNode(node.child) + ")";
+    }
+
+    text += node.label; 
+
+    if (this.has_edge_lengths) {
+        text += ":" + node.edge_length;
+    }
+
+    if (node.sibling) {
+        text += "," + this.SerializeNode(node.sibling);
+    }
+
+    return text;
+};
+
 //--------------------------------------------------------------------------------------------------
 Tree.prototype.ComputeWeights = function(p) {
     if (p) {
