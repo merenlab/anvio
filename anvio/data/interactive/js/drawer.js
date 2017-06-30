@@ -70,6 +70,7 @@ Drawer.prototype.draw = function() {
     order_to_node_map = new Array();
 
     this.initialize_tree();
+    this.rotate_branches();
 
     if (this.has_tree) {
         this.generate_mock_data_for_collapsed_nodes();
@@ -124,6 +125,16 @@ Drawer.prototype.draw = function() {
     
     ANIMATIONS_ENABLED = false;
 };
+
+Drawer.prototype.rotate_branches = function() {
+    if (this.has_tree && rotateNode) {
+        label_to_node_map[rotateNode].Rotate();
+
+        // rotateNode needs to be cleared after branch is rotated.
+        // otherwise when tree is redrawn it will rotate again.
+        rotateNode = null;
+    }
+}
 
 Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
     if (!this.has_tree)
