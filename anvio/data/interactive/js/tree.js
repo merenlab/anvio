@@ -60,6 +60,29 @@ Node.prototype.GetRightMostSibling = function() {
 }
 
 //--------------------------------------------------------------------------------------------------
+Node.prototype.Rotate = function() {
+    if (this.child) {
+        var siblings = [];
+        var p = this.child;
+
+        while (p) {
+            p.Rotate();
+            siblings.push(p);
+            p = p.sibling;
+        }
+
+        p = siblings.pop();
+        this.child = p;
+
+        while (siblings.length > 0) {
+            p.sibling = siblings.pop()
+        }
+
+        p.sibling.sibling = null;
+    }
+};
+
+//--------------------------------------------------------------------------------------------------
 function Tree() {
     this.root = null;
     this.num_leaves = 0;
