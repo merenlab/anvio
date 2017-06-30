@@ -133,6 +133,10 @@ Drawer.prototype.rotate_branches = function() {
         // rotateNode needs to be cleared after branch is rotated.
         // otherwise when tree is redrawn it will rotate again.
         rotateNode = null;
+
+        // we need to generate new newick based on modified tree 
+        // and overwrite exists global clusteringData;
+        clusteringData = this.tree.Serialize();
     }
 }
 
