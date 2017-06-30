@@ -6,6 +6,7 @@ import os
 import sys
 import numpy
 import textwrap
+from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -201,6 +202,22 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
+
+        # we are going to iterate the newick trees, and make sure that internal nodes have labels
+        for clustering_name in self.p_meta['clusterings']:
+            if 'newick' in self.p_meta['clusterings'][clustering_name]:
+                tree = Tree(self.p_meta['clusterings'][clustering_name]['newick'], format=1)
+
+                node_counter = 0
+                for node in tree.traverse():
+                    if node.name == "":
+                        node.name = "Int_%d" % node_counter
+                        node_counter += 1
+
+                if node_counter > 0:
+                    # if we did not changed any branch name there is no need to spend time for 
+                    # serialization back to newick
+                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1) 
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
