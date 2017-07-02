@@ -1233,6 +1233,14 @@ D = {
                       contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
                       the memory use never exceeds the size of the physical memory."}
                 ),
+    'export-gff3': (
+        ['--export-gff3'],
+        {
+            'default': False,
+            'action': 'store_true',
+            'help': "If this is true, the output file will be in GFF3 format."
+        }
+    ),
     'export-svg': (
             ['--export-svg'],
             {'type': str,
