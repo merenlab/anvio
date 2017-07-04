@@ -470,19 +470,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
+        # learn whether HMMs were run and we have access to completion estimates, and initialize the hmm_access if they
+        # did
+        completion_redundancy_available = True
         completeness = Completeness(self.contigs_db_path)
+
         if not len(completeness.sources):
-            raise ConfigError("HMM's were not run for this contigs database :/")
+            self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
+                              see completion / redundancy estimates in the collection mode as additional layers. SAD.')
+            completion_redundancy_available = False
 
-        if 'Campbell_et_al' not in completeness.sources:
-            raise ConfigError("Collection mode requires single-copy gene collection by Campbell et al. to be in the\
-                               contigs database. It seems you haven't run HMMs (or you have managed to run them\
-                               without Campbell et al.'s collection .. which is quite impressive) :/")
-
-        self.progress.new('Accessing HMM hits')
-        self.progress.update('...')
-        self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
-        self.progress.end()
+            self.progress.new('Accessing HMM hits')
+            self.progress.update('...')
+            self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(completeness.sources))
+            self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database along with other info:
@@ -523,7 +524,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
-            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name', 'source'])
+            if completion_redundancy_available:
+                d['header'].extend(['percent_completion', 'percent_redundancy'])
+            d['header'].extend(['bin_name', 'source'])
 
             views_for_collection[view] = d
 
@@ -550,15 +553,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for bin_id in self.collection:
             self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
 
-            # get completeness estimate
-            p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
-            bin_source = bins_info_dict[bin_id]['source']
+            if completion_redundancy_available:
+                # get completeness estimate
+                p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
-                self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
-                self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
-                self.views[view]['dict'][bin_id]['source'] = bin_source
+
+                if completion_redundancy_available:
+                    self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
+                    self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+
+                self.views[view]['dict'][bin_id]['source'] = bins_info_dict[bin_id]['source']
 
             current_bin += 1
         self.progress.end()
