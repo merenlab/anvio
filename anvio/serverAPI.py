@@ -6,44 +6,13 @@ import json
 import textwrap
 import requests
 
-
-class AnviServerError(Exception):
-    def __init__(self, e = None):
-        self.error_type = "Anvi'server Error:"
-        self.e = e
-        Exception.__init__(self)
-        return
-
-    def __str__(self):
-        max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        while 1:
-            if self.e.find("  ") > -1:
-                self.e = self.e.replace("  ", " ")
-            else:
-                break
-
-        error_lines = ['%s%s' % (l, ' ' * (max_len - len(l))) for l in textwrap.fill(self.e, 80).split('\n')]
-
-        error_message = ['%s %s' % (self.error_type, error_lines[0])]
-        for error_line in error_lines[1:]:
-            error_message.append('%s%s' % (' ' * (len(self.error_type) + 2), error_line))
-
-        return '\n\n' + '\n'.join(error_message) + '\n\n'
-
-    def clear_text(self):
-        return '%s: %s' % (self.error_type, self.e)
-
-
-
 class AnviServerAPI:
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
 
         # server variables:
         self.user = A('user')
-        self.hostname = A('hostname')
         self.password = A('password')
-        self.port_number = A('port_number')
 
         # project variables:
         self.tree = A('tree')
@@ -54,27 +23,8 @@ class AnviServerAPI:
         self.samples_order = A('samples_order')
 
         self.project_name = A('project_name')
+        self.description = A('description')
         self.state = A('state')
-
-        self.version = 1
-        self.protocol = 'http'
-
-        self.token = None
-        self.logged_in = False
-
-        self.allowed_targets = set(['login', 'upload', 'project'])
-        self.methods = {'POST': requests.post,
-                        'DELETE': requests.delete,
-                        'GET': requests.get}
-
-        self.URL = lambda target: '%s://%s:%d/%s' % (self.protocol, self.hostname, self.port_number, self.is_target_proper(target))
-
-
-    def is_target_proper(self, target):
-        if target in self.allowed_targets:
-            return target
-        else:
-            raise AnviServerError, "'%s' does not seem to be a target recognized by the API :/" % target
 
 
     def get_files_dict(self, files):
@@ -172,3 +122,4 @@ class AnviServerAPI:
 
         return self.request('upload', data, files = files)
 
+        
