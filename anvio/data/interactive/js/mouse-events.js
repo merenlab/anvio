@@ -540,6 +540,11 @@ function menu_callback(action, param) {
             drawTree();
             break;
 
+        case 'rotate':
+            rotateNode = item_name;
+            drawTree();
+            break;
+
         case 'select':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
             lineClickHandler(fake_event);
