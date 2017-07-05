@@ -26,10 +26,8 @@ if __name__ == '__main__':
     
     groupA = parser.add_argument_group('SERVER DETAILS', "Details of how to access to an anvi'server instance.")
     groupA.add_argument(*anvio.A('user'), **anvio.K('user', {'required': True}))
-    groupA.add_argument(*anvio.A('host'), **anvio.K('host', {'required': True}))
-    groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number', {'default': 80, 'help': 'Port number\
-                                    for the server. Probably you do not need to change this. The default value is\
-                                    %(default)d should work for most cases.'}))
+    groupA.add_argument(*anvio.A('api-url'), **anvio.K('api-url'))
+
 
     groupB = parser.add_argument_group("PROJECT DETAILS", "What to send to the server")
     groupB.add_argument(*anvio.A('project-name'), **anvio.K('project-name', {'required': True}))
@@ -65,6 +63,6 @@ if __name__ == '__main__':
                         % (args.project_name))
 
         sys.stderr.write('\n')
-    except AnviServerError, e:
-        print e
+    except AnviServerError as e:
+        print(e)
         sys.exit(1)

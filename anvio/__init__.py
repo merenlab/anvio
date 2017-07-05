@@ -881,12 +881,12 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'hostname': (
-            ['--hostname'],
-            {'metavar': 'HOST_NAME',
+    'api-endpoint': (
+            ['--api-endpoint'],
+            {'metavar': 'API_ENDPOINT',
              'type': str,
-             'default': None,
-             'help': "Host name for an anvi'server."}
+             'default': 'https://anvi-server.org/',
+             'help': "Anvi'server url"}
                 ),
     'port-number': (
             ['-P', '--port-number'],
