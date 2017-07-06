@@ -624,13 +624,10 @@ class ContigsSuperclass(object):
 
         return (gene_caller_ids_list, sequences_dict)
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(
-            self, gene_caller_ids_list=None, output_file_path=None, wrap=120, simple_headers=False,
-            rna_alphabet=False):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         if not output_file_path:
-            raise ConfigError(
-                "We need an explicit output file path. Anvi'o does not know how you managed to come here, but please "
-                "go back and come again.")
+            raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
+                               here, but please go back and come again.")
 
         filesnpaths.is_output_file_writable(output_file_path)
 
@@ -641,7 +638,7 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        if gene_caller_ids_list is None:
+        if not len(gene_caller_ids_list):
             gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
                               %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
@@ -677,8 +674,7 @@ class ContigsSuperclass(object):
         self.run.info('Output', output_file_path)
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(
-            self, gene_caller_ids_list=None, output_file_path=None, wrap=120, simple_headers=False,
-            rna_alphabet=False):
+            self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
