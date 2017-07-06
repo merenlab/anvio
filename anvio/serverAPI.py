@@ -6,120 +6,110 @@ import json
 import textwrap
 import requests
 
+from anvio.terminal import Run
+from anvio.errors import AnviServerError
+
+run = Run()
+requests.packages.urllib3.disable_warnings()
+
 class AnviServerAPI:
     def __init__(self, args):
-        A = lambda x: args.__dict__[x] if args.__dict__.has_key(x) else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         # server variables:
         self.user = A('user')
         self.password = A('password')
 
+        # endpoint variables
+        self.api_url = A('api_url')
+
+
         # project variables:
         self.tree = A('tree')
         self.view_data = A('view_data')
-        self.additional_layer = A('additional_layers')
+        self.additional_layers = A('additional_layers')
         self.fasta_file = A('fasta_file')
-        self.samples_information = A('samples_information')
-        self.samples_order = A('samples_order')
+        self.samples_information_file = A('samples_information_file')
+        self.samples_order_file = A('samples_order_file')
 
         self.project_name = A('project_name')
         self.description = A('description')
         self.state = A('state')
 
-
-    def get_files_dict(self, files):
-        if not files:
-            return {}
-
-        files_dict = {}
-
-        for file_name in files:
-            file_path = files[file_name]
-
-            if not file_path:
-                continue
-
-            if not os.path.exists(file_path):
-                raise AnviServerError, "File '%s' does not exist." % file_path
-
-            files_dict[file_name] = open(file_path)
-
-        return files_dict
-
-
-    def request(self, target, data = {}, files = {}, method = 'POST', continue_on_error = False):
-        if method not in self.methods: 
-            raise AnviServerError, "Unknown method: '%s'" % method
-
-        url = self.URL(target)
-
-        headers = {"X-Requested-With": "XMLHttpRequest", "User-Agent":"Anvi'o/v2"}
-
-        cookies = dict(anvioSession=self.token) if self.token else dict()
-
-        try:
-            response_object = self.methods[method](url, data = data, headers = headers, cookies = cookies, files = files)
-        except Exception, e:
-            raise AnviServerError, "Something went wrong while trying to connect to the host %s. Here is a more\
-                                detailed and uglier report: '''%s'''" % (self.hostname, e)
-
-        if not response_object.status_code == requests.codes.ok:
-            raise AnviServerError, "Somewhing went wrong with the server, and it returned an error code of %d.\
-                                The reason for this error can be probably found in the server logs. If you\
-                                would like to help, you can send an e-mail to us to let us know about htis\
-                                error by telling us the details of what you were doing. Sorry!" \
-                                                                            % response_object.status_code
-
-        server_response = json.loads(response_object.text)
-
-        if not continue_on_error and server_response['status'] == 'error':
-            raise AnviServerError, server_response['message']
-
-        return server_response
-
-
-    def delete_project(self, project, continue_on_error = False):
-        self.check_login()
-
-        data = {'project': project}
-
-        return self.request('project', data = data, method = "DELETE", continue_on_error = continue_on_error)
-
+        self.cookie = None
 
     def login(self):
-        data = {'login': self.user, 'password': self.password}
+        r = self.request(path='/accounts/login/', 
+                         method='post',
+                         data= {'username': self.user, 'password': self.password},
+                         allow_redirects = False)
 
-        response = self.request('login', data)
+        if 'sessionid' in r.cookies:
+            self.cookie = r.cookies['sessionid']
+            run.info_single("Successfully logged into anvi-server.")
+        else:
+            raise Exception("Login failed, check your usename and password.")
 
-        if [t for t in ['token', 'firstname', 'lastname'] if not response['data'].has_key(t)]:
-            raise AnviServerError, 'The response from the server for a login request was not what the\
-                                API was expecting to get. Something weird is happening.'
+    def get_url(self, path):
+        return self.api_url + path
 
-        self.token = response['data']['token']
-        self.logged_in = True
+    def get_csrf_token(self):
+        r = self.request(path='/accounts/login/', method='GET')
 
-        return response
+        if 'csrftoken' in r.cookies:
+            return r.cookies['csrftoken']
+
+        return ''
+
+    def request(self, path = '', method = 'get', data = {}, files = {}, cookies = {}, allow_redirects = True):
+        if self.cookie:
+            cookies.update({'sessionid': self.cookie })
+
+        if method == 'post':
+            token = self.get_csrf_token()
+            data.update({'csrfmiddlewaretoken': token })
+            cookies.update({'csrftoken': token })
+
+        return requests.request(method, 
+                                self.get_url(path), 
+                                data = data, 
+                                files = files, 
+                                verify=False, 
+                                cookies = cookies, 
+                                allow_redirects = allow_redirects)
 
 
-    def check_login(self):
-        if not self.logged_in:
-            raise AnviServerError, "You are not logged in. Please make a login() call first."
+    def push(self):
+        data = {'name': self.project_name}
 
+        if self.description:
+            data['description'] = open(self.description, 'r').read()
+        else:
+            data['description'] = ''
 
-    def push(self, delete_if_exists = False):
-        self.check_login()
+        files = {}
 
-        if delete_if_exists:
-            self.delete_project(self.project_name, continue_on_error = True)
+        if self.view_data:
+            files['data.txt'] = self.view_data
+        if self.tree:
+            files['tree.txt'] = self.tree
+        if self.fasta_file:
+            files['fasta.fa'] = self.fasta_file
+        if self.samples_information_file:
+            files['samples-info.txt'] = self.samples_information_file
+        if self.samples_order_file:
+            files['samples-order.txt'] = self.samples_order_file
+        if self.additional_layers:
+            files['additional-layers.txt'] = self.additional_layers
 
-        files = self.get_files_dict({'dataFile': self.view_data,
-                                     'fastaFile': self.fasta_file,
-                                     'treeFile': self.tree,
-                                     'samplesOrderFile': self.samples_order,
-                                     'samplesInformationFile': self.samples_information})
+        r = self.request(path='/projects/new',
+                         method='post',
+                         data=data,
+                         files=files)
 
-        data = {'title': self.project_name}
+        response = json.loads(r.text)
 
-        return self.request('upload', data, files = files)
-
-        
+        if response['status'] == 0:
+            run.info_single('Project pushed successfully.')
+        else:
+            raise AnviServerError(response['message'])
