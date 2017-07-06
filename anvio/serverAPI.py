@@ -112,6 +112,6 @@ class AnviServerAPI:
         response = json.loads(r.text)
 
         if response['status'] == 0:
-            run.info_single('Project pushed successfully.')
+            run.info_single('Project \'%s\' pushed successfully.' % self.project_name)
         else:
             raise AnviServerError(response['message'])
