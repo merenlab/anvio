@@ -70,14 +70,16 @@ class AnviServerAPI:
             data.update({'csrfmiddlewaretoken': token })
             cookies.update({'csrftoken': token })
 
-        return requests.request(method, 
-                                self.get_url(path), 
-                                data = data, 
-                                files = files, 
-                                verify=False, 
-                                cookies = cookies, 
-                                allow_redirects = allow_redirects)
-
+        try:
+            return requests.request(method, 
+                                    self.get_url(path), 
+                                    data = data, 
+                                    files = files, 
+                                    verify=False, 
+                                    cookies = cookies, 
+                                    allow_redirects = allow_redirects)
+        except Exception as e:
+            raise AnviServerError(str(e))
 
     def push(self):
         data = {'name': self.project_name}
