@@ -90,17 +90,17 @@ class AnviServerAPI:
         files = {}
 
         if self.view_data:
-            files['data.txt'] = self.view_data
+            files['data.txt'] = open(self.view_data, 'r')
         if self.tree:
-            files['tree.txt'] = self.tree
+            files['tree.txt'] = open(self.tree, 'r')
         if self.fasta_file:
-            files['fasta.fa'] = self.fasta_file
+            files['fasta.fa'] = open(self.fasta_file, 'r')
         if self.samples_information_file:
-            files['samples-info.txt'] = self.samples_information_file
+            files['samples-info.txt'] = open(self.samples_information_file, 'r')
         if self.samples_order_file:
-            files['samples-order.txt'] = self.samples_order_file
+            files['samples-order.txt'] = open(self.samples_order_file, 'r')
         if self.additional_layers:
-            files['additional-layers.txt'] = self.additional_layers
+            files['additional-layers.txt'] = open(self.additional_layers, 'r')
 
         r = self.request(path='/projects/new',
                          method='post',
