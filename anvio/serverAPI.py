@@ -23,6 +23,7 @@ class AnviServerAPI:
         # endpoint variables
         self.api_url = A('api_url')
 
+        self.delete_if_exists = A('delete_if_exists')
 
         # project variables:
         self.tree = A('tree')
@@ -88,6 +89,9 @@ class AnviServerAPI:
             data['description'] = open(self.description, 'r').read()
         else:
             data['description'] = ''
+
+        if self.delete_if_exists:
+            data['delete-if-exists'] = True
 
         files = {}
 
