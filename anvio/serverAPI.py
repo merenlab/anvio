@@ -103,6 +103,8 @@ class AnviServerAPI:
             files['samples-order.txt'] = open(self.samples_order_file, 'r')
         if self.additional_layers:
             files['additional-layers.txt'] = open(self.additional_layers, 'r')
+        if self.state:
+            files['state.json'] = open(self.state, 'r')
 
         r = self.request(path='/projects/new',
                          method='post',
