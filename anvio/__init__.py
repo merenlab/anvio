@@ -969,7 +969,7 @@ D = {
                       although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
-            ['-J', '--project-name'],
+            ['-n', '--project-name'],
             {'metavar': 'PROJECT_NAME',
              'help': "Name of the project. Please choose a short but descriptive name (so anvi'o can use\
                       it whenever she needs to name an output file, or add a new table in a database, or name\
@@ -1128,6 +1128,11 @@ D = {
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
+                ),
+    'state': (
+            ['-s', '--state'],
+            {'metavar': 'STATE',
+             'help': "State file, you can export states from database using anvi-export-state program"}
                 ),
     'collection-autoload': (
             ['--collection-autoload'],
