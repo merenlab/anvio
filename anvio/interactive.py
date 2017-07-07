@@ -243,10 +243,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             return
 
         self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
         for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+
+            if layer_type == None:
+                skipped_additional_data_layers.append(layer)
+                continue
+
             item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
 
             self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
@@ -256,6 +262,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
 
         self.progress.end()
+
+        if len(skipped_additional_data_layers):
+            self.run.warning("One or more of your additional data columns were completely empty. Like, they didn't have any data at all :/\
+                              In the best case scenario you will see completely blank layers in your display. In the worst case scenario\
+                              other things will break. Since you are a curious person, anvi'o thought you would like to know. These are\
+                              the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
 
 
     def load_manual_mode(self):
