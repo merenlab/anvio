@@ -16,7 +16,7 @@ done
 INFO "Reformat the contigs FASTA"
 anvi-script-reformat-fasta $files/contigs.fa -o $output_dir/contigs.fa -l 0 --simplify-names --prefix test_prefix --report $output_dir/contigs-reformat-report.txt
 echo
-column -t $output_dir/contigs-reformat-report.txt 
+column -t $output_dir/contigs-reformat-report.txt
 
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
@@ -193,6 +193,9 @@ anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Getting back the sequence for gene call 3 (export as GFF3)"
+anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED

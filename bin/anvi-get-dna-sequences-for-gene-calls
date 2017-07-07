@@ -54,7 +54,7 @@ def main(args):
 
     func_kwargs = dict(
         gene_caller_ids_list=gene_caller_ids,
-        output_file_path=args.output_file_path,
+        output_file_path=args.output_file,
         simple_headers=not args.report_extended_deflines,
         wrap=args.wrap
     )
