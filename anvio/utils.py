@@ -157,6 +157,10 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     items = [x[key] for x in d.values()]
 
+    if(set(items) == set([None])):
+        # all items is of type None.
+        return None
+
     not_float = False
     for item in items:
         try:
