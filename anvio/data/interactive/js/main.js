@@ -393,6 +393,10 @@ function initData() {
                 'fullscreen': {'enable': false},
             });
 
+            if (description.length > 100) {
+                toggleRightPanel('#description-panel');
+            }
+
             contig_lengths = eval(contigLengthsResponse[0]);
 
             // if --state parameter given, autoload given state.
