@@ -1967,7 +1967,7 @@ function storeCollection() {
                 var node_label = SELECTED[bin_id][i];
                 var node = label_to_node_map[node_label];
 
-                if (!node.IsLeaf() && !node.collapsed)
+                if (node.IsLeaf() && !node.collapsed)
                 {
                     data[bin_name].push(node_label);
                 }
