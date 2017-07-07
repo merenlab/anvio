@@ -357,6 +357,15 @@ function initData() {
                     $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
                 },
                 'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+                'parser': function(val) {
+                    var renderer = new marked.Renderer();
+
+                    renderer.link = function( href, title, text ) {
+                      return '<a target="_blank" href="'+ href +'" title="' + title + '">' + text + '</a>';
+                    }
+
+                    return marked(val, { renderer:renderer });
+                },
                 'additionalButtons': [
                   [{
                     data: [{
