@@ -42,6 +42,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
 
+INFO "Rerunning HMMs for a specific installed profile"
+anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
+
 INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan
 
