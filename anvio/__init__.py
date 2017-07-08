@@ -1073,14 +1073,16 @@ D = {
                       the profile database you provide does not exist, anvi'o will create an empty one for\
                       you."}
                 ),
-
     'hmm-profile-dir': (
             ['-H', '--hmm-profile-dir'],
-            {'metavar': 'PATH',
-             'help': "If this is empty, anvi'o will perform the HMM search against the default collections that\
-                      are on the system. If it is not, this parameter should be used to point to a directory\
-                      that contains 4 files: (1) genes.hmm.gz, (2) genes.txt, (3) kind.txt, and (4)\
-                      reference.txt. Please see the documentation for specifics of these files."}
+            {'metavar': 'HMM PROFILE PATH',
+             'help': "You can use this parameter you can specify a directory path that contain an HMM profile.\
+                      This way you can run HMM profiles that are not included in anvi'o. See the online\
+                      to find out about the specifics of this directory structure ."}
+                ),
+    'installed-hmm-profile': (
+            ['-I', '--installed-hmm-profile'],
+            {'metavar': 'HMM PROFILE NAME'}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
