@@ -2925,7 +2925,7 @@ class TablesForHMMHits(Table):
                 # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
                 # steps are going to be taken care of in the following function. magic.
 
-                self.run.warning("Alright! You just called an HMM profile that runs on contigs. Becuse it is not\
+                self.run.warning("Alright! You just called an HMM profile that runs on contigs. Because it is not\
                                  working with anvi'o gene calls directly, the resulting hits will need tobe added\
                                  as 'new gene calls' into the contigs database. This is a new feature, and if it\
                                  starts screwing things up for you please let us know. Other than that you're pretty\
