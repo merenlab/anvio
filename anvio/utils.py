@@ -1507,6 +1507,81 @@ def anvio_hmm_target_term_to_alphabet_and_context(target):
     return alphabet, context
 
 
+def get_pruned_HMM_hits_dict(hmm_hits_dict):
+    """This function will identify HMM hits that are almost identical and keep only the most significant hit.
+
+       This is an example situation where this problem occurs:
+
+            http://i.imgur.com/2ZxDchp.png
+
+       And this is how that context looks like after this function does its magic:
+
+            http://i.imgur.com/cAPKR0E.png
+
+       The data shown in the first screenshot resolves to an input dictionary like this one:
+
+           {
+                1: {'entry_id': 0, 'gene_name': 'Bacterial_23S_rRNA','contig_name': 'c_split_00001', 'start': 3175, 'stop': 267, 'e_value': 0.0},
+                2: {'entry_id': 1, 'gene_name': 'Bacterial_16S_rRNA','contig_name': 'c_split_00001', 'start': 4996, 'stop': 3439, 'e_value': 0.0},
+                3: {'entry_id': 2, 'gene_name': 'Archaeal_23S_rRNA', 'contig_name': 'c_split_00001', 'start': 3162, 'stop': 275, 'e_value': 0.0},
+                4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
+           }
+
+       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+    """
+
+    # first create a simpler data structure where all hits in a single contig are accessible directly.
+    hits_per_contig = {}
+    for entry in hmm_hits_dict:
+        e = hmm_hits_dict[entry]
+        contig_name = e['contig_name']
+        start = e['start'] if e['start'] < e['stop'] else e['stop']
+        stop = e['stop'] if e['start'] < e['stop'] else e['start']
+        e_value = e['e_value']
+        length = stop - start
+
+        if contig_name not in hits_per_contig:
+            hits_per_contig[contig_name] = []
+
+        hits_per_contig[contig_name].append((length, entry, start, stop), )
+
+    # go through hits in each contig to find overlapping hits
+    entry_ids_to_remove = set([])
+    for hits in hits_per_contig.values():
+        indices_with_matches = set([])
+        for i in range(0, len(hits)):
+            if i in indices_with_matches:
+                # this one is already processed and is matching
+                # with something else. no need to waste time
+                continue
+
+            overlapping_hits_indices = set([])
+            for j in range(i + 1, len(hits)):
+                alignment_start = max(hits[i][2], hits[j][2])
+                alignment_end = min(hits[i][3], hits[j][3])
+                shortest_of_the_two = min(hits[i][0], hits[j][0])
+
+                if alignment_end - alignment_start > shortest_of_the_two / 2:
+                    # the overlap between these two is more than the half of the lenght of the
+                    # shorter one. this is done
+                    overlapping_hits_indices.add(i)
+                    overlapping_hits_indices.add(j)
+                    indices_with_matches.add(j)
+
+            if overlapping_hits_indices:
+                # here we have a set of overlapping indices. we will ort them based on length,
+                # and add the entry id of every match except the longest one into the shitkeeping
+                # variable
+                [entry_ids_to_remove.add(r) for r in sorted([hits[ind][1] for ind in overlapping_hits_indices], reverse=True)[1:]]
+
+
+    # time to remove all the entry ids from the actual dictionary
+    for entry_id in entry_ids_to_remove:
+        hmm_hits_dict.pop(entry_id)
+
+    return hmm_hits_dict
+
+
 def get_HMM_sources_dictionary(source_dirs=[]):
     """An anvi'o HMM source directory importer.
 
