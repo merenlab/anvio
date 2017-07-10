@@ -10,7 +10,6 @@ from anvio.terminal import Run
 from anvio.errors import AnviServerError
 
 run = Run()
-requests.packages.urllib3.disable_warnings()
 
 class AnviServerAPI:
     def __init__(self, args):
@@ -76,7 +75,6 @@ class AnviServerAPI:
                                     self.get_url(path), 
                                     data = data, 
                                     files = files, 
-                                    verify=False, 
                                     cookies = cookies, 
                                     allow_redirects = allow_redirects)
         except Exception as e:
