@@ -2933,6 +2933,13 @@ class TablesForHMMHits(Table):
                                  header="Psst. Your fancy HMM profile '%s' speaking" % source,
                                  lc="green")
 
+                num_hits_before = len(search_results_dict)
+                search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
+                num_hits_after = len(search_results_dict)
+
+                if num_hits_before != num_hits_after:
+                    self.run.info('Pruned', '%d out of %d hits were removed due to redundancy' % (num_hits_before - num_hits_after, num_hits_before))
+
                 search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search, search_results_dict)
 
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
