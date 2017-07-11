@@ -1168,7 +1168,7 @@ class ProfileSuperclass(object):
 
        if you want to make use of this class directly (i.e., not as a superclass), get an instance
        like this:
-       
+
             >>> class Args: None
             >>> args = Args()
             >>> args.profile_db = /path/to/profile
@@ -1185,14 +1185,13 @@ class ProfileSuperclass(object):
 
         # this one is a large dictionary with coverage values for every nucletoide positon in every sample for
         # every split and initialized by the member function `init_split_coverage_values_per_nt_dict` --unless the
-        # member funciton `init_gene_coverages_and_detection_dicts` is not called first, in which case it is
+        # member funciton `init_gene_level_coverage_stats_dicts` is not called first, in which case it is
         # automatically initialized from within that function.
         self.split_coverage_values_per_nt_dict = None
 
-        # these are initialized by the member function `init_gene_coverages_and_detection_dicts`. but you knew
+        # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already becasue you are a smart ass.
-        self.gene_coverages_dict = {}
-        self.gene_detection_dict = {}
+        self.gene_level_coverage_stats_dict = {}
 
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
         # used heavily in interactive interface to show stuff (see bottle routes and all).
@@ -1272,7 +1271,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         if init_gene_coverages:
-            self.init_gene_coverages_and_detection_dicts()
+            self.init_gene_level_coverage_stats_dicts()
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
@@ -1308,12 +1307,8 @@ class ProfileSuperclass(object):
         self.split_coverage_values_per_nt_dict = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
 
 
-    def init_gene_coverages_and_detection_dicts(self, min_cov_for_detection=0):
-        """This function will fill process the `self.split_coverage_values_per_nt_dict`and fill two dictionaries:
-
-            - self.gene_detection_dict
-            - self.gene_coverages_dict
-        """
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0):
+        """This function will process `self.split_coverage_values_per_nt_dict` to populate `self.gene_level_coverage_stats_dict`."""
 
         run = terminal.Run(verbose=False)
         progress = terminal.Progress(verbose=False)
@@ -1368,8 +1363,7 @@ class ProfileSuperclass(object):
                     raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
                                        here!" % (gene_callers_id, gene_length))
 
-                self.gene_coverages_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in sample_names])
-                self.gene_detection_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in sample_names])
+                self.gene_level_coverage_stats_dict[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in sample_names])
 
                 for sample_name in sample_names:
                     # and recover the gene coverage array per position for a given sample:
@@ -1379,8 +1373,7 @@ class ProfileSuperclass(object):
                     gene_mean_coverage = numpy.mean(gene_coverage_per_position)
                     gene_detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
 
-                    self.gene_coverages_dict[gene_callers_id][sample_name] = gene_mean_coverage
-                    self.gene_detection_dict[gene_callers_id][sample_name] = gene_detection
+                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': gene_mean_coverage, 'detection': gene_detection}
 
             counter += 1
 
