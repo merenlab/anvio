@@ -523,7 +523,7 @@
                                         <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
                                         <td class="text-center" style="vertical-align: middle;">🔗  
                                                 <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_calls" }}">genes</a> |
-                                                    {% if meta|lookup:"gene_coverages_data_available" %}
+                                                    {% if meta|lookup:"gene_level_coverage_stats_available" %}
                                                         <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_coverages" }}">gene_coverages</a> | <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_detection" }}">detection</a>
                                                     {% else %}
                                                         <span title="You want to see these? Summarize w/ --init-gene-coverages flag.">gene_coverages | detection</span>

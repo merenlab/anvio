@@ -371,15 +371,15 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.output_directory = None
         self.split_names_per_bin = None
         self.completeness_data_available = False
-        self.gene_coverages_data_available = False
+        self.gene_level_coverage_stats_available = False
         self.non_single_copy_gene_hmm_data_available = False
 
         DatabasesMetaclass.__init__(self, args, run, progress)
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
         # databases initiated, let's make sure we have gene covereges data avaialable.
-        if self.gene_coverages_dict:
-            self.gene_coverages_data_available = True
+        if self.gene_level_coverage_stats_dict:
+            self.gene_level_coverage_stats_available = True
 
         self.init_splits_taxonomy(self.taxonomic_level)
 
@@ -420,7 +420,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'anvio_version': __version__,
                                 'profile': self.p_meta,
                                 'contigs': self.a_meta,
-                                'gene_coverages_data_available': self.gene_coverages_data_available,
+                                'gene_level_coverage_stats_available': self.gene_level_coverage_stats_available,
                                 'completeness_data_available': self.completeness_data_available,
                                 'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available,
                                 'percent_contigs_nts_described_by_collection': 0.0,
@@ -634,13 +634,13 @@ class Bin:
         self.split_coverage_values_per_nt_dict = {}
 
         # populate gene coverage and detection dictionaries
-        if self.summary.gene_coverages_dict:
+        if self.summary.gene_level_coverage_stats_dict:
             for gene_callers_id in self.gene_caller_ids:
                 self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
-                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
+                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage']
+                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection']
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -667,7 +667,7 @@ class Bin:
 
         self.store_genes_basic_info()
 
-        self.store_gene_coverages_and_detection()
+        self.store_gene_level_coverage_stats()
 
         self.store_profile_data()
 
@@ -799,11 +799,11 @@ class Bin:
         return gene_callers_ids_for_complete_genes
 
 
-    def store_gene_coverages_and_detection(self):
+    def store_gene_level_coverage_stats(self):
         if self.summary.quick:
             return
 
-        if not self.summary.gene_coverages_dict:
+        if not self.summary.gene_level_coverage_stats_dict:
             return
 
         self.progress.update('Storing gene coverages ...')
