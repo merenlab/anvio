@@ -625,11 +625,10 @@ class ContigsSuperclass(object):
 
         return (gene_caller_ids_list, sequences_dict)
 
-
     def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         if not output_file_path:
-            raise ConfigError("gen_FASTA_file_of_sequences_for_gene_caller_ids function requires an explicit output file path.\
-                                Anvi'o does not know how you managed to come here, but please go back and come again.")
+            raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
+                               here, but please go back and come again.")
 
         filesnpaths.is_output_file_writable(output_file_path)
 
@@ -640,7 +639,7 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        if not gene_caller_ids_list:
+        if not len(gene_caller_ids_list):
             gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
                               %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
@@ -675,6 +674,24 @@ class ContigsSuperclass(object):
         self.progress.end()
         self.run.info('Output', output_file_path)
 
+    def gen_GFF3_file_of_sequences_for_gene_caller_ids(
+            self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
+        name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
+
+        self.progress.new('Storing sequences')
+        self.progress.update('...')
+        with open(output_file_path, 'wt') as output:
+            output.write('##gff-version 3\n')
+            for gene_callers_id in gene_caller_ids_list:
+                entry = sequences_dict[gene_callers_id]
+                output.write('{id}\t{source}\t{contig}\t1\t{length}\t.\t.\t.\tID={id}'.format(
+                    id=gene_callers_id, source='IGS', contig=entry['contig'], length=entry['length']))
+                output.write(name_template.format(entry))
+                output.write('\n')
+
+        self.progress.end()
+        self.run.info('Output', output_file_path)
 
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
@@ -835,7 +852,7 @@ class PanSuperclass(object):
                     sequences[pc_name][genome_name][gene_callers_id] = sequence
 
         self.progress.end()
-        
+
         return sequences
 
 
@@ -845,7 +862,7 @@ class PanSuperclass(object):
 
         output_file = open(output_file_path, 'w')
         sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
-        
+
         self.progress.new('Writing protein cluster seqeunces to file')
         sequence_counter = 0
         for pc_name in pc_names:
@@ -911,7 +928,7 @@ class PanSuperclass(object):
                 for genome_name in self.genome_names:
                     if len(sequences[pc_name][genome_name]) == 1:
                         sequences_to_align.append((genome_name, get_first_value(sequences[pc_name][genome_name])))
-                
+
                 progress.update("Processing '" + pc_name + "'")
                 aligned_sequences = muscle.Muscle(run=silent_run).run_muscle_stdin(sequences_list=sequences_to_align)
 
@@ -927,9 +944,9 @@ class PanSuperclass(object):
                     output_buffer[genome_name].write(get_first_value(sequences[pc_name][genome_name]))
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
-        
+
         if not self.protein_clusters_gene_alignments_available:
-            progress.end() 
+            progress.end()
 
         if len(skipped_pcs):
             self.run.warning("%s of %s PCs contained multiple gene calls, and skipped during concatenation.\n '%s'" \
@@ -1486,12 +1503,12 @@ class ProfileSuperclass(object):
                         percents[bin_id] = bin_coverages_in_sample * 100 / all_coverages_in_sample
 
                 splits_not_binned_coverages_in_sample = sum([coverage_table_data[split_name][sample] for split_name in self.split_names_in_profile_db_but_not_binned])
-                
+
                 if all_coverages_in_sample == 0:
                     percents['__splits_not_binned__'] = 0.0
                 else:
                     percents['__splits_not_binned__'] = splits_not_binned_coverages_in_sample * 100 / all_coverages_in_sample
-                
+
                 self.bin_percent_recruitment_per_sample[sample] = percents
 
         self.progress.end()
@@ -2184,7 +2201,7 @@ class SamplesInformationDatabase:
         self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
         self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
 
-        self.disconnect()      
+        self.disconnect()
 
     def disconnect(self):
         self.db.disconnect()
@@ -2309,12 +2326,12 @@ class TablesForViews(Table):
 
             # first create the data table:
             anvio_db.db.drop_table(table_name)
-        
+
         try:
             anvio_db.db.create_table(table_name, table_structure, table_types)
         except:
             if not append_mode:
-                raise ConfigError("Table already exists") 
+                raise ConfigError("Table already exists")
 
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
         anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
@@ -3283,7 +3300,7 @@ class TablesForTaxonomy(Table):
         self.genes_taxonomy_dict = genes_taxonomy_dict
         self.taxon_names_dict = taxon_names_dict
 
-        self.sanity_check() 
+        self.sanity_check()
 
         # oepn connection
         contigs_db = ContigsDatabase(self.db_path)
@@ -3898,7 +3915,7 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
 
 def get_default_clustering_id(default_clustering_requested, clusterings_dict, progress=progress, run=run):
     """Get the proper default clustering given the desired default with respect to available clusterings.
-    
+
        This is tricky. We have some deault clusterings defined in the constants. For instance, for the
        merged profiles we want the default to be 'tnf-cov', for single profiles we want it to be 'tnf',
        etc. The problem is that these defaults do not indicate any distance metric or linkages,
