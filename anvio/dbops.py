@@ -1335,7 +1335,7 @@ class ProfileSuperclass(object):
         if not self.split_coverage_values_per_nt_dict:
             self.init_split_coverage_values_per_nt_dict()
 
-        self.progress.new('Computing gene coverage and detection data')
+        self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
         num_splits, counter = len(self.split_names), 1
@@ -1378,8 +1378,12 @@ class ProfileSuperclass(object):
                     outliers_bool = get_list_of_outliers(gene_coverage_per_position)
                     non_outliers = gene_coverage_per_position[numpy.invert(outliers_bool)]
 
-                    non_outlier_mean_coverage = numpy.mean(non_outliers)
-                    non_outlier_coverage_std = numpy.std(non_outliers)
+                    if not(len(non_outliers)):
+                        non_outlier_mean_coverage = 0.0
+                        non_outlier_coverage_std = 0.0
+                    else:
+                        non_outlier_mean_coverage = numpy.mean(non_outliers)
+                        non_outlier_coverage_std = numpy.std(non_outliers)
 
                     self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
                                                                                           'detection': detection,
