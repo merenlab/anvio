@@ -587,6 +587,11 @@ class ContigsSuperclass(object):
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
+        if not len(gene_caller_ids_list):
+            gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
+            self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
+                              %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
+
         try:
             gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
         except:
@@ -625,6 +630,7 @@ class ContigsSuperclass(object):
 
         return (gene_caller_ids_list, sequences_dict)
 
+
     def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         if not output_file_path:
             raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
@@ -638,11 +644,6 @@ class ContigsSuperclass(object):
             wrap = None
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
-
-        if not len(gene_caller_ids_list):
-            gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
-            self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every\
-                              %d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
 
@@ -674,9 +675,10 @@ class ContigsSuperclass(object):
         self.progress.end()
         self.run.info('Output', output_file_path)
 
-    def gen_GFF3_file_of_sequences_for_gene_caller_ids(
-            self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+
+    def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
+
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
         self.progress.new('Storing sequences')
@@ -692,6 +694,7 @@ class ContigsSuperclass(object):
 
         self.progress.end()
         self.run.info('Output', output_file_path)
+
 
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
