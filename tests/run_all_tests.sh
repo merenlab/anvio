@@ -9,14 +9,14 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam $files/SAMPLE-RAW-$f.bam --output-file $output_dir/SAMPLE-$f.bam
+    anvi-init-bam $files/SAMPLE-$f-RAW.bam --output-file $output_dir/SAMPLE-$f.bam
     echo
 done
 
 INFO "Reformat the contigs FASTA"
 anvi-script-reformat-fasta $files/contigs.fa -o $output_dir/contigs.fa -l 0 --simplify-names --prefix test_prefix --report $output_dir/contigs-reformat-report.txt
 echo
-column -t $output_dir/contigs-reformat-report.txt 
+column -t $output_dir/contigs-reformat-report.txt
 
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
@@ -41,6 +41,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
+
+INFO "Rerunning HMMs for a specific installed profile"
+anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
 INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan
@@ -196,6 +199,9 @@ anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db -
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Getting back the sequence for gene call 3 (export as GFF3)"
+anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED

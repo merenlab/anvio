@@ -46,7 +46,10 @@ def main(args):
 
     pc_ids = set([])
     if args.collection_name or args.list_collections or args.list_bins:
+        progress.new('Initializing')
+        progress.update('...')
         pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        progress.end()
 
         if not args.bin_id:
             raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag\
