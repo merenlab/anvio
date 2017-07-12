@@ -99,7 +99,10 @@ INFO "Generating coverages and sequences files for splits (for external binning)
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db
 
 INFO "Generating per-nt position coverage values for a single split across samples"
-anvi-get-split-coverage -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
+
+INFO "Generating per-nt position coverage values for a splits in a bin across samples"
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/split_coverages_in_Bin_1.txt -C CONCOCT -b Bin_1
 
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
