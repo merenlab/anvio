@@ -159,7 +159,10 @@ class Run:
             self.log(line)
 
         if self.verbose and not quiet:
-            sys.stderr.write(line)
+            try:
+                sys.stderr.write(line)
+            except:
+                sys.stderr.write(line.encode('utf-8'))
 
 
     def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow'):

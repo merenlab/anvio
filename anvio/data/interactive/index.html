@@ -38,7 +38,7 @@
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
-    <script type="text/javascript" src="js/treelib.js"></script>
+    <script type="text/javascript" src="js/tree.js"></script>
     <script type="text/javascript" src="js/mouse-events.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/help-messages.js"></script>
@@ -46,6 +46,10 @@
     <script type="text/javascript" src="js/search.js"></script>
     <script type="text/javascript" src="js/sample.js"></script>
     <script type="text/javascript" src="js/animations.js"></script>
+    <script type="text/javascript" src="js/area-zoom.js"></script>
+    <script type="text/javascript" src="js/drawer.js"></script>
+    <script type="text/javascript" src="js/svg-helpers.js"></script>
+    <script type="text/javascript" src="js/bin.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -874,6 +878,14 @@
         </div>
     </div>
 
+    <!-- RIGHT CLICK MENU FOR BRANCH -->
+    <ul id="branch_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
+        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('select');">Add branch to bin</a></li>
+        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('remove');">Remove branch from bin</a></li>
+        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('collapse');">Collapse this branch</a></li>
+        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('rotate');">Rotate this branch</a></li>
+        <li class="menuItemExpand"><a href="#" onclick="menu_callback('expand');">Expand this branch</a></li>
+    </ul>
     <!-- DEFAULT RIGHT CLICK MENU -->
     <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
         <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>

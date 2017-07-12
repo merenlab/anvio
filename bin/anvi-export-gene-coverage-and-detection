@@ -28,15 +28,27 @@ run = terminal.Run()
 def main(args):
     # this is how simple it is:
     profile_db = dbops.ProfileSuperclass(args)
-    profile_db.init_gene_coverages_and_detection_dicts()
+    profile_db.init_gene_level_coverage_stats_dicts()
+
+    print()
+
+    gene_coverages = {}
+    gene_detection = {}
+
+    for gene_callers_id in profile_db.gene_level_coverage_stats_dict.keys():
+        gene_coverages[gene_callers_id], gene_detection[gene_callers_id] = {}, {}
+
+        for sample_name in profile_db.p_meta['samples']:
+            gene_coverages[gene_callers_id][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage']
+            gene_detection[gene_callers_id][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection']
 
     gene_coverages_output = args.output_file_prefix +  '-GENE-COVERAGES.txt'
     gene_detection_output = args.output_file_prefix +  '-GENE-DETECTION.txt'
 
     filesnpaths.is_output_file_writable(gene_coverages_output)
 
-    utils.store_dict_as_TAB_delimited_file(profile_db.gene_coverages_dict, gene_coverages_output)
-    utils.store_dict_as_TAB_delimited_file(profile_db.gene_detection_dict, gene_detection_output)
+    utils.store_dict_as_TAB_delimited_file(gene_coverages, gene_coverages_output)
+    utils.store_dict_as_TAB_delimited_file(gene_detection, gene_detection_output)
 
     run.info('Gene coverages', gene_coverages_output)
     run.info('Gene detection', gene_detection_output)

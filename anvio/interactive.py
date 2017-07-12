@@ -6,6 +6,7 @@ import os
 import sys
 import numpy
 import textwrap
+from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -202,6 +203,22 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
 
+        # we are going to iterate the newick trees, and make sure that internal nodes have labels
+        for clustering_name in self.p_meta['clusterings']:
+            if 'newick' in self.p_meta['clusterings'][clustering_name]:
+                tree = Tree(self.p_meta['clusterings'][clustering_name]['newick'], format=1)
+
+                node_counter = 0
+                for node in tree.traverse():
+                    if node.name == "":
+                        node.name = "Int_%d" % node_counter
+                        node_counter += 1
+
+                if node_counter > 0:
+                    # if we did not changed any branch name there is no need to spend time for 
+                    # serialization back to newick
+                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1) 
+
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
@@ -226,10 +243,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             return
 
         self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
         for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+
+            if layer_type == None:
+                skipped_additional_data_layers.append(layer)
+                continue
+
             item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
 
             self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
@@ -239,6 +262,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
 
         self.progress.end()
+
+        if len(skipped_additional_data_layers):
+            self.run.warning("One or more of your additional data columns were completely empty. Like, they didn't have any data at all :/\
+                              In the best case scenario you will see completely blank layers in your display. In the worst case scenario\
+                              other things will break. Since you are a curious person, anvi'o thought you would like to know. These are\
+                              the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
 
 
     def load_manual_mode(self):
@@ -470,19 +499,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
+        # learn whether HMMs were run and we have access to completion estimates, and initialize the hmm_access if they
+        # did
+        completion_redundancy_available = True
         completeness = Completeness(self.contigs_db_path)
+
         if not len(completeness.sources):
-            raise ConfigError("HMM's were not run for this contigs database :/")
+            self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
+                              see completion / redundancy estimates in the collection mode as additional layers. SAD.')
+            completion_redundancy_available = False
 
-        if 'Campbell_et_al' not in completeness.sources:
-            raise ConfigError("Collection mode requires single-copy gene collection by Campbell et al. to be in the\
-                               contigs database. It seems you haven't run HMMs (or you have managed to run them\
-                               without Campbell et al.'s collection .. which is quite impressive) :/")
-
-        self.progress.new('Accessing HMM hits')
-        self.progress.update('...')
-        self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
-        self.progress.end()
+            self.progress.new('Accessing HMM hits')
+            self.progress.update('...')
+            self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(completeness.sources))
+            self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database along with other info:
@@ -523,7 +553,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
-            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name', 'source'])
+            if completion_redundancy_available:
+                d['header'].extend(['percent_completion', 'percent_redundancy'])
+            d['header'].extend(['bin_name', 'source'])
 
             views_for_collection[view] = d
 
@@ -550,15 +582,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for bin_id in self.collection:
             self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
 
-            # get completeness estimate
-            p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
-            bin_source = bins_info_dict[bin_id]['source']
+            if completion_redundancy_available:
+                # get completeness estimate
+                p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
-                self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
-                self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
-                self.views[view]['dict'][bin_id]['source'] = bin_source
+
+                if completion_redundancy_available:
+                    self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
+                    self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+
+                self.views[view]['dict'][bin_id]['source'] = bins_info_dict[bin_id]['source']
 
             current_bin += 1
         self.progress.end()
