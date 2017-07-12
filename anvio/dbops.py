@@ -1449,6 +1449,13 @@ class ProfileSuperclass(object):
     def init_collection_profile(self, collection_name):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
+        # we only have a self.collections instance if the profile super has been inherited by summary super class.
+        # the initialization of a collection profile should only be done through that module anyway. so we are
+        # being cruel here, and sending the programmer back.
+        if not hasattr(self, 'collections'):
+            raise ConfigError("You are lost :/ You can only call `init_collection_profile` through an instance of \
+                               the `SummarizerSuperClass`. Go back and come another way.")
+
         # get trimmed collection and bins_info dictionaries
         collection, bins_info, self.split_names_in_profile_db_but_not_binned \
                     = self.collections.get_trimmed_dicts(collection_name, self.split_names)
