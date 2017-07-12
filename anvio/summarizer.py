@@ -631,16 +631,23 @@ class Bin:
         # make these dicts avilable:
         self.gene_coverages = {}
         self.gene_detection = {}
+        self.gene_non_outlier_coverages = {}
+        self.gene_non_outlier_coverage_stds = {}
         self.split_coverage_values_per_nt_dict = {}
+
+        A = lambda x: self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
 
         # populate gene coverage and detection dictionaries
         if self.summary.gene_level_coverage_stats_dict:
             for gene_callers_id in self.gene_caller_ids:
                 self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
+                self.gene_non_outlier_coverages[gene_callers_id], self.gene_non_outlier_coverage_stds[gene_callers_id] = {}, {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage']
-                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection']
+                    self.gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
+                    self.gene_detection[gene_callers_id][sample_name] = A('detection')
+                    self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
+                    self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -812,6 +819,8 @@ class Bin:
 
         utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
         utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverages.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverage_stds, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverage_stds.txt'))
 
 
     def store_genes_basic_info(self):
