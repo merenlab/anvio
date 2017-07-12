@@ -363,6 +363,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
     def __init__(self, args=None, r=run, p=progress):
         self.summary = {}
 
+        self.run = r
+        self.progress = p
+
         self.summary_type = 'profile'
         self.debug = False
         self.quick = False
@@ -374,7 +377,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.gene_level_coverage_stats_available = False
         self.non_single_copy_gene_hmm_data_available = False
 
-        DatabasesMetaclass.__init__(self, args, run, progress)
+        DatabasesMetaclass.__init__(self, args, self.run, self.progress)
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
         # databases initiated, let's make sure we have gene covereges data avaialable.
