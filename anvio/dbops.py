@@ -37,6 +37,7 @@ from anvio.errors import ConfigError
 from anvio.parsers import parser_modules
 from anvio.drivers import muscle
 from anvio.tableops import Table
+from anvio.sequence import get_list_of_outliers
 
 from anvio.drivers.hmmer import HMMer
 
@@ -1365,15 +1366,25 @@ class ProfileSuperclass(object):
 
                 self.gene_level_coverage_stats_dict[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in sample_names])
 
+                # the magic happens here:
                 for sample_name in sample_names:
                     # and recover the gene coverage array per position for a given sample:
                     gene_coverage_per_position = split_coverage[sample_name][gene_start:gene_stop]
 
-                    # all the magic happens here:
-                    gene_mean_coverage = numpy.mean(gene_coverage_per_position)
-                    gene_detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
+                    mean_coverage = numpy.mean(gene_coverage_per_position)
+                    detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
 
-                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': gene_mean_coverage, 'detection': gene_detection}
+                    # findout outlier psitions, and get non-outliers
+                    outliers_bool = get_list_of_outliers(gene_coverage_per_position)
+                    non_outliers = gene_coverage_per_position[numpy.invert(outliers_bool)]
+
+                    non_outlier_mean_coverage = numpy.mean(non_outliers)
+                    non_outlier_coverage_std = numpy.std(non_outliers)
+
+                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
+                                                                                          'detection': detection,
+                                                                                          'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                                                          'non_outlier_coverage_std':  non_outlier_coverage_std}
 
             counter += 1
 
