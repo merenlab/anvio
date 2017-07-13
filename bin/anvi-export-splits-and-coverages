@@ -48,7 +48,7 @@ def main(args):
     if not args.output_file_prefix:
         args.output_file_prefix = merged_profile_db.meta['sample_id']
 
-    coverages = merged_profile_db.db.get_table_as_dict('mean_coverage_contigs')
+    coverages = merged_profile_db.db.get_table_as_dict('mean_coverage_splits')
     merged_profile_db.disconnect()
 
     coverages_file = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
