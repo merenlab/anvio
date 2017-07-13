@@ -2335,11 +2335,11 @@ function showUploadProject() {
     $('#upload_ordering').empty();
 
     $('#trees_container option').each(function(index, option) {
-        $('#upload_ordering').append('<option>' + option.value + '</option>');
+        $('#upload_ordering').append(option);
     });
 
     $('#views_container option').each(function(index, option) {
-        $('#upload_view').append('<option>' + option.value + '</option>');
+        $('#upload_view').append(option);
     });
 
     $('#upload_state').append('<option selected>No State</option>');
