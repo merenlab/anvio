@@ -13,6 +13,7 @@ import io
 import sys
 import json
 import random
+import argparse
 import requests
 import datetime
 import webbrowser
@@ -30,6 +31,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from anvio.serverAPI import AnviServerAPI
 from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
@@ -98,6 +100,7 @@ class BottleApplication(Bottle):
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
         self.route('/store_collection',                        callback=self.store_collections_dict, method='POST')
         self.route('/store_description',                       callback=self.store_description, method='POST')
+        self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
         self.route('/summarize/<collection_name>',             callback=self.gen_summary)
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
@@ -704,3 +707,64 @@ class BottleApplication(Bottle):
 
         return json.dumps({'status': 0, 'tree': tree_text})
 
+    def upload_project(self):
+        collection_name = request.forms.get('upload_collection')
+        include_samples = request.forms.get('upload_include_samples')
+        try:
+            args = argparse.Namespace()
+            args.user = request.forms.get('username')
+            args.password = request.forms.get('password')
+            args.api_url = anvio.D['api-url'][1]['default']
+            args.project_name = request.forms.get('project_name')
+            args.delete_if_exists = request.forms.get('delete_if_exists')
+
+            view_name = request.forms.get('view')
+            if view_name in self.interactive.views:
+                view_path = filesnpaths.get_temp_file_path()
+                utils.store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
+                args.view_data = view_path
+
+            ordering_name = request.forms.get('ordering')
+            if ordering_name in self.interactive.p_meta['clusterings']:
+                ordering_path = filesnpaths.get_temp_file_path()
+                items_ordering = self.interactive.p_meta['clusterings'][ordering_name]
+
+                f = open(ordering_path, 'w')
+                if 'newick' in items_ordering:
+                    f.write(items_ordering['newick'])
+                elif 'basic' in items_ordering:
+                    f.write(",".join(items_ordering['basic']))
+                f.close()
+
+                args.tree = ordering_path
+
+            state_name = request.forms.get('state')
+            if state_name in self.interactive.states_table.states:
+                state_path = filesnpaths.get_temp_file_path()
+                f = open(state_path, 'w')
+                f.write(self.interactive.states_table.states[state_name]['content'])
+                f.close()
+
+                args.state = state_path
+
+            if request.forms.get('include_description'):
+                description_path = filesnpaths.get_temp_file_path()
+                f = open(description_path, 'w')
+                f.write(self.interactive.p_meta['description'])
+                f.close()
+
+                args.description = description_path
+
+
+
+            server = AnviServerAPI(args)
+            server.login()
+            server.push()
+            return json.dumps({'status': 0})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+
+
+        

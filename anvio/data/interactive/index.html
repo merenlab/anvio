@@ -575,8 +575,8 @@
                     <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a>                
                     <a class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></a>
                     <a class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm upload-button" onclick="showUploadProject();"><span class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></span></a>
                     <a class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" onclick="uploadProject();"><span class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></span></a>
                 </div>
             </div>
         </div>
@@ -851,6 +851,109 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" onclick="generatePhylogeneticTree();" type="button">Generate</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPLOAD TO SERVER -->
+    <div class="modal fade" id="modUpload">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Upload project to Anvio Server</h4>
+                </div>
+
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Username:</label>  
+                        <div class="col-md-8">
+                            <input type="text" id="username" value="">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Password:</label>  
+                        <div class="col-md-8">
+                            <input type="password" id="password" value="">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <hr/>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Project name:</label>  
+                        <div class="col-md-8">
+                            <input type="text" id="upload_project_name" value="">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Delete if project exists:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="upload_delete_if_exists">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <hr/>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            Please save your state and selections first if you want to upload them to server.
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">View:</label>  
+                        <div class="col-md-8">
+                            <select id="upload_view"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Ordering:</label>  
+                        <div class="col-md-8">
+                            <select id="upload_ordering"></select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">State:</label>  
+                        <div class="col-md-8">
+                            <select id="upload_state"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12" style="display: none;">
+                        <label class="col-md-4 settings-label">Collection:</label>  
+                        <div class="col-md-8">
+                            <select id="upload_collection"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Include samples metadata:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="upload_include_samples" checked>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Include description:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="upload_include_description" checked>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="upload-message alert alert-danger" style="display: none;">
+
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="uploadProject();" type="button">Upload</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>

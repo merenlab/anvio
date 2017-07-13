@@ -319,7 +319,8 @@ function initData() {
                 $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
                 $('#multiUser > img').attr('src', project.user_avatar);
                 $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px')
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -2322,6 +2323,78 @@ function saveState()
                 current_state_name = name;
                 $('#current_state').html('[current state: ' + current_state_name + ']');
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
+
+function showUploadProject() {
+    $('#upload_state').empty();
+    $('#upload_collection').empty();
+    $('#upload_view').empty();
+    $('#upload_ordering').empty();
+
+    $('#trees_container option').each(function(index, option) {
+        $('#upload_ordering').append('<option>' + option.value + '</option>');
+    });
+
+    $('#views_container option').each(function(index, option) {
+        $('#upload_view').append('<option>' + option.value + '</option>');
+    });
+
+    $('#upload_state').append('<option selected>No State</option>');
+    $('#upload_collection').append('<option></option>');
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(state_list) {
+            for (state_name in state_list) {
+                $('#upload_state').append('<option>' + state_name + '</option>');
+            }
+
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/collections?timestamp=' + new Date().getTime(),
+                success: function(collection_list) {
+                    for (collection_name in collection_list) {
+                        $('#upload_collection').append('<option>' + collection_name + '</option>');
+                    }
+                }
+            });
+        }
+    });
+    $('#modUpload').modal('show');
+}
+
+function uploadProject() {
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/upload_project?timestamp=' + new Date().getTime(),
+        data: {
+            username: $('#username').val(),
+            password: $('#password').val(),
+            project_name: $('#upload_project_name').val(),
+            ordering: $('#upload_ordering').val(),
+            view: $('#upload_view').val(),
+            state: $('#upload_state').val(),
+            collection: $('#upload_collection').val(),
+            delete_if_exists: $('#upload_delete_if_exists').is(':checked'),
+            include_samples: $('#upload_include_samples').is(':checked'),
+            include_description: $('#upload_include_description').is(':checked')
+        },
+        success: function(data) {
+            if (data['status'] == 1) {
+                $('.upload-message').removeClass('alert-success').addClass('alert-danger');
+                $('.upload-message').show();
+                $('.upload-message').html(data['message']);
+            } else {
+                $('.upload-message').removeClass('alert-danger').addClass('alert-success');
+                $('.upload-message').show();
+                $('.upload-message').html("Project successfully uploaded, to view your projects click <a href='https://anvi-server.org/projects' target='_blank'>here.</a>");
             }
         }
     });
