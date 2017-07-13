@@ -716,7 +716,7 @@ class BottleApplication(Bottle):
             args.password = request.forms.get('password')
             args.api_url = anvio.D['api-url'][1]['default']
             args.project_name = request.forms.get('project_name')
-            args.delete_if_exists = request.forms.get('delete_if_exists')
+            args.delete_if_exists = True if request.forms.get('delete_if_exists') == "true" else False
 
             view_name = request.forms.get('view')
             if view_name in self.interactive.views:
@@ -747,7 +747,7 @@ class BottleApplication(Bottle):
 
                 args.state = state_path
 
-            if request.forms.get('include_description'):
+            if request.forms.get('include_description') == "true":
                 description_path = filesnpaths.get_temp_file_path()
                 f = open(description_path, 'w')
                 f.write(self.interactive.p_meta['description'])
@@ -755,7 +755,7 @@ class BottleApplication(Bottle):
 
                 args.description = description_path
 
-            if request.forms.get('include_samples'):
+            if request.forms.get('include_samples') == "true":
                 samples_order_path = filesnpaths.get_temp_file_path()
                 samples_info_path = filesnpaths.get_temp_file_path()
 
