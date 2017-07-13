@@ -149,7 +149,7 @@
     "samples-tree-height": "400",
     "samples-layer-order": [
         "total_length",
-        "percent_complete",
+        "percent_completion",
         "percent_redundancy",
         "gc_content",
         "num_genes",
@@ -174,7 +174,7 @@
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "percent_complete": {
+        "percent_completion": {
             "data-type": "numeric",
             "height": 500,
             "margin": 15,

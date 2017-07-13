@@ -510,7 +510,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             summary_of_bins = {}
             properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
             if self.completeness_data_available:
-                properties += ['percent_complete', 'percent_redundancy']
+                properties += ['percent_completion', 'percent_redundancy']
 
             for bin_name in self.summary['collection']:
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
@@ -576,7 +576,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def get_bins_ordered_by_completeness_and_size(self):
         if self.completeness_data_available:
-            return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
+            return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_completion'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
         else:
             return sorted(self.summary['collection'].keys())
 
@@ -702,11 +702,11 @@ class Bin:
         self.bin_info_dict['completeness'] = results_dict
 
         self.bin_info_dict['percent_redundancy'] = p_redundancy
-        self.bin_info_dict['percent_complete'] = p_completion
+        self.bin_info_dict['percent_completion'] = p_completion
         self.bin_info_dict['scg_domain'] = domain
         self.bin_info_dict['scg_domain_confidence'] = domain_confidence
 
-        for k in ['percent_redundancy', 'percent_complete']:
+        for k in ['percent_redundancy', 'percent_completion']:
             self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
 
         self.store_data_in_file('scg_domain.txt', '%s' % self.bin_info_dict['scg_domain'])
@@ -1096,7 +1096,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
     info_dict['hmm_sources_info'] = c.hmm_sources_info
-    info_dict['percent_complete'] = p_completion
+    info_dict['percent_completion'] = p_completion
     info_dict['percent_redundancy'] = p_redundancy
     info_dict['scg_domain'] = domain
     info_dict['scg_domain_confidence'] = domain_confidence

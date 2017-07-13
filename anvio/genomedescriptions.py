@@ -17,6 +17,7 @@ import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 import anvio.summarizer as summarizer
 
 from anvio.errors import ConfigError
@@ -43,7 +44,7 @@ class GenomeDescriptions:
         self.progress = progress
 
         self.genomes = {}
-        self.internal_genomes_dict = None 
+        self.internal_genomes_dict = None
         self.external_genomes_dict = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -156,7 +157,7 @@ class GenomeDescriptions:
 
         # this will populate self.genomes with relevant data that can be learned about these genomes such as 'avg_gene_length',
         # 'num_splits', 'num_contigs', 'num_genes', 'percent_redundancy', 'gene_caller_ids', 'total_length', 'partial_gene_calls',
-        # 'percent_complete', 'num_genes_per_kb', 'gc_content'.
+        # 'percent_completion', 'num_genes_per_kb', 'gc_content'.
         if init:
             self.init_internal_genomes()
             self.init_external_genomes()

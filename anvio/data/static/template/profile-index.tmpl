@@ -220,7 +220,7 @@
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
+                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_n }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}%</td>
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"scg_domain" }}</td>
                                             {% else %}
@@ -333,7 +333,7 @@
                   <tr>
                     <th>Source</th>
                     <th>SCG domain</th>
-                    <th class="text-center">Percent completeness</th>
+                    <th class="text-center">Percent completion</th>
                     <th class="text-center">Percent redundancy</th>
                   </tr>
                 </thead>
@@ -343,7 +343,7 @@
                       <tr>
                         <td>{{ source|humanize }}</td>
                         <td>{{ domain|humanize }}</td>
-                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_complete"|humanize_f }}%</td>
+                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_completion"|humanize_f }}%</td>
                         <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_redundancy"|humanize_f }}%</td>
                       </tr>
                       {% endfor %}

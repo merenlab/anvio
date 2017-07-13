@@ -538,7 +538,7 @@ class Pangenome(GenomeStorage):
         # set headers
         headers = ['total_length']
 
-        for h in ['percent_complete', 'percent_redundancy']:
+        for h in ['percent_completion', 'percent_redundancy']:
             if h in list(self.genomes.values())[0]:
                 headers.append(h)
 
