@@ -708,8 +708,6 @@ class BottleApplication(Bottle):
         return json.dumps({'status': 0, 'tree': tree_text})
 
     def upload_project(self):
-        collection_name = request.forms.get('upload_collection')
-        include_samples = request.forms.get('upload_include_samples')
         try:
             args = argparse.Namespace()
             args.user = request.forms.get('username')
@@ -764,6 +762,14 @@ class BottleApplication(Bottle):
 
                 args.samples_information_file = samples_info_path
                 args.samples_order_path = samples_order_path
+
+            collection_name = request.forms.get('collection')
+            if collection_name in self.interactive.collections.collections_dict:
+                collection_path_prefix = filesnpaths.get_temp_file_path()
+                self.interactive.collections.export_collection(collection_name, output_file_prefix=collection_path_prefix)
+
+                args.bins = collection_path_prefix + '.txt'
+                args.bins_info = collection_path_prefix + '-info.txt'
 
             server = AnviServerAPI(args)
             server.login()

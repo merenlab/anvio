@@ -953,6 +953,13 @@ D = {
                       becuse we should also think about people who may end up having to work with what we put\
                       together later."}
                 ),
+    'bins': (
+            ['--bins'],
+            {'metavar': 'BINS_DATA',
+             'help': "Tab-delimited file, first column contains tree leaves (protein clusters, splits, contigs etc.) \
+                      and second column contains which Bin they belong."
+            }
+      ),
     'contigs-mode': (
             ['--contigs-mode'],
             {'default': False,
