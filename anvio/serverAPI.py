@@ -35,6 +35,8 @@ class AnviServerAPI:
         self.project_name = A('project_name')
         self.description = A('description')
         self.state = A('state')
+        self.bins = A('bins')
+        self.bins_info = A('bins_info')
 
         self.cookie = None
 
@@ -107,6 +109,9 @@ class AnviServerAPI:
             files['additional-layers.txt'] = open(self.additional_layers, 'r')
         if self.state:
             files['state.json'] = open(self.state, 'r')
+        if self.bins and self.bins_info:
+            files['bins.txt'] = open(self.bins, 'r')
+            files['bins-info.txt'] = open(self.bins_info, 'r')
 
         r = self.request(path='/projects/new',
                          method='post',
