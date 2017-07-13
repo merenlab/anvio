@@ -755,7 +755,15 @@ class BottleApplication(Bottle):
 
                 args.description = description_path
 
+            if request.forms.get('include_samples'):
+                samples_order_path = filesnpaths.get_temp_file_path()
+                samples_info_path = filesnpaths.get_temp_file_path()
 
+                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path)
+                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
+
+                args.samples_information_file = samples_info_path
+                args.samples_order_path = samples_order_path
 
             server = AnviServerAPI(args)
             server.login()
