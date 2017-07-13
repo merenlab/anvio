@@ -1257,6 +1257,13 @@ D = {
              'action': 'store_true',
              'help': "Use the TAB-delimited format for the output file."}
                 ),
+    'splits-mode': (
+            ['--splits-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Specify this flag if you would like to output coverages of individual 'splits', rather than their 'parent'\
+                      contig coverages."}
+                ),
 }
 
 # two functions that works with the dictionary above.
