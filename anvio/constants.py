@@ -37,7 +37,7 @@ linkage_method_default = 'ward'
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
-essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_complete', 'percent_redundancy',
+essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
 

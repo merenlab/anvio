@@ -1728,7 +1728,7 @@ function showCompleteness(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetess</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetion</th></tr></thead><tbody>';
 
     for (var source in stats){
         if(stats[source]['domain'] != averages['domain'])
@@ -1736,7 +1736,7 @@ function showCompleteness(bin_id, updateOnly) {
             // don't show it in the interface
             continue;
 
-        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td></tr>";
     }
 
     msg = msg + '</tbody></table>';
