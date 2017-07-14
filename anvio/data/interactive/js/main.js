@@ -96,6 +96,7 @@ var ping_timer;
 var autoload_state;
 var autoload_collection;
 var mode;
+var server_mode = false;
 var samples_tree_hover = false;
 var bbox;
 
@@ -277,6 +278,7 @@ function initData() {
         var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
+            server_mode = response.server_mode;
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
@@ -312,15 +314,6 @@ function initData() {
             {
                 $('.refine-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
-            } else if (mode == 'server') {
-                $('.server-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-                $('#multiUser').show();
-                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-                $('#multiUser > img').attr('src', project.user_avatar);
-                $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px');
-                $('.upload-button').hide();
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -332,13 +325,23 @@ function initData() {
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
-
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            }
+
+            if (server_mode) {
+                $('.server-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
             }
 
             if (readOnlyResponse[0] == true)
