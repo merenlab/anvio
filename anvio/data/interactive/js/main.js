@@ -2365,6 +2365,8 @@ function showUploadProject() {
     $('#upload_state').append('<option selected>Select State</option>');
     $('#upload_collection').append('<option>Select Collection</option>');
 
+    $('#upload_project_name').val($('#title-panel-first-line').text());
+
     $.ajax({
         type: 'GET',
         cache: false,
