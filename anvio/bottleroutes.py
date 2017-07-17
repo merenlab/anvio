@@ -13,6 +13,7 @@ import io
 import sys
 import json
 import random
+import argparse
 import requests
 import datetime
 import webbrowser
@@ -30,6 +31,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from anvio.serverAPI import AnviServerAPI
 from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
@@ -98,6 +100,7 @@ class BottleApplication(Bottle):
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
         self.route('/store_collection',                        callback=self.store_collections_dict, method='POST')
         self.route('/store_description',                       callback=self.store_description, method='POST')
+        self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
         self.route('/summarize/<collection_name>',             callback=self.gen_summary)
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
@@ -212,6 +215,7 @@ class BottleApplication(Bottle):
                                  "contigLengths":                      dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "defaultView":                        self.interactive.views[self.interactive.default_view],
                                  "mode":                               self.interactive.mode,
+                                 "server_mode":                        False,
                                  "readOnly":                           self.read_only,
                                  "binPrefix":                          bin_prefix,
                                  "sessionId":                          self.unique_session_id,
@@ -704,3 +708,78 @@ class BottleApplication(Bottle):
 
         return json.dumps({'status': 0, 'tree': tree_text})
 
+    def upload_project(self):
+        try:
+            args = argparse.Namespace()
+            args.user = request.forms.get('username')
+            args.password = request.forms.get('password')
+            args.api_url = anvio.D['api-url'][1]['default']
+            args.project_name = request.forms.get('project_name')
+            args.delete_if_exists = True if request.forms.get('delete_if_exists') == "true" else False
+
+            view_name = request.forms.get('view')
+            if view_name in self.interactive.views:
+                view_path = filesnpaths.get_temp_file_path()
+                utils.store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
+                args.view_data = view_path
+
+            ordering_name = request.forms.get('ordering')
+            if ordering_name in self.interactive.p_meta['clusterings']:
+                ordering_path = filesnpaths.get_temp_file_path()
+                items_ordering = self.interactive.p_meta['clusterings'][ordering_name]
+
+                f = open(ordering_path, 'w')
+                if 'newick' in items_ordering:
+                    f.write(items_ordering['newick'])
+                elif 'basic' in items_ordering:
+                    f.write(",".join(items_ordering['basic']))
+                f.close()
+
+                args.tree = ordering_path
+
+            state_name = request.forms.get('state')
+            if state_name in self.interactive.states_table.states:
+                state_path = filesnpaths.get_temp_file_path()
+                f = open(state_path, 'w')
+                f.write(self.interactive.states_table.states[state_name]['content'])
+                f.close()
+
+                args.state = state_path
+
+            if request.forms.get('include_description') == "true":
+                description_path = filesnpaths.get_temp_file_path()
+                f = open(description_path, 'w')
+                f.write(self.interactive.p_meta['description'])
+                f.close()
+
+                args.description = description_path
+
+            if request.forms.get('include_samples') == "true":
+                samples_order_path = filesnpaths.get_temp_file_path()
+                samples_info_path = filesnpaths.get_temp_file_path()
+
+                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path)
+                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
+
+                args.samples_information_file = samples_info_path
+                args.samples_order_path = samples_order_path
+
+            collection_name = request.forms.get('collection')
+            if collection_name in self.interactive.collections.collections_dict:
+                collection_path_prefix = filesnpaths.get_temp_file_path()
+                self.interactive.collections.export_collection(collection_name, output_file_prefix=collection_path_prefix)
+
+                args.bins = collection_path_prefix + '.txt'
+                args.bins_info = collection_path_prefix + '-info.txt'
+
+            server = AnviServerAPI(args)
+            server.login()
+            server.push()
+            return json.dumps({'status': 0})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+
+
+        

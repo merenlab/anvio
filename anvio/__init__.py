@@ -881,12 +881,12 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'hostname': (
-            ['--hostname'],
-            {'metavar': 'HOST_NAME',
+    'api-url': (
+            ['--api-url'],
+            {'metavar': 'API_URL',
              'type': str,
-             'default': None,
-             'help': "Host name for an anvi'server."}
+             'default': 'https://anvi-server.org',
+             'help': "Anvi'server url"}
                 ),
     'port-number': (
             ['-P', '--port-number'],
@@ -953,6 +953,13 @@ D = {
                       becuse we should also think about people who may end up having to work with what we put\
                       together later."}
                 ),
+    'bins': (
+            ['--bins'],
+            {'metavar': 'BINS_DATA',
+             'help': "Tab-delimited file, first column contains tree leaves (protein clusters, splits, contigs etc.) \
+                      and second column contains which Bin they belong."
+            }
+      ),
     'contigs-mode': (
             ['--contigs-mode'],
             {'default': False,
@@ -969,7 +976,7 @@ D = {
                       although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
-            ['-J', '--project-name'],
+            ['-n', '--project-name'],
             {'metavar': 'PROJECT_NAME',
              'help': "Name of the project. Please choose a short but descriptive name (so anvi'o can use\
                       it whenever she needs to name an output file, or add a new table in a database, or name\
@@ -1130,6 +1137,11 @@ D = {
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
+                ),
+    'state': (
+            ['-s', '--state'],
+            {'metavar': 'STATE',
+             'help': "State file, you can export states from database using anvi-export-state program"}
                 ),
     'collection-autoload': (
             ['--collection-autoload'],
