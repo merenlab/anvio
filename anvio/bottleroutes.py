@@ -755,14 +755,15 @@ class BottleApplication(Bottle):
                 args.description = description_path
 
             if request.forms.get('include_samples') == "true":
-                samples_order_path = filesnpaths.get_temp_file_path()
-                samples_info_path = filesnpaths.get_temp_file_path()
+                if len(self.interactive.samples_order_dict):
+                    samples_order_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
+                    args.samples_order_file = samples_order_path
 
-                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path)
-                utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
-
-                args.samples_information_file = samples_info_path
-                args.samples_order_path = samples_order_path
+                if len(self.interactive.samples_information_dict):
+                    samples_info_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
+                    args.samples_information_file = samples_info_path
 
             collection_name = request.forms.get('collection')
             if collection_name in self.interactive.collections.collections_dict:
