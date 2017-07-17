@@ -2355,11 +2355,11 @@ function showUploadProject() {
     $('#upload_ordering').empty();
 
     $('#trees_container option').each(function(index, option) {
-        $('#upload_ordering').append(option);
+        $(option).clone().appendTo('#upload_ordering');
     });
 
     $('#views_container option').each(function(index, option) {
-        $('#upload_view').append(option);
+        $(option).clone().appendTo('#upload_view');
     });
 
     $('#upload_state').append('<option selected>Select State</option>');
