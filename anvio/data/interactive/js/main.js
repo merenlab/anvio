@@ -96,6 +96,7 @@ var ping_timer;
 var autoload_state;
 var autoload_collection;
 var mode;
+var server_mode = false;
 var samples_tree_hover = false;
 var bbox;
 
@@ -277,6 +278,7 @@ function initData() {
         var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
+            server_mode = response.server_mode;
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
@@ -312,14 +314,6 @@ function initData() {
             {
                 $('.refine-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
-            } else if (mode == 'server') {
-                $('.server-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-                $('#multiUser').show();
-                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-                $('#multiUser > img').attr('src', project.user_avatar);
-                $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -331,13 +325,23 @@ function initData() {
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
-
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            }
+
+            if (server_mode) {
+                $('.server-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
             }
 
             if (readOnlyResponse[0] == true)
@@ -1959,9 +1963,8 @@ function storeCollection() {
             var bin_id = $(bin).attr('bin-id');
             var bin_name = $('#bin_name_' + bin_id).val();
 
-            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-            data[bin_name] = new Array();
-
+            var items = new Array();
+            
             for (var i=0; i < SELECTED[bin_id].length; i++)
             {
                 var node_label = SELECTED[bin_id][i];
@@ -1969,8 +1972,13 @@ function storeCollection() {
 
                 if (node.IsLeaf() && !node.collapsed)
                 {
-                    data[bin_name].push(node_label);
+                    items.push(node_label);
                 }
+            }
+
+            if (items.length > 0) {
+                colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
+                data[bin_name] = items;
             }
         }
     );
@@ -2335,6 +2343,78 @@ function saveState()
                 current_state_name = name;
                 $('#current_state').html('[current state: ' + current_state_name + ']');
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
+
+function showUploadProject() {
+    $('#upload_state').empty();
+    $('#upload_collection').empty();
+    $('#upload_view').empty();
+    $('#upload_ordering').empty();
+
+    $('#trees_container option').each(function(index, option) {
+        $('#upload_ordering').append(option);
+    });
+
+    $('#views_container option').each(function(index, option) {
+        $('#upload_view').append(option);
+    });
+
+    $('#upload_state').append('<option selected>Select State</option>');
+    $('#upload_collection').append('<option>Select Collection</option>');
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(state_list) {
+            for (state_name in state_list) {
+                $('#upload_state').append('<option>' + state_name + '</option>');
+            }
+
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/collections?timestamp=' + new Date().getTime(),
+                success: function(collection_list) {
+                    for (collection_name in collection_list) {
+                        $('#upload_collection').append('<option>' + collection_name + '</option>');
+                    }
+                }
+            });
+        }
+    });
+    $('#modUpload').modal('show');
+}
+
+function uploadProject() {
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/upload_project?timestamp=' + new Date().getTime(),
+        data: {
+            username: $('#username').val(),
+            password: $('#password').val(),
+            project_name: $('#upload_project_name').val(),
+            ordering: $('#upload_ordering').val(),
+            view: $('#upload_view').val(),
+            state: $('#upload_state').val(),
+            collection: $('#upload_collection').val(),
+            delete_if_exists: $('#upload_delete_if_exists').is(':checked'),
+            include_samples: $('#upload_include_samples').is(':checked'),
+            include_description: $('#upload_include_description').is(':checked')
+        },
+        success: function(data) {
+            if (data['status'] == 1) {
+                $('.upload-message').removeClass('alert-success').addClass('alert-danger');
+                $('.upload-message').show();
+                $('.upload-message').html(data['message']);
+            } else {
+                $('.upload-message').removeClass('alert-danger').addClass('alert-success');
+                $('.upload-message').show();
+                $('.upload-message').html("Project successfully uploaded, to view your projects click <a href='https://anvi-server.org/projects' target='_blank'>here.</a>");
             }
         }
     });
