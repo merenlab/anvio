@@ -76,9 +76,12 @@ def main(args):
         ARGS = summarizer.ArgsTemplateForSummarizerClass()
         ARGS.profile_db = profile_db_path
         ARGS.contigs_db = contigs_db_path
+        ARGS.skip_init_functions = True
+        ARGS.init_gene_coverages = True
         ARGS.collection_name = collection_name
 
         summary = summarizer.ProfileSummarizer(ARGS)
+        summary.init()
         summary.init_collection_profile(collection_name)
 
         for genome_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]:
@@ -91,7 +94,7 @@ def main(args):
             split_names_of_interest = G.get_split_names_of_interest_for_internal_genome(G.genomes[genome_name])
 
             genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-            gene_coverages_across_samples = genome_bin_summary.get_gene_coverages_across_samples_dict()
+            gene_coverages_across_samples = genome_bin_summary.gene_coverages()
 
             # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
             # summarize the coverage of each gene in all samples:
