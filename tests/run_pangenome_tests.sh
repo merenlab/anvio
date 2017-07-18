@@ -29,10 +29,10 @@ INFO "Generating an anvi'o genomes storage"
 anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.h5
 
 INFO "Running the pangenome anaysis with default parameters"
-anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J TEST --use-ncbi-blast --description example_description.md
+anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -n TEST --use-ncbi-blast --description example_description.md
 
 INFO "Running the pangenome analysis again utilizing previous search results"
-anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -J ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
+anvi-pan-genome -g TEST-GENOMES.h5 -o TEST/ -n ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
