@@ -1325,15 +1325,16 @@ class ProfileSuperclass(object):
                               Good luck with your downstream endeavors.")
             return
 
+        self.progress.new('Initializing split coverage values per nt')
+        self.progress.update('...')
         self.split_coverage_values_per_nt_dict = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
+        self.progress.end()
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate `self.gene_level_coverage_stats_dict`."""
 
-        run = terminal.Run(verbose=False)
-        progress = terminal.Progress(verbose=False)
-        contigs_db = ContigsSuperclass(self.args, r=run, p=progress)
+        contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if not contigs_db.a_meta['genes_are_called']:
             self.run.warning("Well, someone wants to populate the gene coverages data, when in fact genes were not called :/\
