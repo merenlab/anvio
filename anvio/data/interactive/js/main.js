@@ -47,7 +47,6 @@ var total_radius = 0;
 
 var SELECTED = new Array();
 var clusteringData;
-var hasTree;
 
 var layerdata;
 var contig_lengths;
