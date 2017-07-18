@@ -47,7 +47,6 @@ var total_radius = 0;
 
 var SELECTED = new Array();
 var clusteringData;
-var hasTree;
 
 var layerdata;
 var contig_lengths;
@@ -2341,7 +2340,6 @@ function saveState()
                 $('#modSaveState').modal('hide');
 
                 current_state_name = name;
-                $('#current_state').html('[current state: ' + current_state_name + ']');
                 toastr.success("State '" + current_state_name + "' successfully saved.");
             }
         }
@@ -2670,9 +2668,7 @@ function loadState()
                             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
                             buildLegendTables();
 
-
                             current_state_name = state_name;
-                            $('#current_state').html('[current state: ' + current_state_name + ']');
 
                             toastr.success("State '" + current_state_name + "' successfully loaded.");
                             waitingDialog.hide();
