@@ -5,10 +5,11 @@ import sys
 import numpy as numpy
 
 import anvio
-import anvio.genomestorage as genomestorage
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
+import anvio.genomestorage as genomestorage
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -80,6 +81,12 @@ def main(args):
         ARGS.init_gene_coverages = True
         ARGS.collection_name = collection_name
 
+        # let's focus only on the split names in the collection, and the bin names specified
+        collections_dict = ccollections.GetSplitNamesInBins(ARGS).get_dict()
+        ARGS.split_names_of_interest=set([])
+        for bin_name in unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+            ARGS.split_names_of_interest.update(collections_dict[bin_name])
+
         summary = summarizer.ProfileSummarizer(ARGS)
         summary.init()
         summary.init_collection_profile(collection_name)
@@ -94,7 +101,7 @@ def main(args):
             split_names_of_interest = G.get_split_names_of_interest_for_internal_genome(G.genomes[genome_name])
 
             genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-            gene_coverages_across_samples = genome_bin_summary.gene_coverages()
+            gene_coverages_across_samples = genome_bin_summary.gene_coverages
 
             # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
             # summarize the coverage of each gene in all samples:
@@ -124,6 +131,10 @@ def main(args):
         status = {'EDG': 0, 'ECG': 0, 'NA': 0}
         for genome_name in pan_summary.protein_clusters[pc_name]:
             for gene_caller_id in pan_summary.protein_clusters[pc_name][genome_name]:
+                if genome_name not in gene_presence_in_the_environment_dict:
+                    progress.end()
+                    raise ConfigError("Something is fishy... Like, you generated a pangenome with an internal or external genomes file\
+                                       that is not identical to the internal or external genomes file you are using to run this program.")
                 status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
         gene_status_frequencies_in_PC[pc_name] = status
 
