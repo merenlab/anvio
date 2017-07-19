@@ -1195,8 +1195,16 @@ class ProfileSuperclass(object):
             >>> args.profile_db = /path/to/profile
             >>> p = ProfileSuperclass(args)
 
-       Alternatively you can include a contigs database path (contigs_db) in args so you have access
+       Alternatively, you can include a contigs database path (contigs_db) in args so you have access
        to some functions that would require that.
+
+       Alternatively, you can define a set of split names of interest:
+
+            >>> args.split_names_of_interest = set([split_names])
+
+       in which case some functions will initialize data only for those splits. This is one way to minimize
+       the resources necessary to initialize gene_coverages if only a subset of bins in a collection is
+       requested.
        """
 
     def __init__(self, args, r=run, p=progress):
@@ -1229,10 +1237,15 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        self.split_names_of_interest = A('split_names_of_interest')
         init_gene_coverages = A('init_gene_coverages')
 
+        if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
+            raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
+                               Someone screwed up somewhere :/")
+
         if not self.profile_db_path:
-            self.run.warning("ProfileSuperclass class called with args without profile_db member. Anvi'o will assume\
+            self.run.warning("ProfileSuper is called with args without member profile_db. Anvi'o will assume\
                               you are a programmer, and will not raise an error. But the init function is returning\
                               prematurely. Just so you know.")
             return
@@ -1247,6 +1260,17 @@ class ProfileSuperclass(object):
 
         self.progress.update('Loading split names')
         self.split_names = get_split_names_in_profile_db(self.profile_db_path)
+
+        if self.split_names == self.split_names_of_interest:
+            # the user is being silly. nick that split_names_of_interest
+            self.split_names_of_interest = None
+
+        split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
+        if self.split_names_of_interest and len(split_names_missing):
+            self.progress.end()
+            raise ConfigError("You called ProfileSuper with a `split_names_of_interest` argument, yet it contained\
+                               %d split names that does not occur in the profile database. Here is an example: '%s'." % \
+                                                                (len(split_names_missing), split_names_missing.pop()))
 
         self.progress.update('Creating an instance of the profile database')
         profile_db = ProfileDatabase(self.profile_db_path)
@@ -1287,7 +1311,9 @@ class ProfileSuperclass(object):
             self.auxiliary_profile_data_available = False
         else:
             self.auxiliary_profile_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash'])
+            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
+                                                                                         self.p_meta['contigs_db_hash'],
+                                                                                         split_names_of_interest=self.split_names_of_interest)
 
         self.progress.end()
 
@@ -1296,7 +1322,16 @@ class ProfileSuperclass(object):
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
-        self.run.info('Profile DB', 'Initialized: %s (v. %s)' % (self.profile_db_path, anvio.__profile__version__))
+
+        if self.split_names_of_interest:
+            self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names),
+                                                                                             len(self.split_names_of_interest),
+                                                                                             self.profile_db_path,
+                                                                                             anvio.__profile__version__))
+        else:
+            self.run.info('Profile Super', 'Initialized with all %d splits: %s (v. %s)' % (len(self.split_names),
+                                                                                           self.profile_db_path,
+                                                                                           anvio.__profile__version__))
 
 
     def init_split_coverage_values_per_nt_dict(self):
@@ -1327,12 +1362,17 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing split coverage values per nt')
         self.progress.update('...')
-        self.split_coverage_values_per_nt_dict = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path, self.p_meta['contigs_db_hash']).get_all()
+        self.split_coverage_values_per_nt_dict = self.split_coverage_values.get_all()
         self.progress.end()
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0):
-        """This function will process `self.split_coverage_values_per_nt_dict` to populate `self.gene_level_coverage_stats_dict`."""
+        """This function will process `self.split_coverage_values_per_nt_dict` to populate
+           `self.gene_level_coverage_stats_dict`.
+
+           Note: if a `split_names_of_interest` argument is declared at the class level,
+           this function will operate on those splits found in that set.
+           """
 
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
@@ -1356,12 +1396,22 @@ class ProfileSuperclass(object):
         if not self.split_coverage_values_per_nt_dict:
             self.init_split_coverage_values_per_nt_dict()
 
+        if self.split_names_of_interest:
+            split_names = self.split_names_of_interest
+
+            self.run.warning('A subset of genes (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
+                              No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
+                              there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
+
+        else:
+            split_names = self.split_names
+
         self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
-        num_splits, counter = len(self.split_names), 1
+        num_splits, counter = len(split_names), 1
         # go through all the split names
-        for split_name in self.split_names:
+        for split_name in split_names:
             if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
