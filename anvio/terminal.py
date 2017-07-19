@@ -154,11 +154,11 @@ class Run:
         with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line))
 
 
-    def write(self, line, quiet=False):
+    def write(self, line, quiet=False, overwrite_verbose=False):
         if self.log_file_path:
             self.log(line)
 
-        if self.verbose and not quiet:
+        if (self.verbose and not quiet) or overwrite_verbose:
             try:
                 sys.stderr.write(line)
             except:
@@ -199,7 +199,7 @@ class Run:
         self.write(message_line)
 
 
-    def warning(self, message, header='WARNING', lc='red', raw=False):
+    def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -210,7 +210,7 @@ class Run:
         else:
             message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
 
-        self.write((header_line + message_line) if message else header_line)
+        self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 
 
     def store_info_dict(self, destination, strip_prefix=None):
