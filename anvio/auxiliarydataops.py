@@ -101,7 +101,7 @@ class HDF5_IO(object):
 
 class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.version = anvio.__hdf5__version__
 
@@ -112,6 +112,12 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         # set sample and split names in the auxiliary data file
         self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys())) if not create_new else set([])
         self.split_names_in_db = list(self.fp['/data/coverages'].keys()) if not create_new else list()
+        self.split_names_of_interest = list(split_names_of_interest) if split_names_of_interest else None
+
+        if self.split_names_of_interest:
+            self.split_names = self.split_names_of_interest
+        else:
+            self.split_names = self.split_names_in_db
 
 
     def is_known_split(self, split_name):
@@ -145,12 +151,12 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         sample_names = self.check_sample_names(sample_names)
 
         split_coverages = {}
-        num_splits, counter = len(self.split_names_in_db), 1
+        num_splits, counter = len(self.split_names), 1
         for i in range(0, num_splits):
             if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            split_name = self.split_names_in_db[i]
+            split_name = self.split_names[i]
             split_coverages[split_name] = {}
             for sample_name in self.sample_names_in_db:
                 split_coverages[split_name][sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
