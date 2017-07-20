@@ -465,7 +465,7 @@ class SAAVsAndProteinStructuresSummary:
         else:
             self.init_from_files()
 
-        self.perspectives = [os.path.basename(d) for d in glob.glob('%s/04_structure/*' % self.input_directory) if os.path.isdir(d)]
+        self.perspectives = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
 
         self.run.info('Num genes', len(self.genes))
         self.run.info('Num samples', len(self.samples))
@@ -528,7 +528,7 @@ class SAAVsAndProteinStructuresSummary:
 
         self.progress.new('Populating views dict')
 
-        image_path_template = "%(input_directory)s/04_structure/%(perspective)s/%(gene)s/%(sample)s/%(sample)s_0001.png"
+        image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/sample_%(sample)s.pse.png"
 
         gene_names = sorted(self.genes.keys())
         num_genes = len(gene_names)
